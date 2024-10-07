@@ -1,0 +1,513 @@
+<!DOCTYPE html><html><head><title>Preview</title>
+<style type="text/css"><!--
+.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height:50px;
+    background-color:hsl(0, 60%, 50%);
+    margin: 10px;
+    font-size: 30px;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding:3px 20px;
+}
+
+.topnav
+{
+    width: 100%;
+    overflow: hidden;
+    background-color: #fff;
+    border: 1px solid #B5B5B5;
+    padding: 2px;
+}
+
+#Button_Select
+{
+    height: 30px;
+    width: auto;
+    margin-top: 0;
+    padding: 0 4px;
+    background-color: #999999;
+    border-radius: 5px;
+    color: #fff;
+    border: 0px solid #444E66;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    font-size: 18px;
+    text-align: center;
+}
+
+.select-block
+{
+    margin: 1px auto 0px;
+    position: relative;
+}
+
+#JobNameSelect
+{
+    width: 375px;
+    height: 200px;
+    font-size: 16px;
+    float: center;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: Opx;
+    background-color: #DDDDDD;
+    border: none;
+    border: 1px solid;
+    border-radius: 2px;
+    color: #000;
+    appearance: none;
+    padding: 0px 0px 10px 0px;
+    transition: color 0.s ease, background-color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+/* Modal Content/Box */
+.modal-content
+{
+    background-color: #AAAAAA;
+    margin: 0% auto 0% auto; /* 5% from the top, 15% from the bottom and centered */
+    border: 1px solid #888;
+}
+
+.modal-header
+{
+    background-color: #686767; /* Replace with your desired background color */
+    height: 50px;
+    color: #FFFFFF;
+    font-size: 18px;
+    text-align: center;
+}
+
+.modal-body
+{
+    background-color: #F2F1F1; /* Replace with your desired background color */
+    padding: 0;
+}
+
+.modal-footer
+{
+    background-color: #686767; /* Replace with your desired background color */
+    height: 50px;
+    padding: 0px;
+}
+
+.modal-footer .button-modal {
+    margin: 0 10px; /* Optional: Add some space between buttons */
+}
+
+/* Clear floats */
+.clearfix::after
+{
+    content: "";
+    clear: both;
+    display: table;
+}
+
+/* button save, cancel in modal */
+.button-modal
+{
+    background-color: #888888; /* Green */
+    border: 1px outset #CCFFFF;
+    border-radius: 8px;
+    color: white;
+    padding: 0px;
+    text-align: center;
+    font-size: 16px;
+    cursor: pointer;
+    height: 35px;
+    width: 60px;
+}
+
+.button-modal:hover
+{
+    cursor: pointer;
+    background: #336699;
+    color: white;
+}
+
+/* DIV table mode */
+#DivMode
+{
+    width: 100%;
+    overflow-y: auto;
+    font-size: 13px;
+    display: table;
+}
+
+/* table input */
+.table-input
+{
+    overflow-y: auto;
+    padding: 3px 0px;
+}
+
+table
+{
+    width: 100%;
+    overflow-y: scroll;
+    scrollbar-width: thin;
+    vertical-align: middle;
+}
+
+th, td
+{
+    border: 1px solid #ddd;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.w3-table-all
+{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.w3-table-all th, .w3-table-all td
+{
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center; /* Horizontally center */
+    vertical-align: middle; /* Vertically center */
+}
+
+.w3-hoverable tr:hover {background-color: #f5f5f5;}
+
+.w3-dark-grey
+{
+    background-color: #616161;
+    color: white;
+}
+
+.w3-table-all img
+{
+    vertical-align: middle; /* Vertically center images within cells */
+}
+
+.header-table
+{
+    position: sticky;
+    top: 0;
+    background-color: #A3A3A3;
+    z-index: 2;
+    font-size: 2vmin;
+}
+
+/* scrollbar style table input */
+.scrollbar
+{
+    float: left;
+    height: calc(100vh - 173px);
+    width: 100%;
+    overflow-y: scroll;
+}
+
+.force-overflow
+{
+    min-height: 60vh;
+}
+
+#wrapper
+{
+    text-align: center;
+    margin: auto;
+}
+
+/**  STYLE Input Table */
+#style-inputtable::-webkit-scrollbar
+{
+    display: none;
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#style-inputtable::-webkit-scrollbar-thumb
+{
+    border-radius: 10px;
+    background: linear-gradient(left, #96A6BF, #63738C);
+    box-shadow: inset 0 0 1px 1px #5C6670;
+}
+
+#style-inputtable::-webkit-scrollbar-track
+{
+    border-radius: 10px;
+    background: #eee;
+    box-shadow: 0 0 1px 1px #bbb, inset 0 0 7px rgba(0,0,0,0.3)
+}
+
+#style-inputtable::-webkit-scrollbar-thumb:hover
+{
+    background: linear-gradient(left, #8391A6, #536175);
+}
+
+.footer
+{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 1% 20%;
+    color: #ffffff;
+    background-color: #fff;
+    text-align: center;
+    font-size: 12px;
+}
+
+.buttonbox
+{
+    display: flex;
+    justify-content: space-around;
+}
+
+.buttonbox input
+{
+    width: 16%;
+    height: 65px;
+    background: #333333;
+    color: #fff;
+    font-size: 20px;
+    border: 2px outset #fff;
+    border-radius: 10px;
+    transition: color 0.3s;
+}
+
+.buttonbox input:hover
+{
+    cursor: pointer;
+    background: #DDDDDD;
+    color: #000;
+}
+
+.buttonbox input:active
+{
+    background-color: #DDDDDD;
+    box-shadow: 0 5px #666;
+    transform: translateY(4px);
+}
+
+#TableDataInput
+{
+    overflow-y: auto;
+    padding: 3px 0px;
+}
+
+#Event_List
+{
+    float: center;
+    border: 0px solid #444E66;
+    padding: 5px 0;
+    margin: 5px 0;
+    z-index: 1;
+}
+
+/* scrollbar style */
+.scrollbar
+{
+    height: calc(100vh - 370px);
+    width: 100%;
+    overflow-y: scroll;
+}
+
+.force-overflow
+{
+    min-height: 40vh;
+}
+
+#wrapper
+{
+    text-align: center;
+    margin: auto;
+}
+
+/*  STYLE Table detail*/
+#style-tableinput::-webkit-scrollbar
+{
+    display: none;
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#style-tableinput::-webkit-scrollbar-thumb
+{
+    border-radius: 10px;
+    background: linear-gradient(left, #96A6BF, #63738C);
+    box-shadow: inset 0 0 1px 1px #5C6670;
+}
+
+#style-tableinput::-webkit-scrollbar-track
+{
+    border-radius: 10px;
+    background: #eee;
+    box-shadow: 0 0 1px 1px #bbb, inset 0 0 7px rgba(0,0,0,0.3)
+}
+
+#style-tableinput::-webkit-scrollbar-thumb:hover
+{
+    background: linear-gradient(left, #8391A6, #536175);
+}
+
+.center
+{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-spacing: 40px;
+}
+
+#button_Close
+{
+    background-color: #536175;
+    border:  0px outset #444E66;
+    border-radius: 8px;;
+    color: #fff;
+    padding: 0px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 18px;
+    margin: 10px 2px;
+    cursor: pointer;
+    height: 40px;
+    width: 80px;
+}
+
+select
+{
+    height: 35px;
+    width: auto;
+    font-size: 18px;
+    border: 1px solid #CCCCCC;
+    cursor: pointer;
+    border-radius: 5px;
+    color: #000;
+    transition: color 0.s ease, background-color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+
+--></style>
+</head>
+<body>
+<a name="0"></a><div style="position: static;" class="container-ms">.container-ms</div>
+<br style="clear: both">
+<a name="1"></a><div style="position: static;" id="header">#header</div>
+<br style="clear: both">
+<a name="2"></a><div style="position: static;" class="no-border">.no-border</div>
+<br style="clear: both">
+<a name="3"></a><div style="position: static;" class="no-border"><table><tr><td style="position: static;">.no-border td</td></tr></table></div><br style="clear: both">
+<a name="4"></a><div style="position: static;" class="main-content">.main-content</div>
+<br style="clear: both">
+<a name="5"></a><div style="position: static;" class="center-content">.center-content</div>
+<br style="clear: both">
+<a name="6"></a><div style="position: static;" class="topnav">.topnav</div>
+<br style="clear: both">
+<a name="7"></a><div style="position: static;" id="Button_Select">#Button_Select</div>
+<br style="clear: both">
+<a name="8"></a><div style="position: static;" class="select-block">.select-block</div>
+<br style="clear: both">
+<a name="9"></a><div style="position: static;" id="JobNameSelect">#JobNameSelect</div>
+<br style="clear: both">
+<a name="10"></a><div style="position: static;" class="modal-content">.modal-content</div>
+<br style="clear: both">
+<a name="11"></a><div style="position: static;" class="modal-header">.modal-header</div>
+<br style="clear: both">
+<a name="12"></a><div style="position: static;" class="modal-body">.modal-body</div>
+<br style="clear: both">
+<a name="13"></a><div style="position: static;" class="modal-footer">.modal-footer</div>
+<br style="clear: both">
+<a name="14"></a><div style="position: static;" class="modal-footer"><div style="position: static;" class="button-modal">.modal-footer .button-modal</div>
+</div><br style="clear: both">
+<a name="15"></a><div style="position: static;" class="clearfix">.clearfix::after</div>
+<br style="clear: both">
+<a name="16"></a><div style="position: static;" class="button-modal">.button-modal</div>
+<br style="clear: both">
+<a name="17"></a><div style="position: static;" class="button-modal">.button-modal:hover</div>
+<br style="clear: both">
+<a name="18"></a><div style="position: static;" id="DivMode">#DivMode</div>
+<br style="clear: both">
+<a name="19"></a><div style="position: static;" class="table-input">.table-input</div>
+<br style="clear: both">
+<a name="20"></a><table style="position: static;"><tr><td>table</td></tr></table><br style="clear: both">
+<a name="21"></a><th style="position: static;">th</th><br style="clear: both">
+<a name="22"></a><table><tr><td style="position: static;">td</td></tr></table><br style="clear: both">
+<a name="23"></a><div style="position: static;" class="w3-table-all">.w3-table-all</div>
+<br style="clear: both">
+<a name="24"></a><div style="position: static;" class="w3-table-all"><th style="position: static;">.w3-table-all th</th></div><br style="clear: both">
+<a name="25"></a><div style="position: static;" class="w3-table-all"><table><tr><td style="position: static;">.w3-table-all td</td></tr></table></div><br style="clear: both">
+<a name="26"></a><div style="position: static;" class="w3-hoverable"><table><tr style="position: static;"><td>.w3-hoverable tr:hover</td></tr></table></div><br style="clear: both">
+<a name="27"></a><div style="position: static;" class="w3-dark-grey">.w3-dark-grey</div>
+<br style="clear: both">
+<a name="28"></a><div style="position: static;" class="w3-table-all"><img src="file://C:\Program Files (x86)\WeBuilder 2020\data\resources\preview.png" style="position: static;"> .w3-table-all img</div><br style="clear: both">
+<a name="29"></a><div style="position: static;" class="header-table">.header-table</div>
+<br style="clear: both">
+<a name="30"></a><div style="position: static;" class="scrollbar">.scrollbar</div>
+<br style="clear: both">
+<a name="31"></a><div style="position: static;" class="force-overflow">.force-overflow</div>
+<br style="clear: both">
+<a name="32"></a><div style="position: static;" id="wrapper">#wrapper</div>
+<br style="clear: both">
+<a name="33"></a><div style="position: static;" id="style-inputtable">#style-inputtable::-webkit-scrollbar</div>
+<br style="clear: both">
+<a name="34"></a><div style="position: static;" id="style-inputtable">#style-inputtable::-webkit-scrollbar-thumb</div>
+<br style="clear: both">
+<a name="35"></a><div style="position: static;" id="style-inputtable">#style-inputtable::-webkit-scrollbar-track</div>
+<br style="clear: both">
+<a name="36"></a><div style="position: static;" id="style-inputtable">#style-inputtable::-webkit-scrollbar-thumb:hover</div>
+<br style="clear: both">
+<a name="37"></a><div style="position: static;" class="footer">.footer</div>
+<br style="clear: both">
+<a name="38"></a><div style="position: static;" class="buttonbox">.buttonbox</div>
+<br style="clear: both">
+<a name="39"></a><div style="position: static;" class="buttonbox"><input value=".buttonbox input" style="position: static;"></div><br style="clear: both">
+<a name="40"></a><div style="position: static;" class="buttonbox"><input value=".buttonbox input:hover" style="position: static;"></div><br style="clear: both">
+<a name="41"></a><div style="position: static;" class="buttonbox"><input value=".buttonbox input:active" style="position: static;"></div><br style="clear: both">
+<a name="42"></a><div style="position: static;" id="TableDataInput">#TableDataInput</div>
+<br style="clear: both">
+<a name="43"></a><div style="position: static;" id="Event_List">#Event_List</div>
+<br style="clear: both">
+<a name="44"></a><div style="position: static;" class="scrollbar">.scrollbar</div>
+<br style="clear: both">
+<a name="45"></a><div style="position: static;" class="force-overflow">.force-overflow</div>
+<br style="clear: both">
+<a name="46"></a><div style="position: static;" id="wrapper">#wrapper</div>
+<br style="clear: both">
+<a name="47"></a><div style="position: static;" id="style-tableinput">#style-tableinput::-webkit-scrollbar</div>
+<br style="clear: both">
+<a name="48"></a><div style="position: static;" id="style-tableinput">#style-tableinput::-webkit-scrollbar-thumb</div>
+<br style="clear: both">
+<a name="49"></a><div style="position: static;" id="style-tableinput">#style-tableinput::-webkit-scrollbar-track</div>
+<br style="clear: both">
+<a name="50"></a><div style="position: static;" id="style-tableinput">#style-tableinput::-webkit-scrollbar-thumb:hover</div>
+<br style="clear: both">
+<a name="51"></a><div style="position: static;" class="center">.center</div>
+<br style="clear: both">
+<a name="52"></a><div style="position: static;" id="button_Close">#button_Close</div>
+<br style="clear: both">
+<a name="53"></a><select style="position: static;"><option>select</option></select><br style="clear: both">
+
+</body></html>

@@ -1,0 +1,186 @@
+﻿.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height: 40px;
+    background-color: hsl(0, 60%, 50%);
+    font-size: 30px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    width: 100%;
+    z-index: 1000;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+body
+{
+    padding-top: 55px;
+    margin: 0;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding: 3px 5px;
+}
+
+.topnav
+{
+    width: 100%;
+    min-height: 40px;
+    font-size: 3vmin;
+    overflow: hidden;
+    background-color: #838588;
+    border: 0px solid #B5B5B5;
+    padding: 2px;
+}
+
+.topnav input
+{
+    min-height:28px; 
+    font-size: 3vmin;
+    text-align: center; 
+    background-color:#D9D9D9 ; 
+    border:0; 
+    margin: 3px;    
+}
+
+.operation-setting 
+{
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-spacing: 30px;}
+
+.column 
+{
+    flex: 1;
+}
+
+.item-target-torque 
+{
+    background-color: #D3CDCD;
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-result
+{
+    background-color: #FFEF62;
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-targer-angle
+{
+    background-color: #BABABA;
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-message
+{
+    background-color: #D3CDCD;
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.w3-display-topmiddle
+{
+    margin-top: 5px;
+}
+
+.w3-border-top
+{
+    width: 50%;
+}
+
+.chart-setting
+{
+    display: flex;
+    flex-direction: column; 
+    align-items: center;
+}
+
+.button-chart 
+{
+    display: flex;
+    flex-direction: row; 
+    gap: 10px;
+}
+
+.btn-chart 
+{
+    padding: 10px 20px; 
+    margin: 5px; 
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn-chart.active 
+{
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-chart:hover 
+{
+    background-color: #0056b3;
+    color: white;
+}
+
+.display-chart 
+{
+    width: 100%;
+    background-color: #fff; 
+}
+
+.btn-chart
+{
+    height: 32px;
+    margin: 5px 0;
+    padding: 0 3px;
+    background-color: #6E8085;
+    border-radius: 5px;
+    color: #fff;
+    border: 0px solid #6E8085;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    font-size: 2vmin;
+    text-align: center;
+}
+

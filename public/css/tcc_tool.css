@@ -1,0 +1,48 @@
+﻿.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height:50px;
+    background-color:hsl(0, 60%, 50%);
+    margin: 10px;
+    font-size: 30px;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding:20px 50px;
+}
+
+.tool-setting
+{
+    border-radius: 10px;
+    height: calc(100vh - 120px);
+    background-color: #FCFCFC;
+    box-shadow: 0px 2px 4px 1px rgba(0,0,0,0.2);    
+}
+
+.t1{font-size: 15px; margin: 5px 0px; display: flex; align-items: center;padding-left: 7%}
+.t2{font-size: 14px; margin: 5px 0px;}

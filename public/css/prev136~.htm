@@ -1,0 +1,319 @@
+<!DOCTYPE html><html><head><title>Preview</title>
+<style type="text/css"><!--
+.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height:50px;
+    background-color:hsl(0, 60%, 50%);
+    margin: 10px;
+    font-size: 30px;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding:3px 20px;
+}
+
+.topnav
+{
+    width: 100%;
+    overflow: hidden;
+    background-color: #fff;
+    border: 1px solid #B5B5B5;
+    padding: 2px;
+}
+
+#back_btn
+{
+    height: 32px;
+    width: auto;
+    float: right;
+    margin-right: 5px;
+    padding: 0 3px;
+    background-color: red;
+    border-radius: 5px;
+    color: #fff;
+    border: 0px solid #444E66;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    font-size: 18px;
+    text-align: right;
+}
+
+/* table user */
+.table-container
+{
+    overflow-y: auto;
+    padding: 3px 0px;
+}
+
+table
+{
+    width: 100%;
+    overflow-y: scroll;
+    scrollbar-width: thin;
+    vertical-align: middle;
+}
+
+th, td
+{
+    border: 1px solid #ddd;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.w3-table-all
+{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.w3-table-all th, .w3-table-all td
+{
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center; /* Horizontally center */
+    vertical-align: middle; /* Vertically center */
+}
+
+.w3-hoverable tr:hover {background-color: #f5f5f5;}
+
+.w3-dark-grey
+{
+    background-color: #616161;
+    color: white;
+}
+
+.w3-table-all img
+{
+    vertical-align: middle; /* Vertically center images within cells */
+}
+
+#header-table
+{
+    position: sticky;
+    top: 0;
+    background-color: #A3A3A3;
+    z-index: 2;
+    font-size: 2vmin;
+}
+
+#TotalPage{margin: 5px;}
+
+#TotalStepTable
+{
+    width: 100%;
+    font-size: 20px;
+    height: 40px;
+    border: 1px solid #7F9DB9;
+    background-color: #F2F1F1;
+}
+
+.footer
+{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 5px 20px;
+    color: #ffffff;
+    background-color: #fff;
+    text-align: center;
+    font-size: 12px;
+}
+
+.buttonbox
+{
+    display: flex;
+    justify-content: space-around;
+    padding: 0px 30%;
+}
+
+.buttonbox input
+{
+    width: 100px;
+    height: 60px;
+    background: #333333;
+    color: #fff;
+    font-size: 20px;
+    border: 2px outset #fff;
+    border-radius: 10px;
+    transition: color 0.3s;
+}
+
+.buttonbox input:hover
+{
+    cursor: pointer;
+    background: #DDDDDD;
+    color: #000;
+}
+
+.buttonbox input:active
+{
+    background-color: #DDDDDD;
+    box-shadow: 0 5px #666;
+    transform: translateY(4px);
+}
+
+/* Modal Content/Box */
+.modal-content
+{
+    background-color: #AAAAAA;
+    margin: 0% auto 0% auto; /* 5% from the top, 15% from the bottom and centered */
+    border: 1px solid #888;
+}
+
+.modal-header
+{
+    background-color: #686767; /* Replace with your desired background color */
+    height: 50px;
+    color: #FFFFFF;
+    font-size: 18px;
+    text-align: center;
+}
+
+.modal-body
+{
+    background-color: #F2F1F1; /* Replace with your desired background color */
+}
+
+.modal-footer
+{
+    background-color: #686767; /* Replace with your desired background color */
+    height: 50px;
+    padding: 0px;
+}
+
+.modal-footer .button-modal {
+    margin: 0 10px; /* Optional: Add some space between buttons */
+}
+
+/* Clear floats */
+.clearfix::after
+{
+    content: "";
+    clear: both;
+    display: table;
+}
+
+/* button save, cancel in modal */
+.button-modal
+{
+    background-color: #888888; /* Green */
+    border: 1px outset #CCFFFF;
+    border-radius: 8px;
+    color: white;
+    padding: 0px;
+    text-align: center;
+    font-size: 16px;
+    cursor: pointer;
+    height: 35px;
+    width: 60px;
+}
+
+.button-modal:hover
+{
+    cursor: pointer;
+    background: #336699;
+    color: white;
+}
+
+select
+{
+    height: 35px;
+    width: 128px;
+    font-size: 18px;
+    border: 1px solid #CCCCCC;
+    cursor: pointer;
+    border-radius: 5px;
+    color: #000;
+    transition: color 0.s ease, background-color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+--></style>
+</head>
+<body>
+<a name="0"></a><div style="position: static;" class="container-ms">.container-ms</div>
+<br style="clear: both">
+<a name="1"></a><div style="position: static;" id="header">#header</div>
+<br style="clear: both">
+<a name="2"></a><div style="position: static;" class="no-border">.no-border</div>
+<br style="clear: both">
+<a name="3"></a><div style="position: static;" class="no-border"><table><tr><td style="position: static;">.no-border td</td></tr></table></div><br style="clear: both">
+<a name="4"></a><div style="position: static;" class="main-content">.main-content</div>
+<br style="clear: both">
+<a name="5"></a><div style="position: static;" class="center-content">.center-content</div>
+<br style="clear: both">
+<a name="6"></a><div style="position: static;" class="topnav">.topnav</div>
+<br style="clear: both">
+<a name="7"></a><div style="position: static;" id="back_btn">#back_btn</div>
+<br style="clear: both">
+<a name="8"></a><div style="position: static;" class="table-container">.table-container</div>
+<br style="clear: both">
+<a name="9"></a><table style="position: static;"><tr><td>table</td></tr></table><br style="clear: both">
+<a name="10"></a><th style="position: static;">th</th><br style="clear: both">
+<a name="11"></a><table><tr><td style="position: static;">td</td></tr></table><br style="clear: both">
+<a name="12"></a><div style="position: static;" class="w3-table-all">.w3-table-all</div>
+<br style="clear: both">
+<a name="13"></a><div style="position: static;" class="w3-table-all"><th style="position: static;">.w3-table-all th</th></div><br style="clear: both">
+<a name="14"></a><div style="position: static;" class="w3-table-all"><table><tr><td style="position: static;">.w3-table-all td</td></tr></table></div><br style="clear: both">
+<a name="15"></a><div style="position: static;" class="w3-hoverable"><table><tr style="position: static;"><td>.w3-hoverable tr:hover</td></tr></table></div><br style="clear: both">
+<a name="16"></a><div style="position: static;" class="w3-dark-grey">.w3-dark-grey</div>
+<br style="clear: both">
+<a name="17"></a><div style="position: static;" class="w3-table-all"><img src="file://C:\Program Files (x86)\WeBuilder 2020\data\resources\preview.png" style="position: static;"> .w3-table-all img</div><br style="clear: both">
+<a name="18"></a><div style="position: static;" id="header-table">#header-table</div>
+<br style="clear: both">
+<a name="19"></a><div style="position: static;" id="TotalPage">#TotalPage</div>
+<br style="clear: both">
+<a name="20"></a><div style="position: static;" id="TotalStepTable">#TotalStepTable</div>
+<br style="clear: both">
+<a name="21"></a><div style="position: static;" class="footer">.footer</div>
+<br style="clear: both">
+<a name="22"></a><div style="position: static;" class="buttonbox">.buttonbox</div>
+<br style="clear: both">
+<a name="23"></a><div style="position: static;" class="buttonbox"><input value=".buttonbox input" style="position: static;"></div><br style="clear: both">
+<a name="24"></a><div style="position: static;" class="buttonbox"><input value=".buttonbox input:hover" style="position: static;"></div><br style="clear: both">
+<a name="25"></a><div style="position: static;" class="buttonbox"><input value=".buttonbox input:active" style="position: static;"></div><br style="clear: both">
+<a name="26"></a><div style="position: static;" class="modal-content">.modal-content</div>
+<br style="clear: both">
+<a name="27"></a><div style="position: static;" class="modal-header">.modal-header</div>
+<br style="clear: both">
+<a name="28"></a><div style="position: static;" class="modal-body">.modal-body</div>
+<br style="clear: both">
+<a name="29"></a><div style="position: static;" class="modal-footer">.modal-footer</div>
+<br style="clear: both">
+<a name="30"></a><div style="position: static;" class="modal-footer"><div style="position: static;" class="button-modal">.modal-footer .button-modal</div>
+</div><br style="clear: both">
+<a name="31"></a><div style="position: static;" class="clearfix">.clearfix::after</div>
+<br style="clear: both">
+<a name="32"></a><div style="position: static;" class="button-modal">.button-modal</div>
+<br style="clear: both">
+<a name="33"></a><div style="position: static;" class="button-modal">.button-modal:hover</div>
+<br style="clear: both">
+<a name="34"></a><select style="position: static;"><option>select</option></select><br style="clear: both">
+
+</body></html>
