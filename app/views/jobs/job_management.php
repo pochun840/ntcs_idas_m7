@@ -21,9 +21,6 @@
                                 <tr class="w3-dark-grey">
                                     <th><?php echo $text['job_id'];?></th>
                                     <th><?php echo $text['job_name'];?></th>
-                                    <th><?php echo $text['reverse_direction'];?></th>
-                                    <th><?php echo $text['reverse_rpm'];?></th>
-                                    <th><?php echo $text['reverse_power'];?></th>
                                     <th><?php echo $text['total_seq'];?></th>
                                     <th><?php echo $text['add_seq'];?></th>
                                 </tr>
@@ -32,13 +29,10 @@
                             <tbody style="font-size: 1.8vmin;text-align: center;">
 									<?php foreach($data['jobs'] as $key =>$val){?>
 										<tr >
-											<td id='job_id' ><?php echo $val['job_id'];?></td>
-											<td><?php echo $val['job_name'];?></td>
-											<td><?php echo $text[$data['direction'][$val['reverse_direction']]];?></td>
-											<td><?php echo $val['reverse_rpm'];?></td>
-											<td><?php echo $val['reverse_power'];?></td>
+											<td id='job_id' ><?php echo $val['JOBID'];?></td>
+											<td><?php echo $val['JOBname'];?></td>
 											<td><?php echo $val['total_seq'];?></td>
-                                            <?php $url ='?url=Sequences/index/'.$val['job_id'];?>
+                                            <?php $url ='?url=Sequences/index/'.$val['JOBID'];?>
                                             <td><img id="Add_Seq" src="./img/btn_plus.png" onclick="location.href='<?php echo $url;?>'">
 
                                 		</tr>
@@ -62,7 +56,7 @@
         </div>
 
         <div class="buttonbox">
-        <?php $status = count($data['jobs']) >=  50 ? 'disabled' : ''; ?>
+        <?php $status = count($data['jobs']) >=  100 ? 'disabled' : ''; ?>
             <input id="S3" name="Job_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"   onclick="cound_job('new')" <?php echo $status;?> >
             <input id="S6" name="Job_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1"  onclick="cound_job('edit')">
             <input id="S5" name="Job_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1"  onclick="cound_job('copy')" <?php echo $status;?> >
@@ -126,41 +120,7 @@
             					</div>
                             </div>
                         </div>
-
-
-
-                        <div class="row">
-                            <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['reverse_direction'];?> :</div>
-                            <div class="col t2" >
-            			      	<div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="direction" id="reverse_direction_CW" value="0">
-            					  <label class="form-check-label" for="reverse_direction_CW"><?php  echo $text['CW']; ?></label>
-            					</div>
-            					<div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="direction" id="reverse_direction_CCW" value="1">
-            					  <label class="form-check-label" for="reverse_direction_CCW"> <?php  echo $text['CCW']; ?></label>
-            					</div>
-
-                                <div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="direction" id="reverse_direction_disable" value="2">
-            					  <label class="form-check-label" for="reverse_direction_disable"> <?php  echo $text['Disable']; ?></label>
-            					</div>
-
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="reverse-RPM" class="col-6 t1"><?php echo $text['reverse_rpm'];?>(1=10%) :</div>
-                            <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="reverse_rpm" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="reverse-power" class="col-6 t1"><?php echo $text['reverse_power'];?>(1=10%):</div>
-                            <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="reverse_power" maxlength="">
-                            </div>
-                        </div>
-
+    
                     </form>
                 </div>
 
@@ -231,37 +191,7 @@
                         </div>
 
 
-                        <div class="row">
-                            <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['reverse_direction'];?> :</div>
-                            <div class="col t2" >
-            			      	<div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="edit_direction" id="direction_CW" value="0">
-            					  <label class="form-check-label" for="reverse_direction_CW"><?php  echo $text['CW'];?></label>
-            					</div>
-
-            					<div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio"  name="edit_direction" id="direction_CCW" value="1">
-            					  <label class="form-check-label" for="reverse_direction_CCW"><?php  echo $text['CCW'];?></label>
-            					</div>
-
-                                <div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="edit_direction" id="direction_disable" value="2">
-            					  <label class="form-check-label" for="reverse_direction_disable"> <?php  echo $text['Disable']; ?></label>
-            					</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="reverse-RPM" class="col-6 t1"><?php echo $text['reverse_rpm'];?>(1=10%) :</div>
-                            <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="edit_reverse_rpm" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="reverse-power" class="col-6 t1"><?php echo $text['reverse_power'];?>(1=10%):</div>
-                            <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="edit_reverse_power" maxlength="">
-                            </div>
-                        </div>
+         
 
                     </form>
                 </div>
@@ -393,28 +323,20 @@ function savejob() {
     var jobidnew = '<?php echo $data['jobint']?>';
 
     var jobname_val      = document.getElementById("job_name").value;
-    var reverse_rpm_val  = document.getElementById("reverse_rpm").value;
-    var reverse_power_val = document.getElementById("reverse_power").value;
-    
-    var directionElement = document.querySelector('input[name="direction"]:checked');
-    var direction_val = directionElement ? directionElement.value : null;
-
+  
     var jobElement = document.querySelector('input[name="job_ok"]:checked');
     var job_ok_val = jobElement ? jobElement.value : null;
 
     var stopjobokElement = document.querySelector('input[name="stop_job_ok"]:checked');
     var stop_job_ok_val = stopjobokElement ? stopjobokElement .value : null;
 
-    if (jobname_val && reverse_rpm_val && reverse_power_val  && direction_val ) {
+    if (jobname_val){
         $.ajax({
             url: "?url=Jobs/create_job",
             method: "POST",
             data: { 
                 jobidnew: jobidnew,
                 jobname_val: jobname_val,
-                reverse_rpm_val: reverse_rpm_val,
-                reverse_power_val: reverse_power_val,
-                direction_val: direction_val, //起子方向
                 job_ok_val: job_ok_val,
                 stop_job_ok_val:stop_job_ok_val
             },

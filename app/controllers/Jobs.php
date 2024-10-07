@@ -28,7 +28,7 @@ class Jobs extends Controller
 
         if(!empty($jobs)){
             $lastRow  = end($jobs);
-            $jobIdInt = intval($lastRow['job_id']) + 1 ;   
+            $jobIdInt = intval($lastRow['JOBID']) + 1 ;   
         }else{
             $lastRow  = ""; 
             $jobIdInt = "";
@@ -37,8 +37,7 @@ class Jobs extends Controller
 
         $data = array(
             'jobint' => $jobIdInt,
-            'jobs' => $jobs,
-            'direction' => $direction,
+            'jobs' => $jobs
         );
         
         if($isMobile){
@@ -63,49 +62,34 @@ class Jobs extends Controller
             $jobdata = array(
                 'job_id' => $_POST['jobidnew'],
                 'job_name' => $_POST['jobname_val'],
-                'reverse_power' => $_POST['reverse_power_val'],
-                'reverse_rpm' => $_POST['reverse_rpm_val'],
-                'reverse_direction' => $_POST['direction_val'],
-                'job_ok' => $_POST['job_ok_val'],
-                'stop_job_ok' => $_POST['stop_job_ok_val']
+                'type' => 1,
+                'time' =>  date('Y-m-d H:i:s'),
+                'act' => 0,
+                'ok_job' => $_POST['job_ok_val'],
+                'stop_job_ok' => $_POST['stop_job_ok_val'],
+                'output_unified' => 0,
+                'input_unified'  => 0
+      
             );
 
    
-
-            $resultName = $this->MiscellaneousModel->validate($jobdata['job_name'], 'name');
-            $resultPower = $this->MiscellaneousModel->validate($jobdata['reverse_power'], 'reverse_power');
-            $resultRpm = $this->MiscellaneousModel->validate($jobdata['reverse_rpm'], 'reverse_power');
-
-
-
-            if($resultPower == false || $resultRpm == false){
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['unfasten_force']);
-                exit();
-            }
-
-            if($resultName == false){
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['error_job_name']);
-                exit();
-            }
-
-            if ($resultName  == true  && $resultPower == true && $resultRpm == true) {
-
-                $job_count = $this->jobModel->countjob();
-                if($job_count >= 50) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['job_id']);
-                    exit();
-                }
     
-                $res = $this->jobModel->create_job($jobdata);
-                $result = array();
-                if($res){
-                    $res_msg  = $text['New']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
-                    $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-                }else{
-                    $res_msg  = $text['New']."  ".$text['job_id'].':'.$jobdata['job_id']."  ".$text['fail'];
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                }
+            $job_count = $this->jobModel->countjob();
+            if($job_count >= 100) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['job_id']);
+                exit();
             }
+    
+            $res = $this->jobModel->create_job($jobdata);
+            $result = array();
+            if($res){
+                $res_msg  = $text['New']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
+            }else{
+                $res_msg  = $text['New']."  ".$text['job_id'].':'.$jobdata['job_id']."  ".$text['fail'];
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+            }
+            
                       
         }
     }
@@ -124,43 +108,22 @@ class Jobs extends Controller
             $jobdata = array(
                 'job_id' => $_POST['jobid'],
                 'job_name' => $_POST['jobname'],
-                'reverse_power' => $_POST['powervalue'],
-                'reverse_rpm' => $_POST['rpmvalue'],
-                'reverse_direction' => $_POST['directionValue'],
-                'job_ok' => $_POST['jobokValue'],
-                'stop_job_ok' => $_POST['stopjobValue']
+                'ok_job' => $_POST['jobokValue'],
+                'ok_job_stop' => $_POST['stopjobValue']
 
             );
 
+            $res = $this->jobModel->update_job_by_id($jobdata);
+            $result = array();
+            if($res){
+                $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
+                $this->MiscellaneousModel->generateErrorResponse('Succes', $res_msg );
+            }else{
+                $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['fail'];
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+            }
 
             
-            $resultName = $this->MiscellaneousModel->validate($jobdata['job_name'], 'name');
-            $resultPower = $this->MiscellaneousModel->validate($jobdata['reverse_power'], 'reverse_power');
-            $resultRpm = $this->MiscellaneousModel->validate($jobdata['reverse_rpm'], 'reverse_power');
-
-            if($resultPower == false || $resultRpm == false){
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['unfasten_force']);
-                exit();
-            }
-
-            if($resultName == false){
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['error_job_name']);
-                exit();
-            }
-
-            if ($resultName  == true  && $resultPower == true && $resultRpm == true) {
-                
-                $res = $this->jobModel->update_job_by_id($jobdata);
-                $result = array();
-                if($res){
-                    $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
-                    $this->MiscellaneousModel->generateErrorResponse('Succes', $res_msg );
-                }else{
-                    $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['fail'];
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
-                }
-
-            }
         } 
     
     }

@@ -53,9 +53,6 @@ function create_job() {
     
     //帶入預設值
     document.getElementById('newjob').style.display = 'block';
-    document.getElementById('reverse_rpm').value = 1;
-    document.getElementById('reverse_power').value = 1;
-    document.getElementById('reverse_direction_CCW').checked = true;
     document.getElementById('job_off').checked = true;
     document.getElementById('stop_job_ok_off').checked = true;
     
@@ -71,9 +68,6 @@ function updatejob(){
 
     var jobid      = document.getElementById("edit_jobid").value;
     var jobname    = document.getElementById("edit_jobname").value;
-    var rpmvalue   = document.getElementById("edit_reverse_rpm").value;
-    var powervalue = document.getElementById("edit_reverse_power").value;
-    var directionValue = document.querySelector('input[name="edit_direction"]:checked').value;
     var jobokValue = document.querySelector('input[name="edit_job_ok"]:checked').value;
     var stopjobValue = document.querySelector('input[name="edit_stop_job_ok"]:checked').value;
 
@@ -84,9 +78,6 @@ function updatejob(){
             data: { 
                 jobid: jobid,
                 jobname: jobname,
-                rpmvalue: rpmvalue,
-                powervalue: powervalue,
-                directionValue: directionValue,
                 jobokValue:jobokValue,
                 stopjobValue:stopjobValue
 
@@ -98,9 +89,6 @@ function updatejob(){
                 alertify.alert(responseData.res_type, responseData.res_msg, function() {
                     localStorage.setItem('jobid', jobid);
                     localStorage.setItem('jobname', jobname);
-                    localStorage.setItem('reverse_rpm', rpmvalue);
-                    localStorage.setItem('reverse_power', powervalue);
-                    localStorage.setItem('direction', directionValue);
                     history.go(0);
                 });
 
@@ -126,32 +114,22 @@ function edit_job(jobid) {
                 var responseJSON = JSON.stringify(response);
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
-                var [, jobid] = cleanString.match(/\[job_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, jobname] = cleanString.match(/\[job_name]\s*=>\s*([^ ]+)/) || [, null];
-                var [, reverse_direction] = cleanString.match(/\[reverse_direction]\s*=>\s*([^ ]+)/) || [, null];
-                var [, reverse_power] = cleanString.match(/\[reverse_power]\s*=>\s*([^ ]+)/) || [, null];
-                var [, reverse_rpm] = cleanString.match(/\[reverse_rpm]\s*=>\s*([^ ]+)/) || [, null];
-                var [, job_ok] = cleanString.match(/\[job_ok]\s*=>\s*([^ ]+)/) || [, null];
-                var [, stop_job_ok] = cleanString.match(/\[stop_job_ok]\s*=>\s*([^ ]+)/) || [, null];
+                var [, jobid] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, null];
+                var [, jobname] = cleanString.match(/\[JOBname]\s*=>\s*([^ ]+)/) || [, null];
+              
+                var [, ok_job] = cleanString.match(/\[ok_job]\s*=>\s*([^ ]+)/) || [, null];
+                var [, ok_job_stop] = cleanString.match(/\[ok_job_stop]\s*=>\s*([^ ]+)/) || [, null];
           
                 document.getElementById('editjob').style.display = 'block';
 
 
                 document.getElementById("edit_jobid").value = jobid;
                 document.getElementById("edit_jobname").value = jobname;
-
-                document.getElementById("edit_reverse_rpm").value = reverse_rpm;
-                document.getElementById("edit_reverse_power").value = reverse_power;
-
-                var radioButtons = document.getElementsByName("edit_direction");
-                setRadioButtonValue(radioButtons, reverse_direction);
-
                 var radioButtons_job = document.getElementsByName("edit_job_ok");
-                setRadioButtonValue(radioButtons_job, job_ok);
+                setRadioButtonValue(radioButtons_job, ok_job);
 
                 var radioButtons_stop_job = document.getElementsByName("edit_stop_job_ok");
-                setRadioButtonValue(radioButtons_stop_job, stop_job_ok);
-              
+                setRadioButtonValue(radioButtons_stop_job, ok_job_stop);
               
             },
             error: function(xhr, status, error) {

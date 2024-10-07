@@ -13,26 +13,32 @@ class Job{
     {
         $this->db_iDas = new Database;
         $this->db_iDas = $this->db_iDas->getDb_das();
-        //$tool_rpm = $this->dbh->get_tool_rpm();
-        //$this->tool_max_rpm = $tool_rpm['tool_maxrpm'];
-        //$this->tool_min_rpm = $tool_rpm['tool_minrpm'];
+  
 
     }
 
     #取得所有Job
-    public function getJobs(){
+    public function getJobs() {
 
-        $sql = "SELECT job.*, IFNULL(COUNT(sequence.job_id), 0) as total_seq  
-                FROM `job`
-                LEFT JOIN sequence on job.job_id = sequence.job_id 
-                WHERE job.job_id != ''
-                GROUP BY job.job_id ";
+        $sql = "SELECT JOB_lst.*, IFNULL(COUNT(SEQ_lst.JOBID), 0) AS total_seq  
+                FROM JOB_lst
+                LEFT JOIN SEQ_lst ON JOB_lst.JOBID = SEQ_lst.JOBID 
+                WHERE JOB_lst.JOBID != ''
+                GROUP BY JOB_lst.JOBID";
+
         $statement = $this->db_iDas->prepare($sql);
-        $statement->execute();
-
-
-        return $statement->fetchall();
+    
+        if (!$statement) {
+            throw new Exception('SQL Error: ' . implode(', ', $this->db_iDas->errorInfo()));
+        }
+    
+        if (!$statement->execute()) {
+            throw new Exception('Execute Error: ' . implode(', ', $statement->errorInfo()));
+        }
+    
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
+    
 
     #刪除JOB 
     public function delete_job_by_id($jobid){
@@ -87,45 +93,45 @@ class Job{
     
 
     #新增JOB
-    public function create_job($jobdata){
-      
-        $sql = "INSERT INTO `job` (job_id, job_name, reverse_direction,reverse_rpm,reverse_power, job_ok,stop_job_ok)";
-        $sql .= " VALUES (:job_id, :job_name, :reverse_direction, :reverse_rpm, :reverse_power ,:job_ok,:stop_job_ok);";
+    public function create_job($jobdata) {
+        
+        $sql = "INSERT INTO `JOB_lst` (JOBID, JOBname, type, time, act, ok_job, ok_job_stop, output_unified, input_unified)
+                VALUES (:job_id, :job_name, :type, :time ,:act, :ok_job, :ok_job_stop, :output_unified, :input_unified)";
     
         $jobdata['job_id'] = intval($jobdata['job_id']);
-    
         $statement = $this->db_iDas->prepare($sql);
     
         $statement->bindValue(':job_id', $jobdata['job_id']);
         $statement->bindValue(':job_name', $jobdata['job_name']);
-        $statement->bindValue(':reverse_power', $jobdata['reverse_power']);
-        $statement->bindValue(':reverse_rpm', $jobdata['reverse_rpm']);
-        $statement->bindValue(':reverse_direction', $jobdata['reverse_direction']);
-        $statement->bindValue(':job_ok', $jobdata['job_ok']);
-        $statement->bindValue(':stop_job_ok', $jobdata['stop_job_ok']);
+        $statement->bindValue(':type', isset($jobdata['type']) ? intval($jobdata['type']) : 1); 
+        $statement->bindValue(':act', isset($jobdata['act']) ? intval($jobdata['act']) : 0); 
+        $statement->bindValue(':ok_job', isset($jobdata['ok_job']) ? intval($jobdata['ok_job']) : 1);
+        $statement->bindValue(':ok_job_stop', isset($jobdata['ok_job_stop']) ? intval($jobdata['ok_job_stop']) : 1); 
+        $statement->bindValue(':output_unified', isset($jobdata['output_unified']) ? intval($jobdata['output_unified']) : 0); 
+        $statement->bindValue(':input_unified', isset($jobdata['input_unified']) ? intval($jobdata['input_unified']) : 0); 
+        $statement->bindValue(':time', date('Y-m-d H:i:s')); 
         $results = $statement->execute();    
+    
         return $results;
     }
     
     #修改JOB
     public function update_job_by_id($jobdata){
         
-        $sql = "UPDATE `job` SET  
-                job_name = :job_name, 
-                reverse_direction = :reverse_direction, 
-                reverse_rpm = :reverse_rpm, 
-                reverse_power = :reverse_power,
-                job_ok = :job_ok,
-                stop_job_ok =:stop_job_ok
-                WHERE job_id = :job_id ";
+        $sql = "UPDATE `JOB_lst` SET  
+                JOBname = :job_name, 
+                time = :time,
+                ok_job = :ok_job,
+                ok_job_stop = :ok_job_stop
+                WHERE JOBID = :job_id ";
+
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':job_name', $jobdata['job_name']);
-        $statement->bindValue(':reverse_power', $jobdata['reverse_power']);
-        $statement->bindValue(':reverse_rpm', $jobdata['reverse_rpm']);
-        $statement->bindValue(':reverse_direction', $jobdata['reverse_direction']);
-        $statement->bindValue(':job_ok', $jobdata['job_ok']);
-        $statement->bindValue(':stop_job_ok', $jobdata['stop_job_ok']);
-        $statement->bindValue(':job_id', $jobdata['job_id']);
+
+        $statement->bindValue(':time', date('Y-m-d H:i:s'));
+        $statement->bindValue(':ok_job', $jobdata['ok_job']);
+        $statement->bindValue(':ok_job_stop', $jobdata['ok_job_stop']);
+        $statement->bindValue(':job_id', intval($jobdata['job_id'])); 
         $results = $statement->execute();
 
         return $results;
@@ -134,7 +140,7 @@ class Job{
 
     #查詢JOB 
     public function search_jobinfo($jobid){
-        $sql= "SELECT * FROM job WHERE job_id = ?";
+        $sql= "SELECT * FROM JOB_lst WHERE JOBID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$jobid]);
         $rows = $statement->fetch();
@@ -145,7 +151,7 @@ class Job{
     #計算 有幾個JOB
     public function countjob(){
 
-        $sql = "SELECT  COUNT(*) as count FROM job ";
+        $sql = "SELECT  COUNT(*) as count FROM JOB_lst ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute();
         $result = $statement->fetch();
