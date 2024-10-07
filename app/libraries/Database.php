@@ -52,20 +52,19 @@ class Database
             $this->db_iDas_device = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/data_device.db'); */
             
         }else{
-            $this->db_con = new PDO('sqlite:../data.db'); 
+            $this->db_con = new PDO('sqlite:../KLS_NTCS.Lin'); 
             if(file_exists('../'.$data_db_name)){
                 $this->db_data = new PDO('sqlite:../'.$data_db_name); 
             }else{
                 $this->db_data = new PDO('sqlite:../data.db'); 
             }
-            $this->db_iDas = new PDO('sqlite:../data.db'); 
+            $this->db_iDas = new PDO('sqlite:../KLS_NTCS.Lin'); 
             $this->db_iDas_login = new PDO('sqlite:../das.db'); 
             $this->db_iDas_device = new PDO('sqlite:../data_device.db'); 
             //$this->db_iDas_device = new PDO('sqlite:../data.db'); 
 
         }
-        //$this->db_con->exec('set names utf-8'); 
-        //$this->db_data->exec('set names utf-8'); 
+        
         $this->db_iDas->exec('set names utf-8'); 
         $this->db_iDas_login->exec('set names utf-8'); 
         $this->db_iDas_device->exec('set names utf-8'); 
