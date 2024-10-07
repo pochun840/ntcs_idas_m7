@@ -41,11 +41,11 @@
                             <tbody style="font-size: 1.8vmin;text-align: center;">
                                 <?php foreach($data['sequences'] as $key =>$val) {?>
                                 <tr>
-                                    <td class="seq-id"> <?php echo $val['sequence_id'];?></td>
-                                    <td class="seq-name"><?php echo $val['sequence_name'];?></td>
-                                    <td><?php echo $val['tightening_repeat'];?></td>
+                                    <td class="seq-id"> <?php echo $val['SEQID'];?></td>
+                                    <td class="seq-name"><?php echo $val['SEQname'];?></td>
+                                    <td><?php echo $val['seq_repeat'];?></td>
                                     <td>
-                                        <?php if($val['sequence_enable']== 1){?>
+                                        <?php if($val['act']== 1){?>
                                             <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
                                         <?php }else{?>
                                             <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">
@@ -56,7 +56,7 @@
                                     <td><img src="./img/btn_up.png"   onclick="MoveUp(this);"></td>
                                     <td><img src="./img/btn_down.png" onclick="MoveDown(this);"></td>
                                     <td><?php echo $val['total_step'];?></td>
-                                    <?php $url ='?url=Step/index/'.$data['job_id']."/".$val['sequence_id'];?>
+                                    <?php $url ='?url=Step/index/'.$data['job_id']."/".$val['SEQID'];?>
                                     <td><img id="Add_Step" src="./img/btn_plus.png" onclick="location.href='<?php echo $url;?>'"></td>
                                 </tr>
                                 <?php  } ?>
@@ -79,7 +79,7 @@
         </div>
 
         <div class="buttonbox">
-        <?php $status = count($data['sequences']) >=  50 ? 'disabled' : ''; ?>
+        <?php $status = count($data['sequences']) >=  100 ? 'disabled' : ''; ?>
             <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_job('new');" <?php echo $status;?> >
             <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_job('edit');">
             <input id="S5" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="cound_job('copy');" <?php echo $status;?> >

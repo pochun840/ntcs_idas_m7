@@ -18,7 +18,7 @@ class Sequence{
     #取得所有sequences
     public function getSequences_by_job_id($job_id){
 
-        $sql ="SELECT seq.*,count(ns.sequence_id) as total_step FROM sequence as seq LEFT JOIN step as ns ON seq.sequence_id = ns.sequence_id AND seq.job_id = ns.job_id WHERE seq.job_id = '".$job_id."' group by seq.job_id,seq.sequence_id ";
+        $sql ="SELECT seq.*,count(ns.SEQID) as total_step FROM SEQ_lst as seq LEFT JOIN STEP_lst as ns ON seq.SEQID = ns.SEQID AND seq.JOBID = ns.JOBID WHERE seq.JOBID = '".$job_id."' group by seq.JOBID,seq.SEQID ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute();
         return $statement->fetchall();
@@ -27,7 +27,7 @@ class Sequence{
 
     #透過 job_id  取得當前有幾個seq
     public function countseq($jobid ){
-        $sql = "SELECT COUNT(*) as count FROM sequence WHERE job_id = ? ";
+        $sql = "SELECT COUNT(*) as count FROM SEQ_lst WHERE JOBID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$jobid]);
         $result = $statement->fetch();
@@ -137,7 +137,7 @@ class Sequence{
     #查詢 單筆的sequences
     public function search_seqinfo($jobid,$seqid){
 
-        $sql= " SELECT *  FROM sequence WHERE job_id = ? AND sequence_id = ? ";
+        $sql= " SELECT *  FROM SEQ_lst WHERE JOBID = ? AND SEQID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$jobid, $seqid]);
         
@@ -149,7 +149,7 @@ class Sequence{
     public function update_seq_by_id($jobdata){
 
 
-        if(intval($jobdata['job_id']) > 50 || intval($jobdata['sequence_id']) > 50) {   
+        if(intval($jobdata['job_id']) > 100 || intval($jobdata['sequence_id']) > 100) {   
             return false; 
         }
 
