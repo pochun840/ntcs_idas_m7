@@ -43,7 +43,7 @@ class Job{
     #刪除JOB 
     public function delete_job_by_id($jobid){
 
-        $sql= "DELETE FROM job WHERE job_id = ?";
+        $sql= "DELETE FROM JOB_lst WHERE JOBID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$jobid]);
         return $results;
@@ -162,13 +162,12 @@ class Job{
     #驗證job id是否重複
     public function job_id_repeat($jobid)
     {
-        $sql = "SELECT count(*) as count FROM job WHERE job_id = ?";
+        $sql = "SELECT count(*) as count FROM JOB_lst WHERE JOBID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$jobid]);
         $rows = $statement->fetch();
 
         if ($rows['count'] > 0) {
-            //$this->del_job_type($jobid);
             return "True"; // job_id已存在
 
         }else{
@@ -239,7 +238,7 @@ class Job{
     #有的話就刪除唷
     public function del_job_type($new_jobid) {
         #查詢資料是否存在
-        $sql = "SELECT COUNT(*) FROM job WHERE job_id = ?";
+        $sql = "SELECT COUNT(*) FROM JOB_lst WHERE JOBID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$new_jobid]);
         $count = $statement->fetchColumn();
@@ -247,7 +246,7 @@ class Job{
        
         if ($count > 0) {
             #如果資料存在，則刪除
-            $deleteSql = "DELETE FROM job  WHERE job_id = ? ";
+            $deleteSql = "DELETE FROM JOB_lst  WHERE JOBID= ? ";
             $deleteStatement = $this->db_iDas->prepare($deleteSql);
             $deleteStatement->execute([$new_jobid]);
 

@@ -140,10 +140,10 @@ class Jobs extends Controller
         if(!empty($jobid)){
 
             $res = $this->jobModel->delete_job_by_id($jobid);
-            $ans = $this->jobModel->delete_sequence_by_job_id($jobid);
-            $an1 = $this->jobModel->delete_step_by_job_id($jobid);
-            $an2 = $this->jobModel->delete_input_by_job_id($jobid);
-            $an3 = $this->jobModel->delete_output_by_job_id($jobid);
+            // $ans = $this->jobModel->delete_sequence_by_job_id($jobid);
+            // $an1 = $this->jobModel->delete_step_by_job_id($jobid);
+            // $an2 = $this->jobModel->delete_input_by_job_id($jobid);
+            // $an3 = $this->jobModel->delete_output_by_job_id($jobid);
 
             $result = array();
             if($res){
@@ -191,7 +191,7 @@ class Jobs extends Controller
 
         if(!empty($old_jobid)){
             $job_count = $this->jobModel->countjob();
-            if($job_count >= 50) {
+            if($job_count >= 100) {
                 $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['job_id']);
                 exit();
             }else{
@@ -199,20 +199,17 @@ class Jobs extends Controller
                 $old_res = $this->jobModel->search_jobinfo($old_jobid);
 
                 $this->jobModel->del_job_type($new_jobid);
-                $this->jobModel->del_seq_type($new_jobid);
-                $this->jobModel->del_step_type($new_jobid);
+                //$this->jobModel->del_seq_type($new_jobid);
+                //$this->jobModel->del_step_type($new_jobid);
          
                 if(!empty($old_res)){
 
                     #取得 unscrew_power && 	unscrew_rpm && unscrew_direction
                     $jobdata = array(
-                        'job_id'   => $_POST['new_jobid'],
-                        'job_name' => $_POST['new_jobname'],
-                        'reverse_direction' => $old_res['reverse_direction'],
-                        'reverse_rpm' => $old_res['reverse_rpm'],  
-                        'reverse_power' => $old_res['reverse_power'],  
-                        'job_ok' =>$old_res['job_ok'],
-                        'stop_job_ok' => $old_res['stop_job_ok']
+                        'job_id'      => $_POST['new_jobid'],
+                        'job_name'    => $_POST['new_jobname'],
+                        'ok_job'      => $old_res['ok_job'],
+                        'ok_job_stop' => $old_res['ok_job_stop']
 
                     );
                     $res = $this->jobModel->create_job($jobdata);
