@@ -46,9 +46,9 @@
                                     <td><?php echo $val['seq_repeat'];?></td>
                                     <td>
                                         <?php if($val['act']== 1){?>
-                                            <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
+                                            <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
                                         <?php }else{?>
-                                            <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">
+                                            <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">
                                         <?php }?>
                                         
 
@@ -79,23 +79,19 @@
         </div>
 
         <div class="buttonbox">
-        <?php $status = count($data['sequences']) >=  100 ? 'disabled' : ''; ?>
-            <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_job('new');" <?php echo $status;?> >
-            <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_job('edit');">
-            <input id="S5" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="cound_job('copy');" <?php echo $status;?> >
-            <input id="S4" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="cound_job('del');">
+        <?php //$status = count($data['sequences']) >=  100 ? 'disabled' : ''; ?>
+            <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_seq('new');" <?php //echo $status;?> >
+            <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_seq('edit');">
+            <input id="S5" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="cound_seq('copy');" <?php //echo $status;?> >
+            <input id="S4" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="cound_seq('del');">
         </div>
     </div>
 
     <!-- Add New Sequence -->
-    <div id="newseq" class="modal">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: 70%">
-                <header class="w3-container modal-header">
-                    <span onclick="hideElementById('newseq');"
-                        class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
-                    <h3 id='modal_title'><?php echo $text['new_seq'];?></h3>
-                </header>
+    <div id="newseq" class="modal" >
+        <div class="modal-dialog modal-dialog-centered modal-lg" >
+            <div class="modal-content w3-animate-zoom" style="width: auto;">
+               
 
                 <div class="modal-body">
                     <form id="new_seq_form" style="padding-left: 5%">
@@ -164,15 +160,18 @@
                        
                 
                         <div class="row">
-                            <div for="k(30%-300%)" class="col-6 t1">K (30%-300%) :</div>
-                            <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="K" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="offset" class="col-6 t1"><?php echo $text['Joint_Offset'];?> :</div>
-                            <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="offset" maxlength="" >
+                            <div for="OK_Sequence_Stop" class="col-6 t1"><?php echo "Reverse Count";?> :</div>
+                            <div class="col t2" >
+
+                                <div class="form-check form-check-inline">
+            					  <input class="form-check-input" type="radio" name="stop_seq_ok" id="stop_seq_ok_off" value="0" >
+            					  <label class="form-check-label" for="stop_seq_ok_off"> <?php  echo $text['OFF_text']; ?></label>
+            					</div>
+
+            			      	<div class="form-check form-check-inline">
+            					  <input class="form-check-input" type="radio" name="stop_seq_ok" id="stop_seq_ok_ok" value="1">
+            					  <label class="form-check-label" for="stop_seq_ok_ok"><?php  echo $text['ON_text']; ?></label>
+            					</div>
                             </div>
                         </div>
                         
@@ -189,18 +188,21 @@
                         </div>
 
                         <div class="row">
-                            <div for="OPT" class="col-6 t1"><?php  echo $text['opt'];?> :</div>
+                            <div for="OK_Sequence_Stop" class="col-6 t1"><?php echo "NG Reverse Count";?> :</div>
                             <div class="col t2" >
-            			      	<div class=" col-4 form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="opt_option" id="OPT_OFF" value="0">
-            					  <label class="form-check-label" for="OPT_OFF"><?php echo $text['switch_off'];?></label>
+
+                                <div class="form-check form-check-inline">
+            					  <input class="form-check-input" type="radio" name="stop_seq_ok" id="stop_seq_ok_off" value="0" >
+            					  <label class="form-check-label" for="stop_seq_ok_off"> <?php  echo $text['OFF_text']; ?></label>
             					</div>
-            					<div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="opt_option" id="OPT_ON" value="1">
-            					  <label class="form-check-label" for="OPT_ON"><?php echo $text['switch_on'];?></label>
+
+            			      	<div class="form-check form-check-inline">
+            					  <input class="form-check-input" type="radio" name="stop_seq_ok" id="stop_seq_ok_ok" value="1">
+            					  <label class="form-check-label" for="stop_seq_ok_ok"><?php  echo $text['ON_text']; ?></label>
             					</div>
                             </div>
                         </div>
+                        
                         
                        
                     </form>
@@ -420,7 +422,8 @@ window.onclick = function(event) {
 }
 
 
-function cound_job(argument){
+function cound_seq(argument){
+
     var table = document.getElementById('seq_table');
     var selectedRow = table.querySelector('.selected');  
     var selectedRowData = selectedRow ? selectedRow.cells[0].innerText : null;
@@ -450,8 +453,8 @@ function cound_job(argument){
 
 var rowInfoArray = [];
 <?php foreach($data['sequences'] as $key =>$val) {?>
-        var sequenceId = "<?php echo $val['sequence_id'];?>";
-        var sequenceName = "<?php echo $val['sequence_name'];?>";
+        var sequenceId = "<?php echo $val['SEQID'];?>";
+        var sequenceName = "<?php echo $val['SEQname'];?>";
         
         var rowInfo = {
             sequence_id: sequenceId,
@@ -784,8 +787,8 @@ function updateValue(element){
 <script>
     
 <?php foreach($data['sequences'] as $key =>$val) {?>
-    var sequenceId = "<?php echo $val['sequence_id'];?>";
-    var sequenceName = "<?php echo $val['sequence_name'];?>";
+    var sequenceId = "<?php echo $val['SEQID'];?>";
+    var sequenceName = "<?php echo $val['SEQname'];?>";
 
     var exists = rowInfoArray.some(function(item) {
         return item.sequence_id === sequenceId || item.sequence_name === sequenceName;

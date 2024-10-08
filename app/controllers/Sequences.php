@@ -45,7 +45,7 @@ class Sequences extends Controller
         if($isMobile){
             $this->view('sequences/index_m', $data);
         }else{
-            $this->view('sequences/index', $data);
+            $this->view('sequences/add_seq', $data);
         }
     }
 
