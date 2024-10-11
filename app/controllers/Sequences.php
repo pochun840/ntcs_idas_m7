@@ -288,6 +288,7 @@ class Sequences extends Controller
     //check_seq_enable
     public function check_seq_enable(){
 
+       
         $input_check = true;
 
         if(!empty($_POST)){
@@ -296,7 +297,8 @@ class Sequences extends Controller
         }else{
             $input_check = false; 
         }
-    
+
+
         if($input_check){
             $this->sequenceModel->update_seq_type($seq_data) ;
         }

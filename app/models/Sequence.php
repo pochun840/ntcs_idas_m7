@@ -196,26 +196,26 @@ class Sequence{
 
     #修改單筆的sequence的狀態
     public function check_seq_type($jobid, $seqid, $type_value) {
-        $sql = "UPDATE `sequence` SET sequence_enable = :sequence_enable WHERE job_id = :job_id AND sequence_id = :sequence_id ";
+        $sql = "UPDATE `SEQ_lst` SET act = :act WHERE JOBID = :JOBID AND SEQID = :SEQID ";
         $statement = $this->db_iDas->prepare($sql);
     
-        $statement->bindValue(':sequence_enable', $type_value);
-        $statement->bindValue(':job_id', $jobid);
-        $statement->bindValue(':sequence_id', $seqid);
+        $statement->bindValue(':act', $type_value);
+        $statement->bindValue(':JOBID', $jobid);
+        $statement->bindValue(':SEQID', $seqid);
         
         $success = $statement->execute();    
         return $success;
     }
 
     public function update_seq_type($seq_data) {
-        $sql = "UPDATE `sequence` SET sequence_enable = :sequence_enable WHERE job_id = :job_id AND sequence_id = :sequence_id ";
+        $sql = "UPDATE `SEQ_lst` SET act = :act WHERE JOBID = :JOBID AND SEQID = :SEQID ";
         $statement = $this->db_iDas->prepare($sql);
     
-        $statement->bindValue(':sequence_enable', $seq_data['type_value']);
-        $statement->bindValue(':job_id', $seq_data['jobid']);
-        $statement->bindValue(':sequence_id', $seq_data['seqid']);
+        $statement->bindValue(':act', $seq_data['type_value']);
+        $statement->bindValue(':JOBID', $seq_data['jobid']);
+        $statement->bindValue(':SEQID', $seq_data['seqid']);
         
-        $success = $statement->execute();    
+        $success = $statement->execute();     
         return $success;
     }
 

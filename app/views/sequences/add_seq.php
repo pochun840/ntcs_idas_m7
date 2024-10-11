@@ -255,15 +255,14 @@
 
     };
     
-    //
+    // 新增 sequence
     function save_sequence() {
-        // 收集基本數據
+       
         let job_id = document.getElementById("job_id").value;
         let seq_id = document.getElementById("seq_id").value;
         let SEQname = document.getElementById("SEQname").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); // 當下時間 格式為(2024-09-06 01:05:20)
 
-        // 創建 FormData 對象
         let data = new FormData();
         data.append("job_id", job_id);
         data.append("SEQID", seq_id);

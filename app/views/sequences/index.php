@@ -454,6 +454,8 @@ function updateValue(element){
     var jobid = '<?php echo $data['job_id']?>';
     var type_value = element.checked ? 1 : 0;
     var seqid = element.getAttribute('data-sequence-id');
+
+
     
     if(seqid){
         $.ajax({
@@ -466,13 +468,13 @@ function updateValue(element){
             },
             success: function(response) {
                 console.log(response);
-                history.go(0);
+                //history.go(0);
             },
             error: function(xhr, status, error) {
                 console.error('AJAX 错误:', status, error); 
             }
         });    
-    } 
+    }
 }
 
 </script>
