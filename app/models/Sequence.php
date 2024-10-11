@@ -123,12 +123,12 @@ class Sequence{
     public function delete_seq_by_id($jobid,$seqid){
 
         
-        $sql= " DELETE FROM sequence WHERE job_id = ? AND sequence_id = ? ";
+        $sql= " DELETE FROM SEQ_lst WHERE JOBID = ? AND SEQID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$jobid, $seqid]);
 
-        if ($seqid != 50 ) {
-            $sql_update = "UPDATE sequence  SET sequence_id = sequence_id - 1 WHERE job_id = ? AND sequence_id > ?";
+        if ($seqid != 100 ) {
+            $sql_update = "UPDATE SEQ_lst  SET SEQID = SEQID - 1 WHERE JOBID = ? AND SEQID > ?";
             $statement_update = $this->db_iDas->prepare($sql_update);
             $statement_update->execute([$jobid, $seqid]);
         }   
@@ -138,7 +138,7 @@ class Sequence{
 
     public function delete_step_by_job_id($jobid,$seqid){
 
-        $sql= "DELETE FROM step WHERE  job_id = ? AND sequence_id = ? ";
+        $sql= "DELETE FROM STEP_lst WHERE  JOBID = ? AND SEQID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$jobid, $seqid]);
 
