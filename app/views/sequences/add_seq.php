@@ -20,7 +20,7 @@
 .t2{font-size: 17px; margin: 5px 0px;}
 </style>
 
-<div class="container-ms">
+<div class="container-ms" id ="your_container_id">
     <div class="w3-text-white w3-center">
         <header>
             <h3><?php echo "NEW"; ?></h3>
@@ -56,7 +56,7 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">Sequence Name:</div>
                             <div class="col-9">
-                                <input id="seq_name" value="">
+                                <input id="SEQname" value="">
                             </div>
                         </div>
                         <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
@@ -213,16 +213,16 @@
                             <div class="col-8">
                                 <!-- <input id="force" value="123456"> -->
                                 <div class="form-check form-check-inline col-md-3">
-                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_on" value="1">
+                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_on" value="0">
                                   <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
                                   <input class="" id="force_number" style=" width: 50%; height: 25px;min-width: 20px; ">
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
-                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_unlimit" value="2">
+                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_unlimit" value="1">
                                   <label class="form-check-label" for="force_unlimit"><?php echo 'Unlimited'; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
-                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_off" value="0">
+                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_off" value="2">
                                   <label class="form-check-label" for="force_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                             </div>
@@ -256,29 +256,103 @@
     };
     
     //
-    function save_sequence(){
+    function save_sequence() {
+        // 收集基本數據
+        let job_id = document.getElementById("job_id").value;
+        let seq_id = document.getElementById("seq_id").value;
+        let SEQname = document.getElementById("SEQname").value;
+        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); // 當下時間 格式為(2024-09-06 01:05:20)
 
-    let job_id = document.getElementById("job_id").value;
-    let seq_id = document.getElementById("seq_id").value;
-    let seq_type = 0;
+        // 創建 FormData 對象
+        let data = new FormData();
+        data.append("job_id", job_id);
+        data.append("SEQID", seq_id);
+        data.append("SEQname", SEQname);
+        data.append("time", time);
+        data.append("type", 0);
+        data.append("act", 0);
+        data.append("skip", 0);
+        data.append("seq_repeat", document.getElementById("seq_repeat").value);
+        data.append("timeout", document.getElementById("timeout").value);
+
+        let ok_seqElement = document.querySelector('input[name="ok_seq"]:checked');
+        data.append("ok_seq_val", ok_seqElement ? ok_seqElement.value : null);
+
+        let ok_stopElement = document.querySelector('input[name="ok_stop"]:checked');
+        data.append("ok_stop_val", ok_stopElement ? ok_stopElement.value : null);
+
+        data.append("countType", 0);
+        data.append("ok_screw", 1);
+        data.append("ng_stop", document.getElementById('ng_stop').value);
+
+        let ng_unscrew = document.querySelector('input[name="ng_unscrew"]:checked');
+        data.append("ng_unscrew_val", ng_unscrew ? ng_unscrew.value : null);
+
+        data.append("interrupt_alarm", 1);
+
+        let accu_angle = document.querySelector('input[name="accu_angle"]:checked');
+        data.append("accu_angle_val", accu_angle ? accu_angle.value : null);
+
+        let angle_calculation_data = getCheckboxValue(); 
+        data.append("angle_calculation_data", angle_calculation_data);
+
+        let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
+        data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
+
+        let unscrew_force = document.querySelector('input[name="unscrew_force"]:checked');
+        data.append("unscrew_force_val", unscrew_force ? unscrew_force.value : null);
+
+        data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
+        data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
+
+        let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
+        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : null);
+
+        data.append("image", '');
+        data.append("message", '');
+        data.append("delay", 0);
+        data.append("input", 0);
+        data.append("input_signal", 0);
+        data.append("output", 0);
+        data.append("output_signal", 1);
+        data.append("output_durat", 100);
+        data.append("addtion", '');
+
+        let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
+        data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
 
 
-
+        $.ajax({
+            url: '?url=Sequences/create_seq',
+            type: 'POST',
+            data: data,
+            processData: false, 
+            contentType: false, 
+            success: function(response) {
+                // 處理成功回應
+                console.log('Success:', response);
+            },
+            error: function(xhr, status, error) {
+                // 處理錯誤
+                console.error('Error:', error);
+            }
+        });
     }
 
 
 
-  function getCheckboxValue() {
-    var res = [];
-    for (var i = 1; i <= 5; i++) {
-        var checkbox = document.getElementById("Thread_Calcu_" + i);
-        if (checkbox.checked) {
-            res.push(checkbox.value);
+
+    function getCheckboxValue() {
+        var res = [];
+        for (var i = 1; i <= 5; i++) {
+            var checkbox = document.getElementById("Thread_Calcu_" + i);
+            if (checkbox.checked) {
+                res.push(checkbox.value);
+            }
         }
-    }
 
-    return res.join(","); 
-}
+        return res.join(","); 
+    }
   
 </script>
 

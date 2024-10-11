@@ -35,39 +35,51 @@ class Sequence{
     }
 
     #新增sequence
-    public function create_seq($mode, $jobdata) {
+    public function create_seq($mode, $seq_data) {
 
 
-        if(intval($jobdata['job_id']) > 50 || intval($jobdata['sequence_id']) > 50) {
+        if(intval($seq_data['job_id']) > 100 || intval($seq_data['SEQID']) > 100) {
            
             return false; 
         }
 
-        $sql = "INSERT INTO `sequence` (job_id, sequence_id, sequence_name, sequence_enable, tightening_repeat, ng_stop, seq_ok, stop_seq_ok, opt, k_value, offset)";
-        $sql .= " VALUES (:job_id, :sequence_id, :sequence_name, :sequence_enable, :tightening_repeat, :ng_stop, :seq_ok, :stop_seq_ok, :opt, :k_value, :offset);";
+        
+        $sql = "INSERT INTO `SEQ_lst` (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, image, message, delay, input, input_signal, output, output_signal, output_durat, addtion, unscrew_count_switch, unscrew_torque_threshold)"; 
+        $sql.= "VALUES (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, :addtion, :unscrew_count_switch, :unscrew_torque_threshold);";
         $statement = $this->db_iDas->prepare($sql);
-    
-
-        if ($mode == "create") {
-            $statement->bindValue(':job_id', $jobdata['job_id']);
-            $statement->bindValue(':sequence_id', $jobdata['sequence_id']);
-            $statement->bindValue(':sequence_name', $jobdata['sequence_name']);
-
-        }else if($mode =="copy"){
-            
-            $statement->bindValue(':job_id', $jobdata['job_id']);
-            $statement->bindValue(':sequence_id', $jobdata['sequence_id']);
-            $statement->bindValue(':sequence_name', $jobdata['sequence_name']);
-        }
-    
-        $statement->bindValue(':tightening_repeat', $jobdata['tightening_repeat']);
-        $statement->bindValue(':seq_ok', $jobdata['seq_ok']);
-        $statement->bindValue(':stop_seq_ok', $jobdata['stop_seq_ok']);
-        $statement->bindValue(':ng_stop', $jobdata['ng_stop']);
-        $statement->bindValue(':sequence_enable', $jobdata['sequence_enable']);
-        $statement->bindValue(':opt', $jobdata['opt']);
-        $statement->bindValue(':k_value', $jobdata['k_value']);
-        $statement->bindValue(':offset', $jobdata['offset']);
+        $statement->bindValue(':JOBID', $seq_data['job_id']);
+        $statement->bindValue(':SEQID', $seq_data['SEQID']);
+        $statement->bindValue(':SEQname', $seq_data['SEQname']);
+        $statement->bindValue(':type', $seq_data['type']);
+        $statement->bindValue(':time', $seq_data['time']);
+        $statement->bindValue(':act', $seq_data['act']);
+        $statement->bindValue(':skip', $seq_data['skip']);
+        $statement->bindValue(':seq_repeat', $seq_data['seq_repeat']);
+        $statement->bindValue(':timeout', $seq_data['timeout']);
+        $statement->bindValue(':ok_seq', $seq_data['ok_seq']);
+        $statement->bindValue(':ok_stop', $seq_data['ok_stop']);
+        $statement->bindValue(':countType', $seq_data['countType']);
+        $statement->bindValue(':ok_screw', $seq_data['ok_screw']);
+        $statement->bindValue(':ng_stop', $seq_data['ng_stop']);
+        $statement->bindValue(':ng_unscrew', $seq_data['ng_unscrew']);
+        $statement->bindValue(':interrupt_alarm', $seq_data['interrupt_alarm']);
+        $statement->bindValue(':accu_angle', $seq_data['accu_angle']);
+        $statement->bindValue(':Thread_Calcu', $seq_data['Thread_Calcu']);
+        $statement->bindValue(':unscrew_mode', $seq_data['unscrew_mode']);
+        $statement->bindValue(':unscrew_force', $seq_data['unscrew_force']);
+        $statement->bindValue(':unscrew_rpm', $seq_data['unscrew_rpm']);
+        $statement->bindValue(':unscrew_dir', $seq_data['unscrew_dir']);
+        $statement->bindValue(':image', $seq_data['image']);
+        $statement->bindValue(':message', $seq_data['message']);
+        $statement->bindValue(':delay', $seq_data['delay']);
+        $statement->bindValue(':input', $seq_data['input']);
+        $statement->bindValue(':input_signal', $seq_data['input_signal']);
+        $statement->bindValue(':output', $seq_data['output']);
+        $statement->bindValue(':output_signal', $seq_data['output_signal']);
+        $statement->bindValue(':output_durat', $seq_data['output_durat']);
+        $statement->bindValue(':addtion', $seq_data['addtion']);
+        $statement->bindValue(':unscrew_count_switch', $seq_data['unscrew_count_switch']);
+        $statement->bindValue(':unscrew_torque_threshold', $seq_data['unscrew_torque_threshold']);
     
         $results = $statement->execute();
 

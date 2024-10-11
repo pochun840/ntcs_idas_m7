@@ -45,7 +45,7 @@ class Sequences extends Controller
         if($isMobile){
             $this->view('sequences/index_m', $data);
         }else{
-            $this->view('sequences/add_seq', $data);
+            $this->view('sequences/index', $data);
         }
     }
 
@@ -58,79 +58,61 @@ class Sequences extends Controller
             include $file;
         }
 
+        if(isset($_POST['job_id'])){
         
-        if(isset($_POST['jobid'])){
-            
-            #如果 POST 中沒有，則使用預設值
-            $jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : 0;
-            $seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : 0;
+            // 初始化數據陣列
+            $seq_data = array(
+                'job_id' => $_POST['job_id'] ?? null,
+                'SEQID'  => $_POST['SEQID'] ?? null,
+                'SEQname' => $_POST['SEQname'] ?? null,
+                'time' => $_POST['time'] ?? null,
+                'type' => $_POST['type'] ?? null,
+                'act' => $_POST['act'] ?? null,
+                'skip' => $_POST['skip'] ?? null,
+                'seq_repeat' => $_POST['seq_repeat'] ?? null,
+                'timeout' => $_POST['timeout'] ?? null,
+                'ok_seq' => $_POST['ok_seq_val'] ?? null,
+                'ok_stop' => $_POST['ok_stop_val'] ?? null,
+                'countType' =>$_POST['countType'] ?? 1,
+                'ok_screw'  =>$_POST['ok_screw'] ?? 1,
+                'ng_stop' => $_POST['ng_stop'] ?? null,
+                'ng_unscrew' => $_POST['ng_unscrew_val'] ?? null,
+                'interrupt_alarm' => $_POST['interrupt_alarm'] ?? null,
+                'accu_angle' => $_POST['accu_angle_val'] ?? null,
+                'Thread_Calcu' => $_POST['angle_calculation_data'] ?? null,
+                'unscrew_mode' => $_POST['unscrew_mode_val'] ?? null,
+                'unscrew_force' => $_POST['unscrew_force_val'] ?? null,
+                'unscrew_rpm' => $_POST['unscrew_rpm'] ?? null,
+                'unscrew_dir' => $_POST['unscrew_dir_val'] ?? null,
+                'image' => $_POST['image'] ?? null,
+                'message' => $_POST['message'] ?? null,
+                'delay' => $_POST['delay'] ?? null,
+                'input' => $_POST['input'] ?? null,
+                'input_signal' => $_POST['input_signal'] ?? null,
+                'output' => $_POST['output'] ?? null,
+                'output_signal' => $_POST['output_signal'] ?? null,
+                'output_durat' => $_POST['output_durat'] ?? null,
+                'addtion' => $_POST['addtion'] ?? null,
+                'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
+                'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
 
-            $k_value = isset($_POST['k_value']) ? floatval($_POST['k_value']) : 100.0;
-            $tighten_repeat = isset($_POST['tighten_repeat']) ? intval($_POST['tighten_repeat']) : 1;
-            $seq_ok = isset($_POST['seq_ok']) ? intval($_POST['seq_ok']) : 0;
-            $stop_seq_ok = isset($_POST['stop_seq_ok']) ? intval($_POST['stop_seq_ok']) : 0;
-            $opt_val = isset($_POST['opt_val']) ? intval($_POST['opt_val']) : '';
-            $ng_stop = isset($_POST['ng_stop']) ? intval($_POST['ng_stop']) : 0;
-            $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;  
-
-            $seq_name = $_POST['seq_name'];
-            
-           
-      
-            #驗證seq_name 
-            if(!$this->MiscellaneousModel->seq_validate($seq_name, 'name')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['error_seq_name']);
-                exit();
-            }
-
-
-            #驗證顆數
-            if(!$this->MiscellaneousModel->seq_validate($tighten_repeat, 'tightenRepeat')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['tightening_repeat']);
-                exit();
-            }
-
-
-            #驗證k_value
-            if(!$this->MiscellaneousModel->seq_validate($k_value, 'kValue')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['ok_time']);
-                exit();
-            }
-
-            #驗證offset
-            if(!$this->MiscellaneousModel->seq_validate($offset, 'offset')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['joint_offset_val']);
-                exit();
-            }
-            
-            $jobdata = array(
-                'job_id' => $jobid,
-                'sequence_id' => $seqid,
-                'sequence_name' => $seq_name,
-                'sequence_enable' => 1,
-                'tightening_repeat' => $tighten_repeat,
-                'ng_stop' => $ng_stop,
-                'seq_ok'  => $seq_ok,
-                'stop_seq_ok' => $stop_seq_ok, 
-                'opt' => $opt_val,
-                'k_value' => $k_value,
-                'offset' => $offset,
             );
 
-
-            if(!empty($jobdata['offset'])){
-                $jobdata['offset'] = sprintf("%+03d", $jobdata['offset']);
+            if ($seq_data['job_id'] === null ||$seq_data['SEQID'] === null ||$seq_data['SEQname'] === null) {
+                echo json_encode(['status' => 'error', 'message' => 'Missing required fields']);
+                exit;
             }
-           
+
+
             $mode = "create";
-            $res = $this->sequenceModel->create_seq($mode,$jobdata);
+            $res = $this->sequenceModel->create_seq($mode,$seq_data);
             $result = array();
             if($res){
                 $res_type = 'Success';
-                $res_msg  = $text['new_seq'].':'. $jobdata['sequence_id']."  ".$text['success'];
+                $res_msg  = $text['new_seq'].':'. $seq_data['SEQID']."  ".$text['success'];
             }else{
                 $res_type = 'Error';
-                $res_msg  = $text['new_seq'].':'. $jobdata['sequence_id']."  ".$text['fail'];
+                $res_msg  = $text['new_seq'].':'. $seq_data['SEQID']."  ".$text['fail'];
             }
             
             $result = array(
@@ -435,6 +417,31 @@ class Sequences extends Controller
 
 
         }
+    }
+
+
+    public function add_seq($job_id){
+        
+
+        if( isset($job_id) && !empty($job_id) ){
+
+        }else{
+            $job_id = 1;
+        }
+
+        $sequences  = $this->sequenceModel->getSequences_by_job_id($job_id);
+        if(empty($sequences)){
+            $seq_id = 1;
+        }else{
+            $seq_id = count($sequences) + 1 ;
+        }
+
+        $data = array(
+            'sequences' => $sequences,
+            'job_id' => $job_id,
+            'seq_id' => $seq_id
+        );
+        echo $this->view('sequences/add_seq',$data);
     }
 }
 ?>
