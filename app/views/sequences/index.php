@@ -302,7 +302,7 @@ function copy_seq_by_id(){
 
 function create_seq() {
     var job_id = '<?php echo $data['job_id'];?>';    
-    window.location.href = '../public/?url=Sequences/change_seq/' + job_id; 
+    window.location.href = '../public/?url=Sequences/variation/' + job_id; 
 
 }
 
@@ -342,62 +342,9 @@ function delete_seqid(seqid){
 }
 
 function edit_seq(seqid) {
-    var jobid = '<?php echo $data['job_id']?>';    
-    if(jobid){
-        $.ajax({
-            url: "?url=Sequences/search_seqinfo",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-                seqid: seqid
-            },
-            success: function(response) {
+    var jobid = '<?php echo $data['job_id']?>'; 
+    window.location.href = '../public/?url=Sequences/variation/'+ jobid+'/'+ seqid;   
 
-                var responseJSON = JSON.stringify(response);
-                var cleanString = responseJSON.replace(/Array|\\n/g, '');
-                var cleanString = cleanString.substring(2, cleanString.length - 2);
-
-                var [, jobid] = cleanString.match(/\[job_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, seqid] = cleanString.match(/\[sequence_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, seqname] = cleanString.match(/\[sequence_name]\s*=>\s*([^ ]+)/) || [, null];
-                var [, tightening_repeat] = cleanString.match(/\[tightening_repeat]\s*=>\s*([^ ]+)/) || [, null];
-                
-                var [, k_value] = cleanString.match(/\[k_value]\s*=>\s*([^ ]+)/) || [, null];
-                var [, offset] = cleanString.match(/\[offset]\s*=>\s*([^ ]+)/) || [, null];
-                var [, ng_stop] = cleanString.match(/\[ng_stop]\s*=>\s*([^ ]+)/) || [, null];
-                
-                var [, opt] = cleanString.match(/\[opt]\s*=>\s*([^ ]+)/) || [, null];
-                var [, seq_ok] = cleanString.match(/\[seq_ok]\s*=>\s*([^ ]+)/) || [, null];
-                var [, stop_seq_ok] = cleanString.match(/\[stop_seq_ok]\s*=>\s*([^ ]+)/) || [, null];
-                var [, opt_val] = cleanString.match(/\[opt]\s*=>\s*([^ ]+)/) || [, null];
-               
-   
-        
-                document.getElementById('editseq').style.display = 'block';
-                document.getElementById("old_seqid").value = seqid;
-                document.getElementById("edit_seq_name").value = seqname;
-                document.getElementById("edit_tighten_repeat").value = tightening_repeat;
-
-                document.getElementById("edit_K").value = k_value;
-                document.getElementById("edit_offset").value = offset;
-                document.getElementById("edit_ng_stop").value = ng_stop;
-        
-                var radioButtons_seq = document.getElementsByName("edit_seq_ok");
-                setRadioButton_value(radioButtons_seq, seq_ok);
-
-                var radioButtons_stop_seq = document.getElementsByName("edit_stop_seq_ok");
-                setRadioButton_value(radioButtons_stop_seq, stop_seq_ok);
-
-
-                var radioButtons_2 = document.getElementsByName("edit_opt_option");
-                setRadioButton_value(radioButtons_2, opt_val);
-  
-            },
-            error: function(xhr, status, error) {
-             
-            }
-        });
-    }
 }
 
 function edit_seq_save(){
@@ -431,7 +378,6 @@ function edit_seq_save(){
 
             },
             success: function(response) {
-                //console.log(response);
                 var responseData = JSON.parse(response);
                 alertify.alert(responseData.res_type, responseData.res_msg, function() {
                     history.go(0);

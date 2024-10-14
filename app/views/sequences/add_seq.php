@@ -164,12 +164,30 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">Angle Calculation (Step):</div>
                             <div class="col-9">
-                                <?php for ($i = 1; $i <= 5; $i++){?>
+                                <?php if($data['type'] =="edit"){
+                                    $digits = str_split($data['sequences']['Thread_Calcu']);
+                                    $digits_string = implode(',', $digits);
+                                    $positions = explode(',', $digits_string);
+                                    
+                                }else{
+
+
+                                }?>
+                               
+                                <?php for ($i = 1; $i <= 5; $i++) { ?>
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>">
+                                        <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>"
+                                            <?php 
+                                            // 檢查當前的 $i 是否在 $positions 陣列中，如果在則加上 'checked' 屬性
+                                            if(!empty($positions)){
+                                                if (in_array($i, $positions)) {
+                                                    echo 'checked';
+                                                }
+                                            }
+                                            ?>>
                                         <label class="form-check-label" for="Thread_Calcu_<?php echo $i; ?>"><?php echo $i; ?></label>
                                     </div>
-                                <?php }; ?>
+                                <?php } ?>
                             </div>
                         </div>
 
@@ -250,7 +268,9 @@
                 </div>
             </div>
             <div class="w3-center" style="margin: 20px 30px 0px 0;">
-                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3" onclick="save_sequence();"><?php echo $text['save']; ?></button>
+                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3"  onclick="<?php echo $data['type'] == 'new' ? 'save_sequence()' : 'edit_sequence()'; ?>">
+                    <?php echo $text['save']; ?>
+                </button>
             </div>
         </div>
     </div>
@@ -350,12 +370,99 @@
             success: function(response) {
                 // 處理成功回應
                 console.log('Success:', response);
+                window.location.href = '../public/?url=Sequences/index/' + job_id; 
+
             },
             error: function(xhr, status, error) {
                 // 處理錯誤
                 console.error('Error:', error);
             }
         });
+    }
+
+    //edit sequence
+    function edit_sequence(){
+        let job_id = document.getElementById("job_id").value;
+        let seq_id = document.getElementById("seq_id").value;
+        let SEQname = document.getElementById("SEQname").value;
+        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+
+        let data = new FormData();
+        data.append("job_id", job_id);
+        data.append("SEQID", seq_id);
+        data.append("SEQname", SEQname);
+        data.append("time", time);
+        data.append("type", 0);
+        data.append("act", 0);
+        data.append("skip", 0);
+        data.append("seq_repeat", document.getElementById("seq_repeat").value);
+        data.append("timeout", document.getElementById("timeout").value);
+
+        let ok_seqElement = document.querySelector('input[name="ok_seq"]:checked');
+        data.append("ok_seq_val", ok_seqElement ? ok_seqElement.value : null);
+
+        let ok_stopElement = document.querySelector('input[name="ok_stop"]:checked');
+        data.append("ok_stop_val", ok_stopElement ? ok_stopElement.value : null);
+
+        data.append("countType", 0);
+        data.append("ok_screw", 1);
+        data.append("ng_stop", document.getElementById('ng_stop').value);
+
+        let ng_unscrew = document.querySelector('input[name="ng_unscrew"]:checked');
+        data.append("ng_unscrew_val", ng_unscrew ? ng_unscrew.value : null);
+
+        data.append("interrupt_alarm", 1);
+
+        let accu_angle = document.querySelector('input[name="accu_angle"]:checked');
+        data.append("accu_angle_val", accu_angle ? accu_angle.value : null);
+
+        let angle_calculation_data = getCheckboxValue(); 
+        data.append("angle_calculation_data", angle_calculation_data);
+
+        let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
+        data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
+
+        let unscrew_force = document.querySelector('input[name="unscrew_force"]:checked');
+        data.append("unscrew_force_val", unscrew_force ? unscrew_force.value : null);
+
+        data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
+        data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
+
+        let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
+        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : null);
+
+        data.append("image", '');
+        data.append("message", '');
+        data.append("delay", 0);
+        data.append("input", 0);
+        data.append("input_signal", 0);
+        data.append("output", 0);
+        data.append("output_signal", 1);
+        data.append("output_durat", 100);
+        data.append("addtion", '');
+
+        let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
+        data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
+
+        $.ajax({
+            url: '?url=Sequences/edit_seq',
+            type: 'POST',
+            data: data,
+            processData: false, 
+            contentType: false, 
+            success: function(response) {
+                // 處理成功回應
+                console.log('Success:', response);
+
+                window.location.href = '../public/?url=Sequences/index/' + job_id; 
+
+            },
+            error: function(xhr, status, error) {
+                // 處理錯誤
+                console.error('Error:', error);
+            }
+        });
+
     }
 
 

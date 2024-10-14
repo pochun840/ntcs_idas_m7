@@ -175,7 +175,7 @@ class Sequences extends Controller
         );
     }
 
-    /*public function edit_seq(){
+    public function edit_seq(){
 
 
         $file = $this->MiscellaneousModel->lang_load();
@@ -183,78 +183,63 @@ class Sequences extends Controller
             include $file;
         }
 
-        if(isset($_POST['jobid'])){
 
-            $jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : 0;
-            $seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : 0;
-            $seq_name = $_POST['seq_name'];
-            $tighten_repeat = isset($_POST['tightening_repeat']) ? intval($_POST['tightening_repeat']) : 1;
-            $ng_stop = isset($_POST['ng_stop']) ? intval($_POST['ng_stop']) : 0;
-            $seq_ok = isset($_POST['seq_ok']) ? intval($_POST['seq_ok']) : 0;
-            $stop_seq_ok = isset($_POST['stop_seq_ok']) ? intval($_POST['stop_seq_ok']) : 0;
-            $opt_val = isset($_POST['opt_val']) ? intval($_POST['opt_val']) : 0;
-            $k_value = isset($_POST['k_value']) ? floatval($_POST['k_value']) : 100.0;
-            $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;  
-
-            #驗證seq_name 
-            if(!$this->MiscellaneousModel->seq_validate($seq_name, 'name')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['error_seq_name']);
-                exit();
-            }
-
-
-            #驗證顆數
-            if(!$this->MiscellaneousModel->seq_validate($tighten_repeat, 'tightenRepeat')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['tightening_repeat']);
-                exit();
-            }
     
-            #驗證k_value
-            if(!$this->MiscellaneousModel->seq_validate($k_value, 'kValue')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['ok_time']);
-                exit();
-            }
+  
+        if(isset($_POST['job_id'])){
+                          
+            // 初始化數據陣列
+            $seq_data = array(
+                'JOBID' => $_POST['job_id'] ?? null,
+                'SEQID'  => $_POST['SEQID'] ?? null,
+                'SEQname' => $_POST['SEQname'] ?? null,
+                'time' => $_POST['time'] ?? null,
+                'type' => $_POST['type'] ?? null,
+                'act' => $_POST['act'] ?? null,
+                'skip' => $_POST['skip'] ?? null,
+                'seq_repeat' => $_POST['seq_repeat'] ?? null,
+                'timeout' => $_POST['timeout'] ?? null,
+                'ok_seq' => $_POST['ok_seq_val'] ?? null,
+                'ok_stop' => $_POST['ok_stop_val'] ?? null,
+                'countType' =>$_POST['countType'] ?? 1,
+                'ok_screw'  =>$_POST['ok_screw'] ?? 1,
+                'ng_stop' => $_POST['ng_stop'] ?? null,
+                'ng_unscrew' => $_POST['ng_unscrew_val'] ?? null,
+                'interrupt_alarm' => $_POST['interrupt_alarm'] ?? null,
+                'accu_angle' => $_POST['accu_angle_val'] ?? null,
+                'Thread_Calcu' => $_POST['angle_calculation_data'] ?? null,
+                'unscrew_mode' => $_POST['unscrew_mode_val'] ?? null,
+                'unscrew_force' => $_POST['unscrew_force_val'] ?? null,
+                'unscrew_rpm' => $_POST['unscrew_rpm'] ?? null,
+                'unscrew_dir' => $_POST['unscrew_dir_val'] ?? null,
+                'image' => $_POST['image'] ?? null,
+                'message' => $_POST['message'] ?? null,
+                'delay' => $_POST['delay'] ?? null,
+                'input' => $_POST['input'] ?? null,
+                'input_signal' => $_POST['input_signal'] ?? null,
+                'output' => $_POST['output'] ?? null,
+                'output_signal' => $_POST['output_signal'] ?? null,
+                'output_durat' => $_POST['output_durat'] ?? null,
+                'addtion' => $_POST['addtion'] ?? null,
+                'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
+                'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
 
-            #驗證offset
-            if(!$this->MiscellaneousModel->seq_validate($offset, 'offset')) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['joint_offset_val']);
-                exit();
-            }
-
-
-            $offset = sprintf("%+03d", $offset);
-
-            $seq_count = $this->sequenceModel->countseq($jobid);
-            $seq_count = intval($seq_count);
-           
-            #檢查job 
-            if($seq_count >= 50) {
-                echo "The maximum number of steps has been reached, unable to continue copying seqs";
-                return;
-            }
-           
-            $jobdata = array(
-                'job_id' => $jobid,
-                'sequence_id' => $seqid,
-                'sequence_name' =>$seq_name,
-                'sequence_enable' => 1,
-                'tightening_repeat' => $tighten_repeat,
-                'ng_stop' => $ng_stop,
-                'seq_ok'  => $seq_ok,
-                'stop_seq_ok' =>$stop_seq_ok,
-                'opt' => $opt_val,
-                'k_value' => $k_value,
-                'offset' => $offset,
             );
-           
-            $res = $this->sequenceModel->update_seq_by_id($jobdata);
+
+            if ($seq_data['JOBID'] === null || $seq_data['SEQID'] === null ||$seq_data['SEQname'] === null) {
+                echo json_encode(['status' => 'error', 'message' => 'Missing required fields']);
+                exit;
+            }
+
+
+            $res = $this->sequenceModel->update_seq_by_id($seq_data);
             $result = array();
             if($res){
                 $res_type = 'Success';
-                $res_msg  = $text['edit_seq'].':'. $seqid."  ".$text['success'];
+                $res_msg  = $text['edit_seq'].':'.$seq_data['SEQID']."  ".$text['success'];
             }else{
                 $res_type = 'Error';
-                $res_msg  = $text['edit_seq'].':'. $seqid."  ".$text['fail'];
+                $res_msg  = $text['edit_seq'].':'.$seq_data['SEQID']."  ".$text['fail'];
             }
 
             $result = array(
@@ -263,9 +248,8 @@ class Sequences extends Controller
             );
 
             echo json_encode($result);
-
         }
-    }*/
+    }
 
 
 
@@ -447,63 +431,45 @@ class Sequences extends Controller
     }
 
 
-    public function change_seq($job_id){
-        
-
-        if( isset($job_id) && !empty($job_id) ){
-
-        }else{
+    public function variation($job_id = null, $seq_id = null) {
+        // 如果沒有提供 job_id，則設為預設值 1
+        if (empty($job_id)) {
             $job_id = 1;
         }
+    
+        // 如果沒有提供 seq_id，則視為新增，並設為空值
+        if (empty($seq_id)) {
+            // 根據 job_id 取得所有相關的 sequences
+            $sequences = $this->sequenceModel->getSequences_by_job_id($job_id);
+            
+            // 如果沒有找到任何 sequences，則將 seq_id 設為 1；否則，將 seq_id 設為 sequences 數量 + 1
+            if (empty($sequences)) {
+                $seq_id = 1;
+            } else {
+                $seq_id = count($sequences) + 1;
+            }
+            $type = 'new';
+        } else {
 
-        $sequences  = $this->sequenceModel->getSequences_by_job_id($job_id);
-        if(empty($sequences)){
-            $seq_id = 1;
-        }else{
-            $seq_id = count($sequences) + 1 ;
+            $type = 'edit';
+            $res = $this->sequenceModel->search_seqinfo($job_id, $seq_id);
+            
+            if (empty($res)) {
+                echo "Job ID 或 Sequence ID 無效！";
+                return;
+            }
+            
+            $sequences = $res[0];
         }
-
+    
         $data = array(
             'sequences' => $sequences,
             'job_id' => $job_id,
             'seq_id' => $seq_id,
-            'type' =>'new'
+            'type' => $type
         );
-        echo $this->view('sequences/add_seq',$data);
+        echo $this->view('sequences/add_seq', $data);
     }
-
-
-    public function edit_seq() {
-        $url = isset($_GET['url']) ? $_GET['url'] : '';
-    
-        if (!empty($url)) {
-            $segments = explode('/', $url);
-            if (isset($segments[2]) && isset($segments[3])) {
-                $job_id = $segments[2];
-                $seq_id = $segments[3];
-            }
-        }
-    
-        if (empty($job_id) || empty($seq_id)) {
-            echo "Job ID 或 Sequence ID 无效！";
-            return;
-        }
-    
-        $res = $this->sequenceModel->search_seqinfo($job_id, $seq_id);
-        if(!empty($res)){
-            $data = array(
-                'sequences' => $res[0],
-                'job_id' => $job_id,
-                'seq_id' => $seq_id,
-                'type' =>'edit'
-            );
-           
-            echo $this->view('sequences/add_seq',$data);
-        }
         
-    }
-    
-
-    
 }
 ?>
