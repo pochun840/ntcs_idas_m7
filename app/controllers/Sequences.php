@@ -166,12 +166,16 @@ class Sequences extends Controller
 
         if(!empty($jobid)){
             $res  = $this->sequenceModel->search_seqinfo($jobid,$seqid);
-            print_r($res[0]);
         }
 
+        $data = array(
+            'seq_info' => $res,
+            'job_id' => $job_id,
+            'seq_id' => $seq_id
+        );
     }
 
-    public function edit_seq(){
+    /*public function edit_seq(){
 
 
         $file = $this->MiscellaneousModel->lang_load();
@@ -261,7 +265,7 @@ class Sequences extends Controller
             echo json_encode($result);
 
         }
-    }
+    }*/
 
 
 
@@ -274,8 +278,6 @@ class Sequences extends Controller
 
         if(!empty($seqid)){
             $res  = $this->sequenceModel->sequence_id_repeat($jobid,$seqid);
-
-            //var_dump($success);
             if($res == "True"){
 
             }
@@ -326,18 +328,41 @@ class Sequences extends Controller
         $select_step = $this->sequenceModel->search_stepinfo($jobid,$seqid);
         if(!empty($old_res)){
             $new_temp_seq = array();
-            foreach($old_res as $kk =>$vv){
-                $new_temp_seq[$kk]['job_id'] = $vv['job_id'];
-                $new_temp_seq[$kk]['sequence_id'] = $newseqid;
-                $new_temp_seq[$kk]['sequence_name'] = $newseqname;
-                $new_temp_seq[$kk]['sequence_enable'] = $vv['sequence_enable'];
-                $new_temp_seq[$kk]['tightening_repeat'] = $vv['tightening_repeat'];
-                $new_temp_seq[$kk]['ng_stop'] = $vv['ng_stop']; 
-                $new_temp_seq[$kk]['seq_ok'] = $vv['seq_ok']; 
-                $new_temp_seq[$kk]['stop_seq_ok'] = $vv['stop_seq_ok']; 
-                $new_temp_seq[$kk]['opt'] = $vv['opt']; 
-                $new_temp_seq[$kk]['k_value'] = $vv['k_value']; 
-                $new_temp_seq[$kk]['offset'] = $vv['offset'];
+            foreach($old_res as $kk_seq =>$val){
+                $new_temp_seq[$kk_seq]['JOBID'] = $val['JOBID'];
+                $new_temp_seq[$kk_seq]['SEQID'] = $newseqid;
+                $new_temp_seq[$kk_seq]['SEQname'] = $newseqname;
+                $new_temp_seq[$kk_seq]['time'] = $val['time'];
+                $new_temp_seq[$kk_seq]['type'] = $val['type'];
+                $new_temp_seq[$kk_seq]['act'] = $val['act'];
+                $new_temp_seq[$kk_seq]['skip'] = $val['skip']; 
+                $new_temp_seq[$kk_seq]['seq_repeat'] = $val['seq_repeat']; 
+                $new_temp_seq[$kk_seq]['timeout'] = $val['timeout']; 
+                $new_temp_seq[$kk_seq]['ok_seq'] = $val['ok_seq']; 
+                $new_temp_seq[$kk_seq]['ok_stop'] = $val['ok_stop']; 
+                $new_temp_seq[$kk_seq]['countType'] = $val['countType'];
+                $new_temp_seq[$kk_seq]['ok_screw'] = $val['ok_screw'];
+                $new_temp_seq[$kk_seq]['ng_stop'] = $val['ng_stop'];
+                $new_temp_seq[$kk_seq]['ng_unscrew'] = $val['ng_unscrew'];
+                $new_temp_seq[$kk_seq]['interrupt_alarm'] = $val['interrupt_alarm'];
+                $new_temp_seq[$kk_seq]['accu_angle'] = $val['accu_angle'];
+                $new_temp_seq[$kk_seq]['Thread_Calcu'] = $val['Thread_Calcu'];
+                $new_temp_seq[$kk_seq]['unscrew_mode'] = $val['unscrew_mode'];
+                $new_temp_seq[$kk_seq]['unscrew_force'] = $val['unscrew_force'];
+                $new_temp_seq[$kk_seq]['unscrew_rpm'] = $val['unscrew_rpm'];
+                $new_temp_seq[$kk_seq]['unscrew_dir'] = $val['unscrew_dir'];
+                $new_temp_seq[$kk_seq]['image'] = '';
+                $new_temp_seq[$kk_seq]['message'] = '';
+                $new_temp_seq[$kk_seq]['delay'] = $val['delay'];
+                $new_temp_seq[$kk_seq]['input'] = $val['input'];
+                $new_temp_seq[$kk_seq]['input_signal'] = $val['input_signal'];
+                $new_temp_seq[$kk_seq]['output'] = $val['output'];
+                $new_temp_seq[$kk_seq]['output_signal'] = $val['output_signal'];
+                $new_temp_seq[$kk_seq]['output_durat'] = $val['output_durat'];
+                $new_temp_seq[$kk_seq]['addtion'] ='';
+                $new_temp_seq[$kk_seq]['unscrew_count_switch'] = $val['unscrew_count_switch'];
+                $new_temp_seq[$kk_seq]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
+                
 
             }  
 
@@ -422,7 +447,7 @@ class Sequences extends Controller
     }
 
 
-    public function add_seq($job_id){
+    public function change_seq($job_id){
         
 
         if( isset($job_id) && !empty($job_id) ){
@@ -441,9 +466,44 @@ class Sequences extends Controller
         $data = array(
             'sequences' => $sequences,
             'job_id' => $job_id,
-            'seq_id' => $seq_id
+            'seq_id' => $seq_id,
+            'type' =>'new'
         );
         echo $this->view('sequences/add_seq',$data);
     }
+
+
+    public function edit_seq() {
+        $url = isset($_GET['url']) ? $_GET['url'] : '';
+    
+        if (!empty($url)) {
+            $segments = explode('/', $url);
+            if (isset($segments[2]) && isset($segments[3])) {
+                $job_id = $segments[2];
+                $seq_id = $segments[3];
+            }
+        }
+    
+        if (empty($job_id) || empty($seq_id)) {
+            echo "Job ID 或 Sequence ID 无效！";
+            return;
+        }
+    
+        $res = $this->sequenceModel->search_seqinfo($job_id, $seq_id);
+        if(!empty($res)){
+            $data = array(
+                'sequences' => $res[0],
+                'job_id' => $job_id,
+                'seq_id' => $seq_id,
+                'type' =>'edit'
+            );
+           
+            echo $this->view('sequences/add_seq',$data);
+        }
+        
+    }
+    
+
+    
 }
 ?>

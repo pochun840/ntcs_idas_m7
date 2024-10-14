@@ -87,21 +87,99 @@ class Sequence{
 
     }
 
-    public function copy_seq_by_seq_id($new_temp_seq){
-
-        $sql = "INSERT INTO `sequence` (job_id, sequence_id, sequence_name, sequence_enable, tightening_repeat, ng_stop, seq_ok, stop_seq_ok, opt, k_value, offset)";
-        $sql .= " VALUES (:job_id, :sequence_id, :sequence_name, :sequence_enable, :tightening_repeat, :ng_stop, :seq_ok, :stop_seq_ok, :opt, :k_value, :offset);";
-
+    public function copy_seq_by_seq_id($new_temp_seq) {
+        // SQL 查询语句，使用命名占位符
+        $sql = "INSERT INTO `SEQ_lst` 
+                (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, 
+                ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, 
+                accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, 
+                image, message, delay, input, input_signal, output, output_signal, output_durat, 
+                addtion, unscrew_count_switch, unscrew_torque_threshold) 
+                VALUES 
+                (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, 
+                :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, 
+                :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, 
+                :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, 
+                :addtion, :unscrew_count_switch, :unscrew_torque_threshold);";
+        
+        // 准备 SQL 语句
         $statement = $this->db_iDas->prepare($sql);
-        $insertedrecords = 0; 
-        foreach ($new_temp_seq as $seq) {            
-            if ($statement->execute($seq)) {
-                $insertedrecords++;
+        $insertedrecords = 0;
+    
+        // 遍历每一个新的 sequence 数据
+        foreach ($new_temp_seq as $seq) {
+            try {
+                // 确保 $seq 是一个包含正确键名的关联数组
+                if (is_array($seq) && isset(
+                    $seq['JOBID'], $seq['SEQID'], $seq['SEQname'], $seq['type'], $seq['time'],
+                    $seq['act'], $seq['skip'], $seq['seq_repeat'], $seq['timeout'], $seq['ok_seq'], 
+                    $seq['ok_stop'], $seq['countType'], $seq['ok_screw'], $seq['ng_stop'], 
+                    $seq['ng_unscrew'], $seq['interrupt_alarm'], $seq['accu_angle'], $seq['Thread_Calcu'], 
+                    $seq['unscrew_mode'], $seq['unscrew_force'], $seq['unscrew_rpm'], $seq['unscrew_dir'], 
+                    $seq['image'], $seq['message'], $seq['delay'], $seq['input'], $seq['input_signal'], 
+                    $seq['output'], $seq['output_signal'], $seq['output_durat'], $seq['addtion'], 
+                    $seq['unscrew_count_switch'], $seq['unscrew_torque_threshold']
+                )) {
+                    // 执行 SQL 语句，传入关联数组 $seq 作为参数
+                    if ($statement->execute($seq)) {
+                        $insertedrecords++;
+                    } else {
+                        // 如果执行失败，记录错误信息并输出可执行的 SQL 语句
+                        $errorInfo = $statement->errorInfo();
+                        echo "SQL Error: " . $errorInfo[2] . "\n";
+    
+                        // 生成并输出 SQL 语句，方便在 SQLite 中执行
+                        $binded_sql = $this->generate_sql_with_values($sql, $seq);
+                        echo "可执行的 SQL 语句：\n" . $binded_sql . "\n";
+                    }
+                } else {
+                    // 如果数据缺失必要字段，记录错误
+                    echo "缺少必要字段: " . print_r($seq, true);
+                }
+            } catch (PDOException $e) {
+                // 捕获并处理异常
+                echo "PDOException: " . $e->getMessage();
             }
         }
+    
+        // 返回成功插入的记录数
         return $insertedrecords;
-
     }
+    
+    /**
+     * 生成带有绑定值的 SQL 语句，方便调试
+     *
+     * @param string $sql 原始 SQL 查询
+     * @param array $seq 参数数组
+     * @return string 带有绑定值的 SQL 查询
+     */
+    private function generate_sql_with_values($sql, $seq) {
+        // 替换 SQL 中的占位符为实际的值
+        foreach ($seq as $key => $value) {
+            // 使用 PDO 占位符（如 :JOBID）替换为实际的值
+            $sql = str_replace(':' . $key, $this->quote_value($value), $sql);
+        }
+        return $sql;
+    }
+    
+    /**
+     * 安全地将值转换为 SQL 可以识别的格式
+     *
+     * @param mixed $value 值
+     * @return string 转换后的值
+     */
+    private function quote_value($value) {
+        // 如果是字符串，添加引号
+        if (is_string($value)) {
+            return "'" . addslashes($value) . "'";
+        }
+        // 对于整数或布尔值，直接返回
+        return $value;
+    }
+
+    
+    
+    
 
     public function copy_step_by_seq_id($new_temp_step){
 
@@ -223,7 +301,7 @@ class Sequence{
     #用jobid seqid oldseqname 查詢該筆的所有資料
     public function search_old_data($jobid,$seqid,$oldseqname){
 
-        $sql= " SELECT * FROM sequence WHERE job_id = ? AND sequence_id = ? AND sequence_name = ? ";
+        $sql= " SELECT * FROM SEQ_lst WHERE JOBID = ? AND SEQID = ? AND SEQname = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$jobid,$seqid,$oldseqname]);
         $rows = $statement->fetch();
@@ -320,7 +398,7 @@ class Sequence{
     #驗證seq id是否重複
     public function sequence_id_repeat($jobid,$seqid)
     {
-        $sql = "SELECT count(*) as count FROM sequence WHERE 	job_id AND sequence_id = ?";
+        $sql = "SELECT count(*) as count FROM SEQ_lst WHERE JOBID AND SEQID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$jobid,$seqid]);
         $rows = $statement->fetch();
@@ -328,7 +406,7 @@ class Sequence{
         if ($rows['count'] > 0) {
 
             //如果有的話
-            $sql_d = "DELETE FROM step WHERE  job_id = ? AND sequence_id = ? ";
+            $sql_d = "DELETE FROM step WHERE  JOBID = ? AND SEQID = ? ";
             $statement = $this->db_iDas->prepare($sql_d);
             $results_d = $statement->execute([$jobid, $seqid]);
 
@@ -343,7 +421,7 @@ class Sequence{
 
     public function search_stepinfo($jobid,$seqid){
 
-        $sql= " SELECT *  FROM step WHERE job_id = ? AND sequence_id = ? ";
+        $sql= " SELECT *  FROM STEP_lst WHERE JOBID = ? AND SEQID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$jobid,$seqid]);
         
@@ -356,7 +434,7 @@ class Sequence{
     #有的話就刪除唷
     public function del_seq_type($jobid, $newseqid) {
         #查詢資料是否存在
-        $sql = "SELECT COUNT(*) FROM sequence WHERE job_id = ? AND sequence_id = ?";
+        $sql = "SELECT COUNT(*) FROM SEQ_lst WHERE JOBID = ? AND SEQID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$jobid, $newseqid]);
         $count = $statement->fetchColumn();
@@ -366,7 +444,7 @@ class Sequence{
         //die();
         if ($count > 0) {
             #如果資料存在，則刪除
-            $deleteSql = "DELETE FROM sequence  WHERE job_id = ? AND sequence_id = ?";
+            $deleteSql = "DELETE FROM SEQ_lst  WHERE JOBID = ? AND SEQID = ?";
             $deleteStatement = $this->db_iDas->prepare($deleteSql);
             $deleteStatement->execute([$jobid, $newseqid]);
     
@@ -379,7 +457,7 @@ class Sequence{
     public function del_step_type($jobid, $newseqid){
 
         #查詢資料是否存在
-        $sql = "SELECT COUNT(*) FROM step WHERE job_id = ? AND sequence_id = ?";
+        $sql = "SELECT COUNT(*) FROM STEP_lst WHERE JOBID = ? AND SEQID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$jobid, $newseqid]);
         $count = $statement->fetchColumn();
@@ -388,7 +466,7 @@ class Sequence{
           //die();
         if ($count > 0) {
             #如果資料存在，則刪除
-            $delete_step_sql = "DELETE FROM step  WHERE job_id = ? AND sequence_id = ?";
+            $delete_step_sql = "DELETE FROM STEP_lst  WHERE JOBID = ? AND SEQID = ?";
             $deleteStatement = $this->db_iDas->prepare($delete_step_sql);
             $deleteStatement->execute([$jobid, $newseqid]);
     

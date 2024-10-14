@@ -203,8 +203,8 @@ class Job{
 
     public function copy_sequence_by_job_id($new_temp_seq) {
       
-        $sql = "INSERT INTO `sequence` (job_id, sequence_id, sequence_name, sequence_enable, tightening_repeat, ng_stop, seq_ok, stop_seq_ok, opt, k_value, offset)";
-        $sql .= " VALUES (:job_id, :sequence_id, :sequence_name, :sequence_enable, :tightening_repeat, :ng_stop, :seq_ok, :stop_seq_ok, :opt, :k_value, :offset);";
+        $sql = "INSERT INTO `SEQ_lst` (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, image, message, delay, input, input_signal, output, output_signal, output_durat, addtion, unscrew_count_switch, unscrew_torque_threshold)"; 
+        $sql.= "VALUES (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, :addtion, :unscrew_count_switch, :unscrew_torque_threshold);";
         
         
         $statement = $this->db_iDas->prepare($sql);
@@ -218,7 +218,7 @@ class Job{
     }
     
 
-    public function copy_step_by_job_id($new_temp_step){
+    /*public function copy_step_by_job_id($new_temp_step){
         $sql = "INSERT INTO `step` (job_id, sequence_id, step_id, target_option, target_torque, target_angle, target_delaytime, hi_torque, lo_torque, hi_angle, lo_angle, rpm, direction, downshift, threshold_torque, 	downshift_torque,downshift_speed )";
         $sql .= " VALUES (:job_id,:sequence_id,:step_id,:target_option,:target_torque,:target_angle,:target_delaytime,:hi_torque,:lo_torque,:hi_angle,:lo_angle,:rpm,:direction,:downshift,:threshold_torque,:downshift_torque,:downshift_speed )";
         
@@ -231,7 +231,7 @@ class Job{
         }
         return $insertedrecords;
 
-    }
+    }*/
 
 
     #用 $jobid 尋找有沒有對應的資料
@@ -258,7 +258,7 @@ class Job{
 
     public function del_seq_type($new_jobid) {
         #查詢資料是否存在
-        $sql = "SELECT COUNT(*) FROM sequence WHERE job_id = ?";
+        $sql = "SELECT COUNT(*) FROM SEQ_lst WHERE JOBID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$new_jobid]);
         $count = $statement->fetchColumn();
@@ -266,7 +266,7 @@ class Job{
        
         if ($count > 0) {
             #如果資料存在，則刪除
-            $deleteSql = "DELETE FROM sequence  WHERE job_id = ? ";
+            $deleteSql = "DELETE FROM SEQ_lst  WHERE JOBID = ? ";
             $deleteStatement = $this->db_iDas->prepare($deleteSql);
             $deleteStatement->execute([$new_jobid]);
 
@@ -279,7 +279,7 @@ class Job{
 
     public function del_step_type($new_jobid) {
         #查詢資料是否存在
-        $sql = "SELECT COUNT(*) FROM step WHERE job_id = ?";
+        $sql = "SELECT COUNT(*) FROM STEP_lst WHERE JOBID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$new_jobid]);
         $count = $statement->fetchColumn();
@@ -287,7 +287,7 @@ class Job{
        
         if ($count > 0) {
             #如果資料存在，則刪除
-            $deleteSql = "DELETE FROM step  WHERE job_id = ? ";
+            $deleteSql = "DELETE FROM STEP_lst  WHERE JOBID = ? ";
             $deleteStatement = $this->db_iDas->prepare($deleteSql);
             $deleteStatement->execute([$new_jobid]);
 

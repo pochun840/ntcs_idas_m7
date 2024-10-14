@@ -199,8 +199,8 @@ class Jobs extends Controller
                 $old_res = $this->jobModel->search_jobinfo($old_jobid);
 
                 $this->jobModel->del_job_type($new_jobid);
-                //$this->jobModel->del_seq_type($new_jobid);
-                //$this->jobModel->del_step_type($new_jobid);
+                $this->jobModel->del_seq_type($new_jobid);
+                $this->jobModel->del_step_type($new_jobid);
          
                 if(!empty($old_res)){
 
@@ -215,31 +215,52 @@ class Jobs extends Controller
                     $res = $this->jobModel->create_job($jobdata);
                     //用job_id 找出對應的seq && step
                     $select_seq  = $this->jobModel->search_seqinfo($old_jobid); 
-                    $select_step = $this->jobModel->search_stepnfo($old_jobid); 
+                    //$select_step = $this->jobModel->search_stepnfo($old_jobid); 
 
                     if(!empty($select_seq)){
                         $new_temp_seq = array();
                         foreach($select_seq as $key =>$val){
                  
-                            $new_temp_seq[$key]['job_id'] = $new_jobid;
-                            $new_temp_seq[$key]['sequence_id'] = $val['sequence_id'];
-                            $new_temp_seq[$key]['sequence_name'] = $val['sequence_name'];
-                            $new_temp_seq[$key]['sequence_enable'] = $val['sequence_enable'];
-                            $new_temp_seq[$key]['tightening_repeat'] = $val['tightening_repeat'];
-                            $new_temp_seq[$key]['ng_stop'] = $val['ng_stop']; 
-                            $new_temp_seq[$key]['seq_ok'] = $val['seq_ok']; 
-                            $new_temp_seq[$key]['stop_seq_ok'] = $val['stop_seq_ok']; 
-                            $new_temp_seq[$key]['opt'] = $val['opt']; 
-                            $new_temp_seq[$key]['k_value'] = $val['k_value']; 
-                            $new_temp_seq[$key]['offset'] = $val['offset'];
-
+                            $new_temp_seq[$key]['JOBID'] = $new_jobid;
+                            $new_temp_seq[$key]['SEQID'] = $val['SEQID'];
+                            $new_temp_seq[$key]['SEQname'] = $val['SEQname'];
+                            $new_temp_seq[$key]['time'] = $val['time'];
+                            $new_temp_seq[$key]['type'] = $val['type'];
+                            $new_temp_seq[$key]['act'] = $val['act'];
+                            $new_temp_seq[$key]['skip'] = $val['skip']; 
+                            $new_temp_seq[$key]['seq_repeat'] = $val['seq_repeat']; 
+                            $new_temp_seq[$key]['timeout'] = $val['timeout']; 
+                            $new_temp_seq[$key]['ok_seq'] = $val['ok_seq']; 
+                            $new_temp_seq[$key]['ok_stop'] = $val['ok_stop']; 
+                            $new_temp_seq[$key]['countType'] = $val['countType'];
+                            $new_temp_seq[$key]['ok_screw'] = $val['ok_screw'];
+                            $new_temp_seq[$key]['ng_stop'] = $val['ng_stop'];
+                            $new_temp_seq[$key]['ng_unscrew'] = $val['ng_unscrew'];
+                            $new_temp_seq[$key]['interrupt_alarm'] = $val['interrupt_alarm'];
+                            $new_temp_seq[$key]['accu_angle'] = $val['accu_angle'];
+                            $new_temp_seq[$key]['Thread_Calcu'] = $val['Thread_Calcu'];
+                            $new_temp_seq[$key]['unscrew_mode'] = $val['unscrew_mode'];
+                            $new_temp_seq[$key]['unscrew_force'] = $val['unscrew_force'];
+                            $new_temp_seq[$key]['unscrew_rpm'] = $val['unscrew_rpm'];
+                            $new_temp_seq[$key]['unscrew_dir'] = $val['unscrew_dir'];
+                            $new_temp_seq[$key]['image'] = $val['image'];
+                            $new_temp_seq[$key]['message'] = $val['message'];
+                            $new_temp_seq[$key]['delay'] = $val['delay'];
+                            $new_temp_seq[$key]['input'] = $val['input'];
+                            $new_temp_seq[$key]['input_signal'] = $val['input_signal'];
+                            $new_temp_seq[$key]['output'] = $val['output'];
+                            $new_temp_seq[$key]['output_signal'] = $val['output_signal'];
+                            $new_temp_seq[$key]['output_durat'] = $val['output_durat'];
+                            $new_temp_seq[$key]['addtion'] = $val['addtion'];
+                            $new_temp_seq[$key]['unscrew_count_switch'] = $val['unscrew_count_switch'];
+                            $new_temp_seq[$key]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
                             
                         }
 
                         $insertedrecords = $this->jobModel->copy_sequence_by_job_id($new_temp_seq);                
                     }
 
-                    if(!empty($select_step)){
+                    /*if(!empty($select_step)){
                         $new_temp_step = array();
                         
                         foreach($select_step as $key_step =>$val_step){
@@ -264,7 +285,7 @@ class Jobs extends Controller
                         }
                       
                         $res = $this->jobModel->copy_step_by_job_id($new_temp_step);     
-                    }
+                    }*/
                     
                     if($res){
                         $res_msg = $text['Copy']."  ".$text['job_id'].':'. $_POST['new_jobid']."  ".$text['success'];

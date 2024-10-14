@@ -192,6 +192,7 @@ function cound_seq(argument){
     }
 
     if(argument =="new"){
+        //alert('eweee');
         create_seq();
     }
 
@@ -301,7 +302,7 @@ function copy_seq_by_id(){
 
 function create_seq() {
     var job_id = '<?php echo $data['job_id'];?>';    
-    window.location.href = '../public/?url=Sequences/add_seq/' + job_id; 
+    window.location.href = '../public/?url=Sequences/change_seq/' + job_id; 
 
 }
 
