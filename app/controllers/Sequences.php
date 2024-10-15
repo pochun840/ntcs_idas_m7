@@ -184,8 +184,6 @@ class Sequences extends Controller
         }
 
 
-    
-  
         if(isset($_POST['job_id'])){
                           
             // 初始化數據陣列

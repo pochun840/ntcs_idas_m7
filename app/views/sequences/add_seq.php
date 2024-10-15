@@ -360,7 +360,6 @@
         let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
         data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
 
-
         $.ajax({
             url: '?url=Sequences/create_seq',
             type: 'POST',
@@ -369,9 +368,11 @@
             contentType: false, 
             success: function(response) {
                 // 處理成功回應
-                console.log('Success:', response);
-                window.location.href = '../public/?url=Sequences/index/' + job_id; 
-
+                var responseData = JSON.parse(response);
+                console.log(responseData);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    window.location.href = '../public/?url=Sequences/index/' + job_id; 
+                }); 
             },
             error: function(xhr, status, error) {
                 // 處理錯誤
@@ -452,10 +453,11 @@
             contentType: false, 
             success: function(response) {
                 // 處理成功回應
-                console.log('Success:', response);
-
-                window.location.href = '../public/?url=Sequences/index/' + job_id; 
-
+                var responseData = JSON.parse(response);
+                console.log(responseData);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    window.location.href = '../public/?url=Sequences/index/' + job_id; 
+                }); 
             },
             error: function(xhr, status, error) {
                 // 處理錯誤

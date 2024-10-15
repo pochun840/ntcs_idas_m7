@@ -347,50 +347,7 @@ function edit_seq(seqid) {
 
 }
 
-function edit_seq_save(){
 
-    var jobid = '<?php echo $data['job_id']?>';
-    var seq_name = document.getElementById("edit_seq_name").value;
-    var tightening_repeat = document.getElementById("edit_tighten_repeat").value;
-    var seq_ok = document.querySelector('input[name="edit_seq_ok"]:checked').value;
-    var stop_seq_ok = document.querySelector('input[name="edit_stop_seq_ok"]:checked').value;
-    var k_value = document.getElementById("edit_K").value;
-    var offset = document.getElementById("edit_offset").value;
-    var ng_stop = document.getElementById('edit_ng_stop').value;
-    var opt_val = document.querySelector('input[name="edit_opt_option"]:checked').value;
-    
-    
-    if(seq_name){
-        $.ajax({
-            url: "?url=Sequences/edit_seq",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-                seqid: seqid,
-                seq_name: seq_name,
-                tightening_repeat: tightening_repeat,
-                seq_ok:seq_ok,
-                stop_seq_ok:stop_seq_ok,
-                k_value: k_value,
-                offset: offset,
-                ng_stop: ng_stop,
-                opt_val: opt_val
-
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                });
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-    }
-
-
-}
 
 function getSelectedValue(name, defaultValue = 0) {
     const selectedOption = document.querySelector(`input[name="${name}"]:checked`);
@@ -402,8 +359,6 @@ function updateValue(element){
     var type_value = element.checked ? 1 : 0;
     var seqid = element.getAttribute('data-sequence-id');
 
-
-    
     if(seqid){
         $.ajax({
             url: "?url=Sequences/check_seq_enable", 
