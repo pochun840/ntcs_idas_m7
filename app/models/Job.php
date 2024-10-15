@@ -178,7 +178,7 @@ class Job{
     #查詢job_id對應的seq
     public function search_seqinfo($old_jobid){
 
-        $sql= " SELECT *  FROM sequence WHERE job_id = ? ";
+        $sql= " SELECT *  FROM SEQ_lst WHERE JOBID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$old_jobid]);
         
