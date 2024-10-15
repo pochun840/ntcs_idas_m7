@@ -40,11 +40,11 @@
                             <tbody style="font-size: 2vmin;text-align: center;">
                                 <?php foreach($data['sequences'] as $key =>$val) {?>
                                     <tr>
-                                        <td class="seq-id"> <?php echo $val['sequence_id'];?></td>
-                                        <td class="seq-name"><?php echo $val['sequence_name'];?></td>
-                                        <td><?php echo $val['tightening_repeat'];?></td>
+                                        <td class="seq-id"> <?php echo $val['SEQID'];?></td>
+                                        <td class="seq-name"><?php echo $val['SEQname'];?></td>
+                                        <td><?php echo $val['seq_repeat'];?></td>
                                         <td>
-                                            <?php if($val['sequence_enable']== 1){?>
+                                            <?php if($val['act']== 1){?>
                                                 <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
                                             <?php }else{?>
                                                 <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">
@@ -53,7 +53,7 @@
                                         <td><img src="./img/btn_up.png"   onclick="MoveUp(this);"></td>
                                         <td><img src="./img/btn_down.png" onclick="MoveDown(this);"></td>
                                         <td><?php echo $val['total_step'];?></td>
-                                        <?php $url ='?url=Step/index/'.$data['job_id']."/".$val['sequence_id'];?>
+                                        <?php $url ='?url=Step/index/'.$data['job_id']."/".$val['SEQID'];?>
                                         <td><img id="Add_Step" src="./img/btn_plus.png" onclick="location.href='<?php echo $url;?>'"></td>
                                     </tr>
                                 <?php  } ?>                   
@@ -75,256 +75,12 @@
         </div>
 
         <div class="buttonbox">
-        <?php $status = count($data['sequences']) >=  50 ? 'disabled' : ''; ?>
+        <?php //$status = count($data['sequences']) >=  50 ? 'disabled' : ''; ?>
 
-            <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_job('new');" <?php echo $status;?> >
-            <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_job('edit');">
-            <input id="S5" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="cound_job('copy');" <?php echo $status;?> >
-            <input id="S4" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="cound_job('del');">
-        </div>
-    </div>
-
-    <!-- Add New Sequence -->
-    <div id="newseq" class="modal">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto">
-                <header class="w3-container modal-header">
-                    <span onclick="hideElementById('newseq');"
-                        class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px;font-size: 4.5vmin; margin: 3px">&times;</span>
-                    <h3 id='modal_title'><?php echo $text['new_seq'];?></h3>
-                </header>
-                <div class="scrollbar-newseq" id="style-newseq">
-                    <div class="newseq-force-overflow">
-                        <div class="modal-body" style="font-size: 14px">
-                            <form id="new_seq_form" style="padding-left: 5%">
-                                <div class="row">
-                                    <div for="job-id" class="col-6 t1"><?php echo $text['job_id'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="job_id" maxlength="" value ="<?php echo $data['job_id'];?>" disabled>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="seq-id" class="col-6 t1"><?php echo $text['seq_id'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="seq_id" maxlength="" value="<?php echo $data['seq_id'];?>" disabled>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="seq-name" class="col-6 t1"><?php echo $text['seq_name'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="seq_name" maxlength="" >
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="Tighten-Repeat" class="col-6 t1"><?php echo $text['tighten_repeat'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="tighten_repeat" maxlength="" >
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="OK_Sequence" class="col-6 t1"><?php echo $text['OK_Sequence'];?> :</div>
-                                    <div class="col t2" >
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="seq_ok" id="seq_off" value="0" >
-                                        <label class="form-check-label" for="seq_off"> <?php  echo $text['OFF_text']; ?></label>
-                                        </div>
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="seq_ok" id="seq_ok" value="1">
-                                        <label class="form-check-label" for="seq_ok"><?php  echo $text['ON_text']; ?></label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div for="OK_Sequence_Stop" class="col-6 t1"><?php echo $text['OK_Sequence_Stop'];?> :</div>
-                                    <div class="col t2" >
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="stop_seq_ok" id="stop_seq_ok_off" value="0" >
-                                        <label class="form-check-label" for="stop_seq_ok_off"> <?php  echo $text['OFF_text']; ?></label>
-                                        </div>
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="stop_seq_ok" id="stop_seq_ok_ok" value="1">
-                                        <label class="form-check-label" for="stop_seq_ok_ok"><?php  echo $text['ON_text']; ?></label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div for="k(30%-300%)" class="col-6 t1">K (30%-300%):</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="K" maxlength="" >
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="offset" class="col-6 t1"><?php echo $text['Joint_Offset'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="offset" maxlength="" >
-                                    </div>
-                                </div>
-                              
-                                <div class="row">
-                                    <div for="NG-stop" class="col-6 t1"><?php echo $text['NG_Stop'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <select id="ng_stop" class="col custom-file">
-                                                <option value="-1"><?php echo "OFF";?></option>
-                                            <?php for($i=0;$i<=9;$i++) {?>
-                                                <option value="<?php echo $i;?>"><?php echo $i;?></option>
-                                            <?php } ?> 
-                                        </select>
-                                    </div>
-                                </div>
-                            
-                                
-                                <div class="row">
-                                    <div for="OPT" class="col-6 t1"><?php echo $text['opt'];?> :</div>
-                                    <div class="col t2" >
-                    			      	<div class=" col-4 form-check form-check-inline">
-                    					  <input class="form-check-input" type="radio" name="opt_option" id="OPT_OFF" value="0">
-                    					  <label class="form-check-label" for="OPT_OFF"><?php echo $text['switch_off'];?></label>
-                    					</div>
-                    					<div class="form-check form-check-inline">
-                    					  <input class="form-check-input" type="radio" name="opt_option" id="OPT_ON" value="1" >
-                    					  <label class="form-check-label" for="OPT_ON"><?php echo $text['switch_on'];?></label>
-                    					</div>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>    
-                
-
-                <div class="modal-footer justify-content-center">
-                <button id="" class="button-modal" onclick="saveseq();"><?php echo $text['save'];?></button>
-                <button id="" class="button-modal" onclick="hideElementById('newseq');"  class="closebtn"><?php echo $text['close'];?></button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- edit Sequence -->
-    <div id="editseq" class="modal">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto">
-                <header class="w3-container modal-header">
-                    <span onclick="hideElementById('editseq');"
-                        class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px;font-size: 4.5vmin; margin: 3px">&times;</span>
-                    <h3 id='modal_title'><?php echo $text['edit_seq'];?></h3>
-                </header>
-                <div class="scrollbar-newseq" id="style-newseq">
-                    <div class="newseq-force-overflow">
-                        <div class="modal-body" style="font-size: 14px">
-                            <form id="new_seq_form" style="padding-left: 5%">
-                                <div class="row">
-                                    <div for="job-id" class="col-6 t1"><?php echo $text['job_id'];?></div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="job_id" maxlength="" value ="<?php echo $data['job_id'];?>" >
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="seq-id" class="col-6 t1"><?php echo $text['seq_id'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="old_seqid" maxlength="" value=""  disabled>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="seq-name" class="col-6 t1"><?php echo $text['seq_name'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="edit_seq_name" maxlength="" >
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="Tighten-Repeat" class="col-6 t1"><?php echo $text['tightening_repeat'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="edit_tighten_repeat" maxlength="" >
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div for="OK_Sequence" class="col-6 t1"><?php echo $text['OK_Sequence'];?> :</div>
-                                    <div class="col t2" >
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="edit_seq_ok" id="seq_off" value="0" >
-                                        <label class="form-check-label" for="seq_off"> <?php  echo $text['OFF_text']; ?></label>
-                                        </div>
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="edit_seq_ok" id="seq_ok" value="1">
-                                        <label class="form-check-label" for="seq_ok"><?php  echo $text['ON_text']; ?></label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div for="OK_Sequence_Stop" class="col-6 t1"><?php echo $text['OK_Sequence_Stop'];?> :</div>
-                                    <div class="col t2" >
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="edit_stop_seq_ok" id="stop_seq_ok_off" value="0" >
-                                        <label class="form-check-label" for="stop_seq_ok_off"> <?php  echo $text['OFF_text']; ?></label>
-                                        </div>
-
-                                        <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="edit_stop_seq_ok" id="stop_seq_ok_ok" value="1">
-                                        <label class="form-check-label" for="stop_seq_ok_ok"><?php  echo $text['ON_text']; ?></label>
-                                        </div>
-                                    </div>
-                                </div>
-
-
-                                
-                                <div class="row">
-                                    <div for="k(30%-300%)" class="col-6 t1">K (30%-300%):</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="edit_K" maxlength="" >
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div for="offset" class="col-6 t1"><?php echo $text['Joint_Offset'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <input type="text" class="form-control input-ms" id="edit_offset" maxlength="" >
-                                    </div>
-                                </div>
-                               
-                                <div class="row">
-                                    <div for="NG-stop" class="col-6 t1"><?php echo $text['NG_Stop'];?>:</div>
-                                    <div class="col-4 t2">
-                                        <select id="edit_ng_stop" class="col custom-file">
-                                            <?php for($i=0;$i<=9;$i++) {?>
-                                            <option value="<?php echo $i;?>"><?php echo $i;?></option>
-                                            <?php } ?>    
-                                        </select>
-                                    </div>
-                                </div>
-                               
-                                
-                                <div class="row">
-                                    <div for="OPT" class="col-6 t1"><?php echo $text['opt'];?>:</div>
-                                    <div class="col t2" >
-                    			      	<div class=" col-4 form-check form-check-inline">
-                    					  <input class="form-check-input" type="radio" name="edit_opt_option" id="OPT_ON" value="0">
-                    					  <label class="form-check-label" for="OPT_ON"><?php echo $text['switch_on'];?></label>
-                    					</div>
-                    					<div class="form-check form-check-inline">
-                    					  <input class="form-check-input" type="radio" name="edit_opt_option" id="OPT_OFF" value="1">
-                    					  <label class="form-check-label" for="OPT_OFF"><?php echo $text['switch_off'];?></label>
-                    					</div>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>    
-                <div class="modal-footer justify-content-center">
-                    <button id="" class="button-modal" onclick="edit_seq_save();"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('editseq');"  class="closebtn"><?php echo $text['close'];?></button>
-                </div>
-            </div>
+            <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_seq('new');" <?php //echo $status;?> >
+            <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_seq('edit');">
+            <input id="S5" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="cound_seq('copy');" <?php //echo $status;?> >
+            <input id="S4" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="cound_seq('del');">
         </div>
     </div>
 
@@ -413,7 +169,7 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 }
-function cound_job(argument){
+function cound_seq(argument){
     var table = document.getElementById('seq_table');
     var selectedRow = table.querySelector('.selected');  
     var selectedRowData = selectedRow ? selectedRow.cells[0].innerText : null;
@@ -444,12 +200,12 @@ function cound_job(argument){
 
 var rowInfoArray = [];
 <?php foreach($data['sequences'] as $key =>$val) {?>
-        var sequenceId = "<?php echo $val['sequence_id'];?>";
-        var sequenceName = "<?php echo $val['sequence_name'];?>";
+        var SEQID = "<?php echo $val['SEQID'];?>";
+        var SEQname = "<?php echo $val['SEQname'];?>";
         
         var rowInfo = {
-            sequence_id: sequenceId,
-            sequence_name: sequenceName
+            SEQID: SEQID,
+            SEQname: SEQname
         };
         
         rowInfoArray.push(rowInfo);
@@ -577,70 +333,10 @@ function delete_seqid(seqid){
 }
 
 function create_seq() {
-    // 帶入預設值
-    document.getElementById('newseq').style.display = 'block';
-    document.getElementById('tighten_repeat').value = 1;
-    document.getElementById('seq_off').checked = true;
-    document.getElementById('K').value = 100;
-    document.getElementById('stop_seq_ok_off').checked = true;
-    document.getElementById('seq_off').checked = true;
-    document.getElementById('OPT_OFF').checked = true;
-    document.getElementById('offset').value = 0;
-    saveseq();
+    var job_id = '<?php echo $data['job_id'];?>';    
+    window.location.href = '../public/?url=Sequences/variation/' + job_id; 
 
 }
-
-function saveseq(){
-
-    var jobid = '<?php echo $data['job_id']?>';
-    var seqid = '<?php echo $data['seq_id']?>';
-    var seq_name = document.getElementById("seq_name").value;
-    var tighten_repeat = document.getElementById("tighten_repeat").value;
- 
-    var ng_stop = document.getElementById('ng_stop').value;
-
-    var seqElement = document.querySelector('input[name="seq_ok"]:checked');
-    var seq_ok = seqElement ? seqElement.value : null;
-
-    var seq_stop_Element = document.querySelector('input[name="stop_seq_ok"]:checked');
-    var stop_seq_ok = seq_stop_Element ? seq_stop_Element.value : null;
-
-    var opt_val = getSelectedValue('opt_option', null);
-    var k_value = document.getElementById("K").value;
-    var offset = document.getElementById("offset").value;
-
-    if(seq_name){
-        $.ajax({
-            url: "?url=Sequences/create_seq",
-            method: "POST",
-            data: { 
-                jobid: jobid,
-                seqid: seqid,
-                seq_name: seq_name,
-                tighten_repeat: tighten_repeat,
-                ng_stop: ng_stop,
-                seq_ok:seq_ok,
-                stop_seq_ok:stop_seq_ok,
-                opt_val: opt_val,
-                k_value: k_value,
-                offset: offset
-
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });
-
-    }
-
-}
-
 
 
 function edit_seq(seqid) {

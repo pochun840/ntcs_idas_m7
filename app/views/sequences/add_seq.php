@@ -165,10 +165,7 @@
                             <div class="col-3">Angle Calculation (Step):</div>
                             <div class="col-9">
                                 <?php if($data['type'] =="edit"){
-                                    $digits = str_split($data['sequences']['Thread_Calcu']);
-                                    $digits_string = implode(',', $digits);
-                                    $positions = explode(',', $digits_string);
-                                    
+                                    $digits = str_split($data['sequences']['Thread_Calcu']);                              
                                 }else{
 
 
@@ -178,11 +175,9 @@
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>"
                                             <?php 
-                                            // 檢查當前的 $i 是否在 $positions 陣列中，如果在則加上 'checked' 屬性
-                                            if(!empty($positions)){
-                                                if (in_array($i, $positions)) {
-                                                    echo 'checked';
-                                                }
+                                            // 使用位運算來檢查第 i 位是否為 1
+                                            if (($digits & (1 << ($i - 1))) !== 0) {
+                                                echo 'checked';
                                             }
                                             ?>>
                                         <label class="form-check-label" for="Thread_Calcu_<?php echo $i; ?>"><?php echo $i; ?></label>
@@ -467,20 +462,18 @@
 
     }
 
-
-
-
     function getCheckboxValue() {
-        var res = [];
+        var sum = 0; //
         for (var i = 1; i <= 5; i++) {
             var checkbox = document.getElementById("Thread_Calcu_" + i);
             if (checkbox.checked) {
-                res.push(checkbox.value);
-            }
+                sum |= (1 << (i - 1)); 
+            }  
         }
-
-        return res.join(","); 
+        alert(sum.toString(2)); 
+        return sum; 
     }
+
   
 </script>
 

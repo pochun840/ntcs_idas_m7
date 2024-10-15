@@ -400,9 +400,6 @@ class Sequences extends Controller
         if(isset($_POST['jobid'])){
             $jobid = $_POST['jobid'];
             $rowInfoArray = $_POST['rowInfoArray'];
-
-
-
             if(!empty($rowInfoArray)){
                 $new_info = array();
                 $index = 1;
@@ -432,6 +429,8 @@ class Sequences extends Controller
         if (empty($job_id)) {
             $job_id = 1;
         }
+
+        $isMobile = $this->isMobileCheck();
     
         // 如果沒有提供 seq_id，則視為新增，並設為空值
         if (empty($seq_id)) {
@@ -464,6 +463,13 @@ class Sequences extends Controller
             'seq_id' => $seq_id,
             'type' => $type
         );
+
+        // if($isMobile){
+        //     echo $this->view('sequences/add_seq_m', $data);
+        // }else{
+        //     echo $this->view('sequences/add_seq', $data);
+        // }
+
         echo $this->view('sequences/add_seq', $data);
     }
         
