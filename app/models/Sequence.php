@@ -361,17 +361,17 @@ class Sequence{
     public function swapupdate($jobid, $rowInfoArray,$new_info) {
         $temp = array();
         foreach ($rowInfoArray as $k_s => $v_s) {
-            $sql = "SELECT sequence_id FROM sequence WHERE job_id = ? AND sequence_name = ? ";
+            $sql = "SELECT SEQID FROM SEQ_lst WHERE JOBID = ? AND SEQname = ? ";
             $statement = $this->db_iDas->prepare($sql);
-            $statement->execute([$jobid, $v_s['sequence_name']]);
+            $statement->execute([$jobid, $v_s['SEQname']]);
             $result = $statement->fetch(PDO::FETCH_ASSOC);
             
             if ($result) {
                 $new_val = 'New_Value'.($k_s + 1);
-                $update_sql = "UPDATE sequence SET sequence_id = ? WHERE job_id = ? AND sequence_name = ? ";
+                $update_sql = "UPDATE SEQ_lst SET SEQID = ? WHERE JOBID = ? AND SEQname = ? ";
 
                 $update_statement = $this->db_iDas->prepare($update_sql);
-                $update_statement->execute([$new_val, $jobid, $v_s['sequence_name']]);
+                $update_statement->execute([$new_val, $jobid, $v_s['SEQname']]);
 
 
                 $rows_count = $update_statement->rowCount();
@@ -379,15 +379,15 @@ class Sequence{
                     $new_val = 'New_Value'.($k_s + 1);
                     $updated_sequence_id = preg_replace('/[^0-9]/', '', $new_val);
                     
-                    $update_id_sql = "UPDATE sequence SET sequence_id = ? WHERE job_id = ? AND sequence_name = ? ";
+                    $update_id_sql = "UPDATE SEQ_lst SET SEQID = ? WHERE JOBID = ? AND SEQname = ? ";
                     $update_id_statement = $this->db_iDas->prepare($update_id_sql);
-                    $update_id_statement->execute([$updated_sequence_id, $jobid, $v_s['sequence_name']]);                  
+                    $update_id_statement->execute([$updated_sequence_id, $jobid, $v_s['SEQname']]);                  
                 }
 
             }
 
             //最終再次檢查 強制把 欄位sequence_id 不是數字的 通通移除
-            $force_update_sql = "UPDATE sequence SET sequence_id = CAST(REPLACE(sequence_id, 'New_Value', '') AS UNSIGNED) WHERE job_id =  ? ";
+            $force_update_sql = "UPDATE SEQ_lst SET SEQID = CAST(REPLACE(SEQID, 'New_Value', '') AS UNSIGNED) WHERE JOBID =  ? ";
             $force_update_statement = $this->db_iDas->prepare($force_update_sql);
             $force_update_statement->execute([$jobid]);
             
@@ -397,34 +397,33 @@ class Sequence{
 
         if(!empty($new_info)){
 
-            //var_dump($new_info);die();
             foreach($new_info as $key =>$val){
-                $new_val = $key; // 使用陣列的鍵作為 new_val
-                $sequence_id = $val['sequence_id'];
+                $new_val = $key; 
+                $sequence_id = $val['SEQID'];
 
-                $sql_select = "SELECT count(*) FROM step WHERE job_id = :jobid AND sequence_id = :sequence_id";
+                $sql_select = "SELECT count(*) FROM STEP_lst WHERE job_id = :jobid AND SEQID = :SEQID";
                 $select_statement = $this->db_iDas->prepare($sql_select);
 
                 $select_statement->bindValue(':jobid', $jobid);
-                $select_statement->bindValue(':sequence_id', $sequence_id);
+                $select_statement->bindValue(':SEQID', $sequence_id);
     
                 // 執行查詢
                 $select_statement->execute();
                 $count = $select_statement->fetchColumn();
                 if ($count > 0) {
 
-                    $sql_step = "UPDATE step SET sequence_id = '".$key."' WHERE job_id = '".$jobid."' AND sequence_id = '". $val['sequence_id']."' ";
+                    $sql_step = "UPDATE STEP_lst SET SEQID = '".$key."' WHERE JOBID = '".$jobid."' AND SEQID = '". $val['SEQID']."' ";
                     $update_statement = $this->db_iDas->prepare($sql_step);
     
                     $update_statement->execute();
 
 
-                    $sql_step = "UPDATE step SET sequence_id = :new_val WHERE job_id = :jobid AND sequence_id = :sequence_id";
+                    $sql_step = "UPDATE STEP_lst SET SEQID  = :new_val WHERE JOBID = :JOBID AND SEQID = :SEQID";
                     $update_statement = $pdo->prepare($sql_step);
                     
                     $update_statement->bindValue(':new_val', $key, PDO::PARAM_INT);
-                    $update_statement->bindValue(':jobid', $jobid, PDO::PARAM_INT);
-                    $update_statement->bindValue(':sequence_id', $sequence_id, PDO::PARAM_INT);
+                    $update_statement->bindValue(':JOBID', $jobid, PDO::PARAM_INT);
+                    $update_statement->bindValue(':SEQID', $sequence_id, PDO::PARAM_INT);
         
                     $update_statement->execute();
 

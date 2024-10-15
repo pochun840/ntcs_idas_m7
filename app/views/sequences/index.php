@@ -205,12 +205,12 @@ function cound_seq(argument){
 
 var rowInfoArray = [];
 <?php foreach($data['sequences'] as $key =>$val) {?>
-        var sequenceId = "<?php echo $val['SEQID'];?>";
-        var sequenceName = "<?php echo $val['SEQname'];?>";
+        var SEQID   = "<?php echo $val['SEQID'];?>";
+        var SEQname = "<?php echo $val['SEQname'];?>";
         
         var rowInfo = {
-            sequence_id: sequenceId,
-            sequence_name: sequenceName
+            SEQID: SEQID,
+            SEQname: SEQname
         };
         
         rowInfoArray.push(rowInfo);
@@ -406,6 +406,9 @@ function sendRowInfoArray() {
         jobid: jobid,
         rowInfoArray: rowInfoArray
     };
+
+    console.log(dataToSend);
+
 
     $.ajax({
         url: "?url=Sequences/adjustment_order", 
