@@ -30,7 +30,7 @@ class Step extends Controller
         $direction = $this->MiscellaneousModel->details('reverse_direction');
         $unit_arr  = $this->MiscellaneousModel->details('torque_unit');
         $seqinfo   = $this->sequenceModel->search_seqinfo($job_id,$seq_id);
-        $check     = $this->stepModel->check_step_target($job_id,$seq_id);
+       
 
         $res_device = $this->SettingModel->GetControllerInfo();
         if(!empty($res_device)){
@@ -44,11 +44,7 @@ class Step extends Controller
             $stepid_new = count($step) + 1 ;
         }
 
-        if(!empty($check[0]['count_records'])){
-            $check_step_torque = 1;
-        }else{
-            $check_step_torque = '';
-        }
+       
 
         
         $data = array(
@@ -62,16 +58,10 @@ class Step extends Controller
             'stepid_new' => $stepid_new,
             'unit_arr' => $unit_arr,
             'unit' => $unit,
-            'check' => $check,
             'seq_id' => $seq_id,
-            'unit_name' => $unit_name,
-            'check_step_torque' => $check_step_torque,
-            'check' => $check
+            'unit_name' => $unit_name
 
         );
-
-      
-
         if($isMobile){
             $this->view('step/index_m', $data);
         }else{
@@ -105,11 +95,6 @@ class Step extends Controller
             $threshold_torque = isset($_POST['threshold_torque'])? intval($_POST['threshold_torque']) : 0;
             $downshift_torque = isset($_POST['downshift_torque'])? intval($_POST['downshift_torque']) : 0;
             $downshift_speed = isset($_POST['downshift_speed'])? intval($_POST['downshift_speed']) : 100;
-
-            #同一個step 只能有一個Target Torque
-            $check = $this->stepModel->check_step_target($jobid,$seqid);
-            $check = intval($check[0]['count_records']);
-
             
 
 
@@ -489,55 +474,71 @@ class Step extends Controller
             $step_count = $this->stepModel->countstep($jobid, $seqid);
             $step_count = intval($step_count);
 
-            if($step_count >= 4) {
-                echo "The maximum number of steps has been reached, unable to continue copying steps";
-                return;
-            }
+              
+            $old_res= $this->stepModel->getStepNo($jobid,$seqid,$stepid);
+      
+            if(!empty($old_res)){
+                $step_data = array(
+                    'JOBID'                    => $jobid,
+                    'SEQID'                    => $seqid,
+                    'StepSelect'               => $stepid_new,
+                    'STEPname'                 => $old_res[0]['STEPname'],
+                    'type'                     => $old_res[0]['type'],
+                    'time'                     => $old_res[0]['time'],
+                    'act'                      => $old_res[0]['act'],
+                    'StepSwitch'               => $old_res[0]['StepSwitch'],
+                    'StepRPM'                  => $old_res[0]['StepRPM'],
+                    'StepOption'               => $old_res[0]['StepOption'],
+                    'StepTime'                 => $old_res[0]['StepTime'],
+                    'StepAngle'                => $old_res[0]['StepAngle'],
+                    'StepTorque'               => $old_res[0]['StepTorque'],
+                    'StepDirection'            => $old_res[0]['StepDirection'],
+                    'StepDelay'                => $old_res[0]['StepDelay'],
+                    'StepMoniByWin'            => $old_res[0]['StepMoniByWin'],
+                    'StepLimiHi'               => $old_res[0]['StepLimiHi'],
+                    'StepLimiLo'               => $old_res[0]['StepLimiLo'],
+                    'StepHiAngle'              => $old_res[0]['StepHiAngle'],
+                    'StepLoAngle'              => $old_res[0]['StepLoAngle'],
+                    'StepHiTorque'             => $old_res[0]['StepHiTorque'],
+                    'StepLoTorque'             => $old_res[0]['StepLoTorque'],
+                    'StepAccelerateOffset'     => $old_res[0]['StepAccelerateOffset'],
+                    'StepAccelerateOffsetSign' => $old_res[0]['StepAccelerateOffsetSign'],
+                    'StepEnableTorqueOffset'   => $old_res[0]['StepEnableTorqueOffset'],
+                    'StepTorqueOffset'         => $old_res[0]['StepTorqueOffset'],
+                    'StepTorqueOffsetSign'     => $old_res[0]['StepTorqueOffsetSign'],
+                    'StepEnableDownShift'      => $old_res[0]['StepEnableDownShift'],
+                    'StepTorqueDownShift'      => $old_res[0]['StepTorqueDownShift'],
+                    'StepRPMDownShift'         => $old_res[0]['StepRPMDownShift'],
+                    'StepEnableThreshold'      => $old_res[0]['StepEnableThreshold'],
+                    'StepTorqueTS'             => $old_res[0]['StepTorqueTS'],
+                    'StepReTry'                => $old_res[0]['StepReTry'],
+                    'StepUnScrew'              => $old_res[0]['StepUnScrew'],
+                    'StepReTryTorq'            => $old_res[0]['StepReTryTorq'],
+                    'StepReTryAngl'            => $old_res[0]['StepReTryAngl'],
+                    'StepAngleRecord'          => $old_res[0]['StepAngleRecord'],
+                    'StepAutoDetectAngle'      => $old_res[0]['StepAutoDetectAngle'],
+                    'InterruptAlarm'           => $old_res[0]['InterruptAlarm'],
+                    'OverAngleStop'            => $old_res[0]['OverAngleStop'],
 
-            #檢查被複製的那個step 是不是  Target Torque
-            $check = $this->stepModel->check_copy_step($jobid,$seqid,$stepid);
-            $check = intval($check[0]['target_option']);
-            if($check == 0 ){
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['check_step_target'] );
+                );
 
-            }else{
-                $old_res= $this->stepModel->getStepNo($jobid,$seqid,$stepid);
-                if(!empty($old_res)){
-                    $jobdata = array(
-                        'job_id'           => $jobid,
-                        'sequence_id'      => $seqid,
-                        'step_id'          => $stepid_new,
-                        'target_option'    => $old_res[0]['target_option'],
-                        'target_torque'    => $old_res[0]['target_torque'],
-                        'target_angle'     => $old_res[0]['target_angle'],
-                        'target_delaytime' => $old_res[0]['target_delaytime'],
-                        'hi_torque'        => $old_res[0]['hi_torque'],
-                        'lo_torque'        => $old_res[0]['lo_torque'],
-                        'hi_angle'         => $old_res[0]['hi_angle'],
-                        'lo_angle'         => $old_res[0]['lo_angle'],
-                        'rpm'              => $old_res[0]['rpm'],
-                        'direction'        => $old_res[0]['direction'],
-                        'downshift'        => $old_res[0]['downshift'],
-                        'threshold_torque' => $old_res[0]['threshold_torque'],
-                        'downshift_torque' => $old_res[0]['downshift_torque'],
-                        'downshift_speed'  => $old_res[0]['downshift_speed']
-                    );
-    
-                    $mode = "copy"; 
-                    $res = $this->stepModel->create_step($mode,$jobdata);
-
-                    if($res){
-                        $res_type = 'Success';
-                        $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['success'];
-                        $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
-                    }else{
-                        $res_type = 'Error';
-                        $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['fail'];
-                        $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
-                    }
         
+
+
+                $res = $this->stepModel->create_step($step_data);
+                if($res){
+                    $res_type = 'Success';
+                    $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['success'];
+                    $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+                }else{
+                    $res_type = 'Error';
+                    $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['fail'];
+                    $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
                 }
+
+
             }
+          
         }
 
     }
@@ -590,5 +591,35 @@ class Step extends Controller
         }
         
     }
+
+    public function variation($job_id = null, $seq_id = null) {
+
+        $job_id = $job_id ?? $_GET['job_id'] ?? null;
+        $seq_id = $seq_id ?? $_GET['seq_id'] ?? null;
+    
+        if (!empty($job_id) && !empty($seq_id)) {
+            $job_id = htmlspecialchars($job_id);
+            $seq_id = htmlspecialchars($seq_id);
+           
+        }else {
+            
+        }
+
+        $res = $this->stepModel->getStep($job_id, $seq_id);
+        $StepSelect = $res[0]['StepSelect']+1;
+    
+        $step = $res[0];
+        $data = array(
+            'step' => $step,
+            'JOBID' => $job_id,
+            'SEQID' => $seq_id,
+            'StepSelect' => $StepSelect, 
+            'type' => 'new'
+        );
+    
+
+        echo $this->view('step/add_step',$data);
+    }
+
 
 }
