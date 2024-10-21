@@ -66,25 +66,30 @@ class Steptcc{
 
 
 
-
     #透過 job_id 及 seq_id 及 step_id 刪除對應的資料
-    public function delete_step_id($jobid,$seqid,$stepid){
+    public function delete_step_id($jobid, $seqid, $stepid) {
 
-        $sql= " DELETE FROM STEP_lst WHERE job_id = ? AND sequence_id = ?  AND step_id = ? ";
+        $sql = "DELETE FROM STEP_lst WHERE JOBID = ? AND SEQID = ? AND StepSelect = ?";
         $statement = $this->db_iDas->prepare($sql);
-        $results = $statement->execute([$jobid, $seqid,$stepid]);
-
-
-        if ($stepid != 4) {
-            $sql_update = "UPDATE step SET step_id = step_id - 1 WHERE job_id = ? AND sequence_id = ? AND step_id > ?";
+        
+        $results = $statement->execute([$jobid, $seqid, $stepid]);
+    
+        if ($results) {
+            $sql_update = "UPDATE STEP_lst SET StepSelect = StepSelect - 1 WHERE JOBID = ? AND SEQID = ? AND StepSelect > ?";
             $statement_update = $this->db_iDas->prepare($sql_update);
-            $statement_update->execute([$jobid, $seqid, $stepid]);
-        }
             
+            if ($statement_update) {
+                $statement_update->execute([$jobid, $seqid, $stepid]);
+            } else {
+                echo "Failed to prepare update statement: " . implode(", ", $this->db_iDas->errorInfo());
+            }
+        } else {
+            echo "Failed to execute delete statement: " . implode(", ", $statement->errorInfo());
+        }
+    
         return $results;
-
-
     }
+    
 
 
     public function create_step($step_data) {
