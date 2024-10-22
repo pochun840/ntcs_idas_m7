@@ -292,13 +292,13 @@
     
     // 新增 sequence
     function save_sequence() {
-       
+        let data = new FormData();
         let job_id = document.getElementById("job_id").value;
         let seq_id = document.getElementById("seq_id").value;
         let SEQname = document.getElementById("SEQname").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
 
-        let data = new FormData();
+
         data.append("job_id", job_id);
         data.append("SEQID", seq_id);
         data.append("SEQname", SEQname);

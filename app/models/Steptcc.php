@@ -216,7 +216,7 @@ class Steptcc{
     public function swapupdate($jobid,$rowInfoArray){
         $temp = array();
         foreach ($rowInfoArray as $k_s => $v_s) {
-            $sql = "SELECT step_id FROM step WHERE job_id = ? AND sequence_id = ? ";
+            $sql = "SELECT StepSelect FROM STEP_lst WHERE job_id = ? AND sequence_id = ? ";
             $statement = $this->db_iDas->prepare($sql);
             $statement->execute([$jobid, $v_s['sequence_id']]);
             $result = $statement->fetch(PDO::FETCH_ASSOC);
@@ -225,7 +225,7 @@ class Steptcc{
             if ($result){
                 
                 $new_val = 'New_Value'.($k_s + 1);
-                $update_sql = "UPDATE step SET step_id = ? WHERE job_id = ? AND sequence_id = ? AND step_id = ?";
+                $update_sql = "UPDATE STEP_lst SET StepSelect  = ? WHERE job_id = ? AND sequence_id = ? AND StepSelect  = ?";
                 $update_statement = $this->db_iDas->prepare($update_sql);
                 $update_statement->execute([$new_val, $jobid, $v_s['sequence_id'], $v_s['step_id']]);
                 $rows_count = $update_statement->rowCount();
@@ -234,19 +234,19 @@ class Steptcc{
                     $new_val = 'New_Value'.($k_s + 1);
                     $updated_step_id = preg_replace('/[^0-9]/', '', $new_val);
                     
-                    $update_id_sql = "UPDATE step SET step_id = ? WHERE job_id = ? AND sequence_id = ? ";
+                    $update_id_sql = "UPDATE STEP_lst SET StepSelect = ? WHERE job_id = ? AND sequence_id = ? ";
                     $update_id_statement = $this->db_iDas->prepare($update_id_sql);
                     $update_id_statement->execute([$updated_step_id, $jobid, $v_s['sequence_id']]);
                 }
                 else{
-                    //echo "ewq";die();
+             
                 }
             }else{
-                //echo "eew";die();
+                
             }
 
             //最終再次檢查 強制把 欄位step_id 不是數字的 通通移除
-            $force_update_sql = "UPDATE step SET step_id = CAST(REPLACE(step_id, 'New_Value', '') AS UNSIGNED) WHERE job_id =  ? ";
+            $force_update_sql = "UPDATE STEP_lst SET StepSelect  = CAST(REPLACE(StepSelect, 'New_Value', '') AS UNSIGNED) WHERE job_id =  ? ";
             $force_update_statement = $this->db_iDas->prepare($force_update_sql);
             $force_update_statement->execute([$jobid]);
 
