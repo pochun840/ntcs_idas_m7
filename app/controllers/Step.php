@@ -79,10 +79,96 @@ class Step extends Controller
         }
 
 
-        if(isset($_POST['jobid'])){
+        echo "<pre>";
+        print_r($_POST);
+        echo "</pre>";
+        die();
 
-            /*$jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : 0;
-            $seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : 0;
+
+        if(isset($_POST['JOBID'])){
+
+            $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
+            $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
+            $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
+            $STEPname = $_POST['STEPname'] ?? '';
+            $time = $_POST['time'] ?? '';
+            
+            $StepRPM = isset($_POST['StepRPM']) ? intval($_POST['StepRPM']) : 0;
+            $StepOption = isset($_POST['StepOption']) ? intval($_POST['StepOption']) : -1;
+            $StepDirection = isset($_POST['StepDirection']) ? intval($_POST['StepDirection']) : 0;
+            $StepDelay = isset($_POST['StepDelay']) ? intval($_POST['StepDelay']) : 0;
+            $StepMoniByWin = isset($_POST['StepMoniByWin']) ? intval($_POST['StepMoniByWin']) : -1;
+            $StepLimiHi = isset($_POST['StepLimiHi']) ? intval($_POST['StepLimiHi']) : '';
+            $StepLimiLo = isset($_POST['StepLimiLo']) ? intval($_POST['StepLimiLo']) : '';
+            $StepHiAngle = isset($_POST['StepHiAngle']) ? intval($_POST['StepHiAngle']) : '';
+            $StepLoAngle = isset($_POST['StepLoAngle']) ? intval($_POST['StepLoAngle']) : '';
+            $StepHiTorque = isset($_POST['StepHiTorque']) ? intval($_POST['StepHiTorque']) : '';
+            $StepHiTorque = isset($_POST['StepLoTorque']) ? intval($_POST['StepLoTorque']) : '';
+            $StepAccelerateOffset = isset($_POST['StepAccelerateOffset']) ? intval($_POST['StepAccelerateOffset']) : 43;//待確認
+            $StepAccelerateOffsetSign = isset($_POST['StepAccelerateOffsetSign']) ? intval($_POST['StepAccelerateOffsetSign']) : 0; //待確認
+            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? intval($_POST['StepTorqueOffset']) : 43; 
+            $StepTorqueOffsetSign = isset($_POST['StepTorqueOffsetSign']) ? intval($_POST['StepTorqueOffsetSign']) : 0;
+            $StepEnableTorqueOffset = isset($_POST['StepEnableTorqueOffset']) ? intval($_POST['StepEnableTorqueOffset']) : 0; //待確認
+            $StepEnableDownShift =  isset($_POST['StepEnableDownShift']) ? intval($_POST['StepEnableDownShift']) : 0;
+            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? intval($_POST['StepTorqueTS']) : 0;
+            //初始化 
+            $StepTorque = '';
+            $StepAngle  = '';
+            $StepTime   = '';
+
+            switch ($StepOption) {
+                case 0:
+                    $StepTorque = $_POST['StepTorque'] ?? '';
+                    break;
+                case 1:
+                    $StepAngle = $_POST['StepTorque'] ?? '';
+                    break;
+                case 2:
+                    $StepTime = $_POST['StepTorque'] ?? '';
+                    break;
+            }
+
+
+
+            $step_data = array(
+                'JOBID'  => $JOBID,
+                'SEQID'  => $SEQID,
+                'StepSelect' => $StepSelect,
+                'STEPname' => $STEPname,
+                'type'  => 0, //待確認
+                'time'  => $time,
+                'act' => 0, //待確認
+                'StepSwitch' => 1, //待確認
+                'StepRPM' => $StepRPM,
+                'StepOption' => $StepOption,
+                'StepTime' => $StepTime,
+                'StepAngle' => $StepAngle,
+                'StepTorque' => $StepTorque,
+                'StepDirection' => $StepDirection,
+                'StepDelay' => $StepDelay,
+                'StepMoniByWin' => $StepMoniByWin,
+                'StepLimiHi' => $StepLimiHi,
+                'StepLimiLo' => $StepLimiLo,
+                'StepHiAngle' => $StepHiAngle,
+                'StepLoAngle' => $StepLoAngle,
+                'StepHiTorque' => $StepHiTorque,
+                'StepLoTorque' => $StepLoTorque,
+                'StepAccelerateOffset' =>$StepAccelerateOffset,
+                'StepAccelerateOffsetSign' => $StepAccelerateOffsetSign,
+                'StepEnableTorqueOffset' => $StepEnableTorqueOffset,
+                'StepTorqueOffset' => $StepTorqueOffset,
+                'StepTorqueOffsetSign' => $StepTorqueOffsetSign,
+                'StepEnableDownShift ' => $StepEnableDownShift,
+                'StepTorqueTS' => $StepTorqueTS,
+                
+
+
+
+
+
+            );
+           
+            /*$seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : 0;
             $stepid = isset($_POST['stepid']) ? intval($_POST['stepid']) : 0; 
             $target_option = isset($_POST['target_option'])? intval($_POST['target_option']) : 0; 
             $target_torque = isset($_POST['target_torque'])? floatval($_POST['target_torque']) : 0; 
@@ -459,7 +545,6 @@ class Step extends Controller
     #排序step
     public function adjustment_order(){
 
-        //echo "eeeeeeee";die();
         if (isset($_POST['JOBID']) && isset($_POST['rowInfoArray'])) {
             $JOBID = $_POST['JOBID'];
             $rowInfoArray = $_POST['rowInfoArray'];

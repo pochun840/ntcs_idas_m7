@@ -71,7 +71,7 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">Target Type:</div>
                             <div class="col-9">
-                                <select id="StepOption" class="form-control form-control-sm">
+                                <select id="StepOption" class="form-control form-control-sm" onchange="updateLabel()">
                                     <option value="0">Torque</option>
                                     <option value="1">Angle</option>
                                     <option value="2">Time</option>
@@ -81,7 +81,7 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Target Torque (kgf-cm):</div>
+                            <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
                             <div class="col-9">
                                 <input id="StepTorque" class="form-control form-control-sm" value="0">
                             </div>
@@ -102,7 +102,7 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-12">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="0">
+                                  <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="0" onchange="getCheckboxValue()">
                                   <label class="form-check-label" for="monitoring_torque_window"><?php echo 'Monitoring torque by window:'; ?></label>
                                 </div>
                                 <div class="ps-5" style="display:inline-block;">
@@ -129,7 +129,7 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-12">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1">
+                                  <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1" onchange="getCheckboxValue()" >
                                   <label class="form-check-label" for="monitoring_angle_window"><?php echo 'Monitoring angle by window:'; ?></label>
                                 </div>
                                 <div class="ps-5" style="display:inline-block;">
@@ -205,11 +205,11 @@
                             <div class="col-4">Join Offset (kgf-cm):</div>
                             <div class="col-8">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepTorqueOffset" id="join_offset_plus" value="0">
+                                  <input class="form-check-input" type="radio" name="StepTorqueOffset" id="join_offset_plus" value="43">
                                   <label class="form-check-label" for="join_offset_plus"><?php echo 'Plus'; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepTorqueOffsetn" id="join_offset_minus" value="1">
+                                  <input class="form-check-input" type="radio" name="StepTorqueOffset" id="join_offset_minus" value="45">
                                   <label class="form-check-label" for="join_offset_minus"><?php echo 'Minus'; ?></label>
                                   <input id="StepTorqueOffsetSign" class="form-control form-control-sm" value="">
                                 </div>
@@ -224,11 +224,11 @@
                                   <label class="form-check-label" for="threshold_mode_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_torque" value="1">
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_torque" value="2">
                                   <label class="form-check-label" for="threshold_mode_torque"><?php echo $text['torque']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_angle" value="2">
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_angle" value="1">
                                   <label class="form-check-label" for="threshold_mode_angle"><?php echo $text['angle']; ?></label>
                                 </div>
                             </div>
@@ -248,11 +248,11 @@
                                   <label class="form-check-label" for="downshift_mode_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_torque" value="1">
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_torque" value="2">
                                   <label class="form-check-label" for="downshift_mode_torque"><?php echo $text['torque']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_angle" value="2">
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_angle" value="1">
                                   <label class="form-check-label" for="downshift_mode_angle"><?php echo $text['angle']; ?></label>
                                 </div>
                             </div>
@@ -295,6 +295,17 @@
         }
     };
 
+    function updateLabel() {
+        const select_val = document.getElementById('StepOption');
+        const label = document.getElementById('targetLabel');
+        const select_val_Text = select_val.options[select_val.selectedIndex].text;
+        if (select_val_Text === 'Torque') {
+            label.textContent = 'Target Torque (kgf-cm):';
+        } else {
+            label.textContent = `Target ${select_val_Text}:`;
+        }
+    }
+
 
     function save_step() {
 
@@ -307,6 +318,7 @@
         let StepOption = document.getElementById("StepOption").value;
         let StepTorque = document.getElementById("StepTorque").value;
         let StepHiTorque = document.getElementById("StepHiTorque").value;
+        let StepLoTorque = document.getElementById("StepLoTorque").value;
         let StepMoniByWin = getCheckboxValue();
         let StepLimiHi = document.getElementById("StepLimiHi").value;
         let StepLimiLo = document.getElementById("StepLimiLo").value;
@@ -318,15 +330,13 @@
         //缺少 k_value
         let StepTorqueOffset = document.querySelector('input[name="StepTorqueOffset"]:checked');
         let StepTorqueOffsetSign = document.getElementById("StepTorqueOffsetSign").value;
-        let StepEnableThreshold  = document.getElementById("StepEnableThreshold").value;
+        let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
         let StepTorqueTS = document.getElementById("StepTorqueTS").value;
         let StepEnableDownShift =  document.querySelector('input[name="StepEnableDownShift"]:checked');
         let StepTorqueDownShift = document.getElementById("StepTorqueDownShift").value;
         let StepRPMDownShift = document.getElementById("StepRPMDownShift").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
 
-
-        
         data.append("JOBID", job_id);
         data.append("SEQID", seq_id);
         data.append("StepSelect",StepSelect);
@@ -343,13 +353,15 @@
         data.append("StepDelay",StepDelay);
         data.append("StepRPM",StepRPM); 
         //缺少 k_value
-        data.append("StepTorqueOffset",StepTorqueOffset);
+        data.append("StepTorqueOffset",StepTorqueOffset.value);
         data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
-        data.append("StepEnableThreshold"StepEnableThreshold);
+        data.append("StepEnableThreshold",StepEnableThreshold.value);
         data.append("StepTorqueTS",StepTorqueTS);
-        data.append("StepEnableDownShift",StepEnableDownShift);
+        data.append("StepEnableDownShift",StepEnableDownShift.value);
         data.append("StepTorqueDownShift",StepTorqueDownShift);
         data.append("StepRPMDownShift",StepRPMDownShift);
+        data.append("StepHiTorque",StepHiTorque);
+        data.append("StepLoTorque",StepLoTorque);
 
         $.ajax({
             url: '?url=Step/create_step',
@@ -380,23 +392,22 @@
     }
 
 
-    function handleSingleCheckboxSelection(name) {
-        let selectedValue = null; 
-        document.querySelectorAll(`input[name="${name}"]`).forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                if (this.checked) {
-                    selectedValue = this.value; 
-                    document.querySelectorAll(`input[name="${name}"]`).forEach(otherCheckbox => {
-                        if (otherCheckbox !== this) {
-                            otherCheckbox.checked = false;
-                        }
-                    });
-                }
-            });
-        });
-        return selectedValue;
-    }
+    function getCheckboxValue() {
+        var checkbox0 = document.getElementById("StepMoniByWin_0");
+        var checkbox1 = document.getElementById("StepMoniByWin_1");
 
+        var check_val = -1;
+        if (checkbox0.checked) {
+            checkbox1.checked = false; 
+
+            check_val = 0;
+        } else if (checkbox1.checked) {
+            checkbox0.checked = false; 
+            check_val = 1;
+        } else {
+        }
+        return check_val;
+    }   
 
 
 </script>
