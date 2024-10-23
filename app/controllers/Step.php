@@ -78,9 +78,10 @@ class Step extends Controller
             include $file;
         }
 
+
         if(isset($_POST['jobid'])){
 
-            $jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : 0;
+            /*$jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : 0;
             $seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : 0;
             $stepid = isset($_POST['stepid']) ? intval($_POST['stepid']) : 0; 
             $target_option = isset($_POST['target_option'])? intval($_POST['target_option']) : 0; 
@@ -94,150 +95,26 @@ class Step extends Controller
             $downshift = isset($_POST['downshift'])? intval($_POST['downshift']) : 0;
             $threshold_torque = isset($_POST['threshold_torque'])? intval($_POST['threshold_torque']) : 0;
             $downshift_torque = isset($_POST['downshift_torque'])? intval($_POST['downshift_torque']) : 0;
-            $downshift_speed = isset($_POST['downshift_speed'])? intval($_POST['downshift_speed']) : 100;
+            $downshift_speed = isset($_POST['downshift_speed'])? intval($_POST['downshift_speed']) : 100;*/
             
 
 
             
-            #驗證hi_angle的範圍
-            if(!empty($hi_angle)){
-                $ans = $this->MiscellaneousModel->check_angle($hi_angle);
-                if($ans == FALSE){
-                    $res_type = 'Error';
-                    $res_msg  = $error_message['High_Angle'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
+           
 
-                }
-            }
+            
 
-            #驗證lo_angle的範圍
-            if(!empty($lo_angle)){
-                $ans = $this->MiscellaneousModel->check_angle($lo_angle);
-                if($ans == FALSE){
-                    $res_type = 'Error';
-                    $res_msg  = $error_message['Low_Angle'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
-
-                }
-            }
-
-
-            #最小角度 必須小於 最大角度
-            if($lo_angle > $hi_angle){
-                $res_type = 'Error';
-                $res_msg  =  $error_message['angle_error'];
-                $result = array(
-                    'res_type' => $res_type,
-                    'res_msg'  => $res_msg 
-                );
-                echo json_encode($result);
-                exit();
-
-            }
-
-
-            if($check > 1){
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['check_step_target']);
-                exit();
-            }
-
-            if($target_option  == 0 && $target_option  == 1){
-                #$target_torque 必填
-                if(empty($target_torque)){
-                    $res_type = 'Error';
-                    $res_msg  =  $error_message['target_torque_empty'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
-                }
-
-                #最小扭力 必須小於 最大扭力
-                if($hi_torque < $lo_torque){
-                    $res_type = 'Error';
-                    $res_msg  =  $error_message['torque_error'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
-                }
-
-                //if()
-            }
+           
 
 
 
-            if($target_option == 2){
-                $target_delaytime = $target_torque; 
-                if ($target_torque < 0.1 || $target_torque > 9.9){
-                    if($target_option == 2){
-                        if ($target_delaytime < 0.1 || $target_delaytime > 9.9){
+     
+
         
-                            $res_type = 'Error';
-                            $res_msg  =  $text['check_step_target'];
-                            $result = array(
-                                'res_type' => $res_type,
-                                'res_msg'  => $res_msg 
-                            );
-                            echo json_encode($result);
-                            exit();
-                        }
-        
-                    }
-        
-                }else{
-                    $target_torque = 0;
-                    $target_angle  = 0;
-                }
-            }
-
-            if($target_option == 0){
-                $target_angle  = 0;
-                $target_delaytime = 0;
-            }
-            if($target_option == 1){
-                $target_angle = $target_torque;
-                $target_torque = 0;
-                $target_delaytime = 0;
-            }
-
-            $jobdata = array(
-                'job_id'           => $jobid,
-                'sequence_id'      => $seqid,
-                'step_id'          => $stepid,
-                'target_option'    => $target_option,
-                'target_torque'    => $target_torque,
-                'target_angle'     => $target_angle,
-                'target_delaytime' => $target_delaytime,
-                'hi_torque'        => $hi_torque,
-                'lo_torque'        => $lo_torque,
-                'hi_angle'         => $hi_angle,
-                'lo_angle'         => $lo_angle,
-                'rpm'              => $rpm,
-                'direction'        => $direction,
-                'downshift'        => $downshift,
-                'threshold_torque' => $threshold_torque,
-                'downshift_torque' => $downshift_torque,
-                'downshift_speed'    => $downshift_speed,
-                
-            );
+            
 
 
-            $mode = "create"; 
+
             $res = $this->stepModel->create_step($mode,$jobdata);
             $result = array();
             if($res){
@@ -262,7 +139,7 @@ class Step extends Controller
 
         if(isset($_POST['jobid'])){
 
-            $jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : '';
+            /*$jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : '';
             $seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : '';
             $stepid = isset($_POST['stepid']) ? intval($_POST['stepid']) : ''; 
             $target_option = isset($_POST['target_option'])? intval($_POST['target_option']) : ''; 
@@ -402,7 +279,7 @@ class Step extends Controller
                 'downshift_torque' => $downshift_torque,
                 'downshift_speed'    => $downshift_speed,
                 
-            );
+            );*/
 
             
 
@@ -582,20 +459,12 @@ class Step extends Controller
     #排序step
     public function adjustment_order(){
 
-        echo "eeeeeeee";die();
-        if (isset($_POST['jobid']) && isset($_POST['rowInfoArray'])) {
-            $jobid = $_POST['jobid'];
+        //echo "eeeeeeee";die();
+        if (isset($_POST['JOBID']) && isset($_POST['rowInfoArray'])) {
+            $JOBID = $_POST['JOBID'];
             $rowInfoArray = $_POST['rowInfoArray'];
 
-            echo "<pre>";
-            print_r($rowInfoArray);
-            echo "</pre>";
-
-            var_dump($_POST);
-            die();
-
-
-            $this->stepModel->swapupdate($jobid,$rowInfoArray);
+            $this->stepModel->swapupdate($JOBID,$rowInfoArray);
         } else {
             
         }
