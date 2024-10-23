@@ -236,7 +236,7 @@
                         <div class="col-12 row t2 mt-3 ps-4">
                             <div class="col-4">Torque Threshold (kgf-cm):</div>
                             <div class="col-8">
-                                <input id="torque_threshold" class="form-control form-control-sm" value="0">
+                                <input id="StepTorqueTS" class="form-control form-control-sm" value="0">
                             </div>
                         </div>
                         <hr class="hr" />
@@ -274,7 +274,7 @@
                 </div>
             </div>
             <div class="w3-center" style="margin: 10px 30px 0px 0;">
-                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3" onclick="save_seq();"><?php echo $text['save']; ?></button>
+                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3" onclick="save_step();"><?php echo $text['save']; ?></button>
             </div>
         </div>
     </div>
@@ -295,32 +295,8 @@
         }
     };
 
-    function getCheckboxValue() {
-    let selectedValue = null; // 用来保存选中的复选框的值
 
-    // 遍历所有复选框 (ID 可能为 Thread_Calcu_1, Thread_Calcu_2, ..., Thread_Calcu_5)
-    for (var i = 0; i <= 1; i++) {
-        var checkbox = document.getElementById("StepMoniByWin_" + i);
-
-        if (checkbox.checked) {
-            selectedValue = checkbox.value;  // 保存选中的复选框的值
-            break;  // 找到一个选中的复选框后，跳出循环
-        }
-    }
-
-    // 如果有复选框被选中，弹出它的值
-    if (selectedValue !== null) {
-        //alert("选中的值: " + selectedValue);
-    } else {
-       //alert("没有选中任何复选框");
-    }
-
-    return selectedValue;
-}
-
-
-
-    function save_seq() {
+    function save_step() {
 
         let data = new FormData();
 
@@ -339,11 +315,23 @@
         let StepDirection   = document.querySelector('input[name="StepDirection"]:checked');
         let StepDelay = document.getElementById("StepDelay").value;
         let StepRPM = document.getElementById("StepRPM").value;
+        //缺少 k_value
+        let StepTorqueOffset = document.querySelector('input[name="StepTorqueOffset"]:checked');
+        let StepTorqueOffsetSign = document.getElementById("StepTorqueOffsetSign").value;
+        let StepEnableThreshold  = document.getElementById("StepEnableThreshold").value;
+        let StepTorqueTS = document.getElementById("StepTorqueTS").value;
+        let StepEnableDownShift =  document.querySelector('input[name="StepEnableDownShift"]:checked');
+        let StepTorqueDownShift = document.getElementById("StepTorqueDownShift").value;
+        let StepRPMDownShift = document.getElementById("StepRPMDownShift").value;
+        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
 
+
+        
         data.append("JOBID", job_id);
         data.append("SEQID", seq_id);
         data.append("StepSelect",StepSelect);
         data.append("STEPname",STEPname);
+        data.append("time",time);
         data.append("StepOption",StepOption);
         data.append("StepTorque",StepTorque);
         data.append("StepMoniByWin",StepMoniByWin);
@@ -353,7 +341,39 @@
         data.append("over_angle_stop", over_angle_stop  ? over_angle_stop.value : null);
         data.append("StepDirection",StepDirection ? StepDirection.value : null);
         data.append("StepDelay",StepDelay);
-        data.append("StepRPM",StepRPM);
+        data.append("StepRPM",StepRPM); 
+        //缺少 k_value
+        data.append("StepTorqueOffset",StepTorqueOffset);
+        data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
+        data.append("StepEnableThreshold"StepEnableThreshold);
+        data.append("StepTorqueTS",StepTorqueTS);
+        data.append("StepEnableDownShift",StepEnableDownShift);
+        data.append("StepTorqueDownShift",StepTorqueDownShift);
+        data.append("StepRPMDownShift",StepRPMDownShift);
+
+        $.ajax({
+            url: '?url=Step/create_step',
+            type: 'POST',
+            data: data,
+            processData: false, 
+            contentType: false, 
+            success: function(response) {
+                // 處理成功回應
+                var responseData = JSON.parse(response);
+                console.log(responseData);
+                /*alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    window.location.href = '../public/?url=Step/index/' + job_id; 
+                }); */
+            },
+            error: function(xhr, status, error) {
+                // 處理錯誤
+                console.error('Error:', error);
+            }
+        });
+        
+
+
+
 
 
 
@@ -361,19 +381,11 @@
 
 
     function handleSingleCheckboxSelection(name) {
-        let selectedValue = null;  // 存储选中的复选框值
-
-        // 选择所有具有相同 name 的复选框
+        let selectedValue = null; 
         document.querySelectorAll(`input[name="${name}"]`).forEach(checkbox => {
             checkbox.addEventListener('change', function() {
-                // 当当前复选框被选中时
                 if (this.checked) {
-                    selectedValue = this.value; // 保存选中的值
-
-                    // 打印当前选中的复选框的值
-                    alert("选中的值: " + this.value);
-
-                    // 取消其他复选框的选中状态
+                    selectedValue = this.value; 
                     document.querySelectorAll(`input[name="${name}"]`).forEach(otherCheckbox => {
                         if (otherCheckbox !== this) {
                             otherCheckbox.checked = false;
@@ -382,8 +394,6 @@
                 }
             });
         });
-
-        // 返回当前选中的值
         return selectedValue;
     }
 
