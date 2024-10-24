@@ -347,8 +347,8 @@
         data.append("StepMoniByWin",StepMoniByWin);
         data.append("StepLimiHi",StepLimiHi);
         data.append("StepLimiLo",StepLimiLo);
-        data.append("interrupt_alarm", interrupt_alarm  ? interrupt_alarm.value : null);
-        data.append("over_angle_stop", over_angle_stop  ? over_angle_stop.value : null);
+        data.append("InterruptAlarm", interrupt_alarm  ? interrupt_alarm.value : null);
+        data.append("OverAngleStop", over_angle_stop  ? over_angle_stop.value : null);
         data.append("StepDirection",StepDirection ? StepDirection.value : null);
         data.append("StepDelay",StepDelay);
         data.append("StepRPM",StepRPM); 
@@ -372,10 +372,10 @@
             success: function(response) {
                 // 處理成功回應
                 var responseData = JSON.parse(response);
-                console.log(responseData);
-                /*alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                //console.log(responseData);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
                     window.location.href = '../public/?url=Step/index/' + job_id; 
-                }); */
+                });
             },
             error: function(xhr, status, error) {
                 // 處理錯誤
