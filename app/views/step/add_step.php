@@ -90,7 +90,19 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
                             <div class="col-9">
-                                <input id="StepTorque" name="type_step" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>">
+                                <?php if($data['type'] == 'edit'){
+                                     if($data['step']['StepOption'] == 0 ){?>
+                                         <input id="StepTorque" name="type_step" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>">
+
+                                     <?php }else if($data['step']['StepOption'] == 1 ){ ?>
+                                        <input id="StepAngle" name="type_step" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle'] : '0'; ?>">
+
+                                     <?php }else { ?>
+                                        <input id="StepTime" name="type_step" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime'] : '0'; ?>">
+                                     <?php }?>
+
+                                <?php }?>
+                     
                             </div>
                         </div>
                         <hr class="hr" />
@@ -337,17 +349,17 @@
 
         const inputElements = document.getElementsByName('type_step');
         if (inputElements.length > 0) {
-            inputElements[0].id = "Step" + select_val_Text;
+            //inputElements[0].id = "Step" + select_val_Text;
             
         }
-        alert(select_val_Text);
+        //alert(select_val_Text);
 
         if (select_val_Text === 'Torque') {
-            inputElements[0].value = StepTorque_value;
+            //inputElements[0].value = StepTorque_value;
         } else if (select_val_Text === 'Angle') {
-            inputElements[0].value = StepAngle_value;
+            //inputElements[0].value = StepAngle_value;
         } else if (select_val_Text === 'Time') {
-            inputElements[0].value = StepTime_value;
+            //inputElements[0].value = StepTime_value;
         }
 
         
@@ -443,7 +455,8 @@
         let StepSelect = document.getElementById("StepSelect").value;
         let STEPname = document.getElementById("STEPname").value;
         let StepOption = document.getElementById("StepOption").value;
-        let StepTorque = document.getElementById("StepTorque").value;
+        let StepTorque = (document.getElementById("StepTorque") && document.getElementById("StepTorque").value) || "";
+        
         let StepHiTorque = document.getElementById("StepHiTorque").value;
         let StepLoTorque = document.getElementById("StepLoTorque").value;
         let StepMoniByWin = getCheckboxValue();
