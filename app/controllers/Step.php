@@ -194,160 +194,110 @@ class Step extends Controller
             include $file;
         }
 
-        if(isset($_POST['jobid'])){
+        if(isset($_POST['JOBID'])){
 
-            /*$jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : '';
-            $seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : '';
-            $stepid = isset($_POST['stepid']) ? intval($_POST['stepid']) : ''; 
-            $target_option = isset($_POST['target_option'])? intval($_POST['target_option']) : ''; 
-
-            $target_torque = isset($_POST['target_torque'])? floatval($_POST['target_torque']) : ''; 
-            $target_angle = isset($_POST['target_angle'])? floatval($_POST['target_angle']) : ''; 
-            $target_delaytime = isset($_POST['target_delaytime'])? floatval($_POST['target_delaytime']) : ''; 
-            $hi_torque = isset($_POST['hi_torque'])? floatval($_POST['hi_torque']) : ''; 
-            $lo_torque = isset($_POST['lo_torque'])? floatval($_POST['lo_torque']) : ''; 
-            $hi_angle  = isset($_POST['hi_angle'])? intval($_POST['hi_angle']) : ''; 
-            $lo_angle  = isset($_POST['lo_angle'])? intval($_POST['lo_angle']) : ''; 
-            $rpm       = isset($_POST['rpm'])? intval($_POST['rpm']) : '';
-            $direction = isset($_POST['direction'])? intval($_POST['direction']) : '';
-            $downshift = isset($_POST['downshift'])? intval($_POST['downshift']) : '';
-            $threshold_torque = isset($_POST['threshold_torque'])? intval($_POST['threshold_torque']) : '';
-            $downshift_torque = isset($_POST['downshift_torque'])? intval($_POST['downshift_torque']) : '';
-            $downshift_speed = isset($_POST['downshift_speed'])? intval($_POST['downshift_speed']) : 100;
-
+            $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
+            $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
+            $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
+            $STEPname = $_POST['STEPname'] ?? '';
+            $time = $_POST['time'] ?? '';
             
-            #驗證hi_angle的範圍
-            if(!empty($hi_angle)){
-                $ans = $this->MiscellaneousModel->check_angle($hi_angle);
-                if($ans == FALSE){
-                    $res_type = 'Error';
-                    $res_msg  = $error_message['High_Angle'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
+            $StepRPM = isset($_POST['StepRPM']) ? intval($_POST['StepRPM']) : 0;
+            $StepOption = isset($_POST['StepOption']) ? intval($_POST['StepOption']) : -1;
+            $StepDirection = isset($_POST['StepDirection']) ? intval($_POST['StepDirection']) : 0;
+            $StepDelay = isset($_POST['StepDelay']) ? intval($_POST['StepDelay']) : 0;
+            $StepMoniByWin = isset($_POST['StepMoniByWin']) ? intval($_POST['StepMoniByWin']) : -1;
+            $StepLimiHi = isset($_POST['StepLimiHi']) ? intval($_POST['StepLimiHi']) : '';
+            $StepLimiLo = isset($_POST['StepLimiLo']) ? intval($_POST['StepLimiLo']) : '';
+            $StepHiAngle = isset($_POST['StepHiAngle']) ? intval($_POST['StepHiAngle']) : '';
+            $StepLoAngle = isset($_POST['StepLoAngle']) ? intval($_POST['StepLoAngle']) : '';
+            $StepHiTorque = isset($_POST['StepHiTorque']) ? floatval($_POST['StepHiTorque']) : '';
+            $StepLoTorque = isset($_POST['StepLoTorque']) ? floatval($_POST['StepLoTorque']) : '';
+            $StepAccelerateOffset = isset($_POST['StepAccelerateOffset']) ? intval($_POST['StepAccelerateOffset']) : 43;//待確認
+            $StepAccelerateOffsetSign = isset($_POST['StepAccelerateOffsetSign']) ? intval($_POST['StepAccelerateOffsetSign']) : 0; //待確認
+            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? intval($_POST['StepTorqueOffset']) : 43; 
+            $StepTorqueOffsetSign = isset($_POST['StepTorqueOffsetSign']) ? intval($_POST['StepTorqueOffsetSign']) : 0;
+            $StepEnableTorqueOffset = isset($_POST['StepEnableTorqueOffset']) ? intval($_POST['StepEnableTorqueOffset']) : 0; //待確認
+            $StepEnableDownShift =  isset($_POST['StepEnableDownShift']) ? intval($_POST['StepEnableDownShift']) : 0;
+            $StepTorqueDownShift =  isset($_POST['StepTorqueDownShift']) ? intval($_POST['StepTorqueDownShift']) : 0; 
+            $StepRPMDownShift = isset($_POST['StepRPMDownShift']) ? intval($_POST['StepRPMDownShift']) : 0; 
+            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? floatval($_POST['StepTorqueTS']) : 0;
+            $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
+            $InterruptAlarm = isset($_POST['InterruptAlarm']) ? intval($_POST['InterruptAlarm']) : 0; 
+            $OverAngleStop =  isset($_POST['OverAngleStop']) ? intval($_POST['OverAngleStop']) : 0; 
+            //初始化 
+            $StepTorque = '';
+            $StepAngle  = '';
+            $StepTime   = '';
 
-                }
-            }
-
-            #驗證lo_angle的範圍
-            if(!empty($lo_angle)){
-                $ans = $this->MiscellaneousModel->check_angle($lo_angle);
-                if($ans == FALSE){
-                    $res_type = 'Error';
-                    $res_msg  = $error_message['Low_Angle'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
-
-                }
-            }
-
-            #最小角度 必須小於 最大角度
-            if($lo_angle > $hi_angle){
-                $res_type = 'Error';
-                $res_msg  =  $error_message['angle_error'];
-                $result = array(
-                    'res_type' => $res_type,
-                    'res_msg'  => $res_msg 
-                );
-                echo json_encode($result);
-                exit();
-
+            switch ($StepOption) {
+                case 0:
+                    $StepTorque = $_POST['StepTorque'] ?? '';
+                    break;
+                case 1:
+                    $StepAngle = $_POST['StepTorque'] ?? '';
+                    break;
+                case 2:
+                    $StepTime = $_POST['StepTorque'] ?? '';
+                    break;
             }
 
 
-            
-            if($target_option  == 0 && $target_option  == 1){
 
-                #$target_torque 必填
-                if(empty($target_torque)){
-                    $res_type = 'Error';
-                    $res_msg  =  $error_message['target_torque_empty'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
-                }
+            $step_data = array(
+                'JOBID'  => $JOBID,
+                'SEQID'  => $SEQID,
+                'StepSelect' => $StepSelect,
+                'STEPname' => $STEPname,
+                'type'  => 0, //待確認
+                'time'  => $time,
+                'act' => 0, //待確認
+                'StepSwitch' => 1, //待確認
+                'StepRPM' => $StepRPM,
+                'StepOption' => $StepOption,
+                'StepTime' => $StepTime,
+                'StepAngle' => $StepAngle,
+                'StepTorque' => $StepTorque,
+                'StepDirection' => $StepDirection,
+                'StepDelay' => $StepDelay,
+                'StepMoniByWin' => $StepMoniByWin,
+                'StepLimiHi' => $StepLimiHi,
+                'StepLimiLo' => $StepLimiLo,
+                'StepHiAngle' => $StepHiAngle,
+                'StepLoAngle' => $StepLoAngle,
+                'StepHiTorque' => $StepHiTorque,
+                'StepLoTorque' => $StepLoTorque,
+                'StepAccelerateOffset' =>$StepAccelerateOffset,
+                'StepAccelerateOffsetSign' => $StepAccelerateOffsetSign,
+                'StepEnableTorqueOffset' => $StepEnableTorqueOffset,
+                'StepTorqueOffset' => $StepTorqueOffset,
+                'StepTorqueOffsetSign' => $StepTorqueOffsetSign,
+                'StepEnableDownShift' => $StepEnableDownShift,
+                'StepTorqueDownShift' => $StepTorqueDownShift,
+                'StepRPMDownShift' => $StepRPMDownShift,
+                'StepTorqueTS' => $StepTorqueTS,
+                'StepEnableThreshold' => $StepEnableThreshold,
+                'StepReTry' => 1, //待確認
+                'StepUnScrew' => 1, //待確認
+                'StepReTryTorq' => 0,//待確認
+                'StepReTryAngl' => 0,//待確認
+                'StepAngleRecord' => 0, //待確認
+                'StepAutoDetectAngle' => 0,//待確認
+                'InterruptAlarm' => $InterruptAlarm,
+                'OverAngleStop' => $OverAngleStop
 
-                #最小扭力 必須小於 最大扭力
-                if($hi_torque < $lo_torque){
-                    $res_type = 'Error';
-                    $res_msg  =  $error_message['torque_error'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
-                }
-            }
-
-      
-            if($target_option == 2){
-                if ($target_delaytime < 0.1 || $target_delaytime > 9.9){
-
-                    $res_type = 'Error';
-                    $res_msg  =  $text['check_step_target'];
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-                    echo json_encode($result);
-                    exit();
-                }
-
-            }
-
-            #同一個step 只能有一個Target Torque
-            $check = $this->stepModel->check_step_target($jobid,$seqid);
-            $check = intval($check[0]['count_records']);
-            
-            if($check > 1 && $target_option == 0){
-                $this->MiscellaneousModel->generateErrorResponse('Error', $text['check_step_target']);
-                exit();
-
-            }
-            
-
-            $jobdata = array(
-                'job_id'           => $jobid,
-                'sequence_id'      => $seqid,
-                'step_id'          => $stepid,
-                'target_option'    => $target_option,
-                'target_torque'    => $target_torque,
-                'target_angle'     => $target_angle,
-                'target_delaytime' => $target_delaytime,
-                'hi_torque'        => $hi_torque,
-                'lo_torque'        => $lo_torque,
-                'hi_angle'         => $hi_angle,
-                'lo_angle'         => $lo_angle,
-                'rpm'              => $rpm,
-                'direction'        => $direction,
-                'downshift'        => $downshift,
-                'threshold_torque' => $threshold_torque,
-                'downshift_torque' => $downshift_torque,
-                'downshift_speed'    => $downshift_speed,
-                
-            );*/
+            );           
 
             
 
-            $res = $this->stepModel->update_step_by_id($jobdata);
+            $res = $this->stepModel->update_step_by_id($step_data);
             $result = array();
             if($res){
                 $res_type = 'Success';
-                $res_msg  = $text['edit_step'].':'. $_POST['stepid']."  ".$text['success'];
+                $res_msg  = $text['edit_step'].':'. $_POST['StepSelect']."  ".$text['success'];
             }else{
                 $res_type = 'Error';
-                $res_msg  = $text['edit_step'].':'. $_POST['stepid']."  ".$text['fail'];
+                $res_msg  = $text['edit_step'].':'. $_POST['StepSelect']."  ".$text['fail'];
             }
             $result = array(
                 'res_type' => $res_type,
@@ -527,31 +477,47 @@ class Step extends Controller
         
     }
 
-    public function variation($job_id = null, $seq_id = null) {
+    public function variation($job_id = null, $seq_id = null,$stepid =null) {
 
-        $job_id = $job_id ?? $_GET['job_id'] ?? null;
-        $seq_id = $seq_id ?? $_GET['seq_id'] ?? null;
-    
-        if (!empty($job_id) && !empty($seq_id)) {
+        $job_id  = $job_id ?? $_GET['job_id'] ?? null;
+        $seq_id  = $seq_id ?? $_GET['seq_id'] ?? null;
+        $stepid  = $stepid ?? $_GET['step_id'] ?? null; 
+
+        // 计算参数数量
+        $paramsCount = 0;
+        if (!empty($job_id)) $paramsCount++;
+        if (!empty($seq_id)) $paramsCount++;
+        if (!empty($stepid)) $paramsCount++;
+
+
+        if($paramsCount === 2) {
+            $type = 'new';
             $job_id = htmlspecialchars($job_id);
             $seq_id = htmlspecialchars($seq_id);
-           
-        }else {
-            
-        }
+            $res = $this->stepModel->getStep_count($job_id, $seq_id);
+            $StepSelect = $res[0]['total'] + 1;
 
-        $res = $this->stepModel->getStep($job_id, $seq_id);
-        $StepSelect = $res[0]['StepSelect']+1;
-    
-        $step = $res[0];
+        } else  {
+            $type = 'edit';
+            $job_id = htmlspecialchars($job_id);
+            $seq_id = htmlspecialchars($seq_id);
+            $StepSelect = htmlspecialchars($stepid);
+            $res = $this->stepModel->getStepNo($job_id, $seq_id, $stepid);
+            $step = $res[0];
+        } 
+
         $data = array(
-            'step' => $step,
             'JOBID' => $job_id,
             'SEQID' => $seq_id,
-            'StepSelect' => $StepSelect, 
-            'type' => 'new'
+            'StepSelect' => $StepSelect,
+            'type' => $type
         );
-    
+
+        //如果是 
+        if ($type == 'edit') {
+            $data['step'] = $step; 
+        }
+        
 
         echo $this->view('step/add_step',$data);
     }

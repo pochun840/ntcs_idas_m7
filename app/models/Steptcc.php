@@ -36,6 +36,14 @@ class Steptcc{
         return $statement->fetchAll();
     }
 
+    public function getStep_count($job_id, $seq_id) {
+
+        $sql = "SELECT COUNT(*) as total  FROM STEP_lst WHERE JOBID = ? AND SEQID = ? ORDER BY 	StepSelect	 ASC ";
+        $statement = $this->db_iDas->prepare($sql);
+        $statement->execute([$job_id, $seq_id]);
+        return $statement->fetchAll();
+    }
+
     #透過job_id 及 seq_id 及 step_id取得對應的資料
     public function getStepNo($jobid,$seqid,$stepid){
 
@@ -168,42 +176,107 @@ class Steptcc{
     
 
 
-    public function update_step_by_id($jobdata){
+    public function update_step_by_id($step_data){
+        
+        if (empty($step_data['JOBID']) || empty($step_data['SEQID']) || empty($step_data['StepSelect'])) {
+            return false; 
+        }
 
 
-        $sql = "UPDATE `step` SET 
-                    target_option = :target_option,
-                    target_torque = :target_torque, 
-                    target_angle = :target_angle, 
-                    target_delaytime = :target_delaytime, 
-                    hi_torque = :hi_torque,
-                    lo_torque = :lo_torque,
-                    hi_angle = :hi_angle,
-                    lo_angle = :lo_angle,
-                    direction = :direction,
-                    downshift = :downshift,
-                    threshold_torque = :threshold_torque,
-                    downshift_torque = :downshift_torque,
-                    downshift_speed = :downshift_speed
-        WHERE job_id = :job_id  AND   sequence_id = :sequence_id  AND step_id = :step_id ";
+        $sql = "UPDATE `STEP_lst` SET 
+                    STEPname = :stepname,
+                    type = :type,
+                    time = :time,
+                    act = :act,
+                    StepSwitch = :step_switch,
+                    StepRPM = :step_rpm,
+                    StepOption = :step_option,
+                    StepTime = :step_time,
+                    StepAngle = :step_angle,
+                    StepTorque = :step_torque,
+                    StepDirection = :step_direction,
+                    StepDelay = :step_delay,
+                    StepMoniByWin = :step_moni_by_win,
+                    StepLimiHi = :step_limi_hi,
+                    StepLimiLo = :step_limi_lo,
+                    StepHiAngle = :step_hi_angle,
+                    StepLoAngle = :step_lo_angle,
+                    StepHiTorque = :step_hi_torque,
+                    StepLoTorque = :step_lo_torque,
+                    StepAccelerateOffset = :step_accelerate_offset,
+                    StepAccelerateOffsetSign = :step_accelerate_offset_sign,
+                    StepEnableTorqueOffset = :step_enable_torque_offset,
+                    StepTorqueOffset = :step_torque_offset,
+                    StepTorqueOffsetSign = :step_torque_offset_sign,
+                    StepEnableDownShift = :step_enable_down_shift,
+                    StepTorqueDownShift = :step_torque_down_shift,
+                    StepRPMDownShift = :step_rpm_down_shift,
+                    StepEnableThreshold = :step_enable_threshold,
+                    StepTorqueTS = :step_torque_ts,
+                    StepReTry = :step_retry,
+                    StepUnScrew = :step_unscrew,
+                    StepReTryTorq = :step_retry_torq,
+                    StepReTryAngl = :step_retry_angl,
+                    StepAngleRecord = :step_angle_record,
+                    StepAutoDetectAngle = :step_auto_detect_angle,
+                    InterruptAlarm = :interrupt_alarm,
+                    OverAngleStop = :over_angle_stop
+                WHERE JOBID = :jobid AND SEQID = :seqid  AND StepSelect = :step_select;";
+
+
+        if ($this->db_iDas === null) {
+            echo "数据库连接无效。";
+            return false;
+        }
+
         $statement = $this->db_iDas->prepare($sql);
 
-        $statement->bindValue(':job_id', $jobdata['job_id']);
-        $statement->bindValue(':sequence_id', $jobdata['sequence_id']);
-        $statement->bindValue(':step_id', $jobdata['step_id']);
-        $statement->bindValue(':target_option', $jobdata['target_option']);
-        $statement->bindValue(':target_torque', $jobdata['target_torque']);
-        $statement->bindValue(':target_angle', $jobdata['target_angle']);
-        $statement->bindValue(':target_delaytime', $jobdata['target_delaytime']);
-        $statement->bindValue(':hi_torque', $jobdata['hi_torque']);
-        $statement->bindValue(':lo_torque', $jobdata['lo_torque']);
-        $statement->bindValue(':hi_angle', $jobdata['hi_angle']);
-        $statement->bindValue(':lo_angle', $jobdata['lo_angle']);
-        $statement->bindValue(':direction', $jobdata['direction']);
-        $statement->bindValue(':downshift', $jobdata['downshift']);
-        $statement->bindValue(':threshold_torque', $jobdata['threshold_torque']);
-        $statement->bindValue(':downshift_torque', $jobdata['downshift_torque']);
-        $statement->bindValue(':downshift_speed', $jobdata['downshift_speed']);
+        // 检查 prepare 是否成功
+        if (!$statement) {
+            echo "SQL 错误: " . implode(", ", $this->db_iDas->errorInfo());
+            return false;
+        }
+
+        $statement->bindValue(':jobid', $step_data['JOBID']);
+        $statement->bindValue(':seqid', $step_data['SEQID']);
+        $statement->bindValue(':step_select', $step_data['StepSelect']);
+        $statement->bindValue(':stepname', $step_data['STEPname']);
+        $statement->bindValue(':type', $step_data['type']);
+        $statement->bindValue(':time', $step_data['time']);
+        $statement->bindValue(':act', $step_data['act']);
+        $statement->bindValue(':step_switch', $step_data['StepSwitch']);
+        $statement->bindValue(':step_rpm', $step_data['StepRPM']);
+        $statement->bindValue(':step_option', $step_data['StepOption']);
+        $statement->bindValue(':step_time', $step_data['StepTime']);
+        $statement->bindValue(':step_angle', $step_data['StepAngle']);
+        $statement->bindValue(':step_torque', $step_data['StepTorque']);
+        $statement->bindValue(':step_direction', $step_data['StepDirection']);
+        $statement->bindValue(':step_delay', $step_data['StepDelay']);
+        $statement->bindValue(':step_moni_by_win', $step_data['StepMoniByWin']);
+        $statement->bindValue(':step_limi_hi', $step_data['StepLimiHi']);
+        $statement->bindValue(':step_limi_lo', $step_data['StepLimiLo']);
+        $statement->bindValue(':step_hi_angle', $step_data['StepHiAngle']);
+        $statement->bindValue(':step_lo_angle', $step_data['StepLoAngle']);
+        $statement->bindValue(':step_hi_torque', $step_data['StepHiTorque']);
+        $statement->bindValue(':step_lo_torque', $step_data['StepLoTorque']);
+        $statement->bindValue(':step_accelerate_offset', $step_data['StepAccelerateOffset']);
+        $statement->bindValue(':step_accelerate_offset_sign', $step_data['StepAccelerateOffsetSign']);
+        $statement->bindValue(':step_enable_torque_offset', $step_data['StepEnableTorqueOffset']);
+        $statement->bindValue(':step_torque_offset', $step_data['StepTorqueOffset']);
+        $statement->bindValue(':step_torque_offset_sign', $step_data['StepTorqueOffsetSign']);
+        $statement->bindValue(':step_enable_down_shift', $step_data['StepEnableDownShift']);
+        $statement->bindValue(':step_torque_down_shift', $step_data['StepTorqueDownShift']);
+        $statement->bindValue(':step_rpm_down_shift', $step_data['StepRPMDownShift']);
+        $statement->bindValue(':step_enable_threshold', $step_data['StepEnableThreshold']);
+        $statement->bindValue(':step_torque_ts', $step_data['StepTorqueTS']);
+        $statement->bindValue(':step_retry', $step_data['StepReTry']);
+        $statement->bindValue(':step_unscrew', $step_data['StepUnScrew']);
+        $statement->bindValue(':step_retry_torq', $step_data['StepReTryTorq']);
+        $statement->bindValue(':step_retry_angl', $step_data['StepReTryAngl']);
+        $statement->bindValue(':step_angle_record', $step_data['StepAngleRecord']);
+        $statement->bindValue(':step_auto_detect_angle', $step_data['StepAutoDetectAngle']);
+        $statement->bindValue(':interrupt_alarm', $step_data['InterruptAlarm']);
+        $statement->bindValue(':over_angle_stop', $step_data['OverAngleStop']);
         $results = $statement->execute();
 
 
