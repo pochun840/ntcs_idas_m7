@@ -140,7 +140,7 @@ class Jobs extends Controller
         if(!empty($jobid)){
 
             $res = $this->jobModel->delete_job_by_id($jobid);
-            // $ans = $this->jobModel->delete_sequence_by_job_id($jobid);
+            $ans = $this->jobModel->delete_sequence_by_job_id($jobid);
             // $an1 = $this->jobModel->delete_step_by_job_id($jobid);
             // $an2 = $this->jobModel->delete_input_by_job_id($jobid);
             // $an3 = $this->jobModel->delete_output_by_job_id($jobid);

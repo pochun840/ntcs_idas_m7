@@ -52,14 +52,14 @@ class Job{
     #刪除sequence
     public function delete_sequence_by_job_id($jobid) {
    
-        $sql_select = "SELECT COUNT(*) AS count FROM sequence WHERE job_id = ?";
+        $sql_select = "SELECT COUNT(*) AS count FROM SEQ_lst WHERE JOBID = ?";
         $statement_select = $this->db_iDas->prepare($sql_select);
         $statement_select->execute([$jobid]);
         $row = $statement_select->fetch(PDO::FETCH_ASSOC);
     
         // 如果存在對應的資料，則刪除
         if ($row['count'] > 0) {
-            $sql_delete = "DELETE FROM sequence WHERE job_id = ?";
+            $sql_delete = "DELETE FROM SEQ_lst WHERE JOBID = ?";
             $statement_delete = $this->db_iDas->prepare($sql_delete);
             $results = $statement_delete->execute([$jobid]);
     
@@ -74,14 +74,14 @@ class Job{
     public function delete_step_by_job_id($jobid) {
         
         //首先查詢是否存在對應的資料
-        $sql_select = "SELECT COUNT(*) AS count FROM step WHERE job_id = ?";
+        $sql_select = "SELECT COUNT(*) AS count FROM STEP_lst WHERE JOBID = ?";
         $statement_select = $this->db_iDas->prepare($sql_select);
         $statement_select->execute([$jobid]);
         $row = $statement_select->fetch(PDO::FETCH_ASSOC);
     
         //如果存在對應的資料，則刪除
         if ($row['count'] > 0) {
-            $sql_delete = "DELETE FROM step WHERE job_id = ?";
+            $sql_delete = "DELETE FROM STEP_lst WHERE JOBID = ?";
             $statement_delete = $this->db_iDas->prepare($sql_delete);
             $results = $statement_delete->execute([$jobid]);
     
