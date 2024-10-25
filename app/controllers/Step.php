@@ -119,10 +119,10 @@ class Step extends Controller
                     $StepTorque = $_POST['StepTorque'] ?? '';
                     break;
                 case 1:
-                    $StepAngle = $_POST['StepTorque'] ?? '';
+                    $StepAngle = $_POST['StepAngle'] ?? '';
                     break;
                 case 2:
-                    $StepTime = $_POST['StepTorque'] ?? '';
+                    $StepTime = $_POST['StepTime'] ?? '';
                     break;
             }
 
@@ -194,6 +194,7 @@ class Step extends Controller
             include $file;
         }
 
+
         if(isset($_POST['JOBID'])){
 
             $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
@@ -235,10 +236,10 @@ class Step extends Controller
                     $StepTorque = $_POST['StepTorque'] ?? '';
                     break;
                 case 1:
-                    $StepAngle = $_POST['StepTorque'] ?? '';
+                    $StepAngle = $_POST['StepAngle'] ?? '';
                     break;
                 case 2:
-                    $StepTime = $_POST['StepTorque'] ?? '';
+                    $StepTime = $_POST['StepTime'] ?? '';
                     break;
             }
 
@@ -288,6 +289,7 @@ class Step extends Controller
 
             );           
 
+ 
             
 
             $res = $this->stepModel->update_step_by_id($step_data);

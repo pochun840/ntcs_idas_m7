@@ -88,22 +88,34 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
-                            <div class="col-9">
-                                <?php if($data['type'] == 'edit'){
-                                     if($data['step']['StepOption'] == 0 ){?>
-                                         <input id="StepTorque" name="type_step" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>">
+                            <?php if($data['type'] == 'edit'){?>
+                                <?php   if($data['step']['StepOption'] == 0 ){?>   
+                                    <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
+                                <?php }else if($data['step']['StepOption'] == 1 ){?>
+                                    <div class="col-3"  id="targetLabel" >Target Angle :</div>
+                                <?php }else if($data['step']['StepOption'] == 2 ) {?>
+                                    <div class="col-3"  id="targetLabel" >Target Time:</div>
+                                <?php } ?>
 
-                                     <?php }else if($data['step']['StepOption'] == 1 ){ ?>
-                                        <input id="StepAngle" name="type_step" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle'] : '0'; ?>">
-
-                                     <?php }else { ?>
-                                        <input id="StepTime" name="type_step" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime'] : '0'; ?>">
-                                     <?php }?>
-
-                                <?php }?>
+                            <?php }else{?>
+                                <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
+                            <?php } ?>
+                             
+                        
+                            <div class="col-9" id='StepTorque_item' style="display: block;" >
+                                <input id="StepTorque"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>">
+                               
                      
                             </div>
+                            <div class="col-9" id='StepAngle_item' style="display: none;" >
+                                <input id="StepAngle"   class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle'] : '0'; ?>"  >
+                            </div>
+
+                            <div class="col-9" id='StepTime_item' style="display:  none;" >
+                                <input id="StepTime"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime'] : '0'; ?>">
+                     
+                            </div>
+
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3">
@@ -328,6 +340,28 @@
             document.getElementById("downshift_mode_torque").checked = true;
 
         }
+
+        if(dataType === 'edit'){
+            var StepOption = "<?php echo $data['step']['StepOption']; ?>";
+            if(StepOption == 0){
+                document.getElementById('StepTorque_item').style.display = 'block';
+                document.getElementById('StepAngle_item').style.display = 'none';
+                document.getElementById('StepTime_item'). style.display = 'none';
+            }
+
+            if(StepOption == 1){
+                document.getElementById('StepTorque_item').style.display = 'none';
+                document.getElementById('StepAngle_item').style.display = 'block';
+                document.getElementById('StepTime_item'). style.display = 'none';
+            }
+
+            if(StepOption == 2){
+                document.getElementById('StepTorque_item').style.display = 'none';
+                document.getElementById('StepAngle_item').style.display = 'none';
+                document.getElementById('StepTime_item'). style.display = 'block';
+            }
+    
+        }
     };
 
     function updateLabel() {
@@ -343,27 +377,30 @@
         const select_val_Text = select_val.options[select_val.selectedIndex].text;
         if (select_val_Text === 'Torque') {
             label.textContent = 'Target Torque (kgf-cm):';
+
+
         } else {
             label.textContent = `Target ${select_val_Text}:`;
+        } 
+
+        if(select_val.value == 0){
+            document.getElementById('StepTorque_item').style.display = 'block';
+            document.getElementById('StepAngle_item').style.display = 'none';
+            document.getElementById('StepTime_item'). style.display = 'none';
         }
 
-        const inputElements = document.getElementsByName('type_step');
-        if (inputElements.length > 0) {
-            //inputElements[0].id = "Step" + select_val_Text;
-            
-        }
-        //alert(select_val_Text);
-
-        if (select_val_Text === 'Torque') {
-            //inputElements[0].value = StepTorque_value;
-        } else if (select_val_Text === 'Angle') {
-            //inputElements[0].value = StepAngle_value;
-        } else if (select_val_Text === 'Time') {
-            //inputElements[0].value = StepTime_value;
+        if(select_val.value == 1){
+            document.getElementById('StepTorque_item').style.display = 'none';
+            document.getElementById('StepAngle_item'). style.display = 'block';
+            document.getElementById('StepTime_item'). style.display = 'none';
         }
 
-        
-    
+        if(select_val.value == 2){
+            document.getElementById('StepTorque_item').style.display = 'none';
+            document.getElementById('StepAngle_item'). style.display = 'none';
+            document.getElementById('StepTime_item'). style.display = 'block';
+        }
+
     }
 
 
@@ -456,7 +493,7 @@
         let STEPname = document.getElementById("STEPname").value;
         let StepOption = document.getElementById("StepOption").value;
         let StepTorque = (document.getElementById("StepTorque") && document.getElementById("StepTorque").value) || "";
-        
+        let StepAngle = (document.getElementById("StepAngle") && document.getElementById("StepAngle").value) || "";
         let StepHiTorque = document.getElementById("StepHiTorque").value;
         let StepLoTorque = document.getElementById("StepLoTorque").value;
         let StepMoniByWin = getCheckboxValue();
@@ -484,6 +521,7 @@
         data.append("STEPname",STEPname);
         data.append("time",time);
         data.append("StepOption",StepOption);
+        data.append("StepAngle",StepAngle);
         data.append("StepTorque",StepTorque);
         data.append("StepMoniByWin",StepMoniByWin);
         data.append("StepLimiHi",StepLimiHi);
