@@ -244,55 +244,49 @@ class Inputs extends Controller
         $input_check = true;
         $input_data = array();
         if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $input_data['input_job_id'] = $_POST['job_id'];
+            $input_data['JOBID'] = $_POST['job_id'];
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_event']) && isset($_POST['input_event'])  ){
-            $input_data['input_event'] = $_POST['input_event'];
+            $input_data['EvenID'] = $_POST['input_event'];
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_pin']) && isset($_POST['input_pin'])  ){
-            $input_data['input_pin'] = intval($_POST['input_pin']);
+            $input_data['Pin'] = intval($_POST['input_pin']);
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_wave']) && isset($_POST['input_wave'])  ){
-            $input_data['input_wave'] = $_POST['input_wave'];
+            $input_data['signal'] = $_POST['input_wave'];
         }else{ 
             $input_check = false; 
         }
 
         if( isset($_POST['gateconfirm'])){
-            $input_data['gateconfirm'] = $_POST['gateconfirm'];
+            $input_data['Wp_Ready_Confirm'] = $_POST['gateconfirm'];
         }else{ 
             $input_check = false; 
         }
 
         
 
-
         if($input_check){
-            $count = $this->InputModel->check_job_event_conflict($input_data['input_job_id'],$input_data['old_input_event']);
-            if ($count > 0 && $jobdata['input_event'] != $jobdata['old_input_event']){
-                
-                //先移除舊的資料 再新增新的資料
-                $ans  = $this->InputModel->delete_input_event_by_id($jobdata['input_job_id'],$jobdata['old_input_event']);
-                $res  = $this->InputModel->create_input($jobdata);
-            }else if($count > 0 && $jobdata['input_event'] == $jobdata['old_input_event']) {
-                $res  = $this->InputModel->edit_input($jobdata);
-            }
+            $count = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
+            $ans  = $this->InputModel->delete_input_event_by_id($input_data['JOBID'],$input_data['EvenID']);
+            $res  = $this->InputModel->create_input($input_data);
+
             $result = array();
             if($res){
                 $res_type = 'Success';
-                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$jobdata['input_job_id'].','.$text['event'].':'.$text[$event[$jobdata['input_event']]]."  ".$text['success'];
+                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$input_data['JOBID'].','.$text['event'].':'.$text[$event[$input_data['EvenID']]]."  ".$text['success'];
             } else {
                 $res_type = 'Error';
-                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$jobdata['input_job_id'].','.$text['event'].':'.$text[$event[$jobdata['input_event']]]."  ".$text['fail'];
+                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$input_data['JOBID'].','.$text['event'].':'.$text[$event[$input_data['EvenID']]]."  ".$text['fail'];
             }
             
             $result = array(
