@@ -67,7 +67,7 @@ class Input{
 
     public function check_job_event($input_job_id){
         
-        $sql = "SELECT *  FROM input WHERE input_job_id = ? ";
+        $sql = "SELECT *  FROM JOBInput_lst WHERE JOBID = ? ";
         $statement = $this->db->prepare($sql);
         $statement->execute([$input_job_id]);
         $rows = $statement->fetchAll();
@@ -136,7 +136,7 @@ class Input{
     //delete input by job_id
     public function delete_input_by_id($job_id){
 
-        $sql= "DELETE FROM input WHERE input_job_id = ?";
+        $sql= "DELETE FROM JOBInput_lst WHERE JOBID = ?";
         $statement = $this->db->prepare($sql);
         $results = $statement->execute([$job_id]);
 

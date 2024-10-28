@@ -499,8 +499,8 @@
                                         <select id="JobSelect1" class="col custom-file" style="margin: center; width: 153px">
                                             <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
                                             <?php foreach($data['job_list'] as $kk => $vv){?>
-                                                <option id ='job_list_option' value="<?php echo $vv['job_id']; ?>">
-                                                    <?php echo $vv['job_id'] . " - " . $vv['job_name']; ?>
+                                                <option id ='job_list_option' value="<?php echo $vv['JOBID']; ?>">
+                                                    <?php echo $vv['JOBID'] . " - " . $vv['JOBname']; ?>
                                                 </option>
                                             <?php } ?>
                                         </select>
@@ -680,7 +680,7 @@ function crud_job_event(argument){
 
     if(argument == 'copy' && job_id != '' && input_event != ''){
         var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['job_name'];
+        var from_job_name_bk = jobinfo[job_id]['JOBname'];
 
         document.getElementById("from_job_id").value = job_id;
         document.getElementById("from_job_name").value = from_job_name_bk;

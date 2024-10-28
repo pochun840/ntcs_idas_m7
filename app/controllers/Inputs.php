@@ -323,22 +323,20 @@ class Inputs extends Controller
         if ($input_check) {
             $job_inputs_from = $this->InputModel->check_job_event($input_job_id);
             if (!empty($job_inputs_from)) {
-                $jobdata = array();
+                $input_data = array();
                 foreach ($job_inputs_from as $key => $val) {
                 
-                    if (isset($val['input_job_id'])) {
-                        $jobdata[$key]['input_job_id'] = $to_job_id;
+                    if (isset($val['JOBID'])) {
+                        $input_data[$key]['JOBID'] = $to_job_id;
                     } else {
                         continue; 
                     }
 
-                    $jobdata[$key]['input_event'] = $val['input_event'];
-                    $jobdata[$key]['input_pin'] = $val['input_pin'];
-                    $jobdata[$key]['input_wave'] = $val['input_wave'];
-                    $jobdata[$key]['gateconfirm'] = $val['gateconfirm'];
-                    $jobdata[$key]['pagemode'] = $val['pagemode'];
-                    $jobdata[$key]['input_seqid'] = 0;
-                    $res = $this->InputModel->create_input($jobdata[$key]);
+                    $input_data[$key]['EvenID'] = $val['EvenID'];
+                    $input_data[$key]['Pin'] = $val['Pin'];
+                    $input_data[$key]['signal'] = $val['signal'];
+                    $input_data[$key]['Wp_Ready_Confirm'] = $val['Wp_Ready_Confirm'];
+                    $res = $this->InputModel->create_input($input_data[$key]);
              
                 }
 
