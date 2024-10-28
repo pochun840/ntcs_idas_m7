@@ -93,45 +93,8 @@ class Input{
         return $results;
     }
 
-    public function edit_input($jobdata){
+   
 
-        $sql = "UPDATE `input` 
-                    SET input_event = :input_event, 
-                        input_pin  = :input_pin,
-                        input_wave = :input_wave, 
-                        input_pin  = :input_pin,
-                        gateconfirm = :gateconfirm, 
-                        pagemode = :pagemode, 
-                        input_seqid = :input_seqid ";
-        $sql .= "WHERE input_event = :input_event  AND input_job_id = :input_job_id;";
-
-        $statement = $this->db_iDas->prepare($sql);
-        $statement->bindValue(':input_job_id', $jobdata['input_job_id']);
-        $statement->bindValue(':input_event', $jobdata['input_event']);
-        $statement->bindValue(':input_pin', $jobdata['input_pin']);
-        $statement->bindValue(':input_wave', $jobdata['input_wave']);
-        $statement->bindValue(':gateconfirm', $jobdata['gateconfirm']);
-        $statement->bindValue(':pagemode', $jobdata['pagemode']);
-        $statement->bindValue(':input_seqid', $jobdata['input_seqid']);
-        $results = $statement->execute();
-        return $results;
-    }
-
-
-    public function copy_input_by_id($from_job_id,$to_job_id){
-        // 判斷job_id是否存在，若存在就先把舊的刪除
-        // $dupli_flag true:表示job_id已存在 false:表示job_id不存在
-        if(true){//先刪除再複製
-            $this->delete_input_by_id($to_job_id);
-        }
-        $sql= "INSERT INTO input ( input_jobid,input_event,input_pin1,input_pin2,input_pin3,input_pin4,input_pin5,input_pin6,input_pin7,input_pin8,input_pin9,input_pin10,input_gateconfirm,input_pagemode )
-                SELECT  ?,input_event,input_pin1,input_pin2,input_pin3,input_pin4,input_pin5,input_pin6,input_pin7,input_pin8,input_pin9,input_pin10,input_gateconfirm,input_pagemode
-                FROM    input
-                WHERE input_jobid = ? ";
-        $statement = $this->db->prepare($sql);
-
-        return $results = $statement->execute([$to_job_id,$from_job_id]);
-    }
 
     //delete input by job_id
     public function delete_input_by_id($job_id){
@@ -167,12 +130,6 @@ class Input{
         return $results;
     }
 
-    public function cancel_input_alljob($input_job_id){
-        $sql = "UPDATE JOB_lst SET  input_unified = '0'  WHERE JOBID = ?";
-        $statement = $this->db_iDas->prepare($sql);
-        $results   = $statement->execute([$input_job_id]);
-        return $results;
-    }
 
     public function generateTableCell($value,$value2) {
         if($value >= 2 && $value <= 10){
