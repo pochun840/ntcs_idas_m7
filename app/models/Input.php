@@ -154,9 +154,22 @@ class Input{
     }
 
     //set input_alljob
-    public function set_input_alljob($input_job_id){
-        $sql = "UPDATE device SET device_input_all_job = ?";
-        $statement = $this->db_iDas_device->prepare($sql);
+    public function set_input_alljob($input_job_id) {
+        $sql = "UPDATE JOB_lst SET input_unified = CASE 
+                    WHEN input_unified = '1' THEN '0' 
+                    WHEN input_unified = '0' THEN '1' 
+                    ELSE input_unified 
+                 END 
+                 WHERE JOBID = ?";
+        
+        $statement = $this->db_iDas->prepare($sql);
+        $results = $statement->execute([$input_job_id]);
+        return $results;
+    }
+
+    public function cancel_input_alljob($input_job_id){
+        $sql = "UPDATE JOB_lst SET  input_unified = '0'  WHERE JOBID = ?";
+        $statement = $this->db_iDas->prepare($sql);
         $results   = $statement->execute([$input_job_id]);
         return $results;
     }

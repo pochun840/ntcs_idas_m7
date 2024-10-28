@@ -422,7 +422,29 @@ class Inputs extends Controller
             }
             echo $res_msg;   
         }
-    }    
+    }   
+    
+    
+    public function input_alljob_cancel()
+    {
+        $input_check = true;
+        if( isset($_POST['job_id']) && $_POST['job_id'] >= 0 ){
+            $input_job_id = $_POST['job_id'];
+        }else if(isset($_POST['job_id_new']) && $_POST['job_id_new'] >= 0){
+            $input_job_id = '';
+        }else{
+            $input_check = false; 
+        }
+        if($input_check){
+            $res = $this->InputModel->cancel_input_alljob($input_job_id);
+            if($res){
+                $res_msg ='set inputall job:'.$input_job_id.' copyDB success';
+            }else{
+                $res_msg ='set inputall job:'.$input_job_id.' copyDB fail';
+            }
+            echo $res_msg;   
+        }
+    }   
 }
 
 ?>

@@ -705,6 +705,7 @@ function crud_job_event(argument){
         resetBackgroundColor();
 
         if(input_job != job_id){
+
             alignsubmit(job_id);  
         }else{
             resetalignsubmit(job_id);
@@ -968,7 +969,7 @@ function resetalignsubmit(job_id) {
         console.log(job_id_new);
         console.log(job_id);
         $.ajax({
-            url: "?url=Inputs/input_alljob",
+            url: "?url=Inputs/input_alljob_cancel",
             method: "POST",
             data: {
                 job_id_new: job_id_new
