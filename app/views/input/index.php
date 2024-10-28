@@ -31,7 +31,7 @@
                                 <td>
                                     <select style="margin: center" id="JobNameSelect" name="JobNameSelect" size="200">
                                         <?php foreach($data['job_list'] as $key =>$val){?>
-                                            <option value="<?php echo $val['job_id'];?>"><?php echo $val['job_name'];?></option>
+                                            <option value="<?php echo $val['JOBID'];?>"><?php echo $val['JOBname'];?></option>
                                         <?php }?>                                                                                                                             
                                      </select>
                                 </td>
@@ -631,6 +631,7 @@ function crud_job_event(argument){
     } 
     
     if(argument == 'del' && job_id  != '' &&  input_event != '')  {
+
         delete_input_id(job_id,input_event);
     }
 
@@ -656,8 +657,6 @@ function crud_job_event(argument){
             });
         }
 
-
-        //console.log(temp);
 
         if(input_event ==109){
             document.getElementById('edit_work_goc').style.display='block';
@@ -841,6 +840,7 @@ function collectPinValues(selector) {
 
 //delete
 function delete_input_id(jobid,input_event){
+
     if(job_id){
         $.ajax({
             url: "?url=Inputs/delete_input",

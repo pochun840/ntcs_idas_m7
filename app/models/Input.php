@@ -26,7 +26,7 @@ class Input{
     //get_input_by_job_id
     public function get_input_by_job_id($job_id)
     {   
-        $sql = "SELECT * FROM input WHERE input_job_id = ? ORDER BY CASE WHEN input_event >= 200 THEN 0 ELSE 1 END, input_event";
+        $sql = "SELECT * FROM JOBInput_lst WHERE JOBID = ? ORDER BY CASE WHEN EvenID >= 200 THEN 0 ELSE 1 END, EvenID ";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$job_id]);
         $row = $statement->fetchall(PDO::FETCH_ASSOC);
@@ -48,7 +48,7 @@ class Input{
     //get all job
     public function get_job_list()
     {
-        $sql = " SELECT  * FROM job  ORDER BY job_id ASC ";
+        $sql = " SELECT  * FROM  JOB_lst  ORDER BY JOBID ASC ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute();
         $result = $statement->fetchAll();
@@ -57,7 +57,7 @@ class Input{
 
     public function check_job_event_conflict($input_job_id,$input_event){
         
-        $sql = "SELECT *  FROM input WHERE input_job_id = ? AND input_event = ?";
+        $sql = "SELECT *  FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";
         $statement = $this->db->prepare($sql);
         $statement->execute([$input_job_id,$input_event]);
         $rows = $statement->fetch();
@@ -76,22 +76,20 @@ class Input{
 
     }
 
-    public function create_input($jobdata){   
+    public function create_input($input_data) {   
+
+        $sql = "INSERT INTO `JOBInput_lst` (JOBID, Pin, EvenID, signal, Wp_Ready_Confirm) ";
+        $sql .= "VALUES (:JOBID, :Pin, :EvenID, :signal, :Wp_Ready_Confirm)";
     
-        $sql = "INSERT INTO `input` (input_job_id, input_event, input_pin, input_wave, gateconfirm, pagemode, input_seqid) ";
-        $sql .= "VALUES (:input_job_id, :input_event, :input_pin, :input_wave, :gateconfirm, :pagemode, :input_seqid);";
-
         $statement = $this->db_iDas->prepare($sql);
-        $statement->bindValue(':input_job_id', $jobdata['input_job_id']);
-        $statement->bindValue(':input_event', $jobdata['input_event']);
-        $statement->bindValue(':input_pin', $jobdata['input_pin']);
-        $statement->bindValue(':input_wave', $jobdata['input_wave']);
-        $statement->bindValue(':gateconfirm', $jobdata['gateconfirm']);
-        $statement->bindValue(':pagemode', $jobdata['pagemode']);
-        $statement->bindValue(':input_seqid', $jobdata['input_seqid']);
-
+        $statement->bindValue(':JOBID', $input_data['JOBID']);
+        $statement->bindValue(':Pin', $input_data['Pin']);
+        $statement->bindValue(':EvenID', $input_data['EvenID']);
+        $statement->bindValue(':signal', $input_data['signal']);
+        $statement->bindValue(':Wp_Ready_Confirm', 0);
+    
         $results = $statement->execute();
-
+    
         return $results;
     }
 
@@ -148,7 +146,7 @@ class Input{
 
     //delete input by job_id and event_id
     public function delete_input_event_by_id($job_id,$input_event){
-        $sql= "DELETE FROM input WHERE input_job_id = ? AND input_event = ?";
+        $sql= "DELETE FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$job_id,$input_event]);
 
@@ -183,4 +181,7 @@ class Input{
             return ""; 
         }
     }
+
+
+   
 }

@@ -249,9 +249,6 @@ class Sequences extends Controller
         }
     }
 
-
-
-
     public function check_seq_type(){
         
         $jobid = $_POST['jobid'] ?? null;

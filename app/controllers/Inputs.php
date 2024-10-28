@@ -22,7 +22,7 @@ class Inputs extends Controller
         if(!empty($joblist)){
             $job_list_new = array();
             foreach($joblist as $kk =>$vv){
-                $job_list_new[$vv['job_id']] =$vv;  
+                $job_list_new[$vv['JOBID']] =$vv;  
             }
         }
         $data = array();
@@ -44,9 +44,6 @@ class Inputs extends Controller
     // get_input_by_job_id
     public function get_input_by_job_id($job_id){
 
-        $event = $this->MiscellaneousModel->details('io_input');
-
-    
         $input_check = true;
         if (!empty($_POST['jobid']) && isset($_POST['jobid'])) {
             $job_id = $_POST['jobid'];
@@ -55,6 +52,8 @@ class Inputs extends Controller
         }
 
         if ($input_check) {
+
+            $event = $this->MiscellaneousModel->details('io_input');
             $job_inputs = $this->InputModel->get_input_by_job_id($job_id);
             $temp  = array(); 
             $tempA = array();
@@ -64,9 +63,11 @@ class Inputs extends Controller
     
             if (!empty($job_inputs)) {
                 foreach ($job_inputs as $kk => $vv) {
-                    if (!empty($vv['input_pin'])) {
-                        $pin_number = $vv['input_pin'];
-                        $gateconfirm = $vv['gateconfirm'];
+
+
+                    if (!empty($vv['Pin'])) {
+                        $pin_number = $vv['Pin'];
+                        $gateconfirm = $vv['Wp_Ready_Confirm'];
                         $temp[] = "pin" . $pin_number . "_high";
                         $temp[] = "pin" . $pin_number . "_low";
                         $temp[] = "edit_pin" . $pin_number . "_high";
@@ -75,8 +76,8 @@ class Inputs extends Controller
 
                     }
 
-                    if (!empty($vv['input_event'])) {
-                        $tempA[] = $vv['input_event'];
+                    if (!empty($vv['Pin'])) {
+                        $tempA[] = $vv['Pin'];
                     }
 
                 
@@ -85,24 +86,24 @@ class Inputs extends Controller
 
                     if($isMobile){
 
-                        if($vv['input_wave'] == 1){
+                        if($vv['signal'] == 1){
                             $img = '<img src="./img/high.png" style="max-width: 50px;">';
                         }else{
                             $img = '<img src="./img/low.png" style="max-width: 50px;">';
                         }
                         
 
-                        $job_inputlist .= "<tr data-event = '".$vv['input_event']."' >";
-                        $job_inputlist .= "<td id='".$vv['input_event']."'>".$event[$vv['input_event']]."</td>";
-                        $job_inputlist .= '<td>'.$vv['input_pin'].'</td>';
+                        $job_inputlist .= "<tr data-event = '".$vv['Pin']."' >";
+                        $job_inputlist .= "<td id='".$vv['Pin']."'>".$event[$vv['input_event']]."</td>";
+                        $job_inputlist .= '<td>'.$vv['Pin'].'</td>';
                         $job_inputlist .= '<td>'.$img.'</td>';
                         $job_inputlist .= '</tr>';
                         
                     }else{
-               
-                        $job_inputlist .= "<tr data-event = '".$vv['input_event']."' >";
-                        $job_inputlist .= "<td id='".$vv['input_event']."'>".$event[$vv['input_event']]."</td>";
-                        $job_inputlist .= $this->InputModel->generateTableCell($vv['input_pin'],$vv['input_wave']);
+    
+                        $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
+                        $job_inputlist .= "<td id='".$vv['EvenID']."'>".$event[$vv['EvenID']]."</td>";
+                        $job_inputlist .= $this->InputModel->generateTableCell($vv['Pin'],$vv['signal']);
                         $job_inputlist .= '<td>NO</td>';
                         $job_inputlist .= '<td>1</td>';
                         $job_inputlist .= '<td>EVENT</td>';
@@ -159,62 +160,63 @@ class Inputs extends Controller
         $event    = $this->MiscellaneousModel->details('io_input');
 
         $input_check = true;
-        $jobdata = array();
+        $input_data = array();
 
         if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $jobdata['input_job_id'] = $_POST['job_id'];
+            $input_data['JOBID'] = $_POST['job_id'];
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_event']) && isset($_POST['input_event'])  ){
-            $jobdata['input_event'] = $_POST['input_event'];
+            $input_data['EvenID'] = $_POST['input_event'];
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_pin']) && isset($_POST['input_pin'])  ){
-            $jobdata['input_pin'] = intval($_POST['input_pin']);
+            $input_data['Pin'] = intval($_POST['input_pin']);
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_wave']) && isset($_POST['input_wave'])  ){
-            $jobdata['input_wave'] = $_POST['input_wave'];
+            $input_data['signal'] = $_POST['input_wave'];
         }else{ 
             $input_check = false; 
         }
 
         if( isset($_POST['gateconfirm'])  ){
-            $jobdata['gateconfirm'] = $_POST['gateconfirm'];
+            $input_data['gateconfirm'] = $_POST['gateconfirm'];
         }else{ 
             $input_check = false; 
         }
 
         if( isset($_POST['pagemode'])  ){
-            $jobdata['pagemode'] = $_POST['pagemode'];
+            $input_data['pagemode'] = $_POST['pagemode'];
         }else{ 
             $input_check = false; 
         }
 
         if( isset($_POST['input_seqid'])  ){
-            $jobdata['input_seqid'] = $_POST['input_seqid'];
+            $input_data['input_seqid'] = $_POST['input_seqid'];
         }else{ 
             $input_check = false; 
         }
 
         if($input_check){
-            $count = $this->InputModel->check_job_event_conflict($jobdata['input_job_id'],$jobdata['input_event']);
+            
+            $count = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
             if(!$count){
                
-                $res  = $this->InputModel->create_input($jobdata);
+                $res  = $this->InputModel->create_input($input_data);
                 $result = array();
                 if($res){
                     $res_type = 'Success';
-                    $res_msg  = $text['new_event']."  ".$text['job_id'].':'.$jobdata['input_job_id'].','.$text['event'].':'.$text[$event[$jobdata['input_event']]]."  ".$text['success'];
+                    $res_msg  = $text['new_event']."  ".$text['job_id'].':'.$input_data['JOBID'].','.$text['event'].':'.$text[$event[$input_data['EvenID']]]."  ".$text['success'];
                 }else{
                     $res_type = 'Error';
-                    $res_msg  = $text['new_event']."  ".$text['job_id'].':'.$jobdata['input_job_id'].','.$text['event'].':'.$text[$event[$jobdata['input_event']]]."  ".$text['fail'];
+                    $res_msg  = $text['new_event']."  ".$text['job_id'].':'.$input_data['JOBID'].','.$text['event'].':'.$text[$event[$input_data['EvenID']]]."  ".$text['fail'];
                 }
                 
                 $result = array(
@@ -240,54 +242,42 @@ class Inputs extends Controller
         $event    = $this->MiscellaneousModel->details('io_input');
         
         $input_check = true;
-        $jobdata = array();
+        $input_data = array();
         if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $jobdata['input_job_id'] = $_POST['job_id'];
+            $input_data['input_job_id'] = $_POST['job_id'];
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_event']) && isset($_POST['input_event'])  ){
-            $jobdata['input_event'] = $_POST['input_event'];
+            $input_data['input_event'] = $_POST['input_event'];
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_pin']) && isset($_POST['input_pin'])  ){
-            $jobdata['input_pin'] = intval($_POST['input_pin']);
+            $input_data['input_pin'] = intval($_POST['input_pin']);
         }else{ 
             $input_check = false; 
         }
 
         if( !empty($_POST['input_wave']) && isset($_POST['input_wave'])  ){
-            $jobdata['input_wave'] = $_POST['input_wave'];
+            $input_data['input_wave'] = $_POST['input_wave'];
         }else{ 
             $input_check = false; 
         }
 
         if( isset($_POST['gateconfirm'])){
-            $jobdata['gateconfirm'] = $_POST['gateconfirm'];
+            $input_data['gateconfirm'] = $_POST['gateconfirm'];
         }else{ 
             $input_check = false; 
         }
 
-        if( isset($_POST['pagemode'])){
-            $jobdata['pagemode'] = $_POST['pagemode'];
-        }else{ 
-            $input_check = false; 
-        }
+        
 
-        if( isset($_POST['input_seqid'])){
-            $jobdata['input_seqid'] = $_POST['input_seqid'];
-        }else{ 
-            $input_check = false; 
-        }
-        if( isset($_POST['old_input_event'])){
-            $jobdata['old_input_event'] = $_POST['old_input_event'];
-        }
 
         if($input_check){
-            $count = $this->InputModel->check_job_event_conflict($jobdata['input_job_id'],$jobdata['old_input_event']);
+            $count = $this->InputModel->check_job_event_conflict($input_data['input_job_id'],$input_data['old_input_event']);
             if ($count > 0 && $jobdata['input_event'] != $jobdata['old_input_event']){
                 
                 //先移除舊的資料 再新增新的資料
@@ -396,7 +386,7 @@ class Inputs extends Controller
             $input_check = false; 
         }
         if( !empty($_POST['input_event']) && isset($_POST['input_event'])  ){
-            $input_event = $_POST['input_event'];
+            $input_event  = $_POST['input_event'];
         }else{ 
             $input_check = false; 
         }

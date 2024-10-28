@@ -81,7 +81,7 @@ class Job{
     
         //如果存在對應的資料，則刪除
         if ($row['count'] > 0) {
-            $sql_delete = "DELETE FROM STEP_lst WHERE JOBID = ?";
+            $sql_delete = "DELETE FROM STEP_lst WHERE JOBID = ? ";
             $statement_delete = $this->db_iDas->prepare($sql_delete);
             $results = $statement_delete->execute([$jobid]);
     
@@ -300,7 +300,7 @@ class Job{
 
     public function delete_input_by_job_id($new_jobid) {
         #查詢資料是否存在
-        $sql = "SELECT COUNT(*) FROM input WHERE input_job_id = ?";
+        $sql = "SELECT COUNT(*) FROM JOBInput_lst WHERE JOBID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$new_jobid]);
         $count = $statement->fetchColumn();
@@ -308,7 +308,7 @@ class Job{
        
         if ($count > 0) {
             #如果資料存在，則刪除
-            $deleteSql = "DELETE FROM input  WHERE input_job_id = ? ";
+            $deleteSql = "DELETE FROM JOBInput_lst  WHERE JOBID = ? ";
             $deleteStatement = $this->db_iDas->prepare($deleteSql);
             $deleteStatement->execute([$new_jobid]);
 
