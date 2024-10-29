@@ -111,15 +111,15 @@
 									<div class="row output-pin">
 										<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="0"  onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'1')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0"  onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'1')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
 										</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="1"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'2')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'2')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
 										</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_3" value="2" onclick="toggleOnputTime('pin<?php echo $i; ?>_3', this.checked,'3')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime('pin<?php echo $i; ?>_3', this.checked,'3')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
 										</div>
 										<div class="col-sm-2 t2">
@@ -166,15 +166,15 @@
 										<div class="row output-pin">
 											<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'1')" >
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'1')" >
 												<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
 											</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'2')">
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'2')">
 												<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
 											</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="3" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_3', this.checked,'3')">
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_3', this.checked,'3')">
 												<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
 											</div>
 											<div class="col-sm-2 t2">
@@ -433,11 +433,14 @@ function crud_job_event(argument){
             });
         }
 
+        //針對
+
 
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
+                //console.log('eewwer');
                 var radio = document.getElementById(id);
-                console.log(radio);
+                //console.log(radio);
 
                 if (radio && radio.type === 'radio') { 
                     radio.disabled = true; 
@@ -456,7 +459,7 @@ function crud_job_event(argument){
                     var pinNumber = match[2]; 
 
             
-                    for (var i = 1; i <= 3; i++) {
+                    for (var i = 0; i <= 2; i++) {
                         var pinElementId = basePinId + "_" + i;
                         var pinElement = document.getElementById(pinElementId);
                         if (pinElement && pinElement.type === 'radio') {
@@ -808,7 +811,7 @@ function create_output_id() {
             });
         }
     } else {
-        console.error("No pinval found or pinval[0] is undefined.");
+        //console.error("No pinval found or pinval[0] is undefined.");
     }
 }
 
@@ -973,13 +976,18 @@ function get_output_info(job_id,output_event){
                 var responseJSON = JSON.stringify(response);
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
-                var [, job_id] = cleanString.match(/\[output_job_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, output_event] = cleanString.match(/\[output_event]\s*=>\s*([^ ]+)/) || [, null];
-                var [, output_pin] = cleanString.match(/\[output_pin]\s*=>\s*([^ ]+)/) || [, null];
-                var [, wave] = cleanString.match(/\[wave]\s*=>\s*([^ ]+)/) || [, null];
-                var [, wave_on] = cleanString.match(/\[wave_on]\s*=>\s*([^ ]+)/) || [, null];
+                var [, job_id] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
+                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
+
+
+
+
 
                 var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
+                //alert(edit_output_pin);
                 var radioButton = document.getElementById(edit_output_pin);
                 radioButton.removeAttribute('disabled');
 
@@ -1023,7 +1031,7 @@ function get_output_info(job_id,output_event){
                             return item.slice(0, -1) + '3';
                         });
                         
-                        console.log("Updated Array:", updatedArray);
+                        //console.log("Updated Array:", updatedArray);
                         updatedArray.forEach(item => {
                             const radio = document.getElementById(item);
                             if (radio && radio.type === 'radio') {
@@ -1040,7 +1048,7 @@ function get_output_info(job_id,output_event){
               
                 }
 
-                 document.getElementById(time_ms).value = wave_on;
+                document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
  
                  old_output_even = output_event;
  
@@ -1065,7 +1073,7 @@ function toggleOnputTime(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
     
     if (!inputElement) {
-        console.error(`Element with ID '${inputId}' not found.`);
+        //console.error(`Element with ID '${inputId}' not found.`);
         return; // Exit if element is not found
     }
 
@@ -1073,7 +1081,7 @@ function toggleOnputTime(inputId, checked, option) {
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
-            console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
+            //console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
         }
     }
 
@@ -1098,7 +1106,7 @@ function toggleOnputTime_edit(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
     
     if (!inputElement) {
-        console.error(`Element with ID '${inputId}' not found.`);
+        //console.error(`Element with ID '${inputId}' not found.`);
         return; // Exit if element is not found
     }
 
@@ -1106,7 +1114,7 @@ function toggleOnputTime_edit(inputId, checked, option) {
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
-            console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
+            //console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
         }
     }
 

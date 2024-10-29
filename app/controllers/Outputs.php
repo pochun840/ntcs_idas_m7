@@ -66,26 +66,31 @@ class Outputs extends Controller
         
             if (!empty($job_outputs)) {
                 foreach ($job_outputs as $kk => $vv) {
-                    if (!empty($vv['output_pin'])) {
-                        $pin_number = $vv['output_pin'];
-                        $temp[] = "pin" . $pin_number."_".$vv['wave'];
-                        $temp[] = "edit_pin" . $pin_number."_".$vv['wave'];
+                    if (!empty($vv['Pin'])) {
+                        $pin_number = $vv['Pin'];
+                        //如果 $vv['signal'] 空值 補 0
+                        $signal_value = !empty($vv['signal']) ? $vv['signal'] : 0;
+                        $temp[] = "pin" . $pin_number."_".$signal_value;
+                        $temp[] = "edit_pin" . $pin_number."_".$signal_value;
                     }
 
-                    if (!empty($vv['output_event'])) {
-                        $tempA[] = $vv['output_event'];
+                    if (!empty($vv['EvenID'])) {
+                        $tempA[] = $vv['EvenID'];
                     }
+
+                    $durate = ($vv['durate'] == 0) ? '' : $vv['durate'];
 
                     $isMobile = $this->isMobileCheck();
                     if($isMobile){
 
-                        if($vv['wave'] == 1){
+                        if($vv['signal'] == 0){
                             $img = '<img src="./img/signal01.png" style="max-width: 50px;">';
-                        }else if($vv['wave'] == 2){
+                        }else if($vv['wave'] == 1){
                             $img = '<img src="./img/signal02.png" style="max-width: 50px;">';
                         }else{
                             $img = '<img src="./img/trigger.png" style="max-width: 50px;">';
                         }   
+
 
                         $job_outputlist .= "<tr data-event ='".$vv['output_event']."'>";
                         $job_outputlist .= "<td id='".$vv['output_event']."'>".$event_output[$vv['output_event']]."</td>";
@@ -97,7 +102,7 @@ class Outputs extends Controller
                         $job_outputlist .= "<tr data-event ='".$vv['EvenID']."'>";
                         $job_outputlist .= "<td id='".$vv['EvenID']."'>".$event_output[$vv['EvenID']]."</td>";
                         $job_outputlist .= $this->OutputModel->generateTableCell($vv['Pin'],$vv['signal']);
-                        $job_outputlist .= '<td>'.$vv['durate'].'</td>';
+                        $job_outputlist .= '<td>'.$durate.'</td>';
                         $job_outputlist .= '</tr>';
                     }
 
@@ -169,22 +174,22 @@ class Outputs extends Controller
         }else{ 
             $input_check = false; 
         }
-        if( !empty($_POST['wave']) && isset($_POST['wave'])  ){
+        
+        if(!empty($_POST['wave'])){
             $output_data['signal'] = $_POST['wave'];
         }else{ 
-            $input_check = false; 
-        }
-        if( isset($_POST['wave_on']) && $_POST['wave_on']>=0 && $_POST['wave_on'] <= 10000 ){
-            $output_data['durate'] = $_POST['wave_on'];
-            if($output_data['durate'] == ''){
-                $output_data['duraten'] = 0;//預設值
-            }
-        }else{ 
-            $input_check = false; 
+            $output_data['signal'] = 0;
         }
 
-     
+
+        if( $_POST['wave_on'] == ""){
+            $output_data['durate'] = '';
+        }else{
+            $output_data['durate'] = $_POST['wave_on'];
+        }
+
         if($input_check){
+      
             $res = $this->OutputModel->create_output($output_data);
             $result = array();
             if($res){
@@ -228,21 +233,21 @@ class Outputs extends Controller
         if($input_check){
             $job_outputs_from = $this->OutputModel->get_output_by_job_id($output_job_id);
             if (!empty($job_outputs_from)) {
-                $jobdata = array();
+                $output_data = array();
                 foreach ($job_outputs_from as $key => $val) {
                 
-                    if (isset($val['output_job_id'])) {
-                        $jobdata[$key]['output_job_id'] = $to_job_id;
+                    if (isset($val['JOBID'])) {
+                        $output_data[$key]['JOBID'] = $to_job_id;
                     } else {
                         continue; 
                     }
 
-                    $jobdata[$key]['output_pin'] = $val['output_pin'];
-                    $jobdata[$key]['output_event'] = $val['output_event'];
-                    $jobdata[$key]['wave'] = $val['wave'];
-                    $jobdata[$key]['wave_on'] = $val['wave_on'];
+                    $output_data[$key]['Pin']    = $val['Pin'];
+                    $output_data[$key]['EvenID'] = $val['EvenID'];
+                    $output_data[$key]['signal'] = $val['signal'];
+                    $output_data[$key]['durate'] = $val['durate'];
 
-                    $res = $this->OutputModel->create_output($jobdata[$key]);
+                    $res = $this->OutputModel->create_output($output_data[$key]);
                     $result = array();
                     if($res){
                         $res_type = 'Success';

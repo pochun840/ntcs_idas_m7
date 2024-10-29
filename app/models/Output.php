@@ -47,7 +47,7 @@ class Output{
 
     public function check_job_event_conflict($output_job_id,$output_event){
         
-        $sql = "SELECT *   FROM JOBOutput_lst WHERE JOBID = ? AND EvenID = ? ";
+        $sql = "SELECT JOBID, Pin, EvenID, signal, durate  FROM JOBOutput_lst WHERE JOBID = ? AND EvenID = ? ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$output_job_id,$output_event]);
         $rows = $statement->fetch(PDO::FETCH_ASSOC);
@@ -90,19 +90,22 @@ class Output{
 
     public function create_output($output_data) {    
 
+        $output_data['stop_trig']  = 1;
+        $output_data['cycle'] = 1;
+
         $sql = "INSERT INTO `JOBOutput_lst` (JOBID, Pin, EvenID, signal, durate, stop_trig, cycle) ";
-        $sql .= "VALUES (:jobid, :pin, :evenid, :signal, :durate, :stop_trig, :cycle);";
+        $sql .= "VALUES (:jobid, :pin, :evenid, :signal, :durate, :stop_trig, :cycle) ";        
     
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':jobid', $output_data['JOBID']);
         $statement->bindValue(':pin', $output_data['Pin']);
         $statement->bindValue(':evenid', $output_data['EvenID']);
-        $statement->bindValue(':signal', $output_data['signal'] ); 
-        $statement->bindValue(':durate', $output_data['durate'] ); 
-        $statement->bindValue(':stop_trig', $output_data['stop_trig'] ?? 1);
-        $statement->bindValue(':cycle', $output_data['cycle'] ?? 1); 
+        $statement->bindValue(':signal', $output_data['signal']); 
+        $statement->bindValue(':durate', $output_data['durate']); 
+        $statement->bindValue(':stop_trig', $output_data['stop_trig']);
+        $statement->bindValue(':cycle', $output_data['cycle']); 
         $results = $statement->execute();
-    
+
         return $results;
     }
 
@@ -176,11 +179,11 @@ class Output{
             $tableCells = "";
             for($i = 1; $i <= 11; $i++){
                 if($i == $value){ 
-                    if($value2 == 1){
+                    if($value2 == 0){
                         $img = '<img src="./img/signal01.png" style="max-width: 50px;">';
-                    }else if($value2 == 2){
+                    }else if($value2 == 1){
                         $img = '<img src="./img/signal02.png" style="max-width: 50px;">';
-                    }else if($value2 == 3){
+                    }else if($value2 == 2){
                         $img = '<img src="./img/trigger.png" style="max-width: 50px;">';
                     }else{
                         $img = '';
