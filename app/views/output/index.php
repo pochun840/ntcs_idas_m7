@@ -512,7 +512,7 @@ function crud_job_event(argument){
     if(argument == 'copy' && job_id != '' && output_event != ''){
 
         var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['job_name'];
+        var from_job_name_bk = jobinfo[job_id]['JOBname'];
 
         document.getElementById("from_job_id").value = job_id;
         document.getElementById("from_job_name").value = from_job_name_bk;

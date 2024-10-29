@@ -136,10 +136,10 @@ class Output{
         if(true){//先刪除再複製
             $this->delete_output_by_id($to_job_id);
         }
-        $sql= "INSERT INTO output ( output_jobid,output_pin,output_event,wave,wave_on,wave_off )
-                SELECT  ?,output_pin,output_event,wave,wave_on,wave_off 
-                FROM    output
-                WHERE output_jobid = ? ";
+        $sql= "INSERT INTO JOBOutput_lst ( JOBID,Pin,EvenID,signal,durate,stop_trig,cycle )
+                SELECT  ?,Pin,EvenID,signal,durate,stop_trig,cycle
+                FROM    JOBOutput_lst
+                WHERE JOBID = ? ";
         $statement = $this->db->prepare($sql);
 
         return $results = $statement->execute([$to_job_id,$from_job_id]);
@@ -148,7 +148,7 @@ class Output{
     //delete output by job_id
     public function delete_output_by_id($job_id){
 
-        $sql= "DELETE FROM output WHERE output_job_id = ?";
+        $sql= "DELETE FROM JOBOutput_lst  WHERE JOBID = ?";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$job_id]);
 
