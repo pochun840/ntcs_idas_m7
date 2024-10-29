@@ -24,7 +24,8 @@ class Database
 
         // 透過 PHP_OS_FAMILY 判斷，目前執行的系統，決定要採用的DB路徑
         $Year = date("Y");// data db 用西元年命名
-        $data_db_name = "data".$Year.".db";
+       // $data_db_name = "data".$Year.".db";
+        $data_db_name = "ntcs_data.db";
         if( PHP_OS_FAMILY == 'Linux'){
 
             //$this->db_con = new PDO('sqlite:/var/www/html/database/data.db');

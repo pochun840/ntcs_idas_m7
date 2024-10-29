@@ -30,6 +30,7 @@ class Step extends Controller
         $direction = $this->MiscellaneousModel->details('reverse_direction');
         $unit_arr  = $this->MiscellaneousModel->details('torque_unit');
         $seqinfo   = $this->sequenceModel->search_seqinfo($job_id,$seq_id);
+        $specs     = $this->MiscellaneousModel->getToolSpecifications();
        
 
         $res_device = $this->SettingModel->GetControllerInfo();
@@ -59,7 +60,8 @@ class Step extends Controller
             'unit_arr' => $unit_arr,
             'unit' => $unit,
             'seq_id' => $seq_id,
-            'unit_name' => $unit_name
+            'unit_name' => $unit_name,
+            'specs' => $specs
 
         );
         if($isMobile){
@@ -125,6 +127,12 @@ class Step extends Controller
                     $StepTime = $_POST['StepTime'] ?? '';
                     break;
             }
+
+            //rpm && torque 驗證
+            $specs = $this->MiscellaneousModel->getToolSpecifications();
+            
+            
+
 
 
 
@@ -243,6 +251,8 @@ class Step extends Controller
                     break;
             }
 
+            //rpm && torque 驗證
+            $specs = $this->MiscellaneousModel->getToolSpecifications();
 
 
             $step_data = array(

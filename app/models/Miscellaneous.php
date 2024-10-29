@@ -139,6 +139,14 @@ class Miscellaneous{
 
         }
 
+        if($mode == "status_ntcs"){
+            $array = array(
+                0 => 'OK', 
+                1 => 'NG'
+            );
+
+        }
+
         if($mode =="lang"){
             $array = array(
                 0 => 'English',
@@ -377,6 +385,23 @@ class Miscellaneous{
         // 如果所有檢查都通過
         return "驗證通過：扭力值有效。";
     }
+
+
+    //取得最大最小轉速 及 最大最小扭力   
+    public function getToolSpecifications() {
+        $sql = "SELECT max_rpm, min_rpm, max_torq, min_torq FROM tools_info";
+        $statement = $this->db_iDas->prepare($sql);
+        $statement->execute();
+
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+        if ($result) {
+            return $result; 
+        } else {
+            return null; 
+        }
+    }
+
     
     public function FTP_download($controller_ip, $username, $password)
     {

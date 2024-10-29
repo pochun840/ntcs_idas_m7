@@ -104,8 +104,6 @@
                         
                             <div class="col-9" id='StepTorque_item' style="display: block;" >
                                 <input id="StepTorque"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>">
-                               
-                     
                             </div>
                             <div class="col-9" id='StepAngle_item' style="display: none;" >
                                 <input id="StepAngle"   class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle'] : '0'; ?>"  >
@@ -113,7 +111,6 @@
 
                             <div class="col-9" id='StepTime_item' style="display:  none;" >
                                 <input id="StepTime"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime'] : '0'; ?>">
-                     
                             </div>
 
                         </div>
@@ -147,13 +144,13 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Hi Angle (degree):</div>
+                            <div class="col-3"><?php echo $text['High_Angle'];?>:</div>
                             <div class="col-9">
                                 <input id="StepHiAngle" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiAngle'] : '0'; ?>">
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Lo Angle (degree):</div>
+                            <div class="col-3"><?php echo $text['Low_Angle'];?>:</div>
                             <div class="col-9">
                                 <input id="StepLoAngle" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoAngle'] : '0'; ?>">
                             </div>
@@ -175,7 +172,7 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Interrupt Alarm:</div>
+                            <div class="col-3"><?php echo $text['Interrupt_Alarm'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="interrupt_alarm" id="interrupt_alarm_off" value="0"
@@ -190,7 +187,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Over Angle Stop:</div>
+                            <div class="col-3"><?php echo $text['Over_Angle_Stop'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="over_angle_stop" id="over_angle_stop_off" value="0"
@@ -226,7 +223,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Run Down Speed (rpm):</div>
+                            <div class="col-3"><?php echo $text['Run_Down_Speed'];?> (rpm):</div>
                             <div class="col-9">
                                 <input id="StepRPM" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPM'] : '0'; ?>">
                             </div>
@@ -252,7 +249,7 @@
                                   <input class="form-check-input" type="radio" name="StepTorqueOffsetSign" id="join_offset_minus" value="45"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepTorqueOffsetSign'] == 45) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="join_offset_minus"><?php echo 'Minus'; ?></label>
-                                  <input id="StepTorqueOffsetSign1" class="form-control form-control-sm" value="">
+                                  <input id="StepTorqueOffset" class="form-control form-control-sm" value="">
                                 </div>
                             </div>
                         </div>
@@ -327,6 +324,7 @@
     </div>
 </div>
 
+
 <script>
  var dataType = "<?php echo $data['type']; ?>";
  window.onload = function() {
@@ -339,29 +337,14 @@
             document.getElementById("threshold_mode_torque").checked = true;
             document.getElementById("downshift_mode_torque").checked = true;
 
+            updateLabel();
+
         }
+        if(dataType == 'edit'){
 
-        if(dataType === 'edit'){
-            var StepOption = "<?php echo $data['step']['StepOption']; ?>";
-            if(StepOption == 0){
-                document.getElementById('StepTorque_item').style.display = 'block';
-                document.getElementById('StepAngle_item').style.display = 'none';
-                document.getElementById('StepTime_item'). style.display = 'none';
-            }
-
-            if(StepOption == 1){
-                document.getElementById('StepTorque_item').style.display = 'none';
-                document.getElementById('StepAngle_item').style.display = 'block';
-                document.getElementById('StepTime_item'). style.display = 'none';
-            }
-
-            if(StepOption == 2){
-                document.getElementById('StepTorque_item').style.display = 'none';
-                document.getElementById('StepAngle_item').style.display = 'none';
-                document.getElementById('StepTime_item'). style.display = 'block';
-            }
-    
+            updateLabel();
         }
+       
     };
 
     function updateLabel() {
@@ -426,7 +409,8 @@
         let StepRPM = document.getElementById("StepRPM").value;
         //缺少 k_value
         let StepTorqueOffset = document.querySelector('input[name="StepTorqueOffset"]:checked');
-        let StepTorqueOffsetSign = document.getElementById("StepTorqueOffsetSign").value;
+        //let StepTorqueOffsetSign = document.getElementById("	StepTorqueOffset).value;
+        let StepTorqueOffsetSign  = 43;
         let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
         let StepTorqueTS = document.getElementById("StepTorqueTS").value;
         let StepEnableDownShift =  document.querySelector('input[name="StepEnableDownShift"]:checked');

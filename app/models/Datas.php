@@ -20,12 +20,12 @@ class Datas{
 
     public function getData($type)
     {
-        $sql = "SELECT * FROM data ORDER BY data_time DESC LIMIT 100 ";
+        $sql = "SELECT * FROM ntcs_data2024_test ORDER BY data_time DESC LIMIT 100 ";
         if($type == 'OK'){
-            $sql = "SELECT * FROM ( SELECT * FROM data WHERE fasten_status = 4 or fasten_status = 5 or fasten_status = 6 ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC;";
+            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data2024_test WHERE error_message  = 0  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
         }
         if($type == 'NOK'){
-            $sql = "SELECT * FROM ( SELECT * FROM data WHERE fasten_status = 7 or fasten_status = 8 ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC;";
+            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data2024_test WHERE error_message = 1  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
         }
         
         $statement = $this->db_data->prepare($sql);
@@ -41,10 +41,11 @@ class Datas{
 
     public function get_range_data($start_date,$end_date)
     {
-        $sql = "SELECT * FROM data 
+        $sql = "SELECT * FROM ntcs_data2024_test 
                 WHERE data_time BETWEEN '".$start_date."' AND '".$end_date."'
                 ORDER BY data_time DESC LIMIT 10000";
-                
+        
+        //echo $sql;   
         $statement = $this->db_data->prepare($sql);
         
         if($statement != false){
