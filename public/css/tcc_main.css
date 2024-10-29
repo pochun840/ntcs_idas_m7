@@ -1,0 +1,266 @@
+html, body
+{
+    height: 100%;
+    margin: 0;
+    background-image: url(../img/vn.jpg);
+    background-size: cover;
+    background-position: center;
+}
+
+.container-ms
+{
+    width: 100%;
+    height: 100%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.main-content
+{
+    height: 100%;
+}
+
+.center-content
+{
+   width: 100%;
+}
+
+@media (max-width: 768px)
+{
+    .center-content
+    {
+        width: 100%;
+    }
+}
+
+button
+{
+   background: #EEEEEE;
+   border-radius: 10%;
+   width: 130px;
+   height: 130px;
+   color: #FFFFFF;
+   text-align: center;
+   float: center;
+}
+
+.menu
+{
+   width: 80px;
+   height: 80px;
+   text-align: center;
+   box-sizing: border-box;
+   font-size: 30px;
+}
+
+.menu-item:hover
+{
+   background: #EEEEEE;
+   color: #3290B1;
+}
+
+.blue
+{
+   background-color: #669AE1;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.blue:hover
+{
+   color: #669AE1;
+   text-shadow: none;
+}
+
+.green
+{
+   background-color: #70CC72;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.green:hover
+{
+   color: #70CC72;
+   text-shadow: none;
+}
+
+.red
+{
+   background-color: #FE4365;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.red:hover
+{
+   color: #FE4365;
+   text-shadow: none;
+}
+
+.orange
+{
+   background-color: #FC913A;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.orange:hover
+{
+   color: #FC913A;
+   text-shadow: none;
+}
+
+.purple
+{
+   background-color: #C49CDE;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.purple:hover
+{
+   color: #C49CDE;
+   text-shadow: none;
+}
+
+.lightblue
+{
+   background-color: #62C2E4;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.lightblue:hover
+{
+   color: #62C2E4;
+   text-shadow: none;
+}
+
+.pink
+{
+   background-color: #FFC0CB;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.pink:hover
+{
+   color: #FFC0CB;
+   text-shadow: none;
+}
+
+.PaleGreen
+{
+   background-color: #008B8B;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.PaleGreen:hover
+{
+   color: #008B8B;
+   text-shadow: none;
+}
+
+.lime
+{
+   background-color: #CDDC39;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.lime:hover
+{
+   color: #CDDC39;
+   text-shadow: none;
+}
+
+.indigo
+{
+   background-color: #3F51B5;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.indigo:hover
+{
+   color: #3F51B5;
+   text-shadow: none;
+}
+
+.deep-orange
+{
+   background-color: #FF5722;
+   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
+   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.deep-orange:hover
+{
+   color: #FF5722;
+   text-shadow: none;
+}
+
+/* Text  */
+.letter
+{
+    opacity: 0;
+    visibility: hidden;
+}
+
+@keyframes ziczac {
+    0% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-40px);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}
+.letter.appear
+{
+    opacity: 1;
+    visibility: visible;
+    animation: ziczac 0.4s linear;
+}
+.letter.go-down
+{
+    transform: translateX(0) rotate(0);
+}
+
+/* Button Language */
+.buttonbox input
+{
+
+    margin-bottom: 5px;
+}
+
+.buttonbox input
+{
+    border: none;
+    outline: none;
+    width:90px;
+    height: 40px;
+    background: #888888;
+    color: #fff;
+    font-size: 18px;
+    border: 1px outset #666;
+    border-radius: 5px;
+    text-align:center;
+}
+.buttonbox input:hover
+{
+    cursor: pointer;
+    background:#333300;
+    color: white;
+}
+
+.buttonbox input:active
+{
+    background-color: #DDDDDD;
+    box-shadow: 0 5px #666;
+    transform: translateY(4px);
+}

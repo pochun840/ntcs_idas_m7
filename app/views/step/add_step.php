@@ -1,0 +1,600 @@
+<?php require APPROOT . 'views/inc/header.php'; ?>
+
+<link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css" type="text/css">
+<link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/target_torque_angle.css">
+<link rel="stylesheet" href="<?php echo URLROOT; ?>/css/datatables.min.css">
+
+<style type="text/css">
+    .form-control
+    {
+        width: auto!important;
+        display: initial!important;
+    }
+    .form-control.is-invalid
+    {
+        padding-right:inherit!important;
+    }
+    .is-invalid~.invalid-feedback
+    {
+        display: inline!important;
+    }
+.t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;}
+.t2{font-size: 17px; margin: 5px 0px;}
+</style>
+
+<div class="container-ms">
+    <div class="w3-text-white w3-center">
+        <header>
+            <h3>  <h3><?php echo ($data['type'] == 'edit') ? 'EDIT STEP' : 'NEW STEP'; ?></h3></h3>
+        </header>
+    </div>
+
+    <div class="main-content">
+        <div class="center-content">
+            <div class="topnav">
+                <div class="row t1">
+                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%"><?php echo $text['job_id']; ?> : </div>
+                    <div class="col-1 t2">
+                        <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="JOBID" name="JOBID" size="10" maxlength="20" value="<?php echo $data['JOBID'];?>" disabled>
+                    </div>
+                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%">Sequence ID : </div>
+                    <div class="col-1 t2">
+                        <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="SEQID" name="SEQID" size="10" maxlength="20" value="<?php echo $data['SEQID'];?>" disabled>
+                    </div>
+                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%">Step ID : </div>
+                    <div class="col-1 t2">
+                        <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="StepSelect" name="StepSelect" size="10" maxlength="20" value="<?php echo $data['StepSelect'];?>" disabled>
+                    </div>
+
+                    <div class="col t2" style=" text-align: right; ">
+                        <div class="button-column">
+                            <button id="return" onclick="history.go(-1);"><?php echo $text['return']; ?></button>
+                        </div>
+                    </div>
+                </div>
+                <?php if($data['mode'] == 'edit'){ ?>
+                <div style="display: none;">
+                    <input type="" id="mode" value="<?php echo $data['mode']; ?>">
+                </div>
+                <?php } ?>
+            </div>
+
+            <div class="container" style="max-width: none;background-color: #F2F1F1;">
+                <div class="row">
+                    <div class="col-md-6 t2">
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Step Name:</div>
+                            <div class="col-9">
+                                <input id="STEPname" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['STEPname'] : ''; ?>">
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Target Type:</div>
+                            <div class="col-9">
+                                <select id="StepOption" class="form-control form-control-sm" style="font-size: 14px; width: 60px;" onchange="updateLabel()">
+                                    <?php 
+                                            $options = [
+                                                0 => 'Torque',
+                                                1 => 'Angle',
+                                                2 => 'Time'
+                                            ];
+
+                                            foreach ($options as $value => $label) {
+                                                echo '<option value="' . $value . '" ' . (($data['type'] == 'edit' && $data['step']['StepOption'] == $value) ? 'selected' : '') . '>' . $label . '</option>';
+                                            }
+                                    ?>
+                                </select>
+                            </div>
+                        </div>
+                        <hr class="hr" />
+                        <div class="col-12 row t2 mt-3">
+                            <?php if($data['type'] == 'edit'){?>
+                                <?php   if($data['step']['StepOption'] == 0 ){?>   
+                                    <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
+                                <?php }else if($data['step']['StepOption'] == 1 ){?>
+                                    <div class="col-3"  id="targetLabel" >Target Angle :</div>
+                                <?php }else if($data['step']['StepOption'] == 2 ) {?>
+                                    <div class="col-3"  id="targetLabel" >Target Time:</div>
+                                <?php } ?>
+
+                            <?php }else{?>
+                                <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
+                            <?php } ?>
+                             
+                        
+                            <div class="col-9" id='StepTorque_item' style="display: block;" >
+                                <input id="StepTorque"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>">
+                               
+                     
+                            </div>
+                            <div class="col-9" id='StepAngle_item' style="display: none;" >
+                                <input id="StepAngle"   class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle'] : '0'; ?>"  >
+                            </div>
+
+                            <div class="col-9" id='StepTime_item' style="display:  none;" >
+                                <input id="StepTime"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime'] : '0'; ?>">
+                     
+                            </div>
+
+                        </div>
+                        <hr class="hr" />
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Hi Toque (kgf-cm):</div>
+                            <div class="col-9">
+                                <input id="StepHiTorque" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : '0'; ?>" >
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Lo Toque (kgf-cm):</div>
+                            <div class="col-9">
+                                <input id="StepLoTorque" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : '0'; ?>">
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-12">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="0" onchange="getCheckboxValue()"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="monitoring_torque_window"><?php echo 'Monitoring torque by window:'; ?></label>
+                                </div>
+                                <div class="ps-5" style="display:inline-block;">
+                                    <label class="form-check-label" for="monitor_torque_upper"><?php echo 'Upper(%)'; ?></label>
+                                    <input id="StepLimiHi" class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : '0'; ?>'>
+                                    <label class="form-check-label ps-3" for="monitor_torque_upper"><?php echo 'Lower(%)'; ?></label>
+                                    <input id="StepLimiLo" class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : '0'; ?>'>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="hr" />
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Hi Angle (degree):</div>
+                            <div class="col-9">
+                                <input id="StepHiAngle" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiAngle'] : '0'; ?>">
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Lo Angle (degree):</div>
+                            <div class="col-9">
+                                <input id="StepLoAngle" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoAngle'] : '0'; ?>">
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-12">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1" onchange="getCheckboxValue()" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="monitoring_angle_window"><?php echo 'Monitoring angle by window:'; ?></label>
+                                </div>
+                                <div class="ps-5" style="display:inline-block;">
+                                    <label class="form-check-label" for="monitor_angle_upper"><?php echo 'Upper(%)'; ?></label>
+                                    <input id="StepLimiHi" class="form-control form-control-sm" style=" width: 40px !important; ">
+                                    <label class="form-check-label ps-3" for="monitor_angle_upper"><?php echo 'Lower(%)'; ?></label>
+                                    <input id="StepLimiLo" class="form-control form-control-sm" style=" width: 40px !important; ">
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="hr" />
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Interrupt Alarm:</div>
+                            <div class="col-9">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="interrupt_alarm" id="interrupt_alarm_off" value="0"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['InterruptAlarm'] == 0) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="interrupt_alarm_off"><?php echo $text['switch_off']; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="interrupt_alarm" id="interrupt_alarm_on" value="1"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['InterruptAlarm'] == 1) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="interrupt_alarm_on"><?php echo $text['switch_on']; ?></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Over Angle Stop:</div>
+                            <div class="col-9">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="over_angle_stop" id="over_angle_stop_off" value="0"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['OverAngleStop'] == 0) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="over_angle_stop_off"><?php echo $text['switch_off']; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="over_angle_stop" id="over_angle_stop_on" value="1"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['OverAngleStop'] == 1) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="over_angle_stop_on"><?php echo $text['switch_on']; ?></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Direction:</div>
+                            <div class="col-9">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepDirection" id="StepDirection_cw" value="0" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepDirection'] == 0) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="direction_cw"><?php echo $text['CW']; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepDirection" id="StepDirection_ccw" value="1"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepDirection'] == 1) ? 'checked' : ''; ?>> 
+                                  <label class="form-check-label" for="direction_ccw"><?php echo $text['CCW']; ?></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Delay (sec):</div>
+                            <div class="col-9">
+                                <input id="StepDelay" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepDelay'] : '0'; ?>">
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">Run Down Speed (rpm):</div>
+                            <div class="col-9">
+                                <input id="StepRPM" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPM'] : '0'; ?>">
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3">K Value:</div>
+                            <div class="col-9">
+                                <input id="k_value" class="form-control form-control-sm" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 t2">
+                        <div class="col-12 row t2 mt-3 ps-4">
+                            <div class="col-4">Join Offset (kgf-cm):</div>
+                            <div class="col-8">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepTorqueOffsetSign" id="join_offset_plus" value="43"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepTorqueOffsetSign'] == 43) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="join_offset_plus"><?php echo 'Plus'; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepTorqueOffsetSign" id="join_offset_minus" value="45"
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepTorqueOffsetSign'] == 45) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="join_offset_minus"><?php echo 'Minus'; ?></label>
+                                  <input id="StepTorqueOffsetSign1" class="form-control form-control-sm" value="">
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="hr" />
+                        <div class="col-12 row t2 mt-3 ps-4">
+                            <div class="col-4">Threshold Mode (kgf-cm):</div>
+                            <div class="col-8">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_off" value="0" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableThreshold'] == 0) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="threshold_mode_off"><?php echo $text['switch_off']; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_torque" value="2" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableThreshold'] == 2) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="threshold_mode_torque"><?php echo $text['torque']; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_angle" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableThreshold'] == 1) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="threshold_mode_angle"><?php echo $text['angle']; ?></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3 ps-4">
+                            <div class="col-4">Torque Threshold (kgf-cm):</div>
+                            <div class="col-8">
+                                <input id="StepTorqueTS" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueTS'] : '0'; ?> ">
+                            </div>
+                        </div>
+                        <hr class="hr" />
+                        <div class="col-12 row t2 mt-3 ps-4">
+                            <div class="col-4">Downshift:</div>
+                            <div class="col-8">
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_off" value="0" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableDownShift'] == 0) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="downshift_mode_off"><?php echo $text['switch_off']; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_torque" value="2" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableDownShift'] == 2) ? 'checked' : ''; ?>>
+                                  <label class="form-check-label" for="downshift_mode_torque"><?php echo $text['torque']; ?></label>
+                                </div>
+                                <div class="form-check form-check-inline ">
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_angle" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableDownShift'] == 1) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="downshift_mode_angle"><?php echo $text['angle']; ?></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3 ps-4" >
+                            <div class="col-4">Downshift Torque (kgf-cm):</div>
+                            <div class="col-8">
+                                <input id="StepTorqueDownShift" class="form-control form-control-sm" value="0">
+                            </div>
+                        </div>
+                        <div class="col-12 row t2 mt-3 ps-4" >
+                            <div class="col-4">Downshift Speed (rpm):</div>
+                            <div class="col-8">
+                                <input id="StepRPMDownShift" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPMDownShift'] : '0'; ?>">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="w3-center" style="margin: 10px 30px 0px 0;">
+                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3" onclick="<?php echo $data['type'] == 'new' ? 'save_step()' : 'edit_step()'; ?>"><?php echo $text['save']; ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+ var dataType = "<?php echo $data['type']; ?>";
+ window.onload = function() {
+        if (dataType === 'new') {
+      
+            document.getElementById("interrupt_alarm_off").checked = true;
+            document.getElementById("over_angle_stop_off").checked = true;
+            document.getElementById("StepDirection_cw").checked = true;
+            document.getElementById("join_offset_plus").checked = true;
+            document.getElementById("threshold_mode_torque").checked = true;
+            document.getElementById("downshift_mode_torque").checked = true;
+
+        }
+
+        if(dataType === 'edit'){
+            var StepOption = "<?php echo $data['step']['StepOption']; ?>";
+            if(StepOption == 0){
+                document.getElementById('StepTorque_item').style.display = 'block';
+                document.getElementById('StepAngle_item').style.display = 'none';
+                document.getElementById('StepTime_item'). style.display = 'none';
+            }
+
+            if(StepOption == 1){
+                document.getElementById('StepTorque_item').style.display = 'none';
+                document.getElementById('StepAngle_item').style.display = 'block';
+                document.getElementById('StepTime_item'). style.display = 'none';
+            }
+
+            if(StepOption == 2){
+                document.getElementById('StepTorque_item').style.display = 'none';
+                document.getElementById('StepAngle_item').style.display = 'none';
+                document.getElementById('StepTime_item'). style.display = 'block';
+            }
+    
+        }
+    };
+
+    function updateLabel() {
+
+        var  StepTorque_value  = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>';
+        var  StepAngle_value   = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle']  : '0'; ?>';
+        var  StepTime_value    =  '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime']   : '0'; ?>';
+
+        const select_val = document.getElementById('StepOption');
+        const label = document.getElementById('targetLabel');
+        const input_name = document.getElementsByName('targetLabel')[0];
+
+        const select_val_Text = select_val.options[select_val.selectedIndex].text;
+        if (select_val_Text === 'Torque') {
+            label.textContent = 'Target Torque (kgf-cm):';
+
+
+        } else {
+            label.textContent = `Target ${select_val_Text}:`;
+        } 
+
+        if(select_val.value == 0){
+            document.getElementById('StepTorque_item').style.display = 'block';
+            document.getElementById('StepAngle_item').style.display = 'none';
+            document.getElementById('StepTime_item'). style.display = 'none';
+        }
+
+        if(select_val.value == 1){
+            document.getElementById('StepTorque_item').style.display = 'none';
+            document.getElementById('StepAngle_item'). style.display = 'block';
+            document.getElementById('StepTime_item'). style.display = 'none';
+        }
+
+        if(select_val.value == 2){
+            document.getElementById('StepTorque_item').style.display = 'none';
+            document.getElementById('StepAngle_item'). style.display = 'none';
+            document.getElementById('StepTime_item'). style.display = 'block';
+        }
+
+    }
+
+
+    function save_step() {
+
+        let data = new FormData();
+
+        let job_id = document.getElementById("JOBID").value;
+        let seq_id = document.getElementById("SEQID").value;
+        let StepSelect = document.getElementById("StepSelect").value;
+        let STEPname = document.getElementById("STEPname").value;
+        let StepOption = document.getElementById("StepOption").value;
+        let StepTorque = document.getElementById("StepTorque").value;
+        let StepHiTorque = document.getElementById("StepHiTorque").value;
+        let StepLoTorque = document.getElementById("StepLoTorque").value;
+        let StepMoniByWin = getCheckboxValue();
+        let StepLimiHi = document.getElementById("StepLimiHi").value;
+        let StepLimiLo = document.getElementById("StepLimiLo").value;
+        let interrupt_alarm = document.querySelector('input[name="interrupt_alarm"]:checked');
+        let over_angle_stop = document.querySelector('input[name="over_angle_stop"]:checked');
+        let StepDirection   = document.querySelector('input[name="StepDirection"]:checked');
+        let StepDelay = document.getElementById("StepDelay").value;
+        let StepRPM = document.getElementById("StepRPM").value;
+        //缺少 k_value
+        let StepTorqueOffset = document.querySelector('input[name="StepTorqueOffset"]:checked');
+        let StepTorqueOffsetSign = document.getElementById("StepTorqueOffsetSign").value;
+        let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
+        let StepTorqueTS = document.getElementById("StepTorqueTS").value;
+        let StepEnableDownShift =  document.querySelector('input[name="StepEnableDownShift"]:checked');
+        let StepTorqueDownShift = document.getElementById("StepTorqueDownShift").value;
+        let StepRPMDownShift = document.getElementById("StepRPMDownShift").value;
+        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+
+        data.append("JOBID", job_id);
+        data.append("SEQID", seq_id);
+        data.append("StepSelect",StepSelect);
+        data.append("STEPname",STEPname);
+        data.append("time",time);
+        data.append("StepOption",StepOption);
+        data.append("StepTorque",StepTorque);
+        data.append("StepMoniByWin",StepMoniByWin);
+        data.append("StepLimiHi",StepLimiHi);
+        data.append("StepLimiLo",StepLimiLo);
+        data.append("InterruptAlarm", interrupt_alarm  ? interrupt_alarm.value : null);
+        data.append("OverAngleStop", over_angle_stop  ? over_angle_stop.value : null);
+        data.append("StepDirection",StepDirection ? StepDirection.value : null);
+        data.append("StepDelay",StepDelay);
+        data.append("StepRPM",StepRPM); 
+        //缺少 k_value
+        data.append("StepTorqueOffset",StepTorqueOffset.value);
+        data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
+        data.append("StepEnableThreshold",StepEnableThreshold.value);
+        data.append("StepTorqueTS",StepTorqueTS);
+        data.append("StepEnableDownShift",StepEnableDownShift.value);
+        data.append("StepTorqueDownShift",StepTorqueDownShift);
+        data.append("StepRPMDownShift",StepRPMDownShift);
+        data.append("StepHiTorque",StepHiTorque);
+        data.append("StepLoTorque",StepLoTorque);
+
+        $.ajax({
+            url: '?url=Step/create_step',
+            type: 'POST',
+            data: data,
+            processData: false, 
+            contentType: false, 
+            success: function(response) {
+                // 處理成功回應
+                var responseData = JSON.parse(response);
+                //console.log(responseData);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    window.location.href = '../public/?url=Step/index/' + job_id; 
+                });
+            },
+            error: function(xhr, status, error) {
+                // 處理錯誤
+                console.error('Error:', error);
+            }
+        });
+        
+    }
+
+
+    function edit_step(){
+        
+        let data = new FormData();
+
+        let job_id = document.getElementById("JOBID").value;
+        let seq_id = document.getElementById("SEQID").value;
+        let StepSelect = document.getElementById("StepSelect").value;
+        let STEPname = document.getElementById("STEPname").value;
+        let StepOption = document.getElementById("StepOption").value;
+        let StepTorque = (document.getElementById("StepTorque") && document.getElementById("StepTorque").value) || "";
+        let StepAngle = (document.getElementById("StepAngle") && document.getElementById("StepAngle").value) || "";
+        let StepHiTorque = document.getElementById("StepHiTorque").value;
+        let StepLoTorque = document.getElementById("StepLoTorque").value;
+        let StepMoniByWin = getCheckboxValue();
+        let StepLimiHi = document.getElementById("StepLimiHi").value;
+        let StepLimiLo = document.getElementById("StepLimiLo").value;
+        let interrupt_alarm = document.querySelector('input[name="interrupt_alarm"]:checked');
+        let over_angle_stop = document.querySelector('input[name="over_angle_stop"]:checked');
+        let StepDirection   = document.querySelector('input[name="StepDirection"]:checked');
+        let StepDelay = document.getElementById("StepDelay").value;
+        let StepRPM = document.getElementById("StepRPM").value;
+        //缺少 k_value
+        let StepTorqueOffset = document.querySelector('input[name="StepTorqueOffset"]:checked');
+        //let StepTorqueOffsetSign = document.getElementById("StepTorqueOffsetSign").value;
+        let StepTorqueOffsetSign = 43;
+        let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
+        let StepTorqueTS = document.getElementById("StepTorqueTS").value;
+        let StepEnableDownShift =  document.querySelector('input[name="StepEnableDownShift"]:checked');
+        let StepTorqueDownShift = document.getElementById("StepTorqueDownShift").value;
+        let StepRPMDownShift = document.getElementById("StepRPMDownShift").value;
+        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+
+        data.append("JOBID", job_id);
+        data.append("SEQID", seq_id);
+        data.append("StepSelect",StepSelect);
+        data.append("STEPname",STEPname);
+        data.append("time",time);
+        data.append("StepOption",StepOption);
+        data.append("StepAngle",StepAngle);
+        data.append("StepTorque",StepTorque);
+        data.append("StepMoniByWin",StepMoniByWin);
+        data.append("StepLimiHi",StepLimiHi);
+        data.append("StepLimiLo",StepLimiLo);
+        data.append("InterruptAlarm", interrupt_alarm  ? interrupt_alarm.value : null);
+        data.append("OverAngleStop", over_angle_stop  ? over_angle_stop.value : null);
+        data.append("StepDirection",StepDirection ? StepDirection.value : null);
+        data.append("StepDelay",StepDelay);
+        data.append("StepRPM",StepRPM); 
+        //缺少 k_value
+        //data.append("StepTorqueOffset",StepTorqueOffset.value); //待修改
+        data.append("StepTorqueOffset",0);
+        data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
+        data.append("StepEnableThreshold",StepEnableThreshold.value);
+        data.append("StepTorqueTS",StepTorqueTS);
+        data.append("StepEnableDownShift",StepEnableDownShift.value);
+        data.append("StepTorqueDownShift",StepTorqueDownShift);
+        data.append("StepRPMDownShift",StepRPMDownShift);
+        data.append("StepHiTorque",StepHiTorque);
+        data.append("StepLoTorque",StepLoTorque);
+
+        //console.log(StepTorqueOffset.value);
+        $.ajax({
+            url: '?url=Step/edit_step',
+            type: 'POST',
+            data: data,
+            processData: false, 
+            contentType: false, 
+            success: function(response) {
+                // 處理成功回應
+                var responseData = JSON.parse(response);
+                //console.log(responseData);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    window.location.href = '../public/?url=Step/index/' + job_id +'/' + seq_id; 
+                });
+            },
+            error: function(xhr, status, error) {
+                // 處理錯誤
+                console.error('Error:', error);
+            }
+        });
+
+    }
+
+
+    function getCheckboxValue() {
+        var checkbox0 = document.getElementById("StepMoniByWin_0");
+        var checkbox1 = document.getElementById("StepMoniByWin_1");
+
+        var check_val = -1;
+        if (checkbox0.checked) {
+            checkbox1.checked = false; 
+
+            check_val = 0;
+        } else if (checkbox1.checked) {
+            checkbox0.checked = false; 
+            check_val = 1;
+        } else {
+        }
+        return check_val;
+    }   
+
+
+</script>
+
+<?php if($_SESSION['privilege'] != 'admin'){ ?>
+<script>
+  $(document).ready(function () {
+    disableAllButtonsAndInputs()
+    document.getElementById("return").disabled = false;
+  });
+</script>
+<?php } ?>
+
+
+<?php require APPROOT . 'views/inc/footer.php'; ?>
