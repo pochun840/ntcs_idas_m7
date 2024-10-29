@@ -372,37 +372,39 @@ class Outputs extends Controller
         
         $input_check = true;
 
-        $jobdata = array();
+        $output_data = array();
         if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $jobdata['output_job_id'] = $_POST['job_id'];
+            $output_data['JOBID'] = $_POST['job_id'];
         }else{ 
             $input_check = false; 
         }
         if( !empty($_POST['output_pin']) && isset($_POST['output_pin'])  ){ //new
-            $jobdata['output_pin'] = $_POST['output_pin'];
+            $output_data['Pin'] = $_POST['output_pin'];
         }else{ 
             $input_check = false; 
         }
         if( !empty($_POST['output_event']) && isset($_POST['output_event'])  ){ //old
-            $jobdata['output_event'] = $_POST['output_event'];
-        }else{ 
-            $input_check = false; 
-        }
-        if( !empty($_POST['wave']) && isset($_POST['wave'])  ){
-            $jobdata['wave'] = $_POST['wave'];
-        }else{ 
-            $input_check = false; 
-        }
-        if( isset($_POST['wave_on']) && $_POST['wave_on']>=0 && $_POST['wave_on'] <= 10000 ){
-            $jobdata['wave_on'] = $_POST['wave_on'];
-            if($jobdata['wave_on'] == ''){
-                $jobdata['wave_on'] = 0;//預設值
-            }
+            $output_data['EvenID'] = $_POST['output_event'];
         }else{ 
             $input_check = false; 
         }
 
-        $count = $this->OutputModel->check_event_conflict($jobdata['output_job_id'],$jobdata['output_event']);
+        if(!empty($_POST['wave'])){
+            $output_data['signal'] = $_POST['wave'];
+        }else{ 
+            $output_data['signal'] = 0;
+        }
+
+
+        if( $_POST['wave_on'] == ""){
+            $output_data['durate'] = '';
+        }else{
+            $output_data['durate'] = $_POST['wave_on'];
+        }
+
+     
+
+        $count = $this->OutputModel->check_event_conflict($output_data['JOBID'],$output_data['EvenID']);
         if ($count > 0){
             //先移除舊的資料 再新增新的資料
 
@@ -412,15 +414,15 @@ class Outputs extends Controller
                 $res = $this->OutputModel->edit_output($jobdata);
             }*/
 
-            $res = $this->OutputModel->edit_output($jobdata);
+            $res = $this->OutputModel->edit_output($output_data);
         }
         
         if($res){
             $res_type = 'Success';
-            $res_msg = $text['edit_event'].$text['job_id'].':'.$jobdata['output_job_id'].','.$text['event'].':'.$text[$event[$jobdata['output_event']]]."  ".$text['success'];
+            $res_msg = $text['edit_event'].$text['job_id'].':'.$output_data['JOBID'].','.$text['event'].':'.$text[$event[$output_data['EvenID']]]."  ".$text['success'];
         }else{
             $res_type = 'Error';
-            $res_msg = $text['edit_event'].$text['job_id'].':'.$jobdata['output_job_id'].','.$text['event'].':'.$text[$event[$jobdata['output_event']]]."  ".$text['fail'];
+            $res_msg = $text['edit_event'].$text['job_id'].':'.$output_data['JOBID'].','.$text['event'].':'.$text[$event[$output_data['EvenID']]]."  ".$text['fail'];
         }
 
         $result = array(

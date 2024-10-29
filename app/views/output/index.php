@@ -983,16 +983,11 @@ function get_output_info(job_id,output_event){
                 var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
 
 
-
-
-
                 var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
-                //alert(edit_output_pin);
                 var radioButton = document.getElementById(edit_output_pin);
                 radioButton.removeAttribute('disabled');
 
                 var time_ms = 'edit_time'+ output_pin;
-
                 if(wave != 2){
                     var time_id = 'edit_time' + output_pin;
                     var element = document.getElementById(time_id);
@@ -1001,8 +996,6 @@ function get_output_info(job_id,output_event){
                         element.disabled = true
                     }
                 }
-
-
                     
                 //完工信號 && 馬達信號 && 啟動信號
                 if (output_event == 8  || output_event == 6 || output_event == 7 ) {
@@ -1021,7 +1014,6 @@ function get_output_info(job_id,output_event){
                     if (Array.isArray(temp)) {
                         //過濾出包含 "edit_pin" 的字串
                         const filteredArray = temp.filter(item => item.includes("edit_pin"));
-                        
                         const updatedArray = filteredArray.map(item => {
                             // 如果字串為空，直接返回
                             if (item.length === 0) {
@@ -1041,25 +1033,18 @@ function get_output_info(job_id,output_event){
 
                     }
                     
-                    
-
-                    
-                   
-              
                 }
 
                 document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
- 
-                 old_output_even = output_event;
- 
-                 if(radioButton){
-                     radioButton.checked = true;
-                 }
+                old_output_even = output_event;
+                if(radioButton){
+                    radioButton.checked = true;
+                }
                  
-                 document.querySelector("select[name='edit_event_option']").value = output_event;
-                 document.getElementById("edit_event_option").onchange = function() {
-                  var selectedValue = this.value; 
-                 };
+                document.querySelector("select[name='edit_event_option']").value = output_event;
+                document.getElementById("edit_event_option").onchange = function() {
+                    var selectedValue = this.value; 
+                };
              },
              error: function(xhr, status, error) {
                  console.error("AJAX request failed:", status, error);
@@ -1077,7 +1062,6 @@ function toggleOnputTime(inputId, checked, option) {
         return; // Exit if element is not found
     }
 
-   
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
@@ -1085,7 +1069,6 @@ function toggleOnputTime(inputId, checked, option) {
         }
     }
 
-    
     if (option != '2') {
         var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
         var element = document.getElementById(newId);

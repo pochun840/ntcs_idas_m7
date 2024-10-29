@@ -110,21 +110,21 @@ class Output{
     }
 
 
-    public function edit_output($jobdata){
+    public function edit_output($output_data){
 
-        $sql = "UPDATE `output` 
-        SET output_event = :output_event, 
-            output_pin  = :output_pin,
-            wave = :wave, 
-            wave_on = :wave_on ";
-        $sql .= "WHERE output_event = :output_event  AND output_job_id = :output_job_id ";
+        $sql = "UPDATE `JOBOutput_lst` 
+        SET EvenID = :EvenID, 
+            Pin  = :Pin,
+            signal = :signal, 
+            durate = :durate ";
+        $sql .= "WHERE EvenID = :EvenID  AND JOBID = :JOBID ";
 
         $statement = $this->db_iDas->prepare($sql);
-        $statement->bindValue(':output_job_id', $jobdata['output_job_id']);
-        $statement->bindValue(':output_event', $jobdata['output_event']);
-        $statement->bindValue(':output_pin', $jobdata['output_pin']);
-        $statement->bindValue(':wave', $jobdata['wave']);
-        $statement->bindValue(':wave_on', $jobdata['wave_on']);
+        $statement->bindValue(':JOBID', $output_data['JOBID']);
+        $statement->bindValue(':EvenID', $output_data['EvenID']);
+        $statement->bindValue(':Pin', $output_data['Pin']);
+        $statement->bindValue(':signal', $output_data['signal']);
+        $statement->bindValue(':durate', $output_data['durate']);
         $results = $statement->execute();
         return $results;
 
