@@ -32,7 +32,7 @@
                                 <td>
                                     <select style="margin: center" id="JobNameSelect" name="JobNameSelect" size="200">
                                         <?php foreach($data['job_list'] as $key =>$val){?>
-                                            <option value="<?php echo $val['job_id'];?>"><?php echo $val['job_name'];?></option>
+                                            <option value="<?php echo $val['JOBID'];?>"><?php echo $val['JOBname'];?></option>
                                         <?php }?>                                                                                                                                
                                      </select>
                                 </td>
@@ -230,8 +230,8 @@
                                             <select id="JobSelect1" class="col custom-file" style="margin: center; width: 160px">
                                             <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>    
                                                 <?php foreach($data['job_list'] as $kk => $vv){?>
-                                                    <option id ='job_list_option' value="<?php echo $vv['job_id']; ?>">
-                                                        <?php echo $vv['job_id'] . " - " . $vv['job_name']; ?>
+                                                    <option id ='job_list_option' value="<?php echo $vv['JOBID']; ?>">
+                                                        <?php echo $vv['JOBID'] . " - " . $vv['JOBname']; ?>
                                                     </option>
                                                 <?php } ?>  
                                             </select>

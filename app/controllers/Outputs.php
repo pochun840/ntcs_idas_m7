@@ -24,7 +24,7 @@ class Outputs extends Controller
         if(!empty($joblist)){
             $job_list_new = array();
             foreach($joblist as $kk =>$vv){
-                $job_list_new[$vv['job_id']] =$vv;  
+                $job_list_new[$vv['JOBID']] =$vv;  
             }
         }
 
@@ -94,10 +94,10 @@ class Outputs extends Controller
                         $job_outputlist .= '<td>'.$vv['wave_on'].'</td>';
                         $job_outputlist .= '</tr>';
                     }else{
-                        $job_outputlist .= "<tr data-event ='".$vv['output_event']."'>";
-                        $job_outputlist .= "<td id='".$vv['output_event']."'>".$event_output[$vv['output_event']]."</td>";
-                        $job_outputlist .= $this->OutputModel->generateTableCell($vv['output_pin'],$vv['wave']);
-                        $job_outputlist .= '<td>'.$vv['wave_on'].'</td>';
+                        $job_outputlist .= "<tr data-event ='".$vv['EvenID']."'>";
+                        $job_outputlist .= "<td id='".$vv['EvenID']."'>".$event_output[$vv['EvenID']]."</td>";
+                        $job_outputlist .= $this->OutputModel->generateTableCell($vv['Pin'],$vv['signal']);
+                        $job_outputlist .= '<td>'.$vv['durate'].'</td>';
                         $job_outputlist .= '</tr>';
                     }
 
