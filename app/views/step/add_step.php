@@ -63,13 +63,13 @@
                 <div class="row">
                     <div class="col-md-6 t2">
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Step Name:</div>
+                            <div class="col-3"><?php echo $text['step_name'];?>:</div>
                             <div class="col-9">
                                 <input id="STEPname" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['STEPname'] : ''; ?>">
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Target Type:</div>
+                            <div class="col-3"><?php echo $text['target_type'];?>:</div>
                             <div class="col-9">
                                 <select id="StepOption" class="form-control form-control-sm" style="font-size: 14px; width: 60px;" onchange="updateLabel()">
                                     <?php 
@@ -119,13 +119,13 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Hi Toque (kgf-cm):</div>
+                            <div class="col-3"><?php echo $text['High_Torque'];?> (kgf-cm):</div>
                             <div class="col-9">
                                 <input id="StepHiTorque" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : '0'; ?>" >
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Lo Toque (kgf-cm):</div>
+                            <div class="col-3"><?php echo $text['Low_Torque']?> (kgf-cm):</div>
                             <div class="col-9">
                                 <input id="StepLoTorque" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : '0'; ?>">
                             </div>
