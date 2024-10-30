@@ -489,9 +489,8 @@
         let StepDelay = document.getElementById("StepDelay").value;
         let StepRPM = document.getElementById("StepRPM").value;
         //缺少 k_value
-        let StepTorqueOffset = document.querySelector('input[name="StepTorqueOffset"]:checked');
-        //let StepTorqueOffsetSign = document.getElementById("StepTorqueOffsetSign").value;
-        let StepTorqueOffsetSign = 43;
+        let StepTorqueOffset = document.getElementById("SStepTorqueOffset").value;
+        let StepTorqueOffsetSign  = document.querySelector('input[name="StepTorqueOffsetSign"]:checked');
         let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
         let StepTorqueTS = document.getElementById("StepTorqueTS").value;
         let StepEnableDownShift =  document.querySelector('input[name="StepEnableDownShift"]:checked');
@@ -566,8 +565,68 @@
         } else {
         }
         return check_val;
-    }   
+    } 
+    
+    
+    //offset 計算
+    function initializeInputAlert() {
+        const inputField = document.getElementById("StepTorqueOffset");
+        const stepOption = document.getElementById("StepOption");
+        inputField.addEventListener("keydown", function(event) {
+            // 檢查按下的是否是 Enter 鍵
+            if (event.key === "Enter") {
+                const offset = inputField.value;
+                const selectedOptionValue = stepOption.value; 
 
+                const radioButtons = document.getElementsByName("StepTorqueOffsetSign");
+                let selectedRadioValue;
+                for (const radioButton of radioButtons) {
+                    if (radioButton.checked) {
+                        selectedRadioValue = radioButton.value;
+                        break;
+                    }
+                }
+                let offset_tmp;
+                if (selectedRadioValue === "43") {
+                    offset_tmp = offset; 
+                } else {
+                    offset_tmp = -offset; 
+                }
+                offset_tmp = parseFloat(offset_tmp);
+
+                const aa = 0.5;
+                const bb = 5;
+                const torque = parseFloat(document.getElementById("StepTorque").value);
+     
+                if(selectedOptionValue == 0){
+
+                    const torqueThreshold = torque * 0.3; // torque 的 30%
+                    const lowerBound = aa * 0.7; // Spec 下限 
+                    const upperBound = bb * 1.08; // Spec 上限
+
+                    // 檢查條件
+                    if (offset_tmp <= torqueThreshold && 
+                        lowerBound <= (torque + offset_tmp) && 
+                        (torque + offset_tmp) <= upperBound) {
+                        //alert("Both conditions met!");
+                    } else {
+                        alert("One or both conditions not met!");
+                        retrn false;
+                    }
+     
+                }else{
+                    //1."Offset ≦ (Spec Max = 100%) x30%"
+                    //2."(Spec 下限 *70%) ≦ Offset + HQ" 
+
+                }
+                
+
+
+            }
+        });
+    }
+
+    window.onload = initializeInputAlert;
 
 </script>
 

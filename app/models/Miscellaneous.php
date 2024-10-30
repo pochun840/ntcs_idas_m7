@@ -9,7 +9,7 @@ class Miscellaneous{
     public function __construct()
     {
         $this->db_iDas_tools = new Database;
-        $this->db_iDas_tools = $this->db_iDas_tools->getDb_das();
+        $this->db_iDas_tools = $this->db_iDas_tools->getDb_das_tools();
 
     }
 
@@ -389,7 +389,7 @@ class Miscellaneous{
 
     //取得最大最小轉速 及 最大最小扭力   
     public function getToolSpecifications() {
-        $sql = "SELECT max_rpm, min_rpm, max_torq, min_torq FROM ntcs_tool_test ";
+        $sql = "SELECT max_rpm, min_rpm, max_torque, min_torque FROM ntcs_tool_test ";
         $statement = $this->db_iDas_tools->prepare($sql);
         $statement->execute();
 
