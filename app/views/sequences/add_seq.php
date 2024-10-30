@@ -23,7 +23,7 @@
 <div class="container-ms" id ="your_container_id">
     <div class="w3-text-white w3-center">
         <header>
-            <h3><?php echo ($data['type'] == 'edit') ? 'EDIT' : 'NEW'; ?></h3>
+            <h3><?php echo ($data['type'] == 'edit') ? $text['edit_seq'] : $text['new_seq']; ?></h3>
         </header>
     </div>
 
@@ -35,7 +35,7 @@
                     <div class="col-1 t2">
                     	<input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="job_id" name="job_id" size="10" maxlength="20" value="<?php echo $data['job_id'];?>" disabled>
                     </div>
-                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%">Sequence ID : </div>
+                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%"><?php echo $text['seq_id'];?> : </div>
                     <div class="col-1 t2">
                         <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="seq_id" name="seq_id" size="10" maxlength="20" value="<?php echo $data['seq_id'];?>" disabled>
                     </div>
@@ -54,7 +54,7 @@
                 <div class="row">
                     <div class="col-md-6 t2">
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Sequence Name:</div>
+                            <div class="col-3"><?php echo $text['seq_name'];?>:</div>
                             <div class="col-9">
                                 <input id="SEQname" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : ''; ?>">
                             </div>
@@ -62,19 +62,19 @@
                         <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
 
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Tightening Repeat:</div>
+                            <div class="col-3"><?php echo $text['tightening_repeat'];?>:</div>
                             <div class="col-9">
                                 <input id="seq_repeat" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['seq_repeat'] : ''; ?>">
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Timeout (sec):</div>
+                            <div class="col-3"><?php echo $text['Timeout'];?> (sec):</div>
                             <div class="col-9">
                                 <input id="timeout" value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">(0-60)
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">OK Sequence:</div>
+                            <div class="col-3"><?php echo $text['OK-Sequence'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="ok_seq" id="ok_seq_off" value="0" 
@@ -119,7 +119,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">NG Stop (0-9):</div>
+                            <div class="col-3"><?php echo $text['NG_Stop'];?> (0-9):</div>
                             <div class="col-9">
                                 <select id="ng_stop" class="form-select" style="font-size: 14px; width: 60px;">
                                 <?php 
@@ -285,10 +285,8 @@
 
         if(dataType === 'edit'){
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-            let displayedValue = parseInt('<?php echo $data['sequences']['Thread_Calcu']; ?>', 10);
+            let displayedValue = '<?php echo isset($data['sequences']['Thread_Calcu']) ? $data['sequences']['Thread_Calcu'] : ''; ?>';
             setCheckboxesByValue(displayedValue);
-            
-            
         }
     };
     
@@ -299,6 +297,12 @@
         let seq_id = document.getElementById("seq_id").value;
         let SEQname = document.getElementById("SEQname").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+
+        const timeoutValue = parseInt(document.getElementById("timeout").value, 10);
+        if (isNaN(timeoutValue) || timeoutValue < 0 || timeoutValue > 60) {
+            alert("請輸入有效的超時值 (0-60)");
+            return false; 
+        }
 
 
         data.append("job_id", job_id);
@@ -385,6 +389,14 @@
         let SEQname = document.getElementById("SEQname").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
 
+
+        const timeoutValue = parseInt(document.getElementById("timeout").value, 10);
+        if (isNaN(timeoutValue) || timeoutValue < 0 || timeoutValue > 60) {
+            alert("請輸入有效的超時值 (0-60)");
+            return false; 
+        }
+
+        
         let data = new FormData();
         data.append("job_id", job_id);
         data.append("SEQID", seq_id);
@@ -468,36 +480,20 @@
 
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         let total = 0;
-        if (dataType === 'new') {
-            checkboxes.forEach((checkbox, index) => {
-                if (checkbox.checked) {
-                    // 根據 checkbox 的索引加上對應的值
-                    switch (index) {
-                        case 0: total += 16; break; // 第1個
-                        case 1: total += 8; break;  // 第2個
-                        case 2: total += 4; break;  // 第3個
-                        case 3: total += 2; break;  // 第4個
-                        case 4: total += 1; break;  // 第5個
-                    }
+        checkboxes.forEach((checkbox, index) => {
+            if (checkbox.checked) {
+                // 根據 checkbox 的索引加上對應的值
+                switch (index) {
+                    case 0: total += 16; break; // 第1個
+                    case 1: total += 8; break;  // 第2個
+                    case 2: total += 4; break;  // 第3個
+                    case 3: total += 2; break;  // 第4個
+                    case 4: total += 1; break;  // 第5個
                 }
-            });
-
-            return total;
-        }else {
-            let displayedValue = '<?php echo $data['sequences']['Thread_Calcu'];?>';
-            alert(displayedValue);
-            checkboxes.forEach(checkbox => checkbox.checked = false);
-            if (displayedValue === 31) {
-                checkboxes.forEach(checkbox => checkbox.checked = true); // 全部勾選
-            } else if (displayedValue === 25) {
-                checkboxes[0].checked = true; // 第1個
-                checkboxes[1].checked = true; // 第2個
-                checkboxes[4].checked = true; // 第5個
             }
+        });
 
-        // 更新顯示的值
-        document.getElementById('result').innerText = displayedValue;
-        }
+        return total;
     }
 
     function setCheckboxesByValue(value) {
