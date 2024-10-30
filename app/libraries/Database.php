@@ -26,6 +26,7 @@ class Database
         $Year = date("Y");// data db 用西元年命名
        // $data_db_name = "data".$Year.".db";
         $data_db_name = "ntcs_data.db";
+        
         if( PHP_OS_FAMILY == 'Linux'){
 
             //$this->db_con = new PDO('sqlite:/var/www/html/database/data.db');
@@ -62,6 +63,7 @@ class Database
             $this->db_iDas = new PDO('sqlite:../KLS_NTCS.Lin'); 
             $this->db_iDas_login = new PDO('sqlite:../das.db'); 
             $this->db_iDas_device = new PDO('sqlite:../data_device.db'); 
+            $this->db_iDas_tools = new PDO('sqlite:../ntcs_device.db');
             //$this->db_iDas_device = new PDO('sqlite:../data.db'); 
 
         }
@@ -112,6 +114,13 @@ class Database
             return $this->db_iDas_device;
         }
     }
+
+    public function getDb_das_tools() {
+        if ($this->db_iDas_tools instanceof PDO) {
+            return $this->db_iDas_tools;
+        }
+    }
+
 
 
     public function get_tool_rpm()

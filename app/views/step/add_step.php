@@ -255,7 +255,7 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3 ps-4">
-                            <div class="col-4">Threshold Mode (kgf-cm):</div>
+                            <div class="col-4"><?php echo $text['Threshold_Type'];?> (kgf-cm):</div>
                             <div class="col-8">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_off" value="0" 
@@ -275,7 +275,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4">
-                            <div class="col-4">Torque Threshold (kgf-cm):</div>
+                            <div class="col-4"><?php echo $text['Threshold_Torque'];?> (kgf-cm):</div>
                             <div class="col-8">
                                 <input id="StepTorqueTS" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueTS'] : '0'; ?> ">
                             </div>
@@ -302,13 +302,13 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" >
-                            <div class="col-4">Downshift Torque (kgf-cm):</div>
+                            <div class="col-4"><?php echo $text['Downshift_Torque'];?> (kgf-cm):</div>
                             <div class="col-8">
                                 <input id="StepTorqueDownShift" class="form-control form-control-sm" value="0">
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" >
-                            <div class="col-4">Downshift Speed (rpm):</div>
+                            <div class="col-4"><?php echo $text['Downshift_Speed'];?> (rpm):</div>
                             <div class="col-8">
                                 <input id="StepRPMDownShift" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPMDownShift'] : '0'; ?>">
                             </div>
@@ -408,9 +408,9 @@
         let StepDelay = document.getElementById("StepDelay").value;
         let StepRPM = document.getElementById("StepRPM").value;
         //缺少 k_value
-        let StepTorqueOffset = document.querySelector('input[name="StepTorqueOffset"]:checked');
-        //let StepTorqueOffsetSign = document.getElementById("	StepTorqueOffset).value;
-        let StepTorqueOffsetSign  = 43;
+        let StepTorqueOffsetSign = document.querySelector('input[name="StepTorqueOffsetSign"]:checked');
+        let StepTorqueOffset = document.getElementById("StepTorqueOffset").value;
+
         let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
         let StepTorqueTS = document.getElementById("StepTorqueTS").value;
         let StepEnableDownShift =  document.querySelector('input[name="StepEnableDownShift"]:checked');
@@ -455,7 +455,7 @@
                 var responseData = JSON.parse(response);
                 //console.log(responseData);
                 alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    window.location.href = '../public/?url=Step/index/' + job_id; 
+                    window.location.href = '../public/?url=Step/index/' + job_id + '/'+ seq_id; 
                 });
             },
             error: function(xhr, status, error) {

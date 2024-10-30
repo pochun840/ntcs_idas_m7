@@ -8,8 +8,8 @@ class Miscellaneous{
     // 在建構子將 Database 物件實例化
     public function __construct()
     {
-        $this->db_iDas = new Database;
-        $this->db_iDas = $this->db_iDas->getDb_das();
+        $this->db_iDas_tools = new Database;
+        $this->db_iDas_tools = $this->db_iDas_tools->getDb_das();
 
     }
 
@@ -389,8 +389,8 @@ class Miscellaneous{
 
     //取得最大最小轉速 及 最大最小扭力   
     public function getToolSpecifications() {
-        $sql = "SELECT max_rpm, min_rpm, max_torq, min_torq FROM tools_info";
-        $statement = $this->db_iDas->prepare($sql);
+        $sql = "SELECT max_rpm, min_rpm, max_torq, min_torq FROM ntcs_tool_test ";
+        $statement = $this->db_iDas_tools->prepare($sql);
         $statement->execute();
 
         $result = $statement->fetch(PDO::FETCH_ASSOC);

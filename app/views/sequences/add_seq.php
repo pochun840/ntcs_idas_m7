@@ -173,13 +173,7 @@
                                
                                 <?php for ($i = 1; $i <= 5; $i++) { ?>
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>"
-                                            <?php 
-                                            // 使用位運算來檢查第 i 位是否為 1
-                                            if (($digits & (1 << ($i - 1))) !== 0) {
-                                                echo 'checked';
-                                            }
-                                            ?>>
+                                        <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>" onchange="getCheckboxValue()" >
                                         <label class="form-check-label" for="Thread_Calcu_<?php echo $i; ?>"><?php echo $i; ?></label>
                                     </div>
                                 <?php } ?>
@@ -287,6 +281,14 @@
             document.getElementById("unscrew_mode_auto").checked = true;
             document.getElementById("unscrew_rpm").value = 150;
             document.getElementById("unscrew_torque_threshold").value = 12345;
+        }
+
+        if(dataType === 'edit'){
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            let displayedValue = parseInt('<?php echo $data['sequences']['Thread_Calcu']; ?>', 10);
+            setCheckboxesByValue(displayedValue);
+            
+            
         }
     };
     
@@ -463,18 +465,68 @@
     }
 
     function getCheckboxValue() {
-        var sum = 0; //
-        for (var i = 1; i <= 5; i++) {
-            var checkbox = document.getElementById("Thread_Calcu_" + i);
-            if (checkbox.checked) {
-                sum |= (1 << (i - 1)); 
-            }  
+
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        let total = 0;
+        if (dataType === 'new') {
+            checkboxes.forEach((checkbox, index) => {
+                if (checkbox.checked) {
+                    // 根據 checkbox 的索引加上對應的值
+                    switch (index) {
+                        case 0: total += 16; break; // 第1個
+                        case 1: total += 8; break;  // 第2個
+                        case 2: total += 4; break;  // 第3個
+                        case 3: total += 2; break;  // 第4個
+                        case 4: total += 1; break;  // 第5個
+                    }
+                }
+            });
+
+            return total;
+        }else {
+            let displayedValue = '<?php echo $data['sequences']['Thread_Calcu'];?>';
+            alert(displayedValue);
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            if (displayedValue === 31) {
+                checkboxes.forEach(checkbox => checkbox.checked = true); // 全部勾選
+            } else if (displayedValue === 25) {
+                checkboxes[0].checked = true; // 第1個
+                checkboxes[1].checked = true; // 第2個
+                checkboxes[4].checked = true; // 第5個
+            }
+
+        // 更新顯示的值
+        document.getElementById('result').innerText = displayedValue;
         }
-        alert(sum.toString(2)); 
-        return sum; 
     }
 
-  
+    function setCheckboxesByValue(value) {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        
+        // 先清空所有勾選狀態
+        checkboxes.forEach(checkbox => checkbox.checked = false);
+
+        // 根據值進行勾選
+        if (value >= 16) {
+            checkboxes[0].checked = true; // 第1個
+            value -= 16;
+        }
+        if (value >= 8) {
+            checkboxes[1].checked = true; // 第2個
+            value -= 8;
+        }
+        if (value >= 4) {
+            checkboxes[2].checked = true; // 第3個
+            value -= 4;
+        }
+        if (value >= 2) {
+            checkboxes[3].checked = true; // 第4個
+            value -= 2;
+        }
+        if (value >= 1) {
+            checkboxes[4].checked = true; // 第5個
+        }
+    }
 </script>
 
 
