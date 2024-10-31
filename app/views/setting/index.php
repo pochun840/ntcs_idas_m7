@@ -39,7 +39,7 @@
                     <div class="col-3 t2">
                         <select class="form-select" id="select_language" name="select_language">
                             <?php foreach($data['lang_arr'] as $k_lang =>$v_lang){?>
-                            <option value="<?php echo $k_lang;?>"  <?php echo $k_lang == $data['controller_info']['device_language'] ? 'selected' : ''; ?> ><?php echo $v_lang;?></option>
+                            <option value="<?php echo $k_lang;?>"  <?php echo $k_lang == $data['controller_info']['language'] ? 'selected' : ''; ?> ><?php echo $v_lang;?></option>
                             <?php } ?>
                         </select>
                     </div>
@@ -48,13 +48,91 @@
                     <div class="col-3 t1"><?php echo $text['system_batch'];?>:</div>
                     <div class="col t2" >
       			      	<div class="col-1 form-check form-check-inline">
-        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1"  <?php echo $data['controller_info']['batch'] == 1 ? 'checked="checked"' : ''; ?>>
+        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?>>
             				<label class="form-check-label" for="dec"><?php echo $text['system_dec'];?></label>
             			</div>
             			<div class="form-check form-check-inline">
-            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2"  <?php echo $data['controller_info']['batch'] == 2 ? 'checked="checked"' : ''; ?> >
+            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?> >
             				<label class="form-check-label" for="inc"><?php echo $text['system_inc'];?></label>
             			</div>
+                    </div>
+                </div>
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col t2">
+      			      	<div class="col-1 form-check form-check-inline">
+           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
+               			</div>
+              			<div class="form-check form-check-inline">
+               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
+               			</div>
+                    </div>
+                </div>
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col t2">
+      			      	<div class="col-1 form-check form-check-inline">
+           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
+               			</div>
+              			<div class="form-check form-check-inline">
+               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
+               			</div>
+                    </div>
+                </div>
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col t2">
+      			      	<div class="col-1 form-check form-check-inline">
+           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
+               			</div>
+              			<div class="form-check form-check-inline">
+               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
+               			</div>
+                    </div>
+                </div>
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col t2">
+      			      	<div class="col-1 form-check form-check-inline">
+           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
+               			</div>
+              			<div class="form-check form-check-inline">
+               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
+               			</div>
+                    </div>
+                </div>
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col t2">
+      			      	<div class="col-1 form-check form-check-inline">
+           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
+               			</div>
+              			<div class="form-check form-check-inline">
+               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
+               			</div>
+                    </div>
+                </div>
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col t2">
+      			      	<div class="col-1 form-check form-check-inline">
+           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
+               			</div>
+              			<div class="form-check form-check-inline">
+               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
+               			</div>
                     </div>
                 </div>
                 <div class="row t2">
@@ -143,11 +221,11 @@
                                             <td style="text-align: center; vertical-align: middle;" >
                                                 <input class="form-check-input" type="checkbox" name="barcode_check" id="barcode_check" value="<?php echo $v_b['barcode_selected_job'];?>" style="zoom:1.2">
                                             </td> 
-                                            <td><?php echo $v_b['barcode_selected_job'];?></td>
-                                            <td><?php echo $v_b['job_name'];?></td>
+                                            <td><?php echo $v_b['job_id'];?></td>
+                                            <td><?php echo $v_b['JOBname'];?></td>
                                             <td><?php echo $v_b['barcode'];?></td>
-                                            <td><?php echo $v_b['barcode_range_from'];?></td>
-                                            <td><?php echo $v_b['barcode_range_count'];?></td>
+                                            <td><?php echo $v_b['range_from'];?></td>
+                                            <td><?php echo $v_b['range_count'];?></td>
                                         </tr>
                                     <?php } ?>
                                   
@@ -184,7 +262,7 @@
                             <option value="-1"><?php echo $text['system_barcode_select_job_m'];?></option>
                                 <?php
                                 foreach ($data['job_list'] as $key => $value) {?>
-                                    <option value='<?php echo $value['job_id'];?>'><?php echo $value['job_id']." ".$value['job_name'];?></option>
+                                    <option value='<?php echo $value['JOBID'];?>'><?php echo $value['JOBID']." ".$value['JOBname'];?></option>
                                 <?php }?>
                                 
                         </select>

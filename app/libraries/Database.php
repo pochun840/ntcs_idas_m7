@@ -13,6 +13,8 @@ class Database
     private $db_iDas;//iDas db
     private $db_iDas_login;
     private $db_iDas_device;
+    private $db_barcode;
+    private $db_iDas_tools;
     public function __construct()
     {
         // 透過 PDO 建立資料庫連線
@@ -26,6 +28,7 @@ class Database
         $Year = date("Y");// data db 用西元年命名
        // $data_db_name = "data".$Year.".db";
         $data_db_name = "ntcs_data.db";
+        $data_barcode_name = "ntcs_barcode_test.db";
         
         if( PHP_OS_FAMILY == 'Linux'){
 
@@ -57,13 +60,18 @@ class Database
             $this->db_con = new PDO('sqlite:../KLS_NTCS.Lin'); 
             if(file_exists('../'.$data_db_name)){
                 $this->db_data = new PDO('sqlite:../'.$data_db_name); 
-            }else{
-                $this->db_data = new PDO('sqlite:../data.db'); 
             }
+
+            /*if(file_exists('../'.$data_barcode_name)){
+                $this->db_barcode = new PDO('sqlite:../'.$data_barcode_name); 
+            }*/
+
+
             $this->db_iDas = new PDO('sqlite:../KLS_NTCS.Lin'); 
             $this->db_iDas_login = new PDO('sqlite:../das.db'); 
             $this->db_iDas_device = new PDO('sqlite:../data_device.db'); 
             $this->db_iDas_tools = new PDO('sqlite:../ntcs_device.db');
+            $this->db_barcode = new PDO('sqlite:../ntcs_barcode.db');
             //$this->db_iDas_device = new PDO('sqlite:../data.db'); 
 
         }
@@ -71,6 +79,8 @@ class Database
         $this->db_iDas->exec('set names utf-8'); 
         $this->db_iDas_login->exec('set names utf-8'); 
         $this->db_iDas_device->exec('set names utf-8'); 
+        $this->db_iDas_tools->exec('set names utf-8'); 
+        $this->db_barcode->exec('set names utf-8'); 
 
     }
 
@@ -121,6 +131,11 @@ class Database
         }
     }
 
+    public function getDb_das_barcode() {
+        if ($this->db_barcode instanceof PDO) {
+            return $this->db_barcode;
+        }
+    }
 
 
     public function get_tool_rpm()

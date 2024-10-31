@@ -340,7 +340,7 @@
             updateLabel();
 
         }
-        if(dataType == 'edit'){
+        if(dataType === 'edit'){
 
             updateLabel();
         }
@@ -467,6 +467,7 @@
     }
 
 
+   
     function edit_step(){
         
         let data = new FormData();
@@ -608,13 +609,15 @@
                     if (offset_tmp <= torqueThreshold && 
                         lowerBound <= (torque + offset_tmp) && 
                         (torque + offset_tmp) <= upperBound) {
-                        //alert("Both conditions met!");
+                        alert("Both conditions met!");
                     } else {
                         alert("One or both conditions not met!");
-                        retrn false;
+                        return false;
                     }
      
                 }else{
+
+                    //1.  offset_tmp  ≦ 
                     //1."Offset ≦ (Spec Max = 100%) x30%"
                     //2."(Spec 下限 *70%) ≦ Offset + HQ" 
 

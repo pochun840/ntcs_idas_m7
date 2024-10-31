@@ -1,22 +1,25 @@
 <?php
 
 class Setting{
-    //private $db;//condb control box
-    //private $db_dev;//devdb tool
+
     private $db_data;//devdb tool
-    //private $db_das;//devdb tool
     private $db_iDas;
     private $db_iDas_device;
+    private $db_barcode;
     private $dbh;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
     {
-        $this->db_iDas_device = new Database;
-        $this->db_iDas_device = $this->db_iDas_device->getDb_das_device();
+        $this->db_iDas_tools = new Database;
+        $this->db_iDas_tools = $this->db_iDas_tools->getDb_das_tools();
 
         $this->db_iDas = new Database;
         $this->db_iDas = $this->db_iDas->getDb_das();
+
+
+        $this->db_barcode = new Database;
+        $this->db_barcode = $this->db_barcode->getDb_das_barcode();
 
         $this->dbh = new Database;
 
@@ -24,8 +27,8 @@ class Setting{
 
     public function GetControllerInfo()
     {
-        $sql = "SELECT * FROM device ";
-        $statement = $this->db_iDas_device->prepare($sql);
+        $sql = "SELECT * FROM ntcs_device_test ";
+        $statement = $this->db_iDas_tools->prepare($sql);
         $results = $statement->execute();
         $row = $statement->fetch(PDO::FETCH_ASSOC);
 
@@ -247,12 +250,29 @@ class Setting{
 
     public function GetAllBarcodes()
     {
-        $sql = "SELECT barcode.*,job.job_name FROM barcode left join `job` on barcode_selected_job = job_id order by barcode_selected_job";
-        $statement = $this->db_iDas->prepare($sql);
-        $results = $statement->execute();
-        $rows = $statement->fetchall(PDO::FETCH_ASSOC);
+       
+        $sqlBarcode = "SELECT * FROM ntcs_barcode_test";
+        $statementBarcode = $this->db_barcode->prepare($sqlBarcode);
+        $statementBarcode->execute();
+        $barcodeRows = $statementBarcode->fetchAll(PDO::FETCH_ASSOC);
 
-        return $rows;
+      
+        $sqlJob = "SELECT JOBID, JOBname FROM JOB_lst";
+        $statementJob = $this->db_iDas->prepare($sqlJob);
+        $statementJob->execute();
+        $jobRows = $statementJob->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($barcodeRows as &$barcodeRow) {
+            foreach ($jobRows as $jobRow) {
+                if ($barcodeRow['job_id'] == $jobRow['JOBID']) {
+                    $barcodeRow['JOBname'] = $jobRow['JOBname'];
+                    break; 
+                }
+            }
+        }
+
+
+        return $barcodeRows; 
     }
 
     public function Update_Barcode($barcode)
@@ -275,14 +295,18 @@ class Setting{
 
         }else{ //不存在，用insert
 
-            $sql = "INSERT INTO `barcode` ('barcode','barcode_range_from','barcode_range_count','barcode_selected_job')
-                    VALUES (:barcode,:barcode_range_from,:barcode_range_count,:barcode_selected_job )";
-            $statement = $this->db_iDas->prepare($sql);
+            $sql = "INSERT INTO ".TABLE_NTCS_BARCODE." (job_id, barcode, range_from, range_count, barcode_mode, seq_id) 
+            VALUES (:job_id, :barcode, :range_from, :range_count, :barcode_mode, :seq_id)";
+    
+            $statement = $this->db_barcode->prepare($sql);
+            $statement->bindValue(':job_id', $barcode['job_id']); 
             $statement->bindValue(':barcode', $barcode['barcode_name']);
-            $statement->bindValue(':barcode_range_from', $barcode['barcode_range_from']);
-            $statement->bindValue(':barcode_range_count', $barcode['barcode_range_count']);
-            $statement->bindValue(':barcode_selected_job', $barcode['barcode_job']);
+            $statement->bindValue(':range_from', $barcode['barcode_range_from']);
+            $statement->bindValue(':range_count', $barcode['barcode_range_count']);
+            $statement->bindValue(':barcode_mode', $barcode['barcode_mode']); 
+            $statement->bindValue(':seq_id', $barcode['seq_id']); 
             $results = $statement->execute();
+
 
         }
 
@@ -309,7 +333,7 @@ class Setting{
     //get all job
     public function get_job_list()
     {
-        $sql = "SELECT * FROM job ORDER BY job_id";
+        $sql = "SELECT * FROM JOB_lst ORDER BY  JOBID ";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute();
         $rows = $statement->fetchall(PDO::FETCH_ASSOC);

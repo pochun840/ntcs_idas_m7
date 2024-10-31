@@ -21,6 +21,12 @@ $language = array(
 define('LANGUAGE',$language);
 
 
+//table - barcode 
+define('TABLE_NTCS_BARCODE', 'ntcs_barcode_test');
+
+//table - tools
+define('TABLE_NTCS_TOOLS', 'ntcs_tool_test');
+
 // 抓取APP的檔案名稱，判斷是哪一個品牌
 //$brand_code = get_brand_code();
 $brand = '0';//預設值帶kilews

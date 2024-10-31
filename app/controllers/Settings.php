@@ -21,15 +21,16 @@ class Settings extends Controller
 
         $lang = $this->MiscellaneousModel->details('lang');
         $controller_info = $this->SettingModel->GetControllerInfo();
-        $active_session = $this->AdminModel->GetActiveSession();
-        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
-        $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
+        // $active_session = $this->AdminModel->GetActiveSession();
+        //$iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        //$max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
         $job_list = $this->SettingModel->get_job_list();
         $barcodes = $this->GetBarcodes();
 
      
+
 
         /*$isMobile = $this->isMobileCheck();
         $Controller_Info = $this->SettingModel->GetControllerInfo();
@@ -78,9 +79,9 @@ class Settings extends Controller
         $data = array(
             'lang_arr'        => $lang,
             'controller_info' => $controller_info,
-            'active_session'  => $active_session,
-            'iDas_Vesion'     => $iDas_Vesion,
-            'max_user'        => $max_user,
+            //'active_session'  => $active_session,
+            //'iDas_Vesion'     => $iDas_Vesion,
+            //'max_user'        => $max_user,
             'agent_server_ip' => $agent_server_ip,
             'agent_type'      => $agent_type,
             'job_list'        => $job_list,

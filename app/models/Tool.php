@@ -20,7 +20,7 @@ class Tool{
 
     public function GetToolInfo()
     {
-        $sql = "SELECT * FROM ntcs_tool_test ";
+        $sql = "SELECT * FROM " . TABLE_NTCS_TOOLS;
         $statement = $this->db_iDas_tools->prepare($sql);
         $statement->execute();
         $row = $statement->fetchAll(PDO::FETCH_ASSOC);

@@ -389,7 +389,7 @@ class Miscellaneous{
 
     //取得最大最小轉速 及 最大最小扭力   
     public function getToolSpecifications() {
-        $sql = "SELECT max_rpm, min_rpm, max_torque, min_torque FROM ntcs_tool_test ";
+        $sql = "SELECT max_rpm, min_rpm, max_torque, min_torque FROM " . TABLE_NTCS_TOOLS;
         $statement = $this->db_iDas_tools->prepare($sql);
         $statement->execute();
 
