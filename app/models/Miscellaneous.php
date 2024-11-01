@@ -155,6 +155,14 @@ class Miscellaneous{
             );    
         }
 
+        if($mode =="sample_rate"){
+            $array = array(
+                0 => '0.5',
+                1 => '1.0',
+                2 => '2.0',
+            );    
+        }
+
         return $array;
 
     }

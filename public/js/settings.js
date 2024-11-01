@@ -62,6 +62,55 @@ function cc_save(){
     }
 }
 
+
+function save_pwd(){
+
+    var clearSeqPwd = document.getElementById('clearseq_button_pwd').value;
+    var clearPwd = document.getElementById('clear_button_pwd').value;
+    var confirmPwd = document.getElementById('confirm_button_pwd').value;
+    var enablePwd = document.getElementById('enable_button_pwd').value;
+    var disablePwd = document.getElementById('disable_button_pwd').value;
+    var skipPwd = document.getElementById('skip_button_pwd').value;
+
+    // 驗證函數
+    function isValidInput(input) {
+        return /^[0-9]{0,4}$/.test(input); // 檢查是否是 0-9 的數字，最多四位
+    }
+
+    // 驗證所有欄位
+    if (!isValidInput(clearSeqPwd) || 
+        !isValidInput(clearPwd) || 
+        !isValidInput(confirmPwd) || 
+        !isValidInput(enablePwd) || 
+        !isValidInput(disablePwd) || 
+        !isValidInput(skipPwd)) {
+        alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
+        return; // 如果驗證失敗，停止函式執行
+    }
+
+    $.ajax({
+        url: '?url=Settings/edit_feature_pwd', // 替換為你的伺服器端點
+        type: 'POST',
+        data: {
+            clear_seq: clearSeqPwd,
+            clear: clearPwd,
+            confirm: confirmPwd,
+            enable: enablePwd,
+            disable: disablePwd,
+            skip: skipPwd
+        },
+        success: function(response) {
+            var responseData = JSON.parse(response);
+            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                history.go(0);
+            });         
+        },
+        error: function() {
+            alert("發生錯誤，請重試。");
+        }
+    });
+}
+
 function Export_SystemConfig(argument) {
 
     var xhr = new XMLHttpRequest();

@@ -695,7 +695,7 @@ class Settings extends Controller
                 foreach($barcodes as $kk =>$vv){
                     $barcode_list = '<tr style="text-align: center; vertical-align: middle;" >';
                     $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['barcode_selected_job']."'></td>";
-                    $barcode_list .= '<td>'.$vv['barcode_selected_job'].'</td>';
+                    $barcode_list .= '<td>'.$vv['job_id'].'</td>';
                     $barcode_list .= '<td>'.$vv['job_name'].'</td>';
                     $barcode_list .= '<td>'.$vv['barcode'].'</td>';
                     $barcode_list .= '<td>'.$vv['barcode_range_from'].'</td>';

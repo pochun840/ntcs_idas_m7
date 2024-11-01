@@ -20,13 +20,16 @@ class Settings extends Controller
         $isMobile = $this->isMobileCheck();
 
         $lang = $this->MiscellaneousModel->details('lang');
+        $torque_unit = $this->MiscellaneousModel->details('torque_unit');
+        $sample_rate = $this->MiscellaneousModel->details('sample_rate');
         $controller_info = $this->SettingModel->GetControllerInfo();
-        // $active_session = $this->AdminModel->GetActiveSession();
-        //$iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
-        //$max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
+        $active_session = $this->AdminModel->GetActiveSession();
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
         $job_list = $this->SettingModel->get_job_list();
+        
         $barcodes = $this->GetBarcodes();
 
      
@@ -79,13 +82,15 @@ class Settings extends Controller
         $data = array(
             'lang_arr'        => $lang,
             'controller_info' => $controller_info,
-            //'active_session'  => $active_session,
-            //'iDas_Vesion'     => $iDas_Vesion,
-            //'max_user'        => $max_user,
+            'active_session'  => $active_session,
+            'iDas_Vesion'     => $iDas_Vesion,
+            'max_user'        => $max_user,
             'agent_server_ip' => $agent_server_ip,
             'agent_type'      => $agent_type,
             'job_list'        => $job_list,
-            'barcodes'        => $barcodes
+            'barcodes'        => $barcodes,
+            'torque_unit'     => $torque_unit,
+            'sample_rate'     => $sample_rate
 
         );
 
@@ -846,6 +851,18 @@ class Settings extends Controller
             ///$error_message .= "Job_Select,";
         }
         
+
+        echo "<pre>";
+        print_r($barcode);
+        echo "</pre>";
+
+
+        
+        echo "<pre>";
+        print_r($_POST);
+        echo "</pre>";
+        die();
+
         if($input_check){
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);
             if($barcode_result){
@@ -1066,6 +1083,73 @@ class Settings extends Controller
         }
     }
 
+
+    
+    public function edit_feature_pwd(){
+
+        
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
+        }
+
+
+        $input_check = true;
+        $pwd_arr = array();
+
+        if(!empty($_POST['clear_seq']) && isset($_POST['clear_seq'])){
+            $pwd_arr['clearseq_button_pwd'] = $_POST['clear_seq'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if(!empty($_POST['clear']) && isset($_POST['clear'])){
+            $pwd_arr['clear_button_pwd'] = $_POST['clear'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if(!empty($_POST['confirm']) && isset($_POST['confirm'])){
+            $pwd_arr['confirm_button_pwd'] = $_POST['confirm'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if(!empty($_POST['enable']) && isset($_POST['enable'])){
+            $pwd_arr['enable_button_pwd'] = $_POST['enable'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if(!empty($_POST['disable']) && isset($_POST['disable'])){
+            $pwd_arr['disable_button_pwd'] = $_POST['disable'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if(!empty($_POST['skip']) && isset($_POST['skip'])){
+            $pwd_arr['skip_button_pwd'] = $_POST['skip'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if($input_check){
+            $result = $this->SettingModel->edit_feature_pwd($pwd_arr);
+
+            if( $result){
+                $res_msg = $text['success'];
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
+            }else{
+                $res_msg = $text['fail'];
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+            }
+
+        }
+
+
+    }
+
+
     public function Import_Config()
     {
         $file_location = '';
@@ -1120,7 +1204,7 @@ class Settings extends Controller
 
         }else{
             // $this->logMessage('Import config start');
-            $destination = "../data.db";
+            $destination = "../KLS_NTCS_IDAS.Lin";
             $result =  move_uploaded_file($_FILES['file']['tmp_name'], $destination);
             if($result){
                 echo json_encode(["error" => '']);
