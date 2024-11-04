@@ -149,9 +149,9 @@ class Miscellaneous{
 
         if($mode =="lang"){
             $array = array(
-                0 => 'English',
-                1 => '繁體中文',
-                2 => '簡體中文',
+                1 => 'English',
+                2 => '繁體中文',
+                3 => '簡體中文',
             );    
         }
 
@@ -160,6 +160,14 @@ class Miscellaneous{
                 0 => '0.5',
                 1 => '1.0',
                 2 => '2.0',
+            );    
+        }
+
+        if($mode =="barcode_mode"){
+            $array = array(
+                1 => 'BS',
+                2 => 'BS (free)',
+                3 => 'Switch Job / Seq',
             );    
         }
 

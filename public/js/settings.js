@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function cc_save(){
+
     var control_id = document.getElementById('control_id').value;
     if (isNaN(control_id) || control_id < 1 || control_id > 250) {
         return false;
@@ -63,6 +64,7 @@ function cc_save(){
 }
 
 
+//新增密碼
 function save_pwd(){
 
     var clearSeqPwd = document.getElementById('clearseq_button_pwd').value;
@@ -110,6 +112,118 @@ function save_pwd(){
         }
     });
 }
+
+//狀態-顏色設定
+function background_save(){
+    let  okjob_color_val = document.querySelector('input[name="okjobcolor"]:checked')?.value;
+    let  okseq_color_val = document.querySelector('input[name="okseqcolor"]:checked')?.value;
+
+    $.ajax({
+        url: '?url=Settings/edit_background_color', 
+        type: 'POST',
+        data: {
+            okjobcolor: okjob_color_val,
+            okseqcolor: okseq_color_val
+        },
+        success: function(response) {
+            var responseData = JSON.parse(response);
+            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                history.go(0);
+            });    
+        },
+        error: function(xhr, status, error) {
+            console.error('Error occurred:', error);
+        }
+    });
+
+}
+
+//設置 	global-downshift
+function downshift_save(){
+
+    var global_downshift_torque = document.getElementById('global_downshift_torque').value;
+    var global_downshift_speed  = document.getElementById('global_downshift_speed').value;
+
+    $.ajax({
+        url: '?url=Settings/edit_global_downshift', 
+        type: 'POST',
+        data: {
+            global_downshift_torque: global_downshift_torque,
+            global_downshift_speed: global_downshift_speed
+        },
+        success: function(response) {
+            var responseData = JSON.parse(response);
+            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                history.go(0);
+            });    
+        },
+        error: function(xhr, status, error) {
+            console.error('Error occurred:', error);
+        }
+    });
+
+}
+
+//barcode mode 選擇
+function toggleBarcodeSeq() {
+    let barcodeMode = document.getElementById('barcode_mode');
+    let barcodeSeq = document.getElementById('barcode_seq');
+    
+    // Check the selected value
+    if (barcodeMode.value === '1' || barcodeMode.value === '2') {
+        barcodeSeq.disabled = true; 
+        document.getElementById("barcode_select_seq").style.display='none';
+    } else {
+        barcodeSeq.disabled = false;
+        document.getElementById("barcode_select_seq").style.display='block';
+    }
+}
+
+
+//透過JOBID 取得對應的SEQ
+function fetchSeqList() {
+    const jobId = document.getElementById('barcode_job').value;
+
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "-1";
+    defaultOption.textContent = "<?php echo $text['system_barcode_select_seq_m'];?>";
+    
+    if (jobId === '-1') {
+        document.getElementById('barcode_seq').innerHTML = ''; 
+        document.getElementById('barcode_seq').appendChild(defaultOption);
+        return;
+    }
+
+    $.ajax({
+        url: '?url=Settings/GetJobSeq',
+        type: 'POST',
+        data: { job_id: jobId },
+        success: function(response) {
+            const seqList = JSON.parse(response);
+            const barcodeSeq = document.getElementById('barcode_seq');
+            barcodeSeq.innerHTML = ''; 
+            barcodeSeq.appendChild(defaultOption); 
+
+            const fragment = document.createDocumentFragment();
+            seqList.forEach(seq => {
+                const option = document.createElement('option');
+                option.value = seq.SEQID;
+                option.textContent = `${seq.SEQID} ${seq.SEQname}`;
+                fragment.appendChild(option);
+            });
+            const currentOptions = barcodeSeq.getElementsByTagName('option');
+            if (currentOptions.length > 0 && currentOptions[0].value === "-1") {
+                barcodeSeq.removeChild(currentOptions[0]);
+            }
+            barcodeSeq.appendChild(fragment);
+        },
+        error: function(xhr, status, error) {
+            console.error('Error occurred:', error);
+        }
+    });
+}
+
+
 
 function Export_SystemConfig(argument) {
 
@@ -412,7 +526,9 @@ function update_barcode(){
     var barcode_name  = document.getElementById("barcode_name").value;
     var barcode_from  = document.getElementById("barcode_from").value;
     var barcode_count = document.getElementById("barcode_count").value;
+    var barcode_mode  = document.querySelector("select[name='barcode_mode']").value;
     var barcode_job   = document.querySelector("select[name='barcode_job']").value;
+    var barcode_seq   = document.querySelector("select[name='barcode_seq']").value;
     
     if(barcode_name){
         $.ajax({
@@ -422,13 +538,14 @@ function update_barcode(){
                 barcode_name: barcode_name,
                 barcode_from: barcode_from,
                 barcode_count: barcode_count,
-                barcode_job: barcode_job
-
+                barcode_job: barcode_job,
+                barcode_seq: barcode_seq,
+                barcode_mode: barcode_mode
             },
             success: function(response) {
                 console.log(response);
                 alert(response);
-                $.ajax({
+                /*$.ajax({
                     url: "?url=Settings/show_Barcodes",
                     method: "GET",
                     success: function(html) {
@@ -437,7 +554,7 @@ function update_barcode(){
                     error: function(xhr, status, error) {
                         console.error("Error fetching barcodes:", error);
                     }
-                });
+                });*/
             },
             error: function(xhr, status, error) {
                 

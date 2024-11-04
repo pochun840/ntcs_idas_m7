@@ -29,6 +29,7 @@ class Settings extends Controller
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
         $job_list = $this->SettingModel->get_job_list();
+        $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         
         $barcodes = $this->GetBarcodes();
 
@@ -90,7 +91,8 @@ class Settings extends Controller
             'job_list'        => $job_list,
             'barcodes'        => $barcodes,
             'torque_unit'     => $torque_unit,
-            'sample_rate'     => $sample_rate
+            'sample_rate'     => $sample_rate,
+            'barcode_mode'    => $barcode_mode
 
         );
 
@@ -165,9 +167,7 @@ class Settings extends Controller
         }else{
             $result = false;
         }
-        
-
-
+    
     }
 
 
@@ -824,31 +824,39 @@ class Settings extends Controller
         //$error_message = '';
         if( !empty($_POST['barcode_name']) && isset($_POST['barcode_name'])  ){
             $barcode['barcode_name'] = $_POST['barcode_name'];
-            if (strlen($barcode['barcode_name']) > 54) {
+            /*if (strlen($barcode['barcode_name']) > 54) {
                 $input_check = false;
-            }
+            }*/
         }else{ 
             $input_check = false;
-            //$error_message .= "barcode_name,";
         }
         if( !empty($_POST['barcode_from']) && isset($_POST['barcode_from'])  ){
             $barcode['barcode_range_from'] = $_POST['barcode_from'];
         }else{ 
             $input_check = false;
-            //$error_message .= "barcode_from,";
         }
         if( !empty($_POST['barcode_count']) && isset($_POST['barcode_count'])  ){
             $barcode['barcode_range_count'] = $_POST['barcode_count'];
         }else{ 
             $input_check = false;
-            //$error_message .= "barcode_count,";
         }
         
         if( isset($_POST['barcode_job'])  ){
             $barcode['barcode_job'] = $_POST['barcode_job'];
         }else{ 
             $input_check = false;
-            ///$error_message .= "Job_Select,";
+        }
+
+        if( isset($_POST['barcode_mode'])  ){
+            $barcode['barcode_mode'] = $_POST['barcode_mode'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if( isset($_POST['barcode_seq'])  ){
+            $barcode['barcode_seq'] = $_POST['barcode_seq'];
+        }else{ 
+            $barcode['barcode_seq'] = "";
         }
         
 
@@ -861,8 +869,7 @@ class Settings extends Controller
         echo "<pre>";
         print_r($_POST);
         echo "</pre>";
-        die();
-
+     
         if($input_check){
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);
             if($barcode_result){
@@ -878,14 +885,16 @@ class Settings extends Controller
     {
         $input_check = true;
         $error_message = '';
-        if( !empty($_GET['job_id']) && isset($_GET['job_id'])  ){
-            $job_id = $_GET['job_id'];
+        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
+            $job_id = $_POST['job_id'];
         }else{ 
             $input_check = false;
             $error_message .= "job_id,";
         }
 
         if($input_check){
+
+ 
             $result = $this->SettingModel->get_seq_list($job_id);
             echo json_encode($result);
             exit();
@@ -1083,8 +1092,79 @@ class Settings extends Controller
         }
     }
 
+    public function edit_global_downshift(){
+        
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
+        }
+        $global_downshift_arr = array();
+        $input_check = true;
+        if(!empty($_POST['global_downshift_torque']) && isset($_POST['global_downshift_torque'])){
+            $global_downshift_arr['global_downshift_torque'] = $_POST['global_downshift_torque'];
+        }else{ 
+            $input_check = false;
+        }
 
-    
+        if(!empty($_POST['global_downshift_speed']) && isset($_POST['global_downshift_speed'])){
+            $global_downshift_arr['global_downshift_speed'] = $_POST['global_downshift_speed'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if($input_check){
+            $result = $this->SettingModel->edit_feature_global_downshift($global_downshift_arr);
+
+            if( $result){
+                $res_msg = $text['success'];
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
+            }else{
+                $res_msg = $text['fail'];
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+            }
+
+        }
+    }
+
+
+    public function edit_background_color(){
+        
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
+        }
+
+        $color_arr = array();
+        $input_check = true;
+        if(!empty($_POST['okjobcolor']) && isset($_POST['okjobcolor'])){
+            $color_arr['okjobcolor'] = $_POST['okjobcolor'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if(!empty($_POST['okseqcolor']) && isset($_POST['okseqcolor'])){
+            $color_arr['okseqcolor'] = $_POST['okseqcolor'];
+        }else{ 
+            $input_check = false;
+        }
+
+        if($input_check){
+            $result = $this->SettingModel->edit_feature_color($color_arr);
+
+            if( $result){
+                $res_msg = $text['success'];
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
+            }else{
+                $res_msg = $text['fail'];
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+            }
+
+        }
+
+
+
+
+    }
     public function edit_feature_pwd(){
 
         

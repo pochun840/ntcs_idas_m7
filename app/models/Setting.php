@@ -282,14 +282,17 @@ class Setting{
         
             $sql = "UPDATE ".TABLE_NTCS_BARCODE." 
                     SET barcode = :barcode,
-                        barcode_range_from  = :barcode_range_from,
-                        barcode_range_count = :barcode_range_count,
-                    WHERE barcode_selected_job = :barcode_selected_job ";
+                        range_from  = :range_from,
+                        range_count = :range_count,
+                        barcode_mode = :barcode_mode,
+                    WHERE job_id = :job_id ";
             $statement = $this->db_iDas->prepare($sql);
             $statement->bindValue(':barcode', $barcode['barcode_name']);
-            $statement->bindValue(':barcode_range_from', $barcode['barcode_range_from']);
-            $statement->bindValue(':barcode_range_count', $barcode['barcode_range_count']);
-            $statement->bindValue(':barcode_selected_job',$barcode['barcode_job']);
+            $statement->bindValue(':range_from', $barcode['barcode_range_from']);
+            $statement->bindValue(':range_count', $barcode['barcode_range_count']);
+            $statement->bindValue(':job_id',$barcode['barcode_job']);
+            $statement->bindValue(':seq_id',$barcode['barcode_seq']);
+            $statement->bindValue(':barcode_mode',$barcode['barcode_mode']);
             $results = $statement->execute();
 
 
@@ -299,12 +302,12 @@ class Setting{
             VALUES (:job_id, :barcode, :range_from, :range_count, :barcode_mode, :seq_id)";
     
             $statement = $this->db_barcode->prepare($sql);
-            $statement->bindValue(':job_id', $barcode['job_id']); 
+            $statement->bindValue(':job_id', $barcode['barcode_job']); 
             $statement->bindValue(':barcode', $barcode['barcode_name']);
             $statement->bindValue(':range_from', $barcode['barcode_range_from']);
             $statement->bindValue(':range_count', $barcode['barcode_range_count']);
             $statement->bindValue(':barcode_mode', $barcode['barcode_mode']); 
-            $statement->bindValue(':seq_id', $barcode['seq_id']); 
+            $statement->bindValue(':seq_id', $barcode['barcode_seq']); 
             $results = $statement->execute();
 
 
@@ -344,9 +347,9 @@ class Setting{
     //get all job seq
     public function get_seq_list($job_id)
     {
-        $sql = "SELECT job_id,sequence_id,sequence_name FROM sequence WHERE job_id = :job_id AND sequence_enable = 1 order by sequence_id";
+        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst WHERE JOBID = :JOBID AND act = 0 order by SEQID  ASC ";
         $statement = $this->db_iDas ->prepare($sql);
-        $statement->bindValue(':job_id', $job_id);
+        $statement->bindValue(':JOBID', $job_id);
         $results = $statement->execute();
         $rows = $statement->fetchall(PDO::FETCH_ASSOC);
 
@@ -397,6 +400,36 @@ class Setting{
         $statement->bindValue(':enable_button_pwd', $pwd_arr['enable_button_pwd']);
         $statement->bindValue(':disable_button_pwd', $pwd_arr['disable_button_pwd']);
         $statement->bindValue(':skip_button_pwd', $pwd_arr['skip_button_pwd']);
+        $results = $statement->execute();
+
+        return $results;
+
+    }
+
+
+    public function edit_feature_color($color_arr){
+
+        $sql = "UPDATE " . TABLE_NTCS_DEVICE . "
+                SET okseqcolor = :okseqcolor,
+                okjobcolor = :okjobcolor";
+        $statement = $this->db_iDas_tools->prepare($sql);
+        $statement->bindValue(':okseqcolor', $color_arr['okseqcolor']);
+        $statement->bindValue(':okjobcolor', $color_arr['okjobcolor']);
+        $results = $statement->execute();
+
+        return $results;
+
+    }
+
+    
+    public function edit_feature_global_downshift($global_downshift_arr){
+
+        $sql = "UPDATE " . TABLE_NTCS_DEVICE . "
+                SET global_downshift_torque = :global_downshift_torque,
+               global_downshift_speed = :global_downshift_speed";
+        $statement = $this->db_iDas_tools->prepare($sql);
+        $statement->bindValue(':global_downshift_torque', $global_downshift_arr['global_downshift_torque']);
+        $statement->bindValue(':global_downshift_speed', $global_downshift_arr['global_downshift_speed']);
         $results = $statement->execute();
 
         return $results;
