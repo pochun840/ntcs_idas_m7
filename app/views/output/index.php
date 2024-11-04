@@ -111,15 +111,15 @@
 									<div class="row output-pin">
 										<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="0"  onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'1')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0"  onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'1')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
 										</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="1"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'2')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'2')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
 										</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_3" value="2" onclick="toggleOnputTime('pin<?php echo $i; ?>_3', this.checked,'3')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime('pin<?php echo $i; ?>_3', this.checked,'3')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
 										</div>
 										<div class="col-sm-2 t2">
@@ -433,11 +433,14 @@ function crud_job_event(argument){
             });
         }
 
+        //針對
+
 
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
+                //console.log('eewwer');
                 var radio = document.getElementById(id);
-                console.log(radio);
+                //console.log(radio);
 
                 if (radio && radio.type === 'radio') { 
                     radio.disabled = true; 
@@ -456,7 +459,7 @@ function crud_job_event(argument){
                     var pinNumber = match[2]; 
 
             
-                    for (var i = 1; i <= 3; i++) {
+                    for (var i = 0; i <= 2; i++) {
                         var pinElementId = basePinId + "_" + i;
                         var pinElement = document.getElementById(pinElementId);
                         if (pinElement && pinElement.type === 'radio') {
@@ -509,7 +512,7 @@ function crud_job_event(argument){
     if(argument == 'copy' && job_id != '' && output_event != ''){
 
         var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['job_name'];
+        var from_job_name_bk = jobinfo[job_id]['JOBname'];
 
         document.getElementById("from_job_id").value = job_id;
         document.getElementById("from_job_name").value = from_job_name_bk;
@@ -808,7 +811,7 @@ function create_output_id() {
             });
         }
     } else {
-        console.error("No pinval found or pinval[0] is undefined.");
+        //console.error("No pinval found or pinval[0] is undefined.");
     }
 }
 
@@ -973,18 +976,18 @@ function get_output_info(job_id,output_event){
                 var responseJSON = JSON.stringify(response);
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
-                var [, job_id] = cleanString.match(/\[output_job_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, output_event] = cleanString.match(/\[output_event]\s*=>\s*([^ ]+)/) || [, null];
-                var [, output_pin] = cleanString.match(/\[output_pin]\s*=>\s*([^ ]+)/) || [, null];
-                var [, wave] = cleanString.match(/\[wave]\s*=>\s*([^ ]+)/) || [, null];
-                var [, wave_on] = cleanString.match(/\[wave_on]\s*=>\s*([^ ]+)/) || [, null];
+                var [, job_id] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
+                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
+
 
                 var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
                 var radioButton = document.getElementById(edit_output_pin);
                 radioButton.removeAttribute('disabled');
 
                 var time_ms = 'edit_time'+ output_pin;
-
                 if(wave != 2){
                     var time_id = 'edit_time' + output_pin;
                     var element = document.getElementById(time_id);
@@ -993,8 +996,6 @@ function get_output_info(job_id,output_event){
                         element.disabled = true
                     }
                 }
-
-
                     
                 //完工信號 && 馬達信號 && 啟動信號
                 if (output_event == 8  || output_event == 6 || output_event == 7 ) {
@@ -1013,7 +1014,6 @@ function get_output_info(job_id,output_event){
                     if (Array.isArray(temp)) {
                         //過濾出包含 "edit_pin" 的字串
                         const filteredArray = temp.filter(item => item.includes("edit_pin"));
-                        
                         const updatedArray = filteredArray.map(item => {
                             // 如果字串為空，直接返回
                             if (item.length === 0) {
@@ -1023,7 +1023,7 @@ function get_output_info(job_id,output_event){
                             return item.slice(0, -1) + '3';
                         });
                         
-                        console.log("Updated Array:", updatedArray);
+                        //console.log("Updated Array:", updatedArray);
                         updatedArray.forEach(item => {
                             const radio = document.getElementById(item);
                             if (radio && radio.type === 'radio') {
@@ -1033,25 +1033,18 @@ function get_output_info(job_id,output_event){
 
                     }
                     
-                    
-
-                    
-                   
-              
                 }
 
-                 document.getElementById(time_ms).value = wave_on;
- 
-                 old_output_even = output_event;
- 
-                 if(radioButton){
-                     radioButton.checked = true;
-                 }
+                document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
+                old_output_even = output_event;
+                if(radioButton){
+                    radioButton.checked = true;
+                }
                  
-                 document.querySelector("select[name='edit_event_option']").value = output_event;
-                 document.getElementById("edit_event_option").onchange = function() {
-                  var selectedValue = this.value; 
-                 };
+                document.querySelector("select[name='edit_event_option']").value = output_event;
+                document.getElementById("edit_event_option").onchange = function() {
+                    var selectedValue = this.value; 
+                };
              },
              error: function(xhr, status, error) {
                  console.error("AJAX request failed:", status, error);
@@ -1065,19 +1058,17 @@ function toggleOnputTime(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
     
     if (!inputElement) {
-        console.error(`Element with ID '${inputId}' not found.`);
+        //console.error(`Element with ID '${inputId}' not found.`);
         return; // Exit if element is not found
     }
 
-   
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
-            console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
+            //console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
         }
     }
 
-    
     if (option != '2') {
         var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
         var element = document.getElementById(newId);
@@ -1098,7 +1089,7 @@ function toggleOnputTime_edit(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
     
     if (!inputElement) {
-        console.error(`Element with ID '${inputId}' not found.`);
+        //console.error(`Element with ID '${inputId}' not found.`);
         return; // Exit if element is not found
     }
 
@@ -1106,7 +1097,7 @@ function toggleOnputTime_edit(inputId, checked, option) {
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
-            console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
+            //console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
         }
     }
 

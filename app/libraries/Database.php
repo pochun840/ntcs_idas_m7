@@ -13,63 +13,66 @@ class Database
     private $db_iDas;//iDas db
     private $db_iDas_login;
     private $db_iDas_device;
+    private $db_barcode;
+    private $db_iDas_tools;
     public function __construct()
     {
-        // 透過 PDO 建立資料庫連線
-        // 實例化 PDO
-        // 為避免控制器與iDas同時寫入sqlite3導致 db lock，iDas先將db複製出來，最後再透過call modbus的方式去更新db
-        // 1.將DB複製一份到ramdisk根目錄，名稱調整為iDas-tcscon.db與iDas-tcsdev.db
+
         $this->iDasDB_Initail();
+
+        $data_db_name = "ntcs_data.db";
+        $data_barcode_name = "ntcs_barcode.db";
+        $data_device_name  = 'ntcs_device.db';
+
+        $base_path_linux = '/var/www/html/database/';
+        $base_path_other = '../';
+       
 
 
         // 透過 PHP_OS_FAMILY 判斷，目前執行的系統，決定要採用的DB路徑
-        $Year = date("Y");// data db 用西元年命名
-        $data_db_name = "data".$Year.".db";
-        if( PHP_OS_FAMILY == 'Linux'){
-
-            //$this->db_con = new PDO('sqlite:/var/www/html/database/data.db');
-            $this->db_iDas = new PDO('sqlite:/var/www/html/database/iDas_data.db'); 
-            //$this->db_iDas = new PDO('sqlite:/var/www/html/database/data.db'); 
-            $this->db_iDas_login = new PDO('sqlite:/var/www/html/database/das.db'); 
-            //$this->db_iDas_device = new PDO('sqlite:/var/www/html/database/data_device.db');
-            $this->db_iDas_device = new PDO('sqlite:/var/www/html/database/data.db');
-
-            if( file_exists('/var/www/html/database/'.$data_db_name) ){
-                $this->db_data = new PDO('sqlite:/var/www/html/database/'.$data_db_name); 
-            }else{
-                $this->db_data = new PDO('sqlite:/var/www/html/database/data.db'); 
+        if (PHP_OS_FAMILY == 'Linux') {
+            if (!defined('BASE_PATH')) {
+                define('BASE_PATH', '/var/www/html/database/');
             }
-
-
-            /*if( file_exists('/home/kls/tcc/resource/db_emmc/'.$data_db_name) ){
-                $this->db_data = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/'.$data_db_name); 
-            }else{
-                $this->db_data = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/data.db'); 
+            $db_paths = [
+                'iDas' => 'iDas_data.db',
+                'iDas_login' => 'das.db',
+                'iDas_device' => 'data.db',
+                'data' => file_exists(BASE_PATH. $data_db_name) ? $data_db_name : 'data.db',
+            ];
+            
+            foreach ($db_paths as $key => $db_name) {
+                $this->{'db_' . $key} = new PDO('sqlite:' . BASE_PATH. $db_name);
+                $this->setUtf8Encoding($this->{'db_' . $key});
             }
             
-            $this->db_iDas = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/data.db'); 
-            $this->db_iDas_login = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/das.db'); 
-            $this->db_iDas_device = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/data_device.db'); */
-            
-        }else{
-            $this->db_con = new PDO('sqlite:../KLS_NTCS.Lin'); 
-            if(file_exists('../'.$data_db_name)){
-                $this->db_data = new PDO('sqlite:../'.$data_db_name); 
-            }else{
-                $this->db_data = new PDO('sqlite:../data.db'); 
+        } else {
+            if (!defined('BASE_PATH')) {
+                define('BASE_PATH', '../');
             }
-            $this->db_iDas = new PDO('sqlite:../KLS_NTCS.Lin'); 
-            $this->db_iDas_login = new PDO('sqlite:../das.db'); 
-            $this->db_iDas_device = new PDO('sqlite:../data_device.db'); 
-            //$this->db_iDas_device = new PDO('sqlite:../data.db'); 
-
+            $db_paths = [
+                'data' => file_exists(BASE_PATH . $data_db_name) ? $data_db_name : 'data.db',
+                'iDas' => 'KLS_NTCS_IDAS.Lin',
+                'iDas_login' => 'das.db',
+                'iDas_device' => 'data_device.db',
+                'iDas_tools' => 'ntcs_device.db',
+                'barcode' => 'ntcs_barcode.db',
+            ];
+            
+            foreach ($db_paths as $key => $db_name) {
+                $this->{'db_' . $key} = new PDO('sqlite:' . BASE_PATH . $db_name);
+                $this->setUtf8Encoding($this->{'db_' . $key});
+            }
         }
-        
-        $this->db_iDas->exec('set names utf-8'); 
-        $this->db_iDas_login->exec('set names utf-8'); 
-        $this->db_iDas_device->exec('set names utf-8'); 
 
+      
+        
+    
     }
+
+    private function setUtf8Encoding($db) {
+        $db->exec('set names utf-8');
+    } 
 
     // Prepare statement with query
     public function query($query){
@@ -109,6 +112,18 @@ class Database
     public function getDb_das_device() {
         if ($this->db_iDas_device instanceof PDO) {
             return $this->db_iDas_device;
+        }
+    }
+
+    public function getDb_das_tools() {
+        if ($this->db_iDas_tools instanceof PDO) {
+            return $this->db_iDas_tools;
+        }
+    }
+
+    public function getDb_das_barcode() {
+        if ($this->db_barcode instanceof PDO) {
+            return $this->db_barcode;
         }
     }
 

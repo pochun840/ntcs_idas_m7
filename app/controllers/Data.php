@@ -1,5 +1,7 @@
 <?php
-
+// 0 => ok 
+// 1 =>ng
+ 
 class Data extends Controller
 {
     // 在建構子中將 Post 物件（Model）實例化
@@ -19,7 +21,7 @@ class Data extends Controller
         $res_data_nok = $this->DataModel->getData('NOK');
 
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-        $status_arr = $this->MiscellaneousModel->details('status');
+        $status_arr = $this->MiscellaneousModel->details('status_ntcs');
         $device_info = $this->Device_Info();
         $data = array(
             'isMobile' => $isMobile,
@@ -83,7 +85,9 @@ class Data extends Controller
    
     public function exportData() {
         $input_check = true;
-    
+        
+      
+
         #檢查開始日期
         if (!empty($_POST['start_date']) && isset($_POST['start_date'])) {
             $start_date = $_POST['start_date'] . ":00";
@@ -97,17 +101,19 @@ class Data extends Controller
         } else {
             $input_check = false;
         }
+
+      
     
         #確認是否有選擇類型 
         $expert_val = isset($_POST['expert_val']) ? $_POST['expert_val'] : "0";
     
         if ($input_check) {
-            $unit_arr = $this->MiscellaneousModel->details('torque_unit');
-            $status_arr = $this->MiscellaneousModel->details('status');
+            //$unit_arr = $this->MiscellaneousModel->details('torque_unit');
+            //$status_arr = $this->MiscellaneousModel->details('status');
 
             if (PHP_OS_FAMILY != 'Linux'){
-                $start_date = str_replace('-', "", $start_date);
-                $end_date = str_replace('-', "", $end_date);
+                //$start_date = str_replace('-', "", $start_date);
+                //$end_date = str_replace('-', "", $end_date);
                 
             }
 
@@ -115,11 +121,13 @@ class Data extends Controller
     
 
             $dataset = array_slice($dataset, 0, 10000);
+
+            //var_dump($dataset);die();
     
 
             foreach ($dataset as $key => $val) {
-                $dataset[$key]['torque_unit'] = $unit_arr[$val['torque_unit']];
-                $dataset[$key]['fasten_status'] = $status_arr[$val['fasten_status']];
+                //$dataset[$key]['torque_unit'] = $unit_arr[$val['torque_unit']];
+                //$dataset[$key]['fasten_status'] = $status_arr[$val['fasten_status']];
             }
     
             if ($dataset && $expert_val == "0") {

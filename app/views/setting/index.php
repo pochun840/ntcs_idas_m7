@@ -25,54 +25,236 @@
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo $text['system_id'];?>:</div>
                     <div class="col-3 t2">
-                        <input id="control_id" name="control_id" type="number" max=250 min=1 maxlength="3" value="<?php echo $data['controller_info']['device_id'];?>" class="t3 form-control"  required>
+                        <input id="control_id" name="control_id" type="number" max=250 min=1 maxlength="3" value="<?php echo isset($data['controller_info']['device_id']) ? $data['controller_info']['device_id'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>    
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo $text['system_name'];?>:</div>
                     <div class="col-3 t2">
-                        <input id="control_name" name="control_name" maxlength="12" type="text" value="<?php echo $data['controller_info']['device_name'];?>" class="t3 form-control"  required>
+                        <input id="control_name" name="control_name" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['device_name']) ? $data['controller_info']['device_name'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>    
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Storge Warning";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="storage_warning" name="storage_warning" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['storage_warning']) ? $data['controller_info']['storage_warning']."%" : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Torque Filter (kgf.cm)";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="	torque_filter" name="	torque_filter" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['torque_filter']) ? $data['controller_info']['torque_filter'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Sample Rate";?>:</div>
+                    <div class="col-3 t2">
+                        <select class="form-select" id="select_language" name="select_language">
+                            <?php foreach($data['sample_rate'] as $k_rate =>$v_rate){?>
+                            <option value="<?php echo $k_rate;?>"  <?php echo $k_rate == $data['controller_info']['language'] ? 'selected' : ''; ?> ><?php echo $v_rate;?></option>
+                            <?php } ?>
+                        </select>
+                    </div>
+                </div>    
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "torque_unit";?>:</div>
+                    <div class="col-3 t2">
+                        <select class="form-select" id="select_torque_unit" name="select_torque_unit">
+                            <?php foreach($data['torque_unit'] as $k_unit =>$v_unit){?>
+                            <option value="<?php echo $k_unit;?>"  <?php echo $k_unit  == $data['controller_info']['language'] ? 'selected' : ''; ?> ><?php echo $v_unit;?></option>
+                            <?php } ?>
+                        </select>
+                    </div>
+                </div> 
+
+
+
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo $text['system_language'];?>:</div>
                     <div class="col-3 t2">
                         <select class="form-select" id="select_language" name="select_language">
                             <?php foreach($data['lang_arr'] as $k_lang =>$v_lang){?>
-                            <option value="<?php echo $k_lang;?>"  <?php echo $k_lang == $data['controller_info']['device_language'] ? 'selected' : ''; ?> ><?php echo $v_lang;?></option>
+                            <option value="<?php echo $k_lang;?>"  <?php echo $k_lang == $data['controller_info']['language'] ? 'selected' : ''; ?> ><?php echo $v_lang;?></option>
                             <?php } ?>
                         </select>
                     </div>
                 </div>    
                 <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Circular Archive";?>:</div>
+                    <div class="col t2" >
+      			      	<div class="col-1 form-check form-check-inline">
+        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?>>
+            				<label class="form-check-label" for=""><?php echo $text['switch_off'];?></label>
+            			</div>
+            			<div class="form-check form-check-inline">
+            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?> >
+            				<label class="form-check-label" for="`"><?php echo $text['switch_on'];?></label>
+            			</div>
+                    </div>
+                </div>
+
+                <div class="row t2">
                     <div class="col-3 t1"><?php echo $text['system_batch'];?>:</div>
                     <div class="col t2" >
       			      	<div class="col-1 form-check form-check-inline">
-        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1"  <?php echo $data['controller_info']['batch'] == 1 ? 'checked="checked"' : ''; ?>>
+        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?>>
             				<label class="form-check-label" for="dec"><?php echo $text['system_dec'];?></label>
             			</div>
             			<div class="form-check form-check-inline">
-            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2"  <?php echo $data['controller_info']['batch'] == 2 ? 'checked="checked"' : ''; ?> >
+            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?> >
             				<label class="form-check-label" for="inc"><?php echo $text['system_inc'];?></label>
             			</div>
                     </div>
                 </div>
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col-3 t1"><?php echo "Blackout Recovery";?>:</div>
                     <div class="col t2">
       			      	<div class="col-1 form-check form-check-inline">
-           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
-               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
+           				    <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_off" value="0"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label"><?php echo $text['switch_off'];?></label>
                			</div>
               			<div class="form-check form-check-inline">
-               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
-               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
+               			    <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label"><?php echo $text['switch_on'];?></label>
                			</div>
                     </div>
                 </div>
+               
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_buzzer'];?>:</div>
+                    <div class="col t2">
+      			      	<div class="col-1 form-check form-check-inline">
+           				    <input class="form-check-input" type="radio" name="buzzer_mode" id="buzzer_mod_off" value="0"  <?php echo $data['controller_info']['buzzer_mode'] == 0 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_off'];?></label>
+               			</div>
+              			<div class="form-check form-check-inline">
+               			    <input class="form-check-input" type="radio" name="buzzer_mode" id="buzzer_mod_on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_on'];?></label>
+               			</div>
+                    </div>
+                </div>
+
+            
+              
                 <div style="text-align: center;margin-top: 50px;">
                     <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="cc_save()"><?php echo $text['save'];?></button>
                 </div>
+
+                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['Downshift_Torque'];?>:</div>
+                    <div class="col-3 t2">
+                        <input id="global_downshift_torque" name="global_downshift_torque" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_torque']) ? $data['controller_info']['global_downshift_torque'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['Downshift_Speed'];?>:</div>
+                    <div class="col-3 t2">
+                        <input id="global_downshift_speed" name="global_downshift_speed" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_speed']) ? $data['controller_info']['global_downshift_speed'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                <div style="text-align: center;margin-top: 50px;">
+                    <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="downshift_save()"><?php echo $text['save'];?></button>
+                </div>
+
+                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo "Button Access With Password";?></div>
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Clear Seq Button";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="clearseq_button_pwd" name="clearseq_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['clearseq_button_pwd']) ? $data['controller_info']['clearseq_button_pwd'] : ''; ?>"  class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Clear Button";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="clear_button_pwd" name="clear_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['clear_button_pwd']) ? $data['controller_info']['clear_button_pwd'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Confirm Button";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="confirm_button_pwd" name="confirm_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['confirm_button_pwd']) ? $data['controller_info']['confirm_button_pwd'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Enable Button";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="enable_button_pwd" name="enable_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['enable_button_pwd']) ? $data['controller_info']['enable_button_pwd'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Disable Button";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="disable_button_pwd" name="disable_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['disable_button_pwd']) ? $data['controller_info']['disable_button_pwd'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo "Skip Button";?>:</div>
+                    <div class="col-3 t2">
+                        <input id="skip_button_pwd" name="skip_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['skip_button_pwd']) ? $data['controller_info']['skip_button_pwd'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
+                <div style="text-align: center;margin-top: 50px;">
+                    <button class="all-btn w3-button w3-border w3-round-large" id="save_pwd" onclick="save_pwd()"><?php echo $text['save'];?></button>
+                </div>
+
+
+                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo "Background Color";?></div>
+
+           
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['job_ok'];?>:</div>
+                    <div class="col t2" >
+      			      	<div class="col-1 form-check form-check-inline">
+        				    <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_green" value="1"   <?php echo $data['controller_info']['okjobcolor'] == 1 ? 'checked="checked"' : ''; ?>>
+            				<label class="form-check-label" for=""><?php echo "Green";?></label>
+            			</div>
+            			<div class="form-check form-check-inline">
+            			    <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_yellow" value="2"  <?php echo $data['controller_info']['okjobcolor'] == 2 ? 'checked="checked"' : ''; ?> >
+            				<label class="form-check-label" for="`"><?php echo "Yellow";?></label>
+            			</div>
+                    </div>
+                </div>
+
+
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['OK_Sequence'];?>:</div>
+                    <div class="col t2" >
+      			      	<div class="col-1 form-check form-check-inline">
+        				    <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_green" value="1"  <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?>>
+            				<label class="form-check-label" for=""><?php echo "Green";?></label>
+            			</div>
+            			<div class="form-check form-check-inline">
+            			    <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_yellow" value="2"  <?php echo $data['controller_info']['okseqcolor'] == 2 ? 'checked="checked"' : ''; ?> >
+            				<label class="form-check-label" for="`"><?php echo "Yellow";?></label>
+            			</div>
+                    </div>
+                </div>
+
+
+                <div style="text-align: center;margin-top: 50px;">
+                    <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="background_save()"><?php echo $text['save'];?></button>
+                </div>
+
+
+
+
+
             </div>
 
             <div id="System_Setting" class="divMode" style="display: none">
@@ -143,11 +325,11 @@
                                             <td style="text-align: center; vertical-align: middle;" >
                                                 <input class="form-check-input" type="checkbox" name="barcode_check" id="barcode_check" value="<?php echo $v_b['barcode_selected_job'];?>" style="zoom:1.2">
                                             </td> 
-                                            <td><?php echo $v_b['barcode_selected_job'];?></td>
-                                            <td><?php echo $v_b['job_name'];?></td>
+                                            <td><?php echo $v_b['job_id'];?></td>
+                                            <td><?php echo $v_b['JOBname'];?></td>
                                             <td><?php echo $v_b['barcode'];?></td>
-                                            <td><?php echo $v_b['barcode_range_from'];?></td>
-                                            <td><?php echo $v_b['barcode_range_count'];?></td>
+                                            <td><?php echo $v_b['range_from'];?></td>
+                                            <td><?php echo $v_b['range_count'];?></td>
                                         </tr>
                                     <?php } ?>
                                   
@@ -177,19 +359,47 @@
                         <input id="barcode_count" name="barcode_count" style="height: 32px" type="text" value="" class="form-control">
                     </div>
                 </div>
+
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo $text['select_job'];?>:</div>
+                    <div class="col-3 t1"><?php echo $text['system_barcode_mode'];?>:</div>
                     <div class="col-3 t2">
-                        <select class="form-select" id="barcode_job" name="barcode_job">
-                            <option value="-1"><?php echo $text['system_barcode_select_job_m'];?></option>
+                        <select class="form-select" id="barcode_mode" name="barcode_mode" onchange="toggleBarcodeSeq()" >
+                            <option value="-1"><?php echo $text['system_barcode_setting'];?></option>
                                 <?php
-                                foreach ($data['job_list'] as $key => $value) {?>
-                                    <option value='<?php echo $value['job_id'];?>'><?php echo $value['job_id']." ".$value['job_name'];?></option>
+                                foreach ($data['barcode_mode'] as $key_b => $value_b) {?>
+                                    <option value='<?php echo $key_b ;?>'><?php echo $text['system_barcode_mode_' . $key_b] ;?></option>
                                 <?php }?>
                                 
                         </select>
                     </div>
                 </div>
+
+                
+                <div class="row t2">
+                    <div class="col-3 t1"><?php echo $text['system_barcode_select_job'];?>:</div>
+                    <div class="col-3 t2">
+                        <select class="form-select" id="barcode_job" name="barcode_job" onchange="fetchSeqList()" >
+                            <option value="-1"><?php echo $text['system_barcode_select_job_m'];?></option>
+                                <?php
+                                foreach ($data['job_list'] as $key => $value) {?>
+                                    <option value='<?php echo $value['JOBID'];?>'><?php echo $value['JOBID']." ".$value['JOBname'];?></option>
+                                <?php }?>
+                                
+                        </select>
+                    </div>
+                </div>
+                <div id="barcode_select_seq" style="display:none;">
+                    <div class="row t2">
+                        <div class="col-3 t1"><?php echo $text['system_barcode_select_seq'];?>:</div>
+                        <div class="col-3 t2">
+                            <select class="form-select" id="barcode_seq" name="barcode_seq">
+                                <option value="-1"><?php echo $text['system_barcode_select_seq_m'];?></option>
+                                
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div style="text-align: center;margin-top: 50px;">
                     <button class="all-btn w3-button w3-border w3-round-large" onclick="update_barcode()" ><?php echo $text['save'];?></button>&nbsp;&nbsp;
                     <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode()" ><?php echo $text['delete_text'];?></button>
@@ -530,4 +740,8 @@ function OpenButton(ButtonMode){
         //alert("Function ["+ ButtonMode +"] is under constructing ...");
     }
 }
+
+
+
+
 </script>    

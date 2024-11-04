@@ -48,8 +48,8 @@
                                         <tr>
                                             <th><?php echo $text['column_no'];?></th>
                                             <th><?php echo $text['column_datetime'];?></th>
-                                            <th><?php echo $text['job_name'];?></th>
-                                            <th><?php echo $text['seq_name'];?></th>
+                                            <th><?php echo $text['job_id'];?></th>
+                                            <th><?php echo $text['seq_id'];?></th>
                                             <th><?php echo $text['torque'];?></th>
                                             <th><?php echo $text['column_unit'];?></th>
                                             <th><?php echo $text['angle'];?></th>
@@ -64,25 +64,23 @@
                                             <?php foreach($data['res_data'] as $key =>$val){?>
 
                                                 <?php ////#FFEF62
-                                                    if($val['fasten_status'] == 7 || $val['fasten_status'] == 8 ){
+                                                    if($val['error_message']  == 1 ){
                                                         $style ='style="background: red"';
-                                                    }else if($val['fasten_status'] == 5 || $val['fasten_status'] == 6){
-                                                        $style ='style="background: #FFEF62"';
                                                     }else{
                                                         $style ='style="background: green"';
                                                     }
                                                 ?>
                                                 <tr>
-                                                    <td><?php echo $val['system_sn'];?></td>
+                                                    <td><?php echo $val['id'];?></td>
                                                     <td><?php echo $val['data_time'];?></td>
-                                                    <td><?php echo $val['job_name'];?></td>
-                                                    <td><?php echo $val['sequence_name'];?></td>
-                                                    <td><?php echo $val['target_torque'];?></td>
-                                                    <td><?php echo $text[$data['unit_arr'][$val['torque_unit']]];?></td>
-                                                    <td><?php echo $val['target_angle'];?></td>
+                                                    <td><?php echo $val['job_id'];?></td>
+                                                    <td><?php echo $val['sequence_id'];?></td>
+                                                    <td><?php echo $val['torque'];?></td>
+                                                    <td><?php echo $val['torque_unit'];?></td>
+                                                    <td><?php echo $val['angle'];?></td>
                                                     <td><?php echo $val['total_screw_count'];?></td>
                                                     <td><?php echo $val['last_screw_count'];?></td>
-                                                    <td <?php echo $style;?>><?php echo $data['status_arr'][$val['fasten_status']];?></td>
+                                                    <td <?php echo $style;?>><?php echo $data['status_arr'][$val['error_message']];?></td>
                                                 </tr>
                                             <?php }?>
                                           
@@ -104,8 +102,8 @@
                                         <tr>
                                             <th><?php echo $text['column_no'];?></th>
                                             <th><?php echo $text['column_datetime'];?></th>
-                                            <th><?php echo $text['job_name'];?></th>
-                                            <th><?php echo $text['seq_name'];?></th>
+                                            <th><?php echo $text['job_id'];?></th>
+                                            <th><?php echo $text['seq_id'];?></th>
                                             <th><?php echo $text['torque'];?></th>
                                             <th><?php echo $text['column_unit'];?></th>
                                             <th><?php echo $text['angle'];?></th>
@@ -119,25 +117,23 @@
                                         <?php foreach($data['res_data_ok'] as $key_ok =>$val_ok){?>
 
                                             <?php ////#FFEF62
-                                                if($val_ok['fasten_status'] == 7 || $val_ok['fasten_status'] == 8 ){
-                                                    $style ='style="background: red"';
-                                                }else if($val_ok['fasten_status'] == 5 || $val_ok['fasten_status'] == 6){
-                                                    $style ='style="background: #FFEF62"';
-                                                }else{
-                                                    $style ='style="background: green"';
-                                                }
+                                                    if($val_ok['error_message']  == 1 ){
+                                                        $style ='style="background: red"';
+                                                    }else{
+                                                        $style ='style="background: green"';
+                                                    }
                                             ?>
                                             <tr>
-                                                <td><?php echo $val_ok['system_sn'];?></td>
+                                                <td><?php echo $val_ok['id'];?></td>
                                                 <td><?php echo $val_ok['data_time'];?></td>
-                                                <td><?php echo $val_ok['job_name'];?></td>
-                                                <td><?php echo $val_ok['sequence_name'];?></td>
-                                                <td><?php echo $val_ok['target_torque'];?></td>
-                                                <td><?php echo $text[$data['unit_arr'][$val_ok['torque_unit']]];?></td>
-                                                <td><?php echo $val_ok['target_angle'];?></td>
+                                                <td><?php echo $val_ok['job_id'];?></td>
+                                                <td><?php echo $val_ok['sequence_id'];?></td>
+                                                <td><?php echo $val_ok['torque'];?></td>
+                                                <td><?php echo $val_ok['torque_unit'];?></td>
+                                                <td><?php echo $val_ok['angle'];?></td>
                                                 <td><?php echo $val_ok['total_screw_count'];?></td>
                                                 <td><?php echo $val_ok['last_screw_count'];?></td>
-                                                <td <?php echo $style;?>><?php echo $data['status_arr'][$val_ok['fasten_status']];?></td>
+                                                <td <?php echo $style;?>><?php echo $data['status_arr'][$val_ok['error_message']];?></td>
                                             </tr>
                                         <?php }?>
                                     </tbody>
@@ -170,26 +166,25 @@
                                     <tbody style="font-size: 1.8vmin;text-align: center;" >
                                         <?php foreach($data['res_data_nok'] as $key_nok =>$val_nok){?>
 
-                                            <?php ////#FFEF62
-                                                if($val_nok['fasten_status'] == 7 || $val_nok['fasten_status'] == 8 ){
+                                            <?php 
+                                                ////#FFEF62
+                                                if($val_nok['error_message']  == 1 ){
                                                     $style ='style="background: red"';
-                                                }else if($val_nok['fasten_status'] == 5 || $val_nok['fasten_status'] == 6){
-                                                    $style ='style="background: #FFEF62"';
                                                 }else{
                                                     $style ='style="background: green"';
                                                 }
                                             ?>
                                             <tr>
-                                                <td><?php echo $val_nok['system_sn'];?></td>
+                                                <td><?php echo $val_nok['id'];?></td>
                                                 <td><?php echo $val_nok['data_time'];?></td>
-                                                <td><?php echo $val_nok['job_name'];?></td>
-                                                <td><?php echo $val_nok['sequence_name'];?></td>
-                                                <td><?php echo $val_nok['target_torque'];?></td>
-                                                <td><?php echo $text[$data['unit_arr'][$val_nok['torque_unit']]];?></td>
-                                                <td><?php echo $val_nok['target_angle'];?></td>
+                                                <td><?php echo $val_nok['job_id'];?></td>
+                                                <td><?php echo $val_nok['sequence_id'];?></td>
+                                                <td><?php echo $val_nok['torque'];?></td>
+                                                <td><?php echo $val_nok['torque_unit'];?></td>
+                                                <td><?php echo $val_nok['angle'];?></td>
                                                 <td><?php echo $val_nok['total_screw_count'];?></td>
                                                 <td><?php echo $val_nok['last_screw_count'];?></td>
-                                                <td <?php echo $style;?>><?php echo $data['status_arr'][$val_nok['fasten_status']];?></td>
+                                                <td <?php echo $style;?>><?php echo $data['status_arr'][$val_nok['error_message']];?></td>
                                             </tr>
                                         <?php }?>
                                     </tbody>

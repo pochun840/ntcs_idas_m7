@@ -8,8 +8,8 @@ class Miscellaneous{
     // 在建構子將 Database 物件實例化
     public function __construct()
     {
-        $this->db_iDas = new Database;
-        $this->db_iDas = $this->db_iDas->getDb_das();
+        $this->db_iDas_tools = new Database;
+        $this->db_iDas_tools = $this->db_iDas_tools->getDb_das_tools();
 
     }
 
@@ -139,11 +139,35 @@ class Miscellaneous{
 
         }
 
+        if($mode == "status_ntcs"){
+            $array = array(
+                0 => 'OK', 
+                1 => 'NG'
+            );
+
+        }
+
         if($mode =="lang"){
             $array = array(
-                0 => 'English',
-                1 => '繁體中文',
-                2 => '簡體中文',
+                1 => 'English',
+                2 => '繁體中文',
+                3 => '簡體中文',
+            );    
+        }
+
+        if($mode =="sample_rate"){
+            $array = array(
+                0 => '0.5',
+                1 => '1.0',
+                2 => '2.0',
+            );    
+        }
+
+        if($mode =="barcode_mode"){
+            $array = array(
+                1 => 'BS',
+                2 => 'BS (free)',
+                3 => 'Switch Job / Seq',
             );    
         }
 
@@ -377,6 +401,23 @@ class Miscellaneous{
         // 如果所有檢查都通過
         return "驗證通過：扭力值有效。";
     }
+
+
+    //取得最大最小轉速 及 最大最小扭力   
+    public function getToolSpecifications() {
+        $sql = "SELECT max_rpm, min_rpm, max_torque, min_torque FROM " . TABLE_NTCS_TOOLS;
+        $statement = $this->db_iDas_tools->prepare($sql);
+        $statement->execute();
+
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+        if ($result) {
+            return $result; 
+        } else {
+            return null; 
+        }
+    }
+
     
     public function FTP_download($controller_ip, $username, $password)
     {

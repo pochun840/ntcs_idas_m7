@@ -106,7 +106,7 @@ class Job{
         $statement->bindValue(':type', isset($jobdata['type']) ? intval($jobdata['type']) : 1); 
         $statement->bindValue(':act', isset($jobdata['act']) ? intval($jobdata['act']) : 0); 
         $statement->bindValue(':ok_job', isset($jobdata['ok_job']) ? intval($jobdata['ok_job']) : 1);
-        $statement->bindValue(':ok_job_stop', isset($jobdata['ok_job_stop']) ? intval($jobdata['ok_job_stop']) : 1); 
+        $statement->bindValue(':ok_job_stop', isset($jobdata['ok_job_stop']) ? intval($jobdata['ok_job_stop']) : 0); 
         $statement->bindValue(':output_unified', isset($jobdata['output_unified']) ? intval($jobdata['output_unified']) : 0); 
         $statement->bindValue(':input_unified', isset($jobdata['input_unified']) ? intval($jobdata['input_unified']) : 0); 
         $statement->bindValue(':time', date('Y-m-d H:i:s')); 

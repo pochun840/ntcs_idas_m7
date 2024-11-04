@@ -1,22 +1,25 @@
 <?php
 
 class Setting{
-    //private $db;//condb control box
-    //private $db_dev;//devdb tool
+
     private $db_data;//devdb tool
-    //private $db_das;//devdb tool
     private $db_iDas;
     private $db_iDas_device;
+    private $db_barcode;
     private $dbh;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
     {
-        $this->db_iDas_device = new Database;
-        $this->db_iDas_device = $this->db_iDas_device->getDb_das_device();
+        $this->db_iDas_tools = new Database;
+        $this->db_iDas_tools = $this->db_iDas_tools->getDb_das_tools();
 
         $this->db_iDas = new Database;
         $this->db_iDas = $this->db_iDas->getDb_das();
+
+
+        $this->db_barcode = new Database;
+        $this->db_barcode = $this->db_barcode->getDb_das_barcode();
 
         $this->dbh = new Database;
 
@@ -24,8 +27,8 @@ class Setting{
 
     public function GetControllerInfo()
     {
-        $sql = "SELECT * FROM device ";
-        $statement = $this->db_iDas_device->prepare($sql);
+        $sql = "SELECT * FROM ntcs_device_test ";
+        $statement = $this->db_iDas_tools->prepare($sql);
         $results = $statement->execute();
         $row = $statement->fetch(PDO::FETCH_ASSOC);
 
@@ -207,7 +210,7 @@ class Setting{
             batch = :batch,
             buzzer_mode = :buzzer_mode
         WHERE device_id = :device_id ";
-        
+         $statement = $this->db_iDas_tools->prepare($sql);
         $statement = $this->db_iDas_device->prepare($sql);
         $statement->bindValue(':device_name', $con_setting['control_name']);
         $statement->bindValue(':language_val', $con_setting['lang_val']);
@@ -247,12 +250,29 @@ class Setting{
 
     public function GetAllBarcodes()
     {
-        $sql = "SELECT barcode.*,job.job_name FROM barcode left join `job` on barcode_selected_job = job_id order by barcode_selected_job";
-        $statement = $this->db_iDas->prepare($sql);
-        $results = $statement->execute();
-        $rows = $statement->fetchall(PDO::FETCH_ASSOC);
+       
+        $sqlBarcode = "SELECT * FROM " . TABLE_NTCS_BARCODE;
+        $statementBarcode = $this->db_barcode->prepare($sqlBarcode);
+        $statementBarcode->execute();
+        $barcodeRows = $statementBarcode->fetchAll(PDO::FETCH_ASSOC);
 
-        return $rows;
+      
+        $sqlJob = "SELECT JOBID, JOBname FROM JOB_lst";
+        $statementJob = $this->db_iDas->prepare($sqlJob);
+        $statementJob->execute();
+        $jobRows = $statementJob->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($barcodeRows as &$barcodeRow) {
+            foreach ($jobRows as $jobRow) {
+                if ($barcodeRow['job_id'] == $jobRow['JOBID']) {
+                    $barcodeRow['JOBname'] = $jobRow['JOBname'];
+                    break; 
+                }
+            }
+        }
+
+
+        return $barcodeRows; 
     }
 
     public function Update_Barcode($barcode)
@@ -260,29 +280,36 @@ class Setting{
         if( $this->check_barcode_conflict($barcode['barcode_job']) ){ 
 
         
-            $sql = "UPDATE `barcode` 
+            $sql = "UPDATE ".TABLE_NTCS_BARCODE." 
                     SET barcode = :barcode,
-                        barcode_range_from  = :barcode_range_from,
-                        barcode_range_count = :barcode_range_count,
-                    WHERE barcode_selected_job = :barcode_selected_job ";
+                        range_from  = :range_from,
+                        range_count = :range_count,
+                        barcode_mode = :barcode_mode,
+                    WHERE job_id = :job_id ";
             $statement = $this->db_iDas->prepare($sql);
             $statement->bindValue(':barcode', $barcode['barcode_name']);
-            $statement->bindValue(':barcode_range_from', $barcode['barcode_range_from']);
-            $statement->bindValue(':barcode_range_count', $barcode['barcode_range_count']);
-            $statement->bindValue(':barcode_selected_job',$barcode['barcode_job']);
+            $statement->bindValue(':range_from', $barcode['barcode_range_from']);
+            $statement->bindValue(':range_count', $barcode['barcode_range_count']);
+            $statement->bindValue(':job_id',$barcode['barcode_job']);
+            $statement->bindValue(':seq_id',$barcode['barcode_seq']);
+            $statement->bindValue(':barcode_mode',$barcode['barcode_mode']);
             $results = $statement->execute();
 
 
         }else{ //不存在，用insert
 
-            $sql = "INSERT INTO `barcode` ('barcode','barcode_range_from','barcode_range_count','barcode_selected_job')
-                    VALUES (:barcode,:barcode_range_from,:barcode_range_count,:barcode_selected_job )";
-            $statement = $this->db_iDas->prepare($sql);
+            $sql = "INSERT INTO ".TABLE_NTCS_BARCODE." (job_id, barcode, range_from, range_count, barcode_mode, seq_id) 
+            VALUES (:job_id, :barcode, :range_from, :range_count, :barcode_mode, :seq_id)";
+    
+            $statement = $this->db_barcode->prepare($sql);
+            $statement->bindValue(':job_id', $barcode['barcode_job']); 
             $statement->bindValue(':barcode', $barcode['barcode_name']);
-            $statement->bindValue(':barcode_range_from', $barcode['barcode_range_from']);
-            $statement->bindValue(':barcode_range_count', $barcode['barcode_range_count']);
-            $statement->bindValue(':barcode_selected_job', $barcode['barcode_job']);
+            $statement->bindValue(':range_from', $barcode['barcode_range_from']);
+            $statement->bindValue(':range_count', $barcode['barcode_range_count']);
+            $statement->bindValue(':barcode_mode', $barcode['barcode_mode']); 
+            $statement->bindValue(':seq_id', $barcode['barcode_seq']); 
             $results = $statement->execute();
+
 
         }
 
@@ -291,9 +318,9 @@ class Setting{
 
     public function check_barcode_conflict($job_id){
         
-        $sql = "SELECT count(*) as count FROM barcode WHERE barcode_selected_job = :barcode_selected_job";
-        $statement = $this->db_iDas->prepare($sql);
-        $statement->bindValue(':barcode_selected_job', $job_id);
+        $sql = "SELECT count(*) as count FROM ".TABLE_NTCS_BARCODE."  WHERE job_id = :job_id ";
+        $statement = $this->db_barcode->prepare($sql);
+        $statement->bindValue(':job_id', $job_id);
         $results = $statement->execute();
         $rows = $statement->fetch();
         
@@ -309,7 +336,7 @@ class Setting{
     //get all job
     public function get_job_list()
     {
-        $sql = "SELECT * FROM job ORDER BY job_id";
+        $sql = "SELECT * FROM JOB_lst ORDER BY  JOBID ";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute();
         $rows = $statement->fetchall(PDO::FETCH_ASSOC);
@@ -320,9 +347,9 @@ class Setting{
     //get all job seq
     public function get_seq_list($job_id)
     {
-        $sql = "SELECT job_id,sequence_id,sequence_name FROM sequence WHERE job_id = :job_id AND sequence_enable = 1 order by sequence_id";
-        $statement = $this->db->prepare($sql);
-        $statement->bindValue(':job_id', $job_id);
+        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst WHERE JOBID = :JOBID AND act = 0 order by SEQID  ASC ";
+        $statement = $this->db_iDas ->prepare($sql);
+        $statement->bindValue(':JOBID', $job_id);
         $results = $statement->execute();
         $rows = $statement->fetchall(PDO::FETCH_ASSOC);
 
@@ -345,15 +372,68 @@ class Setting{
     public function delete_job_barcode($barcode)
     {
         foreach($barcode as $key =>$val){
-            $sql = "DELETE FROM barcode WHERE barcode_selected_job = :job_id ";
+            $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id = :job_id ";
             $statement = $this->db_iDas->prepare($sql);
-            $statement->bindValue(':job_id', $val);
+            $statement->bindValue(':job_id', $val['job_id']);
             $results = $statement->execute();
     
             
         }
 
         return $results;
+    }
+
+
+    public function edit_feature_pwd($pwd_arr){
+
+        $sql = "UPDATE " . TABLE_NTCS_DEVICE . "
+                SET clearseq_button_pwd = :clearseq_button_pwd,
+                clear_button_pwd = :clear_button_pwd,
+                confirm_button_pwd = :confirm_button_pwd,
+                enable_button_pwd = :enable_button_pwd,
+                disable_button_pwd = :disable_button_pwd,
+                skip_button_pwd = :skip_button_pwd ";
+        $statement = $this->db_iDas_tools->prepare($sql);
+        $statement->bindValue(':clearseq_button_pwd', $pwd_arr['clearseq_button_pwd']);
+        $statement->bindValue(':clear_button_pwd', $pwd_arr['clear_button_pwd']);
+        $statement->bindValue(':confirm_button_pwd', $pwd_arr['confirm_button_pwd']);
+        $statement->bindValue(':enable_button_pwd', $pwd_arr['enable_button_pwd']);
+        $statement->bindValue(':disable_button_pwd', $pwd_arr['disable_button_pwd']);
+        $statement->bindValue(':skip_button_pwd', $pwd_arr['skip_button_pwd']);
+        $results = $statement->execute();
+
+        return $results;
+
+    }
+
+
+    public function edit_feature_color($color_arr){
+
+        $sql = "UPDATE " . TABLE_NTCS_DEVICE . "
+                SET okseqcolor = :okseqcolor,
+                okjobcolor = :okjobcolor";
+        $statement = $this->db_iDas_tools->prepare($sql);
+        $statement->bindValue(':okseqcolor', $color_arr['okseqcolor']);
+        $statement->bindValue(':okjobcolor', $color_arr['okjobcolor']);
+        $results = $statement->execute();
+
+        return $results;
+
+    }
+
+    
+    public function edit_feature_global_downshift($global_downshift_arr){
+
+        $sql = "UPDATE " . TABLE_NTCS_DEVICE . "
+                SET global_downshift_torque = :global_downshift_torque,
+               global_downshift_speed = :global_downshift_speed";
+        $statement = $this->db_iDas_tools->prepare($sql);
+        $statement->bindValue(':global_downshift_torque', $global_downshift_arr['global_downshift_torque']);
+        $statement->bindValue(':global_downshift_speed', $global_downshift_arr['global_downshift_speed']);
+        $results = $statement->execute();
+
+        return $results;
+
     }
 
     //get update information

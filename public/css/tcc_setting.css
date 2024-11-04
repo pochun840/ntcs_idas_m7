@@ -66,10 +66,14 @@
 .divMode
 {
     border-radius: 10px;
-    height: calc(100vh - 130px);
+    height: calc(100vh - 250px);
     margin: 4px 0px;
     background-color: #FCFCFC;
     box-shadow: 0px 2px 4px 1px rgba(0,0,0,0.2);    
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+
 }
 
 .all-btn

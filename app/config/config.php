@@ -21,6 +21,20 @@ $language = array(
 define('LANGUAGE',$language);
 
 
+//table - barcode 
+define('TABLE_NTCS_BARCODE', 'ntcs_barcode_test');
+
+//table - tools
+define('TABLE_NTCS_TOOLS', 'ntcs_tool_test');
+
+
+//table - device
+define('TABLE_NTCS_DEVICE', 'ntcs_device_test');
+
+//define('BASE_PATH_LINUX', '/var/www/html/database/');
+//define('BASE_PATH_OTHER', '../');
+
+
 // 抓取APP的檔案名稱，判斷是哪一個品牌
 //$brand_code = get_brand_code();
 $brand = '0';//預設值帶kilews
@@ -43,7 +57,7 @@ $brand = '0';//預設值帶kilews
 define('ICONMODE', $brand);
 
 define('TITLE_INDEX',       'KILEWS');
-define('SUBTITLE_INDEX',    'iDAS for TCC-M7');
+define('SUBTITLE_INDEX',    'iDAS for NTCS-M7');
 define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');
 define('ICON_AGENT',        URLROOT.'img/192.png');
 

@@ -66,13 +66,13 @@ class Jobs extends Controller
                 'time' =>  date('Y-m-d H:i:s'),
                 'act' => 0,
                 'ok_job' => $_POST['job_ok_val'],
-                'stop_job_ok' => $_POST['stop_job_ok_val'],
+                'ok_job_stop' => $_POST['stop_job_ok_val'],
                 'output_unified' => 0,
                 'input_unified'  => 0
       
             );
 
-   
+            
     
             $job_count = $this->jobModel->countjob();
             if($job_count >= 100) {
@@ -112,6 +112,7 @@ class Jobs extends Controller
                 'ok_job_stop' => $_POST['stopjobValue']
 
             );
+-
 
             $res = $this->jobModel->update_job_by_id($jobdata);
             $result = array();

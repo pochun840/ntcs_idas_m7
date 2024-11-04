@@ -18,6 +18,9 @@ function exportData() {
 
     var start_date = document.getElementById('start_date').value;
     var end_date = document.getElementById('end_date').value;
+
+    console.log(start_date);
+    
     var valid_flag = true;
 
     if (start_date === '' || end_date === '') {

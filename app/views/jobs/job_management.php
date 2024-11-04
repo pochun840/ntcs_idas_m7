@@ -330,6 +330,9 @@ function savejob() {
     var stopjobokElement = document.querySelector('input[name="stop_job_ok"]:checked');
     var stop_job_ok_val = stopjobokElement ? stopjobokElement .value : null;
 
+
+
+
     if (jobname_val){
         $.ajax({
             url: "?url=Jobs/create_job",
