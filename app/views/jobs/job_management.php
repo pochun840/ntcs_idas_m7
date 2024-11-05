@@ -319,43 +319,47 @@ for (var i = 0; i < rows.length; i++) {
 }
 
 function savejob() {
-
     var jobidnew = '<?php echo $data['jobint']?>';
-
-    var jobname_val      = document.getElementById("job_name").value;
+    var jobname_val = document.getElementById("job_name").value;
   
+    // 如果 jobname_val 为空，弹出提示并返回
+    if (!jobname_val) {
+        alertify.alert("Error", "Job name cannot be empty", function() {
+            // 聚焦到 job_name 输入框，用户可以重新输入
+            document.getElementById("job_name").focus();
+        });
+        return; // 终止函数执行，避免提交空值
+    }
+
     var jobElement = document.querySelector('input[name="job_ok"]:checked');
     var job_ok_val = jobElement ? jobElement.value : null;
 
     var stopjobokElement = document.querySelector('input[name="stop_job_ok"]:checked');
-    var stop_job_ok_val = stopjobokElement ? stopjobokElement .value : null;
+    var stop_job_ok_val = stopjobokElement ? stopjobokElement.value : null;
 
-
-
-
-    if (jobname_val){
-        $.ajax({
-            url: "?url=Jobs/create_job",
-            method: "POST",
-            data: { 
-                jobidnew: jobidnew,
-                jobname_val: jobname_val,
-                job_ok_val: job_ok_val,
-                stop_job_ok_val:stop_job_ok_val
-            },
-            success: function(response) {
-       
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                });         
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });
-    }
+    // 如果 jobname_val 非空，继续执行 AJAX 请求
+    $.ajax({
+        url: "?url=Jobs/create_job",
+        method: "POST",
+        data: { 
+            jobidnew: jobidnew,
+            jobname_val: jobname_val,
+            job_ok_val: job_ok_val,
+            stop_job_ok_val: stop_job_ok_val
+        },
+        success: function(response) {
+            var responseData = JSON.parse(response);
+            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                history.go(0); // 刷新页面
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX request failed:", status, error);
+        }
+    });
 }
+
+
 
 
 function copy_job_by_id(jobid){
