@@ -100,6 +100,7 @@ class Miscellaneous{
                 2 => 'Angle/Time(MS)',
                 3 => 'RPM/Time(MS)',
                 4 => 'Torque/Angle',
+                5 => 'Torque/Speed'
             );
         }
 
@@ -109,6 +110,7 @@ class Miscellaneous{
                 2 => array('name'=>'Angle Time',  'id'=>'angle_time'),
                 3 => array('name'=>'RPM Time',    'id'=>'rpm_time'),
                 4 => array('name'=>'Torque Angle','id'=>'torque_angle'),
+                5 => array('name'=>'Torque Speed','id'=>'torque_speed'),
             );
         }
 

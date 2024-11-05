@@ -116,6 +116,10 @@ function chart_type(argument){
         chart = 4;
     }
 
+    if(argument == "torque_speed"){
+        chart = 5;
+    }
+
     var nextinfo_url;
 
     if (chartIndex !== -1) {
@@ -194,7 +198,6 @@ if(language =="zh-cn"){
 
 }
 
-console.log (x_title);
 
 var language = getCookie('language');
 

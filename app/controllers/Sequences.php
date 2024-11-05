@@ -7,6 +7,7 @@ class Sequences extends Controller
 
         $this->sequenceModel = $this->model('Sequence');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->SettingModel = $this->model('Setting');
     }
 
     // 取得所有Sequences
@@ -452,6 +453,11 @@ class Sequences extends Controller
             $job_id = 1;
         }
 
+        
+        $torque_unit = $this->SettingModel->Get_System_Toq_Unit();
+        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+
+        $torque_unit = $unit_arr[$torque_unit];
         $isMobile = $this->isMobileCheck();
     
         // 如果沒有提供 seq_id，則視為新增，並設為空值
@@ -478,16 +484,17 @@ class Sequences extends Controller
             
             $sequences = $res[0];
         }
-    
+        
         $data = array(
             'sequences' => $sequences,
             'job_id' => $job_id,
             'seq_id' => $seq_id,
+            //'torque_unit' => $torque_unit,
             'type' => $type
         );
 
 
-        echo $this->view('sequences/add_seq', $data);
+        echo $this->view('sequences/add_seq_bk', $data);
     }
         
 }

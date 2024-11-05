@@ -20,8 +20,6 @@ class Settings extends Controller
         $isMobile = $this->isMobileCheck();
 
         $lang = $this->MiscellaneousModel->details('lang');
-        $torque_unit = $this->MiscellaneousModel->details('torque_unit');
-        $sample_rate = $this->MiscellaneousModel->details('sample_rate');
         $controller_info = $this->SettingModel->GetControllerInfo();
         $active_session = $this->AdminModel->GetActiveSession();
         $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
@@ -29,11 +27,52 @@ class Settings extends Controller
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
         $job_list = $this->SettingModel->get_job_list();
-        $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
-        
         $barcodes = $this->GetBarcodes();
 
-    
+     
+
+        /*$isMobile = $this->isMobileCheck();
+        $Controller_Info = $this->SettingModel->GetControllerInfo();
+        $operator_priviledge = $this->SettingModel->GetOperator_priviledge();
+        $priviledge = $this->intTo16BitArray($operator_priviledge);
+        $priviledge['confirm'] = $priviledge[12];
+        $priviledge['clear'] = $priviledge[11];
+        $priviledge['seq_clear'] = $priviledge[10];
+        $priviledge['export'] = $priviledge[13];
+        $priviledge['switch'] = $priviledge[14];
+        $priviledge['barcode'] = $priviledge[15];
+
+        //admin connect setting
+        $active_session = $this->AdminModel->GetActiveSession();
+        $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
+        $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
+        $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+
+        $barcodes = $this->GetBarcodes();
+        $job_list = $this->SettingModel->get_job_list();
+
+        //get tool info
+        $Tool_Info = $this->ToolModel->GetToolInfo();
+        $device_info = $this->Device_Info();
+
+        $data = [
+            'isMobile' => $isMobile,
+            'Controller_Info' => $Controller_Info,
+            'priviledge' => $priviledge,
+            'barcodes' => $barcodes,
+            'job_list' => $job_list,
+            'active_session' => $active_session,
+            'max_user' => $max_user,
+            'agent_server_ip' => $agent_server_ip,
+            'agent_type' => $agent_type,
+            'iDas_Vesion' => $iDas_Vesion,
+            'Tool_Info' => $Tool_Info,
+            'device_info' => $device_info
+        ];
+        
+        
+        $this->view('setting/index', $data);*/
         
         $data = array();
         $data = array(
@@ -45,12 +84,15 @@ class Settings extends Controller
             'agent_server_ip' => $agent_server_ip,
             'agent_type'      => $agent_type,
             'job_list'        => $job_list,
-            'barcodes'        => $barcodes,
-            'torque_unit'     => $torque_unit,
-            'sample_rate'     => $sample_rate,
-            'barcode_mode'    => $barcode_mode
+            'barcodes'        => $barcodes
 
         );
+
+
+     
+
+    
+
 
         if($isMobile){
             $this->view('setting/index_m', $data);
@@ -61,7 +103,7 @@ class Settings extends Controller
 
     }
 
-    /*public function job_tree(){   
+    public function job_tree(){   
      
         //select all job
         $jobs = $this->SettingModel->GetAllJobs();
@@ -86,7 +128,7 @@ class Settings extends Controller
         }
 
         echo json_encode($data_array);
-    }*/
+    }
 
     public function edit_password(){
 
@@ -117,7 +159,9 @@ class Settings extends Controller
         }else{
             $result = false;
         }
-    
+        
+
+
     }
 
 
@@ -269,19 +313,6 @@ class Settings extends Controller
         }else{ 
             $input_check = false; 
         }
-  
-        if( !empty($_POST['storage_warning']) && isset($_POST['storage_warning'])){
-            $con_setting['storage_warning'] = $_POST['storage_warning'];
-        }else{ 
-            $input_check = false; 
-        }
-
-        
-        if( !empty($_POST['torque_filter']) && isset($_POST['torque_filter'])){
-            $con_setting['torque_filter'] = $_POST['torque_filter'];
-        }else{ 
-            $input_check = false; 
-        }
 
         if( !empty($_POST['lang_val']) && isset($_POST['lang_val'])){
             $lang_val =  $_POST['lang_val'];
@@ -292,45 +323,23 @@ class Settings extends Controller
 
         $con_setting['lang_val']  = $lang_val;
 
-
-        if( !empty($_POST['unit_val']) && isset($_POST['unit_val'])){
-            $unit_val =  $_POST['unit_val'];
-            intval($unit_val);
+        if( !empty($_POST['batch_val']) && isset($_POST['batch_val'])  ){
+            $con_setting['batch_val'] = $_POST['batch_val'];
         }else{ 
-            $unit_val = 0;
+            $input_check = false; 
         }
 
-        $con_setting['unit_val']  =$unit_val;
-
-        if( !empty($_POST['counting_method']) && isset($_POST['counting_method'])){
-            $con_setting['counting_method']  =  $_POST['counting_method'];
+        if( !empty($_POST['buzzer_val']) && isset($_POST['buzzer_val'])  ){
+            $con_setting['buzzer_val'] = $_POST['buzzer_val'];
         }else{ 
-            $con_setting['counting_method']  =  $_POST['counting_method']; 
+            $input_check = false; 
         }
-
-        if( !empty($_POST['circular_archive']) && isset($_POST['circular_archive'])){
-            $con_setting['circular_archive']  =  $_POST['circular_archive'];
-        }else{ 
-            $con_setting['circular_archive']  =  $_POST['circular_archive']; 
-        }
-
-        if( !empty($_POST['blackout_recovery']) && isset($_POST['blackout_recovery'])){
-            $con_setting['blackout_recovery']  =  $_POST['blackout_recovery'];
-        }else{ 
-            $con_setting['blackout_recovery']  =  $_POST['blackout_recovery']; 
-        }
-        if( !empty($_POST['buzzer_mode']) && isset($_POST['buzzer_mode'])  ){
-            $con_setting['buzzer_mode'] = $_POST['buzzer_mode'];
-        }else{ 
-            $con_setting['buzzer_mode'] = $_POST['buzzer_mode'];
-        }
-       
-
+        
 
         if($input_check){
           $res = $this->SettingModel->GetControllerInfo_count($con_setting['control_id']);
           if($res['count'] =="1"){
-        
+            //UPDATE
             $result = $this->SettingModel->Controller_Setting($con_setting);
             if($result){
                 $res_msg = 'edit:'. $con_setting['control_id'].'success';
@@ -339,6 +348,8 @@ class Settings extends Controller
             }
             echo $res_msg;
 
+          }else{
+            //INSERT 
           }
 
         }    
@@ -347,7 +358,8 @@ class Settings extends Controller
     public function edit_system_date()
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $dateTime = $_POST["datetime"];
+            /*$dateTime = $_POST["datetime"];
+            // var_dump($dateTime);
             // 驗證日期時間格式
             if (!preg_match("/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/", $dateTime)) {
                 // echo "請提供有效的日期和時間格式（YYYY-MM-DD HH:MM:SS）。";
@@ -366,7 +378,40 @@ class Settings extends Controller
 
 
             echo json_encode(array('error' => '','result' => $rr));
-            exit();
+            exit();*/
+        }else{
+            // post
+            $conset = array();
+            $input_check = true;
+            if( !empty($_POST['device_id']) && isset($_POST['device_id'])){
+                $conset['device_id'] = $_POST['device_id'];
+            }else{ 
+                $input_check = false; 
+            }
+
+            if( !empty($_POST['newTime']) && isset($_POST['newTime'])  ){
+                $conset['newTime'] = $_POST['newTime'];
+                $conset['newTime'] = strtotime($conset['newTime']);
+                $conset['newTime'] = date('Y-m-d H:i:s', $conset['newTime']);
+                
+                if(!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $conset['newTime'])){
+                    echo "格式錯誤";exit();
+                }
+
+            }else{ 
+                $input_check = false; 
+            }
+
+            if($input_check){
+                $result = $this->SettingModel->system_date_edit($conset);
+                if($result){
+                    $res_msg = 'edit:'. $conset['device_id'].'success';
+                }else{
+                    $res_msg = 'edit:'. $conset['device_id'].'fail';
+                }
+                echo $res_msg;
+            }
+
         }
     }
 
@@ -386,72 +431,51 @@ class Settings extends Controller
 
     public function export_sysytem_config()
     {
-        
-        if (PHP_OS_FAMILY == 'Linux') {
-            // Linux 路徑配置
-            $file_path = '/var/www/html/database/';
-            $files = [
-                'KLS_NTCS.Lin',  // 原來的 .Lin 檔案
-                'ntcs_barcode.db', // 原來的 .db 檔案
-                'ntcs_data.db', // 原來的 .db 檔案
-                'ntcs_device.db' // 原來的 .db 檔案
-            ];
-        } else {
-    
-            $files = [
-                '../KLS_NTCS.Lin',
-                '../ntcs_barcode.db',
-                '../ntcs_data.db',
-                '../ntcs_device.db'
-            ];
-        }
+        if( PHP_OS_FAMILY == 'Linux'){
+            /*require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+            $modbus = new ModbusMaster("127.0.0.1", "TCP");
+            try {
+                $modbus->port = 502;
+                $data = array(1);
+                $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
 
-        $zip = new ZipArchive();
-        $zip_filename = 'data.zip'; 
+                // FC 16
+                $modbus->writeMultipleRegister(0, 505, $data, $dataTypes);
+                $this->logMessage('modbus write 505 ,array = '.implode("','", $data));
+                $this->logMessage('modbus status:'.$modbus->status);
+                // echo json_encode(array('error' => ''));
+                // exit();
 
-        if ($zip->open($zip_filename, ZipArchive::CREATE) !== TRUE) {
-            echo json_encode(array('status' => 'error', 'message' => 'Unable to create ZIP file.'));
+                header("Content-type: text/html; charset=utf-8");
+                $file="/mnt/ramdisk/FTP/tcscon.cfg"; // 實際檔案的路徑+檔名
+                $filename="tcscon.cfg"; // 下載的檔名
+                //指定類型
+                header("Content-type: ".filetype("$file"));
+                //指定下載時的檔名
+                header("Content-Disposition: attachment; filename=".$filename."");
+                //輸出下載的內容。
+                readfile($file);
+
+            } catch (Exception $e) {
+                $this->logMessage('modbus write 505 fail');
+                $this->logMessage('db_sync D2C end');
+                echo json_encode(array('error' => 'modbus error'));
+                exit();
+            }*/
+        }else{//windows
+            
+            header("Content-type: text/html; charset=utf-8");
+            $file="../data.db"; // 實際檔案的路徑+檔名
+            $filename="data.cfg"; // 下載的檔名
+            //指定類型
+            header("Content-type: ".filetype("$file"));
+            //指定下載時的檔名
+            header("Content-Disposition: attachment; filename=".$filename."");
+            //輸出下載的內容。
+            readfile($file);
             exit();
         }
-
-        foreach ($files as $file) {
-            $file_path = realpath($file); 
-
-            if (file_exists($file_path)) {
-            
-                $file_info = pathinfo($file_path);
-                $file_extension = $file_info['extension'];
-
-                if ($file_extension === 'db') {
-                    $cfgContent = file_get_contents($file_path);
-                    if (strpos($cfgContent, 'table - device') !== false) {
-                        $cfgContent = preg_replace('/table - device.*?\n/', '', $cfgContent);
-                    }
-
-                    $zip->addFromString($file_info['filename'] . '.cfg', $cfgContent);
-                } else {
-            
-                    $zip->addFile($file_path, $file_info['basename']);
-                }
-            } else {
-                echo json_encode(array('status' => 'error', 'message' => 'File not found: ' . $file));
-                exit();
-            }
-        }
-
-    
-        $zip->close();
-        header("Content-Type: application/zip");
-        header("Content-Disposition: attachment; filename=" . $zip_filename);
-        header("Content-Length: " . filesize($zip_filename));
-
-        readfile($zip_filename);
-
-        unlink($zip_filename);
-
-        exit();
     }
-
 
     public function system_storage()
     {
@@ -628,69 +652,8 @@ class Settings extends Controller
     }
 
 
-
-    //把  /var/www/html/database/data.db 備份為 /var/www/html/database/data_bk.db
-    //並把 data_bk.db 再另存一個.db 檔名為iDas_data.db
-    public function Sync_check_db() {
-        $file = $this->MiscellaneousModel->lang_load();
-        if (!empty($file)) {
-            include $file;
-        }
-    
-        $input_check = true;
-        if (!empty($_POST['argument']) && isset($_POST['argument'])) {
-            $argument = $_POST['argument'];
-        } else {
-            $argument = '';
-        }
-    
-        $argument = 'D2C';
-        $Das_DB_Location = '/var/www/html/database/iDas_data.db'; // iDas 資料庫路徑
-        $Con_DB_Location = '/var/www/html/database/data.db'; // 控制器資料庫路徑
-        $Backup_DB_Location = '/var/www/html/database/data_bk.db'; // 備份資料庫路徑
-    
-        if (!empty($argument)) {
-            if (PHP_OS_FAMILY == 'Linux' && $argument == 'D2C') {
-    
-                // 時間差異提醒
-                if (filemtime($Con_DB_Location) > filemtime($Das_DB_Location)) {
-                    $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
-                }
-    
-                // DB 欄位差異判斷
-                if (!$this->Database_Column_Diff()) {
-                    $warning .= 'DB 結構不相同';
-                }
-    
-                // 備份並複製文件
-                $res_backup = $this->SettingModel->backup_CopyFile($Con_DB_Location, $Backup_DB_Location);
-    
-                if ($res_backup) {
-                    // 複製備份文件為 iDas_data.db
-                    if (file_exists($Backup_DB_Location)) {
-                        if (file_exists($Das_DB_Location)) {
-                            unlink($Das_DB_Location); // 刪除已存在的 iDas_data.db
-                        }
-                        copy($Backup_DB_Location, $Das_DB_Location); // 複製備份文件為 iDas_data.db
-                        $res_msg = "同步成功";
-                        $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-                    } else {
-                        $res_msg = "備份文件不存在";
-                        $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                    }
-                } else {
-                    $res_msg = "備份錯誤";
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                }
-    
-                echo $res_msg;
-            }
-        }
-    }
-    
-    
-    public  function Sync_check_db_load(){
-
+    public function Sync_check_db()
+    {
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
             include $file;
@@ -698,48 +661,19 @@ class Settings extends Controller
    
         if (!empty($_POST['argument']) && isset($_POST['argument'])) {
             $argument = $_POST['argument'];
-        }else{
+        } else {
             $argument = '';
         }
 
-        $Das_DB_Location = '/var/www/html/database/iDas_data.db'; //idas 
-        $Con_DB_Location = '/var/www/html/database/data.db'; //控制器
+        var_dump($argument);
+        die();
 
-        if(!empty($argument)){
-            if( PHP_OS_FAMILY == 'Linux' && $argument == 'C2D'){
-
-                //時間差異提醒
-                if( filemtime($Con_DB_Location) > filemtime($Das_DB_Location) ){
-                    $notice = $text['system_sync_notice'].date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
-                }
-
-                //DB欄位差異判斷
-                if(!$this->Database_Column_Diff()){
-                    $warning .= 'DB is different';
-                }
-
-
-                $sourceFile = '/var/www/html/database/data.db';
-                $backupFile = '/var/www/html/database/data_bk.db';
-                $newFile = '/var/www/html/database/iDas_data.db';
-
-                $res  = $this->SettingModel->backupRemoveAndCopyDatabase($sourceFile, $backupFile, $newFile);
-                $result = array();
-                if($res){
-                    $res_msg  = "SYNC Success";
-                    $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-                }else{
-                    $res_msg  = "SYNC Error";
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                }
-
-            }
-        }
-    }
         
+  
+    }
 
 
-    
+
     
     //get barcode
     public function GetBarcodes()
@@ -760,12 +694,12 @@ class Settings extends Controller
 
                 foreach($barcodes as $kk =>$vv){
                     $barcode_list = '<tr style="text-align: center; vertical-align: middle;" >';
-                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['job_id']."'></td>";
+                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['barcode_selected_job']."'></td>";
                     $barcode_list .= '<td>'.$vv['job_id'].'</td>';
-                    $barcode_list .= '<td>'.$vv['JOBname'].'</td>';
+                    $barcode_list .= '<td>'.$vv['job_name'].'</td>';
                     $barcode_list .= '<td>'.$vv['barcode'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_from'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_count'].'</td>';
+                    $barcode_list .= '<td>'.$vv['barcode_range_from'].'</td>';
+                    $barcode_list .= '<td>'.$vv['barcode_range_count'].'</td>';
                     $barcode_list .= '<tr>';
     
                     echo $barcode_list;
@@ -774,12 +708,12 @@ class Settings extends Controller
             }else{
                 foreach($barcodes as $kk =>$vv){
                     $barcode_list = '<tr style="text-align: center; vertical-align: middle;" >';
-                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['job_id']."'></td>";
-                    $barcode_list .= '<td>'.$vv['job_id'].'</td>';
-                    $barcode_list .= '<td>'.$vv['JOBname'].'</td>';
+                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['barcode_selected_job']."'></td>";
+                    $barcode_list .= '<td>'.$vv['barcode_selected_job'].'</td>';
+                    $barcode_list .= '<td>'.$vv['job_name'].'</td>';
                     $barcode_list .= '<td>'.$vv['barcode'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_from'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_count'].'</td>';
+                    $barcode_list .= '<td>'.$vv['barcode_range_from'].'</td>';
+                    $barcode_list .= '<td>'.$vv['barcode_range_count'].'</td>';
                     $barcode_list .= '<tr>';
     
                     echo $barcode_list;
@@ -800,47 +734,33 @@ class Settings extends Controller
         //$error_message = '';
         if( !empty($_POST['barcode_name']) && isset($_POST['barcode_name'])  ){
             $barcode['barcode_name'] = $_POST['barcode_name'];
-            /*if (strlen($barcode['barcode_name']) > 54) {
+            if (strlen($barcode['barcode_name']) > 54) {
                 $input_check = false;
-            }*/
+            }
         }else{ 
             $input_check = false;
+            //$error_message .= "barcode_name,";
         }
         if( !empty($_POST['barcode_from']) && isset($_POST['barcode_from'])  ){
             $barcode['barcode_range_from'] = $_POST['barcode_from'];
         }else{ 
             $input_check = false;
+            //$error_message .= "barcode_from,";
         }
         if( !empty($_POST['barcode_count']) && isset($_POST['barcode_count'])  ){
             $barcode['barcode_range_count'] = $_POST['barcode_count'];
         }else{ 
             $input_check = false;
+            //$error_message .= "barcode_count,";
         }
         
         if( isset($_POST['barcode_job'])  ){
             $barcode['barcode_job'] = $_POST['barcode_job'];
         }else{ 
             $input_check = false;
-        }
-
-        if( isset($_POST['barcode_mode'])  ){
-            $barcode['barcode_mode'] = $_POST['barcode_mode'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if( isset($_POST['barcode_seq'])  ){
-            $barcode['barcode_seq'] = $_POST['barcode_seq'];
-        }else{ 
-            $barcode['barcode_seq'] = "";
+            ///$error_message .= "Job_Select,";
         }
         
-
-        echo "<pre>";
-        print_r($barcode);
-        echo "</pre>";
-
-
         if($input_check){
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);
             if($barcode_result){
@@ -856,16 +776,14 @@ class Settings extends Controller
     {
         $input_check = true;
         $error_message = '';
-        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $job_id = $_POST['job_id'];
+        if( !empty($_GET['job_id']) && isset($_GET['job_id'])  ){
+            $job_id = $_GET['job_id'];
         }else{ 
             $input_check = false;
             $error_message .= "job_id,";
         }
 
         if($input_check){
-
- 
             $result = $this->SettingModel->get_seq_list($job_id);
             echo json_encode($result);
             exit();
@@ -909,7 +827,7 @@ class Settings extends Controller
         $input_check = true;
         $barcode = array();
         if(!empty($_POST['del_barcode_id']) && isset($_POST['del_barcode_id'])){
-            $barcode['job_id'] = $_POST['del_barcode_id'];
+            $barcode = $_POST['del_barcode_id'];
         }else{ 
             $input_check = false;
         }
@@ -917,9 +835,9 @@ class Settings extends Controller
            $res = $this->SettingModel->delete_job_barcode($barcode);
 
            if($res){
-                $res_msg = 'delete  barcode :'. $barcode['job_id'].' success';
+                $res_msg = 'delete  barcode :'. $barcode[0].' success';
            }else{
-                $res_msg = 'delete  barcode :'. $barcode['job_id'].' fail';
+                $res_msg = 'delete  barcode :'. $barcode[0].' fail';
            }
            echo $res_msg;
         }
@@ -1063,144 +981,6 @@ class Settings extends Controller
         }
     }
 
-    public function edit_global_downshift(){
-        
-        $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
-        $global_downshift_arr = array();
-        $input_check = true;
-        if(!empty($_POST['global_downshift_torque']) && isset($_POST['global_downshift_torque'])){
-            $global_downshift_arr['global_downshift_torque'] = $_POST['global_downshift_torque'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['global_downshift_speed']) && isset($_POST['global_downshift_speed'])){
-            $global_downshift_arr['global_downshift_speed'] = $_POST['global_downshift_speed'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if($input_check){
-            $result = $this->SettingModel->edit_feature_global_downshift($global_downshift_arr);
-
-            if( $result){
-                $res_msg = $text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
-            }else{
-                $res_msg = $text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
-            }
-
-        }
-    }
-
-
-    public function edit_background_color(){
-        
-        $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
-
-        $color_arr = array();
-        $input_check = true;
-        if(!empty($_POST['okjobcolor']) && isset($_POST['okjobcolor'])){
-            $color_arr['okjobcolor'] = $_POST['okjobcolor'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['okseqcolor']) && isset($_POST['okseqcolor'])){
-            $color_arr['okseqcolor'] = $_POST['okseqcolor'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if($input_check){
-            $result = $this->SettingModel->edit_feature_color($color_arr);
-
-            if( $result){
-                $res_msg = $text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
-            }else{
-                $res_msg = $text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
-            }
-
-        }
-
-
-
-
-    }
-    public function edit_feature_pwd(){
-
-        
-        $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
-
-
-        $input_check = true;
-        $pwd_arr = array();
-
-        if(!empty($_POST['clear_seq']) && isset($_POST['clear_seq'])){
-            $pwd_arr['clearseq_button_pwd'] = $_POST['clear_seq'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['clear']) && isset($_POST['clear'])){
-            $pwd_arr['clear_button_pwd'] = $_POST['clear'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['confirm']) && isset($_POST['confirm'])){
-            $pwd_arr['confirm_button_pwd'] = $_POST['confirm'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['enable']) && isset($_POST['enable'])){
-            $pwd_arr['enable_button_pwd'] = $_POST['enable'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['disable']) && isset($_POST['disable'])){
-            $pwd_arr['disable_button_pwd'] = $_POST['disable'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['skip']) && isset($_POST['skip'])){
-            $pwd_arr['skip_button_pwd'] = $_POST['skip'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if($input_check){
-            $result = $this->SettingModel->edit_feature_pwd($pwd_arr);
-
-            if( $result){
-                $res_msg = $text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
-            }else{
-                $res_msg = $text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
-            }
-
-        }
-
-
-    }
-
-
     public function Import_Config()
     {
         $file_location = '';
@@ -1255,7 +1035,7 @@ class Settings extends Controller
 
         }else{
             // $this->logMessage('Import config start');
-            $destination = "../KLS_NTCS_IDAS.Lin";
+            $destination = "../data.db";
             $result =  move_uploaded_file($_FILES['file']['tmp_name'], $destination);
             if($result){
                 echo json_encode(["error" => '']);
@@ -1353,13 +1133,13 @@ class Settings extends Controller
     //DB欄位差異判斷
     function Database_Column_Diff()
     {
-        $dbPath1 = '/var/www/html/database/iDas_data.db';
+        $dbPath1 = '/var/www/html/database/idas_data.db';
         $dbPath2 = '/var/www/html/database/data.db';
 
         if ($this->validateTableStructure($dbPath1, $dbPath2)) {
-            echo "两个数据库的表结构相同。\n";
+            // echo "两个数据库的表结构相同。\n";
         } else {
-            echo "两个数据库的表结构不同。\n";
+            // echo "两个数据库的表结构不同。\n";
             return false;
         }
 
@@ -1456,5 +1236,7 @@ class Settings extends Controller
          }
 
          return true;
-    }    
+    }
+
+    
 }
