@@ -6,6 +6,7 @@ class Setting{
     private $db_iDas;
     private $db_iDas_device;
     private $db_barcode;
+    private $db_iDas_tools;
     private $dbh;
 
     // 在建構子將 Database 物件實例化
@@ -27,7 +28,7 @@ class Setting{
 
     public function GetControllerInfo()
     {
-        $sql = "SELECT * FROM ntcs_device_test ";
+        $sql = "SELECT * FROM " . TABLE_NTCS_DEVICE;
         $statement = $this->db_iDas_tools->prepare($sql);
         $results = $statement->execute();
         $row = $statement->fetch(PDO::FETCH_ASSOC);
@@ -39,8 +40,8 @@ class Setting{
 
     public function GetControllerInfo_count($control_id){
 
-        $sql = "SELECT count(*) AS count FROM device WHERE device_id = :device_id";
-        $statement = $this->db_iDas_device->prepare($sql);
+        $sql = "SELECT count(*) AS count FROM " .TABLE_NTCS_DEVICE." WHERE device_id = :device_id"; 
+        $statement = $this->db_iDas_tools->prepare($sql);
         $statement->bindValue(':device_id', $control_id);
         $statement->execute();
         $row = $statement->fetch(PDO::FETCH_ASSOC); 
@@ -203,23 +204,34 @@ class Setting{
 
     public function Controller_Setting($con_setting)
     {
-       
-        $sql = "UPDATE `device` 
+        $sql = "UPDATE " . TABLE_NTCS_DEVICE . " 
         SET device_name = :device_name,
-            device_language = :language_val,
-            batch = :batch,
+            storage_warning =:storage_warning,
+            torque_filter=:torque_filter,
+            language = :language,
+            torque_unit =:torque_unit,
+            circular_archive =:circular_archive,
+            counting_method = :counting_method,
+            blackout_recovery = :blackout_recovery,
             buzzer_mode = :buzzer_mode
-        WHERE device_id = :device_id ";
-         $statement = $this->db_iDas_tools->prepare($sql);
-        $statement = $this->db_iDas_device->prepare($sql);
+        WHERE device_id = :device_id";
+
+        $statement = $this->db_iDas_tools->prepare($sql);
+
+
         $statement->bindValue(':device_name', $con_setting['control_name']);
-        $statement->bindValue(':language_val', $con_setting['lang_val']);
-        $statement->bindValue(':batch', $con_setting['batch_val']);
-        $statement->bindValue(':buzzer_mode', $con_setting['buzzer_val'] );
-        $statement->bindValue(':device_id', $con_setting['control_id'] );
+        $statement->bindValue(':language', $con_setting['lang_val']);
+        $statement->bindValue(':torque_unit', $con_setting['unit_val']);
+        $statement->bindValue(':storage_warning',$con_setting['storage_warning']);
+        $statement->bindValue('torque_filter',$con_setting['torque_filter']);
+        $statement->bindValue(':circular_archive',$con_setting['circular_archive']);
+        $statement->bindValue(':counting_method',$con_setting['counting_method']);
+        $statement->bindValue(':blackout_recovery',$con_setting['blackout_recovery']);
+        $statement->bindValue(':buzzer_mode', $con_setting['buzzer_mode']);
+        $statement->bindValue(':device_id', $con_setting['control_id']);
 
+        // 執行查詢並返回結果
         $results = $statement->execute();
-
 
         return $results;
     }
@@ -285,8 +297,9 @@ class Setting{
                         range_from  = :range_from,
                         range_count = :range_count,
                         barcode_mode = :barcode_mode,
+                        seq_id =:seq_id
                     WHERE job_id = :job_id ";
-            $statement = $this->db_iDas->prepare($sql);
+            $statement = $this->db_barcode->prepare($sql);
             $statement->bindValue(':barcode', $barcode['barcode_name']);
             $statement->bindValue(':range_from', $barcode['barcode_range_from']);
             $statement->bindValue(':range_count', $barcode['barcode_range_count']);
@@ -369,12 +382,12 @@ class Setting{
     }
 
     //delete job barcdoe
-    public function delete_job_barcode($barcode)
-    {
+    public function delete_job_barcode($barcode){
+
         foreach($barcode as $key =>$val){
             $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id = :job_id ";
-            $statement = $this->db_iDas->prepare($sql);
-            $statement->bindValue(':job_id', $val['job_id']);
+            $statement = $this->db_barcode->prepare($sql);
+            $statement->bindValue(':job_id', $val[0]);
             $results = $statement->execute();
     
             

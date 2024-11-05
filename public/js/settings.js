@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
 });
 
+
 function cc_save(){
 
     var control_id = document.getElementById('control_id').value;
@@ -36,10 +37,15 @@ function cc_save(){
     }
 
     var control_name = document.getElementById('control_name').value;
-    var selectElement = document.getElementById('select_language');
-    var selectedValue = selectElement.value;
-    var batch_val = document.querySelector('input[name="batch-mode-option"]:checked').value;
-    var buzzer_val = document.querySelector('input[name="buzzer-option"]:checked').value;
+    var storage_warning = document.getElementById('storage_warning').value;
+    var torque_filter   = document.getElementById('torque_filter').value;
+    var lang_val = document.getElementById('select_language').value; //語言
+    var unit_val = document.getElementById('select_torque_unit').value; //扭力單位 
+    var counting_method_val =  document.querySelector('input[name="counting_method"]:checked').value;
+    var circular_archive_val = document.querySelector('input[name="circular_archive"]:checked').value;
+    var blackout_recovery_val = document.querySelector('input[name="blackout_recovery"]:checked').value;
+    var buzzer_val = document.querySelector('input[name="buzzer_mode"]:checked').value;
+
 
     if(control_id){
         $.ajax({
@@ -48,12 +54,19 @@ function cc_save(){
             data:{ 
                 control_id: control_id,
                 control_name: control_name,
-                lang_val: selectedValue,
-                batch_val:batch_val,
-                buzzer_val:buzzer_val
+                lang_val: lang_val,
+                unit_val: unit_val,
+                storage_warning: storage_warning,
+                torque_filter: torque_filter,
+                counting_method: counting_method_val,
+                circular_archive: circular_archive_val,
+                blackout_recovery: blackout_recovery_val,
+                buzzer_mode:buzzer_val
+     
 
             },
             success: function(response) {
+                console.log(response);
                 //history.go(0);
             },
             error: function(xhr, status, error) {
@@ -226,24 +239,28 @@ function fetchSeqList() {
 
 
 function Export_SystemConfig(argument) {
-
     var xhr = new XMLHttpRequest();
-    xhr.responseType = "blob";
+    xhr.responseType = "blob";  
+    
     xhr.onload = function() {
         if (xhr.status === 200) {
             var a = document.createElement("a");
             a.href = window.URL.createObjectURL(xhr.response);
-            a.download = "data.cfg"; 
+            a.download = "data.zip";  
             a.style.display = "none";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        } else {
+            console.error("Download failed with status: " + xhr.status);
         }
     };
 
+  
     xhr.open("GET", "?url=Settings/export_sysytem_config", true);
     xhr.send();
 }
+
 
 function Import_SystemConfig(){
 
@@ -544,8 +561,8 @@ function update_barcode(){
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
-                /*$.ajax({
+                //alert(response);
+                $.ajax({
                     url: "?url=Settings/show_Barcodes",
                     method: "GET",
                     success: function(html) {
@@ -554,7 +571,7 @@ function update_barcode(){
                     error: function(xhr, status, error) {
                         console.error("Error fetching barcodes:", error);
                     }
-                });*/
+                });
             },
             error: function(xhr, status, error) {
                 
@@ -581,8 +598,8 @@ function delete_barcode() {
 
             },
             success: function(response) {
-                console.log(response);
-                alert(response);
+                //console.log(response);
+                //alert(response);
                 $.ajax({
                     url: "?url=Settings/show_Barcodes",
                     method: "GET",

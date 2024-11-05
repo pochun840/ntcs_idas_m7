@@ -270,7 +270,7 @@
     var dataType = "<?php echo $data['type']; ?>";
     window.onload = function() {
         if (dataType === 'new') {
-      
+            //SEQ頁面 預設值
             document.getElementById("seq_repeat").value = 5;
             document.getElementById("timeout").value = 60;
             document.getElementById("ok_seq_on").checked = true;
@@ -281,6 +281,8 @@
             document.getElementById("unscrew_mode_auto").checked = true;
             document.getElementById("unscrew_rpm").value = 150;
             document.getElementById("unscrew_torque_threshold").value = 12345;
+            document.getElementById("unscrew_dir_cw").checked = true;
+            document.getElementById("unscrew_force_on").checked = true;
         }
 
         if(dataType === 'edit'){
@@ -303,6 +305,14 @@
             alert("請輸入有效的超時值 (0-60)");
             return false; 
         }
+
+        if (!SEQname.trim()) { 
+            alertify.alert("Error", "SEQ name cannot be empty", function() {
+                document.getElementById("SEQname").focus();  
+            });
+            return;  
+        }
+
 
 
         data.append("job_id", job_id);
@@ -336,6 +346,12 @@
         let angle_calculation_data = getCheckboxValue(); 
         data.append("angle_calculation_data", angle_calculation_data);
 
+        if (angle_calculation_data === 0) {
+            alert("Please select at least one option!"); 
+        return; 
+        }
+
+
         let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
         data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
 
@@ -346,7 +362,7 @@
         data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
 
         let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
-        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : null);
+        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : 0);
 
         data.append("image", '');
         data.append("message", '');
@@ -396,6 +412,14 @@
             return false; 
         }
 
+        if (!SEQname.trim()) {  
+            alertify.alert("Error", "SEQ name cannot be empty", function() {
+                document.getElementById("SEQname").focus(); 
+            });
+            return;  // 阻止继续执行后面的代码
+        }
+
+
         
         let data = new FormData();
         data.append("job_id", job_id);
@@ -439,7 +463,7 @@
         data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
 
         let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
-        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : null);
+        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : 0);
 
         data.append("image", '');
         data.append("message", '');
@@ -477,24 +501,28 @@
     }
 
     function getCheckboxValue() {
-
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         let total = 0;
+        let isChecked = false;  
+
         checkboxes.forEach((checkbox, index) => {
             if (checkbox.checked) {
-                // 根據 checkbox 的索引加上對應的值
+                isChecked = true;  
+           
                 switch (index) {
-                    case 0: total += 16; break; // 第1個
-                    case 1: total += 8; break;  // 第2個
-                    case 2: total += 4; break;  // 第3個
-                    case 3: total += 2; break;  // 第4個
-                    case 4: total += 1; break;  // 第5個
+                    case 0: total += 16; break; // 第1个
+                    case 1: total += 8; break;  // 第2个
+                    case 2: total += 4; break;  // 第3个
+                    case 3: total += 2; break;  // 第4个
+                    case 4: total += 1; break;  // 第5个
                 }
             }
         });
 
+
         return total;
     }
+
 
     function setCheckboxesByValue(value) {
     const checkboxes = document.querySelectorAll('input[type="checkbox"]');
