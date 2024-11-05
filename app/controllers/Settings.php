@@ -437,45 +437,72 @@ class Settings extends Controller
 
     public function export_sysytem_config()
     {
-        if( PHP_OS_FAMILY == 'Linux'){
-
-            //檢查.idas_data.db 是否存在
-            $file = '/var/www/html/database/iDas_data.db';
-            $filename = "data.cfg"; 
-            if (file_exists($file)) {
-                //echo json_encode(array('status' => 'success', 'message' => 'Database exists.'));
-                $cfgContent = file_get_contents($file);
-            
-                if (strpos($cfgContent, 'table - device') !== false) {
-                    $cfgContent = preg_replace('/table - device.*?\n/', '', $cfgContent);
-                }
-
-            } else {
-                
-                echo json_encode(array('status' => 'error', 'message' => 'Database file not found.'));
-                exit();
-            }
-            
-        }else{
-            
-            $file = "../data.db"; 
-            $filename = "data.cfg"; 
-
-            $cfgContent = file_get_contents($file);
-            
-            if (strpos($cfgContent, 'table - device') !== false) {
-                $cfgContent = preg_replace('/table - device.*?\n/', '', $cfgContent);
-            }          
+        
+        if (PHP_OS_FAMILY == 'Linux') {
+            // Linux 路徑配置
+            $file_path = '/var/www/html/database/';
+            $files = [
+                'KLS_NTCS.Lin',  // 原來的 .Lin 檔案
+                'ntcs_barcode.db', // 原來的 .db 檔案
+                'ntcs_data.db', // 原來的 .db 檔案
+                'ntcs_device.db' // 原來的 .db 檔案
+            ];
+        } else {
+    
+            $files = [
+                '../KLS_NTCS.Lin',
+                '../ntcs_barcode.db',
+                '../ntcs_data.db',
+                '../ntcs_device.db'
+            ];
         }
 
-                    
-        header("Content-type: " . filetype("$file"));
-        header("Content-Disposition: attachment; filename=" . $filename);
-        echo $cfgContent;
-        exit();
-        
+        $zip = new ZipArchive();
+        $zip_filename = 'data.zip'; 
 
+        if ($zip->open($zip_filename, ZipArchive::CREATE) !== TRUE) {
+            echo json_encode(array('status' => 'error', 'message' => 'Unable to create ZIP file.'));
+            exit();
+        }
+
+        foreach ($files as $file) {
+            $file_path = realpath($file); 
+
+            if (file_exists($file_path)) {
+            
+                $file_info = pathinfo($file_path);
+                $file_extension = $file_info['extension'];
+
+                if ($file_extension === 'db') {
+                    $cfgContent = file_get_contents($file_path);
+                    if (strpos($cfgContent, 'table - device') !== false) {
+                        $cfgContent = preg_replace('/table - device.*?\n/', '', $cfgContent);
+                    }
+
+                    $zip->addFromString($file_info['filename'] . '.cfg', $cfgContent);
+                } else {
+            
+                    $zip->addFile($file_path, $file_info['basename']);
+                }
+            } else {
+                echo json_encode(array('status' => 'error', 'message' => 'File not found: ' . $file));
+                exit();
+            }
+        }
+
+    
+        $zip->close();
+        header("Content-Type: application/zip");
+        header("Content-Disposition: attachment; filename=" . $zip_filename);
+        header("Content-Length: " . filesize($zip_filename));
+
+        readfile($zip_filename);
+
+        unlink($zip_filename);
+
+        exit();
     }
+
 
     public function system_storage()
     {

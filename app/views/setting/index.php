@@ -257,7 +257,7 @@
 
             </div>
 
-            <div id="System_Setting" class="divMode" style="display: none">
+            <div id="System_Setting" class="divMode_1" style="display: none">
                 <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_setting'];?></div>
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo $text['system_password'];?>:</div>

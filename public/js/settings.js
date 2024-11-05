@@ -226,24 +226,28 @@ function fetchSeqList() {
 
 
 function Export_SystemConfig(argument) {
-
     var xhr = new XMLHttpRequest();
-    xhr.responseType = "blob";
+    xhr.responseType = "blob";  
+    
     xhr.onload = function() {
         if (xhr.status === 200) {
             var a = document.createElement("a");
             a.href = window.URL.createObjectURL(xhr.response);
-            a.download = "data.cfg"; 
+            a.download = "data.zip";  
             a.style.display = "none";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        } else {
+            console.error("Download failed with status: " + xhr.status);
         }
     };
 
+  
     xhr.open("GET", "?url=Settings/export_sysytem_config", true);
     xhr.send();
 }
+
 
 function Import_SystemConfig(){
 
