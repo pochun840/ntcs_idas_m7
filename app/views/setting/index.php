@@ -323,7 +323,7 @@
                                     <?php foreach ($data['barcodes'] as $k_b =>$v_b){?>
                                         <tr>
                                             <td style="text-align: center; vertical-align: middle;" >
-                                                <input class="form-check-input" type="checkbox" name="barcode_check" id="barcode_check" value="<?php echo $v_b['barcode_selected_job'];?>" style="zoom:1.2">
+                                                <input class="form-check-input" type="checkbox" name="barcode_check" id="barcode_check" value="<?php echo $v_b['job_id'];?>" style="zoom:1.2">
                                             </td> 
                                             <td><?php echo $v_b['job_id'];?></td>
                                             <td><?php echo $v_b['JOBname'];?></td>

@@ -784,12 +784,12 @@ class Settings extends Controller
 
                 foreach($barcodes as $kk =>$vv){
                     $barcode_list = '<tr style="text-align: center; vertical-align: middle;" >';
-                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['barcode_selected_job']."'></td>";
-                    $barcode_list .= '<td>'.$vv['barcode_selected_job'].'</td>';
-                    $barcode_list .= '<td>'.$vv['job_name'].'</td>';
+                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['job_id']."'></td>";
+                    $barcode_list .= '<td>'.$vv['job_id'].'</td>';
+                    $barcode_list .= '<td>'.$vv['JOBname'].'</td>';
                     $barcode_list .= '<td>'.$vv['barcode'].'</td>';
-                    $barcode_list .= '<td>'.$vv['barcode_range_from'].'</td>';
-                    $barcode_list .= '<td>'.$vv['barcode_range_count'].'</td>';
+                    $barcode_list .= '<td>'.$vv['range_from'].'</td>';
+                    $barcode_list .= '<td>'.$vv['range_count'].'</td>';
                     $barcode_list .= '<tr>';
     
                     echo $barcode_list;
@@ -798,12 +798,12 @@ class Settings extends Controller
             }else{
                 foreach($barcodes as $kk =>$vv){
                     $barcode_list = '<tr style="text-align: center; vertical-align: middle;" >';
-                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['barcode_selected_job']."'></td>";
-                    $barcode_list .= '<td>'.$vv['barcode_selected_job'].'</td>';
-                    $barcode_list .= '<td>'.$vv['job_name'].'</td>';
+                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['job_id']."'></td>";
+                    $barcode_list .= '<td>'.$vv['job_id'].'</td>';
+                    $barcode_list .= '<td>'.$vv['JOBname'].'</td>';
                     $barcode_list .= '<td>'.$vv['barcode'].'</td>';
-                    $barcode_list .= '<td>'.$vv['barcode_range_from'].'</td>';
-                    $barcode_list .= '<td>'.$vv['barcode_range_count'].'</td>';
+                    $barcode_list .= '<td>'.$vv['range_from'].'</td>';
+                    $barcode_list .= '<td>'.$vv['range_count'].'</td>';
                     $barcode_list .= '<tr>';
     
                     echo $barcode_list;
@@ -865,11 +865,6 @@ class Settings extends Controller
         echo "</pre>";
 
 
-        
-        echo "<pre>";
-        print_r($_POST);
-        echo "</pre>";
-     
         if($input_check){
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);
             if($barcode_result){
@@ -938,7 +933,7 @@ class Settings extends Controller
         $input_check = true;
         $barcode = array();
         if(!empty($_POST['del_barcode_id']) && isset($_POST['del_barcode_id'])){
-            $barcode = $_POST['del_barcode_id'];
+            $barcode['job_id'] = $_POST['del_barcode_id'];
         }else{ 
             $input_check = false;
         }
@@ -946,9 +941,9 @@ class Settings extends Controller
            $res = $this->SettingModel->delete_job_barcode($barcode);
 
            if($res){
-                $res_msg = 'delete  barcode :'. $barcode[0].' success';
+                $res_msg = 'delete  barcode :'. $barcode['job_id'].' success';
            }else{
-                $res_msg = 'delete  barcode :'. $barcode[0].' fail';
+                $res_msg = 'delete  barcode :'. $barcode['job_id'].' fail';
            }
            echo $res_msg;
         }

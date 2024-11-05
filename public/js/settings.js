@@ -544,8 +544,8 @@ function update_barcode(){
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
-                /*$.ajax({
+                //alert(response);
+                $.ajax({
                     url: "?url=Settings/show_Barcodes",
                     method: "GET",
                     success: function(html) {
@@ -554,7 +554,7 @@ function update_barcode(){
                     error: function(xhr, status, error) {
                         console.error("Error fetching barcodes:", error);
                     }
-                });*/
+                });
             },
             error: function(xhr, status, error) {
                 
@@ -581,8 +581,8 @@ function delete_barcode() {
 
             },
             success: function(response) {
-                console.log(response);
-                alert(response);
+                //console.log(response);
+                //alert(response);
                 $.ajax({
                     url: "?url=Settings/show_Barcodes",
                     method: "GET",

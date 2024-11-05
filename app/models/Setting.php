@@ -285,8 +285,9 @@ class Setting{
                         range_from  = :range_from,
                         range_count = :range_count,
                         barcode_mode = :barcode_mode,
+                        seq_id =:seq_id
                     WHERE job_id = :job_id ";
-            $statement = $this->db_iDas->prepare($sql);
+            $statement = $this->db_barcode->prepare($sql);
             $statement->bindValue(':barcode', $barcode['barcode_name']);
             $statement->bindValue(':range_from', $barcode['barcode_range_from']);
             $statement->bindValue(':range_count', $barcode['barcode_range_count']);
@@ -369,12 +370,12 @@ class Setting{
     }
 
     //delete job barcdoe
-    public function delete_job_barcode($barcode)
-    {
+    public function delete_job_barcode($barcode){
+
         foreach($barcode as $key =>$val){
             $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id = :job_id ";
-            $statement = $this->db_iDas->prepare($sql);
-            $statement->bindValue(':job_id', $val['job_id']);
+            $statement = $this->db_barcode->prepare($sql);
+            $statement->bindValue(':job_id', $val[0]);
             $results = $statement->execute();
     
             
