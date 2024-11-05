@@ -38,7 +38,7 @@
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo "Storge Warning";?>:</div>
                     <div class="col-3 t2">
-                        <input id="storage_warning" name="storage_warning" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['storage_warning']) ? $data['controller_info']['storage_warning']."%" : ''; ?>" class="t3 form-control"  required>
+                        <input id="storage_warning" name="storage_warning" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['storage_warning']) ? $data['controller_info']['storage_warning'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>
 
@@ -46,16 +46,16 @@
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo "Torque Filter (kgf.cm)";?>:</div>
                     <div class="col-3 t2">
-                        <input id="	torque_filter" name="	torque_filter" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['torque_filter']) ? $data['controller_info']['torque_filter'] : ''; ?>" class="t3 form-control"  required>
+                        <input id="torque_filter" name="torque_filter" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['torque_filter']) ? $data['controller_info']['torque_filter'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>
 
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo "Sample Rate";?>:</div>
                     <div class="col-3 t2">
-                        <select class="form-select" id="select_language" name="select_language">
+                        <select class="form-select" id="select_sample_rate" name="select_sample_rate">
                             <?php foreach($data['sample_rate'] as $k_rate =>$v_rate){?>
-                            <option value="<?php echo $k_rate;?>"  <?php echo $k_rate == $data['controller_info']['language'] ? 'selected' : ''; ?> ><?php echo $v_rate;?></option>
+                            <option value="<?php echo $k_rate;?>"  ><?php echo $v_rate;?></option>
                             <?php } ?>
                         </select>
                     </div>
@@ -66,7 +66,10 @@
                     <div class="col-3 t2">
                         <select class="form-select" id="select_torque_unit" name="select_torque_unit">
                             <?php foreach($data['torque_unit'] as $k_unit =>$v_unit){?>
-                            <option value="<?php echo $k_unit;?>"  <?php echo $k_unit  == $data['controller_info']['language'] ? 'selected' : ''; ?> ><?php echo $v_unit;?></option>
+                                <option value="<?php echo $k_unit; ?>" 
+                                    <?php echo ($k_unit == $data['controller_info']['torque_unit']) ? 'selected' : ''; ?>>
+                                <?php echo $v_unit; ?>
+                                </option>
                             <?php } ?>
                         </select>
                     </div>
@@ -77,22 +80,26 @@
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo $text['system_language'];?>:</div>
                     <div class="col-3 t2">
-                        <select class="form-select" id="select_language" name="select_language">
-                            <?php foreach($data['lang_arr'] as $k_lang =>$v_lang){?>
-                            <option value="<?php echo $k_lang;?>"  <?php echo $k_lang == $data['controller_info']['language'] ? 'selected' : ''; ?> ><?php echo $v_lang;?></option>
-                            <?php } ?>
-                        </select>
+                 
+                    <select class="form-select" id="select_language" name="select_language">
+                        <?php foreach($data['lang_arr'] as $k_lang => $v_lang) { ?>
+                            <option value="<?php echo $k_lang; ?>" 
+                                    <?php echo ($k_lang == $data['controller_info']['language']) ? 'selected' : ''; ?>>
+                                <?php echo $v_lang; ?>
+                            </option>
+                        <?php } ?>
+                    </select>
                     </div>
                 </div>    
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo "Circular Archive";?>:</div>
                     <div class="col t2" >
       			      	<div class="col-1 form-check form-check-inline">
-        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?>>
+        				    <input class="form-check-input" type="radio" name="circular_archive"  value="0"  <?php echo $data['controller_info']['circular_archive'] == 0 ? 'checked="checked"' : ''; ?>>
             				<label class="form-check-label" for=""><?php echo $text['switch_off'];?></label>
             			</div>
             			<div class="form-check form-check-inline">
-            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?> >
+            			    <input class="form-check-input" type="radio" name="circular_archive"  value="1"  <?php echo $data['controller_info']['circular_archive'] == 1 ? 'checked="checked"' : ''; ?> >
             				<label class="form-check-label" for="`"><?php echo $text['switch_on'];?></label>
             			</div>
                     </div>
@@ -102,11 +109,11 @@
                     <div class="col-3 t1"><?php echo $text['system_batch'];?>:</div>
                     <div class="col t2" >
       			      	<div class="col-1 form-check form-check-inline">
-        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?>>
+        				    <input class="form-check-input" type="radio" name="counting_method" id="dec" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?>>
             				<label class="form-check-label" for="dec"><?php echo $text['system_dec'];?></label>
             			</div>
             			<div class="form-check form-check-inline">
-            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?> >
+            			    <input class="form-check-input" type="radio" name="counting_method" id="inc" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?> >
             				<label class="form-check-label" for="inc"><?php echo $text['system_inc'];?></label>
             			</div>
                     </div>
@@ -115,11 +122,11 @@
                     <div class="col-3 t1"><?php echo "Blackout Recovery";?>:</div>
                     <div class="col t2">
       			      	<div class="col-1 form-check form-check-inline">
-           				    <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_off" value="0"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
+           				    <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_off" value="0"  <?php echo $data['controller_info']['blackout_recovery'] == 0 ? 'checked="checked"' : ''; ?>>
                				<label class="form-check-label"><?php echo $text['switch_off'];?></label>
                			</div>
               			<div class="form-check form-check-inline">
-               			    <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
+               			    <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1"  <?php echo $data['controller_info']['blackout_recovery'] == 1 ? 'checked="checked"' : ''; ?>>
                				<label class="form-check-label"><?php echo $text['switch_on'];?></label>
                			</div>
                     </div>
@@ -259,16 +266,7 @@
 
             <div id="System_Setting" class="divMode_1" style="display: none">
                 <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_setting'];?></div>
-                <div class="row t2">
-                    <div class="col-3 t1"><?php echo $text['system_password'];?>:</div>
-                    <div class="col t2">
-                        <form id="edit_password"  style="margin: 3px 0px">
-                            <input type="password" id="new_password" size="15" placeholder="<?php echo $text['system_new_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">&nbsp;
-                            <input type="password" id="comfirm_password" size="15" placeholder="<?php echo $text['system_confirm_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">
-                            <input type="button" value="<?php echo $text['save'];?>" onclick="edit_password()" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                        </form>
-                    </div>        
-                </div>          
+          
                 <div class="row t2">
                     <div class="col-3 t1"><?php echo $text['system_sys_date'];?>(UTC):</div>
                     <div class="col t2">
@@ -424,7 +422,7 @@
                         <form id="edit_guest_password" method="post" style="margin: 3px 0px">
                             <input type="password" id="new_password_guest" size="15" placeholder="<?php echo $text['system_new_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">&nbsp;
                             <input type="password" id="comfirm_password_guest" size="15" placeholder="<?php echo $text['system_confirm_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">
-                            <input type="button"  onclick="button_save_password_gust()"value="<?php echo $text['save'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
+                            <input type="button"  value="<?php echo $text['save'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
                         </form>
                     </div>        
                 </div>          
@@ -541,34 +539,7 @@
 <script>
 
 
-function edit_password(){
-    var new_password = document.getElementById('new_password').value;
-    var comfirm_password = document.getElementById('comfirm_password').value;
 
-    var device_id = <?php echo $data['controller_info']['device_id'];?>;
-
-    if(new_password == comfirm_password){
-        $.ajax({
-            url: "?url=Settings/edit_password",
-            method: "POST",
-            data:{ 
-                device_id: device_id,
-                new_password: new_password
-
-            },
-            success: function(response) {
-                alert(response);
-                history.go(0);
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });   
-    }else{
-        //alert("請確認密碼");
-        return false;
-    }
-}
 
 function time_save(){
     var newTime = document.getElementById('newTime').value;

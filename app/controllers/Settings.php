@@ -33,51 +33,7 @@ class Settings extends Controller
         
         $barcodes = $this->GetBarcodes();
 
-     
-
-
-        /*$isMobile = $this->isMobileCheck();
-        $Controller_Info = $this->SettingModel->GetControllerInfo();
-        $operator_priviledge = $this->SettingModel->GetOperator_priviledge();
-        $priviledge = $this->intTo16BitArray($operator_priviledge);
-        $priviledge['confirm'] = $priviledge[12];
-        $priviledge['clear'] = $priviledge[11];
-        $priviledge['seq_clear'] = $priviledge[10];
-        $priviledge['export'] = $priviledge[13];
-        $priviledge['switch'] = $priviledge[14];
-        $priviledge['barcode'] = $priviledge[15];
-
-        //admin connect setting
-        $active_session = $this->AdminModel->GetActiveSession();
-        $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
-        $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
-        $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
-        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
-
-        $barcodes = $this->GetBarcodes();
-        $job_list = $this->SettingModel->get_job_list();
-
-        //get tool info
-        $Tool_Info = $this->ToolModel->GetToolInfo();
-        $device_info = $this->Device_Info();
-
-        $data = [
-            'isMobile' => $isMobile,
-            'Controller_Info' => $Controller_Info,
-            'priviledge' => $priviledge,
-            'barcodes' => $barcodes,
-            'job_list' => $job_list,
-            'active_session' => $active_session,
-            'max_user' => $max_user,
-            'agent_server_ip' => $agent_server_ip,
-            'agent_type' => $agent_type,
-            'iDas_Vesion' => $iDas_Vesion,
-            'Tool_Info' => $Tool_Info,
-            'device_info' => $device_info
-        ];
-        
-        
-        $this->view('setting/index', $data);*/
+    
         
         $data = array();
         $data = array(
@@ -96,12 +52,6 @@ class Settings extends Controller
 
         );
 
-
-     
-
-    
-
-
         if($isMobile){
             $this->view('setting/index_m', $data);
         }else{
@@ -111,7 +61,7 @@ class Settings extends Controller
 
     }
 
-    public function job_tree(){   
+    /*public function job_tree(){   
      
         //select all job
         $jobs = $this->SettingModel->GetAllJobs();
@@ -136,7 +86,7 @@ class Settings extends Controller
         }
 
         echo json_encode($data_array);
-    }
+    }*/
 
     public function edit_password(){
 
@@ -319,6 +269,19 @@ class Settings extends Controller
         }else{ 
             $input_check = false; 
         }
+  
+        if( !empty($_POST['storage_warning']) && isset($_POST['storage_warning'])){
+            $con_setting['storage_warning'] = $_POST['storage_warning'];
+        }else{ 
+            $input_check = false; 
+        }
+
+        
+        if( !empty($_POST['torque_filter']) && isset($_POST['torque_filter'])){
+            $con_setting['torque_filter'] = $_POST['torque_filter'];
+        }else{ 
+            $input_check = false; 
+        }
 
         if( !empty($_POST['lang_val']) && isset($_POST['lang_val'])){
             $lang_val =  $_POST['lang_val'];
@@ -329,23 +292,49 @@ class Settings extends Controller
 
         $con_setting['lang_val']  = $lang_val;
 
-        if( !empty($_POST['batch_val']) && isset($_POST['batch_val'])  ){
-            $con_setting['batch_val'] = $_POST['batch_val'];
+
+        if( !empty($_POST['unit_val']) && isset($_POST['unit_val'])){
+            $unit_val =  $_POST['unit_val'];
+            intval($unit_val);
         }else{ 
-            $input_check = false; 
+            $unit_val = 0;
         }
 
-        if( !empty($_POST['buzzer_val']) && isset($_POST['buzzer_val'])  ){
-            $con_setting['buzzer_val'] = $_POST['buzzer_val'];
+        $con_setting['unit_val']  =$unit_val;
+
+        if( !empty($_POST['counting_method']) && isset($_POST['counting_method'])){
+            $con_setting['counting_method']  =  $_POST['counting_method'];
         }else{ 
-            $input_check = false; 
+            $con_setting['counting_method']  =  $_POST['counting_method']; 
         }
-        
+
+        if( !empty($_POST['circular_archive']) && isset($_POST['circular_archive'])){
+            $con_setting['circular_archive']  =  $_POST['circular_archive'];
+        }else{ 
+            $con_setting['circular_archive']  =  $_POST['circular_archive']; 
+        }
+
+        if( !empty($_POST['blackout_recovery']) && isset($_POST['blackout_recovery'])){
+            $con_setting['blackout_recovery']  =  $_POST['blackout_recovery'];
+        }else{ 
+            $con_setting['blackout_recovery']  =  $_POST['blackout_recovery']; 
+        }
+        if( !empty($_POST['buzzer_mode']) && isset($_POST['buzzer_mode'])  ){
+            $con_setting['buzzer_mode'] = $_POST['buzzer_mode'];
+        }else{ 
+            $con_setting['buzzer_mode'] = $_POST['buzzer_mode'];
+        }
+       
+        echo "<pre>";
+        print_r($con_setting);
+        echo "</pre>";
+
+
 
         if($input_check){
           $res = $this->SettingModel->GetControllerInfo_count($con_setting['control_id']);
           if($res['count'] =="1"){
-            //UPDATE
+        
             $result = $this->SettingModel->Controller_Setting($con_setting);
             if($result){
                 $res_msg = 'edit:'. $con_setting['control_id'].'success';
@@ -354,8 +343,6 @@ class Settings extends Controller
             }
             echo $res_msg;
 
-          }else{
-            //INSERT 
           }
 
         }    
@@ -364,8 +351,7 @@ class Settings extends Controller
     public function edit_system_date()
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            /*$dateTime = $_POST["datetime"];
-            // var_dump($dateTime);
+            $dateTime = $_POST["datetime"];
             // 驗證日期時間格式
             if (!preg_match("/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/", $dateTime)) {
                 // echo "請提供有效的日期和時間格式（YYYY-MM-DD HH:MM:SS）。";
@@ -384,40 +370,7 @@ class Settings extends Controller
 
 
             echo json_encode(array('error' => '','result' => $rr));
-            exit();*/
-        }else{
-            // post
-            $conset = array();
-            $input_check = true;
-            if( !empty($_POST['device_id']) && isset($_POST['device_id'])){
-                $conset['device_id'] = $_POST['device_id'];
-            }else{ 
-                $input_check = false; 
-            }
-
-            if( !empty($_POST['newTime']) && isset($_POST['newTime'])  ){
-                $conset['newTime'] = $_POST['newTime'];
-                $conset['newTime'] = strtotime($conset['newTime']);
-                $conset['newTime'] = date('Y-m-d H:i:s', $conset['newTime']);
-                
-                if(!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $conset['newTime'])){
-                    echo "格式錯誤";exit();
-                }
-
-            }else{ 
-                $input_check = false; 
-            }
-
-            if($input_check){
-                $result = $this->SettingModel->system_date_edit($conset);
-                if($result){
-                    $res_msg = 'edit:'. $conset['device_id'].'success';
-                }else{
-                    $res_msg = 'edit:'. $conset['device_id'].'fail';
-                }
-                echo $res_msg;
-            }
-
+            exit();
         }
     }
 
