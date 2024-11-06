@@ -85,7 +85,8 @@
                         <div class="row">
                             <div for="job-name" class="col-6 t1"><?php echo $text['job_name'];?> :</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="job_name" maxlength="" >
+                                <input type="text" class="form-control"  id="job_name" maxlength="" >
+                                <div class="invalid-feedback"></div>
                             </div>
                         </div>
 
@@ -322,14 +323,7 @@ function savejob() {
     var jobidnew = '<?php echo $data['jobint']?>';
     var jobname_val = document.getElementById("job_name").value;
   
-    // 如果 jobname_val 为空，弹出提示并返回
-    if (!jobname_val) {
-        alertify.alert("Error", "Job name cannot be empty", function() {
-            // 聚焦到 job_name 输入框，用户可以重新输入
-            document.getElementById("job_name").focus();
-        });
-        return; // 终止函数执行，避免提交空值
-    }
+   
 
     var jobElement = document.querySelector('input[name="job_ok"]:checked');
     var job_ok_val = jobElement ? jobElement.value : null;
@@ -337,26 +331,31 @@ function savejob() {
     var stopjobokElement = document.querySelector('input[name="stop_job_ok"]:checked');
     var stop_job_ok_val = stopjobokElement ? stopjobokElement.value : null;
 
-    // 如果 jobname_val 非空，继续执行 AJAX 请求
-    $.ajax({
-        url: "?url=Jobs/create_job",
-        method: "POST",
-        data: { 
-            jobidnew: jobidnew,
-            jobname_val: jobname_val,
-            job_ok_val: job_ok_val,
-            stop_job_ok_val: stop_job_ok_val
-        },
-        success: function(response) {
-            var responseData = JSON.parse(response);
-            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                history.go(0); // 刷新页面
-            });
-        },
-        error: function(xhr, status, error) {
-            console.error("AJAX request failed:", status, error);
-        }
-    });
+    let check = input_check();
+    if(check){
+        // 如果 jobname_val 非空，继续执行 AJAX 请求
+        $.ajax({
+            url: "?url=Jobs/create_job",
+            method: "POST",
+            data: { 
+                jobidnew: jobidnew,
+                jobname_val: jobname_val,
+                job_ok_val: job_ok_val,
+                stop_job_ok_val: stop_job_ok_val
+            },
+            success: function(response) {
+                var responseData = JSON.parse(response);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    history.go(0); // 刷新页面
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+            }
+        });
+    }
+
+
 }
 
 
@@ -437,4 +436,45 @@ function copy_job_by_id(jobid){
         document.getElementById('copyjob').style.display = 'none';
     }
 }
+
+
+function input_check(argument) {
+    let conditions = [
+        { id: 'job_name', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
+    ];
+
+    let isFormValid = true;
+    conditions.forEach(function(input) {
+        var element = document.getElementById(input.id);
+        var value = element.value.trim();
+
+        if(input.id != 'job_name'){
+            element.nextElementSibling.innerHTML = input.min+' ~ '+input.max;
+        }
+
+        if (value === "") {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (!input.pattern.test(value)) {
+            // element.value = "";
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (input.min !== null && parseFloat(value) < input.min) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (input.max !== null && parseFloat(value) > input.max) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else {
+            element.classList.remove("is-invalid");
+        }
+
+    });
+
+    console.log(conditions)
+
+    return isFormValid;
+
+}
+
 </script>

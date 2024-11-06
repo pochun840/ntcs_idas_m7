@@ -1,5 +1,3 @@
-<?php require APPROOT . 'views/inc/header.php'; ?>
-
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css" type="text/css">
 <link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/target_torque_angle.css">
 <link rel="stylesheet" href="<?php echo URLROOT; ?>/css/datatables.min.css">
@@ -22,17 +20,11 @@
 .t2{font-size: 17px; margin: 5px 0px;}
 </style>
 
-<div class="container-ms">
+<div class="container-ms" id ="your_container_id">
     <div class="w3-text-white w3-center">
         <header>
             <h3><?php echo ($data['type'] == 'edit') ? $text['edit_seq'] : $text['new_seq']; ?></h3>
         </header>
-    </div>
-    <div style="display:none;">
-        <input id="tool_max_torque" value="<?php echo $data['tool_info']['max_torq']; ?>">
-        <input id="tool_min_torque" value="<?php echo $data['tool_info']['min_torq']; ?>">
-        <input id="tool_max_rpm" value="<?php echo $data['tool_info']['max_rpm']; ?>">
-        <input id="tool_min_rpm" value="<?php echo $data['tool_info']['min_rpm']; ?>">
     </div>
 
     <div class="main-content">
@@ -43,11 +35,11 @@
                     <div class="col-1 t2">
                     	<input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="job_id" name="job_id" size="10" maxlength="20" value="<?php echo $data['job_id'];?>" disabled>
                     </div>
-                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%">Sequence ID : </div>
+                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%"><?php echo $text['seq_id'];?> : </div>
                     <div class="col-1 t2">
                         <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="seq_id" name="seq_id" size="10" maxlength="20" value="<?php echo $data['seq_id'];?>" disabled>
                     </div>
-                   
+                    
 
                     <div class="col t2" style=" text-align: right; ">
                         <div class="button-column">
@@ -55,65 +47,46 @@
                         </div>
                     </div>
                 </div>
-                <?php if($data['mode'] == 'edit'){ ?>
-                <div style="display: none;">
-                    <input type="" id="mode" value="<?php echo $data['mode']; ?>">
-                    <input type="" id="SEQname" value="<?php echo $data['seq_data']['SEQname']; ?>">
-                    <input type="" id="seq_repeat" value="<?php echo $data['seq_data']['seq_repeat']; ?>">
-                    <input type="" id="data_ok_seq" value="<?php echo $data['seq_data']['ok_seq']; ?>">
-                    <input type="" id="data_ok_stop" value="<?php echo $data['seq_data']['ok_stop']; ?>">
-                    <input type="" id="data_unscrew_count" value="<?php echo $data['seq_data']['unscrew_count']; ?>">
-                    <input type="" id="data_ng_stop" value="<?php echo $data['seq_data']['ng_stop']; ?>">
-                    <input type="" id="data_ng_unscrew" value="<?php echo $data['seq_data']['ng_unscrew']; ?>">
-                    <input type="" id="data_accu_angle" value="<?php echo $data['seq_data']['accu_angle']; ?>">
-                    <input type="" id="data_Thread_Calcu" value="<?php echo $data['seq_data']['Thread_Calcu']; ?>">
-                    <input type="" id="data_unscrew_mode" value="<?php echo $data['seq_data']['unscrew_mode']; ?>">
-                    <input type="" id="data_unscrew_force" value="<?php echo $data['seq_data']['unscrew_force']; ?>">
-                    <input type="" id="data_unscrew_rpm" value="<?php echo $data['seq_data']['unscrew_rpm']; ?>">
-                    <input type="" id="data_unscrew_dir" value="<?php echo $data['seq_data']['unscrew_dir']; ?>">
-                    <input type="" id="data_unscrew_torque_threshold" value="<?php echo $data['seq_data']['unscrew_torque_threshold']; ?>">
-                    <input type="" id="data_delay" value="<?php echo $data['seq_data']['delay']; ?>">
-                </div>
-                <?php }else{ ?>
-                <div style="display: none;">
-                    <input type="" id="mode" value="<?php echo $data['mode']; ?>">
-                </div>
-                <?php } ?>
+                
             </div>
 
             <div class="container" style="max-width: none;background-color: #F2F1F1;">
                 <div class="row">
                     <div class="col-md-6 t2">
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Sequence Name:</div>
+                            <div class="col-3"><?php echo $text['seq_name'];?>:</div>
                             <div class="col-9">
-                                <input id="SEQname" class="form-control" value="">
+                                <input id="SEQname" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : ''; ?>">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
+
+                        <div class="col-12 row t2 mt-3">
+                            <div class="col-3"><?php echo $text['tightening_repeat'];?>:</div>
+                            <div class="col-9">
+                                <input id="seq_repeat" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['seq_repeat'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Tightening Repeat:</div>
+                            <div class="col-3"><?php echo $text['Timeout'];?> (sec):</div>
                             <div class="col-9">
-                                <input id="seq_repeat" class="form-control" value="1">
-                                <div class="invalid-feedback">0 - 30600<span></span></div>
+                                <input id="timeout" lass="form-control"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">(0-60)
+                                <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Timeout (sec):</div>
-                            <div class="col-9">
-                                <input id="timeout" class="form-control" value="0">
-                                <div class="invalid-feedback">0 - 30600<span></span></div>
-                            </div>
-                        </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3">OK Sequence:</div>
+                            <div class="col-3"><?php echo $text['OK-Sequence'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="ok_seq_option" id="ok_seq_off" value="0">
+                                  <input class="form-check-input" type="radio" name="ok_seq" id="ok_seq_off" value="0" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['ok_seq'] == 0) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="ok_seq_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="ok_seq_option" id="ok_seq_on" value="1">
+                                  <input class="form-check-input" type="radio" name="ok_seq" id="ok_seq_on" value="1"
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['ok_seq'] == 1) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="ok_seq_on"><?php echo $text['switch_on']; ?></label>
                                 </div>
                             </div>
@@ -122,11 +95,13 @@
                             <div class="col-3">Sequence Stop:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="seq_stop_option" id="seq_stop_off" value="0">
+                                  <input class="form-check-input" type="radio" name="ok_stop" id="seq_stop_off" value="0"
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['ok_stop'] == 0) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="seq_stop_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="seq_stop_option" id="seq_stop_on" value="1">
+                                  <input class="form-check-input" type="radio" name="ok_stop" id="seq_stop_on" value="1"
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['ok_stop'] == 1) ? 'checked' : ''; ?>>
                                   <label class="form-check-label" for="seq_stop_on"><?php echo $text['switch_on']; ?></label>
                                 </div>
                             </div>
@@ -135,32 +110,41 @@
                             <div class="col-3">Reverse Count:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="reverse_count_option" id="reverse_count_off" value="0">
-                                  <label class="form-check-label" for="reverse_count_off"><?php echo $text['switch_off']; ?></label>
+                                  <input class="form-check-input" type="radio" name="unscrew_count_switch" id="unscrew_count_switch_off" value="0"
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_count_switch'] == 0) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="unscrew_count_switch_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="reverse_count_option" id="reverse_count_on" value="1">
-                                  <label class="form-check-label" for="reverse_count_on"><?php echo $text['switch_on']; ?></label>
+                                  <input class="form-check-input" type="radio" name="unscrew_count_switch" id="unscrew_count_switch_on" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_count_switch'] == 1) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="unscrew_count_switch_on"><?php echo $text['switch_on']; ?></label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">NG Stop (0-9):</div>
+                            <div class="col-3"><?php echo $text['NG_Stop'];?> (0-9):</div>
                             <div class="col-9">
-                                <input id="ng_stop" class="form-control" type="number" max=9 min=0 value="0">
-                                <div class="invalid-feedback">0 - 30600<span></span></div>
+                                <select id="ng_stop" class="form-select" style="font-size: 14px; width: 60px;">
+                                <?php 
+                                    for ($i = 0; $i <= 9; $i++) {
+                                        echo '<option value="' . $i . '" ' . (($data['type'] == 'edit' && $data['sequences']['ng_stop'] == $i) ? 'selected' : '') . '>' . $i . '</option>';
+                                    }
+                                ?>
+                                </select>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">NG Reverse:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="ng_reverse_option" id="ng_reverse_off" value="0">
-                                  <label class="form-check-label" for="ng_reverse_off"><?php echo $text['switch_off']; ?></label>
+                                  <input class="form-check-input" type="radio" name="ng_unscrew" id="ng_unscrew_off" value="0"
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['ng_unscrew'] == 0) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="ng_unscrew_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="ng_reverse_option" id="ng_reverse_on" value="1">
-                                  <label class="form-check-label" for="ng_reverse_on"><?php echo $text['switch_on']; ?></label>
+                                  <input class="form-check-input" type="radio" name="ng_unscrew" id="ng_unscrew_on" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['ng_unscrew'] == 1) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="ng_unscrew_on"><?php echo $text['switch_on']; ?></label>
                                 </div>
                             </div>
                         </div>
@@ -169,41 +153,38 @@
                             <div class="col-9">
                                 <!-- <input id="accumulate_angle" value="123456"> -->
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="accumulate_angle_option" id="accumulate_angle_off" value="0">
-                                  <label class="form-check-label" for="accumulate_angle_off"><?php echo $text['switch_off']; ?></label>
+                                  <input class="form-check-input" type="radio" name="accu_angle" id="accu_angle_off" value="0" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['accu_angle'] == 0) ? 'checked' : ''; ?>  >
+                                  <label class="form-check-label" for="accu_angle_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="accumulate_angle_option" id="accumulate_angle_on" value="1">
-                                  <label class="form-check-label" for="accumulate_angle_on"><?php echo $text['switch_on']; ?></label>
+                                  <input class="form-check-input" type="radio" name="accu_angle" id="accu_angle_on" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['accu_angle'] == 1) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="accu_angle_on"><?php echo $text['switch_on']; ?></label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">Angle Calculation (Step):</div>
                             <div class="col-9">
-                                <!-- <input id="angle_calculation" value="123456"> -->
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="inlineCheckbox1" value="1">
-                                    <label class="form-check-label" for="inlineCheckbox1">1</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="inlineCheckbox2" value="2">
-                                    <label class="form-check-label" for="inlineCheckbox2">2</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="inlineCheckbox3" value="3">
-                                    <label class="form-check-label" for="inlineCheckbox3">3</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="inlineCheckbox4" value="4">
-                                    <label class="form-check-label" for="inlineCheckbox4">4</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="inlineCheckbox5" value="5">
-                                    <label class="form-check-label" for="inlineCheckbox5">5</label>
-                                </div>
+                                <?php if($data['type'] =="edit"){
+                                    $digits = str_split($data['sequences']['Thread_Calcu']);                              
+                                }else{
+
+
+                                }?>
+                               
+                                <?php for ($i = 1; $i <= 5; $i++) { ?>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>" onchange="getCheckboxValue()" >
+                                        <label class="form-check-label" for="Thread_Calcu_<?php echo $i; ?>"><?php echo $i; ?></label>
+                                    </div>
+                                <?php } ?>
                             </div>
                         </div>
+
+                        <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
+
                     </div>
                     <div class="col-md-6 t2">
                         <div class="col-12 row t2 mt-3">
@@ -214,27 +195,27 @@
                             <div class="col-8">
                                 <!-- <input id="reverse_mode" value="123456"> -->
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="reverse_mode_option" id="reverse_mode_off" value="0">
-                                  <label class="form-check-label" for="reverse_mode_off"><?php echo $text['auto']; ?></label>
+                                  <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_auto" value="0" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 0) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="unscrew_mode_auto"><?php echo "Auto"; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="reverse_mode_option" id="reverse_mode_on" value="1">
-                                  <label class="form-check-label" for="reverse_mode_on"><?php echo $text['custom']; ?></label>
+                                  <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_custom" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 1) ? 'checked' : ''; ?> >
+                                  <label class="form-check-label" for="unscrew_mode_custom"><?php echo "Custom"; ?></label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_speed">
                             <div class="col-4">Speed (rpm):</div>
                             <div class="col-8">
-                                <input id="speed" class="form-control" value="150">
-                                <div class="invalid-feedback">0 - 30600<span></span></div>
+                                <input id="unscrew_rpm" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_rpm'] : ''; ?>">
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
                             <div class="col-4">Torque Threshold (kgf-cm):</div>
                             <div class="col-8">
-                                <input id="torque_threshold" class="form-control" value="0">
-                                <div class="invalid-feedback">0 - 30600<span></span></div>
+                                <input id="unscrew_torque_threshold" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_direction">
@@ -242,11 +223,13 @@
                             <div class="col-8">
                                 <!-- <input id="direction" value="123456"> -->
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="direction_option" id="direction_cw" value="1">
+                                  <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_cw" value="0"
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 0) ? 'checked' : ''; ?>  >
                                   <label class="form-check-label" for="direction_cw"><?php echo $text['CW']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="direction_option" id="direction_ccw" value="0">
+                                  <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_ccw" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 1) ? 'checked' : ''; ?>>
                                   <label class="form-check-label" for="direction_ccw"><?php echo $text['CCW']; ?></label>
                                 </div>
                             </div>
@@ -255,18 +238,20 @@
                             <div class="col-4">Force (%):</div>
                             <div class="col-8">
                                 <!-- <input id="force" value="123456"> -->
-                                <div class="form-check form-check-inline col-xs-3">
-                                  <input class="form-check-input" type="radio" name="force_option" id="force_on" value="1">
+                                <div class="form-check form-check-inline col-md-3">
+                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_on" value="0"
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] == 0) ? 'checked' : ''; ?>  >
                                   <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
-                                  <input class="form-control" id="force_number" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
-                                  <div class="invalid-feedback">0 - 30600</div>
+                                  <input class="" id="force_number" style=" width: 50%; height: 25px;min-width: 20px; ">
                                 </div>
-                                <div class="form-check form-check-inline col-xs-3">
-                                  <input class="form-check-input" type="radio" name="force_option" id="force_unlimit" value="2">
+                                <div class="form-check form-check-inline col-md-3">
+                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_unlimit" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] == 1) ? 'checked' : ''; ?>  >
                                   <label class="form-check-label" for="force_unlimit"><?php echo 'Unlimited'; ?></label>
                                 </div>
-                                <div class="form-check form-check-inline col-xs-3">
-                                  <input class="form-check-input" type="radio" name="force_option" id="force_off" value="0">
+                                <div class="form-check form-check-inline col-md-3">
+                                  <input class="form-check-input" type="radio" name="unscrew_force" id="unscrew_force_off" value="2" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] == 2) ? 'checked' : ''; ?>  >
                                   <label class="form-check-label" for="force_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                             </div>
@@ -275,251 +260,317 @@
                 </div>
             </div>
             <div class="w3-center" style="margin: 20px 30px 0px 0;">
-                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3" onclick="save_sequence();"><?php echo $text['save']; ?></button>
+                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3"  onclick="<?php echo $data['type'] == 'new' ? 'save_sequence()' : 'edit_sequence()'; ?>">
+                    <?php echo $text['save']; ?>
+                </button>
             </div>
         </div>
     </div>
 </div>
 
+
 <script>
-	$(document).ready(function () {
-
-        let mode = document.getElementById('mode').value;
-
-        if(mode == 'new'){
-            //帶入預設值
-            $('input[name=direction_option]:checked').val()
-            document.getElementById("ok_seq_off").checked = true;
-            document.getElementById("seq_stop_off").checked = true;
-            document.getElementById("reverse_count_off").checked = true;
-            document.getElementById("ng_stop").value = 0;
-            document.getElementById("ng_reverse_on").checked = true;
-            document.getElementById("accumulate_angle_on").checked = true;
-            document.getElementById("reverse_mode_off").checked = true;
-            document.getElementById("speed").value = 300;
-            document.getElementById("torque_threshold").value = 0;
-            document.getElementById("direction_ccw").checked = true;
-            document.getElementById("force_on").checked = true;
-            document.getElementById("force_number").value = 50;
-            document.getElementById("tightening_repeat").value = 1;
-            document.getElementById("timeout").value = 0;
+    var dataType = "<?php echo $data['type']; ?>";
+    window.onload = function() {
+        if (dataType === 'new') {
+            //SEQ頁面 預設值
+            document.getElementById("seq_repeat").value = 5;
+            document.getElementById("timeout").value = 60;
+            document.getElementById("ok_seq_on").checked = true;
+            document.getElementById("seq_stop_on").checked = true;
+            document.getElementById("unscrew_count_switch_on").checked = true;
+            document.getElementById("ng_unscrew_on").checked = true;
+            document.getElementById("accu_angle_on").checked = true;
+            document.getElementById("unscrew_mode_auto").checked = true;
+            document.getElementById("unscrew_rpm").value = 150;
+            document.getElementById("unscrew_torque_threshold").value = 12345;
+            document.getElementById("unscrew_dir_cw").checked = true;
+            document.getElementById("unscrew_force_on").checked = true;
         }
 
-        if(mode == 'edit'){
-            //帶入資料
-            document.getElementById("SEQname").value = document.getElementById("SEQname").value
-            document.getElementById("tightening_repeat").value = document.getElementById("data_seq_repeat").value
-            document.getElementById("timeout").value = document.getElementById("data_delay").value
-            document.getElementById("ng_stop").value = document.getElementById("data_ng_stop").value
-            document.getElementById("speed").value = document.getElementById("data_unscrew_rpm").value
-            document.getElementById("torque_threshold").value = document.getElementById("data_unscrew_torque_threshold").value
-            document.getElementById("force_number").value = document.getElementById("data_unscrew_force").value
-
-            let ok_seq = document.getElementById("data_ok_seq").value;
-            let seq_stop = document.getElementById("data_ok_stop").value;
-            let reverse_count = document.getElementById("data_unscrew_count").value;
-            let ng_reverse = document.getElementById("data_ng_unscrew").value;
-            let accu_angle = document.getElementById("data_accu_angle").value;
-            let reverse_mode = document.getElementById("data_unscrew_mode").value;
-            let revers_direction = document.getElementById("data_unscrew_dir").value;
-
-            if(ok_seq == 0){
-                document.getElementById("ok_seq_off").checked = true;
-            }else{
-                document.getElementById("ok_seq_on").checked = true;
-            }
-            if(seq_stop == 0){
-                document.getElementById("seq_stop_off").checked = true;
-            }else{
-                document.getElementById("seq_stop_on").checked = true;
-            }
-            if(reverse_count == 0){
-                document.getElementById("reverse_count_off").checked = true;
-            }else{
-                document.getElementById("reverse_count_on").checked = true;
-            }
-            if(ng_reverse == 0){
-                document.getElementById("ng_reverse_off").checked = true;
-            }else{
-                document.getElementById("ng_reverse_on").checked = true;
-            }
-            if(accu_angle == 0){
-                document.getElementById("accumulate_angle_off").checked = true;
-            }else{
-                document.getElementById("accumulate_angle_on").checked = true;
-            }
-            if(reverse_mode == 0){
-                document.getElementById("reverse_mode_off").checked = true;
-            }else{
-                document.getElementById("reverse_mode_on").checked = true;
-            }
-            if(revers_direction == 0){
-                document.getElementById("direction_ccw").checked = true;
-            }else{
-                document.getElementById("direction_cw").checked = true;
-            }
-
-            Angle_Calculation_check()
-            
+        if(dataType === 'edit'){
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            let displayedValue = '<?php echo isset($data['sequences']['Thread_Calcu']) ? $data['sequences']['Thread_Calcu'] : ''; ?>';
+            setCheckboxesByValue(displayedValue);
         }
-
-        //主動觸發change事件
-        const change_event = new Event("change");
-        document.querySelector('input[name="reverse_mode_option"]').dispatchEvent(change_event)
-	});
-
-
+    };
+    
+    // 新增 sequence
     function save_sequence() {
+        let data = new FormData();
         let job_id = document.getElementById("job_id").value;
         let seq_id = document.getElementById("seq_id").value;
-        let seq_type = 0;
+        let SEQname = document.getElementById("SEQname").value;
+        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+
+    
+
+        /*if (!SEQname.trim()) { 
+            alertify.alert("Error", "SEQ name cannot be empty", function() {
+                document.getElementById("SEQname").focus();  
+            });
+            return;  
+        }*/
+
+
+
+        data.append("job_id", job_id);
+        data.append("SEQID", seq_id);
+        data.append("SEQname", SEQname);
+        data.append("time", time);
+        data.append("type", 0);
+        data.append("act", 0);
+        data.append("skip", 0);
+        data.append("seq_repeat", document.getElementById("seq_repeat").value);
+        data.append("timeout", document.getElementById("timeout").value);
+
+        let ok_seqElement = document.querySelector('input[name="ok_seq"]:checked');
+        data.append("ok_seq_val", ok_seqElement ? ok_seqElement.value : null);
+
+        let ok_stopElement = document.querySelector('input[name="ok_stop"]:checked');
+        data.append("ok_stop_val", ok_stopElement ? ok_stopElement.value : null);
+
+        data.append("countType", 0);
+        data.append("ok_screw", 1);
+        data.append("ng_stop", document.getElementById('ng_stop').value);
+
+        let ng_unscrew = document.querySelector('input[name="ng_unscrew"]:checked');
+        data.append("ng_unscrew_val", ng_unscrew ? ng_unscrew.value : null);
+
+        data.append("interrupt_alarm", 1);
+
+        let accu_angle = document.querySelector('input[name="accu_angle"]:checked');
+        data.append("accu_angle_val", accu_angle ? accu_angle.value : null);
+
+        let angle_calculation_data = getCheckboxValue(); 
+        data.append("angle_calculation_data", angle_calculation_data);
+
+        /*if (angle_calculation_data === 0) {
+            alert("Please select at least one option!"); 
+        return; 
+        }*/
+
+
+        let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
+        data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
+
+        let unscrew_force = document.querySelector('input[name="unscrew_force"]:checked');
+        data.append("unscrew_force_val", unscrew_force ? unscrew_force.value : null);
+
+        data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
+        data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
+
+        let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
+        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : 0);
+
+        data.append("image", '');
+        data.append("message", '');
+        data.append("delay", 0);
+        data.append("input", 0);
+        data.append("input_signal", 0);
+        data.append("output", 0);
+        data.append("output_signal", 1);
+        data.append("output_durat", 100);
+        data.append("addtion", '');
+
+        let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
+        data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
+
+
         
-        let data = new FormData()
-        data.append("job_id", job_id)
-        data.append("seq_id", seq_id)
-        data.append("SEQname", document.getElementById("SEQname").value)
-        data.append("seq_repeat", document.getElementById("seq_repeat").value)
-        data.append("timeout", document.getElementById("timeout").value)
-        data.append("ok_seq", $('input[name=ok_seq_option]:checked').val())
-        data.append("seq_stop", $('input[name=seq_stop_option]:checked').val())
-        data.append("reverse_count_option", $('input[name=reverse_count_option]:checked').val())
-        data.append("ng_stop", document.getElementById("ng_stop").value)
-        data.append("ng_reverse_option", $('input[name=ng_reverse_option]:checked').val())
-        data.append("accumulate_angle_option", $('input[name=accumulate_angle_option]:checked').val())
-        
-        data.append("reverse_mode", $('input[name=reverse_mode_option]:checked').val())
-        data.append("speed", document.getElementById("speed").value)
-        data.append("torque_threshold", document.getElementById("torque_threshold").value)
-        data.append("direction", $('input[name=direction_option]:checked').val())
-        data.append("force_option", $('input[name=force_option]:checked').val())
-        data.append("force_number", document.getElementById("force_number").value)
-
-        // console.log( getCheckboxValue() )
-        let angle_calculation_data = getCheckboxValue()
-        data.append("angle_calculation", angle_calculation_data)
-
-
-        console.log(data)
-
-        for (var pair of data.entries()) {
-            console.log(pair[0]+ ', ' + pair[1]); 
-        }
-
-
         let check = input_check();
-
         if(check){
             $.ajax({
-              type: "POST",
-              url: "?url=Sequences/create_seq",
-              data: data,
-              dataType: "json",
-              contentType: false, //required
-              processData: false, // required
-              beforeSend: function() {
-                $('#overlay').removeClass('hidden');
-              },
-            }).done(function (data) {//成功且有回傳值才會執行
-                $('#overlay').addClass('hidden');
-              console.log(data);
-              location.href = "?url=Sequences/index/"+job_id;
-            }).fail(function() {
-                // history.go(0);
-                // document.getElementById('activate_key').value = ''
+                url: '?url=Sequences/create_seq',
+                type: 'POST',
+                data: data,
+                processData: false, 
+                contentType: false, 
+                success: function(response) {
+                    // 處理成功回應
+                    var responseData = JSON.parse(response);
+                    console.log(responseData);
+                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                        window.location.href = '../public/?url=Sequences/index/' + job_id; 
+                    }); 
+                },
+                error: function(xhr, status, error) {
+                    // 處理錯誤
+                    console.error('Error:', error);
+                }
             });
-        }else{
-            $('#new_seq_save').prop('disabled', false);
         }
-
     }
 
-    function getCheckboxValue() {  
-      
-        let l1 = document.getElementById("inlineCheckbox1");  
-        let l2 = document.getElementById("inlineCheckbox2");  
-        let l3 = document.getElementById("inlineCheckbox3");  
-        let l4 = document.getElementById("inlineCheckbox4");  
-        let l5 = document.getElementById("inlineCheckbox5");  
-         
-        let res = 0;   
-        if (l1.checked == true){  
-            // let pl1 = document.getElementById("inlineCheckbox1").value;  
-            res = res + Math.pow(2, 0)
-        }   
-        if (l2.checked == true){  
-            // let pl2 = document.getElementById("inlineCheckbox2").value;  
-            res = res + Math.pow(2, 1)
-        }
-        if (l3.checked == true){  
-            // let pl3 = document.getElementById("inlineCheckbox3").value;  
-            res = res + Math.pow(2, 2)
-        }
-        if (l4.checked == true){  
-            // let pl4 = document.getElementById("inlineCheckbox4").value;  
-            res = res + Math.pow(2, 3)
-        }
-        if (l5.checked == true){  
-            // let pl5 = document.getElementById("inlineCheckbox5").value;  
-            res = res + Math.pow(2, 4)
+    //edit sequence
+    function edit_sequence(){
+        let job_id = document.getElementById("job_id").value;
+        let seq_id = document.getElementById("seq_id").value;
+        let SEQname = document.getElementById("SEQname").value;
+        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+
+
+        const timeoutValue = parseInt(document.getElementById("timeout").value, 10);
+        if (isNaN(timeoutValue) || timeoutValue < 0 || timeoutValue > 60) {
+            alert("請輸入有效的超時值 (0-60)");
+            return false; 
         }
 
-        return res;  
-    }  
+        if (!SEQname.trim()) {  
+            alertify.alert("Error", "SEQ name cannot be empty", function() {
+                document.getElementById("SEQname").focus(); 
+            });
+            return;  // 阻止继续执行后面的代码
+        }
 
-    function dec2bin(dec) {
-        let aa = (dec >>> 0).toString(2);//轉成2進制
-        let bb = String(aa).padStart(5, "0");//左邊補0到5位數
-      return bb.split("");
-    }
 
-    function Angle_Calculation_check() {
-        let Angle_Calculation_value = document.getElementById('data_Thread_Calcu').value
-        let check_array = dec2bin(+Angle_Calculation_value);
-        check_array = check_array.reverse();
-        // console.log(check_array[0])
-        for (var i = 0; i < check_array.length; i++) {
-            if(check_array[i] == 1){
-                document.getElementById("inlineCheckbox"+ (i+1) ).checked = true
+        
+        let data = new FormData();
+        data.append("job_id", job_id);
+        data.append("SEQID", seq_id);
+        data.append("SEQname", SEQname);
+        data.append("time", time);
+        data.append("type", 0);
+        data.append("act", 0);
+        data.append("skip", 0);
+        data.append("seq_repeat", document.getElementById("seq_repeat").value);
+        data.append("timeout", document.getElementById("timeout").value);
+
+        let ok_seqElement = document.querySelector('input[name="ok_seq"]:checked');
+        data.append("ok_seq_val", ok_seqElement ? ok_seqElement.value : null);
+
+        let ok_stopElement = document.querySelector('input[name="ok_stop"]:checked');
+        data.append("ok_stop_val", ok_stopElement ? ok_stopElement.value : null);
+
+        data.append("countType", 0);
+        data.append("ok_screw", 1);
+        data.append("ng_stop", document.getElementById('ng_stop').value);
+
+        let ng_unscrew = document.querySelector('input[name="ng_unscrew"]:checked');
+        data.append("ng_unscrew_val", ng_unscrew ? ng_unscrew.value : null);
+
+        data.append("interrupt_alarm", 1);
+
+        let accu_angle = document.querySelector('input[name="accu_angle"]:checked');
+        data.append("accu_angle_val", accu_angle ? accu_angle.value : null);
+
+        let angle_calculation_data = getCheckboxValue(); 
+        data.append("angle_calculation_data", angle_calculation_data);
+
+        let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
+        data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
+
+        let unscrew_force = document.querySelector('input[name="unscrew_force"]:checked');
+        data.append("unscrew_force_val", unscrew_force ? unscrew_force.value : null);
+
+        data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
+        data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
+
+        let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
+        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : 0);
+
+        data.append("image", '');
+        data.append("message", '');
+        data.append("delay", 0);
+        data.append("input", 0);
+        data.append("input_signal", 0);
+        data.append("output", 0);
+        data.append("output_signal", 1);
+        data.append("output_durat", 100);
+        data.append("addtion", '');
+
+        let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
+        data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
+
+        $.ajax({
+            url: '?url=Sequences/edit_seq',
+            type: 'POST',
+            data: data,
+            processData: false, 
+            contentType: false, 
+            success: function(response) {
+                // 處理成功回應
+                var responseData = JSON.parse(response);
+                console.log(responseData);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    window.location.href = '../public/?url=Sequences/index/' + job_id; 
+                }); 
+            },
+            error: function(xhr, status, error) {
+                // 處理錯誤
+                console.error('Error:', error);
             }
-        }
+        });
+
+    }
+
+    function getCheckboxValue() {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        let total = 0;
+        let isChecked = false;  
+
+        checkboxes.forEach((checkbox, index) => {
+            if (checkbox.checked) {
+                isChecked = true;  
+           
+                switch (index) {
+                    case 0: total += 16; break; // 第1个
+                    case 1: total += 8; break;  // 第2个
+                    case 2: total += 4; break;  // 第3个
+                    case 3: total += 2; break;  // 第4个
+                    case 4: total += 1; break;  // 第5个
+                }
+            }
+        });
+
+
+        return total;
     }
 
 
-    //監控option 變化
-    document.querySelectorAll('input[name="reverse_mode_option"]').forEach(function(radio) {
-      radio.addEventListener('change', function() {
-        // 获取选中的radio的值
-        var selectedValue = document.querySelector('input[name="reverse_mode_option"]:checked').value;
-        // 根据值来显示或隐藏特定的div
-        if (selectedValue === '1') {
-          $("#div_speed *").removeAttr("disabled")
-          $("#div_torque_threshold *").removeAttr("disabled")
-          $("#div_direction *").removeAttr("disabled")
-          $("#div_force *").removeAttr("disabled")
-        } else {
-          $("#div_speed *").attr("disabled", "disabled").off('click');
-          $("#div_torque_threshold *").attr("disabled", "disabled").off('click');
-          $("#div_direction *").attr("disabled", "disabled").off('click');
-          $("#div_force *").attr("disabled", "disabled").off('click');
+    function setCheckboxesByValue(value) {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        
+        // 先清空所有勾選狀態
+        checkboxes.forEach(checkbox => checkbox.checked = false);
+
+        // 根據值進行勾選
+        if (value >= 16) {
+            checkboxes[0].checked = true; // 第1個
+            value -= 16;
         }
-      });
-    });
+        if (value >= 8) {
+            checkboxes[1].checked = true; // 第2個
+            value -= 8;
+        }
+        if (value >= 4) {
+            checkboxes[2].checked = true; // 第3個
+            value -= 4;
+        }
+        if (value >= 2) {
+            checkboxes[3].checked = true; // 第4個
+            value -= 2;
+        }
+        if (value >= 1) {
+            checkboxes[4].checked = true; // 第5個
+        }
+    }
 
 
     function input_check(argument) {
-        let Tool_Max_Torque = document.getElementById('tool_max_torque').value;
-        let Tool_Min_Torque = document.getElementById('tool_min_torque').value;
-        let Tool_Max_RPM = document.getElementById('tool_max_rpm').value;
-        let Tool_Min_RPM = document.getElementById('tool_min_rpm').value;
+        //let Tool_Max_Torque = document.getElementById('tool_max_torque').value;
+        //let Tool_Min_Torque = document.getElementById('tool_min_torque').value;
+        //let Tool_Max_RPM = document.getElementById('tool_max_rpm').value;
+        //let Tool_Min_RPM = document.getElementById('tool_min_rpm').value;
 
         let conditions = [
             { id: 'SEQname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
-            { id: 'tightening_repeat', pattern: /^\d{0,4}$/, min: 1, max: 99 },
+            { id: 'seq_repeat', pattern: /^\d{0,4}$/, min: 1, max: 99 },
             { id: 'timeout', pattern: /^\d{0,5}?$/, min: 0, max: 60 },
-            { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
-            { id: 'speed', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'torque_threshold', pattern: /^\d{1,3}$/, min: 0, max: Tool_Max_Torque },
-            { id: 'force_number', pattern: /^\d{1,3}$/, min: 1, max: 100 },
+            //{ id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
+            //{ id: 'speed', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
+            //{ id: 'torque_threshold', pattern: /^\d{1,3}$/, min: 0, max: Tool_Max_Torque },
+            //{ id: 'force_number', pattern: /^\d{1,3}$/, min: 1, max: 100 },
         ];
 
         let isFormValid = true;
@@ -559,14 +610,6 @@
 
 </script>
 
-<?php if($_SESSION['privilege'] != 'admin'){ ?>
-<script>
-  $(document).ready(function () {
-    disableAllButtonsAndInputs()
-    document.getElementById("return").disabled = false;
-  });
-</script>
-<?php } ?>
 
 
-<?php require APPROOT . 'views/inc/footer.php'; ?>
+

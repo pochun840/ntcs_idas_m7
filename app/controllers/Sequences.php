@@ -494,7 +494,7 @@ class Sequences extends Controller
         );
 
 
-        echo $this->view('sequences/add_seq_bk', $data);
+        echo $this->view('sequences/add_seq', $data);
     }
         
 }
