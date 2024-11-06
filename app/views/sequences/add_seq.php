@@ -31,6 +31,7 @@
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
+        
     </div>
 
 
@@ -220,7 +221,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
-                            <div class="col-4">Torque Threshold (kgf-cm):</div>
+                            <div class="col-4">Torque Threshold (<?php echo $text[$data['torque_unit']]; ?>):</div>
                             <div class="col-8">
                                 <input id="unscrew_torque_threshold"class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
                                 <div class="invalid-feedback"></div>

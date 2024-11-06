@@ -487,13 +487,16 @@ class Sequences extends Controller
             
             $sequences = $res[0];
         }
+
+
         
         $data = array(
             'sequences' => $sequences,
             'job_id' => $job_id,
             'seq_id' => $seq_id,
             'tools_info' => $last_tool_info,
-            'type' => $type
+            'type' => $type,
+            'torque_unit' =>$torque_unit 
         );
 
   
