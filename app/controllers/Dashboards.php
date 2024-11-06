@@ -36,11 +36,11 @@ class Dashboards extends Controller
         $isMobile = $this->isMobileCheck();
     
         $chart_mode = !empty($_GET['chart']) ? $_GET['chart'] : 1;
-        if ($chart_mode < 1 || $chart_mode > 4) {
+        if ($chart_mode < 1 || $chart_mode > 6) {
             $chart_mode = 1;
         } 
-        $id = 4170;
-        $unitvalue = 3;
+        $id = 4135;
+        //$unitvalue = 3;
         $chat_mode_arr = $chart_mode;
 
 
@@ -51,8 +51,10 @@ class Dashboards extends Controller
 
         
         $csvdata_arr = $this->DashboardModel->get_info($id,$chart_mode);
+        
+
         if(!empty($csvdata_arr)){
-            $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $unitvalue, $chat_mode_arr);       
+            $temp_chart = $this->ChartData($chart_mode, $csvdata_arr,$chat_mode_arr);       
         }
    
         $data = [
@@ -172,13 +174,13 @@ class Dashboards extends Controller
 
 
 
-    private function ChartData($chat_mode, $csvdata_arr, $unitvalue, $chat_mode_arr){
+    private function ChartData($chat_mode, $csvdata_arr, $chat_mode_arr){
         $chart_info = array();
    
            
         if(($chat_mode == "1" || $chat_mode == "3" || $chat_mode == "4") && $unitvalue != "1"){
             
-            $TransType = $unitvalue;
+            // = $unitvalue;
             $torValues = $csvdata_arr;
             $temp_val = $this->MiscellaneousModel->unitarr_change($torValues, 1, $TransType);
             $chart_info['y_val'] = json_encode($temp_val);

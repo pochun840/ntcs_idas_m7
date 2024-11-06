@@ -28,6 +28,12 @@
             <h3><?php echo $text['normal_step']; ?></h3>
         </header>
     </div>
+    <div style="display:none;">
+        <input id="tool_max_torque" value="<?php echo $data['tool_info']['max_torq']; ?>">
+        <input id="tool_min_torque" value="<?php echo $data['tool_info']['min_torq']; ?>">
+        <input id="tool_max_rpm" value="<?php echo $data['tool_info']['max_rpm']; ?>">
+        <input id="tool_min_rpm" value="<?php echo $data['tool_info']['min_rpm']; ?>">
+    </div>
 
     <div class="main-content">
         <div class="center-content">
@@ -63,12 +69,17 @@
                     <input type="" id="data_ng_stop" value="<?php echo $data['seq_data']['ng_stop']; ?>">
                     <input type="" id="data_ng_unscrew" value="<?php echo $data['seq_data']['ng_unscrew']; ?>">
                     <input type="" id="data_accu_angle" value="<?php echo $data['seq_data']['accu_angle']; ?>">
+                    <input type="" id="data_Thread_Calcu" value="<?php echo $data['seq_data']['Thread_Calcu']; ?>">
                     <input type="" id="data_unscrew_mode" value="<?php echo $data['seq_data']['unscrew_mode']; ?>">
                     <input type="" id="data_unscrew_force" value="<?php echo $data['seq_data']['unscrew_force']; ?>">
                     <input type="" id="data_unscrew_rpm" value="<?php echo $data['seq_data']['unscrew_rpm']; ?>">
                     <input type="" id="data_unscrew_dir" value="<?php echo $data['seq_data']['unscrew_dir']; ?>">
                     <input type="" id="data_unscrew_torque_threshold" value="<?php echo $data['seq_data']['unscrew_torque_threshold']; ?>">
                     <input type="" id="data_delay" value="<?php echo $data['seq_data']['delay']; ?>">
+                </div>
+                <?php }else{ ?>
+                <div style="display: none;">
+                    <input type="" id="mode" value="<?php echo $data['mode']; ?>">
                 </div>
                 <?php } ?>
             </div>
@@ -79,19 +90,22 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">Sequence Name:</div>
                             <div class="col-9">
-                                <input id="seq_name" value="">
+                                <input id="seq_name" class="form-control" value="">
+                                <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">Tightening Repeat:</div>
                             <div class="col-9">
-                                <input id="tightening_repeat" value="1">
+                                <input id="tightening_repeat" class="form-control" value="1">
+                                <div class="invalid-feedback">0 - 30600<span></span></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">Timeout (sec):</div>
                             <div class="col-9">
-                                <input id="timeout" value="0">
+                                <input id="timeout" class="form-control" value="0">
+                                <div class="invalid-feedback">0 - 30600<span></span></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
@@ -136,7 +150,8 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3">NG Stop (0-9):</div>
                             <div class="col-9">
-                                <input id="ng_stop" type="number" max=9 min=0 value="0">
+                                <input id="ng_stop" class="form-control" type="number" max=9 min=0 value="0">
+                                <div class="invalid-feedback">0 - 30600<span></span></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
@@ -214,13 +229,15 @@
                         <div class="col-12 row t2 mt-3 ps-4" id="div_speed">
                             <div class="col-4">Speed (rpm):</div>
                             <div class="col-8">
-                                <input id="speed" value="150">
+                                <input id="speed" class="form-control" value="150">
+                                <div class="invalid-feedback">0 - 30600<span></span></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
                             <div class="col-4">Torque Threshold (kgf-cm):</div>
                             <div class="col-8">
-                                <input id="torque_threshold" value="123456">
+                                <input id="torque_threshold" class="form-control" value="0">
+                                <div class="invalid-feedback">0 - 30600<span></span></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_direction">
@@ -241,16 +258,17 @@
                             <div class="col-4">Force (%):</div>
                             <div class="col-8">
                                 <!-- <input id="force" value="123456"> -->
-                                <div class="form-check form-check-inline col-md-3">
+                                <div class="form-check form-check-inline col-xs-3">
                                   <input class="form-check-input" type="radio" name="force_option" id="force_on" value="1">
                                   <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
-                                  <input class="" id="force_number" style=" width: 50%; height: 25px;min-width: 20px; ">
+                                  <input class="form-control" id="force_number" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
+                                  <div class="invalid-feedback">0 - 30600</div>
                                 </div>
-                                <div class="form-check form-check-inline col-md-3">
+                                <div class="form-check form-check-inline col-xs-3">
                                   <input class="form-check-input" type="radio" name="force_option" id="force_unlimit" value="2">
                                   <label class="form-check-label" for="force_unlimit"><?php echo 'Unlimited'; ?></label>
                                 </div>
-                                <div class="form-check form-check-inline col-md-3">
+                                <div class="form-check form-check-inline col-xs-3">
                                   <input class="form-check-input" type="radio" name="force_option" id="force_off" value="0">
                                   <label class="form-check-label" for="force_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
@@ -285,9 +303,9 @@
             document.getElementById("torque_threshold").value = 0;
             document.getElementById("direction_ccw").checked = true;
             document.getElementById("force_on").checked = true;
-            document.getElementById("force_number").value = 110;
+            document.getElementById("force_number").value = 50;
             document.getElementById("tightening_repeat").value = 1;
-            document.getElementById("timeout").value = 60;
+            document.getElementById("timeout").value = 0;
         }
 
         if(mode == 'edit'){
@@ -343,6 +361,8 @@
             }else{
                 document.getElementById("direction_cw").checked = true;
             }
+
+            Angle_Calculation_check()
             
         }
 
@@ -379,8 +399,8 @@
         data.append("force_number", document.getElementById("force_number").value)
 
         // console.log( getCheckboxValue() )
-        let angle_calculation_data = getCheckboxValue();
-        data.append("angle_calculation", "123")
+        let angle_calculation_data = getCheckboxValue()
+        data.append("angle_calculation", angle_calculation_data)
 
 
         console.log(data)
@@ -390,7 +410,7 @@
         }
 
 
-        let check = true
+        let check = input_check();
 
         if(check){
             $.ajax({
@@ -419,36 +439,55 @@
 
     function getCheckboxValue() {  
       
-        var l1 = document.getElementById("inlineCheckbox1");  
-        var l2 = document.getElementById("inlineCheckbox2");  
-        var l3 = document.getElementById("inlineCheckbox3");  
-        var l4 = document.getElementById("inlineCheckbox4");  
-        var l5 = document.getElementById("inlineCheckbox5");  
+        let l1 = document.getElementById("inlineCheckbox1");  
+        let l2 = document.getElementById("inlineCheckbox2");  
+        let l3 = document.getElementById("inlineCheckbox3");  
+        let l4 = document.getElementById("inlineCheckbox4");  
+        let l5 = document.getElementById("inlineCheckbox5");  
          
-        var res = "";   
+        let res = 0;   
         if (l1.checked == true){  
-            var pl1 = document.getElementById("inlineCheckbox1").value;  
-            res = pl1 + ",";   
+            // let pl1 = document.getElementById("inlineCheckbox1").value;  
+            res = res + Math.pow(2, 0)
         }   
         if (l2.checked == true){  
-            var pl2 = document.getElementById("inlineCheckbox2").value;  
-            res = res + pl2 + ",";   
+            // let pl2 = document.getElementById("inlineCheckbox2").value;  
+            res = res + Math.pow(2, 1)
         }
         if (l3.checked == true){  
-            var pl3 = document.getElementById("inlineCheckbox3").value;  
-            res = res + pl3 + ",";   
+            // let pl3 = document.getElementById("inlineCheckbox3").value;  
+            res = res + Math.pow(2, 2)
         }
         if (l4.checked == true){  
-            var pl4 = document.getElementById("inlineCheckbox4").value;  
-            res = res + pl4 + ",";   
+            // let pl4 = document.getElementById("inlineCheckbox4").value;  
+            res = res + Math.pow(2, 3)
         }
         if (l5.checked == true){  
-            var pl5 = document.getElementById("inlineCheckbox5").value;  
-            res = res + pl5 + ",";   
+            // let pl5 = document.getElementById("inlineCheckbox5").value;  
+            res = res + Math.pow(2, 4)
         }
 
         return res;  
     }  
+
+    function dec2bin(dec) {
+        let aa = (dec >>> 0).toString(2);//轉成2進制
+        let bb = String(aa).padStart(5, "0");//左邊補0到5位數
+      return bb.split("");
+    }
+
+    function Angle_Calculation_check() {
+        let Angle_Calculation_value = document.getElementById('data_Thread_Calcu').value
+        let check_array = dec2bin(+Angle_Calculation_value);
+        check_array = check_array.reverse();
+        // console.log(check_array[0])
+        for (var i = 0; i < check_array.length; i++) {
+            if(check_array[i] == 1){
+                document.getElementById("inlineCheckbox"+ (i+1) ).checked = true
+            }
+        }
+    }
+
 
     //監控option 變化
     document.querySelectorAll('input[name="reverse_mode_option"]').forEach(function(radio) {
@@ -469,6 +508,57 @@
         }
       });
     });
+
+
+    function input_check(argument) {
+        let Tool_Max_Torque = document.getElementById('tool_max_torque').value;
+        let Tool_Min_Torque = document.getElementById('tool_min_torque').value;
+        let Tool_Max_RPM = document.getElementById('tool_max_rpm').value;
+        let Tool_Min_RPM = document.getElementById('tool_min_rpm').value;
+
+        let conditions = [
+            { id: 'seq_name', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
+            { id: 'tightening_repeat', pattern: /^\d{0,4}$/, min: 1, max: 99 },
+            { id: 'timeout', pattern: /^\d{0,5}?$/, min: 0, max: 60 },
+            { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
+            { id: 'speed', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
+            { id: 'torque_threshold', pattern: /^\d{1,3}$/, min: 0, max: Tool_Max_Torque },
+            { id: 'force_number', pattern: /^\d{1,3}$/, min: 1, max: 100 },
+        ];
+
+        let isFormValid = true;
+        conditions.forEach(function(input) {
+            var element = document.getElementById(input.id);
+            var value = element.value.trim();
+
+            if(input.id != 'seq_name'){
+                element.nextElementSibling.innerHTML = input.min+' ~ '+input.max;
+            }
+
+            if (value === "") {
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else if (!input.pattern.test(value)) {
+                // element.value = "";
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else if (input.min !== null && parseFloat(value) < input.min) {
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else if (input.max !== null && parseFloat(value) > input.max) {
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else {
+                element.classList.remove("is-invalid");
+            }
+
+        });
+
+        console.log(conditions)
+
+        return isFormValid;
+
+    }
 
 
 </script>

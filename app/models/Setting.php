@@ -533,12 +533,12 @@ class Setting{
 
     public function Get_System_Toq_Unit()
     {
-        $sql = "SELECT device_torque_unit FROM device";
-        $statement = $this->db->prepare($sql);
+        $sql = "SELECT * FROM ". TABLE_NTCS_DEVICE;
+        $statement = $this->db_iDas_tools->prepare($sql);
         $results = $statement->execute();
         $row = $statement->fetch(PDO::FETCH_ASSOC);
 
-        return $row['device_torque_unit'];
+        return $row['torque_unit'];
     }
 
     public function backup_CopyFile($sourceFile, $backupFile) {

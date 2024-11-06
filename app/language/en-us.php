@@ -185,9 +185,9 @@ $text['final_message'] = 'MESSAGE';//MESSAGE
 
 $text['Torque Time'] = "Torque / Time";
 $text['Angle Time'] = "Angle / Time";
-$text['RPM Time'] = "RPM / Timee";
+$text['RPM Time'] = "RPM / Time";
 $text['Torque Angle'] = "Torque / Angle";
-
+$text['Torque Speed'] = "Torque / Speed";
 
 // Input/Output
 $text['input'] = 'Input'; //I/O INPUT

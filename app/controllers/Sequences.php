@@ -7,6 +7,8 @@ class Sequences extends Controller
 
         $this->sequenceModel = $this->model('Sequence');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->SettingModel = $this->model('Setting');
+        $this->ToolModel = $this->model('Tool');
     }
 
     // 取得所有Sequences
@@ -81,7 +83,7 @@ class Sequences extends Controller
                 'accu_angle' => $_POST['accu_angle_val'] ?? null,
                 'Thread_Calcu' => $_POST['angle_calculation_data'] ?? null,
                 'unscrew_mode' => $_POST['unscrew_mode_val'] ?? null,
-                'unscrew_force' => $_POST['unscrew_force_val'] ?? null,
+                'unscrew_force' => $_POST['unscrew_force'] ?? null,
                 'unscrew_rpm' => $_POST['unscrew_rpm'] ?? null,
                 'unscrew_dir' => $_POST['unscrew_dir_val'] ?? 0,
                 'image' => $_POST['image'] ?? null,
@@ -207,7 +209,7 @@ class Sequences extends Controller
                 'accu_angle' => $_POST['accu_angle_val'] ?? null,
                 'Thread_Calcu' => $_POST['angle_calculation_data'] ?? null,
                 'unscrew_mode' => $_POST['unscrew_mode_val'] ?? null,
-                'unscrew_force' => $_POST['unscrew_force_val'] ?? null,
+                'unscrew_force' => $_POST['unscrew_force'] ?? null,
                 'unscrew_rpm' => $_POST['unscrew_rpm'] ?? null,
                 'unscrew_dir' => $_POST['unscrew_dir_val'] ?? 0,
                 'image' => $_POST['image'] ?? null,
@@ -452,6 +454,13 @@ class Sequences extends Controller
             $job_id = 1;
         }
 
+        
+        $torque_unit = $this->SettingModel->Get_System_Toq_Unit();
+        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+        $tools_info = $this->ToolModel->GetToolInfo();
+        $last_tool_info = end($tools_info);
+
+        $torque_unit = $unit_arr[$torque_unit];
         $isMobile = $this->isMobileCheck();
     
         // 如果沒有提供 seq_id，則視為新增，並設為空值
@@ -478,15 +487,19 @@ class Sequences extends Controller
             
             $sequences = $res[0];
         }
-    
+
+
+        
         $data = array(
             'sequences' => $sequences,
             'job_id' => $job_id,
             'seq_id' => $seq_id,
-            'type' => $type
+            'tools_info' => $last_tool_info,
+            'type' => $type,
+            'torque_unit' =>$torque_unit 
         );
 
-
+  
         echo $this->view('sequences/add_seq', $data);
     }
         

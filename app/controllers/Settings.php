@@ -325,10 +325,6 @@ class Settings extends Controller
             $con_setting['buzzer_mode'] = $_POST['buzzer_mode'];
         }
        
-        echo "<pre>";
-        print_r($con_setting);
-        echo "</pre>";
-
 
 
         if($input_check){

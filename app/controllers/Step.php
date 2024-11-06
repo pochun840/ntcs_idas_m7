@@ -11,6 +11,7 @@ class Step extends Controller
         $this->stepModel = $this->model('Steptcc');
         $this->sequenceModel = $this->model('Sequence');
         $this->SettingModel = $this->model('Setting');
+        $this->ToolModel = $this->model('Tool');
         
     }
 
@@ -494,8 +495,15 @@ class Step extends Controller
         $job_id  = $job_id ?? $_GET['job_id'] ?? null;
         $seq_id  = $seq_id ?? $_GET['seq_id'] ?? null;
         $stepid  = $stepid ?? $_GET['step_id'] ?? null; 
+        
+        $tools_info = $this->ToolModel->GetToolInfo();
+        $last_tool_info = end($tools_info);
 
-        // 计算参数数量
+        $torque_unit = $this->SettingModel->Get_System_Toq_Unit();
+        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+        $torque_unit = $unit_arr[$torque_unit];
+
+        //計算參數的數量
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
         if (!empty($seq_id)) $paramsCount++;
@@ -522,10 +530,12 @@ class Step extends Controller
             'JOBID' => $job_id,
             'SEQID' => $seq_id,
             'StepSelect' => $StepSelect,
-            'type' => $type
+            'type' => $type,
+            'tools_info' => $last_tool_info,
+            'torque_unit' =>$torque_unit 
+
         );
 
-        //如果是 
         if ($type == 'edit') {
             $data['step'] = $step; 
         }

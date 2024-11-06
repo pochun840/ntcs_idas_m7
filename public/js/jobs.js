@@ -78,7 +78,9 @@ function updatejob(){
     var jobokValue = document.querySelector('input[name="edit_job_ok"]:checked').value;
     var stopjobValue = document.querySelector('input[name="edit_stop_job_ok"]:checked').value;
 
-    if(jobid) {
+    let check_edit = edit_input_check();
+
+    if(check_edit) {
         $.ajax({
             url: "?url=Jobs/update_job",
             method: "POST",
@@ -110,6 +112,7 @@ function updatejob(){
 }
 
 function edit_job(jobid) {
+
     if(jobid){
         $.ajax({
             url: "?url=Jobs/search_job",
@@ -144,4 +147,44 @@ function edit_job(jobid) {
             }
         });
     }   
+}
+
+
+function edit_input_check(argument) {
+    let conditions = [
+        { id: 'edit_jobname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
+    ];
+
+    let isFormValid = true;
+    conditions.forEach(function(input) {
+        var element = document.getElementById(input.id);
+        var value = element.value.trim();
+
+        if(input.id != 'edit_jobname'){
+            element.nextElementSibling.innerHTML = input.min+' ~ '+input.max;
+        }
+
+        if (value === "") {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (!input.pattern.test(value)) {
+            // element.value = "";
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (input.min !== null && parseFloat(value) < input.min) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (input.max !== null && parseFloat(value) > input.max) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else {
+            element.classList.remove("is-invalid");
+        }
+
+    });
+
+    console.log(conditions)
+
+    return isFormValid;
+
 }
