@@ -408,18 +408,6 @@
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
 
 
-        const timeoutValue = parseInt(document.getElementById("timeout").value, 10);
-        if (isNaN(timeoutValue) || timeoutValue < 0 || timeoutValue > 60) {
-            alert("請輸入有效的超時值 (0-60)");
-            return false; 
-        }
-
-        if (!SEQname.trim()) {  
-            alertify.alert("Error", "SEQ name cannot be empty", function() {
-                document.getElementById("SEQname").focus(); 
-            });
-            return;  // 阻止继续执行后面的代码
-        }
 
 
         
@@ -479,25 +467,29 @@
         let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
         data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
 
-        $.ajax({
-            url: '?url=Sequences/edit_seq',
-            type: 'POST',
-            data: data,
-            processData: false, 
-            contentType: false, 
-            success: function(response) {
-                // 處理成功回應
-                var responseData = JSON.parse(response);
-                console.log(responseData);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    window.location.href = '../public/?url=Sequences/index/' + job_id; 
-                }); 
-            },
-            error: function(xhr, status, error) {
-                // 處理錯誤
-                console.error('Error:', error);
-            }
-        });
+        let check = input_check();
+        if(check){
+            $.ajax({
+                url: '?url=Sequences/edit_seq',
+                type: 'POST',
+                data: data,
+                processData: false, 
+                contentType: false, 
+                success: function(response) {
+                    // 處理成功回應
+                    var responseData = JSON.parse(response);
+                    console.log(responseData);
+                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                        window.location.href = '../public/?url=Sequences/index/' + job_id; 
+                    }); 
+                },
+                error: function(xhr, status, error) {
+                    // 處理錯誤
+                    console.error('Error:', error);
+                }
+            });
+        }
+
 
     }
 
