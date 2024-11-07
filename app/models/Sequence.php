@@ -44,8 +44,8 @@ class Sequence{
         }
 
         
-        $sql = "INSERT INTO `SEQ_lst` (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, image, message, delay, input, input_signal, output, output_signal, output_durat, addtion, unscrew_count_switch, unscrew_torque_threshold)"; 
-        $sql.= "VALUES (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, :addtion, :unscrew_count_switch, :unscrew_torque_threshold);";
+        $sql = "INSERT INTO `SEQ_lst` (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, image, message, delay, input, input_signal, output, output_signal, output_durat, addtion, unscrew_count_switch, unscrew_torque_threshold,seq_unit)"; 
+        $sql.= "VALUES (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, :addtion, :unscrew_count_switch, :unscrew_torque_threshold,:seq_unit);";
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':JOBID', $seq_data['job_id']);
         $statement->bindValue(':SEQID', $seq_data['SEQID']);
@@ -80,7 +80,7 @@ class Sequence{
         $statement->bindValue(':addtion', $seq_data['addtion']);
         $statement->bindValue(':unscrew_count_switch', $seq_data['unscrew_count_switch']);
         $statement->bindValue(':unscrew_torque_threshold', $seq_data['unscrew_torque_threshold']);
-    
+        $statement->bindValue(':seq_unit', $seq_data['seq_unit']);
         $results = $statement->execute();
 
         return $results;
@@ -88,28 +88,27 @@ class Sequence{
     }
 
     public function copy_seq_by_seq_id($new_temp_seq) {
-        // SQL 查询语句，使用命名占位符
+        
         $sql = "INSERT INTO `SEQ_lst` 
                 (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, 
                 ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, 
                 accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, 
                 image, message, delay, input, input_signal, output, output_signal, output_durat, 
-                addtion, unscrew_count_switch, unscrew_torque_threshold) 
+                addtion, unscrew_count_switch, unscrew_torque_threshold,seq_unit) 
                 VALUES 
                 (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, 
                 :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, 
                 :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, 
                 :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, 
-                :addtion, :unscrew_count_switch, :unscrew_torque_threshold);";
+                :addtion, :unscrew_count_switch, :unscrew_torque_threshold,:seq_unit);";
         
-        // 准备 SQL 语句
+       
         $statement = $this->db_iDas->prepare($sql);
         $insertedrecords = 0;
     
-        // 遍历每一个新的 sequence 数据
         foreach ($new_temp_seq as $seq) {
             try {
-                // 确保 $seq 是一个包含正确键名的关联数组
+               
                 if (is_array($seq) && isset(
                     $seq['JOBID'], $seq['SEQID'], $seq['SEQname'], $seq['type'], $seq['time'],
                     $seq['act'], $seq['skip'], $seq['seq_repeat'], $seq['timeout'], $seq['ok_seq'], 
@@ -120,29 +119,23 @@ class Sequence{
                     $seq['output'], $seq['output_signal'], $seq['output_durat'], $seq['addtion'], 
                     $seq['unscrew_count_switch'], $seq['unscrew_torque_threshold']
                 )) {
-                    // 执行 SQL 语句，传入关联数组 $seq 作为参数
+                   
                     if ($statement->execute($seq)) {
                         $insertedrecords++;
                     } else {
-                        // 如果执行失败，记录错误信息并输出可执行的 SQL 语句
+                      
                         $errorInfo = $statement->errorInfo();
                         echo "SQL Error: " . $errorInfo[2] . "\n";
-    
-                        // 生成并输出 SQL 语句，方便在 SQLite 中执行
                         $binded_sql = $this->generate_sql_with_values($sql, $seq);
                         echo "可执行的 SQL 语句：\n" . $binded_sql . "\n";
                     }
                 } else {
-                    // 如果数据缺失必要字段，记录错误
                     echo "缺少必要字段: " . print_r($seq, true);
                 }
             } catch (PDOException $e) {
-                // 捕获并处理异常
                 echo "PDOException: " . $e->getMessage();
             }
         }
-    
-        // 返回成功插入的记录数
         return $insertedrecords;
     }
     
@@ -183,18 +176,91 @@ class Sequence{
 
     public function copy_step_by_seq_id($new_temp_step){
 
-        $sql = "INSERT INTO `step` (job_id, sequence_id, step_id, target_option, target_torque, target_angle, target_delaytime, hi_torque, lo_torque, hi_angle, lo_angle, rpm, direction, downshift, threshold_torque, 	downshift_torque,downshift_speed )";
-        $sql .= " VALUES (:job_id,:sequence_id,:step_id,:target_option,:target_torque,:target_angle,:target_delaytime,:hi_torque,:lo_torque,:hi_angle,:lo_angle,:rpm,:direction,:downshift,:threshold_torque,:downshift_torque,:downshift_speed )";
+        $sql = "INSERT INTO STEP_lst (
+            JOBID, SEQID, StepSelect, STEPname, type, time, act, 
+            StepSwitch, StepRPM, StepOption, StepTime, StepAngle, StepTorque, 
+            StepDirection, StepDelay, StepMoniByWin, StepLimiHi, StepLimiLo, 
+            StepHiAngle, StepLoAngle, StepHiTorque, StepLoTorque, StepAccelerateOffset, 
+            StepAccelerateOffsetSign, StepEnableTorqueOffset, StepTorqueOffset, 
+            StepTorqueOffsetSign, StepEnableDownShift, StepTorqueDownShift, 
+            StepRPMDownShift, StepEnableThreshold, StepTorqueTS, StepReTry, 
+            StepUnScrew, StepReTryTorq, StepReTryAngl, StepAngleRecord, 
+            StepAutoDetectAngle, InterruptAlarm, OverAngleStop, KValue, step_unit
+        ) VALUES (
+            :JOBID, :SEQID, :StepSelect, :STEPname, :type, :time, :act, 
+            :StepSwitch, :StepRPM, :StepOption, :StepTime, :StepAngle, :StepTorque, 
+            :StepDirection, :StepDelay, :StepMoniByWin, :StepLimiHi, :StepLimiLo, 
+            :StepHiAngle, :StepLoAngle, :StepHiTorque, :StepLoTorque, :StepAccelerateOffset, 
+            :StepAccelerateOffsetSign, :StepEnableTorqueOffset, :StepTorqueOffset, 
+            :StepTorqueOffsetSign, :StepEnableDownShift, :StepTorqueDownShift, 
+            :StepRPMDownShift, :StepEnableThreshold, :StepTorqueTS, :StepReTry, 
+            :StepUnScrew, :StepReTryTorq, :StepReTryAngl, :StepAngleRecord, 
+            :StepAutoDetectAngle, :InterruptAlarm, :OverAngleStop, :KValue, :step_unit
+        )";
+
 
         $statement = $this->db_iDas->prepare($sql);
-        $insertedrecords = 0; 
-        foreach ($new_temp_step as $seq) {            
-            if ($statement->execute($seq)) {
-                $insertedrecords++;
+        $insertedrecords = 0;
+
+        foreach ($new_temp_step as $step) {
+            try {
+
+                if ($statement->execute([
+                    ':JOBID' => $step['JOBID'],
+                    ':SEQID' => $step['SEQID'],
+                    ':StepSelect' => $step['StepSelect'],
+                    ':STEPname' => $step['STEPname'],
+                    ':type' => $step['type'],
+                    ':time' => $step['time'],
+                    ':act' => $step['act'],
+                    ':StepSwitch' => $step['StepSwitch'],
+                    ':StepRPM' => $step['StepRPM'],
+                    ':StepOption' => $step['StepOption'],
+                    ':StepTime' => $step['StepTime'],
+                    ':StepAngle' => $step['StepAngle'],
+                    ':StepTorque' => $step['StepTorque'],
+                    ':StepDirection' => $step['StepDirection'],
+                    ':StepDelay' => $step['StepDelay'],
+                    ':StepMoniByWin' => $step['StepMoniByWin'],
+                    ':StepLimiHi' => $step['StepLimiHi'],
+                    ':StepLimiLo' => $step['StepLimiLo'],
+                    ':StepHiAngle' => $step['StepHiAngle'],
+                    ':StepLoAngle' => $step['StepLoAngle'],
+                    ':StepHiTorque' => $step['StepHiTorque'],
+                    ':StepLoTorque' => $step['StepLoTorque'],
+                    ':StepAccelerateOffset' => $step['StepAccelerateOffset'],
+                    ':StepAccelerateOffsetSign' => $step['StepAccelerateOffsetSign'],
+                    ':StepEnableTorqueOffset' => $step['StepEnableTorqueOffset'],
+                    ':StepTorqueOffset' => $step['StepTorqueOffset'],
+                    ':StepTorqueOffsetSign' => $step['StepTorqueOffsetSign'],
+                    ':StepEnableDownShift' => $step['StepEnableDownShift'],
+                    ':StepTorqueDownShift' => $step['StepTorqueDownShift'],
+                    ':StepRPMDownShift' => $step['StepRPMDownShift'],
+                    ':StepEnableThreshold' => $step['StepEnableThreshold'],
+                    ':StepTorqueTS' => $step['StepTorqueTS'],
+                    ':StepReTry' => $step['StepReTry'],
+                    ':StepUnScrew' => $step['StepUnScrew'],
+                    ':StepReTryTorq' => $step['StepReTryTorq'],
+                    ':StepReTryAngl' => $step['StepReTryAngl'],
+                    ':StepAngleRecord' => $step['StepAngleRecord'],
+                    ':StepAutoDetectAngle' => $step['StepAutoDetectAngle'],
+                    ':InterruptAlarm' => $step['InterruptAlarm'],
+                    ':OverAngleStop' => $step['OverAngleStop'],
+                    ':KValue' => $step['KValue'],
+                    ':step_unit' => isset($step['step_unit']) ? $step['step_unit'] : 0,
+                ])) {
+
+                    $insertedrecords++;
+                } else {
+
+                    error_log("Failed to execute query for JOBID: " . $step['JOBID'] . " SEQID: " . $step['SEQID']);
+                }
+            } catch (Exception $e) {
+                error_log("Error inserting record: " . $e->getMessage());
             }
         }
-        return $insertedrecords;
 
+        return $insertedrecords;
     }
 
     #刪除sequences
@@ -274,7 +340,8 @@ class Sequence{
                     output_durat = :output_durat, 
                     addtion = :addtion, 
                     unscrew_count_switch = :unscrew_count_switch, 
-                    unscrew_torque_threshold = :unscrew_torque_threshold
+                    unscrew_torque_threshold = :unscrew_torque_threshold,
+                    seq_unit =:seq_unit
                 WHERE  JOBID = :JOBID  AND SEQID = :SEQID";
 
         $statement = $this->db_iDas->prepare($sql);
@@ -312,6 +379,7 @@ class Sequence{
         $statement->bindValue(':addtion', $seq_data['addtion']);
         $statement->bindValue(':unscrew_count_switch', $seq_data['unscrew_count_switch']);
         $statement->bindValue(':unscrew_torque_threshold', $seq_data['unscrew_torque_threshold']);
+        $statement->bindValue(':seq_unit', $seq_data['seq_unit']);
     
         $results = $statement->execute();
 

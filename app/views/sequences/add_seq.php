@@ -248,20 +248,20 @@
                             <div class="col-8">
                                 <!-- <input id="force" value="123456"> -->
                                 <div class="form-check form-check-inline col-md-3">
-                                  <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_on" value="0"
-                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 0) ? 'checked' : ''; ?>  >
+                                  <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_on" value="0"
+                                  <?php  echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
-                                  <input  id="unscrew_force" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
+                                  <input  id="unscrew_force" class="form-control" value="<?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
                                   <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
-                                  <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_unlimit" value="1" 
-                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 1) ? 'checked' : ''; ?>  >
+                                  <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_unlimit" value="1" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force']  > 101) ? 'checked' : ''; ?>  >
                                   <label class="form-check-label" for="force_unlimit"><?php echo 'Unlimited'; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
-                                  <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_off" value="2" 
-                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 2) ? 'checked' : ''; ?>  >
+                                  <input class="form-check-input" type="radio"  name="unscrew_forcemode" id="unscrew_forcemode_off" value="2" 
+                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] == 0) ? 'checked' : ''; ?>  >
                                   <label class="form-check-label" for="force_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                             </div>
@@ -293,9 +293,9 @@
             document.getElementById("accu_angle_on").checked = true;
             document.getElementById("unscrew_mode_auto").checked = true;
             document.getElementById("unscrew_rpm").value = 150;
-            //document.getElementById("unscrew_torque_threshold").value =2.6;
             document.getElementById("unscrew_dir_cw").checked = true;
-            document.getElementById("unscrew_mode_on").checked = true;
+            document.getElementById("unscrew_forcemode_on").checked = true;
+
 
             for (let i = 1; i <= 5; i++) {
                 document.getElementById("Thread_Calcu_" + i).checked = true;
@@ -354,6 +354,8 @@
         let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
         data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
 
+        let unscrew_forcemode = document.querySelector('input[name="unscrew_forcemode"]:checked');
+        data.append("unscrew_forcemode_val", unscrew_forcemode ? unscrew_forcemode.value : null);
         data.append("unscrew_force", document.getElementById("unscrew_force").value);
 
         data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
@@ -375,8 +377,6 @@
         let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
         data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
 
-
-        
         let check = input_check();
         if(check){
             $.ajax({
@@ -409,9 +409,6 @@
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
 
 
-
-
-        
         let data = new FormData();
         data.append("job_id", job_id);
         data.append("SEQID", seq_id);
@@ -444,9 +441,13 @@
         let angle_calculation_data = getCheckboxValue(); 
         data.append("angle_calculation_data", angle_calculation_data);
 
+   
         let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
         data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
+        
 
+        let unscrew_forcemode = document.querySelector('input[name="unscrew_forcemode"]:checked');
+        data.append("unscrew_forcemode_val", unscrew_forcemode ? unscrew_forcemode.value : null);
         data.append("unscrew_force", document.getElementById("unscrew_force").value);
 
         data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
@@ -504,11 +505,11 @@
                 isChecked = true;  
            
                 switch (index) {
-                    case 0: total += 16; break; // 第1个
-                    case 1: total += 8; break;  // 第2个
-                    case 2: total += 4; break;  // 第3个
-                    case 3: total += 2; break;  // 第4个
-                    case 4: total += 1; break;  // 第5个
+                    case 0: total += 16; break; // 第1個
+                    case 1: total += 8; break;  // 第2個
+                    case 2: total += 4; break;  // 第3個
+                    case 3: total += 2; break;  // 第4個
+                    case 4: total += 1; break;  // 第5個
                 }
             }
         });
@@ -552,14 +553,17 @@
         let Tool_Min_Torque = document.getElementById('tool_min_torque').value;
         let Tool_Max_RPM = document.getElementById('tool_max_rpm').value;
         let Tool_Min_RPM = document.getElementById('tool_min_rpm').value;
-        //unscrew_torque_threshold
+
+        //判斷 name="unscrew_forcemode" 選取的value
+        var selectedValue = document.querySelector('input[name="unscrew_forcemode"]:checked')?.value;
+      
         let conditions = [
             { id: 'SEQname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'seq_repeat', pattern: /^\d{0,4}$/, min: 1, max: 99 },
             { id: 'timeout', pattern: /^\d{0,5}?$/, min: 0, max: 60 },
             { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
             { id: 'unscrew_rpm', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}$/, min: 0, max: Tool_Max_Torque },
+            { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}(\.\d{1})?$/, min: 0, max: Tool_Max_Torque },
             { id: 'unscrew_force', pattern: /^\d{1,3}$/, min: 1, max: 100 },
         ];
 
@@ -575,11 +579,16 @@
                 }
             }
 
+
+            if (selectedValue != 0 && input.id === 'unscrew_force') {
+                toggleDisableAndError(input.id, true);  
+                return; 
+            }
+
             if (value === "") {
                 element.classList.add("is-invalid");
                 isFormValid = false;
             } else if (!input.pattern.test(value)) {
-                // element.value = "";
                 element.classList.add("is-invalid");
                 isFormValid = false;
             } else if (input.min !== null && parseFloat(value) < input.min) {
@@ -598,6 +607,20 @@
 
         return isFormValid;
 
+    }
+
+
+    function toggleDisableAndError(elementId, disable) {
+        const element = document.getElementById(elementId);
+        if (!element) {
+            console.warn(`Element with ID '${elementId}' not found.`);
+            return;
+        }
+
+        element.disabled = disable;
+        if (disable) {
+            element.classList.remove('is-invalid'); 
+        }
     }
 
 

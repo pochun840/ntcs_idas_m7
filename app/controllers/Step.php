@@ -112,6 +112,8 @@ class Step extends Controller
             $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
             $InterruptAlarm = isset($_POST['InterruptAlarm']) ? intval($_POST['InterruptAlarm']) : 0; 
             $OverAngleStop =  isset($_POST['OverAngleStop']) ? intval($_POST['OverAngleStop']) : 0; 
+            $KValue =  isset($_POST['KValue']) ? intval($_POST['KValue']) : 0; 
+            $step_unit =  isset($_POST['step_unit']) ? intval($_POST['step_unit']) : 0; 
             //初始化 
             $StepTorque = '';
             $StepAngle  = '';
@@ -177,7 +179,10 @@ class Step extends Controller
                 'StepAngleRecord' => 0, //待確認
                 'StepAutoDetectAngle' => 0,//待確認
                 'InterruptAlarm' => $InterruptAlarm,
-                'OverAngleStop' => $OverAngleStop
+                'OverAngleStop' => $OverAngleStop,
+                'KValue' => $KValue,
+                'step_unit' =>$step_unit
+
 
             );           
             
@@ -235,6 +240,9 @@ class Step extends Controller
             $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
             $InterruptAlarm = isset($_POST['InterruptAlarm']) ? intval($_POST['InterruptAlarm']) : 0; 
             $OverAngleStop =  isset($_POST['OverAngleStop']) ? intval($_POST['OverAngleStop']) : 0; 
+            $KValue =  isset($_POST['KValue']) ? intval($_POST['KValue']) : 0; 
+            $step_unit =  isset($_POST['step_unit']) ? intval($_POST['step_unit']) : 0; 
+
             //初始化 
             $StepTorque = '';
             $StepAngle  = '';
@@ -296,7 +304,9 @@ class Step extends Controller
                 'StepAngleRecord' => 0, //待確認
                 'StepAutoDetectAngle' => 0,//待確認
                 'InterruptAlarm' => $InterruptAlarm,
-                'OverAngleStop' => $OverAngleStop
+                'OverAngleStop' => $OverAngleStop,
+                'KValue' => $KValue,
+                'step_unit' =>$step_unit
 
             );           
 
@@ -416,6 +426,8 @@ class Step extends Controller
                     'StepAutoDetectAngle'      => $old_res[0]['StepAutoDetectAngle'],
                     'InterruptAlarm'           => $old_res[0]['InterruptAlarm'],
                     'OverAngleStop'            => $old_res[0]['OverAngleStop'],
+                    'KValue'                   => $old_res[0]['KValue'],
+                    'step_unit'                => $old_res[0]['step_unit'],
 
                 );
 

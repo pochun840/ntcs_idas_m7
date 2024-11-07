@@ -675,7 +675,7 @@
                 offset_min = offset_max * -1;
             }
 
-            hi_angle_max = 30600
+            hi_angle_max = 30600;
             hi_angle_min = document.getElementById('StepAngle').value;
             lo_angle_max =  document.getElementById('StepAngle').value;
             lo_angle_min = 0;
@@ -743,7 +743,7 @@
             { id: 'StepLoAngle', pattern: /^\d{1,6}$/, min: lo_angle_min, max: lo_angle_max },
             { id: 'StepLimiHi',pattern: /^\d{0,3}$/, min: 0, max:100 },
             { id: 'StepLimiLo',pattern: /^\d{0,3}$/, min: 0, max:100 },
-            { id: 'StepTorque', pattern: /^\d{0,5}?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
+            { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
             { id: 'StepAngle', pattern: /^\d{0,5}?$/, min: 1, max: 30600 },
             { id: 'StepTime', pattern: /^\d{0,5}?$/, min: 0, max: 20 },
    

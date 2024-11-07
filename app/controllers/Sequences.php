@@ -63,6 +63,16 @@ class Sequences extends Controller
         if(isset($_POST['job_id'])){
         
             // 初始化數據陣列
+
+            
+            if($_POST['unscrew_forcemode_val'] == 0){
+                $_POST['unscrew_force'] = $_POST['unscrew_force'];
+            }else if($_POST['unscrew_forcemode_val'] == 1){
+                $_POST['unscrew_force'] = 101;
+            }else{
+                $_POST['unscrew_force'] = 0;
+            }
+
             $seq_data = array(
                 'job_id' => $_POST['job_id'] ?? null,
                 'SEQID'  => $_POST['SEQID'] ?? null,
@@ -97,6 +107,7 @@ class Sequences extends Controller
                 'addtion' => $_POST['addtion'] ?? null,
                 'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
                 'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
+                'seq_unit' => $_POST['seq_unit'] ?? 0 
 
             );
 
@@ -185,6 +196,14 @@ class Sequences extends Controller
             include $file;
         }
 
+        if($_POST['unscrew_forcemode_val'] == 0){
+            $_POST['unscrew_force'] = $_POST['unscrew_force'];
+        }else if($_POST['unscrew_forcemode_val'] == 1){
+            $_POST['unscrew_force'] = 101;
+        }else{
+            $_POST['unscrew_force'] = 0;
+        }
+
 
         if(isset($_POST['job_id'])){
                           
@@ -223,6 +242,7 @@ class Sequences extends Controller
                 'addtion' => $_POST['addtion'] ?? null,
                 'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
                 'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
+                'seq_unit' => $_POST['seq_unit'] ?? 0
 
             );
 
@@ -341,7 +361,7 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['addtion'] ='';
                 $new_temp_seq[$kk_seq]['unscrew_count_switch'] = $val['unscrew_count_switch'];
                 $new_temp_seq[$kk_seq]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
-                
+                $new_temp_seq[$kk_seq]['seq_unit'] = $val['seq_unit'];
 
             }  
 
@@ -374,7 +394,6 @@ class Sequences extends Controller
                 $new_temp_step[$k_step]['StepLoAngle'] = $v_step['StepLoAngle'];
                 $new_temp_step[$k_step]['StepHiTorque'] = $v_step['StepHiTorque'];
                 $new_temp_step[$k_step]['StepLoTorque'] = $v_step['StepLoTorque'];
-                $new_temp_step[$k_step]['StepLoTorque'] = $v_step['StepLoTorque'];
                 $new_temp_step[$k_step]['StepAccelerateOffset'] = $v_step['StepAccelerateOffset'];
                 $new_temp_step[$k_step]['StepAccelerateOffsetSign'] = $v_step['StepAccelerateOffsetSign'];
                 $new_temp_step[$k_step]['StepEnableTorqueOffset'] = $v_step['StepEnableTorqueOffset'];
@@ -389,10 +408,12 @@ class Sequences extends Controller
                 $new_temp_step[$k_step]['StepUnScrew'] = $v_step['StepUnScrew'];
                 $new_temp_step[$k_step]['StepReTryTorq'] = $v_step['StepReTryTorq'];
                 $new_temp_step[$k_step]['StepReTryAngl'] = $v_step['StepReTryAngl'];
-                $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngled'];
+                $new_temp_step[$k_step]['StepAngleRecord'] = $v_step['StepAngleRecord'];
+                $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngle'];
                 $new_temp_step[$k_step]['InterruptAlarm'] = $v_step['InterruptAlarm'];
                 $new_temp_step[$k_step]['OverAngleStop'] = $v_step['OverAngleStop'];
-                
+                $new_temp_step[$k_step]['KValue'] = $v_step['KValue'];
+                $new_temp_step[$k_step]['step_unit'] = $v_step['step_unit'];
 
             }
 
