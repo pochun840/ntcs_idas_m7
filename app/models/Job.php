@@ -281,7 +281,7 @@ class Job{
     
 
     public function copy_step_by_job_id($new_temp_step) {
-        // 准备 SQL 语句，插入数据到 STEP_lst 表
+        
         $sql = "INSERT INTO STEP_lst (
                     JOBID, SEQID, StepSelect, STEPname, type, time, act, 
                     StepSwitch, StepRPM, StepOption, StepTime, StepAngle, StepTorque, 
@@ -304,14 +304,13 @@ class Job{
                     :StepAutoDetectAngle, :InterruptAlarm, :OverAngleStop, :KValue, :step_unit
                 )";
     
-        // 预处理 SQL 语句
+        
         $statement = $this->db_iDas->prepare($sql);
         $insertedrecords = 0;
     
-        // 开始遍历新数据数组并插入
         foreach ($new_temp_step as $step) {
             try {
-                // 执行插入语句并绑定参数
+
                 if ($statement->execute([
                     ':JOBID' => $step['JOBID'],
                     ':SEQID' => $step['SEQID'],
@@ -356,19 +355,17 @@ class Job{
                     ':KValue' => $step['KValue'],
                     ':step_unit' => isset($step['step_unit']) ? $step['step_unit'] : 0,
                 ])) {
-                    // 如果执行成功，增加计数
+
                     $insertedrecords++;
                 } else {
-                    // 如果插入失败，输出调试信息
+
                     error_log("Failed to execute query for JOBID: " . $step['JOBID'] . " SEQID: " . $step['SEQID']);
                 }
             } catch (Exception $e) {
-                // 捕获任何异常并打印错误信息
                 error_log("Error inserting record: " . $e->getMessage());
             }
         }
     
-        // 返回成功插入的记录数
         return $insertedrecords;
     }
 

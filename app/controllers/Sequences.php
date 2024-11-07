@@ -408,7 +408,8 @@ class Sequences extends Controller
                 $new_temp_step[$k_step]['StepUnScrew'] = $v_step['StepUnScrew'];
                 $new_temp_step[$k_step]['StepReTryTorq'] = $v_step['StepReTryTorq'];
                 $new_temp_step[$k_step]['StepReTryAngl'] = $v_step['StepReTryAngl'];
-                $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngled'];
+                $new_temp_step[$k_step]['StepAngleRecord'] = $v_step['StepAngleRecord'];
+                $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngle'];
                 $new_temp_step[$k_step]['InterruptAlarm'] = $v_step['InterruptAlarm'];
                 $new_temp_step[$k_step]['OverAngleStop'] = $v_step['OverAngleStop'];
                 $new_temp_step[$k_step]['KValue'] = $v_step['KValue'];
