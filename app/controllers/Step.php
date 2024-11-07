@@ -416,6 +416,8 @@ class Step extends Controller
                     'StepAutoDetectAngle'      => $old_res[0]['StepAutoDetectAngle'],
                     'InterruptAlarm'           => $old_res[0]['InterruptAlarm'],
                     'OverAngleStop'            => $old_res[0]['OverAngleStop'],
+                    'KValue'                   => $old_res[0]['KValue'],
+                    'step_unit'                => $old_res[0]['step_unit'],
 
                 );
 

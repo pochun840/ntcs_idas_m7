@@ -394,7 +394,6 @@ class Sequences extends Controller
                 $new_temp_step[$k_step]['StepLoAngle'] = $v_step['StepLoAngle'];
                 $new_temp_step[$k_step]['StepHiTorque'] = $v_step['StepHiTorque'];
                 $new_temp_step[$k_step]['StepLoTorque'] = $v_step['StepLoTorque'];
-                $new_temp_step[$k_step]['StepLoTorque'] = $v_step['StepLoTorque'];
                 $new_temp_step[$k_step]['StepAccelerateOffset'] = $v_step['StepAccelerateOffset'];
                 $new_temp_step[$k_step]['StepAccelerateOffsetSign'] = $v_step['StepAccelerateOffsetSign'];
                 $new_temp_step[$k_step]['StepEnableTorqueOffset'] = $v_step['StepEnableTorqueOffset'];
@@ -412,7 +411,8 @@ class Sequences extends Controller
                 $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngled'];
                 $new_temp_step[$k_step]['InterruptAlarm'] = $v_step['InterruptAlarm'];
                 $new_temp_step[$k_step]['OverAngleStop'] = $v_step['OverAngleStop'];
-                
+                $new_temp_step[$k_step]['KValue'] = $v_step['KValue'];
+                $new_temp_step[$k_step]['step_unit'] = $v_step['step_unit'];
 
             }
 

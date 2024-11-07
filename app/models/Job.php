@@ -204,8 +204,8 @@ class Job{
 
     public function copy_sequence_by_job_id($new_temp_seq) {
       
-        $sql = "INSERT INTO `SEQ_lst` (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, image, message, delay, input, input_signal, output, output_signal, output_durat, addtion, unscrew_count_switch, unscrew_torque_threshold)"; 
-        $sql.= "VALUES (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, :addtion, :unscrew_count_switch, :unscrew_torque_threshold);";
+        $sql = "INSERT INTO `SEQ_lst` (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, image, message, delay, input, input_signal, output, output_signal, output_durat, addtion, unscrew_count_switch, unscrew_torque_threshold, seq_unit)"; 
+        $sql.= "VALUES (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, :addtion, :unscrew_count_switch, :unscrew_torque_threshold,:seq_unit);";
         
         
         $statement = $this->db_iDas->prepare($sql);
@@ -219,9 +219,29 @@ class Job{
     }
     
 
-    /*public function copy_step_by_job_id($new_temp_step){
-        $sql = "INSERT INTO `step` (job_id, sequence_id, step_id, target_option, target_torque, target_angle, target_delaytime, hi_torque, lo_torque, hi_angle, lo_angle, rpm, direction, downshift, threshold_torque, 	downshift_torque,downshift_speed )";
-        $sql .= " VALUES (:job_id,:sequence_id,:step_id,:target_option,:target_torque,:target_angle,:target_delaytime,:hi_torque,:lo_torque,:hi_angle,:lo_angle,:rpm,:direction,:downshift,:threshold_torque,:downshift_torque,:downshift_speed )";
+    public function copy_step_by_job_id($new_temp_step){
+       
+        $sql = "INSERT INTO STEP_lst (
+            JOBID, SEQID, StepSelect, STEPname, type, time, act, 
+            StepSwitch, StepRPM, StepOption, StepTime, StepAngle, StepTorque, 
+            StepDirection, StepDelay, StepMoniByWin, StepLimiHi, StepLimiLo, 
+            StepHiAngle, StepLoAngle, StepHiTorque, StepLoTorque, StepAccelerateOffset, 
+            StepAccelerateOffsetSign, StepEnableTorqueOffset, StepTorqueOffset, 
+            StepTorqueOffsetSign, StepEnableDownShift, StepTorqueDownShift, 
+            StepRPMDownShift, StepEnableThreshold, StepTorqueTS, StepReTry, 
+            StepUnScrew, StepReTryTorq, StepReTryAngl, StepAngleRecord, 
+            StepAutoDetectAngle, InterruptAlarm, OverAngleStop, KValue, step_unit
+        ) VALUES (
+            :job_id, :sequence_id, :step_select, :step_name, :type, :time, :act, 
+            :step_switch, :step_rpm, :step_option, :step_time, :step_angle, :step_torque, 
+            :step_direction, :step_delay, :step_moni_by_win, :step_limi_hi, :step_limi_lo, 
+            :step_hi_angle, :step_lo_angle, :step_hi_torque, :step_lo_torque, :step_accelerate_offset, 
+            :step_accelerate_offset_sign, :step_enable_torque_offset, :step_torque_offset, 
+            :step_torque_offset_sign, :step_enable_down_shift, :step_torque_down_shift, 
+            :step_rpm_down_shift, :step_enable_threshold, :step_torque_ts, :step_re_try, 
+            :step_unscrew, :step_re_try_torq, :step_re_try_angl, :step_angle_record, 
+            :step_auto_detect_angle, :interrupt_alarm, :over_angle_stop, :k_value, :step_unit
+        )";
         
         $statement = $this->db_iDas->prepare($sql);
         $insertedrecords = 0; 
@@ -232,7 +252,7 @@ class Job{
         }
         return $insertedrecords;
 
-    }*/
+    }
 
 
     #用 $jobid 尋找有沒有對應的資料

@@ -217,7 +217,7 @@ class Jobs extends Controller
                     $res = $this->jobModel->create_job($jobdata);
                     //用job_id 找出對應的seq && step
                     $select_seq  = $this->jobModel->search_seqinfo($old_jobid); 
-                    //$select_step = $this->jobModel->search_stepnfo($old_jobid); 
+                    $select_step = $this->jobModel->search_stepnfo($old_jobid); 
 
                     if(!empty($select_seq)){
                         $new_temp_seq = array();
@@ -263,32 +263,57 @@ class Jobs extends Controller
                         $insertedrecords = $this->jobModel->copy_sequence_by_job_id($new_temp_seq);                
                     }
 
-                    /*if(!empty($select_step)){
+                    if(!empty($select_step)){
                         $new_temp_step = array();
                         
-                        foreach($select_step as $key_step =>$val_step){
+                        foreach($select_step as $k_step =>$val_step){
 
-                            $new_temp_step[$key_step]['job_id'] = $new_jobid;
-                            $new_temp_step[$key_step]['sequence_id'] = $val_step['sequence_id'];
-                            $new_temp_step[$key_step]['step_id'] = $val_step['step_id'];
-                            $new_temp_step[$key_step]['target_option'] = $val_step['target_option']; 
-                            $new_temp_step[$key_step]['target_torque'] = $val_step['target_torque'];
-                            $new_temp_step[$key_step]['target_angle'] = $val_step['target_angle'];
-                            $new_temp_step[$key_step]['target_delaytime'] = $val_step['target_delaytime'];
-                            $new_temp_step[$key_step]['hi_torque'] = $val_step['hi_torque'];
-                            $new_temp_step[$key_step]['lo_torque'] = $val_step['lo_torque'];
-                            $new_temp_step[$key_step]['hi_angle'] = $val_step['hi_angle'];
-                            $new_temp_step[$key_step]['lo_angle'] = $val_step['lo_angle'];
-                            $new_temp_step[$key_step]['rpm'] = $val_step['rpm'];
-                            $new_temp_step[$key_step]['direction'] = $val_step['direction'];
-                            $new_temp_step[$key_step]['downshift'] = $val_step['downshift'];
-                            $new_temp_step[$key_step]['threshold_torque'] = $val_step['threshold_torque'];
-                            $new_temp_step[$key_step]['downshift_torque'] = $val_step['downshift_torque'];
-                            $new_temp_step[$key_step]['downshift_speed'] = $val_step['downshift_speed'];
+                            $new_temp_step[$k_step]['JOBID'] = $new_jobid;
+                            $new_temp_step[$k_step]['SEQID'] = $val_step['SEQID'];
+                            $new_temp_step[$k_step]['StepSelect'] = $v_step['StepSelect'];
+                            $new_temp_step[$k_step]['STEPname'] = $v_step['STEPname'];
+                            $new_temp_step[$k_step]['type'] = $v_step['type'];
+                            $new_temp_step[$k_step]['time'] = $v_step['time'];
+                            $new_temp_step[$k_step]['act'] = $v_step['act'];
+                            $new_temp_step[$k_step]['StepSwitch'] = $v_step['StepSwitch'];
+                            $new_temp_step[$k_step]['StepRPM'] = $v_step['StepRPM'];
+                            $new_temp_step[$k_step]['StepOption'] = $v_step['StepOption'];
+                            $new_temp_step[$k_step]['StepTime'] = $v_step['StepTime'];
+                            $new_temp_step[$k_step]['StepAngle'] = $v_step['StepAngle'];
+                            $new_temp_step[$k_step]['StepTorque'] = $v_step['StepTorque'];
+                            $new_temp_step[$k_step]['StepDirection'] = $v_step['StepDirection'];
+                            $new_temp_step[$k_step]['StepDelay'] = $v_step['StepDelay'];
+                            $new_temp_step[$k_step]['StepMoniByWin'] = $v_step['StepMoniByWin'];
+                            $new_temp_step[$k_step]['StepLimiHi'] = $v_step['StepLimiHi'];
+                            $new_temp_step[$k_step]['StepLimiLo'] = $v_step['StepLimiLo'];
+                            $new_temp_step[$k_step]['StepHiAngle'] = $v_step['StepHiAngle'];
+                            $new_temp_step[$k_step]['StepLoAngle'] = $v_step['StepLoAngle'];
+                            $new_temp_step[$k_step]['StepLoAngle'] = $v_step['StepLoAngle'];
+                            $new_temp_step[$k_step]['StepHiTorque'] = $v_step['StepHiTorque'];
+                            $new_temp_step[$k_step]['StepLoTorque'] = $v_step['StepLoTorque'];
+                            $new_temp_step[$k_step]['StepAccelerateOffset'] = $v_step['StepAccelerateOffset'];
+                            $new_temp_step[$k_step]['StepAccelerateOffsetSign'] = $v_step['StepAccelerateOffsetSign'];
+                            $new_temp_step[$k_step]['StepEnableTorqueOffset'] = $v_step['StepEnableTorqueOffset'];
+                            $new_temp_step[$k_step]['StepTorqueOffset'] = $v_step['StepTorqueOffset'];
+                            $new_temp_step[$k_step]['StepTorqueOffsetSign'] = $v_step['StepTorqueOffsetSign'];
+                            $new_temp_step[$k_step]['StepEnableDownShift']  = $v_step['StepEnableDownShift'];
+                            $new_temp_step[$k_step]['StepTorqueDownShift'] = $v_step['StepTorqueDownShift'];
+                            $new_temp_step[$k_step]['StepRPMDownShift'] = $v_step['StepRPMDownShift'];
+                            $new_temp_step[$k_step]['StepEnableThreshold'] = $v_step['StepEnableThreshold'];
+                            $new_temp_step[$k_step]['StepTorqueTS'] = $v_step['StepTorqueTS'];
+                            $new_temp_step[$k_step]['StepReTry'] = $v_step['StepReTry'];
+                            $new_temp_step[$k_step]['StepUnScrew'] = $v_step['StepUnScrew'];
+                            $new_temp_step[$k_step]['StepReTryTorq'] = $v_step['StepReTryTorq'];
+                            $new_temp_step[$k_step]['StepReTryAngl'] = $v_step['StepReTryAngl'];
+                            $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngled'];
+                            $new_temp_step[$k_step]['InterruptAlarm'] = $v_step['InterruptAlarm'];
+                            $new_temp_step[$k_step]['OverAngleStop'] = $v_step['OverAngleStop'];
+                            $new_temp_step[$k_step]['KValue'] = $v_step['KValue'];
+                            $new_temp_step[$k_step]['step_unit'] = $v_step['step_unit'];
                         }
                       
                         $res = $this->jobModel->copy_step_by_job_id($new_temp_step);     
-                    }*/
+                    }
                     
                     if($res){
                         $res_msg = $text['Copy']."  ".$text['job_id'].':'. $_POST['new_jobid']."  ".$text['success'];
