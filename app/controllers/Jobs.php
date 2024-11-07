@@ -218,8 +218,11 @@ class Jobs extends Controller
                     //用job_id 找出對應的seq && step
                     $select_seq  = $this->jobModel->search_seqinfo($old_jobid); 
                     $select_step = $this->jobModel->search_stepnfo($old_jobid); 
-
+                    
                     if(!empty($select_seq)){
+
+                      
+
                         $new_temp_seq = array();
                         foreach($select_seq as $key =>$val){
                  
@@ -265,11 +268,14 @@ class Jobs extends Controller
 
                     if(!empty($select_step)){
                         $new_temp_step = array();
+                        $temp_step = array();
+                        $temp_step = $select_step;
+                       
                         
-                        foreach($select_step as $k_step =>$val_step){
+                        foreach($temp_step as $k_step =>$v_step){
 
                             $new_temp_step[$k_step]['JOBID'] = $new_jobid;
-                            $new_temp_step[$k_step]['SEQID'] = $val_step['SEQID'];
+                            $new_temp_step[$k_step]['SEQID'] = $v_step['SEQID'];
                             $new_temp_step[$k_step]['StepSelect'] = $v_step['StepSelect'];
                             $new_temp_step[$k_step]['STEPname'] = $v_step['STEPname'];
                             $new_temp_step[$k_step]['type'] = $v_step['type'];
@@ -305,7 +311,8 @@ class Jobs extends Controller
                             $new_temp_step[$k_step]['StepUnScrew'] = $v_step['StepUnScrew'];
                             $new_temp_step[$k_step]['StepReTryTorq'] = $v_step['StepReTryTorq'];
                             $new_temp_step[$k_step]['StepReTryAngl'] = $v_step['StepReTryAngl'];
-                            $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngled'];
+                            $new_temp_step[$k_step]['StepAngleRecord'] = $v_step['StepAngleRecord'];
+                            $new_temp_step[$k_step]['StepAutoDetectAngle'] = $v_step['StepAutoDetectAngle'];
                             $new_temp_step[$k_step]['InterruptAlarm'] = $v_step['InterruptAlarm'];
                             $new_temp_step[$k_step]['OverAngleStop'] = $v_step['OverAngleStop'];
                             $new_temp_step[$k_step]['KValue'] = $v_step['KValue'];
