@@ -95,8 +95,8 @@ class Job{
     #新增JOB
     public function create_job($jobdata) {
         
-        $sql = "INSERT INTO `JOB_lst` (JOBID, JOBname, type, time, act, ok_job, ok_job_stop, output_unified, input_unified)
-                VALUES (:job_id, :job_name, :type, :time ,:act, :ok_job, :ok_job_stop, :output_unified, :input_unified)";
+        $sql = "INSERT INTO `JOB_lst` (JOBID, JOBname, type, time, act, ok_job, ok_job_stop, output_unified, input_unified,job_unit)
+                VALUES (:job_id, :job_name, :type, :time ,:act, :ok_job, :ok_job_stop, :output_unified, :input_unified,:job_unit)";
     
         $jobdata['job_id'] = intval($jobdata['job_id']);
         $statement = $this->db_iDas->prepare($sql);
@@ -109,6 +109,7 @@ class Job{
         $statement->bindValue(':ok_job_stop', isset($jobdata['ok_job_stop']) ? intval($jobdata['ok_job_stop']) : 0); 
         $statement->bindValue(':output_unified', isset($jobdata['output_unified']) ? intval($jobdata['output_unified']) : 0); 
         $statement->bindValue(':input_unified', isset($jobdata['input_unified']) ? intval($jobdata['input_unified']) : 0); 
+        $statement->bindValue(':job_unit', isset($jobdata['job_unit']) ? intval($jobdata['job_unit']) : 0); 
         $statement->bindValue(':time', date('Y-m-d H:i:s')); 
         $results = $statement->execute();    
     

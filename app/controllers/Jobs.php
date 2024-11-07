@@ -68,7 +68,8 @@ class Jobs extends Controller
                 'ok_job' => $_POST['job_ok_val'],
                 'ok_job_stop' => $_POST['stop_job_ok_val'],
                 'output_unified' => 0,
-                'input_unified'  => 0
+                'input_unified'  => 0,
+                'job_unit' => 0
       
             );
 
