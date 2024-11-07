@@ -107,8 +107,8 @@ class Steptcc{
             return false; 
         }
         
-        $sql = "INSERT INTO `STEP_lst` (JOBID, SEQID, StepSelect, STEPname, type, time, act, StepSwitch, StepRPM, StepOption, StepTime, StepAngle, StepTorque, StepDirection, StepDelay, StepMoniByWin, StepLimiHi, StepLimiLo, StepHiAngle, StepLoAngle, StepHiTorque, StepLoTorque, StepAccelerateOffset, StepAccelerateOffsetSign, StepEnableTorqueOffset, StepTorqueOffset, StepTorqueOffsetSign, StepEnableDownShift, StepTorqueDownShift, StepRPMDownShift, StepEnableThreshold, StepTorqueTS, StepReTry, StepUnScrew, StepReTryTorq, StepReTryAngl, StepAngleRecord, StepAutoDetectAngle, InterruptAlarm, OverAngleStop) ";
-        $sql .= "VALUES (:jobid, :seqid, :step_select, :stepname, :type, :time, :act, :step_switch, :step_rpm, :step_option, :step_time, :step_angle, :step_torque, :step_direction, :step_delay, :step_moni_by_win, :step_limi_hi, :step_limi_lo, :step_hi_angle, :step_lo_angle, :step_hi_torque, :step_lo_torque, :step_accelerate_offset, :step_accelerate_offset_sign, :step_enable_torque_offset, :step_torque_offset, :step_torque_offset_sign, :step_enable_down_shift, :step_torque_down_shift, :step_rpm_down_shift, :step_enable_threshold, :step_torque_ts, :step_retry, :step_unscrew, :step_retry_torq, :step_retry_angl, :step_angle_record, :step_auto_detect_angle, :interrupt_alarm, :over_angle_stop);";
+        $sql = "INSERT INTO `STEP_lst` (JOBID, SEQID, StepSelect, STEPname, type, time, act, StepSwitch, StepRPM, StepOption, StepTime, StepAngle, StepTorque, StepDirection, StepDelay, StepMoniByWin, StepLimiHi, StepLimiLo, StepHiAngle, StepLoAngle, StepHiTorque, StepLoTorque, StepAccelerateOffset, StepAccelerateOffsetSign, StepEnableTorqueOffset, StepTorqueOffset, StepTorqueOffsetSign, StepEnableDownShift, StepTorqueDownShift, StepRPMDownShift, StepEnableThreshold, StepTorqueTS, StepReTry, StepUnScrew, StepReTryTorq, StepReTryAngl, StepAngleRecord, StepAutoDetectAngle, InterruptAlarm, OverAngleStop,KValue,step_unit ) ";
+        $sql .= "VALUES (:jobid, :seqid, :step_select, :stepname, :type, :time, :act, :step_switch, :step_rpm, :step_option, :step_time, :step_angle, :step_torque, :step_direction, :step_delay, :step_moni_by_win, :step_limi_hi, :step_limi_lo, :step_hi_angle, :step_lo_angle, :step_hi_torque, :step_lo_torque, :step_accelerate_offset, :step_accelerate_offset_sign, :step_enable_torque_offset, :step_torque_offset, :step_torque_offset_sign, :step_enable_down_shift, :step_torque_down_shift, :step_rpm_down_shift, :step_enable_threshold, :step_torque_ts, :step_retry, :step_unscrew, :step_retry_torq, :step_retry_angl, :step_angle_record, :step_auto_detect_angle, :interrupt_alarm, :over_angle_stop,:KValue,:step_unit);";
     
         if ($this->db_iDas === null) {
             echo "数据库连接无效。";
@@ -164,8 +164,9 @@ class Steptcc{
         $statement->bindValue(':step_auto_detect_angle', $step_data['StepAutoDetectAngle']);
         $statement->bindValue(':interrupt_alarm', $step_data['InterruptAlarm']);
         $statement->bindValue(':over_angle_stop', $step_data['OverAngleStop']);
-    
-        // 执行查询并检查结果
+        $statement->bindValue(':KValue', $step_data['KValue']);
+        $statement->bindValue(':step_unit', $step_data['step_unit']);
+      
         $results = $statement->execute();
         if (!$results) {
             echo "执行错误: " . implode(", ", $statement->errorInfo());
@@ -220,7 +221,9 @@ class Steptcc{
                     StepAngleRecord = :step_angle_record,
                     StepAutoDetectAngle = :step_auto_detect_angle,
                     InterruptAlarm = :interrupt_alarm,
-                    OverAngleStop = :over_angle_stop
+                    OverAngleStop = :over_angle_stop,
+                    KValue = :KValue,
+                    step_unit = :step_unit
                 WHERE JOBID = :jobid AND SEQID = :seqid  AND StepSelect = :step_select;";
 
 
@@ -277,6 +280,10 @@ class Steptcc{
         $statement->bindValue(':step_auto_detect_angle', $step_data['StepAutoDetectAngle']);
         $statement->bindValue(':interrupt_alarm', $step_data['InterruptAlarm']);
         $statement->bindValue(':over_angle_stop', $step_data['OverAngleStop']);
+        $statement->bindValue(':KValue', $step_data['KValue']);
+        $statement->bindValue(':step_unit', $step_data['step_unit']);
+
+
         $results = $statement->execute();
 
 
