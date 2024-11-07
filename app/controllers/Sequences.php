@@ -63,6 +63,16 @@ class Sequences extends Controller
         if(isset($_POST['job_id'])){
         
             // 初始化數據陣列
+
+            
+            if($_POST['unscrew_forcemode_val'] == 0){
+                $_POST['unscrew_force'] = $_POST['unscrew_force'];
+            }else if($_POST['unscrew_forcemode_val'] == 1){
+                $_POST['unscrew_force'] = 101;
+            }else{
+                $_POST['unscrew_force'] = 0;
+            }
+
             $seq_data = array(
                 'job_id' => $_POST['job_id'] ?? null,
                 'SEQID'  => $_POST['SEQID'] ?? null,
@@ -184,6 +194,14 @@ class Sequences extends Controller
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
             include $file;
+        }
+
+        if($_POST['unscrew_forcemode_val'] == 0){
+            $_POST['unscrew_force'] = $_POST['unscrew_force'];
+        }else if($_POST['unscrew_forcemode_val'] == 1){
+            $_POST['unscrew_force'] = 101;
+        }else{
+            $_POST['unscrew_force'] = 0;
         }
 
 

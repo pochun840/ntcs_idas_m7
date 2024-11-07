@@ -249,9 +249,9 @@
                                 <!-- <input id="force" value="123456"> -->
                                 <div class="form-check form-check-inline col-md-3">
                                   <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_on" value="0"
-                                  <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] == 0) ? 'checked' : ''; ?>  >
+                                  <?php  echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
-                                  <input  id="unscrew_force" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_forc'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
+                                  <input  id="unscrew_force" class="form-control" value="<?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
                                   <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
@@ -354,6 +354,8 @@
         let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
         data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
 
+        let unscrew_forcemode = document.querySelector('input[name="unscrew_forcemode"]:checked');
+        data.append("unscrew_forcemode_val", unscrew_forcemode ? unscrew_forcemode.value : null);
         data.append("unscrew_force", document.getElementById("unscrew_force").value);
 
         data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
@@ -375,8 +377,6 @@
         let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
         data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
 
-
-        
         let check = input_check();
         if(check){
             $.ajax({
@@ -441,9 +441,13 @@
         let angle_calculation_data = getCheckboxValue(); 
         data.append("angle_calculation_data", angle_calculation_data);
 
+   
         let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
         data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
+        
 
+        let unscrew_forcemode = document.querySelector('input[name="unscrew_forcemode"]:checked');
+        data.append("unscrew_forcemode_val", unscrew_forcemode ? unscrew_forcemode.value : null);
         data.append("unscrew_force", document.getElementById("unscrew_force").value);
 
         data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
@@ -501,11 +505,11 @@
                 isChecked = true;  
            
                 switch (index) {
-                    case 0: total += 16; break; // 第1个
-                    case 1: total += 8; break;  // 第2个
-                    case 2: total += 4; break;  // 第3个
-                    case 3: total += 2; break;  // 第4个
-                    case 4: total += 1; break;  // 第5个
+                    case 0: total += 16; break; // 第1個
+                    case 1: total += 8; break;  // 第2個
+                    case 2: total += 4; break;  // 第3個
+                    case 3: total += 2; break;  // 第4個
+                    case 4: total += 1; break;  // 第5個
                 }
             }
         });
@@ -559,7 +563,7 @@
             { id: 'timeout', pattern: /^\d{0,5}?$/, min: 0, max: 60 },
             { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
             { id: 'unscrew_rpm', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}$/, min: 0, max: Tool_Max_Torque },
+            { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}(\.\d{1})?$/, min: 0, max: Tool_Max_Torque },
             { id: 'unscrew_force', pattern: /^\d{1,3}$/, min: 1, max: 100 },
         ];
 
