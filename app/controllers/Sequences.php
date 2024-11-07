@@ -97,6 +97,7 @@ class Sequences extends Controller
                 'addtion' => $_POST['addtion'] ?? null,
                 'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
                 'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
+                'seq_unit' => $_POST['seq_unit'] ?? 0 
 
             );
 
@@ -223,6 +224,7 @@ class Sequences extends Controller
                 'addtion' => $_POST['addtion'] ?? null,
                 'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
                 'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
+                'seq_unit' => $_POST['seq_unit'] ?? 0
 
             );
 
@@ -341,7 +343,7 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['addtion'] ='';
                 $new_temp_seq[$kk_seq]['unscrew_count_switch'] = $val['unscrew_count_switch'];
                 $new_temp_seq[$kk_seq]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
-                
+                $new_temp_seq[$kk_seq]['seq_unit'] = $val['seq_unit'];
 
             }  
 

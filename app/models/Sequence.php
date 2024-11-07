@@ -183,8 +183,8 @@ class Sequence{
 
     public function copy_step_by_seq_id($new_temp_step){
 
-        $sql = "INSERT INTO `step` (job_id, sequence_id, step_id, target_option, target_torque, target_angle, target_delaytime, hi_torque, lo_torque, hi_angle, lo_angle, rpm, direction, downshift, threshold_torque, 	downshift_torque,downshift_speed )";
-        $sql .= " VALUES (:job_id,:sequence_id,:step_id,:target_option,:target_torque,:target_angle,:target_delaytime,:hi_torque,:lo_torque,:hi_angle,:lo_angle,:rpm,:direction,:downshift,:threshold_torque,:downshift_torque,:downshift_speed )";
+        $sql = "INSERT INTO `step` (job_id, sequence_id, step_id, target_option, target_torque, target_angle, target_delaytime, hi_torque, lo_torque, hi_angle, lo_angle, rpm, direction, downshift, threshold_torque, downshift_torque,downshift_speed,seq_unit)";
+        $sql .= " VALUES (:job_id,:sequence_id,:step_id,:target_option,:target_torque,:target_angle,:target_delaytime,:hi_torque,:lo_torque,:hi_angle,:lo_angle,:rpm,:direction,:downshift,:threshold_torque,:downshift_torque,:downshift_speed,:seq_unit )";
 
         $statement = $this->db_iDas->prepare($sql);
         $insertedrecords = 0; 
@@ -274,7 +274,8 @@ class Sequence{
                     output_durat = :output_durat, 
                     addtion = :addtion, 
                     unscrew_count_switch = :unscrew_count_switch, 
-                    unscrew_torque_threshold = :unscrew_torque_threshold
+                    unscrew_torque_threshold = :unscrew_torque_threshold,
+                    seq_unit =:seq_unit
                 WHERE  JOBID = :JOBID  AND SEQID = :SEQID";
 
         $statement = $this->db_iDas->prepare($sql);
@@ -312,6 +313,7 @@ class Sequence{
         $statement->bindValue(':addtion', $seq_data['addtion']);
         $statement->bindValue(':unscrew_count_switch', $seq_data['unscrew_count_switch']);
         $statement->bindValue(':unscrew_torque_threshold', $seq_data['unscrew_torque_threshold']);
+        $statement->bindValue(':seq_unit', $seq_data['seq_unit']);
     
         $results = $statement->execute();
 

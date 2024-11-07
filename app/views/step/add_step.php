@@ -675,7 +675,7 @@
                 offset_min = offset_max * -1;
             }
 
-            hi_angle_max = 30600
+            hi_angle_max = 30600;
             hi_angle_min = document.getElementById('StepAngle').value;
             lo_angle_max =  document.getElementById('StepAngle').value;
             lo_angle_min = 0;

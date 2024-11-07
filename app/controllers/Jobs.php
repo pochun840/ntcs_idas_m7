@@ -256,6 +256,7 @@ class Jobs extends Controller
                             $new_temp_seq[$key]['addtion'] = $val['addtion'];
                             $new_temp_seq[$key]['unscrew_count_switch'] = $val['unscrew_count_switch'];
                             $new_temp_seq[$key]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
+                            $nre_temp_seq[$key]['seq_unit'] = $val['seq_unit'];
                             
                         }
 
