@@ -160,6 +160,15 @@ $text['direction'] = '起子运转方向';
 $text['Monitor_Mode'] = '监控模式';
 $text['Window'] = '等比例';
 $text['Hi-Lo'] = '上下限';
+$text['Force'] = '力度';
+$text['NG_Reverse'] = 'NG 退螺丝';
+$text['Accumulate_Angle'] = '累计角度';
+$text['Angle_Calculation'] = '角度计算';
+
+$text['Auto_text'] = '自动';
+$text['Custom_text'] = '手动';
+$text['Unlimited_text'] = '无限大';
+
 
 $text['Torque_Window'] = '扭力上/下限';
 $text['Angle_Window'] = '角度上/下限';
@@ -240,6 +249,7 @@ $text['OK-Job'] = '工作任务完成信号';
 $text['Tool Runing'] = '马达信号';
 $text['Tool Trigger'] = '启动信号';
 $text['Reverse'] = '拆螺丝';
+$text['Reverse_mode'] = '拆螺丝模式';
 $text['UDEFINE1'] = '自定义1';
 $text['UDEFINE2'] = '自定义2';
 $text['SYS_READY'] = '系統就緒';

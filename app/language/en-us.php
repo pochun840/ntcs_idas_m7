@@ -59,6 +59,10 @@ $text['copy_to'] = 'Copy to';
 $text['rev_count'] = 'Reverse Count';
 $text['rev_tor_threshold'] = 'Rev. Threshold Tor.';
 
+$text['Force'] = 'Force';
+$text['NG_Reverse'] = 'NG Reverse';
+$text['Accumulate_Angle'] = 'Accumulate Angle';
+$text['Angle_Calculation'] = 'Angle Calculation';
 //job sequence management
 //$text['normal_seq_management'] = 'Normal Job- Sequence Management';
 //$text['advanced_seq_management'] = 'Advanced Job - Sequence Management';
@@ -73,7 +77,9 @@ $text['up'] = 'Up';
 $text['down'] = 'Down';
 $text['step'] = 'Step';
 $text['setting'] = 'Setting';
-
+$text['Auto_text'] = 'Auto';
+$text['Custom_text'] = 'Custom';
+$text['Unlimited_text'] = 'Unlimited';
 $text['new_seq'] = 'New Sequence';
 $text['edit_seq'] = 'Edit Sequence';
 $text['del_seq'] = 'Delete Sequence';
@@ -234,6 +240,7 @@ $text['OK-Job'] = 'OK-JOB';
 $text['Tool Runing'] = 'Tool Running';
 $text['Tool Trigger'] = 'Tool Trigger';
 $text['Reverse'] = 'Reverse';
+$text['Reverse_mode'] = 'Reverse Mode';
 $text['UDEFINE1'] = 'UserDefine1';
 $text['UDEFINE2'] = 'UserDefine2';
 $text['SYS_READY'] = 'System Ready';

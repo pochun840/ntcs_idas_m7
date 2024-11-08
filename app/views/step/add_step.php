@@ -733,7 +733,7 @@
             { id: 'STEPname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'StepDelay', pattern: /^\d{0,4}$/, min: 0, max: 2000 }, 
             { id: 'StepRPM', pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'k_value', pattern: /^\d{0,4}$/, min: 0, max: 2000 },     
+            { id: 'k_value', pattern: /^(0(\.([2-9]{1}[0-9]{1}|[1-9]{1}\d{0,1}))|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.50 },  
             { id: 'StepRPMDownShift',pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM},
             { id: 'StepTorqueTS',pattern: /^\d{0,4}$/, min: Tool_Min_Torque, max: Tool_Max_Torque},
             { id: 'StepTorqueDownShift', pattern: /^\d{0,4}$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
@@ -765,7 +765,6 @@
                 element.classList.add("is-invalid");
                 isFormValid = false;
             } else if (!input.pattern.test(value)) {
-                // element.value = "";
                 element.classList.add("is-invalid");
                 isFormValid = false;
             } else if (input.min !== null && parseFloat(value) < input.min) {
@@ -786,68 +785,6 @@
 
     }
     
-    //offset 計算
-    function initializeInputAlert() {
-        const inputField = document.getElementById("StepTorqueOffset");
-        const stepOption = document.getElementById("StepOption");
-        inputField.addEventListener("keydown", function(event) {
-            // 檢查按下的是否是 Enter 鍵
-            if (event.key === "Enter") {
-                const offset = inputField.value;
-                const selectedOptionValue = stepOption.value; 
-
-                const radioButtons = document.getElementsByName("StepTorqueOffsetSign");
-                let selectedRadioValue;
-                for (const radioButton of radioButtons) {
-                    if (radioButton.checked) {
-                        selectedRadioValue = radioButton.value;
-                        break;
-                    }
-                }
-                let offset_tmp;
-                if (selectedRadioValue === "43") {
-                    offset_tmp = offset; 
-                } else {
-                    offset_tmp = -offset; 
-                }
-                offset_tmp = parseFloat(offset_tmp);
-
-                const aa = 0.5;
-                const bb = 5;
-                const torque = parseFloat(document.getElementById("StepTorque").value);
-     
-                if(selectedOptionValue == 0){
-
-                    const torqueThreshold = torque * 0.3; // torque 的 30%
-                    const lowerBound = aa * 0.7; // Spec 下限 
-                    const upperBound = bb * 1.08; // Spec 上限
-
-                    // 檢查條件
-                    if (offset_tmp <= torqueThreshold && 
-                        lowerBound <= (torque + offset_tmp) && 
-                        (torque + offset_tmp) <= upperBound) {
-                        alert("Both conditions met!");
-                    } else {
-                        alert("One or both conditions not met!");
-                        return false;
-                    }
-     
-                }else{
-
-                    //1.  offset_tmp  ≦ 
-                    //1."Offset ≦ (Spec Max = 100%) x30%"
-                    //2."(Spec 下限 *70%) ≦ Offset + HQ" 
-
-                }
-                
-
-
-            }
-        });
-    }
-
-    window.onload = initializeInputAlert;
-
 </script>
 
 <?php if($_SESSION['privilege'] != 'admin'){ ?>
