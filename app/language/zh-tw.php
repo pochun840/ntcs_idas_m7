@@ -121,6 +121,8 @@ $text['Tool_Max_Torque'] = '工具最大扭力';
 $text['Target_Torque'] = '目標扭力';
 $text['Target_Angle'] = '目標角度 (度)';
 $text['Target Delay Time'] = '目標延遲時間';
+$text['Monitor torque by window'] = '監控扭力視窗';
+$text['K_Value_text'] = 'K 值';
 
 $text['Run_Down_Speed'] = '轉速(圈/分鐘)';
 
@@ -135,10 +137,18 @@ $text['Pre_Run'] = '尋牙設定';
 $text['Pre_Run_RPM'] = '尋牙轉速';
 $text['Pre_Run_Angle'] = '尋牙角度';
 
+$text['Auto_text'] = '自動';
+$text['Custom_text'] = '手動';
+$text['Unlimited_text'] = '無限大';
+
 $text['High_Torque'] = '扭力上限';
 $text['Low_Torque'] = '扭力下限';
 $text['Threshold_Torque'] = '門檻點扭力';
 $text['Joint_Offset'] = '扭力補償值';
+$text['Force'] = '力道';
+$text['NG_Reverse'] = 'NG 退螺絲';
+$text['Accumulate_Angle'] = '累計角度';
+$text['Angle_Calculation'] = '角度計算';
 
 $text['Nm'] = '牛頓.公尺';
 $text['Threshold_Type'] = '門檻選項';
@@ -242,6 +252,7 @@ $text['OK-Job'] = '完工信號';
 $text['Tool Runing'] = '馬達信號';
 $text['Tool Trigger'] = '啟動信號';
 $text['Reverse'] = '拆螺絲';
+$text['Reverse_mode'] = '拆螺絲模式';
 $text['UDEFINE1'] = '自定義1';
 $text['UDEFINE2'] = '自定義2';
 $text['SYS_READY'] = '系統就緒';

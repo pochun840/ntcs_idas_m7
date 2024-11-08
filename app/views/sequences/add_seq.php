@@ -100,7 +100,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Sequence Stop:</div>
+                            <div class="col-3"><?php echo $text['OK_Sequence_Stop'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="ok_stop" id="seq_stop_off" value="0"
@@ -115,7 +115,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Reverse Count:</div>
+                            <div class="col-3"><?php echo $text['rev_count'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="unscrew_count_switch" id="unscrew_count_switch_off" value="0"
@@ -142,7 +142,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">NG Reverse:</div>
+                            <div class="col-3"><?php echo $text['NG_Reverse'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="ng_unscrew" id="ng_unscrew_off" value="0"
@@ -157,7 +157,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Accumulate Angle:</div>
+                            <div class="col-3"><?php echo $text['Accumulate_Angle'];?>:</div>
                             <div class="col-9">
                                 <!-- <input id="accumulate_angle" value="123456"> -->
                                 <div class="form-check form-check-inline ">
@@ -173,7 +173,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Angle Calculation (Step):</div>
+                            <div class="col-3"><?php echo $text['Angle_Calculation'];?> (<?php echo $text['step'];?>):</div>
                             <div class="col-9">
                                 <?php if($data['type'] =="edit"){
                                     $digits = str_split($data['sequences']['Thread_Calcu']);                              
@@ -199,18 +199,18 @@
                             <div class="col-4 fw-bolder"><?php echo $text['Reverse'];?></div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4">
-                            <div class="col-4">Reverse Mode:</div>
+                            <div class="col-4"><?php echo $text['Reverse_mode'];?>:</div>
                             <div class="col-8">
                                 <!-- <input id="reverse_mode" value="123456"> -->
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_auto" value="0" 
                                   <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 0) ? 'checked' : ''; ?> >
-                                  <label class="form-check-label" for="unscrew_mode_auto"><?php echo "Auto"; ?></label>
+                                  <label class="form-check-label" for="unscrew_mode_auto"><?php echo $text['Auto_text'] ; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_custom" value="1" 
                                   <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 1) ? 'checked' : ''; ?> >
-                                  <label class="form-check-label" for="unscrew_mode_custom"><?php echo "Custom"; ?></label>
+                                  <label class="form-check-label" for="unscrew_mode_custom"><?php echo $text['Custom_text']; ?></label>
                                 </div>
                             </div>
                         </div>
@@ -221,14 +221,14 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
-                            <div class="col-4">Torque Threshold (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                            <div class="col-4"><?php echo $text['Threshold_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                             <div class="col-8">
                                 <input id="unscrew_torque_threshold"class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_direction">
-                            <div class="col-4">Direction:</div>
+                            <div class="col-4"><?php echo $text['direction'];?>:</div>
                             <div class="col-8">
                                 <!-- <input id="direction" value="123456"> -->
                                 <div class="form-check form-check-inline ">
@@ -244,20 +244,20 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_force">
-                            <div class="col-4">Force (%):</div>
+                            <div class="col-4"><?php echo $text['Force'];?> (%):</div>
                             <div class="col-8">
                                 <!-- <input id="force" value="123456"> -->
                                 <div class="form-check form-check-inline col-md-3">
                                   <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_on" value="0"
                                   <?php  echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
-                                  <input  id="unscrew_force" class="form-control" value="<?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
+                                  <input  id="unscrew_force"  class="form-control" value="<?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
                                   <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
                                   <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_unlimit" value="1" 
                                   <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force']  > 101) ? 'checked' : ''; ?>  >
-                                  <label class="form-check-label" for="force_unlimit"><?php echo 'Unlimited'; ?></label>
+                                  <label class="form-check-label" for="force_unlimit"><?php echo $text['Unlimited_text']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
                                   <input class="form-check-input" type="radio"  name="unscrew_forcemode" id="unscrew_forcemode_off" value="2" 
@@ -300,6 +300,9 @@
             for (let i = 1; i <= 5; i++) {
                 document.getElementById("Thread_Calcu_" + i).checked = true;
             }
+
+            ['unscrew_rpm', 'unscrew_torque_threshold', 'unscrew_dir_cw', 'unscrew_dir_ccw', 'unscrew_forcemode_on', 'unscrew_forcemode_unlimit', 'unscrew_forcemode_off', 'unscrew_force'].forEach(id => document.getElementById(id).disabled = true);
+         
         }
 
         if(dataType === 'edit'){
@@ -316,7 +319,6 @@
         let seq_id = document.getElementById("seq_id").value;
         let SEQname = document.getElementById("SEQname").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
-
 
 
         data.append("job_id", job_id);
@@ -556,6 +558,9 @@
 
         //判斷 name="unscrew_forcemode" 選取的value
         var selectedValue = document.querySelector('input[name="unscrew_forcemode"]:checked')?.value;
+
+        // 檢查 unscrew_mode_auto 是否被選中
+        var isAutoMode = document.getElementById('unscrew_mode_auto')?.checked;
       
         let conditions = [
             { id: 'SEQname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
@@ -571,6 +576,12 @@
         conditions.forEach(function(input) {
             var element = document.getElementById(input.id);
             var value = element.value.trim();
+
+            // 如果 unscrew_mode_auto 被選中, 跳過 unscrew_torque_threshold 和 unscrew_force 的驗證
+            if (isAutoMode && (input.id === 'unscrew_torque_threshold' || input.id === 'unscrew_force')) {
+                return;
+            }
+            
 
             if(input.id != 'SEQname'){
                 var nextSibling = element.nextElementSibling;
@@ -622,6 +633,34 @@
             element.classList.remove('is-invalid'); 
         }
     }
+
+
+    function toggleInputsBasedOnMode() {
+        var autoModeRadio = document.getElementById('unscrew_mode_auto');
+        var customModeRadio = document.getElementById('unscrew_mode_custom');
+    
+        var inputElements = document.querySelectorAll('#div_speed input, #div_torque_threshold input, #div_direction input, #div_force input');
+        
+        if (autoModeRadio.checked) {
+            inputElements.forEach(function(element) {
+                element.disabled = true;
+            });
+        } else if (customModeRadio.checked) {
+            inputElements.forEach(function(element) {
+                element.disabled = false;
+            });
+        }
+    }
+
+    // 監聽頁面加載完成後執行函數
+    document.addEventListener('DOMContentLoaded', function() {
+    // 初始化時根據當前選中的單選按鈕來決定輸入框是否禁用
+    toggleInputsBasedOnMode();
+
+    // 綁定單選按鈕的事件監聽器，當狀態變化時觸發
+    document.getElementById('unscrew_mode_auto').addEventListener('change', toggleInputsBasedOnMode);
+    document.getElementById('unscrew_mode_custom').addEventListener('change', toggleInputsBasedOnMode);
+  });
 
 
 </script>

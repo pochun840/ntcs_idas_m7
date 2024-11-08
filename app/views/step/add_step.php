@@ -46,11 +46,11 @@
                     <div class="col-1 t2">
                         <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="JOBID" name="JOBID" size="10" maxlength="20" value="<?php echo $data['JOBID'];?>" disabled>
                     </div>
-                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%">Sequence ID : </div>
+                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%"><?php echo $text['seq_id'];?> : </div>
                     <div class="col-1 t2">
                         <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="SEQID" name="SEQID" size="10" maxlength="20" value="<?php echo $data['SEQID'];?>" disabled>
                     </div>
-                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%">Step ID : </div>
+                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%"><?php echo $text['step_id'];?> : </div>
                     <div class="col-1 t2">
                         <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="StepSelect" name="StepSelect" size="10" maxlength="20" value="<?php echo $data['StepSelect'];?>" disabled>
                     </div>
@@ -100,7 +100,7 @@
                         <div class="col-12 row t2 mt-3">
                             <?php if($data['type'] == 'edit'){?>
                                 <?php   if($data['step']['StepOption'] == 0 ){?>   
-                                    <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
+                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (kgf-cm):</div>
                                 <?php }else if($data['step']['StepOption'] == 1 ){?>
                                     <div class="col-3"  id="targetLabel" >Target Angle :</div>
                                 <?php }else if($data['step']['StepOption'] == 2 ) {?>
@@ -108,7 +108,7 @@
                                 <?php } ?>
 
                             <?php }else{?>
-                                <div class="col-3"  id="targetLabel" >Target Torque (kgf-cm):</div>
+                                <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (kgf-cm):</div>
                             <?php } ?>
                              
                         
@@ -147,7 +147,7 @@
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="0" onchange="getCheckboxValue()"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0) ? 'checked' : ''; ?>>
-                                  <label class="form-check-label" for="monitoring_torque_window"><?php echo 'Monitoring torque by window:'; ?></label>
+                                  <label class="form-check-label" for="monitoring_torque_window"><?php echo $text['Monitor torque by window']; ?>:</label>
                                 </div>
                                 <div class="ps-5" style="display:inline-block;">
                                     <label class="form-check-label" for="monitor_torque_upper"><?php echo 'Upper(%)'; ?></label>
@@ -219,7 +219,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Direction:</div>
+                            <div class="col-3"><?php echo $text['direction'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="StepDirection" id="StepDirection_cw" value="0" 
@@ -234,21 +234,21 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">Delay (sec):</div>
+                            <div class="col-3"><?php echo $text['Delay Time'];?> (<?php echo $text['Second'];?>):</div>
                             <div class="col-9">
                                 <input id="StepDelay" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepDelay'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['Run_Down_Speed'];?> (rpm):</div>
+                            <div class="col-3"><?php echo $text['Run_Down_Speed'];?> :</div>
                             <div class="col-9">
                                 <input id="StepRPM" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPM'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3">K Value:</div>
+                            <div class="col-3"><?php echo $text['K_Value_text'];?>:</div>
                             <div class="col-9">
                                 <input id="k_value" class="form-control form-control-sm" value="">
                                 <div class="invalid-feedback"></div>
@@ -258,7 +258,7 @@
 
                     <div class="col-md-6 t2">
                         <div class="col-12 row t2 mt-3 ps-4">
-                            <div class="col-4">Join Offset (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                            <div class="col-4"><?php echo $text['Joint_Offset'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                             <div class="col-8">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="StepTorqueOffsetSign" id="join_offset_plus" value="43"
@@ -303,7 +303,7 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3 ps-4">
-                            <div class="col-4">Downshift:</div>
+                            <div class="col-4"><?php echo $text['Downshift'];?>:</div>
                             <div class="col-8">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_off" value="0" 
@@ -447,7 +447,7 @@
         let StepDirection   = document.querySelector('input[name="StepDirection"]:checked');
         let StepDelay = document.getElementById("StepDelay").value;
         let StepRPM = document.getElementById("StepRPM").value;
-        //缺少 k_value
+        let KValue  = document.getElementById("k_value").value;
         let StepTorqueOffsetSign = document.querySelector('input[name="StepTorqueOffsetSign"]:checked');
         let StepTorqueOffset = document.getElementById("StepTorqueOffset").value;
 
@@ -473,7 +473,7 @@
         data.append("StepDirection",StepDirection ? StepDirection.value : null);
         data.append("StepDelay",StepDelay);
         data.append("StepRPM",StepRPM); 
-        //缺少 k_value
+      
         data.append("StepTorqueOffset",StepTorqueOffset.value);
         data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
         //data.append("StepEnableThreshold",StepEnableThreshold.value);
@@ -483,7 +483,7 @@
         data.append("StepRPMDownShift",StepRPMDownShift);
         data.append("StepHiTorque",StepHiTorque);
         data.append("StepLoTorque",StepLoTorque);
-
+        data.append("KValue",KValue);
         let check =input_check();
         if(check){
                 $.ajax({
@@ -533,8 +533,8 @@
         let StepDirection   = document.querySelector('input[name="StepDirection"]:checked');
         let StepDelay = document.getElementById("StepDelay").value;
         let StepRPM = document.getElementById("StepRPM").value;
-        //缺少 k_value
-        let StepTorqueOffset = document.getElementById("SStepTorqueOffset").value;
+        let KValue  = document.getElementById("k_value").value;
+        let StepTorqueOffset = document.getElementById("StepTorqueOffset").value; //
         let StepTorqueOffsetSign  = document.querySelector('input[name="StepTorqueOffsetSign"]:checked');
         let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
         let StepTorqueTS = document.getElementById("StepTorqueTS").value;
@@ -559,7 +559,7 @@
         data.append("StepDirection",StepDirection ? StepDirection.value : null);
         data.append("StepDelay",StepDelay);
         data.append("StepRPM",StepRPM); 
-        //缺少 k_value
+        data.append("KValue",KValue);
         //data.append("StepTorqueOffset",StepTorqueOffset.value); //待修改
         data.append("StepTorqueOffset",0);
         data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
@@ -733,7 +733,7 @@
             { id: 'STEPname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'StepDelay', pattern: /^\d{0,4}$/, min: 0, max: 2000 }, 
             { id: 'StepRPM', pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'k_value', pattern: /^\d{0,4}$/, min: 0, max: 2000 },     
+            { id: 'k_value', pattern: /^(0(\.([2-9]{1}[0-9]{1}|[1-9]{1}\d{0,1}))|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.50 },  
             { id: 'StepRPMDownShift',pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM},
             { id: 'StepTorqueTS',pattern: /^\d{0,4}$/, min: Tool_Min_Torque, max: Tool_Max_Torque},
             { id: 'StepTorqueDownShift', pattern: /^\d{0,4}$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
@@ -765,7 +765,6 @@
                 element.classList.add("is-invalid");
                 isFormValid = false;
             } else if (!input.pattern.test(value)) {
-                // element.value = "";
                 element.classList.add("is-invalid");
                 isFormValid = false;
             } else if (input.min !== null && parseFloat(value) < input.min) {
@@ -786,68 +785,6 @@
 
     }
     
-    //offset 計算
-    function initializeInputAlert() {
-        const inputField = document.getElementById("StepTorqueOffset");
-        const stepOption = document.getElementById("StepOption");
-        inputField.addEventListener("keydown", function(event) {
-            // 檢查按下的是否是 Enter 鍵
-            if (event.key === "Enter") {
-                const offset = inputField.value;
-                const selectedOptionValue = stepOption.value; 
-
-                const radioButtons = document.getElementsByName("StepTorqueOffsetSign");
-                let selectedRadioValue;
-                for (const radioButton of radioButtons) {
-                    if (radioButton.checked) {
-                        selectedRadioValue = radioButton.value;
-                        break;
-                    }
-                }
-                let offset_tmp;
-                if (selectedRadioValue === "43") {
-                    offset_tmp = offset; 
-                } else {
-                    offset_tmp = -offset; 
-                }
-                offset_tmp = parseFloat(offset_tmp);
-
-                const aa = 0.5;
-                const bb = 5;
-                const torque = parseFloat(document.getElementById("StepTorque").value);
-     
-                if(selectedOptionValue == 0){
-
-                    const torqueThreshold = torque * 0.3; // torque 的 30%
-                    const lowerBound = aa * 0.7; // Spec 下限 
-                    const upperBound = bb * 1.08; // Spec 上限
-
-                    // 檢查條件
-                    if (offset_tmp <= torqueThreshold && 
-                        lowerBound <= (torque + offset_tmp) && 
-                        (torque + offset_tmp) <= upperBound) {
-                        alert("Both conditions met!");
-                    } else {
-                        alert("One or both conditions not met!");
-                        return false;
-                    }
-     
-                }else{
-
-                    //1.  offset_tmp  ≦ 
-                    //1."Offset ≦ (Spec Max = 100%) x30%"
-                    //2."(Spec 下限 *70%) ≦ Offset + HQ" 
-
-                }
-                
-
-
-            }
-        });
-    }
-
-    window.onload = initializeInputAlert;
-
 </script>
 
 <?php if($_SESSION['privilege'] != 'admin'){ ?>
