@@ -167,6 +167,10 @@ $text['Monitor_Mode'] = 'Monitor Mode';
 $text['Window'] = 'Window';
 $text['Hi-Lo'] = 'Hi-Lo';
 
+$text['Monitor torque by window'] = 'Monitoring torque by window';
+$text['K_Value_text'] = 'K Value';
+
+
 $text['Torque_Window'] = 'Torque Window';
 $text['Angle_Window'] = 'Angle Window';
 $text['copy_step'] = 'Copy step';
