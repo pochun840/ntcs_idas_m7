@@ -84,9 +84,9 @@
                                 <select id="StepOption" class="form-control form-control-sm" style="font-size: 14px; width: 60px;" onchange="updateLabel()">
                                     <?php 
                                             $options = [
-                                                0 => 'Torque',
-                                                1 => 'Angle',
-                                                2 => 'Time'
+                                                0 => $text['Torque'],
+                                                1 => $text['Angle'],
+                                                2 => $text['Time']
                                             ];
 
                                             foreach ($options as $value => $label) {
@@ -371,45 +371,71 @@
     };
 
     function updateLabel() {
-
-        var  StepTorque_value  = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>';
-        var  StepAngle_value   = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle']  : '0'; ?>';
-        var  StepTime_value    =  '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime']   : '0'; ?>';
-        var  unit = '<?php echo $data['unit_name'];?>';
+        var StepTorque_value = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>';
+        var StepAngle_value = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle'] : '0'; ?>';
+        var StepTime_value = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime'] : '0'; ?>';
+        var unit = '<?php echo $data['torque_unit']; ?>';
         
-
         const select_val = document.getElementById('StepOption');
         const label = document.getElementById('targetLabel');
         const input_name = document.getElementsByName('targetLabel')[0];
 
-        const select_val_Text = select_val.options[select_val.selectedIndex].text;
-        if (select_val_Text === 'Torque') {
-            label.textContent = 'Target Torque (kgf-cm):';
+        var language = getCookie('language');
 
+   
+        const unitMapping = {
+            'kgf.cm': {
+                'zh-cn': '公斤公分',
+                'zh-tw': '公斤公分',
+                'default': 'kgf.cm'
+            },
+            'lbf.in': {
+                'zh-cn': '英磅英吋',
+                'zh-tw': '英磅英吋',
+                'default': 'lbf.in'
+            },
+            'N.m': {
+                'zh-cn': '牛顿米',
+                'zh-tw': '牛頓米',
+                'default': 'N.m'
+            },
+            'kgf.m': {
+                'zh-cn': '公斤米',
+                'zh-tw': '公斤公尺',
+                'default': 'kgf.m'
+            }
+        };
 
-        } else {
-            label.textContent = `Target ${select_val_Text}:`;
-        } 
+      
+        unit = unitMapping[unit] ? unitMapping[unit][language] || unitMapping[unit]['default'] : unit;
 
-        if(select_val.value == 0){
-            document.getElementById('StepTorque_item').style.display = 'block';
-            document.getElementById('StepAngle_item').style.display = 'none';
-            document.getElementById('StepTime_item'). style.display = 'none';
-        }
+       
+        const labelMapping = {
+            'zh-cn': {
+                0: `目标扭矩 (${unit}):`,
+                1: '目标角度:',
+                2: '目标时间:'
+            },
+            'zh-tw': {
+                0: `目標扭力 (${unit}):`,
+                1: '目標角度:',
+                2: '目標時間:'
+            },
+            'default': {
+                0: `Target Torque (${unit}):`,
+                1: 'Target Angle:',
+                2: 'Target Time:'
+            }
+        };
+        
+        label.textContent = labelMapping[language] ? labelMapping[language][select_val.value] : labelMapping['default'][select_val.value];
 
-        if(select_val.value == 1){
-            document.getElementById('StepTorque_item').style.display = 'none';
-            document.getElementById('StepAngle_item'). style.display = 'block';
-            document.getElementById('StepTime_item'). style.display = 'none';
-        }
-
-        if(select_val.value == 2){
-            document.getElementById('StepTorque_item').style.display = 'none';
-            document.getElementById('StepAngle_item'). style.display = 'none';
-            document.getElementById('StepTime_item'). style.display = 'block';
-        }
-
+     
+        document.getElementById('StepTorque_item').style.display = select_val.value == 0 ? 'block' : 'none';
+        document.getElementById('StepAngle_item').style.display = select_val.value == 1 ? 'block' : 'none';
+        document.getElementById('StepTime_item').style.display = select_val.value == 2 ? 'block' : 'none';
     }
+
 
 
     function save_step() {
