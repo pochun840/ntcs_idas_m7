@@ -122,7 +122,12 @@ $text['Target_Torque'] = '目標扭力';
 $text['Target_Angle'] = '目標角度 (度)';
 $text['Target Delay Time'] = '目標延遲時間';
 $text['Monitor torque by window'] = '監控扭力視窗';
+$text['Monitor angle by window']  = '監控角度視窗';
 $text['K_Value_text'] = 'K 值';
+$text['Upper_text'] = '上限';
+$text['Lower_text'] = '下限';
+$text['Plus_text'] = '正';
+$text['Minus_text'] = '負';
 
 $text['Run_Down_Speed'] = '轉速(圈/分鐘)';
 

@@ -59,7 +59,13 @@ $text['copy_to'] = '复制到';
 $text['rev_count'] = '拆螺丝计数';
 $text['rev_tor_threshold'] = '拆螺丝门槛点扭力';
 $text['Monitor torque by window'] = '监控扭力窗口';
+$text['Monitor angle by window']  = '监控角度窗口';
 $text['K_Value_text'] = 'K 值';
+$text['Upper_text'] = '上限';
+$text['Lower_text'] = '下限';
+$text['Plus_text'] = '正';
+$text['Minus_text'] = '负';
+
 //job sequence management
 //$text['normal_seq_management'] = '快速工作 - 工序管理';
 //$text['advanced_seq_management'] = '进阶工作 - 工序管理';

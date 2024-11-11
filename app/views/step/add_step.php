@@ -100,7 +100,7 @@
                         <div class="col-12 row t2 mt-3">
                             <?php if($data['type'] == 'edit'){?>
                                 <?php   if($data['step']['StepOption'] == 0 ){?>   
-                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (kgf-cm):</div>
+                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                 <?php }else if($data['step']['StepOption'] == 1 ){?>
                                     <div class="col-3"  id="targetLabel" >Target Angle :</div>
                                 <?php }else if($data['step']['StepOption'] == 2 ) {?>
@@ -108,7 +108,7 @@
                                 <?php } ?>
 
                             <?php }else{?>
-                                <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (kgf-cm):</div>
+                                <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                             <?php } ?>
                              
                         
@@ -150,9 +150,9 @@
                                   <label class="form-check-label" for="monitoring_torque_window"><?php echo $text['Monitor torque by window']; ?>:</label>
                                 </div>
                                 <div class="ps-5" style="display:inline-block;">
-                                    <label class="form-check-label" for="monitor_torque_upper"><?php echo 'Upper(%)'; ?></label>
+                                    <label class="form-check-label" for="monitor_torque_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
                                     <input id="StepLimiHi" class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
-                                    <label class="form-check-label ps-3" for="monitor_torque_upper"><?php echo 'Lower(%)'; ?></label>
+                                    <label class="form-check-label ps-3" for="monitor_torque_upper"><?php echo $text['Lower_text'].'(%)'; ?></label>
                                     <input id="StepLimiLo" class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
                                 </div>
                             </div>
@@ -177,12 +177,12 @@
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1" onchange="getCheckboxValue()" 
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1) ? 'checked' : ''; ?>>
-                                  <label class="form-check-label" for="monitoring_angle_window"><?php echo 'Monitoring angle by window:'; ?></label>
+                                  <label class="form-check-label" for="monitoring_angle_window"><?php echo $text['Monitor angle by window']; ?></label>
                                 </div>
                                 <div class="ps-5" style="display:inline-block;">
-                                    <label class="form-check-label" for="monitor_angle_upper"><?php echo 'Upper(%)'; ?></label>
+                                    <label class="form-check-label" for="monitor_angle_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
                                     <input id="StepLimiHi" class="form-control form-control-sm" style=" width: 40px !important; " value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1 && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
-                                    <label class="form-check-label ps-3" for="monitor_angle_upper"><?php echo 'Lower(%)'; ?></label>
+                                    <label class="form-check-label ps-3" for="monitor_angle_upper"><?php echo $text['Lower_text'].'(%)'; ?></label>
                                     <input id="StepLimiLo" class="form-control form-control-sm" style=" width: 40px !important; " value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1 && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
                                 </div>
                             </div>
@@ -263,12 +263,12 @@
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="StepTorqueOffsetSign" id="join_offset_plus" value="43"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepTorqueOffsetSign'] == 43) ? 'checked' : ''; ?> >
-                                  <label class="form-check-label" for="join_offset_plus"><?php echo 'Plus'; ?></label>
+                                  <label class="form-check-label" for="join_offset_plus"><?php echo $text['Plus_text']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="StepTorqueOffsetSign" id="join_offset_minus" value="45"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepTorqueOffsetSign'] == 45) ? 'checked' : ''; ?> >
-                                  <label class="form-check-label" for="join_offset_minus"><?php echo 'Minus'; ?></label>
+                                  <label class="form-check-label" for="join_offset_minus"><?php echo $text['Minus_text']; ?></label>
                                   <input id="StepTorqueOffset" class="form-control form-control-sm" value="">
                                 </div>
                             </div>
@@ -330,7 +330,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" >
-                            <div class="col-4"><?php echo $text['Downshift_Speed'];?> (rpm):</div>
+                            <div class="col-4"><?php echo $text['Downshift_Speed'];?> :</div>
                             <div class="col-8">
                                 <input id="StepRPMDownShift" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPMDownShift'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
@@ -366,22 +366,7 @@
 
 
  window.onload = function() {
-        /*if (dataType === 'new') {
       
-            document.getElementById("interrupt_alarm_off").checked = true;
-            document.getElementById("over_angle_stop_off").checked = true;
-            document.getElementById("StepDirection_cw").checked = true;
-            document.getElementById("join_offset_plus").checked = true;
-            document.getElementById("threshold_mode_torque").checked = true;
-            document.getElementById("downshift_mode_torque").checked = true;
-
-            updateLabel();
-
-        }
-        if(dataType === 'edit'){
-
-            updateLabel();
-        }*/
        
     };
 
@@ -390,7 +375,7 @@
         var  StepTorque_value  = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>';
         var  StepAngle_value   = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle']  : '0'; ?>';
         var  StepTime_value    =  '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime']   : '0'; ?>';
-        var  unit = '<?php echo $data['torque_unit']?>';
+        var  unit = '<?php echo $data['unit_name'];?>';
         
 
         const select_val = document.getElementById('StepOption');

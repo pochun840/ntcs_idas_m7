@@ -23,6 +23,7 @@ class Step extends Controller
             $seq_id = 1;
         }
 
+     
         $isMobile = $this->isMobileCheck();
         $step = $this->stepModel->getStep($job_id, $seq_id);
         $target_option = $this->MiscellaneousModel->details("target_option");

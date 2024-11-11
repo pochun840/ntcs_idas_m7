@@ -168,8 +168,12 @@ $text['Window'] = 'Window';
 $text['Hi-Lo'] = 'Hi-Lo';
 
 $text['Monitor torque by window'] = 'Monitoring torque by window';
+$text['Monitor angle by window']  = 'Monitoring angle by window';
 $text['K_Value_text'] = 'K Value';
-
+$text['Upper_text'] = 'Upper';
+$text['Lower_text'] = 'Lower';
+$text['Plus_text'] = 'Plus';
+$text['Minus_text'] = 'Minus';
 
 $text['Torque_Window'] = 'Torque Window';
 $text['Angle_Window'] = 'Angle Window';
