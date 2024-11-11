@@ -121,6 +121,7 @@ $text['angle'] = 'Angle';
 $text['Torque'] = 'Torque';
 $text['Angle'] = 'Angle';
 $text['time'] = 'Time';
+$text['Time'] = 'Time';
 $text['rpm'] = 'RPM';
 $text['delay_time'] = 'Delay time';
 $text['Delay Time'] = 'Delay Time';

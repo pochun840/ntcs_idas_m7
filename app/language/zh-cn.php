@@ -122,6 +122,7 @@ $text['angle'] = '角度';
 $text['Torque'] = '扭力';
 $text['Angle'] = '角度';
 $text['time'] = '时间';
+$text['Time'] = '时间';
 $text['rpm'] = '转速';
 $text['delay_time'] = '延迟时间';
 $text['Delay Time'] = '延迟时间';
