@@ -8,9 +8,14 @@
     <div>
         <h1 class="col-ms-3 pt-3" style="font-size: 50px; text-align: center; color: #fff"><?php echo $text['login_text']; ?></h1>
     </div>
-    <form class="pt-4" action="?url=Logins" method="POST">
-      <input type="password" name="password" placeholder="<?php echo $text['password_text']; ?>" required>
-      <button type="submit"><?php echo $text['login_text']; ?></button>
+    <form class="pt-4" action="?url=Logins" method="POST"> 
+        <select id='username' name='username' class="custom-select">
+            <?php foreach($data['account'] as $kc =>$vc){?>
+                <option><?php echo $vc['name'];?></option>
+            <?php } ?>
+        </select>
+        <input type="password" name="password" placeholder="<?php echo $text['password_text']; ?>" required>
+        <button type="submit"><?php echo $text['login_text']; ?></button>
     </form>
 </div>
 
@@ -156,4 +161,37 @@ button:hover
 {
     background: #007BA5;
 }
+
+
+.custom-select {
+    background: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 25px;
+    font-family: 'Raleway', sans-serif;
+    height: 72px;
+    width: 100%;
+    margin-bottom: 10px;
+    opacity: 1;
+    text-indent: 20px;
+    transition: all .2s ease-in-out;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    position: relative;
+    padding-right: 30px; /* Space for the custom arrow */
+}
+
+.custom-select::after {
+    content: '▼'; /* Custom arrow (you can change this symbol to anything you like) */
+    font-size: 20px;
+    color: #333; /* Adjust color */
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none; /* Makes the arrow non-interactive */
+}
+
+
 </style>

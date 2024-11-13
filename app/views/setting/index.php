@@ -36,7 +36,7 @@
                 </div>    
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Storge Warning";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['system_diskfull_warning'];?>:</div>
                     <div class="col-3 t2">
                         <input id="storage_warning" name="storage_warning" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['storage_warning']) ? $data['controller_info']['storage_warning'] : ''; ?>" class="t3 form-control"  required>
                     </div>
@@ -44,14 +44,14 @@
 
                 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Torque Filter (kgf.cm)";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['system_torque_filter']."(kgf.cm)";?>:</div>
                     <div class="col-3 t2">
                         <input id="torque_filter" name="torque_filter" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['torque_filter']) ? $data['controller_info']['torque_filter'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Sample Rate";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['sample_rate'];?>:</div>
                     <div class="col-3 t2">
                         <select class="form-select" id="select_sample_rate" name="select_sample_rate">
                             <?php foreach($data['sample_rate'] as $k_rate =>$v_rate){?>
@@ -62,7 +62,7 @@
                 </div>    
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "torque_unit";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['torque_unit'];?>:</div>
                     <div class="col-3 t2">
                         <select class="form-select" id="select_torque_unit" name="select_torque_unit">
                             <?php foreach($data['torque_unit'] as $k_unit =>$v_unit){?>
@@ -92,7 +92,7 @@
                     </div>
                 </div>    
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Circular Archive";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Circular Archive_text'];?>:</div>
                     <div class="col t2" >
       			      	<div class="col-1 form-check form-check-inline">
         				    <input class="form-check-input" type="radio" name="circular_archive"  value="0"  <?php echo $data['controller_info']['circular_archive'] == 0 ? 'checked="checked"' : ''; ?>>
@@ -119,7 +119,7 @@
                     </div>
                 </div>
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Blackout Recovery";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Blackout Recovery_text'];?>:</div>
                     <div class="col t2">
       			      	<div class="col-1 form-check form-check-inline">
            				    <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_off" value="0"  <?php echo $data['controller_info']['blackout_recovery'] == 0 ? 'checked="checked"' : ''; ?>>
@@ -171,31 +171,31 @@
                     <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="downshift_save()"><?php echo $text['save'];?></button>
                 </div>
 
-                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo "Button Access With Password";?></div>
+                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Button_Access_With_Password_text'];?></div>
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Clear Seq Button";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Clear_Seq_Button_text'];?>:</div>
                     <div class="col-3 t2">
                         <input id="clearseq_button_pwd" name="clearseq_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['clearseq_button_pwd']) ? $data['controller_info']['clearseq_button_pwd'] : ''; ?>"  class="t3 form-control"  required>
                     </div>
                 </div>
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Clear Button";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Clear_button_text'];?>:</div>
                     <div class="col-3 t2">
                         <input id="clear_button_pwd" name="clear_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['clear_button_pwd']) ? $data['controller_info']['clear_button_pwd'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Confirm Button";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Confirm_button_text'];?>:</div>
                     <div class="col-3 t2">
                         <input id="confirm_button_pwd" name="confirm_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['confirm_button_pwd']) ? $data['controller_info']['confirm_button_pwd'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Enable Button";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Enable_button_text'];?>:</div>
                     <div class="col-3 t2">
                         <input id="enable_button_pwd" name="enable_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['enable_button_pwd']) ? $data['controller_info']['enable_button_pwd'] : ''; ?>" class="t3 form-control"  required>
                     </div>
@@ -203,14 +203,14 @@
 
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Disable Button";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Disable_button_text'];?>:</div>
                     <div class="col-3 t2">
                         <input id="disable_button_pwd" name="disable_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['disable_button_pwd']) ? $data['controller_info']['disable_button_pwd'] : ''; ?>" class="t3 form-control"  required>
                     </div>
                 </div>
 
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo "Skip Button";?>:</div>
+                    <div class="col-3 t1"><?php echo $text['Skip_button_text'];?>:</div>
                     <div class="col-3 t2">
                         <input id="skip_button_pwd" name="skip_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['skip_button_pwd']) ? $data['controller_info']['skip_button_pwd'] : ''; ?>" class="t3 form-control"  required>
                     </div>
@@ -221,7 +221,7 @@
                 </div>
 
 
-                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo "Background Color";?></div>
+                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Background_Color_text'];?></div>
 
            
                 <div class="row t2">

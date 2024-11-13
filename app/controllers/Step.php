@@ -23,6 +23,7 @@ class Step extends Controller
             $seq_id = 1;
         }
 
+     
         $isMobile = $this->isMobileCheck();
         $step = $this->stepModel->getStep($job_id, $seq_id);
         $target_option = $this->MiscellaneousModel->details("target_option");
@@ -46,9 +47,7 @@ class Step extends Controller
             $stepid_new = count($step) + 1 ;
         }
 
-       
-
-        
+    
         $data = array(
             'isMobile' => $isMobile,
             'step' => $step,
@@ -135,9 +134,6 @@ class Step extends Controller
             $specs = $this->MiscellaneousModel->getToolSpecifications();
             
             
-
-
-
 
             $step_data = array(
                 'JOBID'  => $JOBID,
@@ -308,7 +304,9 @@ class Step extends Controller
                 'KValue' => $KValue,
                 'step_unit' =>$step_unit
 
-            );           
+            );  
+            
+            
 
  
             
@@ -547,6 +545,8 @@ class Step extends Controller
             'torque_unit' =>$torque_unit 
 
         );
+
+
 
         if ($type == 'edit') {
             $data['step'] = $step; 

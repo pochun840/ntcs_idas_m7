@@ -114,6 +114,7 @@ $text['angle'] = '角度';
 $text['Torque'] = '扭力';
 $text['Angle'] = '角度';
 $text['time'] = '時間';
+$text['Time'] = '時間';
 $text['rpm'] = '轉速';
 $text['delay_time'] = '延遲時間';
 $text['Delay Time'] = '延遲時間';
@@ -122,7 +123,12 @@ $text['Target_Torque'] = '目標扭力';
 $text['Target_Angle'] = '目標角度 (度)';
 $text['Target Delay Time'] = '目標延遲時間';
 $text['Monitor torque by window'] = '監控扭力視窗';
+$text['Monitor angle by window']  = '監控角度視窗';
 $text['K_Value_text'] = 'K 值';
+$text['Upper_text'] = '上限';
+$text['Lower_text'] = '下限';
+$text['Plus_text'] = '正';
+$text['Minus_text'] = '負';
 
 $text['Run_Down_Speed'] = '轉速(圈/分鐘)';
 
@@ -347,6 +353,18 @@ $text['system_torque_filter'] = '扭力過濾';
 $text['system_dec'] = '倒數';
 $text['system_inc'] = '正數';
 $text['sample_rate'] = '取樣率';
+
+$text['Blackout Recovery_text']  = '狀態儲存';
+$text['Circular Archive_text'] = '循環存檔';
+$text['Clear_Seq_Button_text'] = '清除工序鍵';
+$text['Clear_button_text'] = '清除顆數鍵';
+$text['Confirm_button_text'] = '確認鍵';
+$text['Enable_button_text'] = '啟用鍵';
+$text['Disable_button_text'] = '禁用键';
+$text['Skip_button_text'] = '下一工序鍵';
+$text['Button_Access_With_Password_text'] = '按鍵密碼';
+$text['Background_Color_text'] = '背景顏色';
+
 
 $text['system_password'] = '密碼';
 $text['system_new_password'] = '新密碼';

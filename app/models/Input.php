@@ -58,7 +58,7 @@ class Input{
     public function check_job_event_conflict($input_job_id,$input_event){
         
         $sql = "SELECT *  FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";
-        $statement = $this->db->prepare($sql);
+        $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$input_job_id,$input_event]);
         $rows = $statement->fetch();
 
@@ -68,7 +68,7 @@ class Input{
     public function check_job_event($input_job_id){
         
         $sql = "SELECT *  FROM JOBInput_lst WHERE JOBID = ? ";
-        $statement = $this->db->prepare($sql);
+        $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$input_job_id]);
         $rows = $statement->fetchAll();
 
@@ -78,8 +78,9 @@ class Input{
 
     public function create_input($input_data) {   
 
+
         $sql = "INSERT INTO `JOBInput_lst` (JOBID, Pin, EvenID, signal, Wp_Ready_Confirm) ";
-        $sql .= "VALUES (:JOBID, :Pin, :EvenID, :signal, :Wp_Ready_Confirm)";
+        $sql .= "VALUES (:JOBID, :Pin, :EvenID, :signal, :Wp_Ready_Confirm) ";
     
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':JOBID', $input_data['JOBID']);
@@ -100,7 +101,7 @@ class Input{
     public function delete_input_by_id($job_id){
 
         $sql= "DELETE FROM JOBInput_lst WHERE JOBID = ?";
-        $statement = $this->db->prepare($sql);
+        $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$job_id]);
 
         return $results;

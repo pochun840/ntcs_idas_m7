@@ -121,6 +121,7 @@ $text['angle'] = 'Angle';
 $text['Torque'] = 'Torque';
 $text['Angle'] = 'Angle';
 $text['time'] = 'Time';
+$text['Time'] = 'Time';
 $text['rpm'] = 'RPM';
 $text['delay_time'] = 'Delay time';
 $text['Delay Time'] = 'Delay Time';
@@ -168,8 +169,12 @@ $text['Window'] = 'Window';
 $text['Hi-Lo'] = 'Hi-Lo';
 
 $text['Monitor torque by window'] = 'Monitoring torque by window';
+$text['Monitor angle by window']  = 'Monitoring angle by window';
 $text['K_Value_text'] = 'K Value';
-
+$text['Upper_text'] = 'Upper';
+$text['Lower_text'] = 'Lower';
+$text['Plus_text'] = 'Plus';
+$text['Minus_text'] = 'Minus';
 
 $text['Torque_Window'] = 'Torque Window';
 $text['Angle_Window'] = 'Angle Window';
@@ -258,7 +263,8 @@ $text['delete_success'] = 'Delete completed';
 $text['copy_success'] = 'Copy completed';
 $text['select_job'] = 'select job';
 
-
+$text['Blackout Recovery_text']  = 'Blackout Recovery';
+$text['Circular Archive_text'] = 'Circular Archive';
 
 /*$array = array(
 	101 => 'Disable',
@@ -362,6 +368,14 @@ $text['system_torque_filter'] = 'Torque Filter';
 $text['system_dec'] = 'DEC';
 $text['system_inc'] = 'INC';
 $text['sample_rate'] = 'Sampling Rate';
+$text['Clear_Seq_Button_text'] = 'Clear Seq button';
+$text['Clear_button_text'] = 'Clear button';
+$text['Confirm_button_text'] = 'Confirm button';
+$text['Enable_button_text'] = 'Enable button';
+$text['Disable_button_text'] = 'Disable button';
+$text['Skip_button_text'] = 'Skip button';
+$text['Button_Access_With_Password_text'] = 'Button Access With Password';
+$text['Background_Color_text'] = 'Background Color';
 
 $text['system_password'] = 'Password';
 $text['system_new_password'] = 'New Password';

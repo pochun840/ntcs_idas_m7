@@ -32,8 +32,6 @@ class Settings extends Controller
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         
         $barcodes = $this->GetBarcodes();
-
-    
         
         $data = array();
         $data = array(

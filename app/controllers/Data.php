@@ -53,9 +53,9 @@ class Data extends Controller
             if (!empty($res_data)) {
                 $info_data = '';
                 foreach ($res_data as $ve) {
-                    if ($ve['fasten_status'] == 7 || $ve['fasten_status'] == 8) {
+                    if ($ve['fasten_status'] == 2 ) {
                         $style = 'style="background: red"';
-                    } else if ($ve['fasten_status'] == 5 || $ve['fasten_status'] == 6) {
+                    } else if ($ve['fasten_status'] == 3 || $ve['fasten_status'] == 4) {
                         $style = 'style="background: #FFEF62"';
                     } else {
                         $style = 'style="background: green"';

@@ -178,6 +178,8 @@ class Steptcc{
 
 
     public function update_step_by_id($step_data){
+
+        //echo "eeeeeeeeer";die();
         
         if (empty($step_data['JOBID']) || empty($step_data['SEQID']) || empty($step_data['StepSelect'])) {
             return false; 
