@@ -143,8 +143,10 @@ class Miscellaneous{
 
         if($mode == "status_ntcs"){
             $array = array(
-                0 => 'OK', 
-                1 => 'NG'
+                1 => 'OK', 
+                2 => 'NG',
+                3 => 'OK-SEQ',
+                4 => 'OK-JOB'
             );
 
         }
