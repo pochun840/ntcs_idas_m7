@@ -16,9 +16,13 @@ class Logins extends Controller
         $_SESSION['privilege'] = '';
         $error_message = '';
         $authToken = '';
+        $account = $this->LoginModel->get_account();
+
+       
         $data = [
             'error_message' => $error_message,
-            'device_info' => $device_info
+            'device_info' => $device_info,
+            'account' => $account
         ];
 
         //例外狀況，切換語系
@@ -34,12 +38,18 @@ class Logins extends Controller
         //沒有就單純檢查cookies
         if( !empty($_POST['password']) && isset($_POST['password'])  ){
             //login attempt
+            $_POST['username'] = trim($_POST['username']);
+            $_POST['password'] = trim($_POST['password']);
+        
             $this->logLoginAttempt();
 
+            $username = $_POST['username'];
             $password = $_POST['password'];
             $authToken = hash('sha256', $password);
             
-            if($this->verifyCredentials($authToken)){
+            
+            if($this->verifyCredentials($username,$authToken)){
+                setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
                 return true;
             }else{
@@ -50,6 +60,7 @@ class Logins extends Controller
             }
 
         }else{
+
             if ($this->isAuthenticated() || $exception ) { //切換語系例外
                 // 用戶已登錄，繼續處理其他操作
                 return true;
@@ -68,10 +79,12 @@ class Logins extends Controller
             $authToken = $_COOKIE['auth_token'];
             
             // 解密和驗證令牌的有效性，根據需要進行自定義驗證
-            $username = $this->verifyCredentials($authToken);
+            $username = $_COOKIE['username'];
+            $username = $this->verifyCredentials($username,$authToken);
 
             if ($username !== false) {
                 // 令牌有效，可以根據需要刷新 Cookie 的過期時間
+                setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
                 return true;
             }
@@ -82,33 +95,22 @@ class Logins extends Controller
 
     // 退出登錄並清除身份驗證令牌
     public function logout() {
+        setcookie('username', '', time() - 3600, '/');
         setcookie('auth_token', '', time() - 3600, '/');
     }
 
     // 验证用户提交的用户名和密码
-    public function verifyCredentials($authToken) {
+    public function verifyCredentials($username,$authToken) {
         // 自定義的身份驗證邏輯，根據實際情況進行驗證
         // 返回 true 表示驗證成功，false 表示驗證失敗
         // 可以與數據庫或其他存儲進行比對驗證
-        $pwd = $this->LoginModel->getpwd(); //控制器密碼
-        $pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
+        $pwd = $this->LoginModel->getpwd($username); //控制器密碼
+        //$pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
         $input = $authToken;
-        $output = hash('sha256', $pwd['operator_adminpwd']);
-        $output2 = hash('sha256', $pwd2['password']);
+        $output = hash('sha256', $pwd['passwd']);
+        //$output2 = hash('sha256', $pwd2['password']);
 
-        if($input == $output2){//先判斷guest，如guest與admin密碼相同 則先進入guest
-            //登入成功寫入 active_sessions 資料庫
-
-            $reslut = $this->active_sessions('guest');
-            if($reslut){
-                $_SESSION['privilege'] = 'guest';
-                return true;
-            }else{
-                return false;
-            }
-
-            return true;
-        }else if($input == $output){
+        if($input == $output){
             //登入成功寫入 active_sessions 資料庫
             $reslut = $this->active_sessions('admin');
 

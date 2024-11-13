@@ -17,14 +17,32 @@ class Login{
         $this->db_iDas_login = new Database;
         $this->db_iDas_login  = $this->db_iDas_login->getDb_das_login();
 
+
+
+    }
+
+
+    //取得控制器的帳戶
+    public function get_account(){
+        $sql = "SELECT * FROM `user` ";
+        $statement = $this->db_iDas->prepare($sql);
+        $statement->execute();
+        $row = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        return $row;
     }
 
     // 取得控制器登入密碼
-    public function getpwd()
+    public function getpwd($username)
     {
-        $sql = "SELECT operator_loginflag,operator_adminpwd,operator_priviledge FROM operator";
-        $statement = $this->db_iDas_login->prepare($sql);
-        $statement->execute();
+        $sql = "SELECT * FROM user WHERE name = :name ";
+        $statement = $this->db_iDas->prepare($sql);
+        $statement->bindValue(':name', $username);
+        $statement->execute();        
+        
+        // $sql = "SELECT operator_loginflag,operator_adminpwd,operator_priviledge FROM operator";
+        // $statement = $this->db_iDas->prepare($sql);
+        // $statement->execute();
 
         return $statement->fetch();
     }
@@ -44,7 +62,7 @@ class Login{
     public function logLoginAttempt($ip) {
 
         // 插入登录尝试记录
-        $stmt = $this->db_iDas_login->prepare("INSERT INTO login_attempts (ip) VALUES (:ip)");
+        /*$stmt = $this->db_iDas_login->prepare("INSERT INTO login_attempts (ip) VALUES (:ip)");
         $stmt->bindValue(':ip', $ip);
         $stmt->execute();
 
@@ -58,7 +76,9 @@ class Login{
         if ($count > $max_records) {
             $delete_count = $count - $max_records;
             $this->db_iDas_login->exec("DELETE FROM login_attempts WHERE id IN (SELECT id FROM login_attempts ORDER BY id ASC LIMIT $delete_count)");
-        }
+        }*/
+
+
     }
 
     // 检查同时登录用户数是否达到限制
