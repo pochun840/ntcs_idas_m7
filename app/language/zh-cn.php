@@ -354,6 +354,19 @@ $text['system_torque_filter'] = '扭力过滤';
 $text['system_dec'] = '倒数';
 $text['system_inc'] = '正数';
 $text['sample_rate'] = '采样率';
+$text['Blackout Recovery_text']  = '状态储存';
+$text['Circular Archive_text'] = '循环存档';
+$text['Clear_Seq_Button_text'] = '清除工序键';
+$text['Clear_button_text'] = '清除颗数键';
+$text['Confirm_button_text'] = '确认键';
+$text['Enable_button_text'] = '启用键';
+$text['Disable_button_text'] = '禁用键';
+$text['Skip_button_text'] = '下一工序鍵';
+$text['Button_Access_With_Password_text'] = '按钮密码';
+$text['Background_Color_text'] = '背景颜色';
+
+
+
 
 $text['system_password'] = '密码';
 $text['system_new_password'] = '新密码';

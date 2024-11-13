@@ -354,6 +354,18 @@ $text['system_dec'] = '倒數';
 $text['system_inc'] = '正數';
 $text['sample_rate'] = '取樣率';
 
+$text['Blackout Recovery_text']  = '狀態儲存';
+$text['Circular Archive_text'] = '循環存檔';
+$text['Clear_Seq_Button_text'] = '清除工序鍵';
+$text['Clear_button_text'] = '清除顆數鍵';
+$text['Confirm_button_text'] = '確認鍵';
+$text['Enable_button_text'] = '啟用鍵';
+$text['Disable_button_text'] = '禁用键';
+$text['Skip_button_text'] = '下一工序鍵';
+$text['Button_Access_With_Password_text'] = '按鍵密碼';
+$text['Background_Color_text'] = '背景顏色';
+
+
 $text['system_password'] = '密碼';
 $text['system_new_password'] = '新密碼';
 $text['system_confirm_password'] = '確認密碼';
