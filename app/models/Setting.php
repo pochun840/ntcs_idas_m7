@@ -260,32 +260,37 @@ class Setting{
         return $row['device_version'];
     }
 
-    public function GetAllBarcodes()
-    {
-       
+    public function GetAllBarcodes(){
+    
         $sqlBarcode = "SELECT * FROM " . TABLE_NTCS_BARCODE;
         $statementBarcode = $this->db_barcode->prepare($sqlBarcode);
         $statementBarcode->execute();
         $barcodeRows = $statementBarcode->fetchAll(PDO::FETCH_ASSOC);
 
-      
+
         $sqlJob = "SELECT JOBID, JOBname FROM JOB_lst";
         $statementJob = $this->db_iDas->prepare($sqlJob);
         $statementJob->execute();
         $jobRows = $statementJob->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($barcodeRows as &$barcodeRow) {
+   
+        foreach ($barcodeRows as $key => &$barcodeRow) {
+            $jobMatched = false; 
             foreach ($jobRows as $jobRow) {
                 if ($barcodeRow['job_id'] == $jobRow['JOBID']) {
                     $barcodeRow['JOBname'] = $jobRow['JOBname'];
-                    break; 
+                    $jobMatched = true; 
+                    break;
                 }
+            }
+            if (!$jobMatched) {
+                unset($barcodeRows[$key]);
             }
         }
 
-
         return $barcodeRows; 
     }
+
 
     public function Update_Barcode($barcode)
     {
