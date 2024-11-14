@@ -512,7 +512,7 @@
                     <div class="col-3 t1">Current iDAS Version:</div>
                     <div class="col-3 t2">
                        
-                        <input id="idas_software_version" name="idas_software_version" type="text" value="<?php echo $data['iDas_Vesion'];?>" style="height: 32px" class="form-control" value="" disabled>
+                        <input id="idas_software_version" name="idas_software_version" type="text" value="<?php echo $data['idas_version'];?>" style="height: 32px" class="form-control" value="" disabled>
                     </div>
                 </div>
                 <div class="row t2">

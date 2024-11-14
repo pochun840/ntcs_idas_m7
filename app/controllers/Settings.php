@@ -30,7 +30,10 @@ class Settings extends Controller
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
         $job_list = $this->SettingModel->get_job_list();
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
-        
+        $idas_version = $this->SettingModel->get_idas_version();
+
+        $iDAS_version = $idas_version['config_value'];
+
         $barcodes = $this->GetBarcodes();
         
         $data = array();
@@ -46,7 +49,8 @@ class Settings extends Controller
             'barcodes'        => $barcodes,
             'torque_unit'     => $torque_unit,
             'sample_rate'     => $sample_rate,
-            'barcode_mode'    => $barcode_mode
+            'barcode_mode'    => $barcode_mode,
+            'idas_version'   => $iDAS_version
 
         );
 
