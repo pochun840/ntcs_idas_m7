@@ -364,6 +364,9 @@ $text['Disable_button_text'] = '禁用键';
 $text['Skip_button_text'] = '下一工序鍵';
 $text['Button_Access_With_Password_text'] = '按鍵密碼';
 $text['Background_Color_text'] = '背景顏色';
+$text['green_text'] = '綠色';
+$text['yellow_text'] = '黃色';
+
 
 
 $text['system_password'] = '密碼';

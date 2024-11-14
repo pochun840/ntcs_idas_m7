@@ -376,6 +376,8 @@ $text['Disable_button_text'] = 'Disable button';
 $text['Skip_button_text'] = 'Skip button';
 $text['Button_Access_With_Password_text'] = 'Button Access With Password';
 $text['Background_Color_text'] = 'Background Color';
+$text['green_text'] = 'Green';
+$text['yellow_text'] = 'Yellow';
 
 $text['system_password'] = 'Password';
 $text['system_new_password'] = 'New Password';
