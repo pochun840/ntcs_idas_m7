@@ -25,7 +25,7 @@
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <header>
-            <h3>  <h3><?php echo ($data['type'] == 'edit') ? 'EDIT STEP' : 'NEW STEP'; ?></h3></h3>
+            <h3>  <h3><?php echo ($data['type'] == 'edit') ? $text['edit_step']  : $text['add_step']; ?></h3></h3>
         </header>
     </div>
 
@@ -248,9 +248,9 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['K_Value_text'];?>:</div>
+                            <div class="col-3"><?php echo $text['Acceleration_text'];?>:</div>
                             <div class="col-9">
-                                <input id="k_value" class="form-control form-control-sm" value="">
+                                <input id="k_value" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['KValue'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
@@ -269,7 +269,7 @@
                                   <input class="form-check-input" type="radio" name="StepTorqueOffsetSign" id="join_offset_minus" value="45"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepTorqueOffsetSign'] == 45) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="join_offset_minus"><?php echo $text['Minus_text']; ?></label>
-                                  <input id="StepTorqueOffset" class="form-control form-control-sm" value="">
+                                  <input id="StepTorqueOffset" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueOffset'] : ''; ?>">
                                 </div>
                             </div>
                         </div>
@@ -341,7 +341,7 @@
                 </div>
             </div>
             <div class="w3-center" style="margin: 10px 30px 0px 0;">
-                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3" onclick="<?php echo $data['type'] == 'new' ? 'save_step()' : 'edit_step()'; ?>"><?php echo $text['save']; ?></button>
+                <button style="height: 50px; width: 100px; font-size: 25px" id="button1" class="button button3" onclick="<?php echo $data['type'] == 'edit' ? 'edit_step()' : 'save_step()'; ?>"><?php echo $text['save']; ?></button>
             </div>
         </div>
     </div>
@@ -484,7 +484,7 @@
         data.append("StepDirection",StepDirection ? StepDirection.value : null);
         data.append("StepDelay",StepDelay);
         data.append("StepRPM",StepRPM); 
-      
+
         data.append("StepTorqueOffset",StepTorqueOffset.value);
         data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
         //data.append("StepEnableThreshold",StepEnableThreshold.value);
@@ -496,6 +496,8 @@
         data.append("StepLoTorque",StepLoTorque);
         data.append("KValue",KValue);
         let check =input_check();
+
+        //alert(check);
         if(check){
                 $.ajax({
                 url: '?url=Step/create_step',
@@ -518,7 +520,7 @@
             });
             
         }
-       
+
     }
 
 
@@ -545,7 +547,7 @@
         let StepDelay = document.getElementById("StepDelay").value;
         let StepRPM = document.getElementById("StepRPM").value;
         let KValue  = document.getElementById("k_value").value;
-        let StepTorqueOffset = document.getElementById("StepTorqueOffset").value; //
+        let StepTorqueOffset = document.getElementById("StepTorqueOffset").value; 
         let StepTorqueOffsetSign  = document.querySelector('input[name="StepTorqueOffsetSign"]:checked');
         let StepEnableThreshold  = document.querySelector('input[name="StepEnableThreshold"]:checked');
         let StepTorqueTS = document.getElementById("StepTorqueTS").value;
@@ -571,9 +573,9 @@
         data.append("StepDelay",StepDelay);
         data.append("StepRPM",StepRPM); 
         data.append("KValue",KValue);
-        //data.append("StepTorqueOffset",StepTorqueOffset.value); //待修改
-        data.append("StepTorqueOffset",0);
-        data.append("StepTorqueOffsetSign",StepTorqueOffsetSign);
+     
+        data.append("StepTorqueOffset",StepTorqueOffset);
+        data.append("StepTorqueOffsetSign",StepTorqueOffsetSign.value);
         data.append("StepEnableThreshold",StepEnableThreshold.value);
         data.append("StepTorqueTS",StepTorqueTS);
         data.append("StepEnableDownShift",StepEnableDownShift.value);
@@ -581,9 +583,12 @@
         data.append("StepRPMDownShift",StepRPMDownShift);
         data.append("StepHiTorque",StepHiTorque);
         data.append("StepLoTorque",StepLoTorque);
+        
+        let check_step = input_check();
+        //alert(check_step);
 
-        //console.log(StepTorqueOffset.value);
-        $.ajax({
+        if(check_step){
+            $.ajax({
             url: '?url=Step/edit_step',
             type: 'POST',
             data: data,
@@ -603,6 +608,8 @@
             }
         });
 
+        }
+        
     }
 
 
@@ -676,7 +683,6 @@
             downshift_angle_max = 30600;
             downshift_angle_min = 0;
 
-
         }else if(StepOption ==1){
 
             //Angle 
@@ -713,6 +719,7 @@
             //time
             let offset_max = 99999;
             let offset_min = 0;
+  
 
             hi_angle_max = 99999;
             hi_angle_min = 0;
@@ -738,33 +745,71 @@
 
         }
 
+        let conditions  = [];
+        if (StepOption == 0) {
+        // StepOption == 0: 需要驗證 StepTorque，不需要驗證 StepAngle 和 StepTime
+            conditions = [
+                { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque }
+            ];
+        } else if (StepOption == 1) {
+            // StepOption == 1: 需要驗證 StepAngle，不需要驗證 StepTorque 和 StepTime
+            conditions = [
+                { id: 'StepAngle', pattern: /^\d{0,5}?$/, min: 1, max: 30600 }
+            ];
+        } else if (StepOption == 2) {
+            // StepOption == 2: 需要驗證 StepTime，不需要驗證 StepTorque 和 StepAngle
+            conditions = [
+                { id: 'StepTime', pattern: /^\d{0,5}?$/, min: 0, max: 20 }
+            ];
+        }
 
         //unscrew_torque_threshold
-        let conditions = [
+         conditions = [
             { id: 'STEPname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'StepDelay', pattern: /^\d{0,4}$/, min: 0, max: 2000 }, 
             { id: 'StepRPM', pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'k_value', pattern: /^(0(\.([2-9]{1}[0-9]{1}|[1-9]{1}\d{0,1}))|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.50 },  
             { id: 'StepRPMDownShift',pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM},
-            { id: 'StepTorqueTS',pattern: /^\d{0,4}$/, min: Tool_Min_Torque, max: Tool_Max_Torque},
-            { id: 'StepTorqueDownShift', pattern: /^\d{0,4}$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
+            { id: 'StepTorqueTS', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
+            { id: 'StepTorqueDownShift', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
             { id: 'StepHiTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: hi_torque_min, max: hi_torque_max },
             { id: 'StepLoTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: hi_torque_min, max: hi_torque_max },
             { id: 'StepHiAngle', pattern: /^\d{0,5}?$/, min: hi_angle_min, max: 30600 },
             { id: 'StepLoAngle', pattern: /^\d{1,6}$/, min: lo_angle_min, max: lo_angle_max },
             { id: 'StepLimiHi',pattern: /^\d{0,3}$/, min: 0, max:100 },
             { id: 'StepLimiLo',pattern: /^\d{0,3}$/, min: 0, max:100 },
-            { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
-            { id: 'StepAngle', pattern: /^\d{0,5}?$/, min: 1, max: 30600 },
-            { id: 'StepTime', pattern: /^\d{0,5}?$/, min: 0, max: 20 },
+            //{ id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
+            //{ id: 'StepAngle', pattern: /^\d{0,5}?$/, min: 1, max: 30600 },
+            //{ id: 'StepTime', pattern: /^\d{0,5}?$/, min: 0, max: 20 },
    
         ];
 
+        if (StepOption == 0) {
+            // 當 StepOption == 0 時，不需要驗證 StepAngle 和 StepTime
+            conditions.push(
+                { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
+              
+            );
+        } else if (StepOption == 1) {
+            // 保留所有欄位驗證
+            conditions.push(
+                { id: 'StepAngle', pattern: /^\d{0,5}?$/, min: 1, max: 30600 },
+            );
+        } else if (StepOption == 2) {
+            // 保留所有欄位驗證
+            conditions.push(
+                { id: 'StepTime', pattern: /^\d{0,5}?$/, min: 0, max: 20 },
+            );
+        }
+
+
         let isFormValid = true;
+        let errorMessages = []; 
         conditions.forEach(function(input) {
             var element = document.getElementById(input.id);
             var value = element.value.trim();
 
+ 
             if(input.id != 'STEPname'){
                 var nextSibling = element.nextElementSibling;
                 if (nextSibling) {
@@ -774,15 +819,19 @@
 
             if (value === "") {
                 element.classList.add("is-invalid");
+                errorMessages.push(input.message); // 儲存錯誤訊息
                 isFormValid = false;
             } else if (!input.pattern.test(value)) {
                 element.classList.add("is-invalid");
+                errorMessages.push(input.message); // 儲存錯誤訊息
                 isFormValid = false;
             } else if (input.min !== null && parseFloat(value) < input.min) {
                 element.classList.add("is-invalid");
+                errorMessages.push(input.message); // 儲存錯誤訊息
                 isFormValid = false;
             } else if (input.max !== null && parseFloat(value) > input.max) {
                 element.classList.add("is-invalid");
+                errorMessages.push(input.message); // 儲存錯誤訊息
                 isFormValid = false;
             } else {
                 element.classList.remove("is-invalid");
@@ -790,9 +839,14 @@
 
         });
 
-        console.log(conditions)
+        
+        console.log(isFormValid);
+        if (!isFormValid) {
+            //alert("以下欄位有錯誤：\n" + errorMessages.join("\n"));
+            return false;  // 只要有錯誤，回傳 false
+        }
 
-        return isFormValid;
+        return true;
 
     }
     

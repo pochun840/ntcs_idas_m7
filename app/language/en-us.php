@@ -170,7 +170,7 @@ $text['Hi-Lo'] = 'Hi-Lo';
 
 $text['Monitor torque by window'] = 'Monitoring torque by window';
 $text['Monitor angle by window']  = 'Monitoring angle by window';
-$text['K_Value_text'] = 'K Value';
+$text['Acceleration_text'] = 'Acceleration';
 $text['Upper_text'] = 'Upper';
 $text['Lower_text'] = 'Lower';
 $text['Plus_text'] = 'Plus';
@@ -376,6 +376,8 @@ $text['Disable_button_text'] = 'Disable button';
 $text['Skip_button_text'] = 'Skip button';
 $text['Button_Access_With_Password_text'] = 'Button Access With Password';
 $text['Background_Color_text'] = 'Background Color';
+$text['green_text'] = 'Green';
+$text['yellow_text'] = 'Yellow';
 
 $text['system_password'] = 'Password';
 $text['system_new_password'] = 'New Password';

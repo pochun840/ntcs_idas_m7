@@ -60,7 +60,7 @@ $text['rev_count'] = '拆螺丝计数';
 $text['rev_tor_threshold'] = '拆螺丝门槛点扭力';
 $text['Monitor torque by window'] = '监控扭力窗口';
 $text['Monitor angle by window']  = '监控角度窗口';
-$text['K_Value_text'] = 'K 值';
+$text['Acceleration_text'] = '加速度';
 $text['Upper_text'] = '上限';
 $text['Lower_text'] = '下限';
 $text['Plus_text'] = '正';
@@ -364,6 +364,9 @@ $text['Disable_button_text'] = '禁用键';
 $text['Skip_button_text'] = '下一工序鍵';
 $text['Button_Access_With_Password_text'] = '按钮密码';
 $text['Background_Color_text'] = '背景颜色';
+$text['green_text'] = '绿色';
+$text['yellow_text'] = '黄色';
+
 
 
 

@@ -229,11 +229,11 @@
                     <div class="col t2" >
       			      	<div class="col-1 form-check form-check-inline">
         				    <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_green" value="1"   <?php echo $data['controller_info']['okjobcolor'] == 1 ? 'checked="checked"' : ''; ?>>
-            				<label class="form-check-label" for=""><?php echo "Green";?></label>
+            				<label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
             			</div>
             			<div class="form-check form-check-inline">
             			    <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_yellow" value="2"  <?php echo $data['controller_info']['okjobcolor'] == 2 ? 'checked="checked"' : ''; ?> >
-            				<label class="form-check-label" for="`"><?php echo "Yellow";?></label>
+            				<label class="form-check-label" for=""><?php echo $text['yellow_text'];?></label>
             			</div>
                     </div>
                 </div>
@@ -244,11 +244,11 @@
                     <div class="col t2" >
       			      	<div class="col-1 form-check form-check-inline">
         				    <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_green" value="1"  <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?>>
-            				<label class="form-check-label" for=""><?php echo "Green";?></label>
+            				<label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
             			</div>
             			<div class="form-check form-check-inline">
             			    <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_yellow" value="2"  <?php echo $data['controller_info']['okseqcolor'] == 2 ? 'checked="checked"' : ''; ?> >
-            				<label class="form-check-label" for="`"><?php echo "Yellow";?></label>
+            				<label class="form-check-label" for="`"><?php echo $text['yellow_text'];?></label>
             			</div>
                     </div>
                 </div>
@@ -512,7 +512,7 @@
                     <div class="col-3 t1">Current iDAS Version:</div>
                     <div class="col-3 t2">
                        
-                        <input id="idas_software_version" name="idas_software_version" type="text" value="<?php echo $data['iDas_Vesion'];?>" style="height: 32px" class="form-control" value="" disabled>
+                        <input id="idas_software_version" name="idas_software_version" type="text" value="<?php echo $data['idas_version'];?>" style="height: 32px" class="form-control" value="" disabled>
                     </div>
                 </div>
                 <div class="row t2">

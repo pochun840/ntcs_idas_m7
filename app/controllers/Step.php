@@ -80,6 +80,7 @@ class Step extends Controller
             include $file;
         }
 
+     
         if(isset($_POST['JOBID'])){
 
             $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
@@ -101,17 +102,17 @@ class Step extends Controller
             $StepLoTorque = isset($_POST['StepLoTorque']) ? floatval($_POST['StepLoTorque']) : '';
             $StepAccelerateOffset = isset($_POST['StepAccelerateOffset']) ? intval($_POST['StepAccelerateOffset']) : 43;//待確認
             $StepAccelerateOffsetSign = isset($_POST['StepAccelerateOffsetSign']) ? intval($_POST['StepAccelerateOffsetSign']) : 0; //待確認
-            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? intval($_POST['StepTorqueOffset']) : 43; 
+            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? floatval($_POST['StepTorqueOffset']) : ''; 
             $StepTorqueOffsetSign = isset($_POST['StepTorqueOffsetSign']) ? intval($_POST['StepTorqueOffsetSign']) : 0;
             $StepEnableTorqueOffset = isset($_POST['StepEnableTorqueOffset']) ? intval($_POST['StepEnableTorqueOffset']) : 0; //待確認
             $StepEnableDownShift =  isset($_POST['StepEnableDownShift']) ? intval($_POST['StepEnableDownShift']) : 0;
-            $StepTorqueDownShift =  isset($_POST['StepTorqueDownShift']) ? intval($_POST['StepTorqueDownShift']) : 0; 
+            $StepTorqueDownShift = isset($_POST['StepTorqueDownShift']) ? floatval($_POST['StepTorqueDownShift']) : 0;
             $StepRPMDownShift = isset($_POST['StepRPMDownShift']) ? intval($_POST['StepRPMDownShift']) : 0; 
-            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? floatval($_POST['StepTorqueTS']) : 0;
+            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
             $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
             $InterruptAlarm = isset($_POST['InterruptAlarm']) ? intval($_POST['InterruptAlarm']) : 0; 
             $OverAngleStop =  isset($_POST['OverAngleStop']) ? intval($_POST['OverAngleStop']) : 0; 
-            $KValue =  isset($_POST['KValue']) ? intval($_POST['KValue']) : 0; 
+            $KValue = isset($_POST['KValue']) ? round(floatval($_POST['KValue']), 2) : 0;
             $step_unit =  isset($_POST['step_unit']) ? intval($_POST['step_unit']) : 0; 
             //初始化 
             $StepTorque = '';
@@ -204,6 +205,7 @@ class Step extends Controller
             include $file;
         }
 
+     
 
         if(isset($_POST['JOBID'])){
 
@@ -226,17 +228,17 @@ class Step extends Controller
             $StepLoTorque = isset($_POST['StepLoTorque']) ? floatval($_POST['StepLoTorque']) : '';
             $StepAccelerateOffset = isset($_POST['StepAccelerateOffset']) ? intval($_POST['StepAccelerateOffset']) : 43;//待確認
             $StepAccelerateOffsetSign = isset($_POST['StepAccelerateOffsetSign']) ? intval($_POST['StepAccelerateOffsetSign']) : 0; //待確認
-            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? intval($_POST['StepTorqueOffset']) : 43; 
-            $StepTorqueOffsetSign = isset($_POST['StepTorqueOffsetSign']) ? intval($_POST['StepTorqueOffsetSign']) : 0;
+            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? floatval($_POST['StepTorqueOffset']) : ''; 
+            $StepTorqueOffsetSign = isset($_POST['StepTorqueOffsetSign']) ? intval($_POST['StepTorqueOffsetSign']) : 43;
             $StepEnableTorqueOffset = isset($_POST['StepEnableTorqueOffset']) ? intval($_POST['StepEnableTorqueOffset']) : 0; //待確認
             $StepEnableDownShift =  isset($_POST['StepEnableDownShift']) ? intval($_POST['StepEnableDownShift']) : 0;
-            $StepTorqueDownShift =  isset($_POST['StepTorqueDownShift']) ? intval($_POST['StepTorqueDownShift']) : 0; 
+            $StepTorqueDownShift = isset($_POST['StepTorqueDownShift']) ? floatval($_POST['StepTorqueDownShift']) : 0;
             $StepRPMDownShift = isset($_POST['StepRPMDownShift']) ? intval($_POST['StepRPMDownShift']) : 0; 
-            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? floatval($_POST['StepTorqueTS']) : 0;
+            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
             $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
             $InterruptAlarm = isset($_POST['InterruptAlarm']) ? intval($_POST['InterruptAlarm']) : 0; 
             $OverAngleStop =  isset($_POST['OverAngleStop']) ? intval($_POST['OverAngleStop']) : 0; 
-            $KValue =  isset($_POST['KValue']) ? intval($_POST['KValue']) : 0; 
+            $KValue = isset($_POST['KValue']) ? round(floatval($_POST['KValue']), 2) : 0;
             $step_unit =  isset($_POST['step_unit']) ? intval($_POST['step_unit']) : 0; 
 
             //初始化 
@@ -307,10 +309,6 @@ class Step extends Controller
             );  
             
             
-
- 
-            
-
             $res = $this->stepModel->update_step_by_id($step_data);
             $result = array();
             if($res){

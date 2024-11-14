@@ -22,6 +22,11 @@ class Setting{
         $this->db_barcode = new Database;
         $this->db_barcode = $this->db_barcode->getDb_das_barcode();
 
+        $this->db_iDas_login = new Database;
+        $this->db_iDas_login  = $this->db_iDas_login->getDb_das_login();
+
+
+
         $this->dbh = new Database;
 
     }
@@ -592,6 +597,15 @@ class Setting{
         }
     
         return true; // 成功完成所有操作
+    }
+
+    public function get_idas_version(){
+        $sql = "SELECT * FROM config where id = '9' ";
+        $statement = $this->db_iDas_login->prepare($sql);
+        $statement->execute();
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return $row;
     }
 
 }

@@ -2,6 +2,8 @@
 
 class Logins extends Controller
 {
+    private $AdminModel;
+    private $LoginModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -75,14 +77,14 @@ class Logins extends Controller
     }
 
     public function isAuthenticated() {
-        if (isset($_COOKIE['auth_token'])) {
+        if (isset($_COOKIE['auth_token']) && isset($_COOKIE['username'])) {
             $authToken = $_COOKIE['auth_token'];
             
             // 解密和驗證令牌的有效性，根據需要進行自定義驗證
             $username = $_COOKIE['username'];
-            $username = $this->verifyCredentials($username,$authToken);
+            $valid_check = $this->verifyCredentials($username,$authToken);
 
-            if ($username !== false) {
+            if ($valid_check !== false) {
                 // 令牌有效，可以根據需要刷新 Cookie 的過期時間
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
@@ -105,10 +107,10 @@ class Logins extends Controller
         // 返回 true 表示驗證成功，false 表示驗證失敗
         // 可以與數據庫或其他存儲進行比對驗證
         $pwd = $this->LoginModel->getpwd($username); //控制器密碼
-        //$pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
+        // $pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
         $input = $authToken;
         $output = hash('sha256', $pwd['passwd']);
-        //$output2 = hash('sha256', $pwd2['password']);
+        // $output2 = hash('sha256', $pwd2['password']);
 
         if($input == $output){
             //登入成功寫入 active_sessions 資料庫
@@ -177,8 +179,10 @@ class Logins extends Controller
     {
         $error_message = '連線數已達上限';
         $authToken = '';
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
         $data = [
-            'error_message' => $error_message
+            'error_message' => $error_message,
+            'iDas_Vesion' => $iDas_Vesion,
         ];
 
         $this->logout();
@@ -192,7 +196,44 @@ class Logins extends Controller
         return $reslut;
     }
 
+    public function Activation_Check()
+    {
+        //判斷是否已授權，如果未授權就導回登入頁
+        $auth_status = $this->AdminModel->Get_Das_Config('activate_status');
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        $data = [
+            'error_message' => '',
+            'iDas_Vesion' => $iDas_Vesion,
+        ];
+
+        if($auth_status == 0){//未授權
+            $data['error_message'] = 'inactive';
+            $this->logout();
+            $this->view('login/index', $data);
+            exit();
+        }else if($auth_status == 1){//試用版，要再判斷到期日
+            // date_default_timezone_set('UTC');
+            $expired_date = $this->AdminModel->Get_Das_Config('expired_date');
+            $today = date("Y-m-d");
+            if($today > $expired_date){
+                $data['error_message'] = 'expired';
+                $this->logout();
+                $this->view('login/index', $data);
+                exit();
+            }else{
+                return true;
+            }
+
+        }else if($auth_status == 2){//永久授權
+            return true;
+        }else{
+            $data['error_message'] = 'inactive';
+            $this->logout();
+            $this->view('login/index', $data);
+            exit();
+        }
+    }
+
 
 
 }
-?>
