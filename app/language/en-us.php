@@ -170,7 +170,7 @@ $text['Hi-Lo'] = 'Hi-Lo';
 
 $text['Monitor torque by window'] = 'Monitoring torque by window';
 $text['Monitor angle by window']  = 'Monitoring angle by window';
-$text['K_Value_text'] = 'K Value';
+$text['Acceleration_text'] = 'Acceleration';
 $text['Upper_text'] = 'Upper';
 $text['Lower_text'] = 'Lower';
 $text['Plus_text'] = 'Plus';
