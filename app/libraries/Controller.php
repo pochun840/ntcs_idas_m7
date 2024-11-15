@@ -98,7 +98,7 @@ class Controller
     public function LoginCheck($value='')
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/database/das.db'); 
+            $con_db = new PDO('sqlite:/var/www/html/ntcsidas/das.db'); 
         }else{
             $con_db = new PDO('sqlite:../data.db'); 
         }
@@ -208,7 +208,7 @@ class Controller
     public function Device_Info()
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/database/data_device.db'); 
+            $con_db = new PDO('sqlite:/var/www/html/ntcsidas/data_device.db'); 
         }else{
             $con_db = new PDO('sqlite:../data_device.db'); 
             
