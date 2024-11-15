@@ -24,21 +24,23 @@ class Database
         $data_barcode_name = "ntcs_barcode.db";
         $data_device_name  = 'ntcs_device.db';
 
-        $base_path_linux = '/var/www/html/database/';
-        $base_path_other = '../';
+        //$base_path_linux = '/var/www/html/database/';
+        //$base_path_other = '../';
        
 
 
         // 透過 PHP_OS_FAMILY 判斷，目前執行的系統，決定要採用的DB路徑
         if (PHP_OS_FAMILY == 'Linux') {
             if (!defined('BASE_PATH')) {
-                define('BASE_PATH', '/var/www/html/database/');
+                define('BASE_PATH', '/var/www/html/ntcsidas/');
             }
             $db_paths = [
-                'iDas' => 'iDas_data.db',
+                'data' => file_exists(BASE_PATH . $data_db_name) ? $data_db_name : 'data.db',
+                'iDas' => 'KLS_NTCS_IDAS.Lin',
                 'iDas_login' => 'das.db',
-                'iDas_device' => 'data.db',
-                'data' => file_exists(BASE_PATH. $data_db_name) ? $data_db_name : 'data.db',
+                'iDas_device' => 'data_device.db',
+                'iDas_tools' => 'ntcs_device.db',
+                'barcode' => 'ntcs_barcode.db',
             ];
             
             foreach ($db_paths as $key => $db_name) {
