@@ -101,10 +101,14 @@ class Inputs extends Controller
                         
                     }else{
     
+                        //var_dump($vv['EvenID']);
+
+                        $Wp_Ready_Confirm = ($vv['Wp_Ready_Confirm'] == 1) ? "YES" : "NO";
+
                         $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
                         $job_inputlist .= "<td id='".$vv['EvenID']."'>".$event[$vv['EvenID']]."</td>";
                         $job_inputlist .= $this->InputModel->generateTableCell($vv['Pin'],$vv['signal']);
-                        $job_inputlist .= '<td>NO</td>';
+                        $job_inputlist .= '<td>'.$Wp_Ready_Confirm.'</td>';
                         $job_inputlist .= '<td>1</td>';
                         $job_inputlist .= '<td>EVENT</td>';
                         $job_inputlist .= '</tr>';

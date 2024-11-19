@@ -81,7 +81,7 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3"><?php echo $text['target_type'];?>:</div>
                             <div class="col-9">
-                                <select id="StepOption" class="form-control form-control-sm" style="font-size: 14px; width: 60px;" onchange="updateLabel()">
+                                <select id="StepOption"  onchange="updateLabel()">
                                     <?php 
                                             $options = [
                                                 0 => $text['Torque'],
@@ -865,3 +865,11 @@
 
 
 <?php require APPROOT . 'views/inc/footer.php'; ?>
+
+<style>
+  #StepOption {
+    font-size: 14px;
+    width: 165px;
+    border: 1px solid #DADADA;
+  }
+</style>
