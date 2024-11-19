@@ -179,7 +179,7 @@
 												<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
 											</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_3', this.checked,'3')">
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit1('edit_pin<?php echo $i; ?>_3', this.checked,'3')">
 												<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
 											</div>
 											<div class="col-sm-2 t2">
@@ -1071,6 +1071,8 @@ function toggleOnputTime1(inputId, checked, option){
 
 
 
+
+
 function toggleOnputTime(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
     
@@ -1136,6 +1138,16 @@ function toggleOnputTime_edit(inputId, checked, option) {
             element.disabled = false;
         }
     }
+}
+
+function toggleOnputTime_edit1(inputId, checked, option){
+   if(option == 3){
+        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
+        var element = document.getElementById(newId);
+        if (element) {
+            element.disabled = false;
+        }
+   }
 }
 
 
