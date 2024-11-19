@@ -65,6 +65,8 @@
                                             <th>8</th>
                                             <th>9</th>
                                             <th>10</th>
+                                            <th>11</th>
+                                            <th>12</th>
                                             <th><?php echo $text['Confirm'];?></th>
                                             <th><?php echo $text['page'];?></th>
                                             <th><?php echo $text['mode'];?></th>
