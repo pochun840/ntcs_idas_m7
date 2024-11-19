@@ -358,6 +358,8 @@
     document.getElementById("join_offset_plus").checked = true;
     document.getElementById("threshold_mode_torque").checked = true;
     document.getElementById("downshift_mode_torque").checked = true;
+    document.getElementById("StepLimiHi").value = 0;
+    document.getElementById("StepLimiLo").value = 0;
     updateLabel();
   } 
   if(dataType === 'edit'){

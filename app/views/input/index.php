@@ -14,8 +14,14 @@
                 <div class="center-content">
             <div class="topnav">
                 <label style="font-size:2.5vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
-                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled style="height:30px; font-size:2.5vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
-                <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"><?php echo $text['select'];?></button>
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled
+                    style="height:30px; font-size:2.5vmin; text-align: center; background-color: #DDDDDD; border:0; line-height:30px;">
+
+                    <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"
+                            style="height:30px; font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
+                        <?php echo $text['select'];?>
+                    </button>
+
             </div>
 
             <!-- Job Select Modal -->
