@@ -268,7 +268,7 @@ var output_job;
 var all_job;
 var del_output_val;
 var output_pinval;
-var dataoutput_pin_val;
+
 $(document).ready(function () {
     highlight_row_input('output_table');
 
@@ -393,7 +393,6 @@ function crud_job_event(argument){
         eventOption.addEventListener('change', function() {
             var selectedOptionId = eventOption.options[eventOption.selectedIndex].value;
             if(selectedOptionId == 7 || selectedOptionId == 8 || selectedOptionId == 9){
-                //alert('eeeeeeee');
                 toggleElementsInRange(1, 11, 2, true);
             }else{
                 toggleElementsInRange(1, 11, 2, false);
@@ -431,6 +430,9 @@ function crud_job_event(argument){
     if (argument === 'edit' && job_id != '' && output_event != '') {
  
         var selectElement = document.getElementById('edit_event_option');
+
+        console.log(selectElement);
+
         if (selectElement) {
             selectElement.disabled = true;
             Array.from(selectElement.options).forEach(option => {
@@ -439,14 +441,9 @@ function crud_job_event(argument){
             });
         }
 
-        //針對
-
-
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
-                //console.log('eewwer');
                 var radio = document.getElementById(id);
-                //console.log(radio);
 
                 if (radio && radio.type === 'radio') { 
                     radio.disabled = true; 
@@ -455,8 +452,10 @@ function crud_job_event(argument){
 
             let tempC = temp.slice(); 
         
-   
+    
+
             const filtered_C = tempC.filter(item => item.includes("edit_pin"));
+            console.log(filtered_C);
             filtered_C.forEach(function(id) {
       
                 var match = id.match(/(edit_pin\d+)_(\d+)/);
@@ -477,8 +476,7 @@ function crud_job_event(argument){
                     var timeElementId = 'edit_time' + basePinId.slice(3);
                     const toremove = "t_pin"; 
                     timeElementId = timeElementId.replace(toremove,'');
-                    //console.log(timeElementId);
-                    
+          
                     var timeElement = document.getElementById(timeElementId);
                     if (timeElement) {
                         timeElement.disabled = true;
@@ -495,9 +493,9 @@ function crud_job_event(argument){
         if(output_pinval != ''){
 
             const idsToDisable = [
+                `edit_pin${output_pinval}_0`,
                 `edit_pin${output_pinval}_1`,
                 `edit_pin${output_pinval}_2`,
-                `edit_pin${output_pinval}_3`,
                 `edit_time${output_pinval}`
             ];
 
