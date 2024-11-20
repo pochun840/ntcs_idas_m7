@@ -402,6 +402,10 @@ class Outputs extends Controller
             $output_data['durate'] = $_POST['wave_on'];
         }
 
+        if($output_data['signal'] == 0 || $output_data['signal'] == 2){
+            $output_data['durate'] = '';
+        }
+
      
 
         $count = $this->OutputModel->check_event_conflict($output_data['JOBID'],$output_data['EvenID']);
