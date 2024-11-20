@@ -344,8 +344,37 @@ function crud_job_event(argument){
             }
         });
 
-       
-        filtered_array.forEach(function(id) {
+        console.log(filtered_array);
+
+
+        let new_array = filtered_array
+            .map(item => item.replace(/_\d$/, ''))  // 去除原始字符串末尾的数字
+            .flatMap(item => {
+                // 字串加上 "_0", "_1", "_2" 和 "time_" + 1到11
+                let result = [
+                    item + "_0",
+                    item + "_1",
+                    item + "_2"
+                ];
+        
+            // 新增 id="time" + 1 到 11
+            for (let i = 1; i <= 11; i++) {
+                result.push("time" + i);
+            }
+
+            return result;
+        });
+
+        //如果有檢查到對應的id，就進行disabled
+        new_array.forEach(id => {
+            let element = document.getElementById(id); 
+            if (element) {
+                element.disabled = true;  
+            }
+        });
+
+
+        /*filtered_array.forEach(function(id) {
       
             var match = id.match(/(pin\d+)_(\d+)/);
             if (match) {
@@ -368,10 +397,11 @@ function crud_job_event(argument){
                     timeElement.disabled = true;
                 }
             }
-        });
+        });*/
+
 
          //針對已設定的事件option做反灰+disable
-         if (Array.isArray(tempA)){
+         /*if (Array.isArray(tempA)){
             tempA.forEach(function(element){
                 var option = document.querySelector('#Event_Option option[value="' + element + '"]');
                 if(option){
@@ -383,7 +413,9 @@ function crud_job_event(argument){
                     option.classList.add('disabled_input');
                 }
             });
-        }
+        }*/
+
+        
 
       
 
@@ -398,25 +430,25 @@ function crud_job_event(argument){
                 toggleElementsInRange(1, 11, 2, false);
             }
 
-            for(let i = 1; i <= 11; i++) {
-            let radioId = 'pin' + i + '_3';
-            let radioElement = document.getElementById(radioId);
-            
-            if (radioElement) {
-                radioElement.addEventListener('change', updateInputsBasedOnRadioSelection);
-            }
-
-            let tempC = tempA.slice();
-            tempC.forEach(pin => {
-                for (let i = 1; i <= 3; i++) {
-                    let id = `pin${pin}_${i}`;
-                    let element = document.getElementById(id);
-                    if (element) {
-                        element.disabled = true; 
-                    }
+            /*for(let i = 1; i <= 11; i++) {
+                let radioId = 'pin' + i + '_3';
+                let radioElement = document.getElementById(radioId);
+                
+                if (radioElement) {
+                    radioElement.addEventListener('change', updateInputsBasedOnRadioSelection);
                 }
-            });
-        }
+
+                let tempC = tempA.slice();
+                tempC.forEach(pin => {
+                    for (let i = 1; i <= 3; i++) {
+                        let id = `pin${pin}_${i}`;
+                        let element = document.getElementById(id);
+                        if (element) {
+                            element.disabled = true; 
+                        }
+                    }
+                });
+            }*/
 
         
             
@@ -430,8 +462,6 @@ function crud_job_event(argument){
     if (argument === 'edit' && job_id != '' && output_event != '') {
  
         var selectElement = document.getElementById('edit_event_option');
-
-        console.log(selectElement);
 
         if (selectElement) {
             selectElement.disabled = true;
@@ -455,7 +485,6 @@ function crud_job_event(argument){
     
 
             const filtered_C = tempC.filter(item => item.includes("edit_pin"));
-            console.log(filtered_C);
             filtered_C.forEach(function(id) {
       
                 var match = id.match(/(edit_pin\d+)_(\d+)/);
@@ -567,12 +596,20 @@ function collectPinValues(selector) {
 
 function toggleElementsInRange(start, end, suffix, disable) {
     for (var i = start; i <= end; i++) {
-        for (var j = 0; j <= 1; j++) {  // Here suffix range is limited to 0 and 1
+    
+        for (var j = 0; j <= 1; j++) { 
             var id = 'pin' + i + '_' + j;
             var element = document.getElementById(id);
             if (element) {
                 element.disabled = disable;
             }
+        }
+
+        var timeId = 'time' + i;
+        console.log(timeId);
+        var timeElement = document.getElementById(timeId);
+        if (timeElement) {
+            timeElement.disabled = disable;
         }
     }
 }
