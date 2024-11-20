@@ -332,8 +332,6 @@ function crud_job_event(argument){
                     radio.disabled = true; 
                 }
             });
-
-
         } 
 
         var filtered_array = [];
@@ -344,82 +342,10 @@ function crud_job_event(argument){
             }
         });
 
-        console.log(filtered_array);
-
-
-        let new_array = filtered_array
-            .map(item => item.replace(/_\d$/, ''))  // 去除原始字符串末尾的数字
-            .flatMap(item => {
-                // 字串加上 "_0", "_1", "_2" 和 "time_" + 1到11
-                let result = [
-                    item + "_0",
-                    item + "_1",
-                    item + "_2"
-                ];
+    
+        disableElements(filtered_array);
+    
         
-            // 新增 id="time" + 1 到 11
-            for (let i = 1; i <= 11; i++) {
-                result.push("time" + i);
-            }
-
-            return result;
-        });
-
-        //如果有檢查到對應的id，就進行disabled
-        new_array.forEach(id => {
-            let element = document.getElementById(id); 
-            if (element) {
-                element.disabled = true;  
-            }
-        });
-
-
-        /*filtered_array.forEach(function(id) {
-      
-            var match = id.match(/(pin\d+)_(\d+)/);
-            if (match) {
-                var basePinId = match[1]; 
-                var pinNumber = match[2]; 
-
-       
-                for (var i = 1; i <= 3; i++) {
-                    var pinElementId = basePinId + "_" + i;
-                    var pinElement = document.getElementById(pinElementId);
-                    if (pinElement && pinElement.type === 'radio') {
-                        pinElement.disabled = true;
-                    }
-                }
-
-                // 禁用 time 相關的元素
-                var timeElementId = 'time' + basePinId.slice(3); // 假設 time ID 的格式是 'time' + 數字部分
-                var timeElement = document.getElementById(timeElementId);
-                if (timeElement) {
-                    timeElement.disabled = true;
-                }
-            }
-        });*/
-
-
-         //針對已設定的事件option做反灰+disable
-         /*if (Array.isArray(tempA)){
-            tempA.forEach(function(element){
-                var option = document.querySelector('#Event_Option option[value="' + element + '"]');
-                if(option){
-                    if (option.selected){
-                        selectedValue = element;
-                    }
-
-                    option.disabled = true;
-                    option.classList.add('disabled_input');
-                }
-            });
-        }*/
-
-        
-
-      
-
-
         document.getElementById('new_output').style.display='block';
         var eventOption = document.getElementById('Event_Option');
         eventOption.addEventListener('change', function() {
@@ -428,6 +354,7 @@ function crud_job_event(argument){
                 toggleElementsInRange(1, 11, 2, true);
             }else{
                 toggleElementsInRange(1, 11, 2, false);
+                disableElements(filtered_array);
             }
 
             /*for(let i = 1; i <= 11; i++) {
@@ -1164,6 +1091,33 @@ function toggleOnputTime_edit(inputId, checked, option) {
 }
 
 
+function disableElements(filtered_array) {
+    // 生成新的 id 数组，去除末尾的数字并添加 "_0", "_1", "_2" 和 "time1" 到 "time11"
+    let new_array = filtered_array
+        .map(item => item.replace(/_\d$/, ''))  // 去除原始字符串末尾的数字
+        .flatMap(item => {
+            let result = [
+                item + "_0",
+                item + "_1",
+                item + "_2"
+            ];
+
+            // 新增 "time" + 1 到 11
+            for (let i = 1; i <= 11; i++) {
+                result.push("time" + i);
+            }
+
+            return result;
+        });
+
+    // 遍历新生成的 id 数组，如果元素存在就禁用它
+    new_array.forEach(id => {
+        let element = document.getElementById(id); 
+        if (element) {
+            element.disabled = true;  // 禁用该元素
+        }
+    });
+}
 
 </script>
 <style>
