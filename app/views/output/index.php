@@ -393,9 +393,10 @@ function crud_job_event(argument){
         eventOption.addEventListener('change', function() {
             var selectedOptionId = eventOption.options[eventOption.selectedIndex].value;
             if(selectedOptionId == 7 || selectedOptionId == 8 || selectedOptionId == 9){
-                toggleElementsInRange(0, 11, 2, true);
+                //alert('eeeeeeee');
+                toggleElementsInRange(1, 11, 2, true);
             }else{
-                toggleElementsInRange(0, 11, 2, false);
+                toggleElementsInRange(1, 11, 2, false);
             }
 
             for(let i = 1; i <= 11; i++) {
@@ -565,9 +566,10 @@ function collectPinValues(selector) {
     return selectedValues;
 }
 
+
 function toggleElementsInRange(start, end, suffix, disable) {
     for (var i = start; i <= end; i++) {
-        for (var j = 0; j <= suffix; j++) {
+        for (var j = 0; j <= 1; j++) {  // Here suffix range is limited to 0 and 1
             var id = 'pin' + i + '_' + j;
             var element = document.getElementById(id);
             if (element) {
@@ -576,6 +578,7 @@ function toggleElementsInRange(start, end, suffix, disable) {
         }
     }
 }
+
 
 
 var old_output_event; 
@@ -816,7 +819,7 @@ function create_output_id() {
             });
         }
     } else {
-        
+        //console.error("No pinval found or pinval[0] is undefined.");
     }
 }
 
@@ -1124,6 +1127,8 @@ function toggleOnputTime_edit(inputId, checked, option) {
         }
     }    
 }
+
+
 
 </script>
 <style>
