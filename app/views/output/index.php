@@ -171,15 +171,15 @@
 										<div class="row output-pin">
 											<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'1')" >
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_0', this.checked,'1')" >
 												<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
 											</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'2')">
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'2')">
 												<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
 											</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit1('edit_pin<?php echo $i; ?>_3', this.checked,'3')">
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'3')">
 												<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
 											</div>
 											<div class="col-sm-2 t2">
@@ -816,7 +816,7 @@ function create_output_id() {
             });
         }
     } else {
-        //console.error("No pinval found or pinval[0] is undefined.");
+        
     }
 }
 
@@ -1059,19 +1059,6 @@ function get_output_info(job_id,output_event){
   
 }
 
-function toggleOnputTime1(inputId, checked, option){
-   if(option == 3){
-        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
-        var element = document.getElementById(newId);
-        if (element) {
-            element.disabled = true;
-        }
-   }
-}
-
-
-
-
 
 function toggleOnputTime(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
@@ -1122,33 +1109,21 @@ function toggleOnputTime_edit(inputId, checked, option) {
         }
     }
 
-    
-    if (option != '2') {
+    if(option == 1 || option == 3){
         var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
+        
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = true;
         }
-        
-    } else { 
+    }else{
         var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = false;
         }
-    }
+    }    
 }
-
-function toggleOnputTime_edit1(inputId, checked, option){
-   if(option == 3){
-        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
-        var element = document.getElementById(newId);
-        if (element) {
-            element.disabled = false;
-        }
-   }
-}
-
 
 </script>
 <style>

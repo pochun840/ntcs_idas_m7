@@ -118,18 +118,13 @@ class Data extends Controller
             }
 
             $dataset = $this->DataModel->get_range_data($start_date, $end_date);
-    
 
-            $dataset = array_slice($dataset, 0, 10000);
-
-            //var_dump($dataset);die();
-    
-
-            foreach ($dataset as $key => $val) {
-                //$dataset[$key]['torque_unit'] = $unit_arr[$val['torque_unit']];
-                //$dataset[$key]['fasten_status'] = $status_arr[$val['fasten_status']];
+            if (count($dataset) == 0) {
+                echo "無法找到符合條件的資料";
+                exit();  
             }
     
+            $dataset = array_slice($dataset, 0, 10000);    
             if ($dataset && $expert_val == "0") {
                
                 $csv_headers = array_keys($dataset[0]);
