@@ -366,15 +366,6 @@ function crud_job_event(argument){
     if (argument === 'edit' && job_id != '' && output_event != '') {
  
         var selectElement = document.getElementById('edit_event_option');
-
-        /*if (selectElement) {
-            selectElement.disabled = true;
-            Array.from(selectElement.options).forEach(option => {
-                option.disabled = true;
-                option.classList.add('disabled_input');
-            });
-        }*/
-
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
                 var radio = document.getElementById(id);
@@ -434,7 +425,6 @@ function crud_job_event(argument){
             });
             
         }
-
 
         get_output_info(job_id, output_event);
         document.getElementById('edit_output').style.display = 'block';
@@ -928,6 +918,8 @@ function get_output_info(job_id,output_event){
                 var radioButton = document.getElementById(edit_output_pin);
                 radioButton.removeAttribute('disabled');
 
+               
+
                 var time_ms = 'edit_time'+ output_pin;
                 if(wave != 2){
                     var time_id = 'edit_time' + output_pin;
@@ -964,7 +956,7 @@ function get_output_info(job_id,output_event){
                             return item.slice(0, -1) + '3';
                         });
                         
-                        //console.log("Updated Array:", updatedArray);
+                        console.log("Updated Array:", updatedArray);
                         updatedArray.forEach(item => {
                             const radio = document.getElementById(item);
                             if (radio && radio.type === 'radio') {
@@ -975,6 +967,20 @@ function get_output_info(job_id,output_event){
                     }
                     
                 }
+
+
+                let result = edit_output_pin.replace(/^edit_pin/, "");
+                result = result.replace(/(_[0-9]{1,2})$/, ""); 
+
+                //檢查id = new_variable是否存在,存在做disabled
+                var new_variable = 'edit_time'+ result;
+                var element = document.getElementById(new_variable);
+                if (element) {
+                    element.disabled = true;  
+                }
+          
+
+                
 
                 document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
                 old_output_even = output_event;
