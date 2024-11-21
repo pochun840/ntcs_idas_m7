@@ -918,8 +918,6 @@ function get_output_info(job_id,output_event){
                 var radioButton = document.getElementById(edit_output_pin);
                 radioButton.removeAttribute('disabled');
 
-               
-
                 var time_ms = 'edit_time'+ output_pin;
                 if(wave != 2){
                     var time_id = 'edit_time' + output_pin;
@@ -979,9 +977,6 @@ function get_output_info(job_id,output_event){
                     element.disabled = true;  
                 }
           
-
-                
-
                 document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
                 old_output_even = output_event;
                 if(radioButton){
