@@ -356,29 +356,6 @@ function crud_job_event(argument){
                 toggleElementsInRange(1, 11, 2, false);
                 disableElements(filtered_array);
             }
-
-            /*for(let i = 1; i <= 11; i++) {
-                let radioId = 'pin' + i + '_3';
-                let radioElement = document.getElementById(radioId);
-                
-                if (radioElement) {
-                    radioElement.addEventListener('change', updateInputsBasedOnRadioSelection);
-                }
-
-                let tempC = tempA.slice();
-                tempC.forEach(pin => {
-                    for (let i = 1; i <= 3; i++) {
-                        let id = `pin${pin}_${i}`;
-                        let element = document.getElementById(id);
-                        if (element) {
-                            element.disabled = true; 
-                        }
-                    }
-                });
-            }*/
-
-        
-            
         }); 
 
 
@@ -390,13 +367,13 @@ function crud_job_event(argument){
  
         var selectElement = document.getElementById('edit_event_option');
 
-        if (selectElement) {
+        /*if (selectElement) {
             selectElement.disabled = true;
             Array.from(selectElement.options).forEach(option => {
                 option.disabled = true;
                 option.classList.add('disabled_input');
             });
-        }
+        }*/
 
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
@@ -408,8 +385,6 @@ function crud_job_event(argument){
             });
 
             let tempC = temp.slice(); 
-        
-    
 
             const filtered_C = tempC.filter(item => item.includes("edit_pin"));
             filtered_C.forEach(function(id) {
@@ -419,7 +394,6 @@ function crud_job_event(argument){
                     var basePinId = match[1]; 
                     var pinNumber = match[2]; 
 
-            
                     for (var i = 0; i <= 2; i++) {
                         var pinElementId = basePinId + "_" + i;
                         var pinElement = document.getElementById(pinElementId);
@@ -439,9 +413,6 @@ function crud_job_event(argument){
                     }
                 }
             });
-
-
-
         }
 
 
