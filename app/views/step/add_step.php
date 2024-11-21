@@ -349,28 +349,40 @@
 
 
 <script>
- var dataType = "<?php echo $data['type']; ?>";
- if (dataType === 'new') {
+  window.addEventListener('DOMContentLoaded', (event) => {
+    toggleStepTorqueTS();  
+  });
+
+  function toggleStepTorqueTS() {
+    const stepTorqueTS = document.getElementById('StepTorqueTS');
     
-    document.getElementById("interrupt_alarm_off").checked = true;
-    document.getElementById("over_angle_stop_off").checked = true;
-    document.getElementById("StepDirection_cw").checked = true;
-    document.getElementById("join_offset_plus").checked = true;
-    document.getElementById("threshold_mode_torque").checked = true;
-    document.getElementById("downshift_mode_torque").checked = true;
-    document.getElementById("StepLimiHi").value = 0;
-    document.getElementById("StepLimiLo").value = 0;
-    updateLabel();
-  } 
-  if(dataType === 'edit'){
-    updateLabel();
+    // 如果 "threshold_mode_off" 被选中
+    if (document.getElementById('threshold_mode_off').checked) {
+      stepTorqueTS.disabled = true;  // 禁用输入框
+      stepTorqueTS.value = 0;        // 设置 value 为 0
+    } else {
+      stepTorqueTS.disabled = false; // 启用输入框
+    }
   }
+  
+    var dataType = "<?php echo $data['type']; ?>";
+    if (dataType === 'new') {
+        
+        document.getElementById("interrupt_alarm_off").checked = true;
+        document.getElementById("over_angle_stop_off").checked = true;
+        document.getElementById("StepDirection_cw").checked = true;
+        document.getElementById("join_offset_plus").checked = true;
+        document.getElementById("threshold_mode_torque").checked = true;
+        document.getElementById("downshift_mode_torque").checked = true;
+        document.getElementById("StepLimiHi").value = 0;
+        document.getElementById("StepLimiLo").value = 0;
+        updateLabel();
+    } 
+    if(dataType === 'edit'){
+        updateLabel();
+    }
 
 
- window.onload = function() {
-      
-       
-    };
 
     function updateLabel() {
         var StepTorque_value = '<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : '0'; ?>';
