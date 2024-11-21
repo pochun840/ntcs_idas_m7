@@ -721,24 +721,13 @@ function crud_job_event(argument){
         }
 
 
-        if(input_event ==109){
-            document.getElementById('edit_work_goc').style.display='block';
-            var gateconfirm = temp[19];
-            var result = gateconfirm.replace("check_", "");
 
-            if (result == "0") {
-                document.getElementById('edit_gateconfirm_0').checked = true;
-            } else if (result == "1") {
-                document.getElementById('edit_gateconfirm_1').checked = true;
-            }
-         
-        }
         
         get_input_info(job_id,input_event);
         handleEventChange(input_event); 
         document.getElementById('edit_input').style.display='block';
 
-    
+  
     }
 
     if(argument == 'copy' && job_id != '' && input_event != ''){
@@ -786,12 +775,13 @@ function handleEventChange(selectedValue) {
     }
 }
 
-function edit_handleEventChange(selectedValue) {
+function edit_handleEventChange(selectedValue,gateconfirm) {
     if(selectedValue ==109){
         document.getElementById('edit_work_goc').style.display = 'block';
     }else{
         document.getElementById('edit_work_goc').style.display = 'none';
     }
+
 }
 
 
@@ -1110,6 +1100,8 @@ function get_input_info(){
                 var [, input_wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, null];
                 var [, gateconfirm] = cleanString.match(/\[Wp_Ready_Confirm]\s*=>\s*([^ ]+)/) || [, null];
 
+           
+                
                 if(input_wave == 1){
                     var wave = "_high";
                 }else{
@@ -1133,12 +1125,15 @@ function get_input_info(){
                         element.disabled = false; 
                     } 
                 }
-                
+                document.getElementById('edit_work_goc').style.display = 'block';
+                if(gateconfirm == 1){
+                    document.getElementById("edit_gateconfirm_1").checked = true;
+                }
                 document.querySelector("select[name='edit_Event_Option']").value = input_event;
 
                 document.getElementById("edit_Event_Option").onchange = function() {
                     var selectedValue = this.value; 
-                    edit_handleEventChange(selectedValue); 
+                    edit_handleEventChange(selectedValue,gateconfirm); 
                 };
 
              

@@ -100,9 +100,7 @@ class Inputs extends Controller
                         $job_inputlist .= '</tr>';
                         
                     }else{
-    
-                        //var_dump($vv['EvenID']);
-
+   
                         $Wp_Ready_Confirm = ($vv['Wp_Ready_Confirm'] == 1) ? "YES" : "NO";
 
                         $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
