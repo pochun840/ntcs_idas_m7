@@ -599,6 +599,7 @@ var all_job;
 var buttonDisabled = false;
 var backgroundColorYellow = false;
 var input_job;
+var temp_event;
 
 $(document).ready(function () {
     highlight_row_input('input_table');
@@ -686,6 +687,17 @@ function crud_job_event(argument){
 
                     option.disabled = true;
                     option.classList.add('disabled_input');
+                }
+            });
+        }
+
+        //下拉式選單(選擇event事件)
+        if (Array.isArray(temp_event)){
+            let options = document.querySelectorAll('#Event_Option option');
+            options.forEach(option => {
+                if (temp_event.includes(option.value)) {
+                    option.disabled = true;  
+                    option.style.color = 'gray'; 
                 }
             });
         }
@@ -799,6 +811,7 @@ function job_confirm(){
                 var job_inputlist = data.job_inputlist;
                 temp = data.temp;
                 tempA = data.tempA;
+                temp_event = data.temp_event;
 
                 document.getElementById("input_jobid_select").innerHTML = job_inputlist;
                 document.getElementById("JobSelect").style.display = 'none';

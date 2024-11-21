@@ -74,6 +74,8 @@ class Inputs extends Controller
                         $temp[] = "edit_pin" . $pin_number . "_low";
                         $temp[] = "check_".$gateconfirm;
 
+                        $temp_event[] = $vv['EvenID'];
+
                     }
 
                     if (!empty($vv['Pin'])) {
@@ -122,7 +124,7 @@ class Inputs extends Controller
             'job_inputlist' => $job_inputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'tempB' => $tempB
+            'temp_event' => $temp_event
             
         );
         echo json_encode($response);
