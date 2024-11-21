@@ -14,8 +14,14 @@
                 <div class="center-content">
             <div class="topnav">
                 <label style="font-size:2.5vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
-                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled style="height:30px; font-size:2.5vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
-                <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"><?php echo $text['select'];?></button>
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled
+                    style="height:30px; font-size:2.5vmin; text-align: center; background-color: #DDDDDD; border:0; line-height:30px;">
+
+                    <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"
+                            style="height:30px; font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
+                        <?php echo $text['select'];?>
+                    </button>
+
             </div>
 
             <!-- Job Select Modal -->
@@ -65,6 +71,8 @@
                                             <th>8</th>
                                             <th>9</th>
                                             <th>10</th>
+                                            <th>11</th>
+                                            <th>12</th>
                                             <th><?php echo $text['Confirm'];?></th>
                                             <th><?php echo $text['page'];?></th>
                                             <th><?php echo $text['mode'];?></th>
@@ -578,7 +586,7 @@
 </div>
 
 <script>
-// Change the color of a row in a table
+
 
 var job_id; 
 var input_event;
@@ -591,6 +599,7 @@ var all_job;
 var buttonDisabled = false;
 var backgroundColorYellow = false;
 var input_job;
+var temp_event;
 
 $(document).ready(function () {
     highlight_row_input('input_table');
@@ -682,6 +691,17 @@ function crud_job_event(argument){
             });
         }
 
+        //下拉式選單(選擇event事件)
+        if (Array.isArray(temp_event)){
+            let options = document.querySelectorAll('#Event_Option option');
+            options.forEach(option => {
+                if (temp_event.includes(option.value)) {
+                    option.disabled = true;  
+                    option.style.color = 'gray'; 
+                }
+            });
+        }
+
         document.getElementById('newinput').style.display='block';
     } 
     
@@ -711,26 +731,10 @@ function crud_job_event(argument){
                 }
             });
         }
-
-
-        if(input_event ==109){
-            document.getElementById('edit_work_goc').style.display='block';
-            var gateconfirm = temp[19];
-            var result = gateconfirm.replace("check_", "");
-
-            if (result == "0") {
-                document.getElementById('edit_gateconfirm_0').checked = true;
-            } else if (result == "1") {
-                document.getElementById('edit_gateconfirm_1').checked = true;
-            }
-         
-        }
         
         get_input_info(job_id,input_event);
         handleEventChange(input_event); 
-        document.getElementById('edit_input').style.display='block';
-
-    
+        document.getElementById('edit_input').style.display='block';  
     }
 
     if(argument == 'copy' && job_id != '' && input_event != ''){
@@ -778,12 +782,13 @@ function handleEventChange(selectedValue) {
     }
 }
 
-function edit_handleEventChange(selectedValue) {
+function edit_handleEventChange(selectedValue,gateconfirm) {
     if(selectedValue ==109){
         document.getElementById('edit_work_goc').style.display = 'block';
     }else{
         document.getElementById('edit_work_goc').style.display = 'none';
     }
+
 }
 
 
@@ -806,6 +811,7 @@ function job_confirm(){
                 var job_inputlist = data.job_inputlist;
                 temp = data.temp;
                 tempA = data.tempA;
+                temp_event = data.temp_event;
 
                 document.getElementById("input_jobid_select").innerHTML = job_inputlist;
                 document.getElementById("JobSelect").style.display = 'none';
@@ -1102,6 +1108,7 @@ function get_input_info(){
                 var [, input_wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, null];
                 var [, gateconfirm] = cleanString.match(/\[Wp_Ready_Confirm]\s*=>\s*([^ ]+)/) || [, null];
 
+        
                 if(input_wave == 1){
                     var wave = "_high";
                 }else{
@@ -1125,12 +1132,36 @@ function get_input_info(){
                         element.disabled = false; 
                     } 
                 }
-                
+
+                if(input_event != 109){
+                    document.getElementById('edit_work_goc').style.display = 'none';
+                }else{
+
+                    document.getElementById('edit_work_goc').style.display = 'block';
+
+                    if(gateconfirm == 1){
+                        document.getElementById("edit_gateconfirm_1").checked = true;
+                    }
+
+                    if(gateconfirm == 0){
+                        document.getElementById("edit_gateconfirm_0").checked = true;
+                    }
+
+                }
+                /*document.getElementById('edit_work_goc').style.display = 'block';
+                if(gateconfirm == 1){
+                    document.getElementById("edit_gateconfirm_1").checked = true;
+                }else if(gateconfirm == 0){
+                    document.getElementById("edit_gateconfirm_0").checked = true;
+                }else{
+                    document.getElementById('edit_work_goc').style.display = 'none';
+                }*/
+
                 document.querySelector("select[name='edit_Event_Option']").value = input_event;
 
                 document.getElementById("edit_Event_Option").onchange = function() {
                     var selectedValue = this.value; 
-                    edit_handleEventChange(selectedValue); 
+                    edit_handleEventChange(selectedValue,gateconfirm); 
                 };
 
              

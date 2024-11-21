@@ -87,7 +87,7 @@ class Input{
         $statement->bindValue(':Pin', $input_data['Pin']);
         $statement->bindValue(':EvenID', $input_data['EvenID']);
         $statement->bindValue(':signal', $input_data['signal']);
-        $statement->bindValue(':Wp_Ready_Confirm', 0);
+        $statement->bindValue(':Wp_Ready_Confirm', $input_data['gateconfirm']);
     
         $results = $statement->execute();
     
@@ -133,9 +133,9 @@ class Input{
 
 
     public function generateTableCell($value,$value2) {
-        if($value >= 2 && $value <= 10){
+        if($value >= 2 && $value <= 12){
             $tableCells = "";
-            for($i = 2; $i <= 10; $i++){
+            for($i = 2; $i <= 12; $i++){
                 if($i == $value){ 
                     if($value2 == 1){
                         $img = '<img src="./img/high.png" style="max-width: 50px;">';

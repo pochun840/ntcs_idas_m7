@@ -15,8 +15,13 @@
         <div class="center-content">
             <div class="topnav">
                 <label style="font-size:2.5vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
-                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled style="height:30px; font-size:2.5vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
-                <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"><?php echo $text['select'];?></button>
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled
+                    style="height:30px; font-size:2.5vmin; text-align: center; background-color: #DDDDDD; border:0; line-height:30px;">
+
+                <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"
+                        style="height:30px; font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
+                    <?php echo $text['select'];?>
+                </button>
             </div>
 
             <!-- Job Select Modal -->
@@ -111,15 +116,15 @@
 									<div class="row output-pin">
 										<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0"  onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'1')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0"  onclick="toggleOnputTime('pin<?php echo $i; ?>_0', this.checked,'1')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
 										</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'2')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1"  onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'2')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
 										</div>
 										<div class="col-sm-2 t2 form-check form-check-inline">
-											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime('pin<?php echo $i; ?>_3', this.checked,'3')">
+											<input class="form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'3')">
 											<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
 										</div>
 										<div class="col-sm-2 t2">
@@ -166,15 +171,15 @@
 										<div class="row output-pin">
 											<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'1')" >
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_0', this.checked,'1')" >
 												<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
 											</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'2')">
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'2')">
 												<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
 											</div>
 											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_3', this.checked,'3')">
+												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'3')">
 												<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
 											</div>
 											<div class="col-sm-2 t2">
@@ -263,7 +268,7 @@ var output_job;
 var all_job;
 var del_output_val;
 var output_pinval;
-var dataoutput_pin_val;
+
 $(document).ready(function () {
     highlight_row_input('output_table');
 
@@ -327,8 +332,6 @@ function crud_job_event(argument){
                     radio.disabled = true; 
                 }
             });
-
-
         } 
 
         var filtered_array = [];
@@ -339,50 +342,10 @@ function crud_job_event(argument){
             }
         });
 
-       
-        filtered_array.forEach(function(id) {
-      
-            var match = id.match(/(pin\d+)_(\d+)/);
-            if (match) {
-                var basePinId = match[1]; 
-                var pinNumber = match[2]; 
-
-       
-                for (var i = 1; i <= 3; i++) {
-                    var pinElementId = basePinId + "_" + i;
-                    var pinElement = document.getElementById(pinElementId);
-                    if (pinElement && pinElement.type === 'radio') {
-                        pinElement.disabled = true;
-                    }
-                }
-
-                // 禁用 time 相關的元素
-                var timeElementId = 'time' + basePinId.slice(3); // 假設 time ID 的格式是 'time' + 數字部分
-                var timeElement = document.getElementById(timeElementId);
-                if (timeElement) {
-                    timeElement.disabled = true;
-                }
-            }
-        });
-
-         //針對已設定的事件option做反灰+disable
-         if (Array.isArray(tempA)){
-            tempA.forEach(function(element){
-                var option = document.querySelector('#Event_Option option[value="' + element + '"]');
-                if(option){
-                    if (option.selected){
-                        selectedValue = element;
-                    }
-
-                    option.disabled = true;
-                    option.classList.add('disabled_input');
-                }
-            });
-        }
-
-      
-
-
+    
+        disableElements(filtered_array);
+    
+        
         document.getElementById('new_output').style.display='block';
         var eventOption = document.getElementById('Event_Option');
         eventOption.addEventListener('change', function() {
@@ -391,30 +354,8 @@ function crud_job_event(argument){
                 toggleElementsInRange(1, 11, 2, true);
             }else{
                 toggleElementsInRange(1, 11, 2, false);
+                disableElements(filtered_array);
             }
-
-            for(let i = 1; i <= 11; i++) {
-            let radioId = 'pin' + i + '_3';
-            let radioElement = document.getElementById(radioId);
-            
-            if (radioElement) {
-                radioElement.addEventListener('change', updateInputsBasedOnRadioSelection);
-            }
-
-            let tempC = tempA.slice();
-            tempC.forEach(pin => {
-                for (let i = 1; i <= 3; i++) {
-                    let id = `pin${pin}_${i}`;
-                    let element = document.getElementById(id);
-                    if (element) {
-                        element.disabled = true; 
-                    }
-                }
-            });
-        }
-
-        
-            
         }); 
 
 
@@ -425,22 +366,9 @@ function crud_job_event(argument){
     if (argument === 'edit' && job_id != '' && output_event != '') {
  
         var selectElement = document.getElementById('edit_event_option');
-        if (selectElement) {
-            selectElement.disabled = true;
-            Array.from(selectElement.options).forEach(option => {
-                option.disabled = true;
-                option.classList.add('disabled_input');
-            });
-        }
-
-        //針對
-
-
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
-                //console.log('eewwer');
                 var radio = document.getElementById(id);
-                //console.log(radio);
 
                 if (radio && radio.type === 'radio') { 
                     radio.disabled = true; 
@@ -448,8 +376,7 @@ function crud_job_event(argument){
             });
 
             let tempC = temp.slice(); 
-        
-   
+
             const filtered_C = tempC.filter(item => item.includes("edit_pin"));
             filtered_C.forEach(function(id) {
       
@@ -458,7 +385,6 @@ function crud_job_event(argument){
                     var basePinId = match[1]; 
                     var pinNumber = match[2]; 
 
-            
                     for (var i = 0; i <= 2; i++) {
                         var pinElementId = basePinId + "_" + i;
                         var pinElement = document.getElementById(pinElementId);
@@ -471,17 +397,13 @@ function crud_job_event(argument){
                     var timeElementId = 'edit_time' + basePinId.slice(3);
                     const toremove = "t_pin"; 
                     timeElementId = timeElementId.replace(toremove,'');
-                    //console.log(timeElementId);
-                    
+          
                     var timeElement = document.getElementById(timeElementId);
                     if (timeElement) {
                         timeElement.disabled = true;
                     }
                 }
             });
-
-
-
         }
 
 
@@ -489,9 +411,9 @@ function crud_job_event(argument){
         if(output_pinval != ''){
 
             const idsToDisable = [
+                `edit_pin${output_pinval}_0`,
                 `edit_pin${output_pinval}_1`,
                 `edit_pin${output_pinval}_2`,
-                `edit_pin${output_pinval}_3`,
                 `edit_time${output_pinval}`
             ];
 
@@ -503,7 +425,6 @@ function crud_job_event(argument){
             });
             
         }
-
 
         get_output_info(job_id, output_event);
         document.getElementById('edit_output').style.display = 'block';
@@ -560,17 +481,27 @@ function collectPinValues(selector) {
     return selectedValues;
 }
 
+
 function toggleElementsInRange(start, end, suffix, disable) {
     for (var i = start; i <= end; i++) {
-        for (var j = 1; j <= suffix; j++) {
+    
+        for (var j = 0; j <= 1; j++) { 
             var id = 'pin' + i + '_' + j;
             var element = document.getElementById(id);
             if (element) {
                 element.disabled = disable;
             }
         }
+
+        var timeId = 'time' + i;
+        console.log(timeId);
+        var timeElement = document.getElementById(timeId);
+        if (timeElement) {
+            timeElement.disabled = disable;
+        }
     }
 }
+
 
 
 var old_output_event; 
@@ -1023,7 +954,7 @@ function get_output_info(job_id,output_event){
                             return item.slice(0, -1) + '3';
                         });
                         
-                        //console.log("Updated Array:", updatedArray);
+                        console.log("Updated Array:", updatedArray);
                         updatedArray.forEach(item => {
                             const radio = document.getElementById(item);
                             if (radio && radio.type === 'radio') {
@@ -1035,6 +966,17 @@ function get_output_info(job_id,output_event){
                     
                 }
 
+
+                let result = edit_output_pin.replace(/^edit_pin/, "");
+                result = result.replace(/(_[0-9]{1,2})$/, ""); 
+
+                //檢查id = new_variable是否存在,存在做disabled
+                var new_variable = 'edit_time'+ result;
+                var element = document.getElementById(new_variable);
+                if (element) {
+                    element.disabled = true;  
+                }
+          
                 document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
                 old_output_even = output_event;
                 if(radioButton){
@@ -1054,70 +996,100 @@ function get_output_info(job_id,output_event){
   
 }
 
+
 function toggleOnputTime(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
-    
     if (!inputElement) {
-        //console.error(`Element with ID '${inputId}' not found.`);
-        return; // Exit if element is not found
+        return; 
     }
 
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
-            //console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
+           
         }
     }
-
-    if (option != '2') {
+    
+ 
+    if(option == 1 || option == 3){
         var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
+        
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = true;
         }
-        
-    } else { 
+    }else{
         var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = false;
         }
-    }
+    }    
 }
+
+
+
+
 
 function toggleOnputTime_edit(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
     
     if (!inputElement) {
-        //console.error(`Element with ID '${inputId}' not found.`);
-        return; // Exit if element is not found
+        return; 
     }
 
    
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
-            //console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
+           
         }
     }
 
-    
-    if (option != '2') {
+    if(option == 1 || option == 3){
         var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
+        
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = true;
         }
-        
-    } else { 
+    }else{
         var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = false;
         }
-    }
+    }    
 }
 
+
+function disableElements(filtered_array) {
+    // 生成新的 id 数组，去除末尾的数字并添加 "_0", "_1", "_2" 和 "time1" 到 "time11"
+    let new_array = filtered_array
+        .map(item => item.replace(/_\d$/, ''))  // 去除原始字符串末尾的数字
+        .flatMap(item => {
+            let result = [
+                item + "_0",
+                item + "_1",
+                item + "_2"
+            ];
+
+            // 新增 "time" + 1 到 11
+            for (let i = 1; i <= 11; i++) {
+                result.push("time" + i);
+            }
+
+            return result;
+        });
+
+    // 遍历新生成的 id 数组，如果元素存在就禁用它
+    new_array.forEach(id => {
+        let element = document.getElementById(id); 
+        if (element) {
+            element.disabled = true;  // 禁用该元素
+        }
+    });
+}
 
 </script>
 <style>

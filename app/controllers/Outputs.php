@@ -351,8 +351,10 @@ class Outputs extends Controller
         }
 
         if($input_check){
-            $job_outputs = array();
-            $job_outputs = $this->OutputModel->check_job_event_conflict($output_job_id,$output_event);    
+            $job_outputs = $this->OutputModel->check_job_event_conflict($output_job_id, $output_event);
+            if (empty($job_outputs)) {
+                $job_outputs = array();  
+            }  
         }
         print_r($job_outputs);
 
@@ -361,7 +363,6 @@ class Outputs extends Controller
 
     public function edit_output_event(){
 
-        
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
             include $file;
@@ -402,18 +403,15 @@ class Outputs extends Controller
             $output_data['durate'] = $_POST['wave_on'];
         }
 
+        if($output_data['signal'] == 0 || $output_data['signal'] == 2){
+            $output_data['durate'] = '';
+        }
+
      
 
         $count = $this->OutputModel->check_event_conflict($output_data['JOBID'],$output_data['EvenID']);
         if ($count > 0){
-            //先移除舊的資料 再新增新的資料
-
-            //檢查 PIN 有無被使用 
-            /*$result = $this->OutputModel->check_event_pin_by_job_id($jobdata['output_job_id'],$jobdata['wave']);
-            if($result){
-                $res = $this->OutputModel->edit_output($jobdata);
-            }*/
-
+          
             $res = $this->OutputModel->edit_output($output_data);
         }
         

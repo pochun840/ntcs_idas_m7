@@ -12,24 +12,22 @@ function exportData() {
     }
 
     if (!isChecked) {
-        alert("請選擇一個選項");
+        alertify.alert("請選擇一個選項");
         return;
     }
 
     var start_date = document.getElementById('start_date').value;
     var end_date = document.getElementById('end_date').value;
 
-    console.log(start_date);
-    
     var valid_flag = true;
 
     if (start_date === '' || end_date === '') {
-        alert("請選擇開始日期與結束日期");
+        alertify.alert("請選擇開始日期與結束日期");
         valid_flag = false;
     }
 
     if (start_date > end_date) {
-        alert("開始日期必須小於結束日期");
+        alertify.alert("開始日期必須小於結束日期");
         valid_flag = false;
     }
 
@@ -46,6 +44,12 @@ function exportData() {
                 responseType: 'blob' 
             },
             success: function(response, status, xhr) {
+                // 如果 response 返回错误信息
+                if (response.error) {
+                    alertify.alert(response.error); // 使用 alertify 弹窗显示错误
+                    return;
+                }
+
                 var contentType = xhr.getResponseHeader('Content-Type');
                 var filename = expert_val === "1" ? 'exported_data.zip' : 'data.csv';  
                 var blob = new Blob([response], { type: contentType });
@@ -59,11 +63,8 @@ function exportData() {
             },
             error: function(xhr, status, error) {
                 console.error("AJAX 請求失敗:", status, error);
-                alert("發生錯誤，無法導出資料");
+                alertify.alert("發生錯誤，無法導出資料");
             }
         });
     }
 }
-
-
-

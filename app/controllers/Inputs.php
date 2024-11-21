@@ -74,6 +74,8 @@ class Inputs extends Controller
                         $temp[] = "edit_pin" . $pin_number . "_low";
                         $temp[] = "check_".$gateconfirm;
 
+                        $temp_event[] = $vv['EvenID'];
+
                     }
 
                     if (!empty($vv['Pin'])) {
@@ -100,11 +102,13 @@ class Inputs extends Controller
                         $job_inputlist .= '</tr>';
                         
                     }else{
-    
+   
+                        $Wp_Ready_Confirm = ($vv['Wp_Ready_Confirm'] == 1) ? "YES" : "NO";
+
                         $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
                         $job_inputlist .= "<td id='".$vv['EvenID']."'>".$event[$vv['EvenID']]."</td>";
                         $job_inputlist .= $this->InputModel->generateTableCell($vv['Pin'],$vv['signal']);
-                        $job_inputlist .= '<td>NO</td>';
+                        $job_inputlist .= '<td>'.$Wp_Ready_Confirm.'</td>';
                         $job_inputlist .= '<td>1</td>';
                         $job_inputlist .= '<td>EVENT</td>';
                         $job_inputlist .= '</tr>';
@@ -120,7 +124,7 @@ class Inputs extends Controller
             'job_inputlist' => $job_inputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'tempB' => $tempB
+            'temp_event' => $temp_event
             
         );
         echo json_encode($response);
@@ -267,11 +271,13 @@ class Inputs extends Controller
             $input_check = false; 
         }
 
-        if( isset($_POST['gateconfirm'])){
-            $input_data['Wp_Ready_Confirm'] = $_POST['gateconfirm'];
-        }else{ 
-            $input_check = false; 
+
+        if($input_data['EvenID'] != 109){
+            $input_data['gateconfirm'] = '';
+        }else{
+            $input_data['gateconfirm'] = $_POST['gateconfirm'];
         }
+ 
 
         
 
