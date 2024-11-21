@@ -271,11 +271,13 @@ class Inputs extends Controller
             $input_check = false; 
         }
 
-        if( isset($_POST['gateconfirm'])){
-            $input_data['Wp_Ready_Confirm'] = $_POST['gateconfirm'];
-        }else{ 
-            $input_check = false; 
+
+        if($input_data['EvenID'] != 109){
+            $input_data['gateconfirm'] = '';
+        }else{
+            $input_data['gateconfirm'] = $_POST['gateconfirm'];
         }
+ 
 
         
 
