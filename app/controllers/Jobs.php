@@ -76,9 +76,6 @@ class Jobs extends Controller
                 );
             }
       
-
-            
-    
             $job_count = $this->jobModel->countjob();
             if($job_count >= 100) {
                 $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['job_id']);
