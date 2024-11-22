@@ -135,6 +135,7 @@ $text['Run_Down_Speed'] = '转速(圈/分钟)';
 
 $text['Downshift_Enable'] = '降速启动';
 $text['Downshift_Torque'] = '降速点扭力';
+$text['Downshift_Angle'] = '降速点角度(度)';
 $text['Downshift_Speed'] = '降速点转速';
 $text['Monitor_Angle'] = '监控角度';
 $text['Over_Angle_Stop'] = '超过角度停止';

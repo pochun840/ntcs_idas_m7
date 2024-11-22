@@ -134,6 +134,7 @@ $text['Run_Down_Speed'] = 'Run Down Speed';
 
 $text['Downshift_Enable'] = 'Downshift Enable';
 $text['Downshift_Torque'] = 'Downshift Torque';
+$text['Downshift_Angle'] = 'Downshift Angle ( &#870 )';
 $text['Downshift_Speed'] = 'Downshift Speed';
 $text['Monitor_Angle'] = 'Monitor Angle';
 $text['Over_Angle_Stop'] = 'Over Angle Stop';
