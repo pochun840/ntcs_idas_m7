@@ -278,24 +278,25 @@
                             <div class="col-4"><?php echo $text['Threshold_Type'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                             <div class="col-8">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_off" value="0" 
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_off"  onclick="toggleStepTorqueTS()" value="0" 
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableThreshold'] == 0) ? 'checked' : ''; ?>>
                                   <label class="form-check-label" for="threshold_mode_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_torque" value="2" 
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_torque" onclick="toggleStepTorqueTS()" value="2" 
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableThreshold'] == 2) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="threshold_mode_torque"><?php echo $text['torque']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_angle" value="1" 
+                                  <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_angle" onclick="toggleStepTorqueTS()" value="1" 
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableThreshold'] == 1) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="threshold_mode_angle"><?php echo $text['angle']; ?></label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4">
-                            <div class="col-4"><?php echo $text['Threshold_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                            <div class="col-4" id="show_torque" style="display:block;" ><?php echo $text['Threshold_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                            <div class="col-4" id="show_angle"  style="display:none;" ><?php echo $text['Threshold_Angle'];?> :</div>
                             <div class="col-8">
                                 <input id="StepTorqueTS" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueTS'] : ''; ?> ">
                                 <div class="invalid-feedback"></div>
@@ -306,24 +307,25 @@
                             <div class="col-4"><?php echo $text['Downshift'];?>:</div>
                             <div class="col-8">
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_off" value="0" 
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_off" value="0" onclick="toggleDownShift()"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableDownShift'] == 0) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="downshift_mode_off"><?php echo $text['switch_off']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_torque" value="2" 
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_torque" value="2" onclick="toggleDownShift()"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableDownShift'] == 2) ? 'checked' : ''; ?>>
                                   <label class="form-check-label" for="downshift_mode_torque"><?php echo $text['torque']; ?></label>
                                 </div>
                                 <div class="form-check form-check-inline ">
-                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_angle" value="1" 
+                                  <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_angle" value="1" onclick="toggleDownShift()"
                                   <?php echo ($data['type'] == 'edit' && $data['step']['StepEnableDownShift'] == 1) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="downshift_mode_angle"><?php echo $text['angle']; ?></label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" >
-                            <div class="col-4"><?php echo $text['Downshift_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                            <div class="col-4" id="show_downshift_torque" style="display:block;" ><?php echo $text['Downshift_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                            <div class="col-4" id="show_downshift_angle" style="display:none;" ><?php echo $text['Downshift_Angle'];?> </div>
                             <div class="col-8">
                                 <input id="StepTorqueDownShift" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueDownShift'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
@@ -351,19 +353,67 @@
 <script>
   window.addEventListener('DOMContentLoaded', (event) => {
     toggleStepTorqueTS();  
+    toggleDownShift();
+
   });
 
   function toggleStepTorqueTS() {
     const stepTorqueTS = document.getElementById('StepTorqueTS');
+    const showTorque = document.getElementById('show_torque');
+    const showAngle = document.getElementById('show_angle');
     
-    // 如果 "threshold_mode_off" 被选中
+    // 預設隱藏 show_torque，顯示 show_angle
+    showTorque.style.display = 'none';
+    showAngle.style.display = 'none';
+
     if (document.getElementById('threshold_mode_off').checked) {
-      stepTorqueTS.disabled = true;  // 禁用输入框
-      stepTorqueTS.value = 0;        // 设置 value 为 0
-    } else {
-      stepTorqueTS.disabled = false; // 启用输入框
+        // 如果選擇了 "off" 模式
+        stepTorqueTS.disabled = true;
+        stepTorqueTS.value = 0;     
+        showTorque.style.display = 'block'; // 顯示扭力
+    } else if (document.getElementById('threshold_mode_torque').checked) {
+        // 如果選擇了 "torque" 模式
+        stepTorqueTS.disabled = false;
+        stepTorqueTS.value = document.getElementById('tool_min_torque').value; // 設置最小扭力值
+        showTorque.style.display = 'block'; // 顯示扭力
+    } else if (document.getElementById('threshold_mode_angle').checked) {
+        // 如果選擇了 "angle" 模式
+        showAngle.style.display = 'block'; // 顯示角度
     }
-  }
+}
+
+
+function toggleDownShift() {
+    const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
+    const StepRPMDownShift = document.getElementById('StepRPMDownShift');
+    const showDownshiftTorque = document.getElementById('show_downshift_torque');
+    const showDownshiftAngle = document.getElementById('show_downshift_angle');
+
+    // 預設隱藏所有顯示元素
+    showDownshiftTorque.style.display = 'none';
+    showDownshiftAngle.style.display = 'none';
+
+    // 設置元素是否禁用的狀態
+    StepTorqueDownShift.disabled = false;
+    StepRPMDownShift.disabled = false;
+
+    // 根據所選模式來控制顯示和禁用狀態
+    if (document.getElementById('downshift_mode_off').checked) {
+        // "off" 模式：禁用所有相關元素，顯示扭力
+        StepTorqueDownShift.disabled = true;  
+        StepRPMDownShift.disabled = true;    
+        showDownshiftTorque.style.display = 'block'; 
+    } else if (document.getElementById('downshift_mode_torque').checked) {
+        // "torque" 模式：啟用所有相關元素，顯示扭力
+        showDownshiftTorque.style.display = 'block'; 
+        StepTorqueDownShift.value = document.getElementById('tool_min_torque').value; 
+    } else if (document.getElementById('downshift_mode_angle').checked) {
+        // "angle" 模式：顯示角度
+        showDownshiftAngle.style.display = 'block'; 
+    }
+}
+
+
   
     var dataType = "<?php echo $data['type']; ?>";
     if (dataType === 'new') {
@@ -372,10 +422,22 @@
         document.getElementById("over_angle_stop_off").checked = true;
         document.getElementById("StepDirection_cw").checked = true;
         document.getElementById("join_offset_plus").checked = true;
-        document.getElementById("threshold_mode_torque").checked = true;
-        document.getElementById("downshift_mode_torque").checked = true;
+        document.getElementById("threshold_mode_off").checked = true;
+        document.getElementById("downshift_mode_off").checked = true;
         document.getElementById("StepLimiHi").value = 0;
         document.getElementById("StepLimiLo").value = 0;
+        document.getElementById("StepHiAngle").value = 0;
+        document.getElementById("StepLoAngle").value = 0;
+        document.getElementById("StepDelay").value = 0;
+        document.getElementById("StepRPM").value = 100;
+        document.getElementById("k_value").value = 0;
+        document.getElementById("StepTorqueTS").value = 0;
+        document.getElementById("StepTorqueDownShift").value = 0;
+        document.getElementById("StepRPMDownShift").value = 100;
+        document.getElementById("StepTorqueOffset").value = 0.0;
+
+
+
         updateLabel();
     } 
     if(dataType === 'edit'){
@@ -656,7 +718,15 @@
         let StepOption = document.getElementById("StepOption").value;
         let Target_Torque_value = document.getElementById('StepTorque').value;
         let delta = Number.parseFloat(Tool_Min_Torque * 0.05).toFixed(4);
-        
+
+        let  StepEnableThreshold = document.querySelector('input[name="StepEnableThreshold"]:checked');
+
+        if(StepEnableThreshold.value == 0){
+            Tool_Max_Torque = 0;
+            Tool_Min_Torque = 0;
+        }
+ 
+
         if(StepOption ==0){
 
             //torque
@@ -677,7 +747,7 @@
 
             hi_angle_max = 30600
             hi_angle_min = 0;
-            lo_angle_max =  document.getElementById('StepHiAngle').value - 1;
+            lo_angle_max =  document.getElementById('StepHiAngle').value;
             lo_angle_min = 0;
             hi_torque_max = Number.parseFloat(Tool_Max_Torque*1.1).toFixed(4);
             hi_torque_min = Number.parseFloat( parseFloat(Target_Torque_value) + parseFloat(delta) ).toFixed(4);
@@ -708,7 +778,7 @@
 
             hi_angle_max = 30600;
             hi_angle_min = document.getElementById('StepAngle').value;
-            lo_angle_max =  document.getElementById('StepAngle').value;
+            lo_angle_max =  document.getElementById('StepHiAngle').value;
             lo_angle_min = 0;
             hi_torque_max = Number.parseFloat(Tool_Max_Torque*1.1).toFixed(4);
             hi_torque_min = 0;
@@ -737,7 +807,7 @@
 
             hi_angle_max = 99999;
             hi_angle_min = 0;
-            lo_angle_max = 99999;
+            lo_angle_max = document.getElementById('StepHiAngle').value;
             lo_angle_min = 0;
             hi_torque_max = 99999;
             hi_torque_min = 0;
@@ -782,7 +852,7 @@
             { id: 'STEPname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'StepDelay', pattern: /^\d{0,4}$/, min: 0, max: 2000 }, 
             { id: 'StepRPM', pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'k_value', pattern: /^(0(\.([2-9]{1}[0-9]{1}|[1-9]{1}\d{0,1}))|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.50 },  
+            { id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.50 },  
             { id: 'StepRPMDownShift',pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM},
             { id: 'StepTorqueTS', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
             { id: 'StepTorqueDownShift', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
