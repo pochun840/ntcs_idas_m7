@@ -406,6 +406,7 @@ function toggleDownShift() {
     } else if (document.getElementById('downshift_mode_torque').checked) {
         // "torque" 模式：啟用所有相關元素，顯示扭力
         showDownshiftTorque.style.display = 'block'; 
+        StepTorqueDownShift.value = document.getElementById('tool_min_torque').value; 
     } else if (document.getElementById('downshift_mode_angle').checked) {
         // "angle" 模式：顯示角度
         showDownshiftAngle.style.display = 'block'; 
