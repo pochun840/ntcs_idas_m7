@@ -19,7 +19,7 @@
                     style="height:30px; font-size:2.5vmin; text-align: center; background-color: #DDDDDD; border:0; line-height:30px;">
 
                 <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"
-                        style="height:30px; font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
+                        style="height:30px;width:100px; font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
                     <?php echo $text['select'];?>
                 </button>
             </div>

@@ -305,10 +305,7 @@ function copy_seq_by_id(){
 
 function create_seq() {
     var job_id = '<?php echo $data['job_id'];?>';
-    var popupWindow = window.open('../public/?url=Sequences/variation/' + job_id, '_blank');
-    if (!popupWindow) {
-        alert("Please enable popups to view this content.");
-    }
+    window.location.href = '../public/?url=Sequences/variation/'+ job_id;  
 }
 
 
