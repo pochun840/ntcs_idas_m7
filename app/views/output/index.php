@@ -441,6 +441,7 @@ function crud_job_event(argument){
 
         var selectElement = document.getElementById('JobSelect1');
         var options = selectElement.getElementsByTagName('option');
+        console.log(options);
         if (options.length > 0) {
             for (var i = 0; i < options.length; i++) {
                 var optionId = options[i].getAttribute('id');
