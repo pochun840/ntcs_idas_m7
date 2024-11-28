@@ -263,6 +263,7 @@ $text['input_delete_notice'] = 'Do you want to delete';
 $text['delete_success'] = 'Delete completed';
 $text['copy_success'] = 'Copy completed';
 $text['select_job'] = 'select job';
+$text['alert_message_1'] = 'Please select the event to delete';
 
 $text['Blackout Recovery_text']  = 'Blackout Recovery';
 $text['Circular Archive_text'] = 'Circular Archive';

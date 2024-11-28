@@ -272,6 +272,7 @@ $text['input_delete_notice'] = '是否要删除';
 $text['delete_success'] = '删除完成';
 $text['copy_success'] = '复制完成';
 $text['select_job'] = '选择工作';
+$text['alert_message_1'] = '请选择要删除的事件';
 
 // Data
 $text['data'] = '资料';

@@ -65,6 +65,16 @@ class Input{
         return $rows;
     }
 
+    public function check_job_event_count($input_job_id,$input_event){
+        
+        $sql = "SELECT count(*)  FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";
+        $statement = $this->db_iDas->prepare($sql);
+        $statement->execute([$input_job_id,$input_event]);
+        $count = $statement->fetchColumn();
+        
+        return (int)$count;
+    }
+
     public function check_job_event($input_job_id){
         
         $sql = "SELECT *  FROM JOBInput_lst WHERE JOBID = ? ";
