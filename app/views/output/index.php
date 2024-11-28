@@ -364,7 +364,9 @@ function crud_job_event(argument){
 
     //&& output_event != ''
     if (argument === 'edit' && job_id != '' && output_event != '') {
- 
+
+    
+
         var selectElement = document.getElementById('edit_event_option');
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
@@ -427,7 +429,6 @@ function crud_job_event(argument){
         }
 
         get_output_info(job_id, output_event);
-        document.getElementById('edit_output').style.display = 'block';
     }
 
     if(argument == 'copy' && job_id != '' && output_event != ''){
@@ -440,16 +441,17 @@ function crud_job_event(argument){
 
         var selectElement = document.getElementById('JobSelect1');
         var options = selectElement.getElementsByTagName('option');
-
-        for (var i = 0; i < options.length; i++) {
-            var optionId = options[i].getAttribute('id');
-            var optionValue = options[i].value;
-            if(optionValue == job_id){
-                options[i].disabled = true; 
-                options[i].classList.add('disabled_input'); 
+        if (options.length > 0) {
+            for (var i = 0; i < options.length; i++) {
+                var optionId = options[i].getAttribute('id');
+                var optionValue = options[i].value;
+                if(optionValue == job_id){
+                    options[i].disabled = true; 
+                    options[i].classList.add('disabled_input'); 
+                }
             }
+            document.getElementById('copy_output').style.display='block';
         }
-        document.getElementById('copy_output').style.display='block';
     }
 
     if(argument == 'unified' && job_id != ''){
@@ -605,6 +607,8 @@ function delete_output_id(job_id,del_output_val){
                     get_output_by_job_id(job_id);
                 });
                 
+                var del_output_val =''; 
+                 
             },
             error: function(xhr, status, error) {
                 console.error("AJAX request failed:", status, error);
@@ -895,7 +899,7 @@ function updateInputsBasedOnRadioSelection() {
 
 function get_output_info(job_id,output_event){
 
-    if(job_id){
+    if(job_id && output_event){
      $.ajax({
              url: "?url=Outputs/check_job_event",
              method: "POST",
@@ -904,7 +908,13 @@ function get_output_info(job_id,output_event){
                  output_event: output_event
              },
              success: function(response) {
-              
+                if (response === 'no_data') {
+                    return;
+                }
+
+                document.getElementById('edit_output').style.display = 'block';
+
+
                 var responseJSON = JSON.stringify(response);
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
@@ -917,7 +927,12 @@ function get_output_info(job_id,output_event){
 
                 var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
                 var radioButton = document.getElementById(edit_output_pin);
-                radioButton.removeAttribute('disabled');
+
+                if (radioButton) {
+                    radioButton.removeAttribute('disabled');  
+                } else {
+                    console.warn('Radio button not found:', edit_output_pin); 
+                }
 
                 var time_ms = 'edit_time'+ output_pin;
                 if(wave != 2){
@@ -988,6 +1003,8 @@ function get_output_info(job_id,output_event){
                 document.getElementById("edit_event_option").onchange = function() {
                     var selectedValue = this.value; 
                 };
+
+
              },
              error: function(xhr, status, error) {
                  console.error("AJAX request failed:", status, error);
