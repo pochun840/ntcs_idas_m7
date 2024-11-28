@@ -83,7 +83,7 @@
                         <input id="S2" name="Edit_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1"     onclick="crud_job_event('edit')">
                         <input id="S3" name="Copy_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1"     onclick="crud_job_event('copy')">
                         <input id="S4" name="Delete_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="crud_job_event('del')">
-                        <input id="S6" name="Align_Submit" type="button" value="<?php echo $text['Align'];?>" tabindex="1" onclick="crud_job_event('unified')">
+                        <input id="S6" name="Align_Submit" type="button" value="<?php echo $text['Align'];?>" tabindex="1"   onclick="crud_job_event('unified')">
                     </div>
                 </div>
             </div>
@@ -590,7 +590,7 @@ function job_confirm(){
 
 //delete
 function delete_output_id(job_id,del_output_val){
-    if(job_id){
+    if(job_id && del_output_val){
         $.ajax({
             url: "?url=Outputs/delete_output",
             method: "POST",
@@ -604,6 +604,7 @@ function delete_output_id(job_id,del_output_val){
                 alertify.alert(responseData.res_type, responseData.res_msg, function() {
                     get_output_by_job_id(job_id);
                 });
+                
             },
             error: function(xhr, status, error) {
                 console.error("AJAX request failed:", status, error);

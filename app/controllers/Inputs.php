@@ -59,7 +59,6 @@ class Inputs extends Controller
             $tempA = array();
             $tempB = array();
             $job_inputlist = ''; 
-
     
             if (!empty($job_inputs)) {
                 foreach ($job_inputs as $kk => $vv) {
@@ -120,11 +119,14 @@ class Inputs extends Controller
             }
         }
         
+        if(empty($temp_event)){
+            $temp_event = '';
+        }
         $response = array(
             'job_inputlist' => $job_inputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'temp_event' => $temp_event
+            'temp_event' => $temp_event,
             
         );
         echo json_encode($response);
@@ -390,14 +392,21 @@ class Inputs extends Controller
         }
 
         if($input_check){
-            $res = $this->InputModel->delete_input_event_by_id($job_id,$input_event);
-            $result = array();
-            if ($res) {
-                $res_type = 'Success';
-                $res_msg  = $text['del_event']."  ".$text['job_id'].':'.$job_id.','.$text['event'].':'.$text[$event[$input_event]]."  ".$text['success'];
-            } else {
+
+            $count = $this->InputModel->check_job_event_count($job_id,$input_event);
+            if($count > 0){
+                $res = $this->InputModel->delete_input_event_by_id($job_id,$input_event);
+                
+                if ($res) {
+                    $res_type = 'Success';
+                    $res_msg  = $text['del_event']."  ".$text['job_id'].':'.$job_id.','.$text['event'].':'.$text[$event[$input_event]]."  ".$text['success'];
+                } else {
+                    $res_type = 'Error';
+                    $res_msg  = $text['del_event']."  ".$text['job_id'].':'.$job_id.','.$text['event'].':'.$text[$event[$input_event]]."  ".$text['fail'];
+                }
+            }else{
                 $res_type = 'Error';
-                $res_msg  = $text['del_event']."  ".$text['job_id'].':'.$job_id.','.$text['event'].':'.$text[$event[$input_event]]."  ".$text['fail'];
+                $res_msg  = $text['alert_message_1'];
             }
             
             $result = array(

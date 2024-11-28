@@ -293,20 +293,29 @@ class Outputs extends Controller
 
         if($input_check){
     
-            
-            $res = $this->OutputModel->delete_output_event_by_id($output_job_id,$output_event);
-            $result = array();
-            if($res){
-                $res_type = 'Success';
-                $res_msg  = $text['del_event'].$text['job_id'].':'.$output_job_id.','.$text['event'].':'.$text[$event[$output_event]]."  ".$text['success'];
+            $count = $this->OutputModel->check_event_conflict($output_job_id,$output_event);
+            if ($count > 0){
+                $res = $this->OutputModel->delete_output_event_by_id($output_job_id,$output_event);
+                if($res){
+                    $res_type = 'Success';
+                    $res_msg  = $text['del_event'].$text['job_id'].':'.$output_job_id.','.$text['event'].':'.$text[$event[$output_event]]."  ".$text['success'];
+                }else{
+                    $res_type = 'Error';
+                    $res_msg  = $text['del_event'].$text['job_id'].':'.$output_job_id.','.$text['event'].':'.$text[$event[$output_event]]."  ".$text['fail'];
+                }
+                
             }else{
                 $res_type = 'Error';
-                $res_msg  = $text['del_event'].$text['job_id'].':'.$output_job_id.','.$text['event'].':'.$text[$event[$output_event]]."  ".$text['fail'];
+                $res_msg  = $text['alert_message_1'];
             }
+        
+            
             $result = array(
                 'res_type' => $res_type,
-                'res_msg'  => $res_msg 
+                'res_msg'  => $res_msg,
             );
+
+           
   
             echo json_encode($result);
         }
