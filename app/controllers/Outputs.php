@@ -362,10 +362,11 @@ class Outputs extends Controller
         if($input_check){
             $job_outputs = $this->OutputModel->check_job_event_conflict($output_job_id, $output_event);
             if (empty($job_outputs)) {
-                $job_outputs = array();  
-            }  
+                $job_outputs = 'no_data'; 
+            }
+            print_r($job_outputs);  
         }
-        print_r($job_outputs);
+     
 
     }
 
