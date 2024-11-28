@@ -149,10 +149,12 @@ class Inputs extends Controller
         }
 
         if($input_check){
-            $job_inputs = $this->InputModel->check_job_event_conflict($job_id,$input_event);    
+            $job_inputs = $this->InputModel->check_job_event_conflict($job_id,$input_event);
+            if(empty($job_inputs)){
+                $job_inputs = 'no_data';
+            } 
+            print_r($job_inputs);   
         }
-
-        print_r($job_inputs);
     }
 
     public function create_input_event()

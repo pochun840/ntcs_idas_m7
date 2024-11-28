@@ -734,7 +734,7 @@ function crud_job_event(argument){
         
         get_input_info(job_id,input_event);
         handleEventChange(input_event); 
-        document.getElementById('edit_input').style.display='block';  
+        //document.getElementById('edit_input').style.display='block';  
     }
 
     if(argument == 'copy' && job_id != '' && input_event != ''){
@@ -744,19 +744,27 @@ function crud_job_event(argument){
         document.getElementById("from_job_id").value = job_id;
         document.getElementById("from_job_name").value = from_job_name_bk;
         var selectElement = document.getElementById('JobSelect1');
-        var options = selectElement.getElementsByTagName('option');
+        var options = selectElement.getElementsByTagName('job_list_option');
 
-        for (var i = 0; i < options.length; i++) {
-            var optionId = options[i].getAttribute('id');
-            var optionValue = options[i].value;
-            if(optionValue == job_id){
-                options[i].disabled = true; 
-                options[i].classList.add('disabled_input'); 
-             
+        console.log(options);
+
+
+        if (options.length > 0) {
+            for (var i = 0; i < options.length; i++) {
+                var optionId = options[i].getAttribute('id');
+                var optionValue = options[i].value;
+                if(optionValue == job_id){
+                    options[i].disabled = true; 
+                    options[i].classList.add('disabled_input'); 
+                
+                }
             }
+
+            document.getElementById('copyinput').style.display='block';
+        }else{
+            
         }
 
-        document.getElementById('copyinput').style.display='block';
     }
 
     if(argument == 'unified' && job_id != ''){
@@ -1097,7 +1105,13 @@ function get_input_info(){
                 input_event: input_event,
             },
             success: function(response) {
-                
+                if (response === 'no_data') {
+                    return;
+                }
+
+                document.getElementById('edit_input').style.display='block';  
+
+
                 var responseJSON = JSON.stringify(response);
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
@@ -1148,15 +1162,7 @@ function get_input_info(){
                     }
 
                 }
-                /*document.getElementById('edit_work_goc').style.display = 'block';
-                if(gateconfirm == 1){
-                    document.getElementById("edit_gateconfirm_1").checked = true;
-                }else if(gateconfirm == 0){
-                    document.getElementById("edit_gateconfirm_0").checked = true;
-                }else{
-                    document.getElementById('edit_work_goc').style.display = 'none';
-                }*/
-
+                
                 document.querySelector("select[name='edit_Event_Option']").value = input_event;
 
                 document.getElementById("edit_Event_Option").onchange = function() {
