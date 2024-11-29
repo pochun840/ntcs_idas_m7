@@ -666,6 +666,13 @@ window.onclick = function(event) {
 
 function crud_job_event(argument){
     if(argument == 'new' && job_id != ''){
+
+        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
+        }
+
         //針對已設定的pin角位disable
         if (Array.isArray(temp)){ 
             temp.forEach(function(element) {
@@ -713,6 +720,13 @@ function crud_job_event(argument){
 
     if(argument == 'edit' && job_id != '' && input_event != ''){
 
+        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
+        }
+
+
         var selectElement = document.getElementById('edit_Event_Option');
         if(selectElement){
             selectElement.disabled = true;
@@ -744,26 +758,24 @@ function crud_job_event(argument){
         document.getElementById("from_job_id").value = job_id;
         document.getElementById("from_job_name").value = from_job_name_bk;
         var selectElement = document.getElementById('JobSelect1');
-        var options = selectElement.getElementsByTagName('job_list_option');
+        var options = selectElement.getElementsByTagName('option');
 
-        console.log(options);
-
-
-        if (options.length > 0) {
-            for (var i = 0; i < options.length; i++) {
-                var optionId = options[i].getAttribute('id');
-                var optionValue = options[i].value;
-                if(optionValue == job_id){
-                    options[i].disabled = true; 
-                    options[i].classList.add('disabled_input'); 
-                
-                }
+        for (var i = 0; i < options.length; i++) {
+            var optionId = options[i].getAttribute('id');
+            var optionValue = options[i].value;
+            if(optionValue == job_id){
+                options[i].disabled = true; 
+                options[i].classList.add('disabled_input'); 
+            
             }
+        }
 
+        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        if (selectedRows.length > 0) {
             document.getElementById('copyinput').style.display='block';
         }else{
-            
-        }
+            getLanguageMessage('language');
+        }    
 
     }
 
@@ -1106,6 +1118,7 @@ function get_input_info(){
             },
             success: function(response) {
                 if (response === 'no_data') {
+                    getLanguageMessage('language');
                     return;
                 }
 
@@ -1298,6 +1311,22 @@ function edit_input_id(){
     }
 }
 
+function getLanguageMessage(cookieName) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + cookieName + "=");
+    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
+    var message;
+    if (language === 'en-us') {
+       message =  'Please select the event to delete';
+    } else if (language === 'zh-cn') {
+       message =  '请选择要删除的事件';
+    } else if (language === 'zh-tw') {
+       message =  '請點選要刪除的事件';
+    } else {
+      message =  'Please select the event to delete';
+    }
+   alertify.alert(message);
+}
 
 </script>
 <style>
