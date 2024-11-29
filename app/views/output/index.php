@@ -325,6 +325,12 @@ function crud_job_event(argument){
 
     if(argument == 'new' && job_id != ''){
 
+        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+        if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
+        }
+
         if (Array.isArray(temp)){ 
             temp.forEach(function(element) {
                 var radio = document.getElementById(element);
@@ -365,7 +371,12 @@ function crud_job_event(argument){
     //&& output_event != ''
     if (argument === 'edit' && job_id != '' && output_event != '') {
 
-    
+        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+        if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
+        }
+        
 
         var selectElement = document.getElementById('edit_event_option');
         if (Array.isArray(temp)) { 
@@ -441,18 +452,22 @@ function crud_job_event(argument){
 
         var selectElement = document.getElementById('JobSelect1');
         var options = selectElement.getElementsByTagName('option');
-        console.log(options);
-        if (options.length > 0) {
-            for (var i = 0; i < options.length; i++) {
-                var optionId = options[i].getAttribute('id');
-                var optionValue = options[i].value;
-                if(optionValue == job_id){
-                    options[i].disabled = true; 
-                    options[i].classList.add('disabled_input'); 
-                }
+        
+        for (var i = 0; i < options.length; i++) {
+            var optionId = options[i].getAttribute('id');
+            var optionValue = options[i].value;
+            if(optionValue == job_id){
+                options[i].disabled = true; 
+                options[i].classList.add('disabled_input'); 
             }
-            document.getElementById('copy_output').style.display='block';
         }
+
+        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+        if (selectedRows.length > 0) {
+            document.getElementById('copyinput').style.display='block';
+        }else{
+            getLanguageMessage('language');
+        }            
     }
 
     if(argument == 'unified' && job_id != ''){
@@ -607,8 +622,6 @@ function delete_output_id(job_id,del_output_val){
                 alertify.alert(responseData.res_type, responseData.res_msg, function() {
                     get_output_by_job_id(job_id);
                 });
-                
-                var del_output_val =''; 
                  
             },
             error: function(xhr, status, error) {
@@ -910,6 +923,7 @@ function get_output_info(job_id,output_event){
              },
              success: function(response) {
                 if (response === 'no_data') {
+                    getLanguageMessage('language');
                     return;
                 }
 
@@ -1108,6 +1122,24 @@ function disableElements(filtered_array) {
             element.disabled = true;  // 禁用该元素
         }
     });
+}
+
+
+function getLanguageMessage(cookieName) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + cookieName + "=");
+    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
+    var message;
+    if (language === 'en-us') {
+       message =  'Please select the event to delete';
+    } else if (language === 'zh-cn') {
+       message =  '请选择要删除的事件';
+    } else if (language === 'zh-tw') {
+       message =  '請點選要刪除的事件';
+    } else {
+      message =  'Please select the event to delete';
+    }
+   alertify.alert(message);
 }
 
 </script>
