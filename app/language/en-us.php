@@ -129,7 +129,7 @@ $text['Tool_Max_Torque'] = 'Tool Max Torque';
 $text['Target_Torque'] = 'Target Torque';
 $text['Target_Angle'] = 'Target Angle ( &#870 )';
 $text['Target Delay Time'] = 'Target Delay Time';
-
+$text['Target_Time'] = 'Target_Time';
 $text['Run_Down_Speed'] = 'Run Down Speed';
 
 $text['Downshift_Enable'] = 'Downshift Enable';

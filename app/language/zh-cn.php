@@ -130,7 +130,7 @@ $text['Tool_Max_Torque'] = '工具最大扭力';
 $text['Target_Torque'] = '目标扭力';
 $text['Target_Angle'] = '目标角度 (度)';
 $text['Target Delay Time'] = '目标延迟时间';
-
+$text['Target_Time'] = '目标时间';
 $text['Run_Down_Speed'] = '转速(圈/分钟)';
 
 $text['Downshift_Enable'] = '降速启动';
