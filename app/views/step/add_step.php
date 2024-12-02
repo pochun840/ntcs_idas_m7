@@ -30,8 +30,8 @@
     </div>
 
     <div style="display:none;">
-        <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
-        <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
+        <input id="tool_max_torque" value="<?php echo floatval($data['tools_info']['max_torque']); ?>">
+        <input id="tool_min_torque" value="<?php echo floatval($data['tools_info']['min_torque']); ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
         
@@ -61,7 +61,7 @@
                         </div>
                     </div>
                 </div>
-                <?php if($data['mode'] == 'edit'){ ?>
+                <?php if($data['type'] == 'edit'){ ?>
                 <div style="display: none;">
                     <input type="" id="mode" value="<?php echo $data['mode']; ?>">
                 </div>
@@ -152,8 +152,10 @@
                                 <div class="ps-5" style="display:inline-block;">
                                     <label class="form-check-label" for="monitor_torque_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
                                     <input id="StepLimiHi" class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
-                                    <label class="form-check-label ps-3" for="monitor_torque_upper"><?php echo $text['Lower_text'].'(%)'; ?></label>
+                                    <div class="invalid-feedback"></div>
+                                    <label class="form-check-label ps-3" for="monitor_torque_lower"><?php echo $text['Lower_text'].'(%)'; ?></label>
                                     <input id="StepLimiLo" class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
+                                    <div class="invalid-feedback"></div>
                                 </div>
                             </div>
                         </div>
@@ -182,8 +184,10 @@
                                 <div class="ps-5" style="display:inline-block;">
                                     <label class="form-check-label" for="monitor_angle_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
                                     <input id="StepLimiHi" class="form-control form-control-sm" style=" width: 40px !important; " value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1 && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
+                                    <div class="invalid-feedback"></div>
                                     <label class="form-check-label ps-3" for="monitor_angle_upper"><?php echo $text['Lower_text'].'(%)'; ?></label>
                                     <input id="StepLimiLo" class="form-control form-control-sm" style=" width: 40px !important; " value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1 && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
+                                    <div class="invalid-feedback"></div>
                                 </div>
                             </div>
                         </div>
@@ -708,8 +712,8 @@ function toggleDownShift() {
     
     
     function input_check(argument) {
-        let Tool_Max_Torque = document.getElementById('tool_max_torque').value;
-        let Tool_Min_Torque = document.getElementById('tool_min_torque').value;
+        let Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque').value);
+        let Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque').value);
         let Tool_Max_RPM = document.getElementById('tool_max_rpm').value;
         let Tool_Min_RPM = document.getElementById('tool_min_rpm').value;
         let hi_angle_max = 30600;
@@ -721,12 +725,12 @@ function toggleDownShift() {
 
         let  StepEnableThreshold = document.querySelector('input[name="StepEnableThreshold"]:checked');
 
-        if(StepEnableThreshold.value == 0){
+        /*if(StepEnableThreshold.value == 0){
             Tool_Max_Torque = 0;
             Tool_Min_Torque = 0;
-        }
+        }*/
+        //alert(Tool_Min_Torque);
  
-
         if(StepOption ==0){
 
             //torque
@@ -744,6 +748,9 @@ function toggleDownShift() {
             }else{
                 offset_min = -bb;
             }
+
+
+
 
             hi_angle_max = 30600
             hi_angle_min = 0;
@@ -775,6 +782,8 @@ function toggleDownShift() {
             if(Math.abs(offset_min) > Math.abs(offset_max)){
                 offset_min = offset_max * -1;
             }
+
+ 
 
             hi_angle_max = 30600;
             hi_angle_min = document.getElementById('StepAngle').value;
@@ -856,8 +865,8 @@ function toggleDownShift() {
             { id: 'StepRPMDownShift',pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM},
             { id: 'StepTorqueTS', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
             { id: 'StepTorqueDownShift', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
-            { id: 'StepHiTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: hi_torque_min, max: hi_torque_max },
-            { id: 'StepLoTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: hi_torque_min, max: hi_torque_max },
+            { id: 'StepHiTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: lo_torque_min, max: hi_torque_max },
+            { id: 'StepLoTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: lo_torque_min, max: hi_torque_max },
             { id: 'StepHiAngle', pattern: /^\d{0,5}?$/, min: hi_angle_min, max: 30600 },
             { id: 'StepLoAngle', pattern: /^\d{1,6}$/, min: lo_angle_min, max: lo_angle_max },
             { id: 'StepLimiHi',pattern: /^\d{0,3}$/, min: 0, max:100 },

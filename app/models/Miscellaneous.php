@@ -291,13 +291,18 @@ class Miscellaneous{
         $TransType = (int)$TransType;
 
         $new_TorqueUnit = [
-            "KGF_CM" => 0,
+            "kgf.cm" => 0,
             "N.m" => 1,
             "lbf.in" => 2,
             "kgf.m" => 3
         ];
     
         $convertedValues = array();
+
+        if (!is_array($torValues)) {
+            $torValues = [$torValues];
+        }
+        
     
    
         foreach($torValues as $torValue) {
@@ -307,7 +312,7 @@ class Miscellaneous{
             if ($inputType == $new_TorqueUnit["N.m"]) {
                 if ($TransType == $new_TorqueUnit["kgf.m"]) {
                     $convertedValues[] = round($torValue * 0.102, 4); // N.m 轉換成 kgf.m
-                } elseif ($TransType == $new_TorqueUnit["KGF_CM"]) {
+                } elseif ($TransType == $new_TorqueUnit["kgf.cm"]) {
                     $convertedValues[] = round($torValue * 10.2, 2); // N.m 轉換成 Kgf·cm
                 } elseif ($TransType == $new_TorqueUnit["lbf.in"]) {
                     $convertedValues[] = round($torValue * 10.2 * 0.86805, 2); // N.m 轉換成 lbf.in
@@ -320,7 +325,7 @@ class Miscellaneous{
             elseif ($inputType == $new_TorqueUnit["kgf.m"]) {
                 if ($TransType == $new_TorqueUnit["kgf.m"]) {
                     $convertedValues[] = round($torValue, 4); // kgf.m 轉換成 kgf.m（保持不變）
-                } elseif ($TransType == $new_TorqueUnit["KGF_CM"]) {
+                } elseif ($TransType == $new_TorqueUnit["kgf.cm"]) {
                     $convertedValues[] = round($torValue * 100, 2); // kgf.m 轉換成 Kgf·cm
                 } elseif ($TransType == $new_TorqueUnit["lbf.in"]) {
                     $convertedValues[] = round($torValue * 100 * 0.86805, 2); // kgf.m 轉換成 lbf.in
@@ -330,10 +335,10 @@ class Miscellaneous{
             }
     
             //當輸入的單位是Kgf·cm
-            elseif ($inputType == $new_TorqueUnit["KGF_CM"]) {
+            elseif ($inputType == $new_TorqueUnit["kgf.cm"]) {
                 if ($TransType == $new_TorqueUnit["kgf.m"]) {
                     $convertedValues[] = round($torValue * 0.01, 4); // Kgf·cm 轉換成 kgf.m
-                } elseif ($TransType == $new_TorqueUnit["KGF_CM"]) {
+                } elseif ($TransType == $new_TorqueUnit["kgf.cm"]) {
                     $convertedValues[] = round($torValue, 2); // Kgf·cm 轉換成 Kgf·cm（保持不變）
                 } elseif ($TransType == $new_TorqueUnit["lbf.in"]) {
                     $convertedValues[] = round($torValue * 0.86805, 2); // Kgf·cm 轉換成 lbf.in
@@ -346,7 +351,7 @@ class Miscellaneous{
             elseif ($inputType == $new_TorqueUnit["lbf.in"]) {
                 if ($TransType == $new_TorqueUnit["kgf.m"]) {
                     $convertedValues[] = round($torValue * 1.152 * 0.01, 4); // lbf.in 轉換成 kgf.m
-                } elseif ($TransType == $new_TorqueUnit["KGF_CM"]) {
+                } elseif ($TransType == $new_TorqueUnit["kgf.cm"]) {
                     $convertedValues[] = round($torValue * 1.152, 2); // lbf.in轉換成 Kgf·cm
                 } elseif ($TransType == $new_TorqueUnit["lbf.in"]) {
                     $convertedValues[] = round($torValue, 2); // lbf.in 轉換成 lbf.in（保持不變）
