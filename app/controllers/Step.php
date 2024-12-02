@@ -513,15 +513,11 @@ class Step extends Controller
         #當前扭力單位
         $torque_unit = $unit_arr[$torque_unit]; 
 
-        
-
         //計算參數的數量
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
         if (!empty($seq_id)) $paramsCount++;
         if (!empty($stepid)) $paramsCount++;
-
-       
 
         if(!empty($last_tool_info &&  !empty($torque_unit))){
             #起子的扭力單位 預設是 公斤公分(Kgf·cm)
@@ -561,6 +557,9 @@ class Step extends Controller
         } 
 
 
+        if ($type == 'edit') {
+            $data['step'] = $step; 
+        }
 
         $data = array(
             'JOBID' => $job_id,
@@ -572,13 +571,6 @@ class Step extends Controller
 
 
         );
-
-
-
-        if ($type == 'edit') {
-            $data['step'] = $step; 
-        }
-        
 
         echo $this->view('step/add_step',$data);
     }
