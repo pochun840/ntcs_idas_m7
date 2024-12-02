@@ -509,13 +509,39 @@ class Step extends Controller
 
         $torque_unit = $this->SettingModel->Get_System_Toq_Unit();
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-        $torque_unit = $unit_arr[$torque_unit];
+
+        #當前扭力單位
+        $torque_unit = $unit_arr[$torque_unit]; 
+
+        
 
         //計算參數的數量
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
         if (!empty($seq_id)) $paramsCount++;
         if (!empty($stepid)) $paramsCount++;
+
+       
+
+        if(!empty($last_tool_info &&  !empty($torque_unit))){
+            #起子的扭力單位 預設是 公斤公分(Kgf·cm)
+            #如果不是 需要進行扭力的換算
+            if($torque_unit != 'kgf.cm'){
+
+                if($torque_unit == 'N.m'){
+                    $change_id = 1;
+                }if($torque_unit == 'lbf.in'){
+                    $change_id = 2;
+                }
+                if($torque_unit == 'kgf.m'){
+                    $change_id = 3;
+                }
+
+                $last_tool_info['max_torque'] = $this->MiscellaneousModel->unitarr_change($last_tool_info['max_torque'], 0, $change_id)[0];
+                $last_tool_info['min_torque'] = $this->MiscellaneousModel->unitarr_change($last_tool_info['min_torque'], 0, $change_id)[0];   
+            }
+            
+        }
 
 
         if($paramsCount === 2) {
@@ -534,6 +560,8 @@ class Step extends Controller
             $step = $res[0];
         } 
 
+
+
         $data = array(
             'JOBID' => $job_id,
             'SEQID' => $seq_id,
@@ -541,6 +569,7 @@ class Step extends Controller
             'type' => $type,
             'tools_info' => $last_tool_info,
             'torque_unit' =>$torque_unit 
+
 
         );
 
