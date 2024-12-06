@@ -82,11 +82,11 @@
                             <div class="col-9">
                                 <select id="StepOption"  onchange="updateLabel()">
                                     <?php 
-                                            $options = [
+                                            $options = array(
                                                 0 => $text['Torque'],
                                                 1 => $text['Angle'],
                                                 2 => $text['Time']
-                                            ];
+                                            );
 
                                             foreach ($options as $value => $label) {
                                                 echo '<option value="' . $value . '" ' . (($data['type'] == 'edit' && $data['step']['StepOption'] == $value) ? 'selected' : '') . '>' . $label . '</option>';

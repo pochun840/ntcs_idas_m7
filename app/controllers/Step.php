@@ -533,8 +533,8 @@ class Step extends Controller
                     $change_id = 3;
                 }
 
-                $last_tool_info['max_torque'] = $this->MiscellaneousModel->unitarr_change($last_tool_info['max_torque'], 0, $change_id)[0];
-                $last_tool_info['min_torque'] = $this->MiscellaneousModel->unitarr_change($last_tool_info['min_torque'], 0, $change_id)[0];   
+                $last_tool_info['max_torque'] = $this->MiscellaneousModel->unit_transduction($last_tool_info['max_torque'], 0, $change_id)[0];
+                $last_tool_info['min_torque'] = $this->MiscellaneousModel->unit_transduction($last_tool_info['min_torque'], 0, $change_id)[0];   
             }
             
         }
