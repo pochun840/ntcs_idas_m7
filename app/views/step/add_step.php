@@ -37,7 +37,6 @@
         
     </div>
 
-
     <div class="main-content">
         <div class="center-content">
             <div class="topnav">
@@ -83,11 +82,11 @@
                             <div class="col-9">
                                 <select id="StepOption"  onchange="updateLabel()">
                                     <?php 
-                                            $options = [
+                                            $options = array(
                                                 0 => $text['Torque'],
                                                 1 => $text['Angle'],
                                                 2 => $text['Time']
-                                            ];
+                                            );
 
                                             foreach ($options as $value => $label) {
                                                 echo '<option value="' . $value . '" ' . (($data['type'] == 'edit' && $data['step']['StepOption'] == $value) ? 'selected' : '') . '>' . $label . '</option>';
@@ -102,9 +101,9 @@
                                 <?php   if($data['step']['StepOption'] == 0 ){?>   
                                     <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                 <?php }else if($data['step']['StepOption'] == 1 ){?>
-                                    <div class="col-3"  id="targetLabel" >Target Angle :</div>
+                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Angle'];?> :</div>
                                 <?php }else if($data['step']['StepOption'] == 2 ) {?>
-                                    <div class="col-3"  id="targetLabel" >Target Time:</div>
+                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Time'];?>:</div>
                                 <?php } ?>
 
                             <?php }else{?>

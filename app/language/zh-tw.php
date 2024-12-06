@@ -121,6 +121,7 @@ $text['Delay Time'] = '延遲時間';
 $text['Tool_Max_Torque'] = '工具最大扭力';
 $text['Target_Torque'] = '目標扭力';
 $text['Target_Angle'] = '目標角度 (度)';
+$text['Target_Time'] = '目標時間';
 $text['Target Delay Time'] = '目標延遲時間';
 $text['Monitor torque by window'] = '監控扭力視窗';
 $text['Monitor angle by window']  = '監控角度視窗';

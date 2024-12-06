@@ -182,7 +182,7 @@ class Dashboards extends Controller
             
             // = $unitvalue;
             $torValues = $csvdata_arr;
-            $temp_val = $this->MiscellaneousModel->unitarr_change($torValues, 1, $TransType);
+            $temp_val = $this->MiscellaneousModel->unit_transduction($torValues, 1, $TransType);
             $chart_info['y_val'] = json_encode($temp_val);
             $chart_info['max'] = max($temp_val);
             $chart_info['min'] = min($temp_val);
