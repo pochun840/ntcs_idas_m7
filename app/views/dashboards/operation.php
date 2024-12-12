@@ -232,7 +232,7 @@ var option = {
                 if (param.seriesName === '扭力') {
                     tooltipContent += '<span style="color: rgb(255, 0, 0);">torque: </span>' + param.value + ' Nm<br>';
                 } else if (param.seriesName === '轉速') {
-                    tooltipContent += '<span style="color: rgb(255, 0, 0);">rpm: </span>' + param.value + ' RPM<br>';
+                    tooltipContent += '<span style="color: rgb(0, 0, 255);">rpm: </span>' + param.value + ' RPM<br>';
                 }
             });
 
