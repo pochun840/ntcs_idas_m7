@@ -69,9 +69,6 @@
 
 
 <script>
-// Button Home
-
-
 // change button background coler
 function changeBackgroundColor(button) {
     var buttons = document.getElementsByClassName('btn-chart');
@@ -147,6 +144,11 @@ var x_data_val = <?php echo  $data['chart_info']['x_val']; ?>;
 var y_data_val = <?php echo  $data['chart_info']['y_val']; ?>;
 var x_title    = '<?php echo addslashes($data['echart_name'][1]); ?>';
 var y_title    = '<?php echo addslashes($data['echart_name'][0]); ?>';
+var y_data_val_torque = <?php echo !empty($data['chart_info']['y_val_torque']) ? $data['chart_info']['y_val_torque'] : '[]'; ?>;
+var y_data_val_rpm    = <?php echo !empty($data['chart_info']['y_val_rpm']) ? $data['chart_info']['y_val_rpm'] : '[]'; ?>;
+var chart_mode = '<?php echo $data['chart_mode'];?>';
+
+
 
 if(language =="zh-tw"){
     if(x_title =="Time(MS)"){
@@ -201,6 +203,17 @@ if(language =="zh-cn"){
 
 var language = getCookie('language');
 
+var min_torque = Math.min.apply(null, y_data_val_torque);
+var max_torque = Math.max.apply(null, y_data_val_torque);
+var min_rpm = Math.min.apply(null, y_data_val_rpm);
+var max_rpm = Math.max.apply(null, y_data_val_rpm);
+
+// 計算兩者的最小值和最大值，這樣可以設置對齊的範圍
+var min_val = Math.min(min_torque, min_rpm);
+var max_val = Math.max(max_torque, max_rpm);
+
+
+// 根據 chart_mode 設置
 var option = {
     title: {
         text: ''
@@ -211,51 +224,113 @@ var option = {
             return [pt[0], '10%'];
         },
         formatter: function (params) {
-            var state = '<span style="color: red;">' + y_title + '</span>';
-            var value = '<span style="color: red;">' + params[0].value + '</span>';
-            return state + ': ' + value; 
-        },
-        
+            // 初始化空的字符串來顯示 tooltip
+            var tooltipContent = '';
+            
+            // 確保 tooltip 顯示扭力和轉速的數值
+            params.forEach(function (param) {
+                if (param.seriesName === '扭力') {
+                    tooltipContent += '<span style="color: rgb(255, 0, 0);">torque: </span>' + param.value + ' Nm<br>';
+                } else if (param.seriesName === '轉速') {
+                    tooltipContent += '<span style="color: rgb(0, 0, 255);">rpm: </span>' + param.value + ' RPM<br>';
+                }
+            });
+
+            return tooltipContent;
+        }
     },
-    xAxis:{
+    xAxis: {
         type: 'category',
         boundaryGap: false,
         name: x_title,
         data: x_data_val
     },
-    yAxis: {
-        type: 'value',
-        name: y_title,
-        boundaryGap: [0, '100%']
-    },
-    dataZoom: generateDataZoom(),
-    series: [
-            {
-                name:'',
-                type:'line',
-                symbol: 'none',
-                sampling: 'average',
-                
-                itemStyle: {
-                    normal: {
-                        color: 'rgb(255,0,0)'
-                    }
-                },
-                areaStyle: {
-                    normal: {
-                        color: new echarts.graphic.LinearGradient(0, 0, 0, 0, [{
-                            offset: 0,
-                            color: 'rgb(255,255,255)'
-                        }, {
-                            offset: 0,
-                            color: 'rgb(255,255,255)'
-                        }])
-                    }
-                },
-                lineStyle: {width: 0.75},
-                data: y_data_val
+    yAxis: chart_mode == "5" ? [  // 判斷 chart_mode 是否為 5
+        // 左側 Y 軸，對應 y_data_val_torque
+        {
+            type: 'value',
+            name: '',
+            min: Math.min.apply(null, y_data_val_torque),
+            max: Math.max.apply(null, y_data_val_torque),
+            position: 'left',
+            axisLabel: {
+                formatter: '{value}'
             }
-        ]
+        },
+        // 右側 Y 軸，對應 y_data_val_rpm
+        {
+            type: 'value',
+            name: '',
+            min: Math.min.apply(null, y_data_val_rpm),
+            max: Math.max.apply(null, y_data_val_rpm),
+            position: 'right',
+            axisLabel: {
+                formatter: '{value}'
+            }
+        }
+    ] : [  // 如果不是 chart_mode == 5，只顯示單一 Y 軸
+        {
+            type: 'value',
+            name: y_title,
+            boundaryGap: [0, '100%']
+        }
+    ],
+    dataZoom: generateDataZoom(),
+    series: chart_mode == "5" ? [  // 如果是 chart_mode == 5，顯示兩條曲線
+        {
+            name: '扭力',
+            type: 'line',
+            symbol: 'none',
+            sampling: 'average',
+            yAxisIndex: 0,  // 左側 Y 軸
+            itemStyle: {
+                normal: {
+                    color: 'rgb(255,0,0)'
+                }
+            },
+            lineStyle: { width: 1 },
+            data: y_data_val_torque
+        },
+        {
+            name: '轉速',
+            type: 'line',
+            symbol: 'none',
+            sampling: 'average',
+            yAxisIndex: 1,  // 右側 Y 軸
+            itemStyle: {
+                normal: {
+                    color: 'rgb(0,0,255)'
+                }
+            },
+            lineStyle: { width: 1 },
+            data: y_data_val_rpm
+        }
+    ] : [  // 否則顯示單條曲線
+        {
+            name: '',
+            type: 'line',
+            symbol: 'none',
+            sampling: 'average',
+            itemStyle: {
+                normal: {
+                    color: 'rgb(255,0,0)'
+                }
+            },
+            areaStyle: {
+                normal: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 0, [{
+                        offset: 0,
+                        color: 'rgb(255,255,255)'
+                    }, {
+                        offset: 0,
+                        color: 'rgb(255,255,255)'
+                    }])
+                }
+            },
+            lineStyle: { width: 0.75 },
+            data: y_data_val
+        }
+    ]
 };
 
 myChart.setOption(option);

@@ -88,40 +88,54 @@ class Dashboard{
         return $rows;
     }
 
-    public function get_info($no, $chat_mode){
+    public function get_info($no, $chat_mode) {
         $resultarr = array();
-    
-        if(!empty($no)){
+        
+        if (!empty($no)) {
             #檔案類型
-            $file_arr  = array('_0p5','_1p0','_2p0');
+            $file_arr = array('_0p5', '_1p0', '_2p0');
             $csv_array = array();
             $resultarr = array();
+            
             foreach ($file_arr as $v_f) {
-                $infile = "../public/data/DATALOG_000000".$no.$v_f.".csv";
-
+                // public/data/DATALOG_20241126074447_DEVICE_0000009437_0p5.csv
+                //$infile = "../public/data/DATALOG_000000".$no.$v_f.".csv";
+                $infile = "../public/data/DATALOG_20241126074447_DEVICE_000000" . $no . $v_f . ".csv";
+                // echo $infile; die();
                 if (file_exists($infile)) {
                     $csvdata_tmp = file_get_contents($infile);
-                  
+                    
                     if (!empty($csvdata_tmp)) {
                         $csvdata = $csvdata_tmp;
-                        $lines = explode("\n", $csvdata); 
-                        $csv_array = array_map('str_getcsv', $lines); 
-                        break; 
+                        $lines = explode("\n", $csvdata);
+                        $csv_array = array_map('str_getcsv', $lines);
+                        break;
                     }
                 }
             }
-    
-            if(empty($csv_array)){
+            
+            if (empty($csv_array)) {
                 $resultarr = null;
             } else {
                 $position = (int)$chat_mode;
+                
+                // 如果是 $chat_mode == "5"，則先獲取 $chat_mode == "1" 和 $chat_mode == "3" 的結果
+                if ($chat_mode == "5") {
+                    // 取得 chat_mode == "1" 的結果並儲存至 $resultarr['torque']
+                    $resultarr['torque'] = $this->get_info($no, "1");
+                    // 取得 chat_mode == "3" 的結果並儲存至 $resultarr['rpm']
+                    $resultarr['rpm'] = $this->get_info($no, "3");
+                }
     
+                // 處理當前的 $chat_mode 邏輯
                 foreach ($csv_array as $subarray) {
-                    if(isset($subarray[$position])){
-                        if($chat_mode =="5" || $chat_mode =="6"){
-                            if($chat_mode =="6" && $position == 6) {
+                    if (isset($subarray[$position])) {
+                        // 如果是 chat_mode == "5" 或 "6"
+                        if ($chat_mode == "5" || $chat_mode == "6") {
+                            if ($chat_mode == "6" && $position == 6) {
                                 $resultarr['torque'][] = $subarray[1];
                             } else {
+                                // 存儲數據到 torque
                                 $resultarr['torque'][] = $subarray[$position];
                             }
                         } else {
@@ -131,6 +145,42 @@ class Dashboard{
                 }
             }
         }
+    
         return $resultarr;
     }
+
+    public function get_csv_first_column($no) {
+        $first_column = array();
+        
+        // 檔案類型
+        $file_arr = array('_0p5', '_1p0', '_2p0');
+        
+        foreach ($file_arr as $v_f) {
+            $infile = "../public/data/DATALOG_20241126074447_DEVICE_000000" . $no . $v_f . ".csv";
+            
+            if (file_exists($infile)) {
+                $csvdata_tmp = file_get_contents($infile);
+                
+                if (!empty($csvdata_tmp)) {
+                    $csvdata = $csvdata_tmp;
+                    $lines = explode("\n", $csvdata);
+                    $csv_array = array_map('str_getcsv', $lines);
+                    
+                    // 取得每行的第一個欄位 (即 A 欄位)
+                    foreach ($csv_array as $subarray) {
+                        // 確保該行有數據
+                        if (isset($subarray[0])) {
+                            $first_column[] = $subarray[0];  // 將 A 欄位的數據加入
+                        }
+                    }
+                    break;  // 若找到檔案後，就退出循環
+                }
+            }
+        }
+    
+        return $first_column;
+    }
+    
+    
+    
 }
