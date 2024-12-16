@@ -567,7 +567,8 @@ class Step extends Controller
             'StepSelect' => $StepSelect,
             'type' => $type,
             'tools_info' => $last_tool_info,
-            'torque_unit' =>$torque_unit 
+            'torque_unit' =>$torque_unit,
+            'step' => $step
 
 
         );

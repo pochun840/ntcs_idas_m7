@@ -146,12 +146,13 @@ class Dashboards extends Controller
             $chart_info['min'] = min($csvdata_arr);
         }
 
+
+        // 去除 .0 的部分
+        $x_val = array_map(function($value) {
+            return ($value == (int)$value) ? (int)$value : $value;
+        }, $x_val);
+
         $chart_info['x_val'] = json_encode($x_val);
-
-        // echo "<pre>";
-        // print_r($chart_info);
-        // echo "</pre>";
-
         
         return $chart_info;
     }

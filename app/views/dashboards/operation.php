@@ -278,31 +278,33 @@ var option = {
     dataZoom: generateDataZoom(),
     series: chart_mode == "5" ? [  // 如果是 chart_mode == 5，顯示兩條曲線
         {
-            name: '扭力',
+            name: '',
             type: 'line',
             symbol: 'none',
-            sampling: 'average',
+            sampling: 'max',
+            alignTicks: true,
             yAxisIndex: 0,  // 左側 Y 軸
             itemStyle: {
                 normal: {
                     color: 'rgb(255,0,0)'
                 }
             },
-            lineStyle: { width: 1 },
+            lineStyle: { width: 0.75 },
             data: y_data_val_torque
         },
         {
-            name: '轉速',
+            name: '',
             type: 'line',
             symbol: 'none',
-            sampling: 'average',
+            sampling: 'max',
+            alignTicks: true,
             yAxisIndex: 1,  // 右側 Y 軸
             itemStyle: {
                 normal: {
                     color: 'rgb(0,0,255)'
                 }
             },
-            lineStyle: { width: 1 },
+            lineStyle: { width: 0.75 },
             data: y_data_val_rpm
         }
     ] : [  // 否則顯示單條曲線

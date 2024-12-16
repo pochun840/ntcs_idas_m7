@@ -753,7 +753,8 @@ function toggleDownShift() {
 
             hi_angle_max = 30600
             hi_angle_min = 0;
-            lo_angle_max =  document.getElementById('StepHiAngle').value;
+            //lo_angle_max =  document.getElementById('StepHiAngle').value;
+            lo_angle_max = 0;
             lo_angle_min = 0;
             hi_torque_max = Number.parseFloat(Tool_Max_Torque*1.1).toFixed(4);
             hi_torque_min = Number.parseFloat( parseFloat(Target_Torque_value) + parseFloat(delta) ).toFixed(4);

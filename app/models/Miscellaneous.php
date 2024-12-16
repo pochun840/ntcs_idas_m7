@@ -304,13 +304,12 @@ class Miscellaneous{
             "cN.m"   => 4
         ];
 
-        
         $convertedValues = array();
-        if (!is_array($torValues)) {
-            $torValues = [$torValues];
+        if (!is_array($torValue)) {
+            $torValue = [$torValue];
         }
 
-        foreach($torValues as $torValue){
+        foreach($torValue as $torValue){
             $torValue = floatval($torValue);
 
             #當輸入的單位是N.m
@@ -399,12 +398,8 @@ class Miscellaneous{
         }
 
         return $convertedValues;
-
-        
-
+    
     }
-
-
 
     public function lang_load(){
 
@@ -480,141 +475,4 @@ class Miscellaneous{
             return null; 
         }
     }
-
-    
-    public function FTP_download($controller_ip, $username, $password)
-    {
-        /*$remote_file = '/var/www/html/database/tcscon.db';             // 原始远程文件路径
-        $copied_file = '/var/www/html/database/tcscon_copy_brian_test.db'; // 复制后的远程文件路径
-        $local_file = '../brian_test_20240826_3.db';                             // 本地文件路径
-        $local_file_copy = $local_file . '666';  
-    
-        // 打开本地文件以进行写入
-        $handle = fopen($local_file, 'w');
-        if (!$handle) {
-            echo "無法打開檔案。\n";
-            return;
-        }
-    
-        #連線到FTP
-        $conn_id = ftp_connect($controller_ip);
-        if (!$conn_id) {
-            echo "連線到FTP失敗。\n";
-            fclose($handle);
-            return;
-        }
-    
-        #登入FTP
-        $login_result = ftp_login($conn_id, $username, $password);
-        if (!$login_result) {
-            echo "登入FTP失敗。\n";
-            ftp_close($conn_id);
-            fclose($handle);
-            return;
-        }
-    
-        #下載檔案
-        $temp_file = tempnam(sys_get_temp_dir(), 'ftp_');
-        if (ftp_get($conn_id, $temp_file, $remote_file, FTP_BINARY)) {
-            echo "下載檔案成功。\n";
-        } else {
-            echo "下載檔案失敗。\n";
-            ftp_close($conn_id);
-            fclose($handle);
-            return;
-        }
-    
-        // 将文件上传到新的目标路径
-        if (ftp_put($conn_id, $copied_file, $temp_file, FTP_BINARY)) {
-            echo "檔案COPY成功，原始文件".$remote_file. "COPY為".$copied_file."\n";
-        } else {
-            echo "檔案COPY失敗。\n";
-            ftp_close($conn_id);
-            fclose($handle);
-            return;
-        }
-    
-        #把下載的檔案 移至本機
-        if (ftp_fget($conn_id, $handle, $copied_file, FTP_BINARY, 0)) {
-            echo "下载成功，保存到 $local_file\n";
-            // 可选：复制下载的文件
-            if (copy($local_file, $local_file . '666')) {
-                echo "檔案COPY，保存為 $local_file.666\n";
-            } else {
-                echo "檔案COPY失敗。\n";
-            }
-        } else {
-            echo "下载".$copied_file."到".$local_file."失敗。\n";
-        }
-        
-        #關閉FTP
-        ftp_close($conn_id);
-        fclose($handle);
-    
-        // 删除临时文件
-        //unlink($temp_file);
-
-        #刪除檔案
-        if (file_exists($local_file_copy)) {
-            if (unlink($local_file_copy)) {
-                echo "删除 $local_file_copy 成功。\n";
-            } else {
-                echo "删除 $local_file_copy 失败。\n";
-            }
-        }*/
-    }
-
-
-    public function FTP_upload($controller_ip, $username, $password){
-        /*$local_file = '../brian_test_20240821.db';       // 本地文件路径
-        $remote_file = '/var/www/html/database/tcscon_copy_brian_test.db'; // 远程文件路径
-
-        #確保檔案是否存在
-        if (!file_exists($local_file)) {
-            echo "檔案不存在。\n";
-            return;
-        }
-
-        #連線FTP
-        $conn_id = ftp_connect($controller_ip);
-        if (!$conn_id) {
-            echo "連線FTP失敗。\n";
-            return;
-        }
-
-        #登入FTP
-        $login_result = ftp_login($conn_id, $username, $password);
-        if (!$login_result) {
-            echo "登入FTP失敗。\n";
-            ftp_close($conn_id);
-            return;
-        }
-
-        // 检查檔案是否存在
-        if (ftp_size($conn_id, $remote_file) != -1) {
-            $backup_file = $remote_file . '.bak';
-            if (ftp_rename($conn_id, $remote_file, $backup_file)) {
-                echo "備份現有檔案為".$backup_file."\n";
-            } else {
-                echo "備份現有檔案失敗。\n";
-                ftp_close($conn_id);
-                return;
-            }
-        }
-
-        #上傳檔案
-        if (ftp_put($conn_id, $remote_file, $local_file, FTP_BINARY)) {
-            echo "檔案上傳成功，保存到 $remote_file\n";
-        } else {
-            echo "檔案上傳失敗。\n";
-        }
-
-
-        //unlink($backup_file);
-        #關閉FTP
-        ftp_close($conn_id);*/
-    }
-    
-    
-    
 }
