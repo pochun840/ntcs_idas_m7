@@ -75,8 +75,6 @@ class Dashboards extends Controller
             'chart_menu_arr' => $chart_menu_arr
         ];
 
-
-
         if($isMobile){
             $this->view('dashboards/operation_m', $data);
         }else{
