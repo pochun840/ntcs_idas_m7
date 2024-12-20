@@ -103,7 +103,6 @@ class Jobs extends Controller
             include $file;
         }
 
-        
         $jobdata  = array();
         if(isset($_POST['jobid'])){
 
@@ -125,7 +124,6 @@ class Jobs extends Controller
                 $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
             }
 
-            
         } 
     
     }
@@ -176,7 +174,6 @@ class Jobs extends Controller
             echo  $res;
         }
       
-
     }
 
     #copy 
@@ -220,8 +217,6 @@ class Jobs extends Controller
                     $select_step = $this->jobModel->search_stepnfo($old_jobid); 
                     
                     if(!empty($select_seq)){
-
-                      
 
                         $new_temp_seq = array();
                         foreach($select_seq as $key =>$val){
@@ -271,7 +266,6 @@ class Jobs extends Controller
                         $temp_step = array();
                         $temp_step = $select_step;
                        
-                        
                         foreach($temp_step as $k_step =>$v_step){
 
                             $new_temp_step[$k_step]['JOBID'] = $new_jobid;

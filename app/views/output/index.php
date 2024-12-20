@@ -326,10 +326,10 @@ function crud_job_event(argument){
     if(argument == 'new' && job_id != ''){
 
         var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-        if (!selectedRows.length > 0) {
+        /*if (!selectedRows.length > 0) {
             getLanguageMessage('language'); 
             return;
-        }
+        }*/
 
         if (Array.isArray(temp)){ 
             temp.forEach(function(element) {

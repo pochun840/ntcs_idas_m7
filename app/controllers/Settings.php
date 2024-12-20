@@ -838,11 +838,6 @@ class Settings extends Controller
         }
         
 
-        echo "<pre>";
-        print_r($barcode);
-        echo "</pre>";
-
-
         if($input_check){
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);
             if($barcode_result){

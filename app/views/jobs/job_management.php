@@ -333,7 +333,7 @@ function savejob() {
 
     let check = input_check();
     if(check){
-        // 如果 jobname_val 非空，继续执行 AJAX 请求
+
         $.ajax({
             url: "?url=Jobs/create_job",
             method: "POST",
