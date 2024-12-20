@@ -148,7 +148,7 @@ var y_data_val_torque = <?php echo !empty($data['chart_info']['y_val_torque']) ?
 var y_data_val_rpm    = <?php echo !empty($data['chart_info']['y_val_rpm']) ? $data['chart_info']['y_val_rpm'] : '[]'; ?>;
 var chart_mode = '<?php echo $data['chart_mode'];?>';
 
-
+console.log(x_data_val);
 
 if(language =="zh-tw"){
     if(x_title =="Time(MS)"){

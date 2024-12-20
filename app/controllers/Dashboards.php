@@ -39,7 +39,7 @@ class Dashboards extends Controller
         if ($chart_mode < 1 || $chart_mode > 6) {
             $chart_mode = 1;
         } 
-        $id = 9437;
+        $id = "None";
         $chat_mode_arr = $chart_mode;
 
 
@@ -47,7 +47,7 @@ class Dashboards extends Controller
         if(!empty($x_val)){
             $x_val = array_slice($x_val, 1);
         }
-
+     
 
         #取得目前的曲線圖模式 制定曲線圖的座標名稱
         $chart_menu_arr = $this->MiscellaneousModel->details('chart_menu');
@@ -63,6 +63,8 @@ class Dashboards extends Controller
                 array_shift($csvdata_arr['torque']);
                 array_shift($csvdata_arr['rpm']);
             }
+
+
            
             $temp_chart = $this->ChartData($chart_mode, $csvdata_arr,$chat_mode_arr,$x_val);       
         }
@@ -151,6 +153,12 @@ class Dashboards extends Controller
         }, $x_val);
 
         $chart_info['x_val'] = json_encode($x_val);
+
+
+        echo "<pre>";
+        print_r($chart_info);
+        echo "</pre>";
+
         
         return $chart_info;
     }
