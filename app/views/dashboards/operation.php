@@ -78,171 +78,150 @@ function changeBackgroundColor(button) {
     button.classList.add('active');
 }
 
-function chart_type(argument){
+function chart_type(argument) {
+    const currentUrl = window.location.href;
 
-    var currentUrl = window.location.href;
-
-    // 處理button的class 
-    var buttons = document.getElementsByClassName("btn-chart");
-    for (var i = 0; i < buttons.length; i++) {
-        buttons[i].classList.remove("active");
-    }
-    var activeButton = document.getElementById(argument);
-    activeButton.classList.add("active");
-
-    var chartIndex = currentUrl.indexOf('chart=');
-
-
-
-
-    var chart;
-
-    if(argument == "torque_time"){
-        chart = 1;
-    }
-    
-    if(argument == "angle_time"){
-        chart = 2;
-    }
-
-    if(argument == "rpm_time"){
-        chart = 3;
-    }
-
-    if(argument == "torque_angle"){
-        chart = 4;
-    }
-
-    if(argument == "torque_speed"){
-        chart = 5;
-    }
-
-    var nextinfo_url;
-
-    if (chartIndex !== -1) {
-        var nextChartValue = 'chart=' + chart;
-        nextinfo_url = currentUrl.substring(0, chartIndex) + nextChartValue;
-    } else {
-        var separator = currentUrl.indexOf('?') !== -1 ? '&' : '?';
-        nextinfo_url = currentUrl + separator + 'chart=' + chart;
-    }
-
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-        if (this.readyState == 4 && this.status == 200) {
-            window.location.assign(nextinfo_url);
-        }
+    // 定義 argument 與 chart 的對應關係
+    const chartMapping = {
+        "torque_time": 1,
+        "angle_time": 2,
+        "rpm_time": 3,
+        "torque_angle": 4,
+        "torque_speed": 5
     };
-    xhttp.open("GET", nextinfo_url, true);
-    xhttp.send();
+
+    // 獲取對應的 chart 值
+    const chart = chartMapping[argument];
+    if (!chart) {
+        console.error("Invalid argument:", argument);
+        return;
+    }
+
+    // 處理按鈕的 active 狀態
+    updateActiveButton(argument);
+
+    // 更新 URL
+    const nextinfo_url = updateChartUrl(currentUrl, chart);
+
+    // 發送請求並跳轉
+    fetch(nextinfo_url, { method: 'GET' })
+        .then(response => {
+            if (response.ok) {
+                window.location.assign(nextinfo_url);
+            } else {
+                console.error("Failed to fetch:", response.statusText);
+            }
+        })
+        .catch(error => console.error("Error fetching URL:", error));
 }
 
+// 更新按鈕的 active 狀態
+function updateActiveButton(argument) {
+    const buttons = document.getElementsByClassName("btn-chart");
+    Array.from(buttons).forEach(button => button.classList.remove("active"));
+    const activeButton = document.getElementById(argument);
+    if (activeButton) {
+        activeButton.classList.add("active");
+    }
+}
+
+// 更新 URL 並返回新的 URL
+function updateChartUrl(currentUrl, chart) {
+    const chartIndex = currentUrl.indexOf('chart=');
+    const nextChartValue = `chart=${chart}`;
+    if (chartIndex !== -1) {
+        return currentUrl.substring(0, chartIndex) + nextChartValue;
+    } else {
+        const separator = currentUrl.includes('?') ? '&' : '?';
+        return currentUrl + separator + nextChartValue;
+    }
+}
+
+
+// 取得語言設定
 var language = getCookie('language');
 
+// 初始化 ECharts
 var myChart = echarts.init(document.getElementById('chart'));
-var x_data_val = <?php echo  $data['chart_info']['x_val']; ?>;
-var y_data_val = <?php echo  $data['chart_info']['y_val']; ?>;
-var x_title    = '<?php echo addslashes($data['echart_name'][1]); ?>';
-var y_title    = '<?php echo addslashes($data['echart_name'][0]); ?>';
+
+//取得資料
+var x_data_val = <?php echo $data['chart_info']['x_val']; ?>;
+var y_data_val = <?php echo $data['chart_info']['y_val']; ?>;
+var x_title = '<?php echo addslashes($data['echart_name'][1]); ?>';
+var y_title = '<?php echo addslashes($data['echart_name'][0]); ?>';
 var y_data_val_torque = <?php echo !empty($data['chart_info']['y_val_torque']) ? $data['chart_info']['y_val_torque'] : '[]'; ?>;
-var y_data_val_rpm    = <?php echo !empty($data['chart_info']['y_val_rpm']) ? $data['chart_info']['y_val_rpm'] : '[]'; ?>;
-var chart_mode = '<?php echo $data['chart_mode'];?>';
+var y_data_val_rpm = <?php echo !empty($data['chart_info']['y_val_rpm']) ? $data['chart_info']['y_val_rpm'] : '[]'; ?>;
+var chart_mode = '<?php echo $data['chart_mode']; ?>';
 
-console.log(x_data_val);
 
-if(language =="zh-tw"){
-    if(x_title =="Time(MS)"){
-        x_title ="時間";
-    }
+const translations = {
+    "zh-tw": { "Time(MS)": "時間", "Angle": "角度", "Torque": "扭力", "RPM": "轉速" },
+    "zh-cn": { "Time(MS)": "时间", "Angle": "角度", "Torque": "扭力", "RPM": "转速" }
+};
 
-    if(x_title =="Angle"){
-        x_title ="角度";
+// 翻譯函數
+function translateTitles(language, xTitle, yTitle) {
+    const langTranslations = translations[language];
+    if (langTranslations) {
+        xTitle = langTranslations[xTitle] || xTitle;
+        yTitle = langTranslations[yTitle] || yTitle;
     }
-    if(x_title =="Torque"){
-        x_title ="扭力";
-    }
-
-    if(y_title =="Angle"){
-        y_title ="角度";
-    }
-    if(y_title =="Torque"){
-        y_title ="扭力";
-    }
-
-    if(y_title =="RPM"){
-        y_title ="轉速";
-    }
-
+    return { xTitle, yTitle };
 }
 
-if(language =="zh-cn"){
-    if(x_title =="Time(MS)"){
-        x_title ="时间";
-    }
+// 翻譯標題
+({ xTitle: x_title, yTitle: y_title } = translateTitles(language, x_title, y_title));
 
-    if(x_title =="Angle"){
-        x_title ="角度";
-    }
-    if(x_title =="Torque"){
-        x_title ="扭力";
-    }
+// 計算範圍
+// 計算範圍
+const min_torque = y_data_val_torque.length > 0 ? Math.min(...y_data_val_torque) : 0;
+const max_torque = y_data_val_torque.length > 0 ? Math.max(...y_data_val_torque) : 0;
+const min_rpm = y_data_val_rpm.length > 0 ? Math.min(...y_data_val_rpm) : 0;
+const max_rpm = y_data_val_rpm.length > 0 ? Math.max(...y_data_val_rpm) : 0;
 
-    if(y_title =="Angle"){
-        y_title ="角度";
-    }
-    if(y_title =="Torque"){
-        y_title ="扭力";
-    }
+let rpmMinAdjusted = min_rpm;
+let rpmMaxAdjusted = max_rpm;
 
-    if(y_title =="RPM"){
-        y_title ="转速";
-    }
+if (chart_mode === "5" && y_data_val_torque.length > 0 && y_data_val_rpm.length > 0 && max_torque !== 0) {
+    // *** 關鍵修改：基於最大值計算比例 ***
+    const ratio = max_rpm / max_torque;
 
+    rpmMinAdjusted = min_torque * ratio;
+    rpmMaxAdjusted = max_torque * ratio;
+
+    // 確保 rpmMinAdjusted 不小於實際的 min_rpm，rpmMaxAdjusted 不大於實際的 max_rpm
+    rpmMinAdjusted = Math.max(rpmMinAdjusted, min_rpm);
+    rpmMaxAdjusted = Math.max(rpmMaxAdjusted, max_rpm);
+
+    console.log("ratio", ratio);
+    console.log("rpmMinAdjusted", rpmMinAdjusted);
+    console.log("rpmMaxAdjusted", rpmMaxAdjusted);
+} else if (max_torque === 0) {
+    console.warn("max_torque is 0, cannot calculate ratio.");
 }
 
 
-var language = getCookie('language');
-
-var min_torque = Math.min.apply(null, y_data_val_torque);
-var max_torque = Math.max.apply(null, y_data_val_torque);
-var min_rpm = Math.min.apply(null, y_data_val_rpm);
-var max_rpm = Math.max.apply(null, y_data_val_rpm);
-
-// 計算兩者的最小值和最大值，這樣可以設置對齊的範圍
-var max_val = Math.max(max_torque, max_rpm);
-var ratio = max_rpm / max_torque; 
-var max_rpm_adjusted = max_torque * ratio;
-
-// 根據 chart_mode 設置
-var option = {
-    title: {
-        text: ''
-    },
+// ECharts 配置
+const option = {
+    title: { text: '' },
     tooltip: {
         trigger: 'axis',
-        position: function (pt) {
-            return [pt[0], '10%'];
-        },
-        formatter: function (params) {
-            var tooltipContent = '';
-            if (chart_mode == "5") {
-                params.forEach(function (param) {
-                    if (param.seriesName === '扭力') {
-                        tooltipContent += '<span style="color: rgb(255, 0, 0);">torque: </span>' + param.value + ' Nm<br>';
-                    } else if (param.seriesName === '轉速') {
-                        tooltipContent += '<span style="color: rgb(0, 0, 255);">rpm: </span>' + param.value + ' RPM<br>';
+        position: pt => [pt[0], '10%'],
+        formatter: params => {
+            let tooltipContent = '';
+            if (chart_mode === "5") {
+                params.forEach(param => {
+                    if (param.seriesName === 'Torque') {
+                        tooltipContent += `<span style="color: rgb(255, 0, 0);">torque: </span>${param.value} Nm<br>`;
+                    } else if (param.seriesName === 'RPM') {
+                        tooltipContent += `<span style="color: rgb(0, 0, 255);">rpm: </span>${param.value} RPM<br>`;
                     }
                 });
             } else {
-                params.forEach(function (param) {
-                    var yAxisLabels = {
-                        "1": "Torque", 
-                        "2": "Angle", 
-                        "3": "Rpm", 
-                        "4": "Torque"
-                    };
-                    var yAxisLabel = yAxisLabels[chart_mode] || '';
-                    tooltipContent += '<span style="color: rgb(255, 0, 0);">' + yAxisLabel + ': </span>' + param.value + '<br>';
+                const yAxisLabels = { "1": "Torque", "2": "Angle", "3": "Rpm", "4": "Torque" };
+                const yAxisLabel = yAxisLabels[chart_mode] || '';
+                params.forEach(param => {
+                    tooltipContent += `<span style="color: rgb(255, 0, 0);">${yAxisLabel}: </span>${param.value}<br>`;
                 });
             }
             return tooltipContent;
@@ -254,110 +233,83 @@ var option = {
         name: x_title,
         data: x_data_val
     },
-    yAxis: chart_mode == "5" ? [ 
-        {
-            type: 'value',
-            name: '',
-            min: min_torque,
-            max: max_torque, // 保持原始最大值
-            position: 'left',
-            axisLabel: {
-                formatter: '{value}'
-            }
+    yAxis: chart_mode === "5" ? [
+    {
+        type: 'value',
+        name: 'Torque',
+        min: min_torque,
+        max: max_torque,
+        position: 'left',
+        axisLabel: { formatter: '{value}' }
+    },
+    {
+        type: 'value',
+        name: 'RPM',
+        position: 'right',
+        axisLabel: { formatter: '{value}' },
+        // *** 關鍵修改：處理 NaN、Infinity 和 min > max 的情況 ***
+        min: () => {
+            if (isNaN(rpmMinAdjusted) || !isFinite(rpmMinAdjusted)) return min_rpm;
+            return Math.min(rpmMinAdjusted, rpmMaxAdjusted); // 確保 min <= max
         },
-        {
-            type: 'value',
-            name: '',
-            min: min_rpm,
-            max: max_rpm_adjusted, // 根据比例调整右侧 Y 轴的最大值
-            position: 'right',
-            axisLabel: {
-                formatter: '{value}'
-            }
-        }
-    ] : [  
-        {
-            type: 'value',
-            name: y_title,
-            boundaryGap: [0, '100%']
-        }
-    ],
+        max: () => {
+            if (isNaN(rpmMaxAdjusted) || !isFinite(rpmMaxAdjusted)) return max_rpm;
+            return Math.max(rpmMinAdjusted, rpmMaxAdjusted); // 確保 max >= min
+        },
+        // *** Y軸刻度優化 ***
+        splitNumber: 5, // 建議的刻度數量
+    }
+] : [
+    {
+        type: 'value',
+        name: y_title,
+        boundaryGap: [0, '100%']
+    }
+],
     dataZoom: generateDataZoom(),
-    series: chart_mode == "5" ? [ 
+    series: chart_mode === "5" ? [
         {
-            name: '',
+            name: 'Torque',
             type: 'line',
             symbol: 'none',
-            sampling: 'max',
-            alignTicks: true,
-            yAxisIndex: 0,  // 左側Y軸
-            itemStyle: {
-                normal: {
-                    color: 'rgb(255,0,0)'
-                }
-            },
+            yAxisIndex: 0,
+            itemStyle: { color: 'rgb(255,0,0)' },
             lineStyle: { width: 0.75 },
             data: y_data_val_torque
         },
         {
-            name: '',
+            name: 'RPM',
             type: 'line',
             symbol: 'none',
-            sampling: 'max',
-            alignTicks: true,
-            yAxisIndex: 1,  // 右側Y軸
-            itemStyle: {
-                normal: {
-                    color: 'rgb(0,0,255)'
-                }
-            },
+            yAxisIndex: 1,
+            itemStyle: { color: 'rgb(0,0,255)' },
             lineStyle: { width: 0.75 },
             data: y_data_val_rpm
         }
-    ] : [  
+    ] : [
         {
             name: '',
             type: 'line',
             symbol: 'none',
-            sampling: 'average',
-            itemStyle: {
-                normal: {
-                    color: 'rgb(255,0,0)'
-                }
-            },
-            areaStyle: {
-                normal: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 0, [{
-                        offset: 0,
-                        color: 'rgb(255,255,255)'
-                    }, {
-                        offset: 0,
-                        color: 'rgb(255,255,255)'
-                    }])
-                }
-            },
+            itemStyle: { color: 'rgb(255,0,0)' },
             lineStyle: { width: 0.75 },
             data: y_data_val
         }
     ]
 };
 
-
+// 設置圖表
 myChart.setOption(option);
 
+// 生成 DataZoom 配置
 function generateDataZoom() {
     return [
-        {
-            type: 'inside',
-            start: 0,
-            end: 100
-        },
+        { type: 'inside', start: 0, end: 100 },
         {
             show: false,
             type: 'slider',
             start: 0,
             end: 100,
-            handleIcon: 'M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
             handleSize: '80%',
             handleStyle: {
                 color: '#fff',
@@ -369,6 +321,9 @@ function generateDataZoom() {
         }
     ];
 }
+
+
+
 </script>
 
 </body>
