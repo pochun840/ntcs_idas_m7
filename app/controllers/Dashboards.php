@@ -118,8 +118,6 @@ class Dashboards extends Controller
            
         if(($chat_mode == "1" || $chat_mode == "3" || $chat_mode == "4")){
             
-
-
             $chart_info['y_val'] = json_encode($csvdata_arr);
 
             $temp_val = json_decode($chart_info['y_val']); 
