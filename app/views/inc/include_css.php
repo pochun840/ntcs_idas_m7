@@ -23,7 +23,7 @@ function includecss_file($part, $cssFileName) {
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/datatables.min.css">
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css">
 
-    <script src="<?php echo URLROOT; ?>js/all.js?v=202408191700"></script>
+    <script src="<?php echo URLROOT; ?>js/all.js"></script>
     <script src="<?php echo URLROOT; ?>js/echarts_min.js"></script>
     <script src="<?php echo URLROOT; ?>js/jquery_data_Tables.js?v=202408211500"></script>
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/flatpickr.min.css" type="text/css">

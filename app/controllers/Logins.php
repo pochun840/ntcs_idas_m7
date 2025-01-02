@@ -95,10 +95,11 @@ class Logins extends Controller
         return false;
     }
 
-    // 退出登錄並清除身份驗證令牌
+
     public function logout() {
         setcookie('username', '', time() - 3600, '/');
         setcookie('auth_token', '', time() - 3600, '/');
+
     }
 
     // 验证用户提交的用户名和密码
@@ -233,7 +234,5 @@ class Logins extends Controller
             exit();
         }
     }
-
-
 
 }

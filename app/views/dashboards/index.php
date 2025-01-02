@@ -5,7 +5,7 @@
         <div class="center-content w3-center">
             <div style="text-shadow:3px 5px 0 #444;" class="wrapper w3-center w3-text-red">
                 <div class="buttonbox" style=" top: 2%;right: 10px;text-align: right;position: absolute;">
-                <input type="button" name="" value="Logout" >
+                <input type="button" name="" value="Logout" onclick="logout()" >
                 <input type="button" name="" value="简中" data-language="zh-cn" onclick="language_change('zh-cn');" >
                 <input type="button" name="" value="繁中" data-language="zh-tw" onclick="language_change('zh-tw');">
                 <input type="button" name="" value="English" data-language="en-us" onclick="language_change('en-us');">

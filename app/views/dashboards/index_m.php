@@ -5,7 +5,7 @@
         <div class="center-content w3-center">
             <div style="text-shadow:3px 5px 0 #444;" class="wrapper w3-center w3-text-red">
                 <div class="buttonbox" style=" top: 2%;right: 10px;text-align: right;position: absolute;">
-                <input type="button" name="" value="Logout" >
+                <input type="button" name="" value="Logout" onclick="logout()">
                 <input type="button" name="" value="简中" data-language="zh-cn" onclick="language_change('zh-cn');" >
                 <input type="button" name="" value="繁中" data-language="zh-tw" onclick="language_change('zh-tw');">
                 <input type="button" name="" value="English" data-language="en-us" onclick="language_change('en-us');">
@@ -21,7 +21,7 @@
 
             </div>
 
-            <div class="button col pt-5" style="width: 100%;">
+            <div class="button col pt-5">
                 <button class="menu-item blue" id="job_manager" style="font-size: 20px;" onclick="window.location.href='?url=Jobs/index'"><span style="visibility: hidden;">Job</span></button>
                 <button class="menu-item purple" id="operation" style="font-size: 20px" onclick="window.location.href='?url=Dashboards/operation'"><span style="visibility: hidden;">Operation</span></button>
                 <br>
