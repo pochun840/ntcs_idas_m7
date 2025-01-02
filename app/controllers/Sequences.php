@@ -509,7 +509,7 @@ class Sequences extends Controller
             $sequences = $res[0];
         }
 
-
+        $isMobile = $this->isMobileCheck();
         
         $data = array(
             'sequences' => $sequences,
@@ -521,7 +521,13 @@ class Sequences extends Controller
         );
 
   
-        echo $this->view('sequences/add_seq', $data);
+        //echo $this->view('sequences/add_seq', $data);
+
+        if($isMobile){
+            $this->view('sequences/add_seq_m', $data);
+        }else{
+            $this->view('sequences/add_seq', $data);
+        }
     }
         
 }
