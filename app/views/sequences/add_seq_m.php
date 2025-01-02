@@ -3,19 +3,31 @@
 <link rel="stylesheet" href="<?php echo URLROOT; ?>/css/datatables.min.css">
 
 <style type="text/css">
-    .form-control
-    {
-        width: auto!important;
-        display: initial!important;
-    }
-    .form-control.is-invalid
-    {
-        padding-right:inherit!important;
-    }
-    .is-invalid~.invalid-feedback
-    {
-        display: inline!important;
-    }
+.form-control
+{
+    width: auto!important;
+    display: initial!important;
+}
+.form-control.is-invalid
+{
+    padding-right:inherit!important;
+}
+
+.small-input {
+    width: 130px; /* 縮小寬度 */
+    height: 2rem; /* 固定高度 */
+}
+
+.custom-style {
+    font-size: 12px;
+    margin-right: 5px;
+}
+
+    
+.is-invalid~.invalid-feedback
+{
+    display: inline!important;
+}
 .t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;}
 .t2{font-size: 17px; margin: 5px 0px;}
 </style>
@@ -67,32 +79,32 @@
             <div class="container" style="max-width: none;background-color: #F2F1F1;">
                 <div class="row">
                     <div class="col-md-6 t2">
-                    <div class="col-12 row t2 mt-3" style="font-size: 12px; margin-right: 5px;">
-                    <div class="col-3" style="white-space: nowrap;"><?php echo $text['seq_name'];?>:</div>
+                    <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                    <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['seq_name'];?>:</div>
                     <div class="col-9">
-                    <input id="SEQname" class="form-control"style="text-align: right; width: 60%;"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : ''; ?>">
+                    <input id="SEQname" class="form-control small-input" style="width: 60%;"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : ''; ?>">
                     <div class="invalid-feedback"></div>
                     </div>
                     </div>
 
-                        <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
+                        <hr style="border: 1px solid #ccc; width: 100%; margin: 20px 0;">
 
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['tightening_repeat'];?>:</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div  class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['tightening_repeat'];?>:</div>
                             <div class="col-9">
-                                <input id="seq_repeat" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['seq_repeat'] : ''; ?>">
+                                <input id="seq_repeat"  class="form-control small-input" style="width: 60%;"   value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['seq_repeat'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['Timeout'];?> (sec):</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['Timeout'];?> (sec):</div>
                             <div class="col-9">
-                                <input id="timeout" lass="form-control"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">(0-60)
+                                <input id="timeout" class="form-control small-input" style="idth: 60%;"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">(0-60)
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['OK-Sequence'];?>:</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div  class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['OK-Sequence'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="ok_seq" id="ok_seq_off" value="0" 
@@ -106,8 +118,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['OK_Sequence_Stop'];?>:</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['OK_Sequence_Stop'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="ok_stop" id="seq_stop_off" value="0"
@@ -121,8 +133,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['rev_count'];?>:</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['rev_count'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="unscrew_count_switch" id="unscrew_count_switch_off" value="0"
