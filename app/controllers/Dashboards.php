@@ -25,8 +25,13 @@ class Dashboards extends Controller
             'agent_type' => $agent_type,
             'device_info' => $device_info,
         ];
-        
-        $this->view('dashboards/index', $data);
+
+        if($isMobile){
+            $this->view('dashboards/index_m', $data);
+        }else{
+            $this->view('dashboards/index', $data);
+        }
+
 
     }
 
@@ -118,8 +123,6 @@ class Dashboards extends Controller
            
         if(($chat_mode == "1" || $chat_mode == "3" || $chat_mode == "4")){
             
-
-
             $chart_info['y_val'] = json_encode($csvdata_arr);
 
             $temp_val = json_decode($chart_info['y_val']); 
