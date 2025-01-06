@@ -148,10 +148,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['NG_Stop'];?> (0-9):</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['NG_Stop'];?> (0-9):</div>
                             <div class="col-9">
-                                <select id="ng_stop" class="form-select" style="font-size: 14px; width: 60px;">
+                                <select id="ng_stop" class="form-control small-input" style="width: 60%;" >
                                 <?php 
                                     for ($i = 0; $i <= 9; $i++) {
                                         echo '<option value="' . $i . '" ' . (($data['type'] == 'edit' && $data['sequences']['ng_stop'] == $i) ? 'selected' : '') . '>' . $i . '</option>';
@@ -160,8 +160,8 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['NG_Reverse'];?>:</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['NG_Reverse'];?>:</div>
                             <div class="col-9">
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="ng_unscrew" id="ng_unscrew_off" value="0"
@@ -175,8 +175,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['Accumulate_Angle'];?>:</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['Accumulate_Angle'];?>:</div>
                             <div class="col-9">
                                 <!-- <input id="accumulate_angle" value="123456"> -->
                                 <div class="form-check form-check-inline ">
@@ -191,8 +191,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['Angle_Calculation'];?> (<?php echo $text['step'];?>):</div>
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
+                            <div class="col-3 d-flex justify-content-center align-items-center" style="white-space: nowrap;"><?php echo $text['Angle_Calculation'];?> (<?php echo $text['step'];?>):</div>
                             <div class="col-9">
                                 <?php if($data['type'] =="edit"){
                                     $digits = str_split($data['sequences']['Thread_Calcu']);                              
@@ -210,14 +210,14 @@
                             </div>
                         </div>
 
-                        <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
+                        <hr style="border: 1px solid #ccc; width: 100%; margin: 20px 0;">
 
                     </div>
                     <div class="col-md-6 t2">
                         <div class="col-12 row t2 mt-3">
                             <div class="col-4 fw-bolder"><?php echo $text['Reverse'];?></div>
                         </div>
-                        <div class="col-12 row t2 mt-3 ps-4">
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
                             <div class="col-4"><?php echo $text['Reverse_mode'];?>:</div>
                             <div class="col-8">
                                 <!-- <input id="reverse_mode" value="123456"> -->
@@ -233,20 +233,20 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3 ps-4" id="div_speed">
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;"  id="div_speed">
                             <div class="col-4"><?php echo $text['reverse_rpm'];?> (rpm):</div>
                             <div class="col-8">
-                                <input id="unscrew_rpm" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_rpm'] : ''; ?>">
+                                <input id="unscrew_rpm" class="form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_rpm'] : ''; ?>">
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;" id="div_torque_threshold">
                             <div class="col-4"><?php echo $text['Threshold_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                             <div class="col-8">
-                                <input id="unscrew_torque_threshold"class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
+                                <input id="unscrew_torque_threshold"class="form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3 ps-4" id="div_direction">
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;" id="div_direction">
                             <div class="col-4"><?php echo $text['direction'];?>:</div>
                             <div class="col-8">
                                 <!-- <input id="direction" value="123456"> -->
@@ -262,7 +262,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 row t2 mt-3 ps-4" id="div_force">
+                        <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;" id="div_force">
                             <div class="col-4"><?php echo $text['Force'];?> (%):</div>
                             <div class="col-8">
                                 <!-- <input id="force" value="123456"> -->
@@ -270,7 +270,7 @@
                                   <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_on" value="0"
                                   <?php  echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? 'checked' : ''; ?> >
                                   <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
-                                  <input  id="unscrew_force"  class="form-control" value="<?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
+                                  <input  id="unscrew_force"  class="form-control small-input" value="<?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
                                   <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="form-check form-check-inline col-md-3">
