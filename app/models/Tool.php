@@ -28,17 +28,17 @@ class Tool{
         return $row;
     }
 
-    /*public function GetControllerInfo()
+    public function GetControllerInfo()
     {
-        $sql = "SELECT * FROM device ";
-        $statement = $this->db->prepare($sql);
+        $sql = "SELECT * FROM ".TABLE_NTCS_DEVICE;
+        $statement = $this->db_iDas_tools->prepare($sql);
         $results = $statement->execute();
         $row = $statement->fetch(PDO::FETCH_ASSOC);
 
         return $row;
     }
 
-    public function GetDeviceInfo()
+    /*public function GetDeviceInfo()
     {
         $sql = "SELECT * FROM device_info ";
         $statement = $this->db_dev->prepare($sql);

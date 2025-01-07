@@ -39,7 +39,12 @@ class Dashboards extends Controller
     public function operation(){
 
         $isMobile = $this->isMobileCheck();
-    
+
+        #顯示 當前的鎖附記錄最新一筆的資料
+        $data_info  = $this->DashboardModel->get_Data();
+        $status_arr = $this->MiscellaneousModel->details('status_ntcs');
+
+        #處理曲線圖的樣式
         $chart_mode = !empty($_GET['chart']) ? $_GET['chart'] : 1;
         if ($chart_mode < 1 || $chart_mode > 6) {
             $chart_mode = 1;
@@ -68,9 +73,7 @@ class Dashboards extends Controller
                 array_shift($csvdata_arr['torque']);
                 array_shift($csvdata_arr['rpm']);
             }
-
-
-           
+ 
             $temp_chart = $this->ChartData($chart_mode, $csvdata_arr,$chat_mode_arr,$x_val);       
         }
    
@@ -79,7 +82,9 @@ class Dashboards extends Controller
             'chart_info'  => $temp_chart,
             'echart_name' => $echart_name,
             'chart_mode'  => $chart_mode,
-            'chart_menu_arr' => $chart_menu_arr
+            'chart_menu_arr' => $chart_menu_arr,
+            'data_info' => $data_info,
+            'status_arr' => $status_arr
         ];
 
         if($isMobile){
@@ -88,10 +93,9 @@ class Dashboards extends Controller
             $this->view('dashboards/operation', $data);
         }
        
-
     }
 
-   
+
     public function change_language()
     {
         if (session_status() == PHP_SESSION_NONE) {

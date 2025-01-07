@@ -15,12 +15,15 @@ class Tools extends Controller
         $isMobile = $this->isMobileCheck();
         $Tool_Info = $this->ToolModel->GetToolInfo();
         $Tool_Info = end($Tool_Info);
+
+        $controllers_info = $this->ToolModel->GetControllerInfo();
         $MAC = $this->getMacAddress();
         $ip_addr = $this->getIp();
 
         $data = [
             'isMobile' => $isMobile,
             'Tool_Info' => $Tool_Info,
+            'Controllers_Info' => $controllers_info,
             'IP' => $ip_addr,
             'MAC' => $MAC,
         ];

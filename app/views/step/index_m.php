@@ -29,17 +29,20 @@
                             <th><?php echo $text['step_id'];?></th>
                             <th><?php echo $text['step_target_type'];?></th>
                             <th><?php echo $text['direction'];?></th>
+                            <th><?php echo $text['rpm'];?></th>
                             <th><?php echo $text['up'];?></th>
                             <th><?php echo $text['down'];?></th>
                         </tr>
                     </thead>
 
                     <tbody style="font-size: 2vmin;text-align: center;">
+                  
                         <?php foreach($data['step'] as $key =>$val){?>
                             <tr>
-                                <td><?php echo $val['step_id'];?></td>
-                                <td><?php echo $text[$data['target_option'][$val['target_option']]];?></td>
-                                <td><?php echo $data['direction'][$val['direction']];?></td>
+                                <td><?php echo $val['StepSelect'];?></td>
+                                <td><?php echo $text[$data['target_option'][$val['StepOption']]];?></td>
+                                <td><?php echo $text[$data['direction'][$val['StepDirection']]];?></td>
+                                <td><?php echo $val['StepRPM'];?></td>
                                 <td><img src="./img/btn_up.png" onclick="MoveUp(this);"></td>
                                 <td><img src="./img/btn_down.png"onclick="MoveDown(this);"></td>
                             </tr>
@@ -66,278 +69,6 @@
             <input id="S6" name="Step_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>"   tabindex="1" onclick="cound_step('edit')">
             <input id="S5" name="Step_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>"   tabindex="1"  onclick="cound_step('copy');" <?php echo $status; ?>>
             <input id="S4" name="Step_Manager_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="cound_step('del');" >
-        </div>
-    </div>
-
-    <!-- Add New Step -->
-    <div id="newstep" class="modal">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto;">
-                <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('newstep').style.display='none'"
-                        class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
-                    <h3 id='modal_title'><?php echo $text['new_step'];?></h3>
-                </header>
-                <div class="scrollbar-newstep" id="style-newstep">
-                <div class="newseq-force-overflow">
-                <div class="modal-body">
-                    <form id="new_step_form" style="padding-left: 5%">
-                        <div class="row">
-                            <div for="target-option" class="col-6 t1"><?php echo $text['step_target_type'];?> :</div>
-                            <div class="col-3 t2">
-                                <select id="target_option" name="target_option" class="col custom-file">
-                                    <?php if($data['check'][0]['count_records'] == "1"){?>
-                                        <?php foreach($data['target_option_change'] as $key => $val){?>
-                                             <option value="<?php echo $key;?>"><?php echo $text[$val];?></option>
-                                        <?php }?>   
-
-                                    <?php } else {?>
-                                        <?php foreach($data['target_option'] as $key => $val){?>
-                                             <option value="<?php echo $key;?>"><?php echo $text[$val];?></option>
-                                        <?php }?>     
-                                    <?php } ?>
-                                   
-                                    
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <?php if($data['check'][0]['count_records'] == "1"){ ?>
-                                <div for="target-torque" class="col-6 t1"><?php echo $text['Target_Angle'];?> :</div>
-                                <div class="col-3 t2">
-                                    <input type="text" class="form-control input-ms" id="target_torque" maxlength="" >
-                                </div>
-
-                            <?php }else {?>
-                                <div for="target-torque" class="col-6 t1"><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['unit_name']];?>):</div>
-                                <div class="col-3 t2">
-                                    <input type="text" class="form-control input-ms" id="target_torque" maxlength="" >
-                                </div>
-
-                            <?php } ?>
-                           
-                        </div>
-                        <div class="row">
-                            <div for="hi-torque" class="col-6 t1"><?php echo $text['High_Torque'];?> (<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="hi_torque" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="lo-torque" class="col-6 t1"><?php echo $text['Low_Torque'];?>  (<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="lo_torque" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="hi-angle" class="col-6 t1"><?php echo $text['High_Angle'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="hi_angle" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="lo-angle" class="col-6 t1"><?php echo $text['Low_Angle'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="lo_angle" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="RPM" class="col-6 t1"><?php echo $text['rpm'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="rpm" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="direction" class="col-6 t1"><?php echo $text['direction'];?>:</div>
-                            <div class="col t2" >
-            			      	<div class="col-4 form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="direction_option" id="direction_CW" value="0">
-            					  <label class="form-check-label" for="direction_CW"><?php echo $text['CW'];?></label>
-            					</div>
-            					<div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="direction_option" id="direction_CCW" value="1" checked="checked">
-            					  <label class="form-check-label" for="direction_CCW"><?php echo $text['CCW'];?></label>
-            					</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="downshift" class="col-6 t1"><?php  echo $text['Downshift'];?>:</div>
-                            <div class="col t2" >
-            			      	<div class="col-4 form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="downshift_option" id="downshift_ON" value="0" checked="checked">
-            					  <label class="form-check-label" for="downshift_ON"><?php echo $text['switch_on'];?></label>
-            					</div>
-            					<div class="form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="downshift_option" id="downshift_OFF" value="1">
-            					  <label class="form-check-label" for="downshift_OFF"><?php echo $text['switch_off'];?></label>
-            					</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="downshift-threshold" class="col-6 t1"><?php echo $text['Threshold_Torque'];?>(<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="downshift_threshold" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="downshift-torque" class="col-6 t1"><?php echo $text['Downshift_Torque'];?>(<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="downshift_torque" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="downshift-speed" class="col-6 t1"><?php echo $text['Downshift_Speed'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="downshift_speed" maxlength="" >
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            </div>
-
-                <div class="modal-footer justify-content-center">
-                    <button id="" class="button-modal" onclick="add_step()" ><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="document.getElementById('newstep').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Edit Step -->
-    <div id="editstep" class="modal">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto;">
-                <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('editstep').style.display='none'"
-                        class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
-                    <h3 id='modal_title'><?php echo $text['edit_step'];?></h3>
-                </header>
-                <div class="scrollbar-newstep" id="style-newstep">
-                <div class="newseq-force-overflow">
-                <div class="modal-body">
-                    <form id="new_step_form" style="padding-left: 5%">
-                        <div class="row">
-                            <div for="target-option" class="col-6 t1"><?php echo $text['step_target_type'];?> :</div>
-                            <div class="col-3 t2">
-                                <select id="edit_target_option" name="edit_target_option" class="col custom-file">
-                                    <?php foreach($data['target_option'] as $key => $val){?>
-                                        <option value="<?php echo $key;?>"><?php echo $text[$val];?></option>
-                                    <?php }?>     
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div for="edit_target-torque" id="edit_target-torque_title"  class="col-6 t1" style="display: none;" ><?php echo $text['Target_Torque'];?>(<?php echo $text[$data['unit']];?>):</div>
-                            <div class="col-3 t2" id="edit_target-torque_val" style="display:none;" >
-                                <input type="text" class="form-control input-ms" id="edit_target_torque" maxlength="" >
-                            </div>
-                        </div>
-                     
-                   
-
-                        <div class="row">
-                            <div for="edit_target-angle" id="edit_target-angle_title"  class="col-6 t1" style="display: none;" ><?php echo $text['Target_Angle'];?>:</div>
-                            <div class="col-3 t2" id="edit_target-angle_val" style="display:none;" >
-                                <input type="text" class="form-control input-ms" id="edit_target_angle" maxlength="" >
-                            </div>
-                        </div>
-
-
-                        <div class="row">
-                            <div for="edit_target-delaytime" id="edit_target-delaytime_title"  class="col-6 t1" style="display: none;" ><?php  echo  $text['Target Delay Time'] ; ?>:</div>
-                            <div class="col-3 t2" id="edit_target-delaytime_val" style="display:none;" >
-                                <input type="text" class="form-control input-ms" id="edit_target_delaytime" maxlength="" >
-                            </div>
-                        </div>
-
-
-
-                        <div class="row">
-                            <div for="hi-torque" class="col-6 t1"><?php echo $text['High_Torque'];?> (<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_hi_torque" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="lo-torque" class="col-6 t1"><?php echo $text['Low_Torque'];?> (<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_lo_torque" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="hi-angle" class="col-6 t1"><?php echo $text['High_Angle'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_hi_angle" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="lo-angle" class="col-6 t1"><?php echo $text['Low_Angle'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_lo_angle" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="RPM" class="col-6 t1"><?php echo $text['rpm'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_rpm" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="direction" class="col-6 t1"><?php echo $text['direction'];?>:</div>
-                            <div class="col t2" >
-            			      	<div class="col-4 form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="edit_direction_option" id="direction_CW" value="0">
-            					  <label class="form-check-label" for="direction_CW"><?php echo $text['CW'];?></label>
-            					</div>
-            					<div class="form-check form-check-inline">
-                                  <input class="form-check-input" type="radio" name="edit_direction_option" id="direction_CCW" value="1">
-            					  <label class="form-check-label" for="direction_CCW"><?php echo $text['CCW'];?></label>
-            					</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="downshift" class="col-6 t1"><?php echo $text['Downshift'];?>:</div>
-                            <div class="col t2" >
-            			      	<div class="col-4 form-check form-check-inline">
-            					  <input class="form-check-input" type="radio" name="edit_downshift_option" id="downshift_ON" value="1">
-            					  <label class="form-check-label" for="downshift_ON"><?php echo $text['switch_on'];?></label>
-            					</div>
-            					<div class="form-check form-check-inline">
-                                  <input class="form-check-input" type="radio" name="edit_downshift_option" id="downshift_OFF" value="0">
-            					  <label class="form-check-label" for="downshift_OFF"><?php echo $text['switch_off'];?></label>
-            					</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="edit_downshift-threshold" class="col-6 t1"><?php echo $text['Threshold_Torque'];?>(<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_downshift_threshold" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="edit_downshift-torque" class="col-6 t1"><?php echo $text['Downshift_Torque'];?>(<?php echo $text[$data['unit_name']];?>):</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_downshift_torque" maxlength="" >
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div for="edit_downshift-speed" class="col-6 t1"><?php echo $text['Downshift_Speed'];?>:</div>
-                            <div class="col-3 t2">
-                                <input type="text" class="form-control input-ms" id="edit_downshift_speed" maxlength="" >
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                </div>
-                </div>
-
-                <div class="modal-footer justify-content-center">
-                    <button id="" class="button-modal" onclick="edit_step_save()" ><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="document.getElementById('editstep').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -674,15 +405,15 @@ function del_stepid(step_id){
 
 var rowInfoArray = [];
 <?php foreach($data['step'] as $key =>$val) {?>
-    var jobid = "<?php echo $val['job_id'];?>";
-    var sequenceId = "<?php echo $val['sequence_id'];?>";
-    var stepid = "<?php echo $val['step_id'];?>";
-  
+    var JOBID = "<?php echo $val['JOBID'];?>";
+    var SEQID= "<?php echo $val['SEQID'];?>";
+    var StepSelect = "<?php echo $val['StepSelect'];?>";
+      
     
     var rowInfo = {
-        job_id: jobid,
-        sequence_id: sequenceId,
-        step_id: stepid,
+        JOBID: JOBID,
+        SEQID: SEQID,
+        StepSelect: StepSelect,
     };
     
     rowInfoArray.push(rowInfo);

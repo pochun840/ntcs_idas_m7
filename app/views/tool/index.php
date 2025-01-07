@@ -58,19 +58,19 @@
                         <h3 style="margin: 5px 3px 10px"><b><?php echo $text['controller_info'];?></b></h3>
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['controller_sn'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px">---------</div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Controllers_Info']['device_sn'];?></div>
                         </div>
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['controller_version'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px">---------</div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Controllers_Info']['device_version'];?></div>
                         </div>
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['mcb_version'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px">---------</div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Controllers_Info']['mcb_fw_version'];?></div>
                         </div>
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['image_version'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px">---------</div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Controllers_Info']['device_image_version'];?></div>
                         </div>
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['network_ip'];?>:</div>
