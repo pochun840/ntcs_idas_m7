@@ -28,6 +28,10 @@
 .t2{font-size: 17px; margin: 5px 0px;}
 </style>
 
+<?php 
+//var_dump($data);die();
+
+?>
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <header>

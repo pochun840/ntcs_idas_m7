@@ -45,9 +45,9 @@
                                         <td><?php echo $val['seq_repeat'];?></td>
                                         <td>
                                             <?php if($val['act']== 1){?>
-                                                <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
+                                                <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
                                             <?php }else{?>
-                                                <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['sequence_id'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">
+                                                <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">
                                             <?php }?>
                                         </td>
                                         <td><img src="./img/btn_up.png"   onclick="MoveUp(this);"></td>
@@ -340,64 +340,10 @@ function create_seq() {
 
 
 function edit_seq(seqid) {
-    var jobid = '<?php echo $data['job_id']?>';    
-    if(jobid){
-        $.ajax({
-            url: "?url=Sequences/search_seqinfo",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-                seqid: seqid
-            },
-            success: function(response) {
+    var jobid = '<?php echo $data['job_id']?>'; 
+    window.location.href = '../public/?url=Sequences/variation/'+ jobid+'/'+ seqid;   
 
-                var responseJSON = JSON.stringify(response);
-                var cleanString = responseJSON.replace(/Array|\\n/g, '');
-                var cleanString = cleanString.substring(2, cleanString.length - 2);
-
-                var [, jobid] = cleanString.match(/\[job_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, seqid] = cleanString.match(/\[sequence_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, seqname] = cleanString.match(/\[sequence_name]\s*=>\s*([^ ]+)/) || [, null];
-                var [, tightening_repeat] = cleanString.match(/\[tightening_repeat]\s*=>\s*([^ ]+)/) || [, null];
-                
-                var [, k_value] = cleanString.match(/\[k_value]\s*=>\s*([^ ]+)/) || [, null];
-                var [, offset] = cleanString.match(/\[offset]\s*=>\s*([^ ]+)/) || [, null];
-                var [, ng_stop] = cleanString.match(/\[ng_stop]\s*=>\s*([^ ]+)/) || [, null];
-                
-                var [, opt] = cleanString.match(/\[opt]\s*=>\s*([^ ]+)/) || [, null];
-                var [, seq_ok] = cleanString.match(/\[seq_ok]\s*=>\s*([^ ]+)/) || [, null];
-                var [, stop_seq_ok] = cleanString.match(/\[stop_seq_ok]\s*=>\s*([^ ]+)/) || [, null];
-                var [, opt_val] = cleanString.match(/\[opt]\s*=>\s*([^ ]+)/) || [, null];
-               
-   
-        
-                document.getElementById('editseq').style.display = 'block';
-                document.getElementById("old_seqid").value = seqid;
-                document.getElementById("edit_seq_name").value = seqname;
-                document.getElementById("edit_tighten_repeat").value = tightening_repeat;
-
-                document.getElementById("edit_K").value = k_value;
-                document.getElementById("edit_offset").value = offset;
-                document.getElementById("edit_ng_stop").value = ng_stop;
-        
-                var radioButtons_seq = document.getElementsByName("edit_seq_ok");
-                setRadioButton_value(radioButtons_seq, seq_ok);
-
-                var radioButtons_stop_seq = document.getElementsByName("edit_stop_seq_ok");
-                setRadioButton_value(radioButtons_stop_seq, stop_seq_ok);
-
-
-                var radioButtons_2 = document.getElementsByName("edit_opt_option");
-                setRadioButton_value(radioButtons_2, opt_val);
-  
-            },
-            error: function(xhr, status, error) {
-             
-            }
-        });
-    }
 }
-
 function edit_seq_save(){
 
     var jobid = '<?php echo $data['job_id']?>';
@@ -478,15 +424,13 @@ function updateValue(element){
             }
         });    
     }
-
-
 }
 </script>
 <script>
     
 <?php foreach($data['sequences'] as $key =>$val) {?>
-    var sequenceId = "<?php echo $val['sequence_id'];?>";
-    var sequenceName = "<?php echo $val['sequence_name'];?>";
+    var sequenceId = "<?php echo $val['SEQID'];?>";
+    var sequenceName = "<?php echo $val['SEQname'];?>";
 
     var exists = rowInfoArray.some(function(item) {
         return item.sequence_id === sequenceId || item.sequence_name === sequenceName;

@@ -32,7 +32,7 @@
                                 <div class="col-2 t2" style="margin-left: 3px">
                                     <select style="margin: center" id="JobNameSelect" name="JobNameSelect" size="200">
                                         <?php foreach($data['job_list'] as $key =>$val){?>
-                                            <option value="<?php echo $val['job_id'];?>"><?php echo $val['job_name'];?></option>
+                                            <option value="<?php echo $val['JOBID'];?>"><?php echo $val['JOBname'];?></option>
                                         <?php }?>                                                                                                                                
                                      </select>
                                 </div>

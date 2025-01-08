@@ -546,6 +546,7 @@ class Step extends Controller
             $seq_id = htmlspecialchars($seq_id);
             $res = $this->stepModel->getStep_count($job_id, $seq_id);
             $StepSelect = $res[0]['total'] + 1;
+            $step = '';
 
         } else  {
             $type = 'edit';
@@ -557,11 +558,6 @@ class Step extends Controller
         } 
 
 
-        if ($type == 'edit') {
-            $data['step'] = $step; 
-        }else{
-            $data['step'] = ''; 
-        }
 
         $isMobile = $this->isMobileCheck();
 
@@ -572,7 +568,7 @@ class Step extends Controller
             'type' => $type,
             'tools_info' => $last_tool_info,
             'torque_unit' =>$torque_unit,
-            //'step' => $step
+            'step' => $step
         );
 
         if($isMobile){

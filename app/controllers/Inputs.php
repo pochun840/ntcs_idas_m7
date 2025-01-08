@@ -95,7 +95,7 @@ class Inputs extends Controller
                         
 
                         $job_inputlist .= "<tr data-event = '".$vv['Pin']."' >";
-                        $job_inputlist .= "<td id='".$vv['Pin']."'>".$event[$vv['input_event']]."</td>";
+                        $job_inputlist .= "<td id='".$vv['Pin']."'>".$event[$vv['EvenID']]."</td>";
                         $job_inputlist .= '<td>'.$vv['Pin'].'</td>';
                         $job_inputlist .= '<td>'.$img.'</td>';
                         $job_inputlist .= '</tr>';

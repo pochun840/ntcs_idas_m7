@@ -63,6 +63,8 @@
                                         <th style="display: none;">8</th>
                                         <th style="display: none;">9</th>
                                         <th style="display: none;">10</th>
+                                        <th style="display: none;">11</th>
+                                        <th style="display: none;">12</th>
                                         <th width="20%">Pin</th>
                                         <th width="20%"></th>
                                     </tr>
@@ -152,7 +154,7 @@
                                     </div>
                                 </div>
 
-                                <?php for($i = 2; $i <= 10; $i++){?>     
+                                <?php for($i = 2; $i <= 12; $i++){?>     
                                         <div class="row input-pin">
                                             <div class="col-2 t1" style="margin-left: 5%"><?php echo $i; ?>:</div>
                                             <div class="col t2">
@@ -223,7 +225,7 @@
                                     </div>
                                 </div>
 
-                                <?php for ($i = 2; $i <= 10; $i++){?>
+                                <?php for ($i = 2; $i <= 12; $i++){?>
                                     <div class="row input-pin">
                                         <div class="col-2 t1" style="margin-left: 5%"><?php echo $i; ?>:</div>
                                         <div class="col t2">
@@ -644,29 +646,31 @@ function collectPinValues(selector) {
 }
 
 //delete
+//delete
 function delete_input_id(jobid,input_event){
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/delete_input",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-             
-            },
-            success: function(response) {
-            
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
 
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });     
-    }
+if(job_id){
+    $.ajax({
+        url: "?url=Inputs/delete_input",
+        method: "POST",
+        data: { 
+            job_id: job_id,
+            input_event: input_event,
+         
+        },
+        success: function(response) {
+        
+            var responseData = JSON.parse(response);
+            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                get_input_by_job_id(job_id);
+            });
+
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX request failed:", status, error);
+        }
+    });     
+}
 
 }
 
@@ -718,7 +722,6 @@ function create_input_id(){
 
     }
 }
-
 //copy
 function copy_input_id(){
     var language = getCookie('language');
@@ -764,6 +767,7 @@ function copy_input_id(){
 
 }
 
+
 function resetalignsubmit(job_id) {
 
     var job_id_new = 0;
@@ -772,7 +776,7 @@ function resetalignsubmit(job_id) {
         console.log(job_id_new);
         console.log(job_id);
         $.ajax({
-            url: "?url=Inputs/input_alljob",
+            url: "?url=Inputs/input_alljob_cancel",
             method: "POST",
             data: {
                 job_id_new: job_id_new
@@ -814,6 +818,7 @@ function alignsubmit(job_id) {
     }
 }
 
+
 function enableButton() {
     var button = document.getElementById('Button_Select');
     if (button.disabled) {
@@ -839,17 +844,25 @@ function get_input_info(){
                 input_event: input_event,
             },
             success: function(response) {
-                
+                if (response === 'no_data') {
+                    //getLanguageMessage('language');
+                    return;
+                }
+
+                document.getElementById('edit_input').style.display='block';  
+
+
                 var responseJSON = JSON.stringify(response);
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
 
-                var [, jobid] = cleanString.match(/\[input_job_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_event] = cleanString.match(/\[input_event]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_pin] = cleanString.match(/\[input_pin]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_wave] = cleanString.match(/\[input_wave]\s*=>\s*([^ ]+)/) || [, null];
-                var [, gateconfirm] = cleanString.match(/\[gateconfirm]\s*=>\s*([^ ]+)/) || [, null];
+                var [, jobid] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, null];
+                var [, input_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, null];
+                var [, input_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, null];
+                var [, input_wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, null];
+                var [, gateconfirm] = cleanString.match(/\[Wp_Ready_Confirm]\s*=>\s*([^ ]+)/) || [, null];
 
+        
                 if(input_wave == 1){
                     var wave = "_high";
                 }else{
@@ -874,20 +887,36 @@ function get_input_info(){
                     } 
                 }
 
+                if(input_event != 109){
+                    document.getElementById('edit_work_goc').style.display = 'none';
+                }else{
+
+                    document.getElementById('edit_work_goc').style.display = 'block';
+
+                    if(gateconfirm == 1){
+                        document.getElementById("edit_gateconfirm_1").checked = true;
+                    }
+
+                    if(gateconfirm == 0){
+                        document.getElementById("edit_gateconfirm_0").checked = true;
+                    }
+
+                }
+                
                 document.querySelector("select[name='edit_Event_Option']").value = input_event;
 
                 document.getElementById("edit_Event_Option").onchange = function() {
                     var selectedValue = this.value; 
-                    edit_handleEventChange(selectedValue); 
+                    edit_handleEventChange(selectedValue,gateconfirm); 
                 };
 
-             
+            
             },
             error: function(xhr, status, error) {
                 
             }
         });
-   
+
         
     }
 
@@ -1007,6 +1036,24 @@ function edit_input_id(){
         });
 
     }
+}
+
+
+function getLanguageMessage(cookieName) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + cookieName + "=");
+    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
+    var message;
+    if (language === 'en-us') {
+       message =  'Please select the event to delete';
+    } else if (language === 'zh-cn') {
+       message =  '请选择要删除的事件';
+    } else if (language === 'zh-tw') {
+       message =  '請點選要刪除的事件';
+    } else {
+      message =  'Please select the event to delete';
+    }
+   alertify.alert(message);
 }
 
 </script>
