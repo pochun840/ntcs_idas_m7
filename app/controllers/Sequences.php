@@ -521,8 +521,6 @@ class Sequences extends Controller
         );
 
   
-        //echo $this->view('sequences/add_seq', $data);
-
         if($isMobile){
             $this->view('sequences/add_seq_m', $data);
         }else{

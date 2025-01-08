@@ -559,7 +559,11 @@ class Step extends Controller
 
         if ($type == 'edit') {
             $data['step'] = $step; 
+        }else{
+            $data['step'] = ''; 
         }
+
+        $isMobile = $this->isMobileCheck();
 
         $data = array(
             'JOBID' => $job_id,
@@ -568,12 +572,15 @@ class Step extends Controller
             'type' => $type,
             'tools_info' => $last_tool_info,
             'torque_unit' =>$torque_unit,
-            'step' => $step
-
-
+            //'step' => $step
         );
 
-        echo $this->view('step/add_step',$data);
+        if($isMobile){
+            $this->view('step/add_step_m', $data);
+        }else{
+            //echo
+            $this->view('step/add_step', $data);
+        }
     }
 
 

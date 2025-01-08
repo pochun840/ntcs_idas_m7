@@ -47,32 +47,32 @@
 
     <div class="main-content">
         <div class="center-content">
-        <div class="topnav" style="display: flex; justify-content: center;">
-            <div class="info-box" style="border: 1px solid #ccc; padding: 10px; display: flex; align-items: center; background-color: #FFFFFF;">
-                <div class="info-item" style="display: flex; align-items: center; margin-right: 10px;">
-                    <div class="info-label" style="font-size: 2vmin; margin-right: 5px;">
-                        <?php echo $text['job_id']; ?> :
+            <div class="topnav" style="display: flex; justify-content: center;">
+                <div class="info-box" style="border: 1px solid #ccc; padding: 10px; display: flex; align-items: center; background-color: #FFFFFF;">
+                    <div class="info-item" style="display: flex; align-items: center; margin-right: 10px;">
+                        <div class="info-label" style="font-size: 2vmin; margin-right: 5px;">
+                            <?php echo $text['job_id']; ?> :
+                        </div>
+                        <div class="info-value">
+                            <input type="text" id="job_id" name="job_id" value="<?php echo $data['job_id']; ?>" disabled style="width: 80px; height: 20px; font-size: 2vmin; text-align: center; background-color: #ddd; border: 1px solid #ccc; box-sizing: border-box; padding: 5px;">
+                        </div>
                     </div>
-                    <div class="info-value">
-                        <input type="text" id="job_id" name="job_id" value="<?php echo $data['job_id']; ?>" disabled style="width: 80px; height: 20px; font-size: 2vmin; text-align: center; background-color: #ddd; border: 1px solid #ccc; box-sizing: border-box; padding: 5px;">
+                    <div class="info-item" style="display: flex; align-items: center; margin-right: 10px;">
+                        <div class="info-label" style="font-size: 2vmin; margin-right: 5px;">
+                            <?php echo $text['seq_id']; ?> :
+                        </div>
+                        <div class="info-value">
+                            <input type="text" id="seq_id" name="seq_id" value="<?php echo $data['seq_id']; ?>" disabled style="width: 80px; height: 20px; font-size: 2vmin; text-align: center; background-color: #ddd; border: 1px solid #ccc; box-sizing: border-box; padding: 5px;">
+                        </div>
                     </div>
-                </div>
-                <div class="info-item" style="display: flex; align-items: center; margin-right: 10px;">
-                    <div class="info-label" style="font-size: 2vmin; margin-right: 5px;">
-                        <?php echo $text['seq_id']; ?> :
+                    
+                    <div class="button-container" style="margin-left: auto;">
+                        <button id="return" onclick="history.go(-1);" style="background-color: #dc3545; color: white; border: none; padding: 8px 16px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; cursor: pointer; border-radius: 5px;">
+                            <?php echo $text['return']; ?>
+                        </button>
                     </div>
-                    <div class="info-value">
-                        <input type="text" id="seq_id" name="seq_id" value="<?php echo $data['seq_id']; ?>" disabled style="width: 80px; height: 20px; font-size: 2vmin; text-align: center; background-color: #ddd; border: 1px solid #ccc; box-sizing: border-box; padding: 5px;">
-                    </div>
-                </div>
-                
-                <div class="button-container" style="margin-left: auto;">
-                    <button id="return" onclick="history.go(-1);" style="background-color: #dc3545; color: white; border: none; padding: 8px 16px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; cursor: pointer; border-radius: 5px;">
-                        <?php echo $text['return']; ?>
-                    </button>
                 </div>
             </div>
-        </div>
 
             <div class="container" style="max-width: none;background-color: #F2F1F1;">
                 <div class="row">
