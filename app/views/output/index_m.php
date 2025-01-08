@@ -569,6 +569,7 @@ function job_confirm(){
                 });
 
                 var language = getCookie('language');
+                alert(language);
                 if(language == "zh-cn"){
                     document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
                     document.getElementById('2') && (document.getElementById('2').textContent = 'NG');

@@ -406,6 +406,7 @@ function crud_job_event(argument){
     if(argument == 'new' && job_id != ''){
 
         var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        console.log(selectedRows);
         if (!selectedRows.length > 0) {
             getLanguageMessage('language'); 
             return;
@@ -589,6 +590,7 @@ function job_confirm(){
                 });
 
                 var language = getCookie('language');
+
                 if(language == "zh-cn"){
 
                     document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
