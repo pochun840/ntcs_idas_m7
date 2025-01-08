@@ -117,7 +117,9 @@ function chart_type(argument){
     xhttp.send();
 }
 var language = getCookie('language');
-var myChart = echarts.init(document.getElementById('chart'));
+var chartContainer = document.getElementById('chart');
+    chartContainer.style.width = '100%';
+var myChart = echarts.init(chartContainer);
 var x_data_val = <?php echo  $data['chart_info']['x_val']; ?>;
 var y_data_val = <?php echo  $data['chart_info']['y_val']; ?>;
 var x_title    = '<?php echo addslashes($data['echart_name'][1]); ?>';

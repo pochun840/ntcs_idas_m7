@@ -325,6 +325,7 @@
 
 <script>
 
+
 var job_id; 
 var input_event;
 var temp;
@@ -336,11 +337,11 @@ var all_job;
 var buttonDisabled = false;
 var backgroundColorYellow = false;
 var input_job;
-
+var temp_event;
 
 $(document).ready(function () {
     highlight_row_input('input_table');
-
+ 
     var all_input_job = '<?php echo $data['device_data']['device_input_all_job']?>';
     job_id = all_input_job;
     input_job = all_input_job;
@@ -350,7 +351,6 @@ $(document).ready(function () {
         document.getElementById('job_id').style.backgroundColor = 'yellow';
     }
 
-    
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -366,7 +366,10 @@ document.addEventListener('DOMContentLoaded', function() {
   observer.observe(document.body, { childList: true, subtree: true });
 });
 
-
+document.getElementById("Event_Option").onchange = function() {
+    var selectedValue = this.value; 
+    handleEventChange(selectedValue); 
+};
 
 // Div Mode
 function toggleDivs() {
@@ -385,27 +388,29 @@ function toggleDivs() {
 function showTableInputSetting() {
     document.getElementById('TableInputSetting').style.display = 'block';
     document.getElementById('TableDataInput').style.display = 'none';
+
     document.getElementById('input_menu').style.display = 'block';
 }
 
 // Get the modal
 var modal = document.getElementById('newinput');
+
+
 window.onclick = function(event) {
     if (event.target == modal) {
         modal.style.display = "none";
     }
 }
 
-
-document.getElementById("Event_Option").onchange = function() {
-    var selectedValue = this.value; 
-    handleEventChange(selectedValue); 
-};
-
-
-
 function crud_job_event(argument){
-    if(argument == 'new' && job_id != '' ){
+    if(argument == 'new' && job_id != ''){
+
+        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
+        }
+
         //針對已設定的pin角位disable
         if (Array.isArray(temp)){ 
             temp.forEach(function(element) {
@@ -431,22 +436,37 @@ function crud_job_event(argument){
             });
         }
 
-
+        //下拉式選單(選擇event事件)
+        console.log(temp_event);
+        if (Array.isArray(temp_event)){
+            let options = document.querySelectorAll('#Event_Option option');
+            options.forEach(option => {
+                if (temp_event.includes(option.value)) {
+                    option.disabled = true;  
+                    option.style.color = 'gray'; 
+                }
+            });
+        }
 
         document.getElementById('newinput').style.display='block';
     } 
     
-    if(argument == 'del'){
+    if(argument == 'del' && job_id  != '' &&  input_event != '')  {
+
         delete_input_id(job_id,input_event);
     }
 
 
-
     if(argument == 'edit' && job_id != '' && input_event != ''){
 
-        var selectElement = document.getElementById('edit_Event_Option');
+        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
+        }
 
-        
+
+        var selectElement = document.getElementById('edit_Event_Option');
         if(selectElement){
             selectElement.disabled = true;
             var options = selectElement.options;
@@ -464,27 +484,15 @@ function crud_job_event(argument){
                 }
             });
         }
+        
         get_input_info(job_id,input_event);
         handleEventChange(input_event); 
-        document.getElementById('edit_input').style.display='block';
-
-        if(input_event == 109){
-            document.getElementById('edit_work_goc').style.display='block';
-            var gateconfirm = temp[19];
-            var result = gateconfirm.replace("check_", "");
-
-            if (result == "0") {
-                document.getElementById('edit_gateconfirm_0').checked = true;
-            } else if (result == "1") {
-                document.getElementById('edit_gateconfirm_1').checked = true;
-            }
-        }
-       
+        //document.getElementById('edit_input').style.display='block';  
     }
 
     if(argument == 'copy' && job_id != '' && input_event != ''){
         var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['job_name'];
+        var from_job_name_bk = jobinfo[job_id]['JOBname'];
 
         document.getElementById("from_job_id").value = job_id;
         document.getElementById("from_job_name").value = from_job_name_bk;
@@ -497,17 +505,25 @@ function crud_job_event(argument){
             if(optionValue == job_id){
                 options[i].disabled = true; 
                 options[i].classList.add('disabled_input'); 
-             
+            
             }
         }
 
-        document.getElementById('copyinput').style.display='block';
+        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        if (selectedRows.length > 0) {
+            document.getElementById('copyinput').style.display='block';
+        }else{
+            getLanguageMessage('language');
+        }    
+
     }
 
     if(argument == 'unified' && job_id != ''){
         enableButton();
         resetBackgroundColor();
+
         if(input_job != job_id){
+
             alignsubmit(job_id);  
         }else{
             resetalignsubmit(job_id);
@@ -525,12 +541,13 @@ function handleEventChange(selectedValue) {
     }
 }
 
-function edit_handleEventChange(selectedValue) {
+function edit_handleEventChange(selectedValue,gateconfirm) {
     if(selectedValue ==109){
         document.getElementById('edit_work_goc').style.display = 'block';
     }else{
         document.getElementById('edit_work_goc').style.display = 'none';
     }
+
 }
 
 
@@ -539,6 +556,7 @@ function job_confirm(){
     localStorage.setItem("jobid", jobid);
     job_id = jobid;
     all_job = jobid;
+    
 
     if(jobid){
         $.ajax({
@@ -552,18 +570,14 @@ function job_confirm(){
                 var job_inputlist = data.job_inputlist;
                 temp = data.temp;
                 tempA = data.tempA;
+                temp_event = data.temp_event;
 
                 document.getElementById("input_jobid_select").innerHTML = job_inputlist;
                 document.getElementById("JobSelect").style.display = 'none';
                 document.getElementById("job_id").value = jobid;
 
                 var s3Button = document.getElementById('S3');
-                if (!job_inputlist.trim()) {  // 检查 job_inputlist 是否为空或仅包含空白字符
-                    s3Button.disabled = true;
-                } else {
-                    s3Button.disabled = false;
-                }
-                
+          
             
                 var rows = document.querySelectorAll('#input_jobid_select tr');
                 rows.forEach(function(row) {
@@ -646,31 +660,30 @@ function collectPinValues(selector) {
 }
 
 //delete
-//delete
 function delete_input_id(jobid,input_event){
 
-if(job_id){
-    $.ajax({
-        url: "?url=Inputs/delete_input",
-        method: "POST",
-        data: { 
-            job_id: job_id,
-            input_event: input_event,
-         
-        },
-        success: function(response) {
-        
-            var responseData = JSON.parse(response);
-            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                get_input_by_job_id(job_id);
-            });
+    if(job_id){
+        $.ajax({
+            url: "?url=Inputs/delete_input",
+            method: "POST",
+            data: { 
+                job_id: job_id,
+                input_event: input_event,
+             
+            },
+            success: function(response) {
+            
+                var responseData = JSON.parse(response);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    get_input_by_job_id(job_id);
+                });
 
-        },
-        error: function(xhr, status, error) {
-            console.error("AJAX request failed:", status, error);
-        }
-    });     
-}
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+            }
+        });     
+    }
 
 }
 
@@ -722,6 +735,7 @@ function create_input_id(){
 
     }
 }
+
 //copy
 function copy_input_id(){
     var language = getCookie('language');
@@ -766,7 +780,6 @@ function copy_input_id(){
     });
 
 }
-
 
 function resetalignsubmit(job_id) {
 
@@ -818,7 +831,6 @@ function alignsubmit(job_id) {
     }
 }
 
-
 function enableButton() {
     var button = document.getElementById('Button_Select');
     if (button.disabled) {
@@ -845,7 +857,7 @@ function get_input_info(){
             },
             success: function(response) {
                 if (response === 'no_data') {
-                    //getLanguageMessage('language');
+                    getLanguageMessage('language');
                     return;
                 }
 
@@ -910,13 +922,13 @@ function get_input_info(){
                     edit_handleEventChange(selectedValue,gateconfirm); 
                 };
 
-            
+             
             },
             error: function(xhr, status, error) {
                 
             }
         });
-
+   
         
     }
 
@@ -1038,7 +1050,6 @@ function edit_input_id(){
     }
 }
 
-
 function getLanguageMessage(cookieName) {
     var value = "; " + document.cookie;
     var parts = value.split("; " + cookieName + "=");
@@ -1057,3 +1068,10 @@ function getLanguageMessage(cookieName) {
 }
 
 </script>
+<style>
+    #input_table td,
+    #input_table th {
+        width: 100px; 
+        padding: 10px;
+    }
+</style>

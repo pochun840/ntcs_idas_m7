@@ -93,6 +93,7 @@ class Miscellaneous{
 
         if($mode =="io_output"){
             $array = array(
+                
                 1   => 'OK',
                 2   => 'NG',
                 3   => 'NG-High',

@@ -699,6 +699,7 @@ function crud_job_event(argument){
         }
 
         //下拉式選單(選擇event事件)
+        console.log(temp_event);
         if (Array.isArray(temp_event)){
             let options = document.querySelectorAll('#Event_Option option');
             options.forEach(option => {

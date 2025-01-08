@@ -268,7 +268,7 @@ var output_job;
 var all_job;
 var del_output_val;
 var output_pinval;
-
+var temp_event;
 $(document).ready(function () {
     highlight_row_input('output_table');
 
@@ -350,8 +350,7 @@ function crud_job_event(argument){
 
     
         disableElements(filtered_array);
-    
-        
+
         document.getElementById('new_output').style.display='block';
         var eventOption = document.getElementById('Event_Option');
         eventOption.addEventListener('change', function() {
@@ -364,6 +363,14 @@ function crud_job_event(argument){
             }
         }); 
 
+
+        //針對已選過的event做 disabled
+        let options = document.querySelectorAll('#Event_Option option');
+        options.forEach(option => {
+            if (tempA.includes(option.value)) {
+                option.disabled = true;
+            }
+        });
 
         
     }

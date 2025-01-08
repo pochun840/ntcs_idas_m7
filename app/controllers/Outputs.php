@@ -72,6 +72,7 @@ class Outputs extends Controller
                         $signal_value = !empty($vv['signal']) ? $vv['signal'] : 0;
                         $temp[] = "pin" . $pin_number."_".$signal_value;
                         $temp[] = "edit_pin" . $pin_number."_".$signal_value;
+                    
                     }
 
                     if (!empty($vv['EvenID'])) {
@@ -85,7 +86,7 @@ class Outputs extends Controller
 
                         if($vv['signal'] == 0){
                             $img = '<img src="./img/signal01.png" style="max-width: 50px;">';
-                        }else if($vv['wave'] == 1){
+                        }else if($vv['signal'] == 1){
                             $img = '<img src="./img/signal02.png" style="max-width: 50px;">';
                         }else{
                             $img = '<img src="./img/trigger.png" style="max-width: 50px;">';
@@ -93,6 +94,7 @@ class Outputs extends Controller
 
 
                         $job_outputlist .= "<tr data-event ='".$vv['EvenID']."'>";
+                        
                         $job_outputlist .= "<td id='".$vv['EvenID']."'>".$event_output[$vv['EvenID']]."</td>";
                         $job_outputlist .=  "<td data-outputpin = '".$vv['Pin']."' >".$vv['Pin']."</td>";
                         $job_outputlist .= '<td>'.$img.'</td>';
@@ -120,11 +122,7 @@ class Outputs extends Controller
         );
         echo json_encode($response);
         
-
     }
-
-   
-
     public function check_job_output_conflict($value='')
     {
         $input_check = true;

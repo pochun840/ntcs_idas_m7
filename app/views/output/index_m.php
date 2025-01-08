@@ -102,205 +102,34 @@
                                         </select>
                                     </div>
                                 </div>
+                                <?php for ($i = 1; $i <= 11; $i++) {?>
+                                    <div class="row output-pin">
+                                        <div class="col t1"><?php echo $i;?>:</div>
+                                        <div class="col t2 form-check form-check-inline">
+                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime('pin<?php echo $i; ?>_0', this.checked,'1')" >
+                                            <label class="form-check-label" for="pin1_signal01"><img src="./img/signal01.png"></label>
+                                        </div>
+                                        <div class="col t2 form-check form-check-inline">
+                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'2')" >
+                                            <label class="form-check-label" for="pin1_signal02"><img src="./img/signal02.png"></label>
+                                        </div>
+                                        <div class="col t2 form-check form-check-inline">
+                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'3')" >
+                                            <label class="form-check-label" for="pin1_trigger"><img src="./img/trigger.png"></label>
+                                        </div>
+                                        <div class="col-3 t2">
+                                            <input type="text" class="t4 form-control" id="time<?php echo $i; ?>"   placeholder="ms" value="" >
+                                        </div>
+                                     </div>
+                                
 
-                                <div class="row output-pin">
-                                    <div class="col t1">1:</div>
-                    			    <div class="col t2 form-check form-check-inline">
-                    				    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin1_1" value="1" onclick="toggleOnputTime('pin1_1', this.checked,'1')"  >
-                    				    <label class="form-check-label" for="pin1_signal01"><img src="./img/signal01.png"></label>
-                    				</div>
-                    				<div class="col t2 form-check form-check-inline">
-                    				    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin1_2" value="2" onclick="toggleOnputTime('pin1_2', this.checked,'2')" >
-                    				    <label class="form-check-label" for="pin1_signal02"><img src="./img/signal02.png"></label>
-                    				</div>
-                    				<div class="col t2 form-check form-check-inline">
-                    				    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin1_3" value="3" onclick="toggleOnputTime('pin1_3', this.checked,'3')" >
-                    				    <label class="form-check-label" for="pin1_trigger"><img src="./img/trigger.png"></label>
-                    				</div>
-                  				    <div class="col-3 t2">
-                				        <input type="text" class="t4 form-control" id="time1" placeholder="ms" value="" >
-                   				    </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">2:</div>
-                  			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin2_1" value="1"  onclick="toggleOnputTime('pin2_1', this.checked,'1')" >
-                   					    <label class="form-check-label" for="pin2_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin2_2" value="2"  onclick="toggleOnputTime('pin2_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin2_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin2_3" value="3" onclick="toggleOnputTime('pin2_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin2_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-            				            <input type="text" class="t4 form-control" id="time2" placeholder="ms" value="" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">3:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin3_1" value="1"  onclick="toggleOnputTime('pin3_1', this.checked,'1')" >
-                   					    <label class="form-check-label" for="pin3_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin3_2" value="2"  onclick="toggleOnputTime('pin3_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin3_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin3_3" value="3" onclick="toggleOnputTime('pin3_3', this.checked,'3')" >
-                   					    <label class="form-check-label" for="pin3_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time3" placeholder="ms" value="" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">4:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin4_1" value="1" onclick="toggleOnputTime('pin4_1', this.checked,'1')" >
-                   					    <label class="form-check-label" for="pin4_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin4_2" value="2" onclick="toggleOnputTime('pin4_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin4_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin4_3" value="3" onclick="toggleOnputTime('pin4_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin4_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time4" value="" placeholder="ms" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">5:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin5_1" value="1"  onclick="toggleOnputTime('pin5_1', this.checked,'1')">
-                   					    <label class="form-check-label" for="pin5_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin5_2" value="2"  onclick="toggleOnputTime('pin5_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin5_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin5_3" value="3" onclick="toggleOnputTime('pin5_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin5_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time5" value="" placeholder="ms" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">6:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin6_1" value="1" onclick="toggleOnputTime('pin6_1', this.checked,'1')">
-                   					    <label class="form-check-label" for="pin6_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin6_2" value="2" onclick="toggleOnputTime('pin6_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin6_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin6_3" value="3" onclick="toggleOnputTime('pin6_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin6_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time6" placeholder="ms" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">7:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin7_1" value="1"  onclick="toggleOnputTime('pin7_1', this.checked,'1')">
-                   					    <label class="form-check-label" for="pin7_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin7_2" value="2"  onclick="toggleOnputTime('pin7_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin7_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin7_3" value="3" onclick="toggleOnputTime('pin7_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin7_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time7" placeholder="ms" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">8:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin8_1" value="1" onclick="toggleOnputTime('pin8_1', this.checked,'1')">
-                   					    <label class="form-check-label" for="pin8_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin8_2" value="2" onclick="toggleOnputTime('pin8_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin8_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin8_3" value="3" onclick="toggleOnputTime('pin8_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin8_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time8" placeholder="ms" value="" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">9:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin9_1" value="1" onclick="toggleOnputTime('pin9_1', this.checked,'1')">
-                   					    <label class="form-check-label" for="pin9_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin9_2" value="2" onclick="toggleOnputTime('pin9_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin9_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin9_3" value="3" onclick="toggleOnputTime('pin9_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin9_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time9" placeholder="ms" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">10:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin10_1" value="1" onclick="toggleOnputTime('pin10_1', this.checked,'1')">
-                   					    <label class="form-check-label" for="pin10_signal01"><img src="./img/signal01.png"></label> 
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin10_2" value="2" onclick="toggleOnputTime('pin10_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin10_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin10_3" value="3" onclick="toggleOnputTime('pin10_3', this.checked,'3')">
-                   					    <label class="form-check-label" for="pin10_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time10" placeholder="ms" >
-               				        </div>
-                                </div>
-                                <div class="row output-pin">
-                                    <div class="col t1">11:</div>
-                   			      	<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin11_1" value="1" onclick="toggleOnputTime('pin11_1', this.checked,'1')" >
-                   					    <label class="form-check-label" for="pin11_signal01"><img src="./img/signal01.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin11_2" value="2" onclick="toggleOnputTime('pin11_2', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin11_signal02"><img src="./img/signal02.png"></label>
-                   					</div>
-                   					<div class="col t2 form-check form-check-inline">
-                   					    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin11_3" value="3" onclick="toggleOnputTime('pin11_3', this.checked,'2')">
-                   					    <label class="form-check-label" for="pin11_trigger"><img src="./img/trigger.png"></label>
-                   					</div>
-              				        <div class="col-3 t2">
-              				            <input type="text" class="t4 form-control" id="time11" placeholder="ms" >
-               				        </div>
-                                </div>
+                                <?php } ?>
+                               
+                               
+                                
+                             
+                                
+                                
 
 
                             </form>
@@ -330,6 +159,7 @@
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?> :</div>
                                     <div class="col-2 t2">
                                         <select id="edit_event_option" name='edit_event_option' class="col custom-file">
+                                        <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
                                            <?php foreach($data['event_output'] as $key =>$val){?>
                                                 <option value ='<?php echo $key;?>'><?php echo $text[$val];?></option>
                                             <?php } ?>
@@ -341,15 +171,15 @@
 									<div class="row output-pin">
 										<div class="col t1"><?php echo $i;?>:</div>
 										<div class="col t2 form-check form-check-inline">
-											<input class="zoom form-check-input" type="radio" name="edit_pin_option"  id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'1')"  >
+											<input class="zoom form-check-input" type="radio" name="edit_pin_option"  id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_0', this.checked,'1')"  >
 											<label class="form-check-label" for="pin1_signal01"><img src="./img/signal01.png"></label>
 										</div>
 										<div class="col t2 form-check form-check-inline">
-											<input class="zoom form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'2')" >
+											<input class="zoom form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'2')" >
 											<label class="form-check-label" for="pin1_signal02"><img src="./img/signal02.png"></label>
 										</div>
 										<div class="col t2 form-check form-check-inline">
-											<input class="zoom form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_3" value="3" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'3')" >
+											<input class="zoom form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'3')" >
 											<label class="form-check-label" for="pin1_trigger"><img src="./img/trigger.png"></label>
 										</div>
 										<div class="col-3 t2">
@@ -404,8 +234,8 @@
                                             <select id="JobSelect1" class="col custom-file" style="margin: center; width: 160px">
 											<option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
 												<?php foreach($data['job_list'] as $kk => $vv){?>
-                                                    <option id ='job_list_option' value="<?php echo $vv['job_id']; ?>">
-                                                        <?php echo $vv['job_id'] . " - " . $vv['job_name']; ?>
+                                                    <option id ='job_list_option' value="<?php echo $vv['JOBID']; ?>">
+                                                        <?php echo $vv['JOBID'] . " - " . $vv['JOBname']; ?>
                                                     </option>
                                                 <?php } ?>  
                                             </select>
@@ -437,9 +267,10 @@ var output_job;
 var all_job;
 var del_output_val;
 var output_pinval;
-var dataoutput_pin_val;
+
 $(document).ready(function () {
     highlight_row_input('output_table');
+
     var all_output_job = '<?php echo $data['device_data']['device_output_all_job']?>';
     job_id = all_output_job ;
     output_job = all_output_job;
@@ -448,7 +279,6 @@ $(document).ready(function () {
         document.getElementById('Button_Select').disabled = true;
         document.getElementById('job_id').style.backgroundColor = 'yellow';
     }
-
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -464,8 +294,8 @@ document.addEventListener('DOMContentLoaded', function() {
   observer.observe(document.body, { childList: true, subtree: true });
 });
 
-
 var modal = document.getElementById('newinput');
+
 window.onclick = function(event) {
     if (event.target == modal) {
         modal.style.display = "none";
@@ -473,7 +303,6 @@ window.onclick = function(event) {
 }
 
 function crud_job_event(argument){
-
     var table = document.getElementById('output_table');
     var selectedRow = table.querySelector('tr.selected');
     if (selectedRow) {
@@ -486,14 +315,21 @@ function crud_job_event(argument){
         output_pinval = dataOutputPinValue;
 
 
-    }
 
+    }
+    
     if(argument == 'del' && job_id != '' &&  del_output_val){
         delete_output_id(job_id,del_output_val);
     }
 
     if(argument == 'new' && job_id != ''){
 
+        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+        /*if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
+        }*/
+        console.log(output_event);
         if (Array.isArray(temp)){ 
             temp.forEach(function(element) {
                 var radio = document.getElementById(element);
@@ -504,6 +340,7 @@ function crud_job_event(argument){
         } 
 
         var filtered_array = [];
+
         temp.forEach(function(element) {
             // 檢查是否是以 'pin' 開頭並且不包含 'edit_pin'
             if (element.includes('pin') && !element.includes('edit_pin')) {
@@ -511,50 +348,10 @@ function crud_job_event(argument){
             }
         });
 
-        filtered_array.forEach(function(id) {
-            
-            var match = id.match(/(pin\d+)_(\d+)/);
-            if (match) {
-                var basePinId = match[1]; 
-                var pinNumber = match[2]; 
-
+    
+        disableElements(filtered_array);
+    
         
-                for (var i = 1; i <= 3; i++) {
-                    var pinElementId = basePinId + "_" + i;
-                    var pinElement = document.getElementById(pinElementId);
-                    if (pinElement && pinElement.type === 'radio') {
-                        pinElement.disabled = true;
-                    }
-                }
-
-                // 禁用 time 相關的元素
-                var timeElementId = 'time' + basePinId.slice(3); // 假設 time ID 的格式是 'time' + 數字部分
-                var timeElement = document.getElementById(timeElementId);
-                if (timeElement) {
-                    timeElement.disabled = true;
-                }
-            }
-        });
-
-
-         //針對已設定的事件option做反灰+disable
-         if (Array.isArray(tempA)){
-            tempA.forEach(function(element){
-                var option = document.querySelector('#Event_Option option[value="' + element + '"]');
-                if(option){
-                    if (option.selected){
-                        selectedValue = element;
-                    }
-
-                    option.disabled = true;
-                    option.classList.add('disabled_input');
-                }
-            });
-        }
-
-
-        document.getElementById('new_output').style.display='block';
-
         document.getElementById('new_output').style.display='block';
         var eventOption = document.getElementById('Event_Option');
         eventOption.addEventListener('change', function() {
@@ -563,50 +360,54 @@ function crud_job_event(argument){
                 toggleElementsInRange(1, 11, 2, true);
             }else{
                 toggleElementsInRange(1, 11, 2, false);
+                disableElements(filtered_array);
             }
+        }); 
 
-            let tempC = tempA.slice();
-            tempC.forEach(pin => {
-                for (let i = 1; i <= 3; i++) {
-                    let id = `pin${pin}_${i}`;
-                    let element = document.getElementById(id);
-                    if (element) {
-                        element.disabled = true; 
-                    }
-                }
-            });
-            
+        //針對已選過的event做 disabled 
+        let options = document.querySelectorAll('#Event_Option option');
+        options.forEach(option => {
+            if (tempA.includes(option.value)) {
+                option.disabled = true;
+            }
         });
-               
+
+
+
         
     }
 
+    //&& output_event != ''
     if (argument === 'edit' && job_id != '' && output_event != '') {
-        var selectElement = document.getElementById('edit_event_option');
-        if (selectElement) {
-            selectElement.disabled = true;
-            Array.from(selectElement.options).forEach(option => {
-                option.disabled = true;
-                option.classList.add('disabled_input');
-            });
+
+        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+        if (!selectedRows.length > 0) {
+            getLanguageMessage('language'); 
+            return;
         }
+        
+
+        var selectElement = document.getElementById('edit_event_option');
         if (Array.isArray(temp)) { 
             temp.forEach(id => {
                 var radio = document.getElementById(id);
+
                 if (radio && radio.type === 'radio') { 
                     radio.disabled = true; 
                 }
             });
 
             let tempC = temp.slice(); 
+
             const filtered_C = tempC.filter(item => item.includes("edit_pin"));
             filtered_C.forEach(function(id) {
+      
                 var match = id.match(/(edit_pin\d+)_(\d+)/);
                 if (match) {
                     var basePinId = match[1]; 
                     var pinNumber = match[2]; 
 
-                    for (var i = 1; i <= 3; i++) {
+                    for (var i = 0; i <= 2; i++) {
                         var pinElementId = basePinId + "_" + i;
                         var pinElement = document.getElementById(pinElementId);
                         if (pinElement && pinElement.type === 'radio') {
@@ -618,17 +419,13 @@ function crud_job_event(argument){
                     var timeElementId = 'edit_time' + basePinId.slice(3);
                     const toremove = "t_pin"; 
                     timeElementId = timeElementId.replace(toremove,'');
-                    console.log(timeElementId);
-                    
+          
                     var timeElement = document.getElementById(timeElementId);
                     if (timeElement) {
                         timeElement.disabled = true;
                     }
                 }
             });
-
-
-            
         }
 
 
@@ -636,9 +433,9 @@ function crud_job_event(argument){
         if(output_pinval != ''){
 
             const idsToDisable = [
+                `edit_pin${output_pinval}_0`,
                 `edit_pin${output_pinval}_1`,
                 `edit_pin${output_pinval}_2`,
-                `edit_pin${output_pinval}_3`,
                 `edit_time${output_pinval}`
             ];
 
@@ -648,29 +445,23 @@ function crud_job_event(argument){
                     element.disabled = false;
                 }
             });
-
-            var pin1Checkbox = document.getElementById(`edit_pin${output_event}_1`);
-            var pin3Checkbox = document.getElementById(`edit_pin${output_event}_3`);
-            var timeInput = document.getElementById(`edit_time${output_event}`);
-
+            
         }
 
-        
-
         get_output_info(job_id, output_event);
-        document.getElementById('edit_output').style.display = 'block';
     }
+
     if(argument == 'copy' && job_id != '' && output_event != ''){
 
         var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['job_name'];
+        var from_job_name_bk = jobinfo[job_id]['JOBname'];
 
         document.getElementById("from_job_id").value = job_id;
         document.getElementById("from_job_name").value = from_job_name_bk;
 
         var selectElement = document.getElementById('JobSelect1');
         var options = selectElement.getElementsByTagName('option');
-
+        
         for (var i = 0; i < options.length; i++) {
             var optionId = options[i].getAttribute('id');
             var optionValue = options[i].value;
@@ -680,10 +471,12 @@ function crud_job_event(argument){
             }
         }
 
-
-        document.getElementById('copy_output').style.display='block';
-        
-
+        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+        if (selectedRows.length > 0) {
+            document.getElementById('copy_output').style.display='block';
+        }else{
+            getLanguageMessage('language');
+        }            
     }
 
     if(argument == 'unified' && job_id != ''){
@@ -698,17 +491,46 @@ function crud_job_event(argument){
     }
 }
 
+function collectPinValues(selector) {
+    var pinOptions = document.querySelectorAll(selector);
+    var selectedValues = [];
+
+    pinOptions.forEach(function(option) {
+        if (option.checked){ 
+            var radioInfo = {
+                id: option.id,
+                value: option.value
+            };
+            selectedValues.push(radioInfo);
+        }
+    });
+
+    return selectedValues;
+}
+
+
 function toggleElementsInRange(start, end, suffix, disable) {
     for (var i = start; i <= end; i++) {
-        for (var j = 1; j <= suffix; j++) {
+    
+        for (var j = 0; j <= 1; j++) { 
             var id = 'pin' + i + '_' + j;
             var element = document.getElementById(id);
             if (element) {
-                element.disabled = disable; // 设置元素的 disabled 属性
+                element.disabled = disable;
             }
         }
+
+        var timeId = 'time' + i;
+        console.log(timeId);
+        var timeElement = document.getElementById(timeId);
+        if (timeElement) {
+            timeElement.disabled = disable;
+        }
     }
-}  
+}
+
+
+
 var old_output_event; 
 var output_event;
 function job_confirm(){
@@ -795,7 +617,7 @@ function job_confirm(){
 
 //delete
 function delete_output_id(job_id,del_output_val){
-    if(job_id){
+    if(job_id && del_output_val){
         $.ajax({
             url: "?url=Outputs/delete_output",
             method: "POST",
@@ -805,11 +627,11 @@ function delete_output_id(job_id,del_output_val){
              
             },
             success: function(response) {
-       
                 var responseData = JSON.parse(response);
                 alertify.alert(responseData.res_type, responseData.res_msg, function() {
                     get_output_by_job_id(job_id);
                 });
+                 
             },
             error: function(xhr, status, error) {
                 console.error("AJAX request failed:", status, error);
@@ -948,7 +770,7 @@ function create_output_id() {
             });
         }
     } else {
-        console.error("No pinval found or pinval[0] is undefined.");
+        //console.error("No pinval found or pinval[0] is undefined.");
     }
 }
 
@@ -975,7 +797,7 @@ function edit_output_id(){
                 old_output_event: old_output_event
             },
             success: function(response) {
-                //console.log(response);
+                
                 var responseData = JSON.parse(response);
                 alertify.alert(responseData.res_type, responseData.res_msg, function() {
                     get_output_by_job_id(job_id);
@@ -1083,9 +905,24 @@ function copy_output_id(){
     document.getElementById('copy_output').style.display='none';
 }
 
+function updateInputsBasedOnRadioSelection() {
+   
+    for (let i = 1; i <= 11; i++) {
+        let radioId = 'pin' + i + '_3';
+        let inputId = 'time' + i;
+        
+        let radioElement = document.getElementById(radioId);
+        let inputElement = document.getElementById(inputId);
+
+        if (radioElement && inputElement) {
+            inputElement.disabled = !radioElement.checked;
+        }
+    }
+}
+
 function get_output_info(job_id,output_event){
 
-    if(job_id){
+    if(job_id && output_event){
      $.ajax({
              url: "?url=Outputs/check_job_event",
              method: "POST",
@@ -1094,22 +931,34 @@ function get_output_info(job_id,output_event){
                  output_event: output_event
              },
              success: function(response) {
-              
+                if (response === 'no_data') {
+                    getLanguageMessage('language');
+                    return;
+                }
+
+                document.getElementById('edit_output').style.display = 'block';
+
+
                 var responseJSON = JSON.stringify(response);
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
-                var [, job_id] = cleanString.match(/\[output_job_id]\s*=>\s*([^ ]+)/) || [, null];
-                var [, output_event] = cleanString.match(/\[output_event]\s*=>\s*([^ ]+)/) || [, null];
-                var [, output_pin] = cleanString.match(/\[output_pin]\s*=>\s*([^ ]+)/) || [, null];
-                var [, wave] = cleanString.match(/\[wave]\s*=>\s*([^ ]+)/) || [, null];
-                var [, wave_on] = cleanString.match(/\[wave_on]\s*=>\s*([^ ]+)/) || [, null];
+                var [, job_id] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
+                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
+
 
                 var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
                 var radioButton = document.getElementById(edit_output_pin);
-                radioButton.removeAttribute('disabled');
+
+                if (radioButton) {
+                    radioButton.removeAttribute('disabled');  
+                } else {
+                    console.warn('Radio button not found:', edit_output_pin); 
+                }
 
                 var time_ms = 'edit_time'+ output_pin;
-
                 if(wave != 2){
                     var time_id = 'edit_time' + output_pin;
                     var element = document.getElementById(time_id);
@@ -1118,16 +967,17 @@ function get_output_info(job_id,output_event){
                         element.disabled = true
                     }
                 }
-           
+                    
                 //完工信號 && 馬達信號 && 啟動信號
                 if (output_event == 8  || output_event == 6 || output_event == 7 ) {
+                  
                     for(let i = 1; i <= 11; i++) {
-                        let element1 = document.getElementById(`edit_pin${i}_1`);
+                        let element1 = document.getElementById(`edit_pin${i}_0`);
                         if (element1) {
                             element1.disabled = true;
                         }
                 
-                        let element2 = document.getElementById(`edit_pin${i}_2`);
+                        let element2 = document.getElementById(`edit_pin${i}_1`);
                         if (element2) {
                             element2.disabled = true;
                         }
@@ -1136,7 +986,6 @@ function get_output_info(job_id,output_event){
                     if (Array.isArray(temp)) {
                         //過濾出包含 "edit_pin" 的字串
                         const filteredArray = temp.filter(item => item.includes("edit_pin"));
-                        
                         const updatedArray = filteredArray.map(item => {
                             // 如果字串為空，直接返回
                             if (item.length === 0) {
@@ -1156,20 +1005,33 @@ function get_output_info(job_id,output_event){
 
                     }
                     
+                }else{
+                    //alert('wqw');
                 }
 
-                 document.getElementById(time_ms).value = wave_on;
- 
-                 old_output_even = output_event;
- 
-                 if(radioButton){
-                     radioButton.checked = true;
-                 }
+
+                let result = edit_output_pin.replace(/^edit_pin/, "");
+                result = result.replace(/(_[0-9]{1,2})$/, ""); 
+
+                //檢查id = new_variable是否存在,存在做disabled
+                var new_variable = 'edit_time'+ result;
+                var element = document.getElementById(new_variable);
+                if (element) {
+                    element.disabled = true;  
+                }
+          
+                document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
+                old_output_even = output_event;
+                if(radioButton){
+                    radioButton.checked = true;
+                }
                  
-                 document.querySelector("select[name='edit_event_option']").value = output_event;
-                 document.getElementById("edit_event_option").onchange = function() {
-                     var selectedValue = this.value; 
-                 };
+                document.querySelector("select[name='edit_event_option']").value = output_event;
+                document.getElementById("edit_event_option").onchange = function() {
+                    var selectedValue = this.value; 
+                };
+
+
              },
              error: function(xhr, status, error) {
                  console.error("AJAX request failed:", status, error);
@@ -1179,11 +1041,45 @@ function get_output_info(job_id,output_event){
   
 }
 
+
 function toggleOnputTime(inputId, checked, option) {
+    var inputElement = document.getElementById(inputId);
+    if (!inputElement) {
+        return; 
+    }
+
+    if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
+
+        if (inputElement.checked !== checked) {
+           
+        }
+    }
+    
+ 
+    if(option == 1 || option == 3){
+        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
+        
+        var element = document.getElementById(newId);
+        if (element) {
+            element.disabled = true;
+        }
+    }else{
+        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
+        var element = document.getElementById(newId);
+        if (element) {
+            element.disabled = false;
+        }
+    }    
+}
+
+
+
+
+
+function toggleOnputTime_edit(inputId, checked, option) {
     var inputElement = document.getElementById(inputId);
     
     if (!inputElement) {
-        console.error(`Element with ID '${inputId}' not found.`);
         return; 
     }
 
@@ -1191,56 +1087,78 @@ function toggleOnputTime(inputId, checked, option) {
     if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
 
         if (inputElement.checked !== checked) {
-            console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
+           
         }
     }
 
-    
-    if (option != '2') {
-        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
+    if(option == 1 || option == 3){
+        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
+        
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = true;
         }
-        //alert('eew');
-    } else { 
-        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
+    }else{
+        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
         var element = document.getElementById(newId);
         if (element) {
             element.disabled = false;
         }
-    }
+    }    
 }
 
-function toggleOnputTime_edit(inputId, checked, option) {
-    var inputElement = document.getElementById(inputId);
-    
-    if (!inputElement) {
-        console.error(`Element with ID '${inputId}' not found.`);
-        return; // Exit if element is not found
-    }
 
-    if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
+function disableElements(filtered_array) {
+    // 生成新的 id 数组，去除末尾的数字并添加 "_0", "_1", "_2" 和 "time1" 到 "time11"
+    let new_array = filtered_array
+        .map(item => item.replace(/_\d$/, ''))  // 去除原始字符串末尾的数字
+        .flatMap(item => {
+            let result = [
+                item + "_0",
+                item + "_1",
+                item + "_2"
+            ];
 
-        if (inputElement.checked !== checked) {
-            console.warn(`The checked state of the element with ID '${inputId}' does not match the provided 'checked' value.`);
-        }
-    }
+            // 新增 "time" + 1 到 11
+            for (let i = 1; i <= 11; i++) {
+                result.push("time" + i);
+            }
 
-    if (option != '2') {
-        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
-        var element = document.getElementById(newId);
+            return result;
+        });
+
+    // 遍历新生成的 id 数组，如果元素存在就禁用它
+    new_array.forEach(id => {
+        let element = document.getElementById(id); 
         if (element) {
-            element.disabled = true;
+            element.disabled = true;  // 禁用该元素
         }
-        
-    } else { 
-        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
-        var element = document.getElementById(newId);
-        if (element) {
-            element.disabled = false;
-        }
+    });
+}
+
+
+function getLanguageMessage(cookieName) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + cookieName + "=");
+    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
+    var message;
+    if (language === 'en-us') {
+       message =  'Please select the event to delete';
+    } else if (language === 'zh-cn') {
+       message =  '请选择要删除的事件';
+    } else if (language === 'zh-tw') {
+       message =  '請點選要刪除的事件';
+    } else {
+      message =  'Please select the event to delete';
     }
+   alertify.alert(message);
 }
 
 </script>
+<style>
+    #output_table td,
+    #output_table th {
+        width: 100px; 
+        padding: 10px;
+    }
+</style>
