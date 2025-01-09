@@ -148,7 +148,7 @@
 
             
               
-                <div style="text-align: center;margin-top: 50px;">
+                <div style="text-align: right;margin-top: 40px;">
                     <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="cc_save()"><?php echo $text['save'];?></button>
                 </div>
 
