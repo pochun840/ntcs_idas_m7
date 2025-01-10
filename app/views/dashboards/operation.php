@@ -179,7 +179,6 @@ function translateTitles(language, xTitle, yTitle) {
 ({ xTitle: x_title, yTitle: y_title } = translateTitles(language, x_title, y_title));
 
 // 計算範圍
-// 計算範圍
 const min_torque = y_data_val_torque.length > 0 ? Math.min(...y_data_val_torque) : 0;
 const max_torque = y_data_val_torque.length > 0 ? Math.max(...y_data_val_torque) : 0;
 const min_rpm = y_data_val_rpm.length > 0 ? Math.min(...y_data_val_rpm) : 0;
@@ -188,22 +187,24 @@ const max_rpm = y_data_val_rpm.length > 0 ? Math.max(...y_data_val_rpm) : 0;
 let rpmMinAdjusted = min_rpm;
 let rpmMaxAdjusted = max_rpm;
 
-if (chart_mode === "5" && y_data_val_torque.length > 0 && y_data_val_rpm.length > 0 && max_torque !== 0) {
-    // *** 關鍵修改：基於最大值計算比例 ***
-    const ratio = max_rpm / max_torque;
+if (chart_mode === "5" && y_data_val_torque.length > 0 && y_data_val_rpm.length > 0) {
+    // *** 優化：處理其中一個 Y 軸數據全部為 0 的情況 ***
+    if (max_torque !== min_torque && max_rpm !== min_rpm) { // 避免除以 0
+        // *** 優化：基於數值範圍計算比例 ***
+        const ratio = (max_rpm - min_rpm) / (max_torque - min_torque);
+        rpmMinAdjusted = min_torque * ratio + min_rpm;
+        rpmMaxAdjusted = max_torque * ratio + min_rpm;
 
-    rpmMinAdjusted = min_torque * ratio;
-    rpmMaxAdjusted = max_torque * ratio;
+        // 確保 rpmMinAdjusted 不小於實際的 min_rpm，rpmMaxAdjusted 不大於實際的 max_rpm
+        rpmMinAdjusted = Math.max(rpmMinAdjusted, min_rpm);
+        rpmMaxAdjusted = Math.max(rpmMaxAdjusted, max_rpm);
 
-    // 確保 rpmMinAdjusted 不小於實際的 min_rpm，rpmMaxAdjusted 不大於實際的 max_rpm
-    rpmMinAdjusted = Math.max(rpmMinAdjusted, min_rpm);
-    rpmMaxAdjusted = Math.max(rpmMaxAdjusted, max_rpm);
-
-    console.log("ratio", ratio);
-    console.log("rpmMinAdjusted", rpmMinAdjusted);
-    console.log("rpmMaxAdjusted", rpmMaxAdjusted);
-} else if (max_torque === 0) {
-    console.warn("max_torque is 0, cannot calculate ratio.");
+        console.log("ratio", ratio);
+        console.log("rpmMinAdjusted", rpmMinAdjusted);
+        console.log("rpmMaxAdjusted", rpmMaxAdjusted);
+    } else {
+        console.warn("One of the Y-axis data has the same min and max value, cannot calculate ratio.");
+    }
 }
 
 
@@ -236,7 +237,7 @@ const option = {
     xAxis: {
         type: 'category',
         boundaryGap: false,
-        name: x_title,
+        //name: x_title,
         data: x_data_val
     },
     yAxis: chart_mode === "5" ? [
@@ -246,24 +247,42 @@ const option = {
         min: min_torque,
         max: max_torque,
         position: 'left',
-        axisLabel: { formatter: '{value}' }
+        axisLabel: {
+                formatter: function (value) {
+                    // *** 檢查小數部分是否為 .00 ***
+                    if (value % 1 === 0) { // 使用模數運算子 (%) 檢查是否為整數
+                        return value; // 如果是整數，則直接回傳
+                    } else {
+                        return value.toFixed(2); // 否則保留兩位小數
+                    }
+                }
+            }
     },
     {
         type: 'value',
         name: 'RPM',
         position: 'right',
-        axisLabel: { formatter: '{value}' },
+        axisLabel: {
+                formatter: function (value) {
+                    // *** 檢查小數部分是否為 .00 ***
+                    if (value % 1 === 0) { // 使用模數運算子 (%) 檢查是否為整數
+                        return value; // 如果是整數，則直接回傳
+                    } else {
+                        return value.toFixed(2); // 否則保留兩位小數
+                    }
+                }
+            },
         // *** 關鍵修改：處理 NaN、Infinity 和 min > max 的情況 ***
         min: () => {
-            if (isNaN(rpmMinAdjusted) || !isFinite(rpmMinAdjusted)) return min_rpm;
-            return Math.min(rpmMinAdjusted, rpmMaxAdjusted); // 確保 min <= max
-        },
+                if (isNaN(rpmMinAdjusted) || !isFinite(rpmMinAdjusted) || rpmMinAdjusted > rpmMaxAdjusted) return min_rpm;
+                return rpmMinAdjusted;
+            },
         max: () => {
-            if (isNaN(rpmMaxAdjusted) || !isFinite(rpmMaxAdjusted)) return max_rpm;
-            return Math.max(rpmMinAdjusted, rpmMaxAdjusted); // 確保 max >= min
+            if (isNaN(rpmMaxAdjusted) || !isFinite(rpmMaxAdjusted) || rpmMaxAdjusted < rpmMinAdjusted) return max_rpm;
+            return rpmMaxAdjusted;
         },
         // *** Y軸刻度優化 ***
-        splitNumber: 5, // 建議的刻度數量
+        //splitNumber: 5, // 建議的刻度數量
     }
 ] : [
     {

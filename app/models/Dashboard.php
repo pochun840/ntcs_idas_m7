@@ -183,6 +183,7 @@ class Dashboard{
     }
 
     public function get_Data(){
+
         $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 1";
         $statement = $this->db_data->prepare($sql);
         if ($statement) { 
@@ -194,6 +195,22 @@ class Dashboard{
         }
     
         return [];
+    }
+
+    public function get_data_up(){
+        
+        $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 1";
+        $statement = $this->db_data->prepare($sql);
+        if ($statement) { 
+            $statement->execute();
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                return $row;
+            }
+        }
+    
+        return [];
+
     }
 
 

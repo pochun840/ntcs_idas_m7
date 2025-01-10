@@ -44,6 +44,7 @@ class Dashboards extends Controller
         $data_info  = $this->DashboardModel->get_Data();
         $status_arr = $this->MiscellaneousModel->details('status_ntcs');
 
+
         #處理曲線圖的樣式
         $chart_mode = !empty($_GET['chart']) ? $_GET['chart'] : 1;
         if ($chart_mode < 1 || $chart_mode > 6) {
@@ -93,6 +94,11 @@ class Dashboards extends Controller
             $this->view('dashboards/operation', $data);
         }
        
+    }
+
+    public function get_data(){
+
+        
     }
 
 

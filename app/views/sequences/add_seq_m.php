@@ -533,7 +533,7 @@
 
 
     function setCheckboxesByValue(value) {
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         
         // 先清空所有勾選狀態
         checkboxes.forEach(checkbox => checkbox.checked = false);
@@ -593,7 +593,6 @@
                 return;
             }
             
-
             if(input.id != 'SEQname'){
                 var nextSibling = element.nextElementSibling;
                 if (nextSibling) {

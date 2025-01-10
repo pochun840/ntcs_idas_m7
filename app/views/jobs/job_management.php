@@ -359,8 +359,6 @@ function savejob() {
 }
 
 
-
-
 function copy_job_by_id(jobid){
 
     var new_jobid = document.getElementById("to_job_id").value;
@@ -371,8 +369,6 @@ function copy_job_by_id(jobid){
     document.getElementById("to_job_id").value = new_jobid;
 
     if(new_jobid){
-
-
         var language = getCookie('language');
         if(language == "zh-cn"){
             var text_info ='你确定吗？';
@@ -384,7 +380,6 @@ function copy_job_by_id(jobid){
             var text_info ='Are you sure ?';
             var title = 'Copy Job';
         }
-        
         
         $.ajax({
             url: "?url=Jobs/check_job_type",
