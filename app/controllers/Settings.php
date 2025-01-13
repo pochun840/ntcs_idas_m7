@@ -32,6 +32,8 @@ class Settings extends Controller
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         $idas_version = $this->SettingModel->get_idas_version();
 
+        
+
         $iDAS_version = $idas_version['config_value'];
 
         $barcodes = $this->GetBarcodes();

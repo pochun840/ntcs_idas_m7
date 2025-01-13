@@ -16,6 +16,7 @@
                 <button id="bnt1" name="Controller_Display" class="button active" onclick="OpenButton('Controller')"><?php echo $text['controller_setting'];?></button>
                 <button id="bnt2" name="System_Display" class="button" onclick="OpenButton('System')"><?php echo $text['system_setting'];?></button>
                 <button id="bnt3" name="Barcode_Display" class="button" onclick="OpenButton('Barcode')"><?php echo $text['system_barcode_setting'] ;?></button>
+        
                 <button id="bnt4" name="Connect_Display" class="button" onclick="OpenButton('Connect')"><?php echo $text['system_connect_setting'];?></button>
                 <button id="bnt5" name="iDas_Display" class="button" onclick="OpenButton('Update')">iDAS</button>
             </div>
@@ -218,6 +219,31 @@
                 <div style="display: flex; justify-content: flex-end; margin-top: 40px;">
                     <button class="all-btn w3-button w3-border w3-round-large" id="save_pwd" onclick="save_pwd()"><?php echo $text['save'];?></button>
                 </div>
+
+                
+                <div class="col t1"style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Background_Color_text'];?></div>
+
+                <div class="row t2">
+                    <div class="col-6 t1"><?php echo $text['job_ok'];?>:</div>
+                    <div class="col-auto t2">
+                        <div class="form-check form-check-inline">
+        				    <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_green" value="1"   <?php echo $data['controller_info']['okjobcolor'] == 1 ? 'checked="checked"' : ''; ?>>
+            				<label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
+            			</div>
+            			<div class="form-check form-check-inline">
+            			    <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_yellow" value="2"  <?php echo $data['controller_info']['okjobcolor'] == 2 ? 'checked="checked"' : ''; ?> >
+            				<label class="form-check-label" for=""><?php echo $text['yellow_text'];?></label>
+            			</div>
+                    </div>
+                </div>
+
+                <div class="row t2">
+                    <div class="col-6 t1"><?php echo $text['Skip_button_text'];?>:</div>
+                    <div class="col-5 t2">
+                        <input id="skip_button_pwd" name="skip_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['skip_button_pwd']) ? $data['controller_info']['skip_button_pwd'] : ''; ?>" class="t3 form-control"  required>
+                    </div>
+                </div>
+
 
 
 
