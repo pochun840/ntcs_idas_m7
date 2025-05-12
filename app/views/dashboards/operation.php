@@ -45,11 +45,9 @@
                     <div class="item-message w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo $text['final_message'];?></div>
                         <div id="Message" class="w3-display-middle" style="font-size: 28px">
-                        <?php if ($data['data_info']['error_message']) { ?>
+                        <?php if ($data['data_info']['error_message']){?>
                             <?php echo $data['data_info']['error_message']; ?>
-                        <?php } else { ?>
-                            <?php echo "N/A"; ?>
-                        <?php } ?>
+                        <?php }?>
                         </div>                                    
                     </div>
                 </div>
@@ -161,6 +159,7 @@ var y_data_val_torque = <?php echo !empty($data['chart_info']['y_val_torque']) ?
 var y_data_val_rpm = <?php echo !empty($data['chart_info']['y_val_rpm']) ? $data['chart_info']['y_val_rpm'] : '[]'; ?>;
 var chart_mode = '<?php echo $data['chart_mode']; ?>';
 
+
 const translations = {
     "zh-tw": { "Time(MS)": "時間", "Angle": "角度", "Torque": "扭力", "RPM": "轉速" },
     "zh-cn": { "Time(MS)": "时间", "Angle": "角度", "Torque": "扭力", "RPM": "转速" }
@@ -180,6 +179,7 @@ function translateTitles(language, xTitle, yTitle) {
 ({ xTitle: x_title, yTitle: y_title } = translateTitles(language, x_title, y_title));
 
 // 計算範圍
+// 計算範圍
 const min_torque = y_data_val_torque.length > 0 ? Math.min(...y_data_val_torque) : 0;
 const max_torque = y_data_val_torque.length > 0 ? Math.max(...y_data_val_torque) : 0;
 const min_rpm = y_data_val_rpm.length > 0 ? Math.min(...y_data_val_rpm) : 0;
@@ -188,86 +188,96 @@ const max_rpm = y_data_val_rpm.length > 0 ? Math.max(...y_data_val_rpm) : 0;
 let rpmMinAdjusted = min_rpm;
 let rpmMaxAdjusted = max_rpm;
 
-if (chart_mode === "5" && y_data_val_torque.length > 0 && y_data_val_rpm.length > 0) {
-    if (max_torque !== min_torque && max_rpm !== min_rpm) {
-        const ratio = (max_rpm - min_rpm) / (max_torque - min_torque);
-        rpmMinAdjusted = min_torque * ratio + min_rpm;
-        rpmMaxAdjusted = max_torque * ratio + min_rpm;
+if (chart_mode === "5" && y_data_val_torque.length > 0 && y_data_val_rpm.length > 0 && max_torque !== 0) {
+    // *** 關鍵修改：基於最大值計算比例 ***
+    const ratio = max_rpm / max_torque;
 
-        rpmMinAdjusted = Math.max(rpmMinAdjusted, min_rpm);
-        rpmMaxAdjusted = Math.max(rpmMaxAdjusted, max_rpm);
-    } else {
-        console.warn("One of the Y-axis data has the same min and max value, cannot calculate ratio.");
-    }
+    rpmMinAdjusted = min_torque * ratio;
+    rpmMaxAdjusted = max_torque * ratio;
+
+    // 確保 rpmMinAdjusted 不小於實際的 min_rpm，rpmMaxAdjusted 不大於實際的 max_rpm
+    rpmMinAdjusted = Math.max(rpmMinAdjusted, min_rpm);
+    rpmMaxAdjusted = Math.max(rpmMaxAdjusted, max_rpm);
+
+    console.log("ratio", ratio);
+    console.log("rpmMinAdjusted", rpmMinAdjusted);
+    console.log("rpmMaxAdjusted", rpmMaxAdjusted);
+} else if (max_torque === 0) {
+    console.warn("max_torque is 0, cannot calculate ratio.");
 }
 
-function formatAxisLabel(value) {
-    return value % 1 === 0 ? value : value.toFixed(2);
-}
 
+// ECharts 配置
 const option = {
     title: { text: '' },
     tooltip: {
         trigger: 'axis',
         position: pt => [pt[0], '10%'],
         formatter: params => {
+            let tooltipContent = '';
             if (chart_mode === "5") {
-                return params.map(param => {
-                    const color = param.seriesName === 'Torque' ? 'rgb(255, 0, 0)' : 'rgb(0, 0, 255)';
-                    const unit = param.seriesName === 'Torque' ? 'Nm' : 'RPM';
-                    return `<span style="color: ${color};">${param.seriesName}: </span>${param.value} ${unit}<br>`;
-                }).join('');
+                params.forEach(param => {
+                    if (param.seriesName === 'Torque') {
+                        tooltipContent += `<span style="color: rgb(255, 0, 0);">torque: </span>${param.value} Nm<br>`;
+                    } else if (param.seriesName === 'RPM') {
+                        tooltipContent += `<span style="color: rgb(0, 0, 255);">rpm: </span>${param.value} RPM<br>`;
+                    }
+                });
             } else {
                 const yAxisLabels = { "1": "Torque", "2": "Angle", "3": "Rpm", "4": "Torque" };
                 const yAxisLabel = yAxisLabels[chart_mode] || '';
-                return params.map(param => `<span style="color: rgb(255, 0, 0);">${yAxisLabel}: </span>${param.value}<br>`).join('');
+                params.forEach(param => {
+                    tooltipContent += `<span style="color: rgb(255, 0, 0);">${yAxisLabel}: </span>${param.value}<br>`;
+                });
             }
+            return tooltipContent;
         }
     },
     xAxis: {
         type: 'category',
         boundaryGap: false,
+        name: x_title,
         data: x_data_val
     },
     yAxis: chart_mode === "5" ? [
-        {
-            type: 'value',
-            name: 'Torque',
-            min: min_torque,
-            max: max_torque,
-            alignTicks: true,
-            position: 'left',
-            axisLabel: { formatter: formatAxisLabel }
+    {
+        type: 'value',
+        name: 'Torque',
+        min: min_torque,
+        max: max_torque,
+        position: 'left',
+        axisLabel: { formatter: '{value}' }
+    },
+    {
+        type: 'value',
+        name: 'RPM',
+        position: 'right',
+        axisLabel: { formatter: '{value}' },
+        // *** 關鍵修改：處理 NaN、Infinity 和 min > max 的情況 ***
+        min: () => {
+            if (isNaN(rpmMinAdjusted) || !isFinite(rpmMinAdjusted)) return min_rpm;
+            return Math.min(rpmMinAdjusted, rpmMaxAdjusted); // 確保 min <= max
         },
-        {
-            type: 'value',
-            name: 'RPM',
-            position: 'right',
-            alignTicks: true,
-            axisLabel: { formatter: formatAxisLabel },
-            min: () => {
-                if (!Number.isFinite(rpmMinAdjusted) || rpmMinAdjusted > rpmMaxAdjusted) return min_rpm;
-                return rpmMinAdjusted;
-            },
-            max: () => {
-                if (!Number.isFinite(rpmMaxAdjusted) || rpmMaxAdjusted < rpmMinAdjusted) return max_rpm;
-                return rpmMaxAdjusted;
-            },
-        }
-    ] : [
-        {
-            type: 'value',
-            name: y_title,
-            boundaryGap: [0, '100%']
-        }
-    ],
-    dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+        max: () => {
+            if (isNaN(rpmMaxAdjusted) || !isFinite(rpmMaxAdjusted)) return max_rpm;
+            return Math.max(rpmMinAdjusted, rpmMaxAdjusted); // 確保 max >= min
+        },
+        // *** Y軸刻度優化 ***
+        splitNumber: 5, // 建議的刻度數量
+    }
+] : [
+    {
+        type: 'value',
+        name: y_title,
+        boundaryGap: [0, '100%']
+    }
+],
+    dataZoom: generateDataZoom(),
     series: chart_mode === "5" ? [
         {
             name: 'Torque',
             type: 'line',
             symbol: 'none',
-            sampling: 'average',
             yAxisIndex: 0,
             itemStyle: { color: 'rgb(255,0,0)' },
             lineStyle: { width: 0.75 },
@@ -277,7 +287,6 @@ const option = {
             name: 'RPM',
             type: 'line',
             symbol: 'none',
-            sampling: 'average',
             yAxisIndex: 1,
             itemStyle: { color: 'rgb(0,0,255)' },
             lineStyle: { width: 0.75 },
@@ -297,6 +306,28 @@ const option = {
 
 // 設置圖表
 myChart.setOption(option);
+
+// 生成 DataZoom 配置
+function generateDataZoom() {
+    return [
+        { type: 'inside', start: 0, end: 100 },
+        {
+            show: false,
+            type: 'slider',
+            start: 0,
+            end: 100,
+            handleSize: '80%',
+            handleStyle: {
+                color: '#fff',
+                shadowBlur: 3,
+                shadowColor: 'rgba(0, 0, 0, 0)',
+                shadowOffsetX: 0,
+                shadowOffsetY: 0
+            }
+        }
+    ];
+}
+
 
 
 </script>

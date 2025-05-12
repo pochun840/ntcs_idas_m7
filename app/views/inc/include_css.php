@@ -1,78 +1,124 @@
 <?php 
 
-function includecss_file($part, $cssFileName) {
-    $queryString = $_SERVER['QUERY_STRING'];
+// 共用：條件式載入 CSS / JS（根據 URL 第一層）
+function include_asset($part, $fileName) {
+    $queryString = $_SERVER['QUERY_STRING'] ?? '';
     $queryStringWithoutUrl = str_replace('url=', '', $queryString);
     $parts = explode('/', $queryStringWithoutUrl);
-    $firstPart = $parts[0];
-    $extension = pathinfo($cssFileName, PATHINFO_EXTENSION);
+    $firstPart = $parts[0] ?? '';
+    $extension = pathinfo($fileName, PATHINFO_EXTENSION);
 
-    if($firstPart == $part){
-        if($extension == 'css'){ ?>
-            <link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/<?php echo $cssFileName; ?>?v=<?php echo date('YmdHis');?>">
-        <?php }elseif($extension == 'js'){ ?>
-            <script src="<?php echo URLROOT; ?>js/<?php echo $cssFileName; ?>?v=<?php echo date('YmdHis'); ?>"></script>
-        <?php }
+    //特別排除 Sequences 頁面載入 sequences.js（強制不要載）
+    if (!($firstPart === 'Sequences' && $fileName === 'sequences.js')) {
+        if ($firstPart === $part) {
+            $path = ($extension === 'css') ? 'css' : 'js';
+            $tag = ($extension === 'css')
+                ? "<link rel=\"stylesheet\" href=\"" . URLROOT . "$path/$fileName?v=" . ASSET_VERSION . "\">"
+                : "<script src=\"" . URLROOT . "$path/$fileName?v=" . ASSET_VERSION . "\"></script>";
+            echo $tag . "\n";
+        }
+    }
+
+    //額外條件：若網址是 Sequences，就強制載入 seq.js
+    if ($firstPart === 'Sequences' && $fileName === 'sequences.js') {
+        echo "<script src=\"" . URLROOT . "js/seq.js?v=" . ASSET_VERSION . "\"></script>\n";
     }
 }
-?>
-    <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js"></script>
- 
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/jquery_data_Tables.css?v=202408211600">
 
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/datatables.min.css">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css">
+function include_css() {
+    $queryString = $_SERVER['QUERY_STRING'] ?? '';
+    $routeParts = explode('/', str_replace('url=', '', $queryString));
+    $controller = $routeParts[0] ?? '';
+    $action = $routeParts[1] ?? '';
 
-    <script src="<?php echo URLROOT; ?>js/all.js"></script>
-    <script src="<?php echo URLROOT; ?>js/echarts_min.js"></script>
-    <script src="<?php echo URLROOT; ?>js/jquery_data_Tables.js?v=202408211500"></script>
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/flatpickr.min.css" type="text/css">
+    $isMobile = isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/Mobile|Android|iPhone|iPad|iPod/i', $_SERVER['HTTP_USER_AGENT']);
 
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/alertify_min.css?v=202408211500"/>
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/default_min.css?v=202408211500"/>
-    <script src="<?php echo URLROOT; ?>js/alertify_min.js?v=202408211600"></script>
+    // 一般模組對應（controller 為主）
+    $cssMap = [
+        'Jobs'      => ['pc' => 'jobs.css',        'mobile' => 'jobs_m.css'],
+        'Sequences' => ['pc' => 'seq.css',         'mobile' => 'seq_m.css'],
+        'Step'      => ['pc' => 'tcc_step.css',    'mobile' => 'tcc_step_m.css'],
+        'Inputs'    => ['pc' => 'tcc_input.css',   'mobile' => 'tcc_input_m.css'],
+        'Outputs'   => ['pc' => 'tcc_output.css',  'mobile' => 'tcc_output_m.css'],
+        'Settings'  => ['pc' => 'tcc_setting.css', 'mobile' => 'tcc_setting_m.css'],
+        'Tools'     => ['pc' => 'tcc_tools.css'],
+        'Data'      => ['pc' => 'tcc_data.css'],
+        'Agents'    => ['pc' => 'tcc_agent.css'],
+    ];
 
-    <?php 
-        $userAgent = $_SERVER['HTTP_USER_AGENT'];
-        $isMobile = preg_match('/Mobile|Android|Silk|Kindle|BlackBerry|Opera Mini|Opera Mobi/', $userAgent);
-
-        #判斷是否為行動裝置 是的話就include 行動版的css
-        if ($isMobile){
-            //includecss_file("Tools", "tcc_tool.css");
-            //includecss_file("Inputs", "tcc_input_m.css");
-            //includecss_file("Outputs", "tcc_output_m.css");
-            //includecss_file("Sequences", "tcc_seq_m.css");
-            //includecss_file("Jobs", "tcc_jobs_m.css");
-            //includecss_file("Step", "tcc_step_m.css");
-           //includecss_file("Dashboards","tcc_operation_m.css");
-            //includecss_file("Data","tcc_data.css");
-            //includecss_file("Settings","tcc_setting_m.css");
-    
-        }else{
-            //includecss_file("Tools", "tcc_tool.css");
-            //includecss_file("Inputs", "tcc_input.css");
-            //includecss_file("Outputs", "tcc_output.css");
-            //includecss_file("Sequences", "tcc_seq.css");
-            //includecss_file("Jobs", "tcc_jobs.css");
-            //includecss_file("Step", "tcc_step.css");
-            //includecss_file("Dashboards","tcc_operation.css");
-            //includecss_file("Data","tcc_data.css");
-            //includecss_file("Settings","tcc_setting.css");           
+    // 特殊處理 Dashboards 模組中的不同 action
+    if ($controller === 'Dashboards') {
+        if ($action === 'index') {
+            $cssFile = 'tcc_main.css';
+        } elseif ($action === 'operation') {
+            $cssFile = $isMobile ? 'tcc_operation_m.css' : 'tcc_operation.css';
+        } else {
+            $cssFile = $isMobile ? 'tcc_operation.css' : 'tcc_operation.css'; // 預設 fallback
         }
+    }else if($controller === 'In'){
+        $cssFile = 'tcc_main.css';
+    }
+     elseif (isset($cssMap[$controller])) {
+        $cssFile = $isMobile && isset($cssMap[$controller]['mobile']) 
+            ? $cssMap[$controller]['mobile'] 
+            : $cssMap[$controller]['pc'];
+    } else {
+        $cssFile = null; // 無對應
+    }
 
-        # 載入js 
-        //includecss_file("Inputs", "inputs.js");
-        //includecss_file("Outputs", "outputs.js");
-        includecss_file("Jobs", "jobs.js");
-        includecss_file("Data", "data.js");
-        includecss_file("Sequences", "seq.js");
-        includecss_file("Step", "step.js");
-        includecss_file("Settings", "settings.js");
+    // 輸出 <link>
+    if ($cssFile) {
+        echo '<link rel="stylesheet" href="' . URLROOT . 'css/' . $cssFile . '?v=' . ASSET_VERSION . '" type="text/css">' . "\n";
+    }
+}
 
+?>
+    <!-- ================== 基礎 JS ================== -->
+    <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js?v=<?php echo ASSET_VERSION; ?>"></script>
+
+    <!-- ================== 基礎 CSS ================== -->
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/jquery_data_Tables.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/datatables.min.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/font-awesome.min.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/flatpickr.min.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/alertify_min.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/default_min.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_footer.css?v=<?php echo ASSET_VERSION; ?>">
+
+    <?php
+        $queryString = $_SERVER['QUERY_STRING'] ?? '';
+        $route = explode('/', str_replace('url=', '', $queryString))[0] ?? '';
+
+        // 不在 Input 或 Output 時才載入 tcc_share.css
+        if (!in_array($route, ['Inputs', 'Outputs'])) {
+            echo '<link rel="stylesheet" href="' . URLROOT . 'css/tcc_share.css?v=' . ASSET_VERSION . '">' . "\n";
+        }
     ?>
 
-    <script src="<?php echo URLROOT; ?>js/flatpickr.js?v=202406131200"></script>
-    <script src="<?php echo URLROOT; ?>js/tcc_data.js?v=202406131200"></script>
-    <script src="<?php echo URLROOT; ?>js/flatpickr.js"></script>
-    <script src="<?php echo URLROOT; ?>js/flatpickr_zh-tw.js"></script>
-    <script src="<?php echo URLROOT; ?>js/jszip.js?v=202406241500"></script>
+
+    <!-- ================== 模組 CSS 動態載入 ================== -->
+    <?php echo include_css();?>
+
+
+    <!-- ================== 共用 JS ================== -->
+    <script src="<?php echo URLROOT; ?>js/all.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/echarts_min.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/jquery_data_Tables.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/alertify_min.js?v=<?php echo ASSET_VERSION; ?>"></script>
+
+
+    <!-- ================== 模組 JS 動態載入 ================== -->
+    <?php 
+    $modules = ['Inputs', 'Outputs', 'Jobs', 'Data', 'Sequences', 'Step', 'Settings'];
+    foreach ($modules as $mod) {
+        include_asset($mod, strtolower($mod) . '.js');
+    }
+    ?>
+
+    <!-- ================== 其他工具 JS ================== -->
+    <script src="<?php echo URLROOT; ?>js/flatpickr.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/flatpickr_zh-tw.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/tcc_data.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/jszip.js?v=<?php echo ASSET_VERSION; ?>"></script>
+

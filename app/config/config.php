@@ -31,6 +31,10 @@ define('TABLE_NTCS_TOOLS', 'ntcs_tool_test');
 //table - device
 define('TABLE_NTCS_DEVICE', 'ntcs_device_test');
 
+// 每次刷新都取最新時間，避免快取
+define('ASSET_VERSION', date('YmdHi')); 
+
+
 //define('BASE_PATH_LINUX', '/var/www/html/database/');
 //define('BASE_PATH_OTHER', '../');
 

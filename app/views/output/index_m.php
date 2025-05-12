@@ -511,9 +511,8 @@ function collectPinValues(selector) {
 
 function toggleElementsInRange(start, end, suffix, disable) {
     for (var i = start; i <= end; i++) {
-        
-        for (var j = 0; j <= 2; j++) {  
-            if (j === 1) continue;  
+    
+        for (var j = 0; j <= 1; j++) { 
             var id = 'pin' + i + '_' + j;
             var element = document.getElementById(id);
             if (element) {
@@ -522,12 +521,14 @@ function toggleElementsInRange(start, end, suffix, disable) {
         }
 
         var timeId = 'time' + i;
+        console.log(timeId);
         var timeElement = document.getElementById(timeId);
         if (timeElement) {
             timeElement.disabled = disable;
         }
     }
 }
+
 
 
 var old_output_event; 
@@ -568,6 +569,7 @@ function job_confirm(){
                 });
 
                 var language = getCookie('language');
+                alert(language);
                 if(language == "zh-cn"){
                     document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
                     document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
@@ -1150,7 +1152,7 @@ function getLanguageMessage(cookieName) {
     } else {
       message =  'Please select the event to delete';
     }
-   //alertify.alert(message);
+   alertify.alert(message);
 }
 
 </script>

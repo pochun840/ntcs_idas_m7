@@ -749,6 +749,8 @@ function toggleDownShift() {
             }
 
 
+
+
             hi_angle_max = 30600
             hi_angle_min = 0;
             //lo_angle_max =  document.getElementById('StepHiAngle').value;
@@ -861,8 +863,8 @@ function toggleDownShift() {
             { id: 'StepRPM', pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.50 },  
             { id: 'StepRPMDownShift',pattern: /^\d{0,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM},
-            //{ id: 'StepTorqueTS', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },20250113 暫時disabled
-            //{ id: 'StepTorqueDownShift', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },20250113暫時disabled
+            { id: 'StepTorqueTS', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
+            { id: 'StepTorqueDownShift', pattern: /^\d{0,4}(\.\d{1})?$/, min: Tool_Min_Torque, max: Tool_Max_Torque },
             { id: 'StepHiTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: lo_torque_min, max: hi_torque_max },
             { id: 'StepLoTorque',pattern: /^\d{0,6}(\.\d{0,4})?$/, min: lo_torque_min, max: hi_torque_max },
             { id: 'StepHiAngle', pattern: /^\d{0,5}?$/, min: hi_angle_min, max: 30600 },

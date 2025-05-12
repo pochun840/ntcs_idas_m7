@@ -19,10 +19,7 @@
             <div class="container" style="padding: 10px;border-radius: 5px ;box-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.2);">
                 <div id="Tool_Setting">
                         <h3 style="margin: 5px 3px 10px"><b><?php echo $text['tool_info'];?></b></h3>
-                        <div class="row  border-bottom">
-                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px" ><?php echo $text['tool_type'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px">---------</div>
-                        </div>
+                        
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['tool_sn'];?>:</div>
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['tool_sn'];?></div>
