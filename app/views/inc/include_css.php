@@ -1,5 +1,4 @@
 <?php 
-
 // 共用：條件式載入 CSS / JS（根據 URL 第一層）
 function include_asset($part, $fileName) {
     $queryString = $_SERVER['QUERY_STRING'] ?? '';
@@ -35,8 +34,8 @@ function include_css() {
 
     // 一般模組對應（controller 為主）
     $cssMap = [
-        'Jobs'      => ['pc' => 'jobs.css',        'mobile' => 'jobs_m.css'],
-        'Sequences' => ['pc' => 'seq.css',         'mobile' => 'seq_m.css'],
+        'Jobs'      => ['pc' => 'jobs.css',    'mobile' => 'jobs_m.css'],
+        'Sequences' => ['pc' => 'tcc_seq.css',     'mobile' => 'tcc_seq_m.css'],
         'Step'      => ['pc' => 'tcc_step.css',    'mobile' => 'tcc_step_m.css'],
         'Inputs'    => ['pc' => 'tcc_input.css',   'mobile' => 'tcc_input_m.css'],
         'Outputs'   => ['pc' => 'tcc_output.css',  'mobile' => 'tcc_output_m.css'],
@@ -72,7 +71,10 @@ function include_css() {
     }
 }
 
+
+
 ?>
+
     <!-- ================== 基礎 JS ================== -->
     <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js?v=<?php echo ASSET_VERSION; ?>"></script>
 
@@ -84,19 +86,19 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/flatpickr.min.css?v=<?php echo ASSET_VERSION; ?>">
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/alertify_min.css?v=<?php echo ASSET_VERSION; ?>">
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/default_min.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_footer.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/footer.css?v=<?php echo ASSET_VERSION; ?>">
 
     <?php
         $queryString = $_SERVER['QUERY_STRING'] ?? '';
         $route = explode('/', str_replace('url=', '', $queryString))[0] ?? '';
 
-        // 不在 Input 或 Output 時才載入 tcc_share.css
+        // 不在 Input 或 Output 時才載入 share.css
         if (!in_array($route, ['Inputs', 'Outputs'])) {
-            echo '<link rel="stylesheet" href="' . URLROOT . 'css/tcc_share.css?v=' . ASSET_VERSION . '">' . "\n";
+            echo '<link rel="stylesheet" href="' . URLROOT . 'css/share.css?v=' . ASSET_VERSION . '">' . "\n";
         }
     ?>
 
-
+    
     <!-- ================== 模組 CSS 動態載入 ================== -->
     <?php echo include_css();?>
 
@@ -121,4 +123,3 @@ function include_css() {
     <script src="<?php echo URLROOT; ?>js/flatpickr_zh-tw.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <script src="<?php echo URLROOT; ?>js/tcc_data.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <script src="<?php echo URLROOT; ?>js/jszip.js?v=<?php echo ASSET_VERSION; ?>"></script>
-

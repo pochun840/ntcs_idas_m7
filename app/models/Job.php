@@ -458,7 +458,7 @@ class Job{
 
     public function delete_output_by_job_id($new_jobid) {
         #查詢資料是否存在
-        $sql = "SELECT COUNT(*) FROM output WHERE output_job_id  = ?";
+        $sql = "SELECT COUNT(*) FROM JOBOutput_lst WHERE JOBID  = ?";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$new_jobid]);
         $count = $statement->fetchColumn();
@@ -466,7 +466,7 @@ class Job{
        
         if ($count > 0) {
             #如果資料存在，則刪除
-            $deleteSql = "DELETE FROM output  WHERE  output_job_id	 = ? ";
+            $deleteSql = "DELETE FROM JOBOutput_lst  WHERE JOBID	 = ? ";
             $deleteStatement = $this->db_iDas->prepare($deleteSql);
             $deleteStatement->execute([$new_jobid]);
 
@@ -476,6 +476,33 @@ class Job{
         }
     }
 
+
+    //查詢 job_id 還沒有 被使用的 取出 最小值
+    public function get_head_job_id() {
+
+        // 檢查 job_id 是否有 1，如果沒有就直接返回 1
+        $query = "SELECT JOBID FROM JOB_lst WHERE JOBID  = 1 ";
+        $statement = $this->db_iDas->prepare($query);
+        $statement->execute();
+    
+        $result = $statement->fetch();
+        if (!$result) {
+            return array('missing_id' => 1); // 如果 job_id = 1 不存在，返回 1
+        }
+    
+        // 如果 job_id = 1 存在，查找最小的可用 job_id
+        $query = "SELECT JOBID + 1 AS missing_id
+                    FROM JOB_lst
+                    WHERE (JOBID + 1) NOT IN (SELECT JOBID FROM JOB_lst)
+                    ORDER BY missing_id
+                    LIMIT 1";
+    
+        $statement = $this->db_iDas->prepare($query);
+        $statement->execute();
+    
+        return $statement->fetch();
+    }
+    
 
 
 

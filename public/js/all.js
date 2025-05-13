@@ -216,3 +216,53 @@ function logout() {
 function deleteCookie(name) {
     document.cookie = `${name}=; expires=${new Date(0).toUTCString()}; path=/;`;
 }
+
+function success_response(response, spinnerId = 'spinner') {
+    const responseData = JSON.parse(response);
+
+    setTimeout(() => {
+        document.getElementById(spinnerId).style.display = 'none';
+
+        alertify.alert(responseData.res_type, responseData.res_msg, function () {
+            alertify.closeAll();
+            history.go(0);
+        });
+
+        setTimeout(() => {
+            alertify.closeAll();
+            history.go(0);
+        }, 3000);
+    }, 1000);
+}
+
+function handleAjaxResponseWithSpinner(response, spinnerId = 'spinner') {
+    const responseData = JSON.parse(response);
+
+    // 顯示 Spinner
+    document.getElementById(spinnerId).style.display = 'block';
+
+    setTimeout(() => {
+        // 隱藏 Spinner
+        document.getElementById(spinnerId).style.display = 'none';
+
+        // 顯示 alertify 並在關閉時刷新
+        alertify.alert(responseData.res_type, responseData.res_msg, function () {
+            alertify.closeAll();
+            history.go(0);
+        });
+
+        // 自動關閉 alertify 並刷新
+        setTimeout(() => {
+            alertify.closeAll();
+            history.go(0);
+        }, 3000);
+    }, 1000); // 延遲 1 秒
+}
+
+
+
+function hideElementById(id) {
+    document.getElementById(id).style.display = 'none';
+    document.querySelector(".main-content").classList.remove("overlay-active");
+    document.getElementById("spinner").style.display = 'none'; // 關閉 spinner（如果有）
+}

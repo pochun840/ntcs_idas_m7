@@ -79,13 +79,13 @@
                         <div class="row">
                             <div for="job-id" class="col-6 t1"><?php echo $text['job_id'];?> :</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="job_id" maxlength=""  value='<?php echo $data['jobint'];?>'>
+                                <input type="text" class="form-control input-ms" id="job_id" maxlength=""  value='<?php echo $data['next_job_id'];?>' disabled>
                             </div>
                         </div>
                         <div class="row">
                             <div for="job-name" class="col-6 t1"><?php echo $text['job_name'];?> :</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control"  id="job_name" maxlength="" >
+                                <input type="text" class="form-control"  id="job_name" maxlength=""  value ='<?php echo "JOB"."-".$data['next_job_id'];?>' >
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
@@ -149,7 +149,7 @@
                         <div class="row">
                             <div for="job-id" class="col-6 t1"><?php echo $text['job_id'];?> :</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="edit_jobid" maxlength=""  value=''>
+                                <input type="text" class="form-control input-ms" id="edit_jobid" maxlength=""  value='' disabled >
                             </div>
                         </div>
                         <div class="row">
@@ -238,13 +238,13 @@
         				    <div class="row">
         				        <label for="to_job_id" class="t1 col-4 col-form-label"><?php echo $text['job_id'];?> :</label>
         				        <div class="t2 col-5">
-        				            <input type="number" class="form-control" id="to_job_id">
+        				            <input type="number" class="form-control" id="to_job_id" value= '<?php echo $data['next_job_id'];?>' disabled style="background-color: #fff; color: #000; border: 1px solid #ccc;" >
         				        </div>
         				    </div>
         				    <div class="row">
         				        <label for="to_job_name" class="t1 col-4 col-form-label"><?php echo $text['job_name'];?> :</label>
         				        <div class="t2 col-5">
-        				            <input type="text" class="form-control" id="to_job_name">
+        				            <input type="text" class="form-control" id="to_job_name" value ='<?php echo "JOB"."-".$data['next_job_id'];?>' >
         				        </div>
         				    </div>
         			    </div>
@@ -260,7 +260,18 @@
     </div>
 
 
+    <!-- 加载動畫 OP -->
+        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
+
+
 </div>
+
+
+
+
+
 
 <script>
 $(document).ready(function () {
@@ -318,163 +329,6 @@ for (var i = 0; i < rows.length; i++) {
         }
     })(rows[i]);
 }
-
-function savejob() {
-    var jobidnew = '<?php echo $data['jobint']?>';
-    var jobname_val = document.getElementById("job_name").value;
-  
-   
-
-    var jobElement = document.querySelector('input[name="job_ok"]:checked');
-    var job_ok_val = jobElement ? jobElement.value : null;
-
-    var stopjobokElement = document.querySelector('input[name="stop_job_ok"]:checked');
-    var stop_job_ok_val = stopjobokElement ? stopjobokElement.value : null;
-
-    let check = input_check();
-    if(check){
-
-        $.ajax({
-            url: "?url=Jobs/create_job",
-            method: "POST",
-            data: { 
-                jobidnew: jobidnew,
-                jobname_val: jobname_val,
-                job_ok_val: job_ok_val,
-                stop_job_ok_val: stop_job_ok_val
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0); // 刷新页面
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });
-    }
-
-
-}
-
-
-
-
-function copy_job_by_id(jobid){
-
-    var new_jobid = document.getElementById("to_job_id").value;
-    var new_jobname = document.getElementById("to_job_name").value;
-
-    document.getElementById("from_job_id").value = old_jobid;
-    document.getElementById("from_job_name").value = oldjobname;
-    document.getElementById("to_job_id").value = new_jobid;
-
-    if(new_jobid){
-
-
-        var language = getCookie('language');
-        if(language == "zh-cn"){
-            var text_info ='你确定吗？';
-            var title = 'Copy Job';
-        }else if(language == "zh-tw"){
-            var text_info ='你確定嗎 ?';
-            var title = 'Copy Job';
-        }else{
-            var text_info ='Are you sure ?';
-            var title = 'Copy Job';
-        }
-        
-        
-        $.ajax({
-            url: "?url=Jobs/check_job_type",
-            method: "POST",
-            data:{ 
-                new_jobid: new_jobid,
-
-            },
-            success: function(response) {
-                alertify.confirm(text_info, function (result) {
-
-                
-                if (result) {
-                    $.ajax({
-                        url: "?url=Jobs/copy_job_data",
-                        method: "POST",
-                        data:{ 
-                            old_jobid: old_jobid,
-                            old_jobname: oldjobname,
-                            new_jobid: new_jobid,
-                            new_jobname: new_jobname
-
-                        },
-                        success: function(response) { 
-                            var responseData = JSON.parse(response);
-                            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                                document.getElementById('copyjob').style.display = 'none';
-                                history.go(0);
-                            }); 
-
-                    
-                        },
-                        error: function(xhr, status, error) {
-                            
-                        }
-                    });
-                } else {
-                    alertify.error('Cancelled');
-                   
-                }
-
-                
-                });
-                        },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-        document.getElementById('copyjob').style.display = 'none';
-    }
-}
-
-
-function input_check(argument) {
-    let conditions = [
-        { id: 'job_name', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
-    ];
-
-    let isFormValid = true;
-    conditions.forEach(function(input) {
-        var element = document.getElementById(input.id);
-        var value = element.value.trim();
-
-        if(input.id != 'job_name'){
-            element.nextElementSibling.innerHTML = input.min+' ~ '+input.max;
-        }
-
-        if (value === "") {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (!input.pattern.test(value)) {
-            // element.value = "";
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (input.min !== null && parseFloat(value) < input.min) {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (input.max !== null && parseFloat(value) > input.max) {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else {
-            element.classList.remove("is-invalid");
-        }
-
-    });
-
-    console.log(conditions)
-
-    return isFormValid;
-
-}
-
 </script>
+
+<?php require_once '../app/views/jobs/jobs_share.php';?>

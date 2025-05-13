@@ -5,6 +5,8 @@ class Jobs extends Controller
     private $DashboardModel;
     private $ToolModel;
     private $SettingModel;
+    private $MiscellaneousModel;
+
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
@@ -25,19 +27,20 @@ class Jobs extends Controller
         $jobs      = $this->jobModel->getJobs();
         $direction = $this->MiscellaneousModel->details('reverse_direction');
 
-
+        $next_job_id_arr = $this->jobModel->get_head_job_id();
+        $next_job_id = (int)$next_job_id_arr['missing_id'];
         if(!empty($jobs)){
             $lastRow  = end($jobs);
             $jobIdInt = intval($lastRow['JOBID']) + 1 ;   
         }else{
-            $lastRow  = ""; 
-            $jobIdInt = "";
+            $lastRow  = 1; 
+            $jobIdInt = 1;
         }
-        ;
 
         $data = array(
             'jobint' => $jobIdInt,
-            'jobs' => $jobs
+            'jobs' => $jobs,
+            'next_job_id' => $next_job_id,
         );
         
         if($isMobile){
@@ -143,7 +146,7 @@ class Jobs extends Controller
             $ans = $this->jobModel->delete_sequence_by_job_id($jobid);
             $an1 = $this->jobModel->delete_step_by_job_id($jobid);
             $an2 = $this->jobModel->delete_input_by_job_id($jobid);
-            // $an3 = $this->jobModel->delete_output_by_job_id($jobid);
+            $an3 = $this->jobModel->delete_output_by_job_id($jobid);
 
             $result = array();
             if($res){
@@ -168,16 +171,16 @@ class Jobs extends Controller
 
     public function check_job_type(){
         $jobid = $_POST['new_jobid'] ?? null;
-
         if(!empty($jobid)){
             $res  = $this->jobModel->job_id_repeat($jobid);
             echo  $res;
         }
-      
+        
     }
 
     #copy 
     public function copy_job_data(){
+
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
             include $file;

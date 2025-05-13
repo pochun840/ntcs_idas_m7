@@ -1,23 +1,4 @@
 
-function delete_jobid(jobid) {
-    if (jobid) {
-        $.ajax({
-            url: "?url=Jobs/delete_jobid",
-            method: "POST",
-            data: { jobid: jobid },
-            success: function(response) {
-                console.log(response);
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                }); 
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-    }
-}
 var oldjobname ='';
 var old_jobid  = '';
 function cound_job(argument){
@@ -28,18 +9,22 @@ function cound_job(argument){
     oldjobname = selectedRow ? selectedRow.cells[1].innerText : null;
     old_jobid  = selectedRow ? selectedRow.cells[0].innerText : null;
     if(argument == 'del' && jobid != null){
+        document.querySelector(".main-content").classList.add("overlay-active");
         delete_jobid(jobid);
     }
 
     if(argument =="edit" && jobid != null){
+        document.querySelector(".main-content").classList.add("overlay-active");
         edit_job(jobid);
     }
 
     if(argument =="new"){
+        document.querySelector(".main-content").classList.add("overlay-active");
         create_job();
     }
 
     if(argument =="copy" && jobid != null){
+        document.querySelector(".main-content").classList.add("overlay-active");
         copy_job(jobid);
     }
 
@@ -55,61 +40,19 @@ function create_job() {
     document.getElementById('newjob').style.display = 'block';
     document.getElementById('job_off').checked = true;
     document.getElementById('stop_job_ok_off').checked = true;
-    
-    var jobname_val = document.getElementById("job_name").value;
-    if (jobname_val.trim() !== "") {
-        savejob();
-    } else {
-       /* alertify.alert("Error", "Job name cannot be empty", function() {
-            document.getElementById("job_name").focus();
-        });*/
-    }
 }
 
 function copy_job(jobid){
+    var new_jobid = document.getElementById("to_job_id").value;
+    var new_jobname = document.getElementById("to_job_name").value;
+
+    document.getElementById("from_job_id").value = old_jobid;
+    document.getElementById("from_job_name").value = oldjobname;
+    document.getElementById("to_job_id").value = new_jobid;
+    
     document.getElementById('copyjob').style.display = 'block';
-    copy_job_by_id(jobid);
 }
 
-function updatejob(){
-
-    var jobid      = document.getElementById("edit_jobid").value;
-    var jobname    = document.getElementById("edit_jobname").value;
-    var jobokValue = document.querySelector('input[name="edit_job_ok"]:checked').value;
-    var stopjobValue = document.querySelector('input[name="edit_stop_job_ok"]:checked').value;
-
-    let check_edit = edit_input_check();
-
-    if(check_edit) {
-        $.ajax({
-            url: "?url=Jobs/update_job",
-            method: "POST",
-            data: { 
-                jobid: jobid,
-                jobname: jobname,
-                jobokValue:jobokValue,
-                stopjobValue:stopjobValue
-
-            },
-            success: function(response) {   
-
-                
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    localStorage.setItem('jobid', jobid);
-                    localStorage.setItem('jobname', jobname);
-                    history.go(0);
-                });
-
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-
-    }
-   
-}
 
 function edit_job(jobid) {
 
@@ -149,42 +92,35 @@ function edit_job(jobid) {
     }   
 }
 
+function validateJobNameInput(id) {
+    const element = document.getElementById(id);
+    const value = element?.value?.trim() || "";
+    const pattern = /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/;
 
-function edit_input_check(argument) {
-    let conditions = [
-        { id: 'edit_jobname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
-    ];
+    let isValid = true;
 
-    let isFormValid = true;
-    conditions.forEach(function(input) {
-        var element = document.getElementById(input.id);
-        var value = element.value.trim();
+    if (value === "") {
+        isValid = false;
+    } else if (!pattern.test(value)) {
+        isValid = false;
+    }
 
-        if(input.id != 'edit_jobname'){
-            element.nextElementSibling.innerHTML = input.min+' ~ '+input.max;
-        }
+    if (!isValid) {
+        element.classList.add("is-invalid");
+    } else {
+        element.classList.remove("is-invalid");
+    }
 
-        if (value === "") {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (!input.pattern.test(value)) {
-            // element.value = "";
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (input.min !== null && parseFloat(value) < input.min) {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (input.max !== null && parseFloat(value) > input.max) {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else {
-            element.classList.remove("is-invalid");
-        }
-
-    });
-
-    console.log(conditions)
-
-    return isFormValid;
-
+    return isValid;
 }
+
+
+
+function input_check() {
+    return validateJobNameInput("job_name");
+}
+
+function edit_input_check() {
+    return validateJobNameInput("edit_jobname");
+}
+
