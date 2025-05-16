@@ -127,7 +127,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="savejob()"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('newjob');" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('newjob');" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
@@ -199,7 +199,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="updatejob();"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('editjob');" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('editjob');" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
@@ -253,7 +253,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal"  onclick="copy_job_by_id();"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('copyjob');"  class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('copyjob');"  class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>

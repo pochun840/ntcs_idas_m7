@@ -1,5 +1,5 @@
 ﻿.form-control{
-    width: auto!important;
+    width: 100px;
     display: initial!important;
 }
 
@@ -10,10 +10,8 @@
     display: inline!important;
 }
 
-
 .main-content.overlay-active {
   filter: grayscale(100%); /* 完全灰化 */
   pointer-events: none; /* 禁止點擊 */
   opacity: 0.3; /* 降低不透明度 */
 }
-

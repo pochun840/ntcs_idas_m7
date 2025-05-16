@@ -57,7 +57,7 @@
         </div>
 
         <div class="buttonbox">
-        <?php $status = count($data['jobs']) >=  50 ? 'disabled' : ''; ?>
+        <?php $status = count($data['jobs']) >= 100 ? 'disabled' : ''; ?>
             <input id="S3" name="Job_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"   onclick="cound_job('new')" <?php echo $status;?> >
             <input id="S6" name="Job_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1"  onclick="cound_job('edit')">
             <input id="S5" name="Job_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1"  onclick="cound_job('copy')" <?php echo $status;?> >
@@ -130,7 +130,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="savejob()"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="document.getElementById('newjob').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('newjob');"class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
@@ -202,7 +202,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="updatejob();"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('editjob');" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('editjob');" class="closebtn"><?php echo $text['close'];?></button>
 
                 </div>
             </div>
@@ -257,7 +257,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="copy_job_by_id();"><?php echo $text['save'];?></button>
-                   <button id="" class="button-modal" onclick="hideElementById('copyjob');" class="closebtn"><?php echo $text['close'];?></button>
+                   <button id="" class="button-modal" onclick="closebutton('copyjob');" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
@@ -328,75 +328,6 @@ for (var i = 0; i < rows.length; i++) {
         }
     })(rows[i]);
 }
-
-
-function copy_job_by_id(jobid){
-
-    var new_jobid = document.getElementById("to_job_id").value;
-    var new_jobname = document.getElementById("to_job_name").value;
-
-    document.getElementById("from_job_id").value = old_jobid;
-    document.getElementById("from_job_name").value = oldjobname;
-    document.getElementById("to_job_id").value = new_jobid;
-
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='你确定吗？';
-    }else if(language == "zh-tw"){
-        var text_info ='你確定嗎 ?';
-    }else{
-        var text_info ='Are you sure ?';
-    }
-
-
-    if(new_jobid){
-        $.ajax({
-            url: "?url=Jobs/check_job_type",
-            method: "POST",
-            data:{ 
-                new_jobid: new_jobid,
-
-            },
-            success: function(response) {
-                alertify.confirm(text_info , function (result) {
-                if (result) {
-                    $.ajax({
-                        url: "?url=Jobs/copy_job_data",
-                        method: "POST",
-                        data:{ 
-                            old_jobid: old_jobid,
-                            old_jobname: oldjobname,
-                            new_jobid: new_jobid,
-                            new_jobname: new_jobname
-
-                        },
-                        success: function(response) {
-                            var responseData = JSON.parse(response);
-                            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                                document.getElementById('copyjob').style.display = 'none';
-                                history.go(0);
-                            });
-                        },
-                        error: function(xhr, status, error) {
-                            
-                        }
-                    });
-                } else {
-                    alertify.error('Cancelled');
-                    // 用户点击取消按钮的处理逻辑
-                }
-                });
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-        
-        document.getElementById('copyjob').style.display = 'none';
-    }
-}
-
-
-
-
 </script>
+
+<?php require_once '../app/views/jobs/jobs_share.php';?>

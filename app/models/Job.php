@@ -209,14 +209,16 @@ class Job{
                     ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, 
                     accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, 
                     image, message, delay, input, input_signal, output, output_signal, output_durat, 
-                    addtion, unscrew_count_switch, unscrew_torque_threshold, seq_unit
+                    addtion, unscrew_count_switch, unscrew_torque_threshold, seq_unit,unscrew_angle_threshold,
+                    dt_time,tt_time
                 ) 
                 VALUES (
                     :JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, 
                     :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, 
                     :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, 
                     :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, 
-                    :addtion, :unscrew_count_switch, :unscrew_torque_threshold, :seq_unit
+                    :addtion, :unscrew_count_switch, :unscrew_torque_threshold, :seq_unit, :unscrew_angle_threshold,
+                    :dt_time, :tt_time
                 )";
     
 
@@ -261,6 +263,12 @@ class Job{
                     ':unscrew_count_switch' => $seq['unscrew_count_switch'],
                     ':unscrew_torque_threshold' => $seq['unscrew_torque_threshold'],
                     ':seq_unit' => isset($seq['seq_unit']) ? $seq['seq_unit'] : 0,
+                    ':unscrew_angle_threshold' => $seq['unscrew_angle_threshold'] ?? null,
+                    ':dt_time' => $seq['dt_time'] ?? null,
+                    ':tt_time' => $seq['tt_time'] ?? null,
+
+
+
                 ])) {
                  
                     $insertedrecords++;

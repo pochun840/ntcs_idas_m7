@@ -1,9 +1,10 @@
 <?php
-// 0 => ok 
-// 1 =>ng
- 
+
 class Data extends Controller
 {
+    private $DataModel;
+    private $MiscellaneousModel;
+
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -12,30 +13,56 @@ class Data extends Controller
     }
 
     // 取得所有Jobs
-    public function index(){
-  
-        $type ='ALL';
+     public function index(){
+        
+        $type = 'ALL';
         $isMobile = $this->isMobileCheck();
-        $res_data = $this->DataModel->getData('ALL');
-        $res_data_ok = $this->DataModel->getData('OK');
-        $res_data_nok = $this->DataModel->getData('NOK');
+
+        // 取得當前年份
+        if (PHP_OS_FAMILY === 'Linux') {
+            $db_path = "/var/www/html/database/data".date('Y').".db";
+
+            // 檢查資料庫是否存在
+            $db_exists = file_exists($db_path);
+    
+            if ($db_exists) {
+                $res_data     = $this->DataModel->getData('ALL');
+                $res_data_ok  = $this->DataModel->getData('OK');
+                $res_data_nok = $this->DataModel->getData('NOK');
+            } else {
+                $res_data     = [];
+                $res_data_ok  = [];
+                $res_data_nok = [];
+            }
+
+        }else{
+            $res_data     = $this->DataModel->getData('ALL');
+            $res_data_ok  = $this->DataModel->getData('OK');
+            $res_data_nok = $this->DataModel->getData('NOK');
+            $db_exists = '';
+            $db_path = '';
+        }
+      
 
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-        $status_arr = $this->MiscellaneousModel->details('status_ntcs');
+        $status_arr = $this->MiscellaneousModel->details('status');
         $device_info = $this->Device_Info();
-        $data = array(
-            'isMobile' => $isMobile,
-            'res_data' => $res_data,
-            'res_data_ok' => $res_data_ok,
-            'res_data_nok' => $res_data_nok,
-            'device_info' => $device_info,
-            'unit_arr' => $unit_arr,
-            'status_arr' => $status_arr
-        );
-        
-        $this->view('data/index', $data);
 
+        $data = array(
+            'isMobile'      => $isMobile,
+            'res_data'      => $res_data,
+            'res_data_ok'   => $res_data_ok,
+            'res_data_nok'  => $res_data_nok,
+            'device_info'   => $device_info,
+            'unit_arr'      => $unit_arr,
+            'status_arr'    => $status_arr,
+            'db_exists'     => $db_exists,
+            'db_path'       => $db_path
+        );
+
+        $this->view('data/index', $data);
     }
+
 
     public function search_info() {
         $unit_arr = $this->MiscellaneousModel->details('torque_unit');
@@ -157,8 +184,39 @@ class Data extends Controller
             exit();
         }
     }
-    
-    
+
+
+    public function getreal_time_data() {
+       
+        
+        $mode = $_POST['mode'] ?? 'ALL';
+        //var_dump($mode);die();
+        // 根據系統設定路徑
+        $base_path = (strtoupper(PHP_OS_FAMILY) === 'LINUX') 
+            ? "/var/www/html/ntcs/"
+            : "../";
+
+        $db_path = $base_path . "ntcs_data.db";
+
+        if (!file_exists($db_path)) {
+            echo json_encode(['success' => false, 'msg' => "資料庫不存在"]);
+            return;
+        }
+
+        $res_data = $this->DataModel->show_getData($mode);
+        $unit_arr = $this->MiscellaneousModel->details('torque_unit');
+        $status_arr = $this->MiscellaneousModel->details('status');
+
+        echo json_encode([
+            'success' => true,
+            'records' => $res_data,
+            'unit_arr' => $unit_arr,
+            'status_arr' => $status_arr
+        ]);
+    }
+
+        
+        
     
 }
 ?>

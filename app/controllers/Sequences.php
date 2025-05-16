@@ -24,6 +24,8 @@ class Sequences extends Controller
         $sequences  = $this->sequenceModel->getSequences_by_job_id($job_id);
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
 
+        $total_seq = $this->sequenceModel->countseq($job_id );
+
         if(empty($sequences)){
             $seq_id = 1;
         }else{
@@ -40,6 +42,7 @@ class Sequences extends Controller
             'unit_arr' => $unit_arr,
             'seq_id' => $seq_id,
             'old_seqid' => '',
+            'total_seq' => $total_seq
 
 
         );
@@ -83,6 +86,8 @@ class Sequences extends Controller
                 'skip' => $_POST['skip'] ?? null,
                 'seq_repeat' => $_POST['seq_repeat'] ?? null,
                 'timeout' => $_POST['timeout'] ?? null,
+                'dt_time' => $_POST['dt_time'] ?? 0,
+                'tt_time' => $_POST['tt_time'] ?? 0,
                 'ok_seq' => $_POST['ok_seq_val'] ?? null,
                 'ok_stop' => $_POST['ok_stop_val'] ?? null,
                 'countType' =>$_POST['countType'] ?? 1,
@@ -107,7 +112,10 @@ class Sequences extends Controller
                 'addtion' => $_POST['addtion'] ?? null,
                 'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
                 'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
-                'seq_unit' => $_POST['seq_unit'] ?? 0 
+                'seq_unit' => $_POST['seq_unit'] ?? 0,
+                'unscrew_angle_threshold' => $_POST['unscrew_angle_threshold'] ?? 0,
+                'dt_time' => $_POST['dt_time'] ?? 0,
+                'tt_time' => $_POST['tt_time'] ?? 0
 
             );
 
@@ -218,6 +226,8 @@ class Sequences extends Controller
                 'skip' => $_POST['skip'] ?? null,
                 'seq_repeat' => $_POST['seq_repeat'] ?? null,
                 'timeout' => $_POST['timeout'] ?? null,
+                'dt_time' => $_POST['dt_time'] ?? 0,
+                'tt_time' => $_POST['tt_time'] ?? 0,
                 'ok_seq' => $_POST['ok_seq_val'] ?? null,
                 'ok_stop' => $_POST['ok_stop_val'] ?? null,
                 'countType' =>$_POST['countType'] ?? 1,
@@ -362,6 +372,10 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['unscrew_count_switch'] = $val['unscrew_count_switch'];
                 $new_temp_seq[$kk_seq]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
                 $new_temp_seq[$kk_seq]['seq_unit'] = $val['seq_unit'];
+                $new_temp_seq[$kk_seq]['unscrew_angle_threshold'] = $val['unscrew_angle_threshold'];
+                $new_temp_seq[$kk_seq]['dt_time'] = $val['dt_time'];
+                $new_temp_seq[$kk_seq]['tt_time'] = $val['tt_time'];
+
 
             }  
 

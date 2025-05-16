@@ -1,6 +1,3 @@
-
-<link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_seq_m.css" type="text/css">
-
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <div class="w3-text-white w3-center">
@@ -75,11 +72,11 @@
         </div>
 
         <div class="buttonbox">
-        <?php //$status = count($data['sequences']) >=  50 ? 'disabled' : ''; ?>
+        <?php  $status = count($data['total_seq']) >=  100 ? 'disabled' : ''; ?>
 
-            <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_seq('new');" <?php //echo $status;?> >
+            <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_seq('new');" <?php echo $status;?> >
             <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_seq('edit');">
-            <input id="S5" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="cound_seq('copy');" <?php //echo $status;?> >
+            <input id="S5" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="cound_seq('copy');" <?php echo $status;?> >
             <input id="S4" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="cound_seq('del');">
         </div>
     </div>
@@ -138,6 +135,12 @@
         </div>
     </div>
 
+    <!-- 加载動畫 OP -->
+       <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
+
+
 </div>
 
 <script>
@@ -169,326 +172,7 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 }
-function cound_seq(argument){
-    var table = document.getElementById('seq_table');
-    var selectedRow = table.querySelector('.selected');  
-    var selectedRowData = selectedRow ? selectedRow.cells[0].innerText : null;
-    var selectedRowData_name = selectedRow ? selectedRow.cells[1].innerText : null;
-    seqid = selectedRowData;
-    seqname = selectedRowData_name;
-    
-    
-    if(argument == 'del' && seqid != null){
-        delete_seqid(seqid);
-    }
 
-    if(argument =="edit" && seqid != null){
-        
-        edit_seq(seqid);
-    }
-
-    if(argument =="new"){
-        create_seq();
-    }
-
-    if(argument =="copy" && seqid != null){
-        copy_seq(seqid);
-    }
-
-
-}
-
-var rowInfoArray = [];
-<?php foreach($data['sequences'] as $key =>$val) {?>
-        var SEQID = "<?php echo $val['SEQID'];?>";
-        var SEQname = "<?php echo $val['SEQname'];?>";
-        
-        var rowInfo = {
-            SEQID: SEQID,
-            SEQname: SEQname
-        };
-        
-        rowInfoArray.push(rowInfo);
-<?php } ?>
-
-var seqid = ''; 
-var seqname = '';
-var rows = document.getElementsByTagName("tr");
-for (var i = 0; i < rows.length; i++) {
-    (function(row) {
-        var cells = row.getElementsByTagName("td");
-        if (cells.length > 0) {
-            cells[0].addEventListener("click", function() {
-                seqid = cells[0] ? (cells[0].textContent || cells[0].innerText) : null;
-                seqname = cells[1] ? (cells[1].textContent || cells[1].innerText) : null;
-            
-                localStorage.setItem("seqid", seqid);
-                localStorage.setItem("seqname", seqname);
-            });
-        }
-    })(rows[i]);
-}
-
-function copy_seq_by_id(){
-
-    var jobid = '<?php echo $data['job_id'];?>';
-    var oldseqname = seqname;
-    var newseqid = document.getElementById('to_seq_id').value;
-    var newseqname = document.getElementById("to_seq_name").value;    
-
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='你确定吗？';
-    }else if(language == "zh-tw"){
-        var text_info ='你確定嗎 ?';
-    }else{
-        var text_info ='Are you sure ?';
-    }
-
-    if(newseqname){
-        $.ajax({
-            url: "?url=Sequences/check_seq_type",
-            method: "POST",
-            data:{ 
-                jobid:jobid,
-                newseqid: newseqid
-
-            },
-            success: function(response) {
-                alertify.confirm(text_info, function (result) {
-                if(result){
-                    $.ajax({
-                        url: "?url=Sequences/copy_seq_data",
-                        method: "POST",
-                        data:{ 
-                            jobid: jobid,
-                            seqid: seqid,
-                            oldseqname: oldseqname,
-                            newseqid: newseqid,
-                            newseqname: newseqname
-                        },
-                        success: function(response) {
-                            console.log(response);
-                            
-                            var responseData = JSON.parse(response);
-                            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                                history.go(0);
-                            });
-                            
-                        },
-                        error: function(xhr, status, error) {
-                            
-                        }
-                    });
-
-                    //alert('eeew');
-                }else {
-                    alertify.error('Cancelled');
-                    // 用户点击取消按钮的处理逻辑
-                }
-                });
-                        },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-        
-    }
-
-}
-
-function copy_seq(seqid){
-    
-    document.getElementById('copyseq').style.display = 'block';   
-    document.getElementById('from_seq_id').value =seqid;
-    document.getElementById('from_seq_name').value =seqname;
-    copy_seq_by_id(seqid);
-}
-
-
-
-function delete_seqid(seqid){
-    var jobid = '<?php echo $data['job_id']?>';
-
-    if (jobid) {
-        $.ajax({
-            url: "?url=Sequences/delete_seq",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-                seqid: seqid
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                }); 
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-    }
-
-}
-
-function create_seq() {
-    var job_id = '<?php echo $data['job_id'];?>';    
-    window.location.href = '../public/?url=Sequences/variation/' + job_id; 
-
-}
-
-
-function edit_seq(seqid) {
-    var jobid = '<?php echo $data['job_id']?>'; 
-    window.location.href = '../public/?url=Sequences/variation/'+ jobid+'/'+ seqid;   
-
-}
-function edit_seq_save(){
-
-    var jobid = '<?php echo $data['job_id']?>';
-
-    var seq_name = document.getElementById("edit_seq_name").value;
-    var tightening_repeat = document.getElementById("edit_tighten_repeat").value;
-    var ok_time = document.getElementById("edit_ok_time").value;
-    var okall_alarm_time = document.getElementById("edit_okall_alarm").value;
-    var k_value = document.getElementById("edit_K").value;
-    var offset = document.getElementById("edit_offset").value;
-    var ng_stop = document.getElementById('edit_ng_stop').value;
-    var join_val = document.querySelector('input[name="edit_join_option"]:checked').value;
-    var okall_stop_val = document.querySelector('input[name="edit_okall_stop_option"]:checked').value;
-    var opt_val = document.querySelector('input[name="edit_opt_option"]:checked').value;
-    
-    if(seq_name){
-        $.ajax({
-            url: "?url=Sequences/edit_seq",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-                seqid: seqid,
-                seq_name: seq_name,
-                tightening_repeat: tightening_repeat,
-                ok_time: ok_time,
-                okall_alarm_time: okall_alarm_time,
-                k_value: k_value,
-                offset: offset,
-                torque_unit: torque_unit,
-                ng_stop: ng_stop,
-                join_val:join_val,
-                okall_stop_val: okall_stop_val,
-                opt_val: opt_val
-
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                });
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-    }
-
-}
-
-
-
-function getSelectedValue(name, defaultValue = null) {
-    var selectedOption = document.querySelector(`input[name="${name}"]:checked`);
-    return selectedOption ? selectedOption.value : defaultValue;
-}
-
-
-function updateValue(element){
-    var jobid = '<?php echo $data['job_id']?>';
-    var type_value = element.checked ? 1 : 0;
-    var seqid = element.getAttribute('data-sequence-id');
-
-    if(seqid){
-        $.ajax({
-            url: "?url=Sequences/check_seq_enable", 
-            method: "POST",
-            data: { 
-                jobid: jobid,
-                seqid: seqid,
-                type_value: type_value
-            },
-            success: function(response) {
-                console.log(response);
-                history.go(0);
-            },
-            error: function(xhr, status, error) {
-                console.error('AJAX 错误:', status, error); 
-            }
-        });    
-    }
-}
 </script>
-<script>
-    
-<?php foreach($data['sequences'] as $key =>$val) {?>
-    var sequenceId = "<?php echo $val['SEQID'];?>";
-    var sequenceName = "<?php echo $val['SEQname'];?>";
 
-    var exists = rowInfoArray.some(function(item) {
-        return item.sequence_id === sequenceId || item.sequence_name === sequenceName;
-    });
-
-    if (!exists) {
-        var rowInfo = {
-            sequence_id: sequenceId,
-            sequence_name: sequenceName
-        };
-        rowInfoArray.push(rowInfo);
-    }
-<?php } ?>
-
-
-function sendRowInfoArray() {
-    var jobid = '<?php echo $data['job_id']?>';
-    var dataToSend = {
-        jobid: jobid,
-        rowInfoArray: rowInfoArray
-    };
-
-    $.ajax({
-        url: "?url=Sequences/adjustment_order", 
-        method: "POST",
-        data: dataToSend,
-        success: function(response) {
-            console.log(response);
-            history.go(0); 
-        },
-        error: function(xhr, status, error) {
-            console.error('Error sending data:', error);
-        }
-    });
-}
-
-function goBackAndReload() {
-    // 记录当前页面的 URL
-    const currentUrl = window.location.href;
-    // 用 replaceState 记录当前页面的状态
-    window.history.replaceState({}, '', currentUrl);
-    // 返回上一页
-    window.history.back();
-    // 设置标志来强制上一页刷新
-    setTimeout(() => {
-        // 刷新当前页，也就是上一页
-        window.location.href = document.referrer + (document.referrer.includes('?') ? '&' : '?') + 'refresh=' + new Date().getTime();
-    }, 100);
-}
-
-
-function setRadioButton_value(radioButtons, value) {
-    radioButtons.forEach(function(button) {
-        if (button.value === value.toString()) {
-            button.checked = true;
-        } else {
-            button.checked = false;
-        }
-    });
-}        
-</script>
+<?php require_once '../app/views/sequences/seq_share.php';?>

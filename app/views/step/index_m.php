@@ -472,3 +472,6 @@ function edit_step(){
 }
 
 </script>
+
+
+<?php require_once '../app/views/sequences/seq_share.php';?>

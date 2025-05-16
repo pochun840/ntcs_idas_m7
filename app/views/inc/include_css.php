@@ -35,13 +35,13 @@ function include_css() {
     // 一般模組對應（controller 為主）
     $cssMap = [
         'Jobs'      => ['pc' => 'jobs.css',    'mobile' => 'jobs_m.css'],
-        'Sequences' => ['pc' => 'tcc_seq.css',     'mobile' => 'tcc_seq_m.css'],
+        'Sequences' => ['pc' => 'seq.css',     'mobile' => 'seq_m.css'],
         'Step'      => ['pc' => 'tcc_step.css',    'mobile' => 'tcc_step_m.css'],
         'Inputs'    => ['pc' => 'tcc_input.css',   'mobile' => 'tcc_input_m.css'],
         'Outputs'   => ['pc' => 'tcc_output.css',  'mobile' => 'tcc_output_m.css'],
         'Settings'  => ['pc' => 'tcc_setting.css', 'mobile' => 'tcc_setting_m.css'],
-        'Tools'     => ['pc' => 'tcc_tools.css'],
-        'Data'      => ['pc' => 'tcc_data.css'],
+        'Tools'     => ['pc' => 'tools.css'],
+        'Data'      => ['pc' => 'data.css'],
         'Agents'    => ['pc' => 'tcc_agent.css'],
     ];
 
@@ -121,5 +121,5 @@ function include_css() {
     <!-- ================== 其他工具 JS ================== -->
     <script src="<?php echo URLROOT; ?>js/flatpickr.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <script src="<?php echo URLROOT; ?>js/flatpickr_zh-tw.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/tcc_data.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/data.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <script src="<?php echo URLROOT; ?>js/jszip.js?v=<?php echo ASSET_VERSION; ?>"></script>

@@ -22,10 +22,10 @@ class Datas{
     {
         $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 100 ";
         if($type == 'OK'){
-            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status = 1  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
+            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status in(4)  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
         }
         if($type == 'NOK'){
-            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status  = 2  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
+            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status  in(7,8)  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
         }
         
         $statement = $this->db_data->prepare($sql);
@@ -54,6 +54,46 @@ class Datas{
 
             return $row;
         }else{
+            return array();
+        }
+    }
+
+
+    public function show_getData($type){
+
+    
+        $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 100";
+        if ($type == 'OK') {
+            $sql = "SELECT * FROM (
+                        SELECT * FROM ntcs_data 
+                        WHERE fasten_status in(4)
+                        ORDER BY data_time DESC 
+                        LIMIT 100
+                    ) AS recent_data ORDER BY data_time DESC";
+        }
+        if ($type == 'NOK') {
+            $sql = "SELECT * FROM (
+                        SELECT * FROM ntcs_data  
+                        WHERE fasten_status in( 7,8)
+                        ORDER BY data_time DESC 
+                        LIMIT 100
+                    ) AS recent_data ORDER BY data_time DESC";
+        }
+
+        try {
+            $statement = $this->db_data->prepare($sql);
+            if ($statement !== false) {
+                $statement->execute();
+                $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+                $statement = null; // 查詢完成後釋放資源
+                return $rows;
+            } else {
+                return array();
+            }
+        } catch (PDOException $e) {
+            if (isset($statement)) {
+                $statement = null; // 查詢失敗也釋放資源
+            }
             return array();
         }
     }

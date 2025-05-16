@@ -235,6 +235,34 @@ function success_response(response, spinnerId = 'spinner') {
     }, 1000);
 }
 
+
+function success_response_seq(response, spinnerId = 'spinner', redirectUrl = null) {
+    const responseData = JSON.parse(response);
+
+    setTimeout(() => {
+        document.getElementById(spinnerId).style.display = 'none';
+
+        alertify.alert(responseData.res_type, responseData.res_msg, function () {
+            alertify.closeAll();
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                history.go(0);
+            }
+        });
+
+        setTimeout(() => {
+            alertify.closeAll();
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                history.go(0);
+            }
+        }, 3000);
+    }, 1000);
+}
+
+
 function handleAjaxResponseWithSpinner(response, spinnerId = 'spinner') {
     const responseData = JSON.parse(response);
 
@@ -265,4 +293,15 @@ function hideElementById(id) {
     document.getElementById(id).style.display = 'none';
     document.querySelector(".main-content").classList.remove("overlay-active");
     document.getElementById("spinner").style.display = 'none'; // 關閉 spinner（如果有）
+}
+
+function closebutton(elementId) {
+    // 確保傳入的 elementId 有效，並且元素存在
+    document.getElementById(elementId).style.display = 'none';
+   
+    // 確保 .main-content 元素存在
+    var mainContent = document.querySelector(".main-content");
+    if (mainContent) {
+        mainContent.classList.remove("overlay-active");
+    }
 }

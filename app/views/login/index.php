@@ -1,9 +1,8 @@
 <div class="container-ms">
-    <div class="buttonbox" style="text-align: right; margin: 10px">
-    
-    <?php foreach(LANGUAGE as $key =>$val){?>
-        <input type="button" name='<?php echo $val[1];?>' id= '<?php echo $val[1];?>'  value="<?php echo $val[0];?>" onclick="language_change()" >
-    <?php } ?>
+    <div class="buttonbox" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding-right: 10px; width: 100%;">
+        <?php foreach(LANGUAGE as $key =>$val){?>
+            <input type="button" name='<?php echo $val[1];?>' id= '<?php echo $val[1];?>'  value="<?php echo $val[0];?>" onclick="language_change()" >
+        <?php } ?>
     </div>
     <div>
         <h1 class="col-ms-3 pt-3" style="font-size: 50px; text-align: center; color: #fff"><?php echo $text['login_text']; ?></h1>
