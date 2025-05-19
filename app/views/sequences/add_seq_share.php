@@ -13,7 +13,7 @@
             document.getElementById("ng_unscrew_on").checked = true;
             document.getElementById("accu_angle_on").checked = true;
             document.getElementById("unscrew_mode_auto").checked = true;
-            document.getElementById("unscrew_rpm").value = 150;
+            document.getElementById("unscrew_rpm").value = 300;
             document.getElementById("unscrew_dir_cw").checked = true;
             document.getElementById("unscrew_forcemode_on").checked = true;
 
@@ -113,7 +113,7 @@
                 processData: false, 
                 contentType: false, 
                 success: function(response) {
-                     const job_id = document.getElementById("job_id").value;
+                    const job_id = document.getElementById("job_id").value;
                     success_response_seq(response, 'spinner', '../public/?url=Sequences/index/' + job_id);
                 },
                 error: function(xhr, status, error) {

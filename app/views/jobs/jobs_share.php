@@ -181,6 +181,7 @@
 
         }, function () {
             // 使用者點取消時什麼都不做
+            document.querySelector(".main-content").classList.remove("overlay-active");
         });
     }
 

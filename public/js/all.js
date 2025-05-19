@@ -263,6 +263,8 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
 }
 
 
+
+
 function handleAjaxResponseWithSpinner(response, spinnerId = 'spinner') {
     const responseData = JSON.parse(response);
 
