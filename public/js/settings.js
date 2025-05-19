@@ -29,52 +29,58 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-function cc_save(){
+function cc_save() {
+    const getValue = id => document.getElementById(id)?.value || '';
+    const getRadioValue = name => {
+        const radio = document.querySelector(`input[name="${name}"]:checked`);
+        return radio ? radio.value : '';
+    };
 
-    var control_id = document.getElementById('control_id').value;
+    const control_id = getValue('control_id');
     if (isNaN(control_id) || control_id < 1 || control_id > 250) {
+        alertify.error("控制器 ID 無效 (1~250)");
         return false;
     }
 
-    var control_name = document.getElementById('control_name').value;
-    var storage_warning = document.getElementById('storage_warning').value;
-    var torque_filter   = document.getElementById('torque_filter').value;
-    var lang_val = document.getElementById('select_language').value; //語言
-    var unit_val = document.getElementById('select_torque_unit').value; //扭力單位 
-    var counting_method_val =  document.querySelector('input[name="counting_method"]:checked').value;
-    var circular_archive_val = document.querySelector('input[name="circular_archive"]:checked').value;
-    var blackout_recovery_val = document.querySelector('input[name="blackout_recovery"]:checked').value;
-    var buzzer_val = document.querySelector('input[name="buzzer_mode"]:checked').value;
+    const postData = {
+        control_id: control_id,
+        control_name: getValue('control_name'),
+        lang_val: getValue('select_language'),
+        unit_val: getValue('select_torque_unit'),
+        storage_warning: getValue('storage_warning'),
+        torque_filter: getValue('torque_filter'),
+        counting_method: getRadioValue('counting_method'),
+        circular_archive: getRadioValue('circular_archive'),
+        blackout_recovery: getRadioValue('blackout_recovery'),
+        buzzer_mode: getRadioValue('buzzer_mode')
+    };
 
+    // 顯示 loading spinner
+    document.getElementById('spinner').style.display = 'block';
 
-    if(control_id){
-        $.ajax({
-            url: "?url=Settings/control_setting",
-            method: "POST",
-            data:{ 
-                control_id: control_id,
-                control_name: control_name,
-                lang_val: lang_val,
-                unit_val: unit_val,
-                storage_warning: storage_warning,
-                torque_filter: torque_filter,
-                counting_method: counting_method_val,
-                circular_archive: circular_archive_val,
-                blackout_recovery: blackout_recovery_val,
-                buzzer_mode:buzzer_val
-     
-
-            },
-            success: function(response) {
-                console.log(response);
-                //history.go(0);
-            },
-            error: function(xhr, status, error) {
-                
+    $.ajax({
+        url: "?url=Settings/control_setting",
+        method: "POST",
+        data: postData,
+        success: function (response) {
+            try {
+                const res = typeof response === 'string' ? JSON.parse(response) : response;
+                alertify.alert(res.res_type || "Success", res.res_msg || "設定成功");
+            } catch (err) {
+                console.error("JSON Parse Error:", err);
+                alertify.error("伺服器回應格式錯誤");
+            } finally {
+                document.getElementById('spinner').style.display = 'none';
             }
-        });   
-    }
+        },
+        error: function (xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            document.getElementById('spinner').style.display = 'none';
+            alertify.error("設定失敗，請稍後重試");
+        }
+    });
 }
+
 
 
 //新增密碼

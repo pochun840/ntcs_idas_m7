@@ -3,6 +3,10 @@
 class Inputs extends Controller
 {
     // 在建構子中將 Post 物件（Model）實例化
+
+    private $InputModel;
+    private $MiscellaneousModel;
+    private $jobModel;
     public function __construct()
     {
         $this->InputModel = $this->model('Input');
@@ -59,11 +63,23 @@ class Inputs extends Controller
             $tempA = array();
             $tempB = array();
             $job_inputlist = ''; 
+
     
             if (!empty($job_inputs)) {
                 foreach ($job_inputs as $kk => $vv) {
 
-
+                    if (!empty($vv['EvenID'])) {
+                        $event_value = $vv['EvenID'];
+                        //Disable & Enable 不能同時存在event_option
+                        if ($event_value == 101 && !in_array(102, $tempA)) {
+                            $temp_event[] = 102;
+                        }
+                
+                        if ($event_value == 102 && !in_array(101, $tempA)) {
+                            $temp_event[] = 101;
+                        }
+                    }
+                        
                     if (!empty($vv['Pin'])) {
                         $pin_number = $vv['Pin'];
                         $gateconfirm = $vv['Wp_Ready_Confirm'];
@@ -71,7 +87,7 @@ class Inputs extends Controller
                         $temp[] = "pin" . $pin_number . "_low";
                         $temp[] = "edit_pin" . $pin_number . "_high";
                         $temp[] = "edit_pin" . $pin_number . "_low";
-                        $temp[] = "check_".$gateconfirm;
+                        //$temp[] = "check_".$gateconfirm;
 
                         $temp_event[] = $vv['EvenID'];
 

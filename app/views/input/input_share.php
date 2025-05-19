@@ -30,42 +30,7 @@ function getLanguageMessage(cookieName) {
     alertify.alert(message);
 }
 
-function crud_job_event(action) {
-    if (!job_id) return;
 
-    switch (action) {
-        case 'new':
-            handleNewEvent();
-            break;
-
-        case 'del':
-            if (!input_event) return;
-            delete_input_id(job_id, input_event);
-            break;
-
-        case 'edit':
-            if (!input_event) return;
-            if (!document.querySelectorAll('#input_jobid_select tr.selected').length) {
-                getLanguageMessage('language');
-                return;
-            }
-            handleEditEvent();
-            break;
-
-        case 'copy':
-            if (!input_event) return;
-            handleCopyEvent();
-            break;
-
-        case 'unified':
-            handleUnifiedEvent();
-            break;
-
-        default:
-            console.warn("Unsupported event:", action);
-            break;
-    }
-}
 
 // 🟩 個別處理邏輯封裝
 
@@ -131,18 +96,15 @@ function disableRadioList(radioIds) {
     }
 }
 
-function disableOptions(selector, values = [], gray = false) {
-    const options = document.querySelectorAll(`${selector} option`);
-    options.forEach(opt => {
-        if (values.length === 0 || values.includes(opt.value)) {
-            opt.disabled = true;
-            opt.classList.add('disabled_input');
-            if (gray) opt.style.color = 'gray';
-        }
-    });
+
+
+function tablesubmit(keyno){
+    if(keyno =='show'){
+        document.getElementById('TableDataInput').style.display = 'block';
+        document.getElementById('input_menu').style.display = 'none';
+        get_input_by_job_id(job_id);
+    }
 }
-
-
 
 
 function get_input_by_job_id(jobid) {
@@ -293,6 +255,24 @@ function resetBackgroundColor() {
     }
 }
 
+function collectPinValues(selector) {
+    var pinOptions = document.querySelectorAll(selector);
+    var selectedValues = [];
+
+    pinOptions.forEach(function(option) {
+        if (option.checked){ 
+            var radioInfo = {
+                id: option.id,
+                value: option.value
+            };
+            selectedValues.push(radioInfo);
+        }
+    });
+
+    return selectedValues;
+}
+
+
 
 function alignsubmit(job_id) {
     if (job_id) {
@@ -320,5 +300,158 @@ function alignsubmit(job_id) {
         });
     }
 }
+
+
+function delete_input_id(jobid,input_event){
+
+    if(job_id){
+        $.ajax({
+            url: "?url=Inputs/delete_input",
+            method: "POST",
+            data: { 
+                job_id: job_id,
+                input_event: input_event,
+             
+            },
+            success: function(response) {
+            
+                var responseData = JSON.parse(response);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    get_input_by_job_id(job_id);
+                });
+
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+            }
+        });     
+    }
+
+}
+
+
+function crud_job_event(action) {
+    if (!job_id) return;
+
+    switch (action) {
+        case 'new':
+            handleNewJobEvent();
+            break;
+
+        case 'del':
+            if (input_event) {
+                delete_input_id(job_id, input_event);
+            }
+            break;
+
+        case 'edit':
+            if (!input_event) return;
+
+            const selectedEditRows = document.querySelectorAll('#input_jobid_select tr.selected');
+            if (!selectedEditRows.length) {
+                getLanguageMessage('language');
+                return;
+            }
+
+            handleEditJobEvent();
+            break;
+
+        case 'copy':
+            if (!input_event) return;
+
+            handleCopyJobEvent();
+            break;
+
+        case 'unified':
+            handleUnifiedJobEvent();
+            break;
+
+        default:
+            console.warn(`Unknown action type: ${action}`);
+            break;
+    }
+}
+
+function handleNewJobEvent() {
+    disableRadioList(temp);
+    disableOptions('#Event_Option', tempA);
+    disableOptions('#Event_Option', temp_event, true); // 顯示灰色但禁用
+
+    document.getElementById('newinput').style.display = 'block';
+}
+
+function handleEditJobEvent() {
+    disableSelectOptions('#edit_Event_Option');
+    disableRadioList(temp);
+
+    get_input_info(job_id, input_event);
+    handleEventChange(input_event);
+}
+
+function handleCopyJobEvent() {
+    const from_job_name = window.jobinfo?.[job_id]?.JOBname || '';
+    document.getElementById("from_job_id").value = job_id;
+    document.getElementById("from_job_name").value = from_job_name;
+
+    const options = document.querySelectorAll('#JobSelect1 option');
+    options.forEach(opt => {
+        if (opt.value === job_id) {
+            opt.disabled = true;
+            opt.classList.add('disabled_input');
+        }
+    });
+
+    const selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+    if (selectedRows.length > 0) {
+        document.getElementById('copyinput').style.display = 'block';
+    } else {
+        getLanguageMessage('language');
+    }
+}
+
+
+function handleUnifiedJobEvent() {
+    enableButton();
+    resetBackgroundColor();
+
+    if (input_job !== job_id) {
+        alignsubmit(job_id);
+    } else {
+        resetalignsubmit(job_id);
+    }
+}
+
+
+function disableRadioList(ids) {
+    if (!Array.isArray(ids)) return;
+    ids.forEach(id => {
+        const radio = document.getElementById(id);
+        if (radio?.type === 'radio') {
+            radio.disabled = true;
+        }
+    });
+}
+
+function disableOptions(selector, values = [], gray = false) {
+    const valueSet = values.map(String); // 確保比對一致（字串）
+    document.querySelectorAll(`${selector} option`).forEach(opt => {
+        if (valueSet.includes(opt.value)) {
+            opt.disabled = true;
+            opt.classList.add('disabled_input');
+            if (gray) opt.style.color = 'gray';
+        }
+    });
+}
+
+function disableSelectOptions(selector) {
+    const select = document.querySelector(selector);
+    if (!select) return;
+    select.disabled = true;
+    Array.from(select.options).forEach(opt => {
+        opt.disabled = true;
+        opt.classList.add('disabled_input');
+    });
+}
+
 
 </script>

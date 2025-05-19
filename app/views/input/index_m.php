@@ -402,149 +402,8 @@ window.onclick = function(event) {
     }
 }
 
-function crud_job_event(argument){
-    if(argument == 'new' && job_id != ''){
-
-    
-
-        //針對已設定的pin角位disable
-        if (Array.isArray(temp)){ 
-            temp.forEach(function(element) {
-                var radio = document.getElementById(element);
-                if (radio && radio.type === 'radio') { 
-                    radio.disabled = true; 
-                }
-            });
-        } 
-        
-        //針對已設定的事件option做反灰+disable
-        if (Array.isArray(tempA)){
-            tempA.forEach(function(element){
-                var option = document.querySelector('#Event_Option option[value="' + element + '"]');
-                if(option){
-                    if (option.selected){
-                        selectedValue = element;
-                    }
-
-                    option.disabled = true;
-                    option.classList.add('disabled_input');
-                }
-            });
-        }
-
-        //下拉式選單(選擇event事件)
-        console.log(temp_event);
-        if (Array.isArray(temp_event)){
-            let options = document.querySelectorAll('#Event_Option option');
-            options.forEach(option => {
-                if (temp_event.includes(option.value)) {
-                    option.disabled = true;  
-                    option.style.color = 'gray'; 
-                }
-            });
-        }
-
-        document.getElementById('newinput').style.display='block';
-    } 
-    
-    if(argument == 'del' && job_id  != '' &&  input_event != '')  {
-
-        delete_input_id(job_id,input_event);
-    }
 
 
-    if(argument == 'edit' && job_id != '' && input_event != ''){
-
-        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
-        if (!selectedRows.length > 0) {
-            getLanguageMessage('language'); 
-            return;
-        }
-
-
-        var selectElement = document.getElementById('edit_Event_Option');
-        if(selectElement){
-            selectElement.disabled = true;
-            var options = selectElement.options;
-            for (var i = 0; i < options.length; i++) {
-                options[i].disabled = true;
-                options[i].classList.add('disabled_input');
-            }
-        }
-    
-        if (Array.isArray(temp)){
-            temp.forEach(function(element){
-                var radio = document.getElementById(element);
-                if (radio && radio.type === 'radio'){
-                    radio.disabled = true;
-                }
-            });
-        }
-        
-        get_input_info(job_id,input_event);
-        handleEventChange(input_event); 
-        //document.getElementById('edit_input').style.display='block';  
-    }
-
-    if(argument == 'copy' && job_id != '' && input_event != ''){
-        var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['JOBname'];
-
-        document.getElementById("from_job_id").value = job_id;
-        document.getElementById("from_job_name").value = from_job_name_bk;
-        var selectElement = document.getElementById('JobSelect1');
-        var options = selectElement.getElementsByTagName('option');
-
-        for (var i = 0; i < options.length; i++) {
-            var optionId = options[i].getAttribute('id');
-            var optionValue = options[i].value;
-            if(optionValue == job_id){
-                options[i].disabled = true; 
-                options[i].classList.add('disabled_input'); 
-            
-            }
-        }
-
-        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
-        if (selectedRows.length > 0) {
-            document.getElementById('copyinput').style.display='block';
-        }else{
-            getLanguageMessage('language');
-        }    
-
-    }
-
-    if(argument == 'unified' && job_id != ''){
-        enableButton();
-        resetBackgroundColor();
-
-        if(input_job != job_id){
-
-            alignsubmit(job_id);  
-        }else{
-            resetalignsubmit(job_id);
-        }
-    }
-}
-
-
-
-function handleEventChange(selectedValue) {
-    if(selectedValue ==109){
-        document.getElementById('work_goc').style.display = 'block';
-    }else{
-        document.getElementById('work_goc').style.display = 'none';
-    }
-}
-
-function edit_handleEventChange(selectedValue,gateconfirm) {
-    if(selectedValue ==109){
-        document.getElementById('edit_work_goc').style.display = 'block';
-    }else{
-        document.getElementById('edit_work_goc').style.display = 'none';
-    }
-
-}
 
 
 function job_confirm(){
@@ -627,61 +486,6 @@ function job_confirm(){
             }
         }); 
     }
-}
-
-
-
-function tablesubmit(keyno){
-    if(keyno =='show'){
-        document.getElementById('TableDataInput').style.display = 'block';
-        document.getElementById('input_menu').style.display = 'none';
-        get_input_by_job_id(job_id);
-    }
-}
-
-function collectPinValues(selector) {
-    var pinOptions = document.querySelectorAll(selector);
-    var selectedValues = [];
-
-    pinOptions.forEach(function(option) {
-        if (option.checked){ 
-            var radioInfo = {
-                id: option.id,
-                value: option.value
-            };
-            selectedValues.push(radioInfo);
-        }
-    });
-
-    return selectedValues;
-}
-
-//delete
-function delete_input_id(jobid,input_event){
-
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/delete_input",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-             
-            },
-            success: function(response) {
-            
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
-
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });     
-    }
-
 }
 
 
@@ -828,19 +632,8 @@ function alignsubmit(job_id) {
     }
 }
 
-function enableButton() {
-    var button = document.getElementById('Button_Select');
-    if (button.disabled) {
-        button.disabled = false;
-    }
-}
 
-function resetBackgroundColor() {
-    var jobInput = document.getElementById('job_id');
-    if (jobInput.style.backgroundColor === 'yellow') {
-        jobInput.style.backgroundColor = '';
-    }
-}
+
 
 function get_input_info(){
 
@@ -998,54 +791,6 @@ function get_input_by_job_id(jobid){
     }); 
 }
 
-
-function edit_input_id(){
-
-    var input_event = document.getElementById("edit_Event_Option").value;
-    var pinval      = collectPinValues('input[name="edit_pin_option"]');
-    var pin_old   = pinval[0]['id'];
-    var input_wave  = pinval[0]['value'];
-    var pagemode    = 1;
-    var input_seqid = 0;
-    var input_pin = pin_old.match(/\d+/)[0];
-
-    if(input_event == 109){
-        var selectedOption = document.querySelector('input[name="edit_gateconfirm"]:checked');
-        var gateconfirm    = selectedOption ? selectedOption.value : 0;
-    }else{
-        var gateconfirm	 = 0;
-    }
-
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/edit_input_event",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-                input_pin: 	input_pin,
-                input_wave: input_wave,
-                gateconfirm: gateconfirm,
-                pagemode: pagemode,
-                input_seqid: input_seqid,
-                old_input_event: old_input_event
-            },
-            success: function(response) {
-
-                document.getElementById('edit_input').style.display='none';
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
-
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-
-    }
-}
 
 
 

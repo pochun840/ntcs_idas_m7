@@ -256,8 +256,8 @@ class Settings extends Controller
         return $decimalValue;
     }
 
-    public function control_setting()
-    {
+    public function control_setting() {
+        
         $input_check = true;
 
         if( !empty($_POST['control_id']) && isset($_POST['control_id'])  ){
@@ -336,10 +336,11 @@ class Settings extends Controller
             $result = $this->SettingModel->Controller_Setting($con_setting);
             if($result){
                 $res_msg = 'edit:'. $con_setting['control_id'].'success';
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
             }else{
                 $res_msg = 'edit:'. $con_setting['control_id'].'fail';
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
             }
-            echo $res_msg;
 
           }
 

@@ -1,6 +1,3 @@
-
-<link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_setting.css" type="text/css">
-
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -407,12 +404,12 @@
             <div id="Connect_Setting" class="divMode" style="display: none">
                 <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_connect_setting'];?></div>
                 <div class="row t2">
-                    <div class="col-3 t1"><?php echo $text['system_connect_number'];?>:</div>
+                    <div class="col-3 t1">Agent IP:</div>
                     <div class="col t2">
-                        <form id="edit_max_link" style="margin: 3px 0px" method="post">
-                            <input type="text" name="max_user" id="max_user" inputmode="numeric" pattern="[0-9]*" min='1' size="15" maxlength="2" required class="t3 w3-submit w3-border w3-round">&nbsp;
-                            <span><?php echo $text['system_connect_max_number'];?> : <?php echo $data['max_user']; ?></span>
-                            <input type="button" onclick="set_max_link()" value="<?php echo $text['save'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
+                        <form id="agent_ip" style="margin: 3px 0px" method="post">
+                            <input type="text" name="agent_server_ip" id="agent_server_ip" size="15" required class="t3 w3-submit w3-border w3-round">&nbsp;
+                            <span>Agent IP : <?php echo $data['agent_server_ip']; ?></span>
+                            <input type="submit" value="<?php echo $text['save'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
                         </form>
                     </div>
                 </div>
@@ -426,16 +423,7 @@
                         </form>
                     </div>        
                 </div>          
-                <div class="row t2">
-                    <div class="col-3 t1">Agent IP:</div>
-                    <div class="col t2">
-                        <form id="agent_ip" style="margin: 3px 0px" method="post">
-                            <input type="text" name="agent_server_ip" id="agent_server_ip" size="15" required class="t3 w3-submit w3-border w3-round">&nbsp;
-                            <span>Agent IP : <?php echo $data['agent_server_ip']; ?></span>
-                            <input type="submit" value="<?php echo $text['save'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                        </form>
-                    </div>
-                </div>
+             
                 <div class="row t2">
                     <div class="col-3 t1">Agent Type:</div>
                     <div class="col t2">
@@ -484,26 +472,12 @@
                                             <th><?php echo $text['system_connect_timestamp'];?></th>
                                         </tr>
                                     </thead>
-                                    <tbody style="font-size: 1.8vmin;text-align: center;">
-                                        <?php foreach($data['active_session'] as $key =>$val){?>
-                                            <tr>
-                                                    <td style="text-align: center; vertical-align: middle;">
-                                                        <input class="form-check-input" type="checkbox" name="barcode_check" id="" value="<?php echo $val['id'];?>" style="zoom:1.2">
-                                                    </td>
-                                                    <td><?php echo $val['username'];?></td>
-                                                    <td><?php echo $val['ip'];?></td>
-                                                    <td><?php echo $val['timestamp'];?></td>
-                                            </tr>
-                                        <?php } ?>
-                                       
-                                    </tbody>
+                                    
                                 </table>
                             </div>    
                         </div>  
                     </div>
-                    <?php  if($_SESSION['privilege'] == 'admin'){?>
-                            <input type="submit" value="<?php echo $text['Delete'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right;">
-                    <?php } ?>
+             
                 </form>
             </div>
 
@@ -533,7 +507,15 @@
                 </div> 
             </div>
         </div>
-    </div>        
+    </div>    
+    
+    <!-- 加载動畫 OP -->
+        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
+
+    
+    
 </div>
 
 <script>

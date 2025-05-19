@@ -220,27 +220,18 @@
                 <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_connect_setting'];?></div>
                 <div class="connect-scrollbar" id="style-connection">
                     <div class="connect-force-overflow">
-                        <div class="col t1"><?php echo $text['system_connect_number'];?>:</div>
-                        <div class="row t2 border-bottom">
-                            <div class="col t2">
-                                <form id="edit_max_link" style="margin: 3px 0px; margin-left: 14%" method="post">
-                                    <input type="text" name="max_user" id="max_user" inputmode="numeric" pattern="[0-9]*" min='1' size="15" maxlength="2" required class="t3 w3-submit w3-border w3-round"><br>
-                                    <span><?php echo $text['system_connect_max_number'];?> : <?php echo $data['max_user']; ?></span>
-                                    <input type="button" onclick="set_max_link()" value="Save" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                                </form>
-                            </div>
-                        </div>
+                       
                         
-                        <div class="col t1"><?php echo $text['system_connect_guest_pwd'];?>:</div>
+                        <!--<div class="col t1"><?php // echo $text['system_connect_guest_pwd'];?>:</div>
                         <div class="row t2 border-bottom">
                             <div class="col t2">
                                 <form  style="margin: 3px 0px; margin-left: 14%">
-                                    <input type="password" id="new_password_guest" size="15" placeholder="<?php echo $text['system_new_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">&nbsp;
-                                    <input type="password" id="comfirm_password_guest" size="15" placeholder="<?php echo $text['system_confirm_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">
+                                    <input type="password" id="new_password_guest" size="15" placeholder="<?php //echo $text['system_new_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">&nbsp;
+                                    <input type="password" id="comfirm_password_guest" size="15" placeholder="<?php //echo $text['system_confirm_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">
                                     <input type="button" value="Save" onclick ="button_save_password_gust()" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
                                 </form>
                             </div>        
-                        </div>          
+                        </div>-->          
 
                         <div class="col t1">Agent IP:</div>
                         <div class="row t2 border-bottom">
