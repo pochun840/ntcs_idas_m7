@@ -381,7 +381,7 @@ function handleNewJobEvent() {
 }
 
 function handleEditJobEvent() {
-    disableSelectOptions('#edit_Event_Option');
+    //disableSelectOptions('#edit_Event_Option');
     disableRadioList(temp);
 
     get_input_info(job_id, input_event);

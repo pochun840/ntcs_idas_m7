@@ -36,8 +36,8 @@ function include_css() {
     $cssMap = [
         'Jobs'      => ['pc' => 'jobs.css',    'mobile' => 'jobs_m.css'],
         'Sequences' => ['pc' => 'seq.css',     'mobile' => 'seq_m.css'],
-        'Step'      => ['pc' => 'tcc_step.css',    'mobile' => 'tcc_step_m.css'],
-        'Inputs'    => ['pc' => 'tcc_input.css',   'mobile' => 'tcc_input_m.css'],
+        'Step'      => ['pc' => 'step.css',    'mobile' => 'step_m.css'],
+        'Inputs'    => ['pc' => 'input.css',   'mobile' => 'input_m.css'],
         'Outputs'   => ['pc' => 'tcc_output.css',  'mobile' => 'tcc_output_m.css'],
         'Settings'  => ['pc' => 'tcc_setting.css', 'mobile' => 'tcc_setting_m.css'],
         'Tools'     => ['pc' => 'tools.css'],
