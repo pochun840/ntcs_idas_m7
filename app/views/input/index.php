@@ -667,12 +667,7 @@ window.onclick = function(event) {
 function crud_job_event(argument){
     if(argument == 'new' && job_id != ''){
 
-        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
-        if (!selectedRows.length > 0) {
-            getLanguageMessage('language'); 
-            return;
-        }
-
+    
         //針對已設定的pin角位disable
         if (Array.isArray(temp)){ 
             temp.forEach(function(element) {
@@ -1312,24 +1307,12 @@ function edit_input_id(){
     }
 }
 
-function getLanguageMessage(cookieName) {
-    var value = "; " + document.cookie;
-    var parts = value.split("; " + cookieName + "=");
-    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
-    var message;
-    if (language === 'en-us') {
-       message =  'Please select the event to delete';
-    } else if (language === 'zh-cn') {
-       message =  '请选择要删除的事件';
-    } else if (language === 'zh-tw') {
-       message =  '請點選要刪除的事件';
-    } else {
-      message =  'Please select the event to delete';
-    }
-   alertify.alert(message);
-}
 
 </script>
+
+<?php require_once '../app/views/input/input_share.php';?>
+
+
 <style>
     #input_table td,
     #input_table th {
