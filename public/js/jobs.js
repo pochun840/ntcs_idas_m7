@@ -103,6 +103,8 @@ function validateJobNameInput(id) {
         isValid = false;
     } else if (!pattern.test(value)) {
         isValid = false;
+    } else if ((id === 'job_name' || id === 'edit_jobname') && value.length > 250) {
+        isValid = false;
     }
 
     if (!isValid) {

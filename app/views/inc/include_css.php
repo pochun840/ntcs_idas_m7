@@ -38,7 +38,7 @@ function include_css() {
         'Sequences' => ['pc' => 'seq.css',     'mobile' => 'seq_m.css'],
         'Step'      => ['pc' => 'step.css',    'mobile' => 'step_m.css'],
         'Inputs'    => ['pc' => 'input.css',   'mobile' => 'input_m.css'],
-        'Outputs'   => ['pc' => 'tcc_output.css',  'mobile' => 'tcc_output_m.css'],
+        'Outputs'   => ['pc' => 'output.css',  'mobile' => 'output_m.css'],
         'Settings'  => ['pc' => 'tcc_setting.css', 'mobile' => 'tcc_setting_m.css'],
         'Tools'     => ['pc' => 'tools.css'],
         'Data'      => ['pc' => 'data.css'],

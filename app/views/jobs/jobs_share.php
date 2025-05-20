@@ -75,8 +75,6 @@
 
         document.getElementById("from_job_id").value = old_jobid;
         document.getElementById("from_job_name").value = oldjobname;
-        //document.getElementById("to_job_id").value = new_jobid;
-
 
         var new_jobid = document.getElementById("to_job_id").value.trim();
         var new_jobname = document.getElementById("to_job_name").value.trim();
@@ -93,10 +91,7 @@
                         "Are you sure you want to copy this job?";
 
         alertify.confirm(confirm_text, function (result) {
-            /*if (!result) {
-                //alertify.error("Cancelled");
-                return;
-            }*/
+      
 
             // 顯示灰階與 loading
             document.querySelector(".main-content").classList.add("overlay-active");

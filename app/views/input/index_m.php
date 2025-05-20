@@ -318,6 +318,11 @@
             </div>
         </div>
     </div>
+
+    <!-- 加载動畫 OP -->
+        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
 </div>
 
 <script>
@@ -602,32 +607,7 @@ function resetalignsubmit(job_id) {
     }
 }
 
-function alignsubmit(job_id) {
-    if (job_id) {
-        $.ajax({
-            url: "?url=Inputs/input_alljob",
-            method: "POST",
-            data: {
-                job_id: job_id
-            },
-            success: function (response) {
-                get_input_by_job_id(job_id);
-                buttonDisabled = !buttonDisabled;
-                document.getElementById('Button_Select').disabled = buttonDisabled;
-     
-                backgroundColorYellow = !backgroundColorYellow;
-                if (backgroundColorYellow){
-                    document.getElementById('job_id').style.backgroundColor = 'yellow';
-                }else{
-                    document.getElementById('job_id').style.backgroundColor = '';
-                }
-            },
-            error: function (xhr, status, error) {
 
-            }
-        });
-    }
-}
 
 
 
