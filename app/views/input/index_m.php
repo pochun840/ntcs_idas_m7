@@ -491,53 +491,6 @@ function job_confirm(){
 }
 
 
-//create
-function create_input_id(){
- 
-    var input_event = document.getElementById("Event_Option").value;
-    var pinval      = collectPinValues('input[name="pin_option"]');
-    var pin_old   = pinval[0]['id'];
-    var input_wave  = pinval[0]['value'];
-    var pagemode    = 1;
-    var input_seqid = 0;
-
-    if(input_event == 109){
-        var selectedOption = document.querySelector('input[name="gateconfirm"]:checked');
-        var gateconfirm    = selectedOption ? selectedOption.value : 0;
-    }else{
-        var gateconfirm	 = 0;
-    }
-
-
-    var input_pin = pin_old.match(/\d+/)[0];
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/create_input_event",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-                input_pin: 	input_pin,
-                input_wave: input_wave,
-                gateconfirm: gateconfirm,
-                pagemode: pagemode,
-                input_seqid: input_seqid
-            },
-            success: function(response) {
-
-                document.getElementById('newinput').style.display='none';
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-
-    }
-}
 
 //copy
 function copy_input_id(){

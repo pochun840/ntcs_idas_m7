@@ -307,3 +307,40 @@ function closebutton(elementId) {
         mainContent.classList.remove("overlay-active");
     }
 }
+
+
+
+function checkAuthToken() {
+    // 取得指定 cookie
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    // 語系處理
+    const language = getCookie('language');
+    const messages = {
+        "zh-cn": "閒置超過時間，请重新登录。",
+        "zh-tw": "閒置超過時間，請重新登入。",
+        "default": "Session timeout. Please log in again."
+    };
+    const title = {
+        "zh-cn": "登錄超時",
+        "zh-tw": "登入逾時",
+        "default": "Login Timeout"
+    };
+
+    const msg = messages[language] || messages["default"];
+    const titleText = title[language] || title["default"];
+
+    // 檢查 auth_token 是否存在
+    const authToken = getCookie('auth_token');
+    if (!authToken) {
+        alertify.alert(titleText, msg, function () {
+            window.location.href = "/login";
+        });
+    }
+}
+
+// 呼叫檢查
+checkAuthToken();

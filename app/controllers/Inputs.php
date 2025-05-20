@@ -46,107 +46,82 @@ class Inputs extends Controller
     }
 
     // get_input_by_job_id
-    public function get_input_by_job_id($job_id){
-
+    public function get_input_by_job_id($job_id) {
         $input_check = true;
+
         if (!empty($_POST['jobid']) && isset($_POST['jobid'])) {
             $job_id = $_POST['jobid'];
         } else {
-            $input_check = false; 
+            $input_check = false;
         }
+
+        $job_inputlist = '';
+        $temp = array();
+        $tempA = array();
+        $tempB = array();
+        $temp_event = array();
 
         if ($input_check) {
-
             $event = $this->MiscellaneousModel->details('io_input');
             $job_inputs = $this->InputModel->get_input_by_job_id($job_id);
-            $temp  = array(); 
-            $tempA = array();
-            $tempB = array();
-            $job_inputlist = ''; 
 
-    
             if (!empty($job_inputs)) {
-                foreach ($job_inputs as $kk => $vv) {
+                foreach ($job_inputs as $vv) {
+                    $evenID = $vv['EvenID'] ?? null;
+                    $pin = $vv['Pin'] ?? null;
+                    $signal = $vv['signal'] ?? 0;
+                    $Wp_Ready_Confirm = $vv['Wp_Ready_Confirm'] ?? 0;
+                    $eventText = isset($event[$evenID]) ? $event[$evenID] : '未知事件';
 
-                    if (!empty($vv['EvenID'])) {
-                        $event_value = $vv['EvenID'];
-                        //Disable & Enable 不能同時存在event_option
-                        if ($event_value == 101 && !in_array(102, $tempA)) {
+                    if ($evenID !== null) {
+                        // Disable & Enable 不能同時存在 event_option
+                        if ($evenID == 101 && !in_array(102, $tempA)) {
                             $temp_event[] = 102;
-                        }
-                
-                        if ($event_value == 102 && !in_array(101, $tempA)) {
+                        } elseif ($evenID == 102 && !in_array(101, $tempA)) {
                             $temp_event[] = 101;
                         }
-                    }
-                        
-                    if (!empty($vv['Pin'])) {
-                        $pin_number = $vv['Pin'];
-                        $gateconfirm = $vv['Wp_Ready_Confirm'];
-                        $temp[] = "pin" . $pin_number . "_high";
-                        $temp[] = "pin" . $pin_number . "_low";
-                        $temp[] = "edit_pin" . $pin_number . "_high";
-                        $temp[] = "edit_pin" . $pin_number . "_low";
-                        //$temp[] = "check_".$gateconfirm;
-
-                        $temp_event[] = $vv['EvenID'];
-
+                        $temp_event[] = $evenID;
                     }
 
-                    if (!empty($vv['Pin'])) {
-                        $tempA[] = $vv['Pin'];
+                    if (!empty($pin)) {
+                        $tempA[] = $pin;
+                        $temp[] = "pin{$pin}_high";
+                        $temp[] = "pin{$pin}_low";
+                        $temp[] = "edit_pin{$pin}_high";
+                        $temp[] = "edit_pin{$pin}_low";
                     }
 
-                
-                    
                     $isMobile = $this->isMobileCheck();
+                    $job_inputlist .= "<tr data-event='{$evenID}'>";
+                    $job_inputlist .= "<td id='{$evenID}'>{$eventText}</td>";
 
-                    if($isMobile){
-
-                        if($vv['signal'] == 1){
-                            $img = '<img src="./img/high.png" style="max-width: 50px;">';
-                        }else{
-                            $img = '<img src="./img/low.png" style="max-width: 50px;">';
-                        }
-                        
-
-                        $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
-                        $job_inputlist .= "<td id='".$vv['EvenID']."'>".$event[$vv['EvenID']]."</td>";
-                        $job_inputlist .= '<td>'.$vv['Pin'].'</td>';
-                        $job_inputlist .= '<td>'.$img.'</td>';
-                        $job_inputlist .= '</tr>';
-                        
-                    }else{
-   
-                        $Wp_Ready_Confirm = ($vv['Wp_Ready_Confirm'] == 1) ? "YES" : "NO";
-
-                        $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
-                        $job_inputlist .= "<td id='".$vv['EvenID']."'>".$event[$vv['EvenID']]."</td>";
-                        $job_inputlist .= $this->InputModel->generateTableCell($vv['Pin'],$vv['signal']);
-                        $job_inputlist .= '<td>'.$Wp_Ready_Confirm.'</td>';
-                        $job_inputlist .= '<td>1</td>';
-                        $job_inputlist .= '<td>EVENT</td>';
-                        $job_inputlist .= '</tr>';
+                    if ($isMobile) {
+                        $imgSrc = ($signal == 1) ? 'high.png' : 'low.png';
+                        $job_inputlist .= "<td>{$pin}</td>";
+                        $job_inputlist .= "<td><img src='./img/{$imgSrc}' style='max-width: 50px;'></td>";
+                    } else {
+                        $ready = ($Wp_Ready_Confirm == 1) ? "YES" : "NO";
+                        $job_inputlist .= $this->InputModel->generateTableCell($pin, $signal);
+                        $job_inputlist .= "<td>{$ready}</td>";
+                        $job_inputlist .= "<td>1</td>";
+                        $job_inputlist .= "<td>EVENT</td>";
                     }
-    
-                    
-                }
 
+                    $job_inputlist .= "</tr>";
+                }
             }
         }
-        
-        if(empty($temp_event)){
-            $temp_event = '';
-        }
+
         $response = array(
             'job_inputlist' => $job_inputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'temp_event' => $temp_event,
-            
+            'temp_event' => $temp_event ?: [],
         );
+
         echo json_encode($response);
     }
+
 
 
 
