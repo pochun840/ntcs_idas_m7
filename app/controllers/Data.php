@@ -186,7 +186,8 @@ class Data extends Controller
     }
 
 
-    public function getreal_time_data() {
+    public function getreal_time_data
+    () {
        
         
         $mode = $_POST['mode'] ?? 'ALL';
