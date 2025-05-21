@@ -1,13 +1,16 @@
 
-<link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/target_torque_angle.css">
+<link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/add_seq_step.css">
 
 <div class="container-ms" id ="your_container_id">
     <div class="w3-text-white w3-center">
-        <header>
-            <h3><?php echo ($data['type'] == 'edit') ? $text['edit_seq'] : $text['new_seq']; ?></h3>
-        </header>
+        <table class="no-border">
+            <tr id="header">
+                <td width="100%"><h3><?php echo ($data['type'] == 'edit') ? $text['edit_seq'] : $text['new_seq']; ?></h3></td>
+            </tr>
+        </table>
     </div>
-    <div style="display:none;">
+
+   <div style="display:none;">
         <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
@@ -19,39 +22,30 @@
     <div class="main-content">
         <div class="center-content">
             <div class="topnav">
-                <div class="row t1">
-                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%"><?php echo $text['job_id']; ?> : </div>
-                    <div class="col-1 t2">
-                    	<input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="job_id" name="job_id" size="10" maxlength="20" value="<?php echo $data['job_id'];?>" disabled>
-                    </div>
-                    <div class="col-2" style="font-size: 2vmin; padding-left: 3%"><?php echo $text['seq_id'];?> : </div>
-                    <div class="col-1 t2">
-                        <input style="width: 100%;height:35px; font-size:18px;text-align: center; background-color: #DDDDDD" type="text" id="seq_id" name="seq_id" size="10" maxlength="20" value="<?php echo $data['seq_id'];?>" disabled>
-                    </div>
-                    
+                <label style="font-size:20px;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="<?php echo $data['job_id'];?>" disabled
+                style="height:28px; font-size:20px;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
 
-                    <div class="col t2" style=" text-align: right; ">
-                        <div class="button-column">
-                            <button id="return" onclick="history.go(-1);"><?php echo $text['return']; ?></button>
-                        </div>
-                    </div>
-                </div>
-                
+                <label style="font-size:20px;color: #000; padding-left: 2%" for="seq_id"><?php echo $text['seq_id'];?> :</label>&nbsp;
+                <input type="text" id="seq_id" name="seq_id" size="8" maxlength="20" value="<?php echo $data['seq_id'];?>" disabled
+                style="height:28px; font-size:20px;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
+
+                <button id="back_btn" type="button" onclick="history.go(-1);"><?php echo $text['return']; ?></button>
             </div>
 
-            <div class="container" style="max-width: none;background-color: #F2F1F1;">
+
+            <div class="new-container">
                 <div class="row">
-                    <div class="col-md-6 t2">
-                        <div class="col-12 row t2 mt-3">
+                    <div class="col-md-6">
+                        <div class="row t2 mt-3">
                             <div class="col-3"><?php echo $text['seq_name'];?>:</div>
                             <div class="col-9">
                                 <input id="SEQname" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
-                        <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
-
-                        <div class="col-12 row t2 mt-3">
+                     
+                        <div class="row t2 mt-3">
                             <div class="col-3"><?php echo $text['tightening_repeat'];?>:</div>
                             <div class="col-9">
                                 <input id="seq_repeat" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['seq_repeat'] : ''; ?>">
@@ -162,9 +156,9 @@
                             </div>
                         </div>
 
-                        <hr style="border: 1px solid #ccc; width: 60%; margin: 20px 0;">
-
+                       
                     </div>
+                    
                     <div class="col-md-6 t2">
                         <div class="col-12 row t2 mt-3">
                             <div class="col-4 fw-bolder"><?php echo $text['Reverse'];?></div>

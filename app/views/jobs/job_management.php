@@ -13,7 +13,7 @@
             <div class="table-container">
                 <div class="scrollbar" id="style-jobtable">
                     <div class="scrollbar-force-overflow">
-                        <table id="job_table"  class="table w3-table-all w3-hoverable">
+                        <table id="job_table"  class="table w3-table">
                             <thead id="header-table">
                                 <tr class="w3-dark-grey">
                                     <th><?php echo $text['job_id'];?></th>
@@ -82,7 +82,7 @@
                         <div class="row">
                             <div for="job-name" class="col-6 t1"><?php echo $text['job_name'];?> :</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control"  id="job_name" maxlength="" >
+                                <input type="text" class="form-control"  id="job_name" maxlength="" value ='<?php echo "JOB-".$data['jobint'];?>' >
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
@@ -105,7 +105,7 @@
 
                         <div class="row">
                             <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['job_ok_stop'];?> :</div>
-                            <div class="col t2" >
+                            <div class="col t2">
 
                                 <div class="form-check form-check-inline">
             					  <input class="form-check-input" type="radio" name="stop_job_ok" id="stop_job_ok_off" value="0" >
@@ -124,7 +124,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="savejob()"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('newjob');" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('newjob');" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
@@ -158,7 +158,7 @@
 
                         <div class="row">
                             <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['job_ok'];?> :</div>
-                            <div class="col t2" >
+                            <div class="col t2">
 
                                 <div class="form-check form-check-inline">
             					  <input class="form-check-input" type="radio" name="edit_job_ok" id="job_off" value="0" >
@@ -196,7 +196,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="updatejob();"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('editjob');" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('editjob');" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
@@ -235,13 +235,13 @@
         				    <div class="row">
         				        <label for="to_job_id" class="t1 col-4 col-form-label"><?php echo $text['job_id'];?> :</label>
         				        <div class="t2 col-5">
-        				            <input type="number" class="form-control" id="to_job_id">
+        				            <input type="number" class="form-control" id="to_job_id" value ='<?php echo $data['jobint'];?>'>
         				        </div>
         				    </div>
         				    <div class="row">
         				        <label for="to_job_name" class="t1 col-4 col-form-label"><?php echo $text['job_name'];?> :</label>
         				        <div class="t2 col-5">
-        				            <input type="text" class="form-control" id="to_job_name">
+        				            <input type="text" class="form-control" id="to_job_name"  value ='<?php echo "JOB-".$data['jobint'];?>'>
         				        </div>
         				    </div>
         			    </div>
@@ -250,228 +250,18 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal"  onclick="copy_job_by_id();"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('copyjob');"  class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('copyjob');"  class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 加载動畫 OP -->
+        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
+
 
 </div>
 
-<script>
-$(document).ready(function () {
-    highlight_row('job_table');
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      var headerElements = document.querySelectorAll('.ajs-header');
-      headerElements.forEach(function(headerElement) {
-        headerElement.parentNode.removeChild(headerElement);
-      });
-    });
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-});
-
-// Get the modal
-var modal = document.getElementById('newjob');
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-}
-</script>
-
-<script>    
-
-var jobid ='';
-var old_jobname = '';
-var rows = document.getElementsByTagName("tr");
-for (var i = 0; i < rows.length; i++) {
-    (function(row) {
-        var cells = row.getElementsByTagName("td");
-        if (cells.length > 0) {
-            cells[0].addEventListener("click", function() {
-           
-                var jobid = cells[0] ? (cells[0].textContent || cells[0].innerText) : null;
-                var secondCellValue = cells[1] ? (cells[1].textContent || cells[1].innerText) : null;
-                var thirdCellValue = cells[2] ? (cells[2].textContent || cells[2].innerText) : null;
-                var rpmvalue = cells[3] ? (cells[3].textContent || cells[3].innerText) : null;
-                var powervalue = cells[4] ? (cells[4].textContent || cells[4].innerText) : null;
-                jobid = jobid;
-                old_jobname = secondCellValue;
-                
-                localStorage.setItem("jobid", jobid );
-                localStorage.setItem("jobname", secondCellValue);
-                localStorage.setItem("direction", thirdCellValue);
-                localStorage.setItem("powervalue", powervalue);
-                localStorage.setItem("rpmvalue", rpmvalue);
-
-            });
-        }
-    })(rows[i]);
-}
-
-function savejob() {
-    var jobidnew = '<?php echo $data['jobint']?>';
-    var jobname_val = document.getElementById("job_name").value;
-  
-   
-
-    var jobElement = document.querySelector('input[name="job_ok"]:checked');
-    var job_ok_val = jobElement ? jobElement.value : null;
-
-    var stopjobokElement = document.querySelector('input[name="stop_job_ok"]:checked');
-    var stop_job_ok_val = stopjobokElement ? stopjobokElement.value : null;
-
-    let check = input_check();
-    if(check){
-
-        $.ajax({
-            url: "?url=Jobs/create_job",
-            method: "POST",
-            data: { 
-                jobidnew: jobidnew,
-                jobname_val: jobname_val,
-                job_ok_val: job_ok_val,
-                stop_job_ok_val: stop_job_ok_val
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0); // 刷新页面
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });
-    }
-
-
-}
-
-
-
-
-function copy_job_by_id(jobid){
-
-    var new_jobid = document.getElementById("to_job_id").value;
-    var new_jobname = document.getElementById("to_job_name").value;
-
-    document.getElementById("from_job_id").value = old_jobid;
-    document.getElementById("from_job_name").value = oldjobname;
-    document.getElementById("to_job_id").value = new_jobid;
-
-    if(new_jobid){
-
-
-        var language = getCookie('language');
-        if(language == "zh-cn"){
-            var text_info ='你确定吗？';
-            var title = 'Copy Job';
-        }else if(language == "zh-tw"){
-            var text_info ='你確定嗎 ?';
-            var title = 'Copy Job';
-        }else{
-            var text_info ='Are you sure ?';
-            var title = 'Copy Job';
-        }
-        
-        
-        $.ajax({
-            url: "?url=Jobs/check_job_type",
-            method: "POST",
-            data:{ 
-                new_jobid: new_jobid,
-
-            },
-            success: function(response) {
-                alertify.confirm(text_info, function (result) {
-
-                
-                if (result) {
-                    $.ajax({
-                        url: "?url=Jobs/copy_job_data",
-                        method: "POST",
-                        data:{ 
-                            old_jobid: old_jobid,
-                            old_jobname: oldjobname,
-                            new_jobid: new_jobid,
-                            new_jobname: new_jobname
-
-                        },
-                        success: function(response) { 
-                            var responseData = JSON.parse(response);
-                            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                                document.getElementById('copyjob').style.display = 'none';
-                                history.go(0);
-                            }); 
-
-                    
-                        },
-                        error: function(xhr, status, error) {
-                            
-                        }
-                    });
-                } else {
-                    alertify.error('Cancelled');
-                   
-                }
-
-                
-                });
-                        },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-        document.getElementById('copyjob').style.display = 'none';
-    }
-}
-
-
-function input_check(argument) {
-    let conditions = [
-        { id: 'job_name', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
-    ];
-
-    let isFormValid = true;
-    conditions.forEach(function(input) {
-        var element = document.getElementById(input.id);
-        var value = element.value.trim();
-
-        if(input.id != 'job_name'){
-            element.nextElementSibling.innerHTML = input.min+' ~ '+input.max;
-        }
-
-        if (value === "") {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (!input.pattern.test(value)) {
-            // element.value = "";
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (input.min !== null && parseFloat(value) < input.min) {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else if (input.max !== null && parseFloat(value) > input.max) {
-            element.classList.add("is-invalid");
-            isFormValid = false;
-        } else {
-            element.classList.remove("is-invalid");
-        }
-
-    });
-
-    console.log(conditions)
-
-    return isFormValid;
-
-}
-
-</script>
+<?php require_once '../app/views/jobs/jobs_share.php';?>

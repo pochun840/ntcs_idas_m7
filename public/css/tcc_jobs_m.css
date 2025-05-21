@@ -1,4 +1,4 @@
-.container-ms
+﻿.container-ms
 {
     margin: 0 auto;
     padding: 0px;
@@ -9,10 +9,16 @@
 /* Header */
 #header
 {
-    min-height:50px;
-    background-color:hsl(0, 60%, 50%);
-    margin: 10px;
+    min-height: 40px;
+    background-color: hsl(0, 60%, 50%);
     font-size: 30px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    width: 100%;
+    z-index: 1000;
 }
 
 .no-border
@@ -25,6 +31,12 @@
     border: none;
 }
 
+body
+{
+    padding-top: 55px;
+    margin: 0;
+}
+
 .main-content
 {
     display: flex;
@@ -33,21 +45,22 @@
 .center-content
 {
     width: 100%;
-    padding:3px 20px;
+    padding:3px 10px;
 }
 
 
-/* table user */
+/* table job */
 .table-container
 {
     overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-spacing: 30px;
 }
 
 table
 {
-    width: 100%;
-    overflow-y: scroll;
-    scrollbar-width: thin;
     vertical-align: middle;
 }
 
@@ -58,13 +71,13 @@ th, td
     vertical-align: middle;
 }
 
-.w3-table
+.w3-table-all
 {
     width: 100%;
     border-collapse: collapse;
 }
 
-.w3-table th, .w3-table td
+.w3-table-all th, .w3-table-all td
 {
     border: 1px solid #ddd;
     padding: 8px;
@@ -72,24 +85,26 @@ th, td
     vertical-align: middle; /* Vertically center */
 }
 
+.w3-hoverable tr:hover {background-color: #f5f5f5;}
+
 .w3-dark-grey
 {
     background-color: #616161;
     color: white;
 }
 
-.w3-table img
+.w3-table-all img
 {
     vertical-align: middle; /* Vertically center images within cells */
 }
 
 #header-table
 {
+    vertical-align: middle;
     position: sticky;
     top: 0;
     background-color: #A3A3A3;
     z-index: 2;
-    font-size: 2vmin;
 }
 
 
@@ -97,7 +112,7 @@ th, td
 .scrollbar
 {
     float: left;
-    height: calc(100vh - 173px);
+    height: calc(100vh - 200px);
     width: 100%;
     overflow-y: scroll;
 }
@@ -275,12 +290,12 @@ th, td
     color: white;
 }
 
-/* modal row */ 
 .t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;}
 .t2{font-size: 17px; margin: 5px 0px;}
 .t3{font-size: 17px; margin: 3px 0px;}
 .t4{height: 28px;text-align: center;}   
-
-.selected { background-color: #9AC0CD !important;} /* Selected row */
+.selected { background-color: #9AC0CD !important;}
+.input-pin img{ height: 25px; width: 40px}
+.output-pin img{ height: 25px; width: 45px}
+.disabled_input{ color: #999; pointer-events: none;}
 .zoom{zoom:1.2; vertical-align: middle}
-

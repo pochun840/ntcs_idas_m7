@@ -1,34 +1,45 @@
 
 var oldjobname ='';
 var old_jobid  = '';
-function cound_job(argument){
 
-    var table = document.getElementById('job_table');
-    var selectedRow = table.querySelector('.selected');
-    var jobid  = selectedRow ? selectedRow.cells[0].innerText : null;
+function cound_job(action) {
+    const table = document.getElementById('job_table');
+    const selectedRow = table.querySelector('.selected');
+
+    const jobid = selectedRow ? selectedRow.cells[0].innerText : null;
     oldjobname = selectedRow ? selectedRow.cells[1].innerText : null;
     old_jobid  = selectedRow ? selectedRow.cells[0].innerText : null;
-    if(argument == 'del' && jobid != null){
-        document.querySelector(".main-content").classList.add("overlay-active");
-        delete_jobid(jobid);
+
+    const needJobid = ['del', 'edit', 'copy'];
+
+    // 若需要 jobid 的操作卻沒選取列
+    if (needJobid.includes(action) && !jobid) {
+        alertify.warning("Please select a job first.");
+        return;
     }
 
-    if(argument =="edit" && jobid != null){
-        document.querySelector(".main-content").classList.add("overlay-active");
-        edit_job(jobid);
-    }
+    // 統一加載遮罩
+    document.querySelector(".main-content").classList.add("overlay-active");
 
-    if(argument =="new"){
-        document.querySelector(".main-content").classList.add("overlay-active");
-        create_job();
+    switch (action) {
+        case 'del':
+            delete_jobid(jobid);
+            break;
+        case 'edit':
+            edit_job(jobid);
+            break;
+        case 'new':
+            create_job();
+            break;
+        case 'copy':
+            copy_job(jobid);
+            break;
+        default:
+            alertify.error("Unknown action: " + action);
+            document.querySelector(".main-content").classList.remove("overlay-active");
     }
-
-    if(argument =="copy" && jobid != null){
-        document.querySelector(".main-content").classList.add("overlay-active");
-        copy_job(jobid);
-    }
-
 }
+
 
 function readFromLocalStorage(key) {
     return localStorage.getItem(key);
@@ -40,19 +51,56 @@ function create_job() {
     document.getElementById('newjob').style.display = 'block';
     document.getElementById('job_off').checked = true;
     document.getElementById('stop_job_ok_off').checked = true;
+
+
 }
 
 function copy_job(jobid){
-    var new_jobid = document.getElementById("to_job_id").value;
-    var new_jobname = document.getElementById("to_job_name").value;
-
-    document.getElementById("from_job_id").value = old_jobid;
-    document.getElementById("from_job_name").value = oldjobname;
-    document.getElementById("to_job_id").value = new_jobid;
-    
+    document.getElementById('from_job_id').value =jobid;
+    document.getElementById('from_job_name').value =oldjobname;
     document.getElementById('copyjob').style.display = 'block';
+    
 }
 
+function updatejob(){
+
+    var jobid      = document.getElementById("edit_jobid").value;
+    var jobname    = document.getElementById("edit_jobname").value;
+    var jobokValue = document.querySelector('input[name="edit_job_ok"]:checked').value;
+    var stopjobValue = document.querySelector('input[name="edit_stop_job_ok"]:checked').value;
+
+    let check_edit = edit_input_check();
+
+    if(check_edit) {
+        $.ajax({
+            url: "?url=Jobs/update_job",
+            method: "POST",
+            data: { 
+                jobid: jobid,
+                jobname: jobname,
+                jobokValue:jobokValue,
+                stopjobValue:stopjobValue
+
+            },
+            success: function(response) {   
+
+                
+                var responseData = JSON.parse(response);
+                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                    localStorage.setItem('jobid', jobid);
+                    localStorage.setItem('jobname', jobname);
+                    history.go(0);
+                });
+
+            },
+            error: function(xhr, status, error) {
+                
+            }
+        });
+
+    }
+   
+}
 
 function edit_job(jobid) {
 
@@ -92,37 +140,58 @@ function edit_job(jobid) {
     }   
 }
 
-function validateJobNameInput(id) {
-    const element = document.getElementById(id);
-    const value = element?.value?.trim() || "";
-    const pattern = /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/;
 
-    let isValid = true;
 
-    if (value === "") {
-        isValid = false;
-    } else if (!pattern.test(value)) {
-        isValid = false;
-    } else if ((id === 'job_name' || id === 'edit_jobname') && value.length > 250) {
-        isValid = false;
-    }
+function input_check_job() {
+    const conditions = [
+        { id: 'job_name', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, minLength: 1, maxLength: 250 },
+    ];
+    return validate_form_inputs(conditions);
+}
 
-    if (!isValid) {
-        element.classList.add("is-invalid");
-    } else {
+function edit_input_check_job() {
+    const conditions = [
+        { id: 'edit_jobname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, minLength: 1, maxLength: 250 },
+    ];
+    return validate_form_inputs(conditions);
+}
+
+
+function validate_form_inputs(conditions) {
+    let isFormValid = true;
+
+    conditions.forEach(function(input) {
+        const element = document.getElementById(input.id);
+        if (!element) {
+            console.warn(`Element with ID '${input.id}' not found.`);
+            return;
+        }
+
+        const value = element.value.trim();
+
+        // 字數限制錯誤提示 (可搭配顯示)
+        if (input.maxLength && value.length > input.maxLength) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+            return;
+        }
+
+        if (input.minLength && value.length < input.minLength) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+            return;
+        }
+
+        // pattern 驗證
+        if (value === "" || (input.pattern && !input.pattern.test(value))) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+            return;
+        }
+
+        // 如果通過所有驗證，移除紅框
         element.classList.remove("is-invalid");
-    }
+    });
 
-    return isValid;
+    return isFormValid;
 }
-
-
-
-function input_check() {
-    return validateJobNameInput("job_name");
-}
-
-function edit_input_check() {
-    return validateJobNameInput("edit_jobname");
-}
-

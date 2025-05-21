@@ -160,6 +160,16 @@ class Miscellaneous{
 
         }
 
+        if($mode == "status_ntcs"){
+            $array = array(
+                1 => 'OK', 
+                2 => 'NG',
+                3 => 'OK-SEQ',
+                4 => 'OK-JOB'
+            );
+
+        }
+
         if($mode =="lang"){
             $array = array(
                 1 => 'English',
@@ -408,8 +418,8 @@ class Miscellaneous{
             'res_msg'  => $errorMessage
         );
         echo json_encode($response);
-        exit; // ✅ 關鍵：中斷 PHP 執行，確保回傳純 JSON
     }
+
 
     public function check_angle($angle) {
         

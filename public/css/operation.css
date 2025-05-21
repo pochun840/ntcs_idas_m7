@@ -1,0 +1,174 @@
+﻿.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height:50px;
+    background-color:hsl(0, 60%, 50%);
+    margin: 10px;
+    font-size: 30px;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding:3px 20px;
+}
+
+.topnav
+{
+    width: 100%;
+    overflow: hidden;
+    background-color: #838588;
+    border: 0px solid #B5B5B5;
+    padding: 2px;
+}
+
+.topnav input
+{
+    height:28px; 
+    font-size:18px;
+    text-align: center; 
+    background-color:#D9D9D9 ; 
+    border:0; 
+    margin: 3px;    
+}
+
+.operation-setting 
+{
+    display: flex;
+}
+
+.column 
+{
+    flex: 1;
+}
+
+.item-target-torque 
+{
+    background-color: #D3CDCD;
+    height: 17vh;
+    padding: 20px;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-result
+{
+    background-color: #FFEF62;
+    height: 17vh;
+    padding: 20px;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-targer-angle
+{
+    background-color: #BABABA;
+    height: 17vh;
+    padding: 20px;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-message
+{
+    background-color: #D3CDCD;
+    height: 17vh;
+    padding: 20px;
+    margin: 5px;
+    text-align: center;
+}
+
+.w3-display-topmiddle
+{
+    margin-top: 5px;
+}
+
+.w3-border-top
+{
+    width: 50%;
+}
+
+.item-chart
+{
+    display: flex;
+    width: 100%;
+    padding: 0px;
+    height: calc(100vh - 390px);
+    margin: 5px;
+    text-align: center;
+}
+
+.button-chart 
+{
+    display: flex;
+    flex-direction: column;
+    width: 15%;
+    border: none;
+    cursor: pointer;
+    background-color: #f0f0f0;
+    padding: 5px 30px;
+}
+
+.btn-chart 
+{
+    margin: 5px 0; 
+}
+
+.display-chart 
+{
+    width: 85%;
+    background-color: #fff; 
+}
+
+.btn-chart
+{
+    height: 32px;
+    margin: 5px 0;
+    padding: 0 3px;
+    background-color: #6E8085;
+    border-radius: 5px;
+    color: #fff;
+    border: 0px solid #6E8085;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    font-size: 2vmin;
+    text-align: center;
+}
+
+.active 
+{
+    background-color: #1744E5 !important;
+}
+
+.t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;}
+.t2{font-size: 17px; margin: 5px 0px;}
+.t3{font-size: 17px; margin: 3px 0px;}
+.t4{height: 28px;text-align: center;}   
+.selected { background-color: #9AC0CD !important;}
+.input-pin img{ height: 25px; width: 40px}
+.output-pin img{ height: 25px; width: 45px}
+.disabled_input{ color: #999; pointer-events: none;}
+.zoom{zoom:1.2; vertical-align: middle}
+

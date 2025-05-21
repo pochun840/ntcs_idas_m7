@@ -474,6 +474,3 @@ function countrows() {
     return rowCount;
 }
 </script>
-
-
-<?php require_once '../app/views/sequences/seq_share.php';?>

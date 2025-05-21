@@ -1,4 +1,4 @@
-<div id="Barcode_Setting" class="divMode" style="overflow-y: hidden; max-height: none;" >
+<div id="Barcode_Setting" class="divMode" style="display: none; overflow-x: hidden;"  >
             <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_barcode_setting'] ;?></div>
             <div class="table-container">
                 <div class="scrollbar" id="style-table">

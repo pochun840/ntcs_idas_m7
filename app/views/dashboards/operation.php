@@ -74,9 +74,8 @@
 </div>
 
 
-
 <script>
-// change button background color
+// change button background coler
 function changeBackgroundColor(button) {
     var buttons = document.getElementsByClassName('btn-chart');
     for (var i = 0; i < buttons.length; i++) {
@@ -87,6 +86,8 @@ function changeBackgroundColor(button) {
 
 function chart_type(argument) {
     const currentUrl = window.location.href;
+
+    // 定義 argument 與 chart 的對應關係
     const chartMapping = {
         "torque_time": 1,
         "angle_time": 2,
@@ -95,15 +96,20 @@ function chart_type(argument) {
         "torque_speed": 5
     };
 
+    // 獲取對應的 chart 值
     const chart = chartMapping[argument];
     if (!chart) {
         console.error("Invalid argument:", argument);
         return;
     }
 
+    // 處理按鈕的 active 狀態
     updateActiveButton(argument);
+
+    // 更新 URL
     const nextinfo_url = updateChartUrl(currentUrl, chart);
 
+    // 發送請求並跳轉
     fetch(nextinfo_url, { method: 'GET' })
         .then(response => {
             if (response.ok) {
@@ -115,6 +121,7 @@ function chart_type(argument) {
         .catch(error => console.error("Error fetching URL:", error));
 }
 
+// 更新按鈕的 active 狀態
 function updateActiveButton(argument) {
     const buttons = document.getElementsByClassName("btn-chart");
     Array.from(buttons).forEach(button => button.classList.remove("active"));
@@ -124,6 +131,7 @@ function updateActiveButton(argument) {
     }
 }
 
+// 更新 URL 並返回新的 URL
 function updateChartUrl(currentUrl, chart) {
     const chartIndex = currentUrl.indexOf('chart=');
     const nextChartValue = `chart=${chart}`;
@@ -135,9 +143,14 @@ function updateChartUrl(currentUrl, chart) {
     }
 }
 
+
+// 取得語言設定
 var language = getCookie('language');
+
+// 初始化 ECharts
 var myChart = echarts.init(document.getElementById('chart'));
 
+//取得資料
 var x_data_val = <?php echo $data['chart_info']['x_val']; ?>;
 var y_data_val = <?php echo $data['chart_info']['y_val']; ?>;
 var x_title = '<?php echo addslashes($data['echart_name'][1]); ?>';
@@ -146,11 +159,13 @@ var y_data_val_torque = <?php echo !empty($data['chart_info']['y_val_torque']) ?
 var y_data_val_rpm = <?php echo !empty($data['chart_info']['y_val_rpm']) ? $data['chart_info']['y_val_rpm'] : '[]'; ?>;
 var chart_mode = '<?php echo $data['chart_mode']; ?>';
 
+
 const translations = {
     "zh-tw": { "Time(MS)": "時間", "Angle": "角度", "Torque": "扭力", "RPM": "轉速" },
     "zh-cn": { "Time(MS)": "时间", "Angle": "角度", "Torque": "扭力", "RPM": "转速" }
 };
 
+// 翻譯函數
 function translateTitles(language, xTitle, yTitle) {
     const langTranslations = translations[language];
     if (langTranslations) {
@@ -160,16 +175,39 @@ function translateTitles(language, xTitle, yTitle) {
     return { xTitle, yTitle };
 }
 
+// 翻譯標題
 ({ xTitle: x_title, yTitle: y_title } = translateTitles(language, x_title, y_title));
 
+// 計算範圍
+// 計算範圍
 const min_torque = y_data_val_torque.length > 0 ? Math.min(...y_data_val_torque) : 0;
 const max_torque = y_data_val_torque.length > 0 ? Math.max(...y_data_val_torque) : 0;
 const min_rpm = y_data_val_rpm.length > 0 ? Math.min(...y_data_val_rpm) : 0;
 const max_rpm = y_data_val_rpm.length > 0 ? Math.max(...y_data_val_rpm) : 0;
-const ratio = max_torque > 0 ? max_rpm / max_torque : 1;
-const rpm_scaled = y_data_val_rpm.map(r => r / ratio);
-const interval = (max_torque - min_torque) / 5;
 
+let rpmMinAdjusted = min_rpm;
+let rpmMaxAdjusted = max_rpm;
+
+if (chart_mode === "5" && y_data_val_torque.length > 0 && y_data_val_rpm.length > 0 && max_torque !== 0) {
+    // *** 關鍵修改：基於最大值計算比例 ***
+    const ratio = max_rpm / max_torque;
+
+    rpmMinAdjusted = min_torque * ratio;
+    rpmMaxAdjusted = max_torque * ratio;
+
+    // 確保 rpmMinAdjusted 不小於實際的 min_rpm，rpmMaxAdjusted 不大於實際的 max_rpm
+    rpmMinAdjusted = Math.max(rpmMinAdjusted, min_rpm);
+    rpmMaxAdjusted = Math.max(rpmMaxAdjusted, max_rpm);
+
+    console.log("ratio", ratio);
+    console.log("rpmMinAdjusted", rpmMinAdjusted);
+    console.log("rpmMaxAdjusted", rpmMaxAdjusted);
+} else if (max_torque === 0) {
+    console.warn("max_torque is 0, cannot calculate ratio.");
+}
+
+
+// ECharts 配置
 const option = {
     title: { text: '' },
     tooltip: {
@@ -180,16 +218,16 @@ const option = {
             if (chart_mode === "5") {
                 params.forEach(param => {
                     if (param.seriesName === 'Torque') {
-                        tooltipContent += `<span style=\"color: red;\">Torque: </span>${param.value} Nm<br>`;
+                        tooltipContent += `<span style="color: rgb(255, 0, 0);">torque: </span>${param.value} Nm<br>`;
                     } else if (param.seriesName === 'RPM') {
-                        tooltipContent += `<span style=\"color: blue;\">RPM: </span>${Math.round(param.value * ratio)} RPM<br>`;
+                        tooltipContent += `<span style="color: rgb(0, 0, 255);">rpm: </span>${param.value} RPM<br>`;
                     }
                 });
             } else {
                 const yAxisLabels = { "1": "Torque", "2": "Angle", "3": "Rpm", "4": "Torque" };
                 const yAxisLabel = yAxisLabels[chart_mode] || '';
                 params.forEach(param => {
-                    tooltipContent += `<span style=\"color: red;\">${yAxisLabel}: </span>${param.value}<br>`;
+                    tooltipContent += `<span style="color: rgb(255, 0, 0);">${yAxisLabel}: </span>${param.value}<br>`;
                 });
             }
             return tooltipContent;
@@ -202,36 +240,38 @@ const option = {
         data: x_data_val
     },
     yAxis: chart_mode === "5" ? [
-        {
-            type: 'value',
-            name: 'Torque (Nm)',
-            position: 'left',
-            min: min_torque,
-            max: max_torque,
-            interval: interval,
-            alignTicks: true,
-            axisLabel: { formatter: '{value}' }
+    {
+        type: 'value',
+        name: 'Torque',
+        min: min_torque,
+        max: max_torque,
+        position: 'left',
+        axisLabel: { formatter: '{value}' }
+    },
+    {
+        type: 'value',
+        name: 'RPM',
+        position: 'right',
+        axisLabel: { formatter: '{value}' },
+        // *** 關鍵修改：處理 NaN、Infinity 和 min > max 的情況 ***
+        min: () => {
+            if (isNaN(rpmMinAdjusted) || !isFinite(rpmMinAdjusted)) return min_rpm;
+            return Math.min(rpmMinAdjusted, rpmMaxAdjusted); // 確保 min <= max
         },
-        {
-            type: 'value',
-            name: 'RPM',
-            position: 'right',
-            min: min_torque,
-            max: max_torque,
-            interval: interval,
-            alignTicks: true,
-            axisLabel: {
-                formatter: value => Math.round(value * ratio)
-            },
-            splitNumber: 5
-        }
-    ] : [
-        {
-            type: 'value',
-            name: y_title,
-            boundaryGap: [0, '100%']
-        }
-    ],
+        max: () => {
+            if (isNaN(rpmMaxAdjusted) || !isFinite(rpmMaxAdjusted)) return max_rpm;
+            return Math.max(rpmMinAdjusted, rpmMaxAdjusted); // 確保 max >= min
+        },
+        // *** Y軸刻度優化 ***
+        splitNumber: 5, // 建議的刻度數量
+    }
+] : [
+    {
+        type: 'value',
+        name: y_title,
+        boundaryGap: [0, '100%']
+    }
+],
     dataZoom: generateDataZoom(),
     series: chart_mode === "5" ? [
         {
@@ -250,7 +290,7 @@ const option = {
             yAxisIndex: 1,
             itemStyle: { color: 'rgb(0,0,255)' },
             lineStyle: { width: 0.75 },
-            data: rpm_scaled
+            data: y_data_val_rpm
         }
     ] : [
         {
@@ -264,38 +304,10 @@ const option = {
     ]
 };
 
+// 設置圖表
 myChart.setOption(option);
 
-// ✅ 加上水平對齊校驗線（最頂與最底）輔助視覺比對
-myChart.setOption({
-    graphic: [
-        {
-            type: 'line',
-            shape: {
-                x1: '0%', y1: '5%',
-                x2: '100%', y2: '5%'
-            },
-            style: {
-                stroke: '#888',
-                lineDash: [4, 4],
-                lineWidth: 1
-            }
-        },
-        {
-            type: 'line',
-            shape: {
-                x1: '0%', y1: '95%',
-                x2: '100%', y2: '95%'
-            },
-            style: {
-                stroke: '#888',
-                lineDash: [4, 4],
-                lineWidth: 1
-            }
-        }
-    ]
-});
-
+// 生成 DataZoom 配置
 function generateDataZoom() {
     return [
         { type: 'inside', start: 0, end: 100 },
@@ -315,4 +327,11 @@ function generateDataZoom() {
         }
     ];
 }
+
+
+
 </script>
+
+</body>
+
+</html>

@@ -20,8 +20,8 @@
 
             <div class="table-container">
                 <div class="scrollbar" id="style-jobtable">
-                    <div class="scrollbar-force-overflow">
-                        <table id="seq_table" class="table w3-table-all w3-hoverable">
+                    <div class="force-overflow">
+                        <table id="seq_table" class="table w3-table">
                             <thead id="header-table">
                                 <tr class="w3-dark-grey">
                                     <th><?php echo $text['seq_id'];?></th>

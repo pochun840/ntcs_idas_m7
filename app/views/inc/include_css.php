@@ -39,10 +39,10 @@ function include_css() {
         'Step'      => ['pc' => 'step.css',    'mobile' => 'step_m.css'],
         'Inputs'    => ['pc' => 'input.css',   'mobile' => 'input_m.css'],
         'Outputs'   => ['pc' => 'output.css',  'mobile' => 'output_m.css'],
-        'Settings'  => ['pc' => 'tcc_setting.css', 'mobile' => 'tcc_setting_m.css'],
+        'Settings'  => ['pc' => 'setting.css', 'mobile' => 'setting_m.css'],
         'Tools'     => ['pc' => 'tools.css'],
         'Data'      => ['pc' => 'data.css'],
-        'Agents'    => ['pc' => 'tcc_agent.css'],
+        'Agents'    => ['pc' => 'agent.css'],
     ];
 
     // 特殊處理 Dashboards 模組中的不同 action
@@ -50,12 +50,12 @@ function include_css() {
         if ($action === 'index') {
             $cssFile = 'tcc_main.css';
         } elseif ($action === 'operation') {
-            $cssFile = $isMobile ? 'tcc_operation_m.css' : 'tcc_operation.css';
+            $cssFile = $isMobile ? 'operation_m.css' : 'operation.css';
         } else {
-            $cssFile = $isMobile ? 'tcc_operation.css' : 'tcc_operation.css'; // 預設 fallback
+            $cssFile = $isMobile ? 'operation.css' : 'operation.css'; // 預設 fallback
         }
     }else if($controller === 'In'){
-        $cssFile = 'tcc_main.css';
+        $cssFile = 'main.css';
     }
      elseif (isset($cssMap[$controller])) {
         $cssFile = $isMobile && isset($cssMap[$controller]['mobile']) 
@@ -87,16 +87,21 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/alertify_min.css?v=<?php echo ASSET_VERSION; ?>">
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/default_min.css?v=<?php echo ASSET_VERSION; ?>">
     <link rel="stylesheet" href="<?php echo URLROOT; ?>css/footer.css?v=<?php echo ASSET_VERSION; ?>">
-
     <?php
         $queryString = $_SERVER['QUERY_STRING'] ?? '';
         $route = explode('/', str_replace('url=', '', $queryString))[0] ?? '';
 
-        // 不在 Input 或 Output 時才載入 share.css
+        // 檢查是否為行動裝置
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $isMobile = preg_match('/Mobile|Android|iPhone|iPad|iPod/i', $userAgent);
+
+        // 不在 Inputs 或 Outputs 頁面時，根據裝置載入對應的 CSS
         if (!in_array($route, ['Inputs', 'Outputs'])) {
-            echo '<link rel="stylesheet" href="' . URLROOT . 'css/share.css?v=' . ASSET_VERSION . '">' . "\n";
+            $cssFile = $isMobile ? 'share_m.css' : 'share.css';
+            echo '<link rel="stylesheet" href="' . URLROOT . 'css/' . $cssFile . '?v=' . ASSET_VERSION . '">' . "\n";
         }
     ?>
+
 
     
     <!-- ================== 模組 CSS 動態載入 ================== -->
@@ -110,6 +115,7 @@ function include_css() {
     <script src="<?php echo URLROOT; ?>js/alertify_min.js?v=<?php echo ASSET_VERSION; ?>"></script>
 
 
+
     <!-- ================== 模組 JS 動態載入 ================== -->
     <?php 
     $modules = ['Inputs', 'Outputs', 'Jobs', 'Data', 'Sequences', 'Step', 'Settings'];
@@ -121,5 +127,5 @@ function include_css() {
     <!-- ================== 其他工具 JS ================== -->
     <script src="<?php echo URLROOT; ?>js/flatpickr.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <script src="<?php echo URLROOT; ?>js/flatpickr_zh-tw.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/data.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/tcc_data.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <script src="<?php echo URLROOT; ?>js/jszip.js?v=<?php echo ASSET_VERSION; ?>"></script>

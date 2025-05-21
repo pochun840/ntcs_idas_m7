@@ -30,7 +30,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <td>{$row['id']}</td>
                 <td>{$row['data_time']}</td>
                 <td>{$row['job_name']}</td>
-                <td>{$row['job_name']}</td>
+                <td>{$row['sequence_name']}</td>
                 <td>{$row['final_fasten_torque']}</td>
                 <td>{$text[$unit_arr[$row['torque_unit']]]}</td>
                 <td>{$row['final_fasten_angle']}</td>

@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
 
-    <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js"></script>
-    <script src="<?php echo URLROOT; ?>js/jquery_dataTables_min.js"></script>
+    <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo URLROOT; ?>js/jquery_dataTables_min.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <?php include_once 'include_css.php';?>
     <title><?php echo SITENAME; ?></title>    
     
