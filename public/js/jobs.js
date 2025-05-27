@@ -49,7 +49,7 @@ function create_job() {
     
     //帶入預設值
     document.getElementById('newjob').style.display = 'block';
-    document.getElementById('job_off').checked = true;
+    document.getElementById('job_ok').checked = true;
     document.getElementById('stop_job_ok_off').checked = true;
 
 

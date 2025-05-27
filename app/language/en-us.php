@@ -146,7 +146,8 @@ $text['Pre_Run_Angle'] = 'Pre Run Angle';
 
 $text['High_Torque'] = 'High Torque';
 $text['Low_Torque'] = 'Low Torque';
-$text['Threshold_Torque'] = 'Threshold Torque';
+$text['Threshold_Torque'] = 'Torque Threshold';
+$text['Threshold_Angle'] = 'Angle Threshold';
 $text['Joint_Offset'] = 'Joint Offset';
 
 $text['Nm'] = 'Nm';
@@ -213,7 +214,7 @@ $text['event'] = 'Event'; //Select
 $text['job_select'] = 'Job Select'; //Job Select
 $text['confirm'] = 'Confirm';
 $text['Table'] = 'Table';
-$text['Align'] = 'Unified';
+$text['Align'] = 'Binding';
 $text['new_event'] = 'Create Event';
 $text['edit_event'] = 'Edit Event';
 $text['del_event'] = 'Delete Event';

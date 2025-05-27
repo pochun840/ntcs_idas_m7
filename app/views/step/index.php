@@ -1,6 +1,3 @@
-
-<link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_step.css" type="text/css">
-
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -68,10 +65,10 @@
         </div>
 
         <div class="buttonbox">
-            <?php //$status = count($data['step']) == 4 ? 'disabled' : ''; ?>
-            <input id="S3" name="Step_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_step('new');" <?php //echo $status;?>>
+            <?php $status = $data['total_step'] == 5 ? 'disabled' : ''; ?>
+            <input id="S3" name="Step_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_step('new');" <?php echo $status;?>>
             <input id="S6" name="Step_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_step('edit')">
-            <input id="S5" name="Step_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1"  onclick="cound_step('copy');" <?php //echo $status; ?>>
+            <input id="S5" name="Step_Manager_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1"  onclick="cound_step('copy');" <?php echo $status; ?>>
             <input id="S4" name="Step_Manager_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="cound_step('del');" >
         </div>
     </div>
@@ -254,6 +251,12 @@
             </div>
         </div>
     </div>
+
+    <!-- 加载動畫 OP -->
+       <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
+
 </div>
 
 <script>
@@ -296,181 +299,7 @@ for (var i = 0; i < rows.length; i++) {
         }
     })(rows[i]);
 }
-
-
-function cound_step(argument){
-
-
-    var table = document.getElementById('step_table');
-    var selectedRow = table.querySelector('.selected');  
-    var selectedRowData = selectedRow ? selectedRow.cells[0].innerText : null;
-    var selectedRowData_name = selectedRow ? selectedRow.cells[1].innerText : null;
-    stepid = selectedRowData;
-
-    if(argument == 'del'){
-        del_stepid(stepid);
-    }
-
-    if(argument =="copy" && stepid != null){
-        copy_step(stepid);
-    }
-
-
-    if(argument =="new"){
-        create_step();
-    }
-
-    if(argument =="edit" && stepid != null){
-        edit_step(stepid);
-    }
-
-}
-
-
-
-
-
-
-
-function create_step() {
-    var job_id = '<?php echo $data['job_id'];?>';    
-    var seq_id = '<?php echo $data['seq_id'];?>';
-    window.location.href = '../public/?url=Step/variation/' + job_id + '/' + seq_id; 
-
-
-}
-
-function edit_step(){
-    var job_id = '<?php echo $data['job_id'];?>';    
-    var seq_id = '<?php echo $data['seq_id'];?>';
-    window.location.href = '../public/?url=Step/variation/' + job_id + '/' + seq_id + '/' + stepid; 
-    
-}
-
-
-
-
-
-
-function copy_step_by_id(){
-    var jobid = '<?php echo $data['job_id']?>';
-    var seqidnew = '<?php echo $data['stepid_new']?>';
-    
-    document.getElementById('from_step_id').value = stepid;    
-    document.getElementById("to_step_id").value = seqidnew;
-
-
-}
-
-function copy_step_by_id_ajax(){
-    //var stepid = readFromLocalStorage("stepid");
-    var jobid = '<?php echo $data['job_id']?>';
-    var seqid = '<?php echo $data['seq_id']?>';
-    var stepid_new  = '<?php echo $data['stepid_new']?>';
-    
-    if(stepid_new){
-        $.ajax({
-            url: "?url=Step/copy_step",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-                seqid: seqid,
-                stepid:stepid,
-                stepid_new: stepid_new
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                });
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-    }
-}
-
-
-function del_stepid(step_id){
-    var jobid = '<?php echo $data['job_id']?>';
-    var seqid = '<?php echo $data['seq_id']?>';
-    if(stepid) {
-        $.ajax({
-            url: "?url=Step/delete_step",
-            method: "POST",
-            data:{ 
-                stepid:stepid,
-                jobid:jobid,
-                seqid:seqid
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    history.go(0);
-                });
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-
-    }
-
-}
-
-function disableElements(elements, value) {
-    elements.forEach(function(element) {
-        element.disabled = value;
-        element.value = value === true ? 0 : ''; 
-    });
-}
-
-var rowInfoArray = [];
-<?php foreach($data['step'] as $key =>$val) {?>
-        var JOBID = "<?php echo $val['JOBID'];?>";
-        var SEQID= "<?php echo $val['SEQID'];?>";
-        var StepSelect = "<?php echo $val['StepSelect'];?>";
-      
-        
-        var rowInfo = {
-            JOBID: JOBID,
-            SEQID: SEQID,
-            StepSelect: StepSelect,
-        };
-        
-        rowInfoArray.push(rowInfo);
-<?php } ?>
-
-function sendRowInfoArray() {
-    var JOBID = '<?php echo $data['job_id']?>';
-    var dataToSend = {
-        JOBID: JOBID,
-        rowInfoArray: rowInfoArray
-    };
- 
-    if(rowInfoArray){
-
-        $.ajax({
-            url: "?url=Step/adjustment_order", 
-            method: "POST",
-            data: dataToSend,
-            success: function(response) {
-                console.log(response);
-                history.go(0); 
-            },
-            error: function(xhr, status, error) {
-                console.error('Error sending data:', error);
-            }
-        });
-    }
-}
-
-function countrows() {
-    var tbody = document.querySelector('#step_table tbody');
-    var rows = tbody.querySelectorAll('tr');
-    var rowCount = rows.length;
-    console.log("共有 " + rowCount + " 行");
-    return rowCount;
-}
 </script>
+
+
+<?php require_once '../app/views/step/step_share.php';?>

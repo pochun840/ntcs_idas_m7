@@ -1,32 +1,43 @@
 <script>
-    function cound_seq(argument){
+function cound_seq(argument) {
+    const table = document.getElementById('seq_table');
+    if (!table) return;
 
-    var table = document.getElementById('seq_table');
-    var selectedRow = table.querySelector('.selected');  
-    var selectedRowData = selectedRow ? selectedRow.cells[0].innerText : null;
-    var selectedRowData_name = selectedRow ? selectedRow.cells[1].innerText : null;
-    seqid = selectedRowData;
-    seqname = selectedRowData_name;
-    
-    if(argument == 'del' && seqid != null){
-        delete_seqid(seqid);
+    const selectedRow = table.querySelector('.selected');
+    const seqid = selectedRow?.cells[0]?.innerText ?? null;
+    const seqnameVal = selectedRow?.cells[1]?.innerText ?? null;
+
+    // 全域使用者預期 seqid/seqname 仍會存進變數
+    window.seqid = seqid;
+    window.seqname = seqnameVal;
+
+    const hasTarget = ['del', 'edit', 'copy'].includes(argument) && seqid !== null;
+    const alwaysShowOverlay = argument === 'new' || hasTarget;
+
+    if (alwaysShowOverlay) {
+        document.querySelector(".main-content").classList.add("overlay-active");
     }
 
-    if(argument =="edit" && seqid != null){
-        
-        edit_seq(seqid);
+    switch (argument) {
+        case 'del':
+            if (seqid) delete_seqid(seqid);
+            break;
+        case 'edit':
+            if (seqid) edit_seq(seqid);
+            break;
+        case 'new':
+            create_seq();
+            break;
+        case 'copy':
+            if (seqid) copy_seq(seqid, seqnameVal);
+            break;
+        default:
+            console.warn(`未知的操作類型: ${argument}`);
     }
-
-    if(argument =="new"){
-        create_seq();
-    }
-
-    if(argument =="copy" && seqid != null){
-        copy_seq(seqid);
-    }
-
-
 }
+
+
+
 
 var rowInfoArray = [];
 <?php foreach($data['sequences'] as $key =>$val) {?>
@@ -129,17 +140,21 @@ function copy_seq_by_id(){
 
 
 function create_seq() {
-    var job_id = '<?php echo $data['job_id'];?>';
-    window.location.href = '../public/?url=Sequences/variation/'+ job_id;  
+    const job_id = '<?php echo $data['job_id']; ?>';
+    if (!job_id) {
+        //alert('Job ID 無效，無法進入 Sequence 設定');
+        return;
+    }
+
+    const targetUrl = `../public/?url=Sequences/variation/${job_id}`;
+    window.location.href = targetUrl;
 }
 
 
-function copy_seq(seqid){
-    
-    document.getElementById('copyseq').style.display = 'block';   
-    document.getElementById('from_seq_id').value =seqid;
-    document.getElementById('from_seq_name').value =seqname;
-    copy_seq_by_id(seqid);
+function copy_seq(seqid, seqname) {
+    document.getElementById('copyseq').style.display = 'block';
+    document.getElementById('from_seq_id').value = seqid;
+    document.getElementById('from_seq_name').value = seqname;
 }
 
 
@@ -177,7 +192,7 @@ function delete_seqid(seqid) {
                 seqid: seqid
             },
             success: function (response) {
-                handleAjaxResponseWithSpinner(response); // 假設你有處理成功回傳的方法
+                  success_response(response, 'spinner', true); // 自動關閉
             },
             error: function (xhr, status, error) {
                 alertify.error("Delete failed: " + error);
@@ -195,17 +210,23 @@ function delete_seqid(seqid) {
 
 
 function edit_seq(seqid) {
-    var jobid = '<?php echo $data['job_id']?>'; 
-    window.location.href = '../public/?url=Sequences/variation/'+ jobid+'/'+ seqid;   
+    const jobid = '<?php echo $data['job_id']; ?>';
+    
+    if (!jobid || !seqid) {
+        return;
+    }
 
+    const targetUrl = `../public/?url=Sequences/variation/${jobid}/${seqid}`;
+    window.location.href = targetUrl;
 }
 
 
 
 function getSelectedValue(name, defaultValue = 0) {
-    const selectedOption = document.querySelector(`input[name="${name}"]:checked`);
-    return selectedOption ? selectedOption.value : defaultValue;
+    const selected = document.querySelector(`input[name="${name}"]:checked`);
+    return selected?.value ?? defaultValue;
 }
+
 
 function updateValue(element){
     var jobid = '<?php echo $data['job_id']?>';

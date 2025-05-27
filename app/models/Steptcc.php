@@ -177,10 +177,7 @@ class Steptcc{
     
 
 
-    public function update_step_by_id($step_data){
-
-        //echo "eeeeeeeeer";die();
-        
+    public function update_step_by_id($step_data){        
         if (empty($step_data['JOBID']) || empty($step_data['SEQID']) || empty($step_data['StepSelect'])) {
             return false; 
         }
@@ -338,5 +335,91 @@ class Steptcc{
    
     }
 
-    
+    public function check_step_is_last($jobid, $seqid, $stepid) {
+        $sql = "SELECT StepSelect  FROM STEP_lst WHERE JOBID = ? AND SEQID = ? ORDER BY StepSelect ASC";
+        $stmt = $this->db_iDas->prepare($sql);
+
+        if (!$stmt) {
+            // 顯示 SQL 語法錯誤資訊
+            die("SQL prepare error: " . implode(", ", $this->db_iDas->errorInfo()));
+        }
+
+        $stmt->execute([$jobid, $seqid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $is_last = (!empty($rows) && end($rows) == $stepid) ? 'Y' : 'N';
+
+        return [
+            'count' => count($rows),
+            'is_last' => $is_last
+        ];
+    }
+
+
+    public function getStepsWithThresholds($jobid, $seqid) {
+
+        $sql = "SELECT step_id, StepEnableThreshold FROM STEP_lst WHERE JOBID = ? AND SEQID = ?";
+        $stmt = $this->db_iDas->prepare($sql);
+        $stmt->execute([$jobid, $seqid]);
+        return $stmt->fetchAll();
+    }
+
+
+    public function resetThresholdsByStepIds($jobid, $seqid, $stepIds) {
+        if (empty($stepIds)) return;
+
+        $placeholders = implode(',', array_fill(0, count($stepIds), '?'));
+        $sql = "UPDATE STEP_lst SET StepEnableThreshold = 0, StepTorqueTS = 0
+                WHERE JOBID = ? AND SEQID = ? AND step_id IN ($placeholders)";
+        $params = array_merge([$jobid, $seqid], $stepIds);
+
+        $stmt = $this->db_iDas->prepare($sql);
+        $stmt->execute($params);
+    }
+
+    //清除 Threshold
+    public function resetAllThresholds($jobid, $seqid) {
+        $sql = "UPDATE STEP_lst SET StepEnableThreshold = 0, StepTorqueTS = 0 WHERE JOBID = ? AND SEQID = ?";
+        $stmt = $this->db_iDas->prepare($sql);
+        $stmt->execute([$jobid, $seqid]);
+        return true;
+    }
+
+
+    //清除 DownShift
+    public function resetAllDownShifts($jobid, $seqid) {
+        $sql = "UPDATE STEP_lst SET StepEnableDownShift = 0, StepTorqueDownShift = 0, StepRPMDownShift = 0 WHERE JOBID = ? AND SEQID = ?";
+        $stmt = $this->db_iDas->prepare($sql);
+        $stmt->execute([$jobid, $seqid]);
+        return true;
+    }
+
+
+    public function resetAllOtherThresholds($jobid, $seqid, $keep_step_select) {
+        $sql = "UPDATE STEP_lst 
+                SET StepEnableThreshold = 0, StepTorqueTS = 0
+                WHERE JOBID = ? AND SEQID = ? AND StepSelect <> ?";
+        $stmt = $this->db_iDas->prepare($sql);
+        return $stmt->execute([$jobid, $seqid, $keep_step_select]);
+    }
+
+
+    public function getPreviousStepsWithThreshold($jobid, $seqid, $current_step_id) {
+        $sql = "SELECT StepSelect FROM STEP_lst
+                WHERE JOBID = ? AND SEQID = ? AND StepSelect <> ?
+                AND StepEnableThreshold > 0 AND StepTorqueTS > 0";
+        $stmt = $this->db_iDas->prepare($sql);
+        $stmt->execute([$jobid, $seqid, $current_step_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function resetPreviousStepsThreshold($jobid, $seqid, $current_step_id) {
+        $sql = "UPDATE STEP_lst 
+                SET StepEnableThreshold = 0, StepTorqueTS = 0
+                WHERE JOBID = ? AND SEQID = ? AND StepSelect <> ?
+                AND StepEnableThreshold > 0 AND StepTorqueTS > 0";
+        $stmt = $this->db_iDas->prepare($sql);
+        return $stmt->execute([$jobid, $seqid, $current_step_id]);
+    }
+
 }

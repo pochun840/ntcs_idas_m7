@@ -249,3 +249,93 @@ function success_response(response, spinnerId = 'spinner', autoClose = false) {
         }
     }, 1000);
 }
+
+
+function checkAuthToken() {
+    // 取得指定 cookie
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    // 語系處理
+    const language = getCookie('language');
+    const messages = {
+        "zh-cn": "閒置超過時間，请重新登录。",
+        "zh-tw": "閒置超過時間，請重新登入。",
+        "default": "Session timeout. Please log in again."
+    };
+    const title = {
+        "zh-cn": "登錄超時",
+        "zh-tw": "登入逾時",
+        "default": "Login Timeout"
+    };
+
+    const msg = messages[language] || messages["default"];
+    const titleText = title[language] || title["default"];
+
+    // 檢查 auth_token 是否存在
+    const authToken = getCookie('auth_token');
+    if (!authToken) {
+        alertify.alert(titleText, msg, function () {
+            window.location.href = "/login";
+        });
+    }
+}
+
+// 呼叫檢查
+checkAuthToken();
+
+
+function success_response_seq(response, spinnerId = 'spinner', redirectUrl = null) {
+    const responseData = JSON.parse(response);
+
+    setTimeout(() => {
+        document.getElementById(spinnerId).style.display = 'none';
+
+        alertify.alert(responseData.res_type, responseData.res_msg, function () {
+            alertify.closeAll();
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                history.go(0);
+            }
+        });
+
+        setTimeout(() => {
+            alertify.closeAll();
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                history.go(0);
+            }
+        }, 3000);
+    }, 1000);
+}
+
+
+
+
+function handleAjaxResponseWithSpinner(response, spinnerId = 'spinner') {
+    const responseData = JSON.parse(response);
+
+    // 顯示 Spinner
+    document.getElementById(spinnerId).style.display = 'block';
+
+    setTimeout(() => {
+        // 隱藏 Spinner
+        document.getElementById(spinnerId).style.display = 'none';
+
+        // 顯示 alertify 並在關閉時刷新
+        alertify.alert(responseData.res_type, responseData.res_msg, function () {
+            alertify.closeAll();
+            history.go(0);
+        });
+
+        // 自動關閉 alertify 並刷新
+        setTimeout(() => {
+            alertify.closeAll();
+            history.go(0);
+        }, 3000);
+    }, 1000); // 延遲 1 秒
+}

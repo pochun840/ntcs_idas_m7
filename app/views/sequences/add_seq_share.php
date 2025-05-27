@@ -3,13 +3,13 @@
     window.onload = function() {
         if (dataType === 'new') {
             //SEQ頁面 預設值
-            document.getElementById("seq_repeat").value = 5;
-            document.getElementById("timeout").value = 60;
+            document.getElementById("seq_repeat").value = 1;
+            document.getElementById("timeout").value = 20;
             document.getElementById("dt_time").value = 0;
             document.getElementById("tt_time").value = 0;
             document.getElementById("ok_seq_on").checked = true;
-            document.getElementById("seq_stop_on").checked = true;
-            document.getElementById("unscrew_count_switch_on").checked = true;
+            document.getElementById("seq_stop_off").checked = true;
+            document.getElementById("unscrew_count_switch_off").checked = true;
             document.getElementById("ng_unscrew_on").checked = true;
             document.getElementById("accu_angle_on").checked = true;
             document.getElementById("unscrew_mode_auto").checked = true;
@@ -22,7 +22,7 @@
                 document.getElementById("Thread_Calcu_" + i).checked = true;
             }
 
-            ['unscrew_rpm', 'unscrew_torque_threshold', 'unscrew_dir_cw', 'unscrew_dir_ccw', 'unscrew_forcemode_on', 'unscrew_forcemode_unlimit', 'unscrew_forcemode_off', 'unscrew_force'].forEach(id => document.getElementById(id).disabled = true);
+            ['unscrew_rpm','unscrew_angle_threshold' ,'unscrew_torque_threshold', 'unscrew_dir_cw', 'unscrew_dir_ccw', 'unscrew_forcemode_on', 'unscrew_forcemode_unlimit', 'unscrew_forcemode_off', 'unscrew_force'].forEach(id => document.getElementById(id).disabled = true);
          
         }
 
@@ -33,188 +33,102 @@
         }
     };
     
+    // 儲存與編輯 sequence 共用函式
+    function buildSequenceFormData() {
+        const data = new FormData();
+        const time = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+        data.append("job_id", document.getElementById("job_id").value);
+        data.append("SEQID", document.getElementById("seq_id").value);
+        data.append("SEQname", document.getElementById("SEQname").value);
+        data.append("time", time);
+        data.append("type", 0);
+        data.append("act", 0);
+        data.append("skip", 0);
+        data.append("seq_repeat", document.getElementById("seq_repeat").value);
+        data.append("timeout", document.getElementById("timeout").value);
+        data.append("dt_time", document.getElementById("dt_time").value);
+        data.append("tt_time", document.getElementById("tt_time").value);
+
+        data.append("ok_seq_val", document.querySelector('input[name="ok_seq"]:checked')?.value ?? null);
+        data.append("ok_stop_val", document.querySelector('input[name="ok_stop"]:checked')?.value ?? null);
+        data.append("countType", 0);
+        data.append("ok_screw", 1);
+        data.append("ng_stop", document.getElementById('ng_stop').value);
+        data.append("ng_unscrew_val", document.querySelector('input[name="ng_unscrew"]:checked')?.value ?? null);
+        data.append("interrupt_alarm", 1);
+        data.append("accu_angle_val", document.querySelector('input[name="accu_angle"]:checked')?.value ?? null);
+        data.append("angle_calculation_data", getCheckboxValue());
+        data.append("unscrew_mode_val", document.querySelector('input[name="unscrew_mode"]:checked')?.value ?? null);
+        data.append("unscrew_forcemode_val", document.querySelector('input[name="unscrew_forcemode"]:checked')?.value ?? null);
+        data.append("unscrew_force", document.getElementById("unscrew_force").value);
+        data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
+        data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
+        data.append("unscrew_angle_threshold", document.getElementById("unscrew_angle_threshold").value);
+        data.append("unscrew_dir_val", document.querySelector('input[name="unscrew_dir"]:checked')?.value ?? 0);
+        data.append("image", '');
+        data.append("message", '');
+        data.append("delay", 0);
+        data.append("input", 0);
+        data.append("input_signal", 0);
+        data.append("output", 0);
+        data.append("output_signal", 1);
+        data.append("output_durat", 100);
+        data.append("addtion", '');
+        data.append("unscrew_count_switch_val", document.querySelector('input[name="unscrew_count_switch"]:checked')?.value ?? null);
+
+        return data;
+    }
+
     // 新增 sequence
     function save_sequence() {
-        
-        let data = new FormData();
-        let job_id = document.getElementById("job_id").value;
-        let seq_id = document.getElementById("seq_id").value;
-        let SEQname = document.getElementById("SEQname").value;
-        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+        const check = input_check_seq();
+        if (!check) return;
 
+        const data = buildSequenceFormData();
+        document.getElementById('spinner').style.display = 'block';
 
-        data.append("job_id", job_id);
-        data.append("SEQID", seq_id);
-        data.append("SEQname", SEQname);
-        data.append("time", time);
-        data.append("type", 0);
-        data.append("act", 0);
-        data.append("skip", 0);
-        data.append("seq_repeat", document.getElementById("seq_repeat").value);
-        data.append("timeout", document.getElementById("timeout").value);
-        data.append("dt_time", document.getElementById("dt_time").value);
-        data.append("tt_time", document.getElementById("tt_time").value);
-
-        let ok_seqElement = document.querySelector('input[name="ok_seq"]:checked');
-        data.append("ok_seq_val", ok_seqElement ? ok_seqElement.value : null);
-
-        let ok_stopElement = document.querySelector('input[name="ok_stop"]:checked');
-        data.append("ok_stop_val", ok_stopElement ? ok_stopElement.value : null);
-
-        data.append("countType", 0);
-        data.append("ok_screw", 1);
-        data.append("ng_stop", document.getElementById('ng_stop').value);
-
-        let ng_unscrew = document.querySelector('input[name="ng_unscrew"]:checked');
-        data.append("ng_unscrew_val", ng_unscrew ? ng_unscrew.value : null);
-
-        data.append("interrupt_alarm", 1);
-
-        let accu_angle = document.querySelector('input[name="accu_angle"]:checked');
-        data.append("accu_angle_val", accu_angle ? accu_angle.value : null);
-
-        let angle_calculation_data = getCheckboxValue(); 
-        data.append("angle_calculation_data", angle_calculation_data);
-
-
-        let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
-        data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
-
-        let unscrew_forcemode = document.querySelector('input[name="unscrew_forcemode"]:checked');
-        data.append("unscrew_forcemode_val", unscrew_forcemode ? unscrew_forcemode.value : null);
-        data.append("unscrew_force", document.getElementById("unscrew_force").value);
-
-        data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
-        data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
-
-        let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
-        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : 0);
-
-        data.append("image", '');
-        data.append("message", '');
-        data.append("delay", 0);
-        data.append("input", 0);
-        data.append("input_signal", 0);
-        data.append("output", 0);
-        data.append("output_signal", 1);
-        data.append("output_durat", 100);
-        data.append("addtion", '');
-
-        let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
-        data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
-
-        let check = input_check();
-        if(check){
-            document.getElementById('spinner').style.display = 'block';
-            $.ajax({
-                url: '?url=Sequences/create_seq',
-                type: 'POST',
-                data: data,
-                processData: false, 
-                contentType: false, 
-                success: function(response) {
-                    const job_id = document.getElementById("job_id").value;
-                    success_response_seq(response, 'spinner', '../public/?url=Sequences/index/' + job_id);
-                },
-                error: function(xhr, status, error) {
-                    // 處理錯誤
-                    console.error('Error:', error);
-                }
-            });
-        }
+        $.ajax({
+            url: '?url=Sequences/create_seq',
+            type: 'POST',
+            data: data,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                const job_id = document.getElementById("job_id").value;
+                success_response_seq(response, 'spinner', `../public/?url=Sequences/index/${job_id}`);
+            },
+            error: function (xhr, status, error) {
+                console.error('Error:', error);
+            }
+        });
     }
 
-    //edit sequence
-    function edit_sequence(){
-        let job_id = document.getElementById("job_id").value;
-        let seq_id = document.getElementById("seq_id").value;
-        let SEQname = document.getElementById("SEQname").value;
-        let time = new Date().toISOString().slice(0, 19).replace('T', ' '); 
+    // 編輯 sequence
+    function edit_sequence() {
+        const check = input_check_seq();
+        if (!check) return;
 
+        const data = buildSequenceFormData();
+        document.getElementById('spinner').style.display = 'block';
 
-        let data = new FormData();
-        data.append("job_id", job_id);
-        data.append("SEQID", seq_id);
-        data.append("SEQname", SEQname);
-        data.append("time", time);
-        data.append("type", 0);
-        data.append("act", 0);
-        data.append("skip", 0);
-        data.append("seq_repeat", document.getElementById("seq_repeat").value);
-        data.append("timeout", document.getElementById("timeout").value);
-        data.append("dt_time", document.getElementById("dt_time").value);
-        data.append("tt_time", document.getElementById("tt_time").value);
-
-        let ok_seqElement = document.querySelector('input[name="ok_seq"]:checked');
-        data.append("ok_seq_val", ok_seqElement ? ok_seqElement.value : null);
-
-        let ok_stopElement = document.querySelector('input[name="ok_stop"]:checked');
-        data.append("ok_stop_val", ok_stopElement ? ok_stopElement.value : null);
-
-        data.append("countType", 0);
-        data.append("ok_screw", 1);
-        data.append("ng_stop", document.getElementById('ng_stop').value);
-
-        let ng_unscrew = document.querySelector('input[name="ng_unscrew"]:checked');
-        data.append("ng_unscrew_val", ng_unscrew ? ng_unscrew.value : null);
-
-        data.append("interrupt_alarm", 1);
-
-        let accu_angle = document.querySelector('input[name="accu_angle"]:checked');
-        data.append("accu_angle_val", accu_angle ? accu_angle.value : null);
-
-        let angle_calculation_data = getCheckboxValue(); 
-        data.append("angle_calculation_data", angle_calculation_data);
-
-   
-        let unscrew_mode = document.querySelector('input[name="unscrew_mode"]:checked');
-        data.append("unscrew_mode_val", unscrew_mode ? unscrew_mode.value : null);
-        
-
-        let unscrew_forcemode = document.querySelector('input[name="unscrew_forcemode"]:checked');
-        data.append("unscrew_forcemode_val", unscrew_forcemode ? unscrew_forcemode.value : null);
-        data.append("unscrew_force", document.getElementById("unscrew_force").value);
-
-        data.append("unscrew_rpm", document.getElementById("unscrew_rpm").value);
-        data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
-
-        let unscrew_dir = document.querySelector('input[name="unscrew_dir"]:checked');
-        data.append("unscrew_dir_val", unscrew_dir ? unscrew_dir.value : 0);
-
-        data.append("image", '');
-        data.append("message", '');
-        data.append("delay", 0);
-        data.append("input", 0);
-        data.append("input_signal", 0);
-        data.append("output", 0);
-        data.append("output_signal", 1);
-        data.append("output_durat", 100);
-        data.append("addtion", '');
-
-        let unscrew_count_switch = document.querySelector('input[name="unscrew_count_switch"]:checked');
-        data.append("unscrew_count_switch_val", unscrew_count_switch ? unscrew_count_switch.value : null);
-
-        let check = input_check();
-        if(check){
-            $.ajax({
-                url: '?url=Sequences/edit_seq',
-                type: 'POST',
-                data: data,
-                processData: false, 
-                contentType: false, 
-                success: function(response) {
-                        const job_id = document.getElementById("job_id").value;
-                        success_response_seq(response, 'spinner', '../public/?url=Sequences/index/' + job_id);
-                },
-                error: function(xhr, status, error) {
-                    // 處理錯誤
-                    console.error('Error:', error);
-                }
-            });
-        }
-
-
+        $.ajax({
+            url: '?url=Sequences/edit_seq',
+            type: 'POST',
+            data: data,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                const job_id = document.getElementById("job_id").value;
+                success_response_seq(response, 'spinner', `../public/?url=Sequences/index/${job_id}`);
+            },
+            error: function (xhr, status, error) {
+                console.error('Error:', error);
+            }
+        });
     }
+
+
 
     function getCheckboxValue() {
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -269,7 +183,7 @@
     }
 
 
-    function input_check(argument) {
+    function input_check_seq(argument) {
         let Tool_Max_Torque = document.getElementById('tool_max_torque').value;
         let Tool_Min_Torque = document.getElementById('tool_min_torque').value;
         let Tool_Max_RPM = document.getElementById('tool_max_rpm').value;
@@ -290,6 +204,7 @@
             { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
             { id: 'unscrew_rpm', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}(\.\d{1})?$/, min: 0, max: Tool_Max_Torque },
+            { id: 'unscrew_angle_threshold', pattern: /^\d{1,5}(\.\d{1})?$/ , min: 0, max: 99999},
             { id: 'unscrew_force', pattern: /^\d{1,3}$/, min: 1, max: 100 },
         ];
 
@@ -298,8 +213,8 @@
             var element = document.getElementById(input.id);
             var value = element.value.trim();
 
-            // 如果 unscrew_mode_auto 被選中, 跳過 unscrew_torque_threshold 和 unscrew_force 的驗證
-            if (isAutoMode && (input.id === 'unscrew_torque_threshold' || input.id === 'unscrew_force')) {
+            // 如果 unscrew_mode_auto 被選中, 跳過 unscrew_torque_threshold 和 unscrew_force  和 unscrew_angle_threshold 的驗證 
+            if (isAutoMode && (input.id === 'unscrew_torque_threshold' || input.id === 'unscrew_force' || input.id === 'unscrew_angle_threshold')) {
                 return;
             }
             
@@ -357,31 +272,25 @@
 
 
     function toggleInputsBasedOnMode() {
-        var autoModeRadio = document.getElementById('unscrew_mode_auto');
-        var customModeRadio = document.getElementById('unscrew_mode_custom');
-    
-        var inputElements = document.querySelectorAll('#div_speed input, #div_torque_threshold input, #div_direction input, #div_force input');
-        
-        if (autoModeRadio.checked) {
-            inputElements.forEach(function(element) {
-                element.disabled = true;
-            });
-        } else if (customModeRadio.checked) {
-            inputElements.forEach(function(element) {
-                element.disabled = false;
-            });
-        }
+        const autoModeRadio = document.getElementById('unscrew_mode_auto');
+        const customModeRadio = document.getElementById('unscrew_mode_custom');
+
+        const inputElements = document.querySelectorAll(
+            '#div_speed input, #div_torque_threshold input, #div_angle_threshold input, #div_direction input, #div_force input'
+        );
+
+        const enable = customModeRadio?.checked === true;
+        inputElements.forEach(el => el.disabled = !enable);
     }
 
-    // 監聽頁面加載完成後執行函數
-    document.addEventListener('DOMContentLoaded', function() {
-    // 初始化時根據當前選中的單選按鈕來決定輸入框是否禁用
-    toggleInputsBasedOnMode();
+    // 綁定與初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        toggleInputsBasedOnMode();
 
-    // 綁定單選按鈕的事件監聽器，當狀態變化時觸發
-    document.getElementById('unscrew_mode_auto').addEventListener('change', toggleInputsBasedOnMode);
-    document.getElementById('unscrew_mode_custom').addEventListener('change', toggleInputsBasedOnMode);
-  });
+        document.getElementById('unscrew_mode_auto')?.addEventListener('change', toggleInputsBasedOnMode);
+        document.getElementById('unscrew_mode_custom')?.addEventListener('change', toggleInputsBasedOnMode);
+    });
+
 
 
   //排序

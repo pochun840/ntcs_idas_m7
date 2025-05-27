@@ -402,6 +402,92 @@ class Miscellaneous{
     
     }
 
+
+        public function convert_all_torque_units($value, $inputType) {
+        $unit_names = [
+            0 => "kgf.m",
+            1 => "N.m",
+            2 => "kgf.cm",
+            3 => "lbf.in",
+            4 => "cN.m"
+        ];
+
+        $decimals = [
+            0 => 4, // kgf.m
+            1 => 3, // N.m
+            2 => 2, // kgf.cm
+            3 => 2, // lbf.in
+            4 => 1  // cN.m
+        ];
+
+        if (!is_numeric($value) || !isset($unit_names[$inputType])) {
+            return "Invalid input.";
+        }
+
+        $value = floatval($value);
+
+        // Step 1: 先轉換為 N.m
+        switch ($inputType) {
+            case 0: $Nm = $value * 9.80392156; break; // kgf.m → N.m
+            case 1: $Nm = $value; break;              // N.m
+            case 2: $Nm = $value * 0.0980392156; break; // kgf.cm → N.m
+            case 3: $Nm = $value * 0.1129411763712; break; // lbf.in → N.m
+            case 4: $Nm = $value * 0.001; break; // cN.m → N.m
+            default: return "Invalid unit index.";
+        }
+
+        $result = [];
+
+        // Step 2: 從 N.m 轉換為所有單位
+        foreach ($unit_names as $targetType => $unitName) {
+            switch ($targetType) {
+                case 0: $converted = $Nm * 0.102; break; // N.m → kgf.m
+                case 1: $converted = $Nm; break;
+                case 2: $converted = $Nm * 10.2; break;
+                case 3: $converted = $Nm * 10.2 * 0.86805; break;
+                case 4: $converted = $Nm * 100; break; // N.m → cN.m
+            }
+
+            // 四捨五入，保留固定小數位（不去尾）
+            $rounded = round($converted, $decimals[$targetType]);
+            $result[$unitName] = number_format($rounded, $decimals[$targetType], '.', '');
+        }
+
+        return $result;
+    }
+
+
+    public function get_unit_name_by_index($index) {
+        $unit_map = [
+            0 => "kgf.m",
+            1 => "N.m",
+            2 => "kgf.cm",
+            3 => "lbf.in",
+            4 => "cN.m"
+        ];
+        return isset($unit_map[$index]) ? $unit_map[$index] : null;
+    }
+
+    public function batch_convert_grouped_by_unit_chart(array $values, int $inputType) {
+        $unit_keys = ["kgf.m", "N.m", "kgf.cm", "lbf.in", "cN.m"];
+        $result = array_fill_keys($unit_keys, []); // 預設空陣列
+
+        foreach ($values as $val) {
+            if (!is_numeric($val)) continue;
+
+            $converted = $this->convert_all_torque_units($val, $inputType);
+            foreach ($converted as $unit => $convertedValue) {
+                $result[$unit][] = $convertedValue;
+            }
+        }
+
+        return $result;
+    }
+
+
+
+    
+
     public function lang_load(){
 
         $language = $_COOKIE['language'] ?? 'en-us';

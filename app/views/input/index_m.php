@@ -405,12 +405,12 @@ window.onclick = function(event) {
 function crud_job_event(argument){
     if(argument == 'new' && job_id != ''){
 
-        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
+        /*var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
         console.log(selectedRows);
         if (!selectedRows.length > 0) {
             getLanguageMessage('language'); 
             return;
-        }
+        }*/
 
         //針對已設定的pin角位disable
         if (Array.isArray(temp)){ 

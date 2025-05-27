@@ -1,5 +1,5 @@
 <div class="container-ms">
-    <div class="buttonbox" style="text-align: right; margin: 10px">
+     <div class="buttonbox" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding-right: 10px; width: 100%;">
     
     <?php foreach(LANGUAGE as $key =>$val){?>
         <input type="button" name='<?php echo $val[1];?>' id= '<?php echo $val[1];?>'  value="<?php echo $val[0];?>" onclick="language_change()" >

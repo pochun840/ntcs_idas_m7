@@ -484,63 +484,52 @@ class Sequences extends Controller
 
 
     public function variation($job_id = null, $seq_id = null) {
-        // 如果沒有提供 job_id，則設為預設值 1
-        if (empty($job_id)) {
-            $job_id = 1;
-        }
+        // 預設 job_id 為 1
+        $job_id = $job_id ?? 1;
 
-        
-        $torque_unit = $this->SettingModel->Get_System_Toq_Unit();
-        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+        $torque_unit_code = $this->SettingModel->Get_System_Toq_Unit();
+        $unit_arr = $this->MiscellaneousModel->details('torque_unit');
+        $torque_unit = $unit_arr[$torque_unit_code] ?? 'N.m';
+
         $tools_info = $this->ToolModel->GetToolInfo();
         $last_tool_info = end($tools_info);
 
-        $torque_unit = $unit_arr[$torque_unit];
         $isMobile = $this->isMobileCheck();
-    
-        // 如果沒有提供 seq_id，則視為新增，並設為空值
-        if (empty($seq_id)) {
-            // 根據 job_id 取得所有相關的 sequences
-            $sequences = $this->sequenceModel->getSequences_by_job_id($job_id);
-            
-            // 如果沒有找到任何 sequences，則將 seq_id 設為 1；否則，將 seq_id 設為 sequences 數量 + 1
-            if (empty($sequences)) {
-                $seq_id = 1;
-            } else {
-                $seq_id = count($sequences) + 1;
-            }
-            $type = 'new';
-        } else {
 
-            $type = 'edit';
+        // 判斷模式：新增或編輯
+        if (empty($seq_id)) {
+            // 新增模式：取得目前 job_id 下的 sequence 數量
+            $existing_sequences = $this->sequenceModel->getSequences_by_job_id($job_id);
+            $seq_id = empty($existing_sequences) ? 1 : count($existing_sequences) + 1;
+            $sequences = [];
+            $type = 'new';
+            $next_seq_id = $seq_id;
+        } else {
+            // 編輯模式：查詢指定 sequence 資料
             $res = $this->sequenceModel->search_seqinfo($job_id, $seq_id);
-            
+
             if (empty($res)) {
-                echo "Job ID 或 Sequence ID 無效！";
+                echo "無效的 Job ID 或 Sequence ID！";
                 return;
             }
-            
+
             $sequences = $res[0];
+            $type = 'edit';
+            $next_seq_id = $sequences['SEQID'];
         }
+        $data = [
+            'sequences'     => $sequences,
+            'job_id'        => $job_id,
+            'seq_id'        => $seq_id,
+            'tools_info'    => $last_tool_info,
+            'type'          => $type,
+            'torque_unit'   => $torque_unit,
+            'next_seq_id'   => $next_seq_id
+        ];
 
-        $isMobile = $this->isMobileCheck();
-        
-        $data = array(
-            'sequences' => $sequences,
-            'job_id' => $job_id,
-            'seq_id' => $seq_id,
-            'tools_info' => $last_tool_info,
-            'type' => $type,
-            'torque_unit' =>$torque_unit 
-        );
-
-  
-        if($isMobile){
-            $this->view('sequences/add_seq_m', $data);
-        }else{
-            $this->view('sequences/add_seq', $data);
-        }
+        $this->view($isMobile ? 'sequences/add_seq_m' : 'sequences/add_seq', $data);
     }
+
         
 }
 ?>

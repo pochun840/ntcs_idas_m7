@@ -40,7 +40,7 @@
                         <div class="row t2 mt-3">
                             <div class="col-3"><?php echo $text['seq_name'];?>:</div>
                             <div class="col-9">
-                                <input id="SEQname" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : ''; ?>">
+                                <input id="SEQname" class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : 'SEQ-'.$data['next_seq_id']; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
@@ -124,7 +124,7 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3"><?php echo $text['Accumulate_Angle'];?>:</div>
                             <div class="col-9">
-                                <!-- <input id="accumulate_angle" value="123456"> -->
+                               
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="accu_angle" id="accu_angle_off" value="0" 
                                   <?php echo ($data['type'] == 'edit' && $data['sequences']['accu_angle'] == 0) ? 'checked' : ''; ?>  >
@@ -199,7 +199,6 @@
                         <div class="col-12 row t2 mt-3 ps-4">
                             <div class="col-4"><?php echo $text['Reverse_mode'];?>:</div>
                             <div class="col-8">
-                                <!-- <input id="reverse_mode" value="123456"> -->
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_auto" value="0" 
                                   <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 0) ? 'checked' : ''; ?> >
@@ -215,7 +214,7 @@
                         <div class="col-12 row t2 mt-3 ps-4" id="div_speed">
                             <div class="col-4"><?php echo $text['reverse_rpm'];?> (rpm):</div>
                             <div class="col-8">
-                                <input id="unscrew_rpm" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_rpm'] : ''; ?>">
+                                <input id="unscrew_rpm" class="form-control"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_rpm'] : ''; ?>">
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
@@ -225,10 +224,19 @@
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
+
+                          <div class="col-12 row t2 mt-3 ps-4" id="div_angle_threshold">
+                            <div class="col-4"><?php echo $text['Threshold_Angle'];?> </div>
+                            <div class="col-8">
+                                <input id="unscrew_angle_threshold"class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_angle_threshold'] : ''; ?>">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+
                         <div class="col-12 row t2 mt-3 ps-4" id="div_direction">
                             <div class="col-4"><?php echo $text['direction'];?>:</div>
                             <div class="col-8">
-                                <!-- <input id="direction" value="123456"> -->
+                                
                                 <div class="form-check form-check-inline ">
                                   <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_cw" value="0"
                                   <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 0) ? 'checked' : ''; ?>  >

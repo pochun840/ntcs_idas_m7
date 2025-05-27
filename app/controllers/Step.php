@@ -33,13 +33,9 @@ class Step extends Controller
         $unit_arr  = $this->MiscellaneousModel->details('torque_unit');
         $seqinfo   = $this->sequenceModel->search_seqinfo($job_id,$seq_id);
         $specs     = $this->MiscellaneousModel->getToolSpecifications();
-       
 
-        $res_device = $this->SettingModel->GetControllerInfo();
-        if(!empty($res_device)){
-            $unit = $res_device['torque_unit'];
-            $unit_name = $torque_unit[$unit];
-        }
+        $total_step = count($step);
+      
         
         if(empty($step)){
             $stepid_new = 1;
@@ -47,6 +43,12 @@ class Step extends Controller
             $stepid_new = count($step) + 1 ;
         }
 
+        $torque_unit   = $this->MiscellaneousModel->details("torque_unit");
+        $res_device = $this->SettingModel->GetControllerInfo();
+        if(!empty($res_device)){
+            $unit = $res_device['torque_unit'];
+            $unit_name = $torque_unit[$unit];
+        }
     
         $data = array(
             'isMobile' => $isMobile,
@@ -61,9 +63,11 @@ class Step extends Controller
             'unit' => $unit,
             'seq_id' => $seq_id,
             'unit_name' => $unit_name,
-            'specs' => $specs
+            'specs' => $specs,
+            'total_step' => $total_step
 
         );
+
         if($isMobile){
             $this->view('step/index_m', $data);
         }else{
@@ -72,260 +76,173 @@ class Step extends Controller
         
         
     }
-
-    public function create_step(){
-
+    
+    public function create_step() {
         $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
+        if (!empty($file)) include $file;
 
-     
-        if(isset($_POST['JOBID'])){
+        if (isset($_POST['JOBID'])) {
+            $JOBID = intval($_POST['JOBID'] ?? 0);
+            $SEQID = intval($_POST['SEQID'] ?? 0);
+            $StepEnableThreshold = intval($_POST['StepEnableThreshold'] ?? 0);
+            $StepEnableDownShift = intval($_POST['StepEnableDownShift'] ?? 0);
 
-            $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
-            $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
-            $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
-            $STEPname = $_POST['STEPname'] ?? '';
-            $time = $_POST['time'] ?? '';
-            
-            $StepRPM = isset($_POST['StepRPM']) ? intval($_POST['StepRPM']) : 0;
-            $StepOption = isset($_POST['StepOption']) ? intval($_POST['StepOption']) : -1;
-            $StepDirection = isset($_POST['StepDirection']) ? intval($_POST['StepDirection']) : 0;
-            $StepDelay = isset($_POST['StepDelay']) ? intval($_POST['StepDelay']) : 0;
-            $StepMoniByWin = isset($_POST['StepMoniByWin']) ? intval($_POST['StepMoniByWin']) : -1;
-            $StepLimiHi = isset($_POST['StepLimiHi']) ? intval($_POST['StepLimiHi']) : '';
-            $StepLimiLo = isset($_POST['StepLimiLo']) ? intval($_POST['StepLimiLo']) : '';
-            $StepHiAngle = isset($_POST['StepHiAngle']) ? intval($_POST['StepHiAngle']) : '';
-            $StepLoAngle = isset($_POST['StepLoAngle']) ? intval($_POST['StepLoAngle']) : '';
-            $StepHiTorque = isset($_POST['StepHiTorque']) ? floatval($_POST['StepHiTorque']) : '';
-            $StepLoTorque = isset($_POST['StepLoTorque']) ? floatval($_POST['StepLoTorque']) : '';
-            $StepAccelerateOffset = isset($_POST['StepAccelerateOffset']) ? intval($_POST['StepAccelerateOffset']) : 43;//待確認
-            $StepAccelerateOffsetSign = isset($_POST['StepAccelerateOffsetSign']) ? intval($_POST['StepAccelerateOffsetSign']) : 0; //待確認
-            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? floatval($_POST['StepTorqueOffset']) : ''; 
-            $StepTorqueOffsetSign = isset($_POST['StepTorqueOffsetSign']) ? intval($_POST['StepTorqueOffsetSign']) : 0;
-            $StepEnableTorqueOffset = isset($_POST['StepEnableTorqueOffset']) ? intval($_POST['StepEnableTorqueOffset']) : 0; //待確認
-            $StepEnableDownShift =  isset($_POST['StepEnableDownShift']) ? intval($_POST['StepEnableDownShift']) : 0;
-            $StepTorqueDownShift = isset($_POST['StepTorqueDownShift']) ? floatval($_POST['StepTorqueDownShift']) : 0;
-            $StepRPMDownShift = isset($_POST['StepRPMDownShift']) ? intval($_POST['StepRPMDownShift']) : 0; 
-            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
-            $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
-            $InterruptAlarm = isset($_POST['InterruptAlarm']) ? intval($_POST['InterruptAlarm']) : 0; 
-            $OverAngleStop =  isset($_POST['OverAngleStop']) ? intval($_POST['OverAngleStop']) : 0; 
-            $KValue = isset($_POST['KValue']) ? round(floatval($_POST['KValue']), 2) : 0;
-            $step_unit =  isset($_POST['step_unit']) ? intval($_POST['step_unit']) : 0; 
-            //初始化 
-            $StepTorque = '';
-            $StepAngle  = '';
-            $StepTime   = '';
-
-            switch ($StepOption) {
-                case 0:
-                    $StepTorque = $_POST['StepTorque'] ?? '';
-                    break;
-                case 1:
-                    $StepAngle = $_POST['StepAngle'] ?? '';
-                    break;
-                case 2:
-                    $StepTime = $_POST['StepTime'] ?? '';
-                    break;
+            // ✅ 若這個 step 啟用了 threshold（≠ 0），先重設前面所有 step 的 threshold 為 0
+            if ($StepEnableThreshold !== 0) {
+                $this->stepModel->resetAllThresholds($JOBID, $SEQID);
             }
 
-            //rpm && torque 驗證
-            $specs = $this->MiscellaneousModel->getToolSpecifications();
-            
-            
+            // ✅ 若這個 step 啟用了 DownShift，先重設所有 step 的 DownShift 設定為 0
+            if ($StepEnableDownShift !== 0) {
+                $this->stepModel->resetAllDownShifts($JOBID, $SEQID);
+            }
 
-            $step_data = array(
-                'JOBID'  => $JOBID,
-                'SEQID'  => $SEQID,
-                'StepSelect' => $StepSelect,
-                'STEPname' => $STEPname,
-                'type'  => 0, //待確認
-                'time'  => $time,
-                'act' => 0, //待確認
-                'StepSwitch' => 1, //待確認
-                'StepRPM' => $StepRPM,
-                'StepOption' => $StepOption,
-                'StepTime' => $StepTime,
-                'StepAngle' => $StepAngle,
-                'StepTorque' => $StepTorque,
-                'StepDirection' => $StepDirection,
-                'StepDelay' => $StepDelay,
-                'StepMoniByWin' => $StepMoniByWin,
-                'StepLimiHi' => $StepLimiHi,
-                'StepLimiLo' => $StepLimiLo,
-                'StepHiAngle' => $StepHiAngle,
-                'StepLoAngle' => $StepLoAngle,
-                'StepHiTorque' => $StepHiTorque,
-                'StepLoTorque' => $StepLoTorque,
-                'StepAccelerateOffset' =>$StepAccelerateOffset,
-                'StepAccelerateOffsetSign' => $StepAccelerateOffsetSign,
-                'StepEnableTorqueOffset' => $StepEnableTorqueOffset,
-                'StepTorqueOffset' => $StepTorqueOffset,
-                'StepTorqueOffsetSign' => $StepTorqueOffsetSign,
-                'StepEnableDownShift' => $StepEnableDownShift,
-                'StepTorqueDownShift' => $StepTorqueDownShift,
-                'StepRPMDownShift' => $StepRPMDownShift,
-                'StepTorqueTS' => $StepTorqueTS,
+
+
+            // 🔽 繼續原本流程...
+            $step_data = [
+                'JOBID' => $JOBID,
+                'SEQID' => $SEQID,
+                'StepSelect' => intval($_POST['StepSelect'] ?? 0),
+                'STEPname' => $_POST['STEPname'] ?? '',
+                'type' => 0,
+                'time' => $_POST['time'] ?? '',
+                'act' => 0,
+                'StepSwitch' => 1,
+                'StepRPM' => intval($_POST['StepRPM'] ?? 0),
+                'StepOption' => intval($_POST['StepOption'] ?? -1),
+                'StepTime' => intval($_POST['StepTime'] ?? 0),
+                'StepAngle' => intval($_POST['StepAngle'] ?? 0),
+                'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
+                'StepDirection' => intval($_POST['StepDirection'] ?? 0),
+                'StepDelay' => intval($_POST['StepDelay'] ?? 0),
+                'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? -1),
+                'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
+                'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
+                'StepHiAngle' => intval($_POST['StepHiAngle'] ?? 0),
+                'StepLoAngle' => intval($_POST['StepLoAngle'] ?? 0),
+                'StepHiTorque' => floatval($_POST['StepHiTorque'] ?? 0),
+                'StepLoTorque' => floatval($_POST['StepLoTorque'] ?? 0),
+                'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 43),
+                'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 0),
+                'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
+                'StepTorqueOffset' => floatval($_POST['StepTorqueOffset'] ?? 0),
+                'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
+                'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
+                'StepTorqueDownShift' => floatval($_POST['StepTorqueDownShift'] ?? 0),
+                'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
+                'StepTorqueTS' => round(floatval($_POST['StepTorqueTS'] ?? 0), 1),
                 'StepEnableThreshold' => $StepEnableThreshold,
-                'StepReTry' => 1, //待確認
-                'StepUnScrew' => 1, //待確認
-                'StepReTryTorq' => 0,//待確認
-                'StepReTryAngl' => 0,//待確認
-                'StepAngleRecord' => 0, //待確認
-                'StepAutoDetectAngle' => 0,//待確認
-                'InterruptAlarm' => $InterruptAlarm,
-                'OverAngleStop' => $OverAngleStop,
-                'KValue' => $KValue,
-                'step_unit' =>$step_unit
+                'StepReTry' => 1,
+                'StepUnScrew' => 1,
+                'StepReTryTorq' => 0,
+                'StepReTryAngl' => 0,
+                'StepAngleRecord' => 0,
+                'StepAutoDetectAngle' => 0,
+                'InterruptAlarm' => intval($_POST['InterruptAlarm'] ?? 0),
+                'OverAngleStop' => intval($_POST['OverAngleStop'] ?? 0),
+                'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
+                'step_unit' => intval($_POST['step_unit'] ?? 0)
+            ];
 
-
-            );           
-            
             $res = $this->stepModel->create_step($step_data);
-            $result = array();
-            if($res){
-                $res_type = 'Success';
-                $res_msg = $text['new_step'].':'.$step_data['StepSelect']."  ".$text['success'];
-                $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
-            }else{
-                $res_type = 'Error';
-                $res_msg = $text['new_step'].':'.$step_data['StepSelect']."  ".$text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
-            }
-        }
+            $text = $text ?? [];
+            $res_type = $res ? 'Success' : 'Error';
+            $res_msg = $text['new_step'] . ':' . $step_data['StepSelect'] . ($res ? ' ' . $text['success'] : ' ' . $text['fail']);
 
+            $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+        }
     }
+
+
+
 
     public function edit_step(){
 
-        $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
-
-     
-
-        if(isset($_POST['JOBID'])){
-
-            $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
-            $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
-            $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
-            $STEPname = $_POST['STEPname'] ?? '';
-            $time = $_POST['time'] ?? '';
-            
-            $StepRPM = isset($_POST['StepRPM']) ? intval($_POST['StepRPM']) : 0;
-            $StepOption = isset($_POST['StepOption']) ? intval($_POST['StepOption']) : -1;
-            $StepDirection = isset($_POST['StepDirection']) ? intval($_POST['StepDirection']) : 0;
-            $StepDelay = isset($_POST['StepDelay']) ? intval($_POST['StepDelay']) : 0;
-            $StepMoniByWin = isset($_POST['StepMoniByWin']) ? intval($_POST['StepMoniByWin']) : -1;
-            $StepLimiHi = isset($_POST['StepLimiHi']) ? intval($_POST['StepLimiHi']) : '';
-            $StepLimiLo = isset($_POST['StepLimiLo']) ? intval($_POST['StepLimiLo']) : '';
-            $StepHiAngle = isset($_POST['StepHiAngle']) ? intval($_POST['StepHiAngle']) : '';
-            $StepLoAngle = isset($_POST['StepLoAngle']) ? intval($_POST['StepLoAngle']) : '';
-            $StepHiTorque = isset($_POST['StepHiTorque']) ? floatval($_POST['StepHiTorque']) : '';
-            $StepLoTorque = isset($_POST['StepLoTorque']) ? floatval($_POST['StepLoTorque']) : '';
-            $StepAccelerateOffset = isset($_POST['StepAccelerateOffset']) ? intval($_POST['StepAccelerateOffset']) : 43;//待確認
-            $StepAccelerateOffsetSign = isset($_POST['StepAccelerateOffsetSign']) ? intval($_POST['StepAccelerateOffsetSign']) : 0; //待確認
-            $StepTorqueOffset = isset($_POST['StepTorqueOffset']) ? floatval($_POST['StepTorqueOffset']) : ''; 
-            $StepTorqueOffsetSign = isset($_POST['StepTorqueOffsetSign']) ? intval($_POST['StepTorqueOffsetSign']) : 43;
-            $StepEnableTorqueOffset = isset($_POST['StepEnableTorqueOffset']) ? intval($_POST['StepEnableTorqueOffset']) : 0; //待確認
-            $StepEnableDownShift =  isset($_POST['StepEnableDownShift']) ? intval($_POST['StepEnableDownShift']) : 0;
-            $StepTorqueDownShift = isset($_POST['StepTorqueDownShift']) ? floatval($_POST['StepTorqueDownShift']) : 0;
-            $StepRPMDownShift = isset($_POST['StepRPMDownShift']) ? intval($_POST['StepRPMDownShift']) : 0; 
-            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
-            $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
-            $InterruptAlarm = isset($_POST['InterruptAlarm']) ? intval($_POST['InterruptAlarm']) : 0; 
-            $OverAngleStop =  isset($_POST['OverAngleStop']) ? intval($_POST['OverAngleStop']) : 0; 
-            $KValue = isset($_POST['KValue']) ? round(floatval($_POST['KValue']), 2) : 0;
-            $step_unit =  isset($_POST['step_unit']) ? intval($_POST['step_unit']) : 0; 
-
-            //初始化 
-            $StepTorque = '';
-            $StepAngle  = '';
-            $StepTime   = '';
-
-            switch ($StepOption) {
-                case 0:
-                    $StepTorque = $_POST['StepTorque'] ?? '';
-                    break;
-                case 1:
-                    $StepAngle = $_POST['StepAngle'] ?? '';
-                    break;
-                case 2:
-                    $StepTime = $_POST['StepTime'] ?? '';
-                    break;
-            }
-
-            //rpm && torque 驗證
-            $specs = $this->MiscellaneousModel->getToolSpecifications();
-
-
-            $step_data = array(
-                'JOBID'  => $JOBID,
-                'SEQID'  => $SEQID,
-                'StepSelect' => $StepSelect,
-                'STEPname' => $STEPname,
-                'type'  => 0, //待確認
-                'time'  => $time,
-                'act' => 0, //待確認
-                'StepSwitch' => 1, //待確認
-                'StepRPM' => $StepRPM,
-                'StepOption' => $StepOption,
-                'StepTime' => $StepTime,
-                'StepAngle' => $StepAngle,
-                'StepTorque' => $StepTorque,
-                'StepDirection' => $StepDirection,
-                'StepDelay' => $StepDelay,
-                'StepMoniByWin' => $StepMoniByWin,
-                'StepLimiHi' => $StepLimiHi,
-                'StepLimiLo' => $StepLimiLo,
-                'StepHiAngle' => $StepHiAngle,
-                'StepLoAngle' => $StepLoAngle,
-                'StepHiTorque' => $StepHiTorque,
-                'StepLoTorque' => $StepLoTorque,
-                'StepAccelerateOffset' =>$StepAccelerateOffset,
-                'StepAccelerateOffsetSign' => $StepAccelerateOffsetSign,
-                'StepEnableTorqueOffset' => $StepEnableTorqueOffset,
-                'StepTorqueOffset' => $StepTorqueOffset,
-                'StepTorqueOffsetSign' => $StepTorqueOffsetSign,
-                'StepEnableDownShift' => $StepEnableDownShift,
-                'StepTorqueDownShift' => $StepTorqueDownShift,
-                'StepRPMDownShift' => $StepRPMDownShift,
-                'StepTorqueTS' => $StepTorqueTS,
-                'StepEnableThreshold' => $StepEnableThreshold,
-                'StepReTry' => 1, //待確認
-                'StepUnScrew' => 1, //待確認
-                'StepReTryTorq' => 0,//待確認
-                'StepReTryAngl' => 0,//待確認
-                'StepAngleRecord' => 0, //待確認
-                'StepAutoDetectAngle' => 0,//待確認
-                'InterruptAlarm' => $InterruptAlarm,
-                'OverAngleStop' => $OverAngleStop,
-                'KValue' => $KValue,
-                'step_unit' =>$step_unit
-
-            );  
-            
-            
-            $res = $this->stepModel->update_step_by_id($step_data);
-            $result = array();
-            if($res){
-                $res_type = 'Success';
-                $res_msg  = $text['edit_step'].':'. $_POST['StepSelect']."  ".$text['success'];
-            }else{
-                $res_type = 'Error';
-                $res_msg  = $text['edit_step'].':'. $_POST['StepSelect']."  ".$text['fail'];
-            }
-            $result = array(
-                'res_type' => $res_type,
-                'res_msg'  => $res_msg 
-            );
-
-            echo json_encode($result);
-        }
+    $file = $this->MiscellaneousModel->lang_load();
+    if(!empty($file)){
+        include $file;
     }
+
+    if(isset($_POST['JOBID'])){
+
+        $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
+        $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
+        $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
+
+        $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
+        $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
+
+
+        // 當前 step 有設定 Threshold
+        if ($StepEnableThreshold > 0 && $StepTorqueTS > 0) {
+            // 查詢之前有啟用 threshold 的 step（排除自己）
+            $prev_steps = $this->stepModel->getPreviousStepsWithThreshold($JOBID, $SEQID, $StepSelect);
+
+            if (!empty($prev_steps)) {
+                // 將之前的步驟全部清除 threshold 設定
+                $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $StepSelect);
+            }
+        }
+
+
+
+        $step_data = [
+                'JOBID' => $JOBID,
+                'SEQID' => $SEQID,
+                'StepSelect' => intval($_POST['StepSelect'] ?? 0),
+                'STEPname' => $_POST['STEPname'] ?? '',
+                'type' => 0,
+                'time' => $_POST['time'] ?? '',
+                'act' => 0,
+                'StepSwitch' => 1,
+                'StepRPM' => intval($_POST['StepRPM'] ?? 0),
+                'StepOption' => intval($_POST['StepOption'] ?? -1),
+                'StepTime' => intval($_POST['StepTime'] ?? 0),
+                'StepAngle' => intval($_POST['StepAngle'] ?? 0),
+                'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
+                'StepDirection' => intval($_POST['StepDirection'] ?? 0),
+                'StepDelay' => intval($_POST['StepDelay'] ?? 0),
+                'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? -1),
+                'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
+                'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
+                'StepHiAngle' => intval($_POST['StepHiAngle'] ?? 0),
+                'StepLoAngle' => intval($_POST['StepLoAngle'] ?? 0),
+                'StepHiTorque' => floatval($_POST['StepHiTorque'] ?? 0),
+                'StepLoTorque' => floatval($_POST['StepLoTorque'] ?? 0),
+                'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 43),
+                'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 0),
+                'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
+                'StepTorqueOffset' => floatval($_POST['StepTorqueOffset'] ?? 0),
+                'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
+                'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
+                'StepTorqueDownShift' => floatval($_POST['StepTorqueDownShift'] ?? 0),
+                'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
+                'StepTorqueTS' => round(floatval($_POST['StepTorqueTS'] ?? 0), 1),
+                'StepEnableThreshold' => $StepEnableThreshold,
+                'StepReTry' => 1,
+                'StepUnScrew' => 1,
+                'StepReTryTorq' => 0,
+                'StepReTryAngl' => 0,
+                'StepAngleRecord' => 0,
+                'StepAutoDetectAngle' => 0,
+                'InterruptAlarm' => intval($_POST['InterruptAlarm'] ?? 0),
+                'OverAngleStop' => intval($_POST['OverAngleStop'] ?? 0),
+                'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
+                'step_unit' => intval($_POST['step_unit'] ?? 0)
+            ];
+
+        $res = $this->stepModel->update_step_by_id($step_data);
+
+        $result = array(
+            'res_type' => $res ? 'Success' : 'Error',
+            'res_msg'  => $text['edit_step'] . ':' . $_POST['StepSelect'] . ($res ? "  " . $text['success'] : "  " . $text['fail'])
+        );
+
+        echo json_encode($result);
+    }
+}
+
 
 
     public function delete_step(){
@@ -503,42 +420,61 @@ class Step extends Controller
         $job_id  = $job_id ?? $_GET['job_id'] ?? null;
         $seq_id  = $seq_id ?? $_GET['seq_id'] ?? null;
         $stepid  = $stepid ?? $_GET['step_id'] ?? null; 
+
+
+        $step = $this->stepModel->getStep($job_id, $seq_id);
+        if(empty($step)){
+            $next_step_id = 1;
+        }else{
+            $next_step_id = count($step) + 1 ;
+        }
+
+        $torque_unit   = $this->MiscellaneousModel->details("torque_unit");
+        $res_device = $this->SettingModel->GetControllerInfo();
+        if(!empty($res_device)){
+            $step_torque_unit = (int)$res_device['torque_unit'];
+            $unit_name  = $this->MiscellaneousModel->get_unit_name_by_index($step_torque_unit);
+
+        }
+
+        $tools = $this->ToolModel->GetToolInfo();
+      
+        if(!empty($tools)){
+            
+            //處理轉速
+            $tools[0]['max_rpm'] = rtrim(rtrim($tools[0]['max_rpm'], '0'), '.');
+            $tools[0]['min_rpm'] = rtrim(rtrim($tools[0]['min_rpm'], '0'), '.');
+
+            // 最大扭力上限 +10%，並往下取至最接近 .0
+            $maxTorque = (float)$tools[0]['max_torque'];
+            $minTorque = (float)$tools[0]['min_torque'];
+
+            $tools[0]['tool_maxtorque_diff'] = round($maxTorque * 1.1, 3);
+            $tools[0]['tool_mintorque_diff'] = round($minTorque * 0.9, 3); // 或你想要的條件
+
+            // 換算低/高扭力（從 N.m 轉換成控制器設定單位）
+            $unit_name = $this->MiscellaneousModel->get_unit_name_by_index($step_torque_unit); //取得扭力單位的中文名稱
+            $low_torque_arr  = $this->MiscellaneousModel->convert_all_torque_units($minTorque, 1);
+            if (!empty($low_torque_arr[$unit_name])) {
+                $tools[0]['tool_low_torque'] = $low_torque_arr[$unit_name];
+            }
+
+            $high_torque_arr  = $this->MiscellaneousModel->convert_all_torque_units($maxTorque, 1);
+            if (!empty($high_torque_arr[$unit_name])) {
+                $tools[0]['tool_high_torque'] = $high_torque_arr[$unit_name];
+            }
+
+
+            // 最大扭力上限 +10%，並往下取至最接近 .0
+           // $tools[0]['tool_maxtorque_diff'] = round($tool_max_torque * 1.1, 3);
+           // $tools[0]['tool_mintorque_diff'] = floor($tools['tool_maxtorque_diff'] * 10) / 10;
         
-        $tools_info = $this->ToolModel->GetToolInfo();
-        $last_tool_info = end($tools_info);
-
-        $torque_unit = $this->SettingModel->Get_System_Toq_Unit();
-        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-
-        #當前扭力單位
-        $torque_unit = $unit_arr[$torque_unit]; 
-
+        }
         //計算參數的數量
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
         if (!empty($seq_id)) $paramsCount++;
         if (!empty($stepid)) $paramsCount++;
-
-        if(!empty($last_tool_info &&  !empty($torque_unit))){
-            #起子的扭力單位 預設是 公斤公分(Kgf·cm)
-            #如果不是 需要進行扭力的換算
-            if($torque_unit != 'kgf.cm'){
-
-                if($torque_unit == 'N.m'){
-                    $change_id = 1;
-                }if($torque_unit == 'lbf.in'){
-                    $change_id = 2;
-                }
-                if($torque_unit == 'kgf.m'){
-                    $change_id = 3;
-                }
-
-                $last_tool_info['max_torque'] = $this->MiscellaneousModel->unit_transduction($last_tool_info['max_torque'], 0, $change_id)[0];
-                $last_tool_info['min_torque'] = $this->MiscellaneousModel->unit_transduction($last_tool_info['min_torque'], 0, $change_id)[0];   
-            }
-            
-        }
-
 
         if($paramsCount === 2) {
             $type = 'new';
@@ -558,17 +494,19 @@ class Step extends Controller
         } 
 
 
-
+        $tools[0]['final_hi_torque'] = $tools[0]['max_torque'] + $tools[0]['min_torque'];
         $isMobile = $this->isMobileCheck();
 
+   
         $data = array(
             'JOBID' => $job_id,
             'SEQID' => $seq_id,
             'StepSelect' => $StepSelect,
             'type' => $type,
-            'tools_info' => $last_tool_info,
-            'torque_unit' =>$torque_unit,
-            'step' => $step
+            'tools_info' => $tools[0],
+            'torque_unit' =>$unit_name,
+            'step' => $step,
+            'next_step_id' => $next_step_id
         );
 
         if($isMobile){
@@ -578,6 +516,57 @@ class Step extends Controller
             $this->view('step/add_step', $data);
         }
     }
+
+
+    
+    public function check_step_limit() {
+  
+        $jobid = $_POST['jobid'] ?? 0;
+        $seqid = $_POST['seqid'] ?? 0;
+
+
+        $steps = $this->stepModel->getStepsWithThresholds($jobid, $seqid);
+        $stepCount = count($steps); 
+
+        $hasNonZeroThreshold = false; 
+        $updateIds = [];          
+
+        // 遍歷每一筆 step，檢查是否有 StepEnableThreshold 不為 0 的情況
+        foreach ($steps as $step) {
+            if ((int)$step['StepEnableThreshold'] !== 0) {
+                $hasNonZeroThreshold = true;
+                $updateIds[] = $step['step_id']; 
+            }
+        }
+
+        // 若有不為 0 的情況（將 StepEnableThreshold 和 StepTorqueTS 設為 0）
+        if (!empty($updateIds)) {
+            $this->stepModel->resetThresholdsByStepIds($jobid, $seqid, $updateIds);
+        }
+
+
+        echo json_encode([
+            'count' => $stepCount,
+            'has_nonzero_threshold' => $hasNonZeroThreshold
+        ]);
+    }
+
+    public function check_step_is_last() {
+        $jobid = $_POST['jobid'] ?? 0;
+        $seqid = $_POST['seqid'] ?? 0;
+        $stepid = $_POST['stepid'] ?? 0;
+
+        $info = $this->stepModel->check_step_is_last($jobid, $seqid, $stepid);
+
+        echo json_encode([
+            'is_last' => $info['is_last'],
+            'count' => $info['count']
+        ]);
+    }
+
+
+
+    
 
 
 }

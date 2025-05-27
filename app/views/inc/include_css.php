@@ -32,7 +32,7 @@ function include_css() {
 
     $isMobile = isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/Mobile|Android|iPhone|iPad|iPod/i', $_SERVER['HTTP_USER_AGENT']);
 
-    // 一般模組對應（controller 為主）
+    // 模組對應表
     $cssMap = [
         'Jobs'      => ['pc' => 'jobs.css',    'mobile' => 'jobs_m.css'],
         'Sequences' => ['pc' => 'seq.css',     'mobile' => 'seq_m.css'],
@@ -45,24 +45,28 @@ function include_css() {
         'Agents'    => ['pc' => 'agent.css'],
     ];
 
-    // 特殊處理 Dashboards 模組中的不同 action
+    $cssFile = null;
+
+    // 特例處理 - Dashboards 模組
     if ($controller === 'Dashboards') {
         if ($action === 'index') {
             $cssFile = 'tcc_main.css';
         } elseif ($action === 'operation') {
             $cssFile = $isMobile ? 'operation_m.css' : 'operation.css';
         } else {
-            $cssFile = $isMobile ? 'operation.css' : 'operation.css'; // 預設 fallback
+            $cssFile = 'operation.css'; // fallback
         }
-    }else if($controller === 'In'){
+
+
+    // 特例處理 - In 模組
+    } elseif ($controller === 'In') {
         $cssFile = 'main.css';
-    }
-     elseif (isset($cssMap[$controller])) {
+
+    // 一般對應
+    } elseif (isset($cssMap[$controller])) {
         $cssFile = $isMobile && isset($cssMap[$controller]['mobile']) 
             ? $cssMap[$controller]['mobile'] 
             : $cssMap[$controller]['pc'];
-    } else {
-        $cssFile = null; // 無對應
     }
 
     // 輸出 <link>
