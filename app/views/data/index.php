@@ -17,14 +17,7 @@ switch ($_SESSION['language'] ?? '') {
 function renderTableRows($records, $unit_arr, $status_arr, $text) {
     foreach ($records as $row) {
         $status = $row['fasten_status'];
-
-        if ($status == 7 || $status == 8) {
-            $class = 'status-ng';
-        } elseif ($status == 5 || $status == 6) {
-            $class = 'status-warn';
-        } else {
-            $class = 'status-ok';
-        }
+        $class = $row['row_color'] ?? '';  // 這一行決定樣式 class
 
         echo "<tr>
                 <td>{$row['id']}</td>
@@ -40,6 +33,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
               </tr>";
     }
 }
+
 
 ?>
 
@@ -97,7 +91,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                         </tr>
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">
-                                        <?php renderTableRows($config['data'], $data['unit_arr'], $data['status_arr'], $text); ?>
+                                        <?php renderTableRows($config['data'], $data['unit_arr'], $data['status_arr'], $text,$data['color_arr']); ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -251,19 +245,14 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
     }
 
 
-    function updateTable(mode, records, unit_arr, status_arr) {
+    function updateTable(mode, records, unit_arr, status_arr,color_arr) {
         const tbodyId = `res_data_${mode.toLowerCase()}_tbody`;
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
 
         tbody.innerHTML = ''; // 清空原有內容
-
         records.forEach(row => {
             let status = row.fasten_status;
-            let className = 'status-ok';
-            if (status == 7 || status == 8) className = 'status-ng';
-            else if (status == 5 || status == 6) className = 'status-warn';
-
             const html = `
                 <tr>
                     <td>${row.id}</td>
@@ -275,7 +264,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.final_fasten_angle}</td>
                     <td>${row.total_screw_count}</td>
                     <td>${row.last_screw_count}</td>
-                    <td class="${className}">${status_arr[status]}</td>
+                    <td class="${row.row_color}">${status_arr[status]}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
         });

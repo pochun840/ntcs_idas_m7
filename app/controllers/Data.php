@@ -4,12 +4,13 @@ class Data extends Controller
 {
     private $DataModel;
     private $MiscellaneousModel;
-
+    private $ToolModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->DataModel = $this->model('Datas');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->ToolModel = $this->model('Tool');
     }
 
     // 取得所有Jobs
@@ -44,9 +45,25 @@ class Data extends Controller
         }
       
 
-        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-        $status_arr = $this->MiscellaneousModel->details('status');
+        $unit_arr    = $this->MiscellaneousModel->details('torque_unit');
+        $status_arr  = $this->MiscellaneousModel->details('status');
         $device_info = $this->Device_Info();
+        $color_arr   = $this->get_color_type();
+
+        foreach ($res_data as &$row) {
+            $status = $row['fasten_status'];
+
+            // 加入 NG 顏色或 OK 顏色分類
+            if ($status == 5) {
+                $row['row_color'] = $color_arr['okseqcolor_text'];
+            }else if($status == 6) {
+                $row['row_color'] = $color_arr['okseqcolor_text'];
+            }else if ($status == 4){
+                $row['row_color'] = 'status-ok';
+            }else{
+                $row['row_color'] = 'status-ng';
+            } 
+        }
 
         $data = array(
             'isMobile'      => $isMobile,
@@ -57,57 +74,13 @@ class Data extends Controller
             'unit_arr'      => $unit_arr,
             'status_arr'    => $status_arr,
             'db_exists'     => $db_exists,
-            'db_path'       => $db_path
+            'db_path'       => $db_path,
+            'color_arr'     => $color_arr
         );
 
         $this->view('data/index', $data);
     }
 
-
-    public function search_info() {
-        $unit_arr = $this->MiscellaneousModel->details('torque_unit');
-        $status_arr = $this->MiscellaneousModel->details('status');
-    
-        $input_check = true;
-        if (!empty($_POST['mode']) && isset($_POST['mode'])) {
-            $mode = $_POST['mode'];
-        } else {
-            $input_check = false;
-        }
-    
-        if ($input_check) {
-            $res_data = $this->DataModel->getData($mode);
-            if (!empty($res_data)) {
-                $info_data = '';
-                foreach ($res_data as $ve) {
-                    if ($ve['fasten_status'] == 2 ) {
-                        $style = 'style="background: red"';
-                    } else if ($ve['fasten_status'] == 3 || $ve['fasten_status'] == 4) {
-                        $style = 'style="background: #FFEF62"';
-                    } else {
-                        $style = 'style="background: green"';
-                    }
-    
-                    $info_data .= '<tr>';
-                    $info_data .= "<td>".$ve['system_sn']."</td>";
-                    $info_data .= "<td>".$ve['data_time']."</td>";
-                    $info_data .= "<td>".$ve['job_name']."</td>";
-                    $info_data .= "<td>".$ve['sequence_name']."</td>";
-                    $info_data .= "<td>".$ve['fasten_torque']."</td>";
-                    $info_data .= "<td id='".$unit_arr[$ve['torque_unit']]."'>".$unit_arr[$ve['torque_unit']]."</td>";
-                    $info_data .= "<td>".$ve['fasten_angle']."</td>";
-                    $info_data .= "<td>".$ve['total_screw_count']."</td>";
-                    $info_data .= "<td>".$ve['last_screw_count']."</td>";
-                    $info_data .= "<td $style>".$status_arr[$ve['fasten_status']]."</td>";
-                    $info_data .= '</tr>';
-                }
-    
-                // 將所有資料一次性輸出
-                echo $info_data;
-            }
-        }
-    }
-    
 
     public function exportData() {
         $input_check = true;
@@ -186,12 +159,10 @@ class Data extends Controller
     }
 
 
-    public function getreal_time_data
-    () {
-       
-        
+    public function getreal_time_data() {
+
         $mode = $_POST['mode'] ?? 'ALL';
-        //var_dump($mode);die();
+
         // 根據系統設定路徑
         $base_path = (strtoupper(PHP_OS_FAMILY) === 'LINUX') 
             ? "/var/www/html/ntcs/"
@@ -204,19 +175,90 @@ class Data extends Controller
             return;
         }
 
-        $res_data = $this->DataModel->show_getData($mode);
-        $unit_arr = $this->MiscellaneousModel->details('torque_unit');
+        $res_data   = $this->DataModel->getData($mode);
+        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
         $status_arr = $this->MiscellaneousModel->details('status');
+        $color_arr  = $this->get_color_type();
 
+        // 加入對應的顏色到每筆資料
+        foreach ($res_data as &$row) {
+            $status = $row['fasten_status'];
+
+            if($status == 5) {
+                $row['row_color'] = $color_arr['okseqcolor_text'];
+            }else if ($status == 6) {
+                $row['row_color'] = $color_arr['okjobcolor_text'];
+            }else if($status == 4){
+                $row['row_color'] = 'status-ok';
+            }else{
+                $row['row_color'] = 'status-ng';
+            }
+   
+        }
+
+      
         echo json_encode([
             'success' => true,
             'records' => $res_data,
             'unit_arr' => $unit_arr,
-            'status_arr' => $status_arr
+            'status_arr' => $status_arr,
+            'color_arr' => $color_arr
         ]);
     }
 
+
+
+    public function get_color_type(){
+
+        $Controller_Info = $this->ToolModel->GetControllerInfo();   
+
+        if(!empty($Controller_Info)){
+            $color_arr = array();
+            $color_arr['okseqcolor'] = $Controller_Info['okseqcolor'];
+            $color_arr['okjobcolor'] = $Controller_Info['okjobcolor'];
+
+            if(!empty($color_arr)){
+                if( $color_arr['okseqcolor']  == 1){
+                    $color_arr['okseqcolor_text'] = 'status-ok';
+                }else{
+                    $color_arr['okseqcolor_text'] = 'status-warn';
+                }
+
+                if( $color_arr['okjobcolor']  == 1){
+                    $color_arr['okjobcolor_text'] = 'status-ok';
+                }else{
+                    $color_arr['okjobcolor_text'] = 'status-warn';
+                }
+            }
+            
+        }   
+
+        return $color_arr;
+
+    }
         
+    public function assignRowColor(&$rows, $color_arr, $force_ng = false) {
+        foreach ($rows as &$row) {
+            if ($force_ng) {
+                $row['row_color'] = 'status-ng';
+                continue;
+            }
+
+            $status = $row['fasten_status'];
+
+            if ($status == 5) {
+                $row['row_color'] = $color_arr['okseqcolor_text'] ?? 'status-ok';
+            } elseif ($status == 6) {
+                $row['row_color'] = $color_arr['okjobcolor_text'] ?? 'status-ok';
+            } elseif ($status == 4) {
+                $row['row_color'] = 'status-ok';
+            } else {
+                $row['row_color'] = 'status-ng';
+            }
+        }
+    }
+
+
         
     
 }

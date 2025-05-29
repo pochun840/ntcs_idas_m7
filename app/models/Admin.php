@@ -5,6 +5,7 @@ class Admin{
     private $db_data;//devdb tool
     private $dbh;
     private $db_iDas;//iDas db
+    private $db_iDas_login;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
@@ -35,13 +36,15 @@ class Admin{
     }
     
 
-    public function Get_Das_Config($config_name)
-    {
-        $result = $this->db_iDas_login->query("SELECT * FROM config WHERE config_name = '".trim($config_name)."' ");
-        $rows = $result->fetch(PDO::FETCH_ASSOC);
+    public function Get_Das_Config($config_name){
+        
+        $stmt = $this->db_iDas_login->prepare("SELECT config_value FROM config WHERE config_name = :name");
+        $stmt->execute([':name' => trim($config_name)]);
 
-        return $rows['config_value'];
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row['config_value'] ?? null;
     }
+
 
     public function DeleteSession($sessionsToDelete){
 

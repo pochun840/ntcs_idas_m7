@@ -149,7 +149,7 @@ class Logins extends Controller
         //4.檢查session id是否存在
         //5.如果存在update time
         //6.如果不存在insert
-        $max_concurrent_users = $this->Max_User();//連線數量限制
+        //$max_concurrent_users = $this->Max_User();//連線數量限制
         $session_id = session_id();
 
         if (!empty($_SERVER["HTTP_CLIENT_IP"])){
@@ -165,7 +165,7 @@ class Logins extends Controller
         //確認目前連線數量，排除目前的session_id
         $concurrent_users = $this->LoginModel->GetConcurrentUsers($session_id);
 
-        if($concurrent_users >= $max_concurrent_users && $username == 'guest'){
+        if( $username == 'guest'){
             $this->Users_Uplimit();
             return false;
         }else{

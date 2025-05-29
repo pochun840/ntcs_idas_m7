@@ -301,8 +301,7 @@
                             <div class="col-4" id="show_torque" style="display: none;"><?php echo $text['Threshold_Torque'];?>:</div>
                             <div class="col-4" id="show_angle" style="display: none;"><?php echo $text['Threshold_Angle'];?>:</div>
                             <div class="col-8">
-                                <input id="StepTorqueTS" class="form-control form-control-sm" style="display: none;" 
-                                value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueTS'] : ''; ?>">
+                                <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepTorqueTS'])) ? number_format((float)$data['step']['StepTorqueTS'], 4) : ''; ?>">
                             </div>
                         </div>
 

@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-function cc_save(){
+function controller_save(){
 
     var control_id = document.getElementById('control_id').value;
     if (isNaN(control_id) || control_id < 1 || control_id > 250) {
@@ -45,9 +45,13 @@ function cc_save(){
     var circular_archive_val = document.querySelector('input[name="circular_archive"]:checked').value;
     var blackout_recovery_val = document.querySelector('input[name="blackout_recovery"]:checked').value;
     var buzzer_val = document.querySelector('input[name="buzzer_mode"]:checked').value;
+    var global_downshift_torque = document.getElementById('global_downshift_torque').value;
+    var global_downshift_speed  = document.getElementById('global_downshift_speed').value;
 
 
-    if(control_id){
+    //新增驗證
+    let check = input_check_setting();
+    if(check){
         $.ajax({
             url: "?url=Settings/control_setting",
             method: "POST",
@@ -61,19 +65,66 @@ function cc_save(){
                 counting_method: counting_method_val,
                 circular_archive: circular_archive_val,
                 blackout_recovery: blackout_recovery_val,
-                buzzer_mode:buzzer_val
+                buzzer_mode:buzzer_val,
+                global_downshift_torque:global_downshift_torque,
+                global_downshift_speed: global_downshift_speed
      
 
             },
             success: function(response) {
-                console.log(response);
-                //history.go(0);
+                  handleAjaxResponse(response);
             },
             error: function(xhr, status, error) {
                 
             }
-        });   
+        }); 
     }
+}
+
+function input_check_setting(argument) {
+
+    let conditions = [
+        { id: 'control_name', pattern: /^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min: null, max: null },
+        { id: 'storage_warning', pattern: /^\d{0,4}$/, min: 50, max: 95 },
+        { id: 'torque_filter', pattern: /^\d{1,3}(\.\d{1,6})?$/, min: 0.0, max: 200 },
+        { id: 'global_downshift_torque', pattern: /^\d{0,5}?$/, min: 0, max: 1000 },
+        { id: 'global_downshift_speed', pattern: /^\d{0,5}?$/, min: 0, max: 100 },
+    ];
+
+    let isFormValid = true;
+    conditions.forEach(function(input) {
+        var element = document.getElementById(input.id);
+        var value = element.value.trim();
+
+        if(input.id != 'control_name'){
+            var nextSibling = element.nextElementSibling;
+            if (nextSibling) {
+                nextSibling.innerHTML = input.min + ' ~ ' + input.max;
+            }
+        }
+
+        if (value === "") {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (!input.pattern.test(value)) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (input.min !== null && parseFloat(value) < input.min) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else if (input.max !== null && parseFloat(value) > input.max) {
+            element.classList.add("is-invalid");
+            isFormValid = false;
+        } else {
+            element.classList.remove("is-invalid");
+        }
+
+    });
+
+    console.log(conditions)
+
+    return isFormValid;
+
 }
 
 
@@ -102,6 +153,7 @@ function save_pwd(){
         alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
         return; // 如果驗證失敗，停止函式執行
     }
+    document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
 
     $.ajax({
         url: '?url=Settings/edit_feature_pwd', // 替換為你的伺服器端點
@@ -114,11 +166,8 @@ function save_pwd(){
             disable: disablePwd,
             skip: skipPwd
         },
-        success: function(response) {
-            var responseData = JSON.parse(response);
-            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                history.go(0);
-            });         
+        success: function (responseData) {
+            handleAjaxResponse(responseData);
         },
         error: function() {
             alert("發生錯誤，請重試。");
@@ -139,10 +188,7 @@ function background_save(){
             okseqcolor: okseq_color_val
         },
         success: function(response) {
-            var responseData = JSON.parse(response);
-            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                history.go(0);
-            });    
+           handleAjaxResponse(response);
         },
         error: function(xhr, status, error) {
             console.error('Error occurred:', error);
@@ -152,7 +198,7 @@ function background_save(){
 }
 
 //設置 	global-downshift
-function downshift_save(){
+/*function downshift_save(){
 
     var global_downshift_torque = document.getElementById('global_downshift_torque').value;
     var global_downshift_speed  = document.getElementById('global_downshift_speed').value;
@@ -165,76 +211,35 @@ function downshift_save(){
             global_downshift_speed: global_downshift_speed
         },
         success: function(response) {
-            var responseData = JSON.parse(response);
-            alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                history.go(0);
-            });    
+            handleAjaxResponse(responseData);
         },
         error: function(xhr, status, error) {
             console.error('Error occurred:', error);
         }
     });
 
-}
+}*/
 
 //barcode mode 選擇
 function toggleBarcodeSeq() {
-    let barcodeMode = document.getElementById('barcode_mode');
-    let barcodeSeq = document.getElementById('barcode_seq');
-    
-    // Check the selected value
+    const barcodeMode = document.getElementById('barcode_mode');
+    const barcodeSeq = document.getElementById('barcode_seq');
+    const seqContainer = document.getElementById("barcode_select_seq");
+
     if (barcodeMode.value === '1' || barcodeMode.value === '2') {
-        barcodeSeq.disabled = true; 
-        document.getElementById("barcode_select_seq").style.display='none';
+        barcodeSeq.disabled = true;
+        seqContainer.style.display = 'none';
+    } else if (barcodeMode.value === '3') {
+        barcodeSeq.disabled = false;
+        seqContainer.style.display = 'block';
+        fetchSeqList();  // 自動觸發查詢 SEQ
     } else {
         barcodeSeq.disabled = false;
-        document.getElementById("barcode_select_seq").style.display='block';
+        seqContainer.style.display = 'block';
     }
 }
 
 
-//透過JOBID 取得對應的SEQ
-function fetchSeqList() {
-    const jobId = document.getElementById('barcode_job').value;
-
-    const defaultOption = document.createElement('option');
-    defaultOption.value = "-1";
-    defaultOption.textContent = "<?php echo $text['system_barcode_select_seq_m'];?>";
-    
-    if (jobId === '-1') {
-        document.getElementById('barcode_seq').innerHTML = ''; 
-        document.getElementById('barcode_seq').appendChild(defaultOption);
-        return;
-    }
-
-    $.ajax({
-        url: '?url=Settings/GetJobSeq',
-        type: 'POST',
-        data: { job_id: jobId },
-        success: function(response) {
-            const seqList = JSON.parse(response);
-            const barcodeSeq = document.getElementById('barcode_seq');
-            barcodeSeq.innerHTML = ''; 
-            barcodeSeq.appendChild(defaultOption); 
-
-            const fragment = document.createDocumentFragment();
-            seqList.forEach(seq => {
-                const option = document.createElement('option');
-                option.value = seq.SEQID;
-                option.textContent = `${seq.SEQID} ${seq.SEQname}`;
-                fragment.appendChild(option);
-            });
-            const currentOptions = barcodeSeq.getElementsByTagName('option');
-            if (currentOptions.length > 0 && currentOptions[0].value === "-1") {
-                barcodeSeq.removeChild(currentOptions[0]);
-            }
-            barcodeSeq.appendChild(fragment);
-        },
-        error: function(xhr, status, error) {
-            console.error('Error occurred:', error);
-        }
-    });
-}
 
 
 

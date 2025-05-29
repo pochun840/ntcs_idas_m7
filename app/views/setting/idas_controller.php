@@ -3,42 +3,35 @@
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_id'];?>:</div>
         <div class="col-3 t2">
-            <input id="control_id" name="control_id" type="number" max=250 min=1 maxlength="3" value="<?php echo isset($data['controller_info']['device_id']) ? $data['controller_info']['device_id'] : ''; ?>" class="t3 form-control"  required>
+            <input id="control_id" name="control_id" type="number" max=250 min=1 maxlength="3" value="<?php echo isset($data['controller_info']['device_id']) ? $data['controller_info']['device_id'] : ''; ?>" class="t3 form-control"  required disabled>
         </div>
     </div>    
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_name'];?>:</div>
         <div class="col-3 t2">
             <input id="control_name" name="control_name" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['device_name']) ? $data['controller_info']['device_name'] : ''; ?>" class="t3 form-control"  required>
+            <div class="invalid-feedback"></div>
         </div>
+        
     </div>    
 
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_diskfull_warning'];?>:</div>
         <div class="col-3 t2">
             <input id="storage_warning" name="storage_warning" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['storage_warning']) ? $data['controller_info']['storage_warning'] : ''; ?>" class="t3 form-control"  required>
+            <div class="invalid-feedback"></div>
         </div>
     </div>
 
     
     <div class="row t2">
-        <div class="col-3 t1"><?php echo $text['system_torque_filter']."(kgf.cm)";?>:</div>
+        <div class="col-3 t1"><?php echo $text['system_torque_filter'];?>:</div>
         <div class="col-3 t2">
             <input id="torque_filter" name="torque_filter" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['torque_filter']) ? $data['controller_info']['torque_filter'] : ''; ?>" class="t3 form-control"  required>
+            <div class="invalid-feedback"></div>
         </div>
     </div>
-
-    <div class="row t2">
-        <div class="col-3 t1"><?php echo $text['sample_rate'];?>:</div>
-        <div class="col-3 t2">
-            <select class="form-select" id="select_sample_rate" name="select_sample_rate">
-                <?php foreach($data['sample_rate'] as $k_rate =>$v_rate){?>
-                <option value="<?php echo $k_rate;?>"  ><?php echo $v_rate;?></option>
-                <?php } ?>
-            </select>
-        </div>
-    </div>    
-
+   
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['torque_unit'];?>:</div>
         <div class="col-3 t2">
@@ -126,9 +119,9 @@
 
 
     
-    <div style="text-align: center;margin-top: 50px;">
-        <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="cc_save()"><?php echo $text['save'];?></button>
-    </div>
+    <!--<div style="text-align: center;margin-top: 50px;">
+        <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="cc_save()"><?php //echo $text['save'];?></button>
+    </div>-->
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
 
@@ -136,17 +129,19 @@
         <div class="col-3 t1"><?php echo $text['Downshift_Torque'];?>:</div>
         <div class="col-3 t2">
             <input id="global_downshift_torque" name="global_downshift_torque" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_torque']) ? $data['controller_info']['global_downshift_torque'] : ''; ?>" class="t3 form-control"  required>
+            <div class="invalid-feedback"></div>
         </div>
     </div>
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['Downshift_Speed'];?>:</div>
         <div class="col-3 t2">
             <input id="global_downshift_speed" name="global_downshift_speed" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_speed']) ? $data['controller_info']['global_downshift_speed'] : ''; ?>" class="t3 form-control"  required>
+            <div class="invalid-feedback"></div>
         </div>
     </div>
 
     <div style="text-align: center;margin-top: 50px;">
-        <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="downshift_save()"><?php echo $text['save'];?></button>
+        <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="controller_save()"><?php echo $text['save'];?></button>
     </div>
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Button_Access_With_Password_text'];?></div>
@@ -236,8 +231,54 @@
         <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="background_save()"><?php echo $text['save'];?></button>
     </div>
 
-
-
-
-
 </div>
+
+
+<script>
+     function input_check_setting(argument) {
+
+        let conditions = [
+            { id: 'control_name', pattern: /^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min: null, max: null },
+            { id: 'storage_warning', pattern: /^\d{0,4}$/, min: 50, max: 95 },
+            { id: 'torque_filter', pattern: /^\d{1,3}(\.\d{1,6})?$/, min: 0.0, max: 200 },
+            { id: 'global_downshift_torque', pattern: /^\d{0,5}?$/, min: 0, max: 1000 },
+            { id: 'global_downshift_speed', pattern: /^\d{0,5}?$/, min: 0, max: 100 },
+        ];
+
+        let isFormValid = true;
+        conditions.forEach(function(input) {
+            var element = document.getElementById(input.id);
+            var value = element.value.trim();
+
+            if(input.id != 'control_name'){
+                var nextSibling = element.nextElementSibling;
+                if (nextSibling) {
+                    nextSibling.innerHTML = input.min + ' ~ ' + input.max;
+                }
+            }
+
+            if (value === "") {
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else if (!input.pattern.test(value)) {
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else if (input.min !== null && parseFloat(value) < input.min) {
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else if (input.max !== null && parseFloat(value) > input.max) {
+                element.classList.add("is-invalid");
+                isFormValid = false;
+            } else {
+                element.classList.remove("is-invalid");
+            }
+
+        });
+
+        console.log(conditions)
+
+        return isFormValid;
+
+    }
+
+</script>

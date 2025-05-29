@@ -5,6 +5,7 @@ class Settings extends Controller
     private $SettingModel;
     private $AdminModel;
     private $ToolModel;
+    private $MiscellaneousModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -63,33 +64,8 @@ class Settings extends Controller
 
     }
 
-    /*public function job_tree(){   
-     
-        //select all job
-        $jobs = $this->SettingModel->GetAllJobs();
-        //select all sequence
-        $seqs = $this->SettingModel->GetAllSequences();
-        //select all step
-        $steps = $this->SettingModel->GetAllSteps();
 
-        // var_dump($steps);
-        $data_array = array();
-        foreach ($jobs as $key => $value) {
-            $temp = ["id" => 'job_'.$value['job_id'], "parent" => "#", "text" => $value['job_name'] ];
-            $data_array[] = $temp;
-        }
-        foreach ($seqs as $key => $value) {
-            $temp = ["id" => 'job_'.$value['job_id'].'_'.'seq_'.$value['sequence_id'], "parent" => 'job_'.$value['job_id'], "text" => $value['sequence_name'] ];
-            $data_array[] = $temp;
-        }
-        foreach ($steps as $key => $value) {
-            $temp = ["id" => $value['job_id'].'_'.$value['sequence_id'].'_'.$value['step_id'], "parent" => 'job_'.$value['job_id'].'_'.'seq_'.$value['sequence_id'], "text" => $value['step_name'] ];
-            $data_array[] = $temp;
-        }
-
-        echo json_encode($data_array);
-    }*/
-
+    //修改密碼 
     public function edit_password(){
 
         $conset = array();
@@ -256,95 +232,72 @@ class Settings extends Controller
         return $decimalValue;
     }
 
-    public function control_setting()
-    {
+    public function control_setting() {
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) {
+            include $file;
+        }
+
+        $con_setting = [];
         $input_check = true;
 
-        if( !empty($_POST['control_id']) && isset($_POST['control_id'])  ){
-            $con_setting['control_id'] = $_POST['control_id'];
-        }else{ 
-            $input_check = false; 
-        }
+        $get = function($key, $default = null) {
+            return isset($_POST[$key]) && $_POST[$key] !== '' ? $_POST[$key] : $default;
+        };
 
-        if( !empty($_POST['control_name']) && isset($_POST['control_name'])){
-            $con_setting['control_name'] = $_POST['control_name'];
-        }else{ 
-            $input_check = false; 
-        }
-  
-        if( !empty($_POST['storage_warning']) && isset($_POST['storage_warning'])){
-            $con_setting['storage_warning'] = $_POST['storage_warning'];
-        }else{ 
-            $input_check = false; 
-        }
-
-        
-        if( !empty($_POST['torque_filter']) && isset($_POST['torque_filter'])){
-            $con_setting['torque_filter'] = $_POST['torque_filter'];
-        }else{ 
-            $input_check = false; 
-        }
-
-        if( !empty($_POST['lang_val']) && isset($_POST['lang_val'])){
-            $lang_val =  $_POST['lang_val'];
-            intval($lang_val);
-        }else{ 
-            $lang_val = 0;
-        }
-
-        $con_setting['lang_val']  = $lang_val;
-
-
-        if( !empty($_POST['unit_val']) && isset($_POST['unit_val'])){
-            $unit_val =  $_POST['unit_val'];
-            intval($unit_val);
-        }else{ 
-            $unit_val = 0;
-        }
-
-        $con_setting['unit_val']  =$unit_val;
-
-        if( !empty($_POST['counting_method']) && isset($_POST['counting_method'])){
-            $con_setting['counting_method']  =  $_POST['counting_method'];
-        }else{ 
-            $con_setting['counting_method']  =  $_POST['counting_method']; 
-        }
-
-        if( !empty($_POST['circular_archive']) && isset($_POST['circular_archive'])){
-            $con_setting['circular_archive']  =  $_POST['circular_archive'];
-        }else{ 
-            $con_setting['circular_archive']  =  $_POST['circular_archive']; 
-        }
-
-        if( !empty($_POST['blackout_recovery']) && isset($_POST['blackout_recovery'])){
-            $con_setting['blackout_recovery']  =  $_POST['blackout_recovery'];
-        }else{ 
-            $con_setting['blackout_recovery']  =  $_POST['blackout_recovery']; 
-        }
-        if( !empty($_POST['buzzer_mode']) && isset($_POST['buzzer_mode'])  ){
-            $con_setting['buzzer_mode'] = $_POST['buzzer_mode'];
-        }else{ 
-            $con_setting['buzzer_mode'] = $_POST['buzzer_mode'];
-        }
-       
-
-
-        if($input_check){
-          $res = $this->SettingModel->GetControllerInfo_count($con_setting['control_id']);
-          if($res['count'] =="1"){
-        
-            $result = $this->SettingModel->Controller_Setting($con_setting);
-            if($result){
-                $res_msg = 'edit:'. $con_setting['control_id'].'success';
-            }else{
-                $res_msg = 'edit:'. $con_setting['control_id'].'fail';
+        // 必填欄位驗證
+        $required_fields = ['control_id', 'control_name', 'storage_warning', 'torque_filter'];
+        foreach ($required_fields as $field) {
+            $val = $get($field);
+            if ($val === null) {
+                $input_check = false;
+            } else {
+                $con_setting[$field] = $val;
             }
-            echo $res_msg;
+        }
 
-          }
+        // 可選欄位（含預設值）
+        $con_setting['lang_val'] = (int)$get('lang_val', 0);
+        $con_setting['unit_val'] = (int)$get('unit_val', 0);
 
-        }    
+        $optional_fields = [
+            'counting_method',
+            'circular_archive',
+            'blackout_recovery',
+            'buzzer_mode',
+            'global_downshift_torque',
+            'global_downshift_speed'
+        ];
+
+        foreach ($optional_fields as $field) {
+            $con_setting[$field] = $get($field, ''); // 空字串作為預設值
+        }
+
+        // 若前面驗證通過
+        if ($input_check) {
+            $res = $this->SettingModel->GetControllerInfo_count($con_setting['control_id']);
+
+            if ($res['count'] === "1") {
+                $result = $this->SettingModel->Controller_Setting($con_setting);
+
+                if ($result) {
+                    $res_msg = $text['success'] ?? 'Success';
+                    $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
+                } else {
+                    $res_msg = $text['fail'] ?? 'Fail';
+                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+                }
+            } else {
+                $res_msg = $text['not_found'] ?? 'Controller not found';
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+            }
+        } else {
+            $res_msg = $text['form_invalid'] ?? 'Invalid input';
+            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+        }
     }
+
 
     public function edit_system_date()
     {
@@ -756,6 +709,7 @@ class Settings extends Controller
         $isMobile = $this->isMobileCheck();
         $barcode_list = '';
         $barcodes = $this->SettingModel->GetAllBarcodes();
+        $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         if(!empty($barcodes)){
             
             if(!$isMobile){
@@ -768,6 +722,7 @@ class Settings extends Controller
                     $barcode_list .= '<td>'.$vv['barcode'].'</td>';
                     $barcode_list .= '<td>'.$vv['range_from'].'</td>';
                     $barcode_list .= '<td>'.$vv['range_count'].'</td>';
+                    $barcode_list .= '<td>'.$barcode_mode[$vv['barcode_mode']].'</td>';
                     $barcode_list .= '<tr>';
     
                     echo $barcode_list;
@@ -782,6 +737,7 @@ class Settings extends Controller
                     $barcode_list .= '<td>'.$vv['barcode'].'</td>';
                     $barcode_list .= '<td>'.$vv['range_from'].'</td>';
                     $barcode_list .= '<td>'.$vv['range_count'].'</td>';
+                    $barcode_list .= '<td>'.$barcode_mode[$vv['barcode_mode']].'</td>';
                     $barcode_list .= '<tr>';
     
                     echo $barcode_list;

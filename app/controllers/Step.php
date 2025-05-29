@@ -232,6 +232,10 @@ class Step extends Controller
                 'step_unit' => intval($_POST['step_unit'] ?? 0)
             ];
 
+
+        //var_dump($step_data['StepTorqueTS']);die();
+            
+
         $res = $this->stepModel->update_step_by_id($step_data);
 
         $result = array(
@@ -437,6 +441,10 @@ class Step extends Controller
 
         }
 
+        /*if(!empty($step)){
+
+        }*/
+
         $tools = $this->ToolModel->GetToolInfo();
       
         if(!empty($tools)){
@@ -506,7 +514,9 @@ class Step extends Controller
             'tools_info' => $tools[0],
             'torque_unit' =>$unit_name,
             'step' => $step,
-            'next_step_id' => $next_step_id
+            'next_step_id' => $next_step_id,
+            'step_torque_unit' => $step_torque_unit  
+
         );
 
         if($isMobile){

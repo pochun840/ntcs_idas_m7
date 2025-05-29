@@ -12,7 +12,7 @@
         <div class="col">
             <form id="agent_ip" class="form-inline" method="post">
                 <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
-                    required class="t3 w3-submit w3-border w3-round">
+                    required class="form-control">
                 <span style="margin-left: 10px;"></span>
                 <input type="submit" value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right;">
             </form>

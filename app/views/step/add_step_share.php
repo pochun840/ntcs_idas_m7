@@ -78,6 +78,9 @@
 
 
     function toggleStepTorqueTS() {
+
+          
+        var dataType = "<?php echo $data['type']; ?>";
         const stepTorqueTS = document.getElementById('StepTorqueTS');
         const showTorque = document.getElementById('show_torque');
         const showAngle = document.getElementById('show_angle');
@@ -100,7 +103,9 @@
             if (stepTorqueTS) {
                 stepTorqueTS.style.display = 'block';
                 stepTorqueTS.disabled = false;
-                stepTorqueTS.value = 0;
+                if(dataType === 'new'){
+                    stepTorqueTS.value = 0;
+                }
             }
             if (showTorque) showTorque.style.display = 'block';
 
@@ -122,6 +127,9 @@
 
 
     function toggleDownShift() {
+
+        var dataType = "<?php echo $data['type']; ?>";
+
         const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
         const StepRPMDownShift = document.getElementById('StepRPMDownShift');
         const showDownshiftTorque = document.getElementById('show_downshift_torque');
@@ -145,7 +153,9 @@
             StepTorqueDownShift.style.display = 'block';
             StepTorqueDownShift.disabled = false;
             StepRPMDownShift.disabled = false;
-            StepTorqueDownShift.value = 0;
+            if(dataType === 'new'){
+                StepTorqueDownShift.value = 0;
+            }
             showDownshiftTorque.style.display = 'block';
         } else if (isModeAngle) {
             StepTorqueDownShift.style.display = 'block';  // 仍需啟用 torque 輸入
@@ -168,8 +178,6 @@
 
 
 
-  
-    var dataType = "<?php echo $data['type']; ?>";
     if (dataType === 'new') {
 
         var next_step_id = "<?php echo $data['next_step_id'];?>";
@@ -256,23 +264,28 @@
         const i18n = {
             'en': {
                 title: "Warning",
-                message: "This will remove all existing steps' Threshold and TorqueTS settings. Continue?",
+                threshold: "This will remove all existing steps' Threshold settings. Continue?",
+                downshift: "This will remove all existing steps' Downshift settings. Continue?",
                 cancel: "Cancel",
                 ok: "OK"
             },
             'zh-tw': {
                 title: "警告",
-                message: "此操作將移除所有既有步驟的 Threshold 與 TorqueTS 設定，是否繼續？",
+                threshold: "此操作將移除所有既有步驟的 Threshold 設定，是否繼續？",
+                downshift: "此操作將移除所有既有步驟的 Downshift 設定，是否繼續？",
                 cancel: "取消",
                 ok: "確定"
             },
             'zh-cn': {
                 title: "警告",
-                message: "此操作将移除所有既有步骤的 Threshold 与 TorqueTS 设置，是否继续？",
+                threshold: "此操作将移除所有既有步骤的 Threshold 设置，是否继续？",
+                downshift: "此操作将移除所有既有步骤的 Downshift 设置，是否继续？",
                 cancel: "取消",
                 ok: "确定"
             }
         };
+
+
         const text = i18n[lang] || i18n['en'];
 
         let check = input_check();
@@ -282,7 +295,7 @@
             if (StepEnableThreshold !== "0") {
                 alertify.confirm(
                     text.title,
-                    text.message,
+                    text.threshold,
                     function () {
                         submit_step_ajax();
                     },
@@ -290,7 +303,19 @@
                         return;
                     }
                 ).set('labels', {ok: text.ok, cancel: text.cancel});
-            } else {
+            }else if(StepEnableDownShift !=="0"){
+                alertify.confirm(
+                    text.title,
+                    text.downshift,
+                    function () {
+                        submit_step_ajax();
+                    },
+                    function () {
+                        return;
+                    }
+                ).set('labels', {ok: text.ok, cancel: text.cancel});
+
+            }else {
                 submit_step_ajax();
             }
         }
@@ -384,7 +409,7 @@
             torque: {
                 torque: { min: Tool_Min_Torque, max: Tool_Max_Torque },
                 torqueTS: { min: Tool_Min_Torque, max: Tool_Max_Torque },
-                torqueDownshift: { min: Tool_Min_Torque, max: Tool_Max_Torque },
+                torqueDownshift: { min:0, max: Tool_Min_Torque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
                 limitHi: { min: StepTorqueVal + delta, max: Tool_Max_Torque * 1.1 },
                 limitLo: { min: 0, max: StepTorqueVal - delta }

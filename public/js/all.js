@@ -316,26 +316,23 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
 
 
 
-function handleAjaxResponseWithSpinner(response, spinnerId = 'spinner') {
-    const responseData = JSON.parse(response);
+function handleAjaxResponse(responseData) {
+    try {
+        const res = typeof responseData === "string" ? JSON.parse(responseData) : responseData;
 
-    // 顯示 Spinner
-    document.getElementById(spinnerId).style.display = 'block';
+        setTimeout(function () {
+            document.getElementById('spinner').style.display = 'none';
 
-    setTimeout(() => {
-        // 隱藏 Spinner
-        document.getElementById(spinnerId).style.display = 'none';
+            alertify.alert(res.res_type, res.res_msg, function () {
+                history.go(0);
+            });
 
-        // 顯示 alertify 並在關閉時刷新
-        alertify.alert(responseData.res_type, responseData.res_msg, function () {
-            alertify.closeAll();
-            history.go(0);
-        });
-
-        // 自動關閉 alertify 並刷新
-        setTimeout(() => {
-            alertify.closeAll();
-            history.go(0);
-        }, 3000);
-    }, 1000); // 延遲 1 秒
+            setTimeout(function () {
+                alertify.closeAll();
+            }, 3000);
+        }, 1000);
+    } catch (e) {
+        console.error("JSON parse error:", e);
+        alert("回傳格式錯誤");
+    }
 }

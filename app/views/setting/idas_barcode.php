@@ -28,7 +28,7 @@
                                         <td><?php echo $v_b['barcode'];?></td>
                                         <td><?php echo $v_b['range_from'];?></td>
                                         <td><?php echo $v_b['range_count'];?></td>
-                                        <td><?php echo $v_b['range_count'];?></td>
+                                        <td><?php echo $data['barcode_mode'][$v_b['barcode_mode']];?></td>
                                     </tr>
                                 <?php } ?>
                                 
@@ -104,3 +104,42 @@
                 <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode()" ><?php echo $text['delete_text'];?></button>
             </div>               
 </div>
+
+<script>
+//透過JOBID 取得對應的SEQ
+function fetchSeqList() {
+    const jobId = document.getElementById('barcode_job').value;
+    const barcodeSeq = document.getElementById('barcode_seq');
+
+    // Reset list
+    barcodeSeq.innerHTML = '';
+
+    // 預設項目
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "-1";
+    defaultOption.textContent = "<?php echo $text['system_barcode_select_seq_m'];?>";
+    barcodeSeq.appendChild(defaultOption);
+
+    if (jobId === '-1') return;
+
+    $.ajax({
+        url: '?url=Settings/GetJobSeq',
+        type: 'POST',
+        data: { job_id: jobId },
+        success: function(response) {
+            const seqList = JSON.parse(response);
+
+            seqList.forEach(seq => {
+                const option = document.createElement('option');
+                option.value = seq.SEQID;
+                option.textContent = `${seq.SEQID} ${seq.SEQname}`;
+                barcodeSeq.appendChild(option);
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error occurred:', error);
+        }
+    });
+}
+    
+</script>

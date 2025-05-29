@@ -22,10 +22,10 @@ class Datas{
     {
         $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 100 ";
         if($type == 'OK'){
-            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status = 1  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
+            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status in('4')  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
         }
         if($type == 'NOK'){
-            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status  = 2  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
+            $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status  in('7','8')  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
         }
         
         $statement = $this->db_data->prepare($sql);

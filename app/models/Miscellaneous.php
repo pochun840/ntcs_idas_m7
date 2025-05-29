@@ -29,16 +29,6 @@ class Miscellaneous{
 
         if($mode == "torque_unit"){
             $array = array(
-                0 => 'kgf.cm',
-                1 => 'lbf.in',
-                2 => 'kgf.m',
-                3 => 'N.m',
-                4 => 'cN.m',
-                
-            );
-
-            //新的
-            $ntcs_array = array(
                 0 => 'kgf-cm',
                 1 => 'N.m',
                 2 => 'lbf.in',
@@ -46,13 +36,6 @@ class Miscellaneous{
                 4 => 'cN.m',
                 
             );
-
-            /*
-            0 : kgf-cm
-            1 : N.m
-            2 : lbf.in
-            3 : kgf.m
-            */
         }
 
         if($mode == "target_option" ){
