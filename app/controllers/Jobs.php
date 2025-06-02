@@ -264,7 +264,8 @@ class Jobs extends Controller
                             
                         }
 
-                        $insertedrecords = $this->jobModel->copy_sequence_by_job_id($new_temp_seq);                
+                        $insertedrecords = $this->jobModel->copy_sequence_by_job_id($new_temp_seq);  
+    
                     }
 
                     if(!empty($select_step)){

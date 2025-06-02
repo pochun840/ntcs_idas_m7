@@ -89,7 +89,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: 60%">
                 <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('copyseq').style.display='none'"
+                    <span onclick="closebutton('copyseq');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                     <h3 id='modal_title'><?php echo $text['Copy_Sequence'];?></h3>
                 </header>
@@ -117,13 +117,13 @@
         				    <div class="row">
         				        <label for="to_seq_id" class="t1 col-4 col-form-label"><?php echo $text['seq_id'];?> :</label>
         				        <div class="t2 col-5">
-        				            <input type="number" class="form-control" id="to_seq_id">
+        				            <input type="number" class="form-control" id="to_seq_id" value ='<?php echo $data['next_seq_id'];?>'>
         				        </div>
         				    </div>
         				    <div class="row">
         				        <label for="to_seq_name" class="t1 col-4 col-form-label"><?php echo $text['seq_name'];?> :</label>
         				        <div class="t2 col-5">
-        				            <input type="text" class="form-control" id="to_seq_name">
+        				            <input type="text" class="form-control" id="to_seq_name" value='<?php echo "SEQ-".$data['next_seq_id'];?>'>
         				        </div>
         				    </div>
         			    </div>
@@ -132,7 +132,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="copy_seq_by_id()"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('copyseq');" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('copyseq');" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>

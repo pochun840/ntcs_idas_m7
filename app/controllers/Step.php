@@ -4,6 +4,11 @@ class Step extends Controller
 {
    
     // 在建構子中將 Post 物件（Model）實例化
+    private $MiscellaneousModel;
+    private $stepModel;
+    private $sequenceModel;
+    private $SettingModel;
+    private $ToolModel;
     public function __construct()
     {
         //$this->ToolModel = $this->model('Tool');
@@ -185,8 +190,6 @@ class Step extends Controller
             }
         }
 
-
-
         $step_data = [
                 'JOBID' => $JOBID,
                 'SEQID' => $SEQID,
@@ -232,9 +235,6 @@ class Step extends Controller
                 'step_unit' => intval($_POST['step_unit'] ?? 0)
             ];
 
-
-        //var_dump($step_data['StepTorqueTS']);die();
-            
 
         $res = $this->stepModel->update_step_by_id($step_data);
 
@@ -434,50 +434,7 @@ class Step extends Controller
         }
 
         $torque_unit   = $this->MiscellaneousModel->details("torque_unit");
-        $res_device = $this->SettingModel->GetControllerInfo();
-        if(!empty($res_device)){
-            $step_torque_unit = (int)$res_device['torque_unit'];
-            $unit_name  = $this->MiscellaneousModel->get_unit_name_by_index($step_torque_unit);
 
-        }
-
-        /*if(!empty($step)){
-
-        }*/
-
-        $tools = $this->ToolModel->GetToolInfo();
-      
-        if(!empty($tools)){
-            
-            //處理轉速
-            $tools[0]['max_rpm'] = rtrim(rtrim($tools[0]['max_rpm'], '0'), '.');
-            $tools[0]['min_rpm'] = rtrim(rtrim($tools[0]['min_rpm'], '0'), '.');
-
-            // 最大扭力上限 +10%，並往下取至最接近 .0
-            $maxTorque = (float)$tools[0]['max_torque'];
-            $minTorque = (float)$tools[0]['min_torque'];
-
-            $tools[0]['tool_maxtorque_diff'] = round($maxTorque * 1.1, 3);
-            $tools[0]['tool_mintorque_diff'] = round($minTorque * 0.9, 3); // 或你想要的條件
-
-            // 換算低/高扭力（從 N.m 轉換成控制器設定單位）
-            $unit_name = $this->MiscellaneousModel->get_unit_name_by_index($step_torque_unit); //取得扭力單位的中文名稱
-            $low_torque_arr  = $this->MiscellaneousModel->convert_all_torque_units($minTorque, 1);
-            if (!empty($low_torque_arr[$unit_name])) {
-                $tools[0]['tool_low_torque'] = $low_torque_arr[$unit_name];
-            }
-
-            $high_torque_arr  = $this->MiscellaneousModel->convert_all_torque_units($maxTorque, 1);
-            if (!empty($high_torque_arr[$unit_name])) {
-                $tools[0]['tool_high_torque'] = $high_torque_arr[$unit_name];
-            }
-
-
-            // 最大扭力上限 +10%，並往下取至最接近 .0
-           // $tools[0]['tool_maxtorque_diff'] = round($tool_max_torque * 1.1, 3);
-           // $tools[0]['tool_mintorque_diff'] = floor($tools['tool_maxtorque_diff'] * 10) / 10;
-        
-        }
         //計算參數的數量
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
@@ -502,10 +459,48 @@ class Step extends Controller
         } 
 
 
-        $tools[0]['final_hi_torque'] = $tools[0]['max_torque'] + $tools[0]['min_torque'];
-        $isMobile = $this->isMobileCheck();
 
-   
+
+        if($type == "new"){
+            $res_device = $this->SettingModel->GetControllerInfo();
+            if(!empty($res_device)){
+                //取得控制器扭力單位的中文名稱
+                $step_torque_unit = (int)$res_device['torque_unit'];
+                $unit_name  = $this->MiscellaneousModel->get_unit_name_by_index($step_torque_unit);
+            }
+        }else{
+
+            //取得該step 扭力單位的中文名稱
+            $step_torque_unit  = (int)$step['step_unit'];
+            $unit_name = $torque_unit[$step['step_unit']];
+                
+        }
+
+        $tools = $this->ToolModel->GetToolInfo();
+         if(!empty($tools)){
+            
+            //處理轉速
+            $tools[0]['max_rpm'] = rtrim(rtrim($tools[0]['max_rpm'], '0'), '.');
+            $tools[0]['min_rpm'] = rtrim(rtrim($tools[0]['min_rpm'], '0'), '.');
+
+
+            $minTorque = (float)$tools[0]['min_torque']/1000;
+            $maxTorque = (float)$tools[0]['max_torque']/1000;
+            $low_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($minTorque, 1);
+            $high_torque_arr  = $this->MiscellaneousModel->convert_all_torque_units($maxTorque, 1);
+
+            if (!empty($low_torque_arr[$unit_name])) {
+                $tools[0]['tool_low_torque'] = $low_torque_arr[$unit_name];
+            }
+
+            if (!empty($high_torque_arr[$unit_name])) {
+                $value = $high_torque_arr[$unit_name];
+                $tools[0]['tool_high_torque'] = round($value * 1.10, 3); // 加 10%，取到小數第 3 位
+                $tools[0]['tools_high_torque_diff'] = $value;
+            }
+        }
+
+        $isMobile = $this->isMobileCheck();
         $data = array(
             'JOBID' => $job_id,
             'SEQID' => $seq_id,
@@ -515,14 +510,13 @@ class Step extends Controller
             'torque_unit' =>$unit_name,
             'step' => $step,
             'next_step_id' => $next_step_id,
-            'step_torque_unit' => $step_torque_unit  
+            'step_torque_unit' =>$step_torque_unit
 
         );
 
         if($isMobile){
             $this->view('step/add_step_m', $data);
         }else{
-            //echo
             $this->view('step/add_step', $data);
         }
     }

@@ -41,7 +41,7 @@
                         </div>
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['tool_max_speed'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['max_rpm'];?></div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['min_rpm']."/".$data['Tool_Info']['max_rpm'];?></div>
                         </div>
                      
 

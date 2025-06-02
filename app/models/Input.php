@@ -1,25 +1,21 @@
 <?php
 
 class Input{
-    private $db;//condb control box
-    private $dbh;
+    private $db;             
+    private $dbh;           
     private $db_iDas;
+    private $db_iDas_device;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
     {
-        $this->db = new Database;
-        $this->db = $this->db->getDb();
+        // ✅ 只建立一次 Database 實例
+        $database = new Database();
 
-        $this->dbh = new Database;
-
-
-        $this->db_iDas = new Database;
-        $this->db_iDas = $this->db_iDas->getDb_das();
-
-        $this->db_iDas_device = new Database;
-        $this->db_iDas_device = $this->db_iDas_device->getDb_das_device();
-
+        $this->db = $database->getDb();              
+        $this->dbh = $database->getDb();               
+        $this->db_iDas = $database->getDb_das();       
+        $this->db_iDas_device = $database->getDb_das_device();
 
     }
 

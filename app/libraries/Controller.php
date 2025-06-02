@@ -98,7 +98,7 @@ class Controller
     public function LoginCheck($value='')
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/ntcsidas/das.db'); 
+            $con_db = new PDO('sqlite:/var/www/html/database/das.db'); 
         }else{
             $con_db = new PDO('sqlite:../data.db'); 
         }
@@ -207,20 +207,38 @@ class Controller
     //取得tcscon device table資訊
     public function Device_Info()
     {
-        if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/ntcsidas/data_device.db'); 
-        }else{
-            $con_db = new PDO('sqlite:../data_device.db'); 
-            
+        try {
+            if (PHP_OS_FAMILY === 'Linux') {
+                $db_path = '/var/www/html/database/data_device_local.db';
+            } else {
+                $db_path = '../data_device.db';
+            }
+
+            if (!file_exists($db_path)) {
+                throw new Exception("❌ Database file not found: $db_path");
+            }
+
+            $con_db = new PDO('sqlite:' . $db_path);
+            $con_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $con_db->exec('PRAGMA encoding = "UTF-8"');
+
+            $sql = 'SELECT * FROM device';
+
+            $statement = $con_db->prepare($sql);
+            if (!$statement) {
+                $errorInfo = $con_db->errorInfo();
+                throw new Exception("❌ SQL prepare failed: " . $errorInfo[2]);
+            }
+
+            $statement->execute();
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+            return $row;
+        } catch (Exception $e) {
+            error_log($e->getMessage());
+            echo $e->getMessage(); // 或回傳空陣列 return [];
+            return null;
         }
-
-        $con_db->exec('set names utf-8'); 
-        $sql = 'SELECT * FROM device';
-        $statement = $con_db->prepare($sql);
-        $results = $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
-
-        return $row;        
     }
 
 

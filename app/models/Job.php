@@ -263,9 +263,9 @@ class Job{
                     ':unscrew_count_switch' => $seq['unscrew_count_switch'],
                     ':unscrew_torque_threshold' => $seq['unscrew_torque_threshold'],
                     ':seq_unit' => isset($seq['seq_unit']) ? $seq['seq_unit'] : 0,
-                    ':unscrew_angle_threshold' => $seq['unscrew_angle_threshold'] ?? null,
-                    ':dt_time' => $seq['dt_time'] ?? null,
-                    ':tt_time' => $seq['tt_time'] ?? null,
+                    ':unscrew_angle_threshold' => $seq['unscrew_angle_threshold'] ?? 0,
+                    ':dt_time' => $seq['dt_time'] ?? 0,
+                    ':tt_time' => $seq['tt_time'] ?? 0,
 
 
 

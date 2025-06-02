@@ -29,7 +29,7 @@ class Miscellaneous{
 
         if($mode == "torque_unit"){
             $array = array(
-                0 => 'kgf-cm',
+                0 => 'kgf.cm',
                 1 => 'N.m',
                 2 => 'lbf.in',
                 3 => 'kgf.m',

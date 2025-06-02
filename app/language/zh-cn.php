@@ -295,6 +295,7 @@ $text['kgf.m'] = '公斤米';
 $text['N.m'] = '牛頓米';
 $text['kgf.cm'] = '公斤公分';
 $text['lbf.in'] = '英磅英吋';
+$text['cN.m'] = '厘牛米';
 
 
 

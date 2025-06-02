@@ -28,8 +28,10 @@ class Sequences extends Controller
 
         if(empty($sequences)){
             $seq_id = 1;
+            $next_seq_id = $seq_id;
         }else{
             $seq_id = count($sequences) + 1 ;
+            $next_seq_id = $seq_id;
         }
 
 
@@ -42,7 +44,8 @@ class Sequences extends Controller
             'unit_arr' => $unit_arr,
             'seq_id' => $seq_id,
             'old_seqid' => '',
-            'total_seq' => $total_seq
+            'total_seq' => $total_seq,
+            'next_seq_id' => $next_seq_id
 
 
         );

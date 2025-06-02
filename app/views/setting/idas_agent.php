@@ -12,7 +12,7 @@
         <div class="col">
             <form id="agent_ip" class="form-inline" method="post">
                 <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
-                    required class="form-control">
+                    value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
                 <span style="margin-left: 10px;"></span>
                 <input type="submit" value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right;">
             </form>
@@ -25,15 +25,15 @@
         <div class="col">
             <form id="agent_type_form" method="post">
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="agent_type" id="agent_type_0" value="0">
+                    <input class="form-check-input" type="radio" name="agent_type" id="agent_type_0" value="0" <?php if($data['agent_type'] == 0){ echo "checked";} ?> >
                     <label class="form-check-label" for="agent_type_0">None</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="agent_type" id="agent_type_1" value="1">
+                    <input class="form-check-input" type="radio" name="agent_type" id="agent_type_1" value="1" <?php if($data['agent_type'] == 1){ echo "checked";} ?>>
                     <label class="form-check-label" for="agent_type_1">Client</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="agent_type" id="agent_type_2" value="2" required>
+                    <input class="form-check-input" type="radio" name="agent_type" id="agent_type_2" value="2" <?php if($data['agent_type'] == 2){ echo "checked";} ?>>
                     <label class="form-check-label" for="agent_type_2">Server</label>
                 </div>
 

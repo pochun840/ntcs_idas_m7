@@ -39,8 +39,8 @@ function controller_save(){
     var control_name = document.getElementById('control_name').value;
     var storage_warning = document.getElementById('storage_warning').value;
     var torque_filter   = document.getElementById('torque_filter').value;
-    var lang_val = document.getElementById('select_language').value; //語言
-    var unit_val = document.getElementById('select_torque_unit').value; //扭力單位 
+    var lang_val = document.getElementById('select_language').value; 
+    var unit_val = document.getElementById('select_torque_unit').value; 
     var counting_method_val =  document.querySelector('input[name="counting_method"]:checked').value;
     var circular_archive_val = document.querySelector('input[name="circular_archive"]:checked').value;
     var blackout_recovery_val = document.querySelector('input[name="blackout_recovery"]:checked').value;
@@ -120,9 +120,6 @@ function input_check_setting(argument) {
         }
 
     });
-
-    console.log(conditions)
-
     return isFormValid;
 
 }
@@ -150,7 +147,7 @@ function save_pwd(){
         !isValidInput(enablePwd) || 
         !isValidInput(disablePwd) || 
         !isValidInput(skipPwd)) {
-        alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
+        //alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
         return; // 如果驗證失敗，停止函式執行
     }
     document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
@@ -238,9 +235,6 @@ function toggleBarcodeSeq() {
         seqContainer.style.display = 'block';
     }
 }
-
-
-
 
 
 function Export_SystemConfig(argument) {
@@ -392,10 +386,6 @@ function OpenButton(ButtonMode){
         document.getElementById('bnt2').classList.remove("active");
         document.getElementById('bnt1').classList.remove("active");
     }
-    else
-    {
-        //alert("Function ["+ ButtonMode +"] is under constructing ...");
-    }
 }
 
 
@@ -403,7 +393,6 @@ function OpenButton(ButtonMode){
 function getCookie(name) 
 {
     var nameEQ = name + "=";
-    //alert(document.cookie);
     var ca = document.cookie.split(';');
     for (var i = 0; i < ca.length; i++) {
         var c = ca[i];
@@ -515,6 +504,7 @@ function StatusCheck(action) {
 }
 
 function idas_update() {
+
     var ff = document.querySelector('#file-uploader').files;
     var bb = document.getElementById("file-uploader").files[0];
     var form = new FormData();
@@ -543,8 +533,66 @@ function idas_update() {
    
 }
 
+function input_check_savebarcode() {
+
+    let conditions = [
+        { id: 'barcode_content',  pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]{1,100}$/, min: null, max: null },
+        { id: 'barcode_mask_from', pattern: /^[0-9]+$/, min: 1, max: 54 },
+        { id: 'barcode_mask_count', pattern: /^[0-9]+$/, min: 1, max: 100 },
+
+    ];
+
+    let isFormValid = true;
+
+    conditions.forEach(function(input) {
+        var element = document.getElementById(input.id);
+        if (input.id !== 'barcode_content') {
+            element.nextElementSibling.innerHTML = `${input.min} ~ ${input.max}`;
+        }
+
+        if (!validateInput(element, input.pattern, input.min, input.max)) {
+            isFormValid = false;
+        }
+    });
+
+    return isFormValid;
+}
+
+function validateInput(element, pattern, min, max) {
+    let value = element.value.trim();
+    let isValid = true;
+
+    // 验证空值
+    if (value === "") {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 验证正则
+    else if (!pattern.test(value)) {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 验证最小值
+    else if (min !== null && parseFloat(value) < min) {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 验证最大值
+    else if (max !== null && parseFloat(value) > max) {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 通过验证
+    else {
+        element.classList.remove("is-invalid");
+    }
+
+    return isValid;
+}
+
 
 function update_barcode(){
+
     var barcode_name  = document.getElementById("barcode_name").value;
     var barcode_from  = document.getElementById("barcode_from").value;
     var barcode_count = document.getElementById("barcode_count").value;
@@ -553,6 +601,10 @@ function update_barcode(){
     var barcode_seq   = document.querySelector("select[name='barcode_seq']").value;
     
     if(barcode_name){
+
+        document.getElementById('spinner').style.display = 'block';
+
+
         $.ajax({
             url: "?url=Settings/Update_Barcode",
             method: "POST",
@@ -565,18 +617,41 @@ function update_barcode(){
                 barcode_mode: barcode_mode
             },
             success: function(response) {
-                console.log(response);
-                //alert(response);
-                $.ajax({
-                    url: "?url=Settings/show_Barcodes",
-                    method: "GET",
-                    success: function(html) {
-                        $('#total_barcodes').html(html);  
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error fetching barcodes:", error);
-                    }
-                });
+                var responseData = JSON.parse(response);  // 解析返回的 JSON 資料
+                
+                // 延遲 1000 毫秒後隱藏加載動畫，並在隱藏後顯示 alertify 彈跳視窗
+                setTimeout(function() {
+                    // 隱藏 'copyjob' 和 'spinner' 加載動畫
+                    document.querySelector(".main-content").classList.remove("overlay-active");
+                    document.getElementById('spinner').style.display = 'none';  
+
+                    // 顯示 alertify 彈跳視窗
+                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                        // 彈跳視窗關閉後刷新頁面
+                        // 存儲頁面顯示狀態到 sessionStorage
+                        sessionStorage.setItem('Barcode_Setting', 'block');
+                        sessionStorage.setItem('Controller_Setting', 'none');
+                        
+                        history.go(0);  // 重新加載頁面
+                    });
+
+                    // 在 3 秒後自動關閉 alertify 彈跳視窗，並執行 AJAX 請求來刷新條形碼列表
+                    setTimeout(function() {
+                        alertify.closeAll();  // 關閉所有開啟的 alertify 彈跳視窗
+                        
+                        // 刷新條形碼列表
+                        $.ajax({
+                            url: "?url=Settings/show_Barcodes",
+                            method: "GET",
+                            success: function(html) {
+                                $('#total_barcodes').html(html);  
+                            },
+                            error: function(xhr, status, error) {
+                                console.error("獲取條形碼時出錯:", error);
+                            }
+                        });
+                    }, 3000); // 延遲 3 秒
+                }, 1000); // 延遲 1000 毫秒
             },
             error: function(xhr, status, error) {
                 

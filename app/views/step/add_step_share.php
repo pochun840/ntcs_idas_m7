@@ -12,10 +12,11 @@
 
         // 翻譯單位
         const unitLabels = {
-            'kgf.cm': { 'zh-cn': '公斤公分', 'zh-tw': '公斤公分', 'default': 'kgf.cm' },
-            'lbf.in': { 'zh-cn': '英磅英吋', 'zh-tw': '英磅英吋', 'default': 'lbf.in' },
-            'N.m':    { 'zh-cn': '牛顿米',    'zh-tw': '牛頓米',    'default': 'N.m' },
-            'kgf.m':  { 'zh-cn': '公斤米',    'zh-tw': '公斤公尺',  'default': 'kgf.m' }
+            'kgf.cm': { 'zh-cn': '公斤公分', 'zh-tw': '公斤公分',   'default': 'kgf.cm' },
+            'lbf.in': { 'zh-cn': '英磅英吋', 'zh-tw': '英磅英吋',   'default': 'lbf.in' },
+            'N.m':    { 'zh-cn': '牛顿米',   'zh-tw': '牛頓米',     'default': 'N.m' },
+            'kgf.m':  { 'zh-cn': '公斤米',   'zh-tw': '公斤公尺',   'default': 'kgf.m' },
+            'cN.m' :  { 'zh-cn': '厘牛米',   'zh-tw' : '厘牛頓米',  'default': 'cN.m'},
         };
         const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
 
@@ -31,9 +32,15 @@
         label.textContent = selectVal === 0 ? `${labelPrefix} (${translatedUnit}):` : `${labelPrefix}:`;
 
         // 顯示對應欄位區塊
-        ['StepTorque_item', 'StepAngle_item', 'StepTime_item'].forEach((id, idx) => {
-            document.getElementById(id).style.display = (idx === selectVal) ? 'block' : 'none';
+        ['StepTorque_item', 'StepAngle_item'].forEach((id, idx) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = (idx === selectVal) ? 'block' : 'none';
+            } else {
+                console.warn(`❗ Missing element with ID: ${id}`);
+            }
         });
+
 
         // 額外區塊顯示控制
         const showTor = document.getElementById('show_tor');
@@ -49,6 +56,8 @@
                 showTor.style.display = 'none';
                 showAng.style.display = 'none';
             }
+
+            
         }
 
         // 控制欄位 enable/disable
@@ -73,6 +82,8 @@
                 if (el) el.disabled = false;
             });
         }
+
+       
     }
 
 
@@ -176,7 +187,7 @@
 
 
 
-
+    var dataType ='<?php echo $data['type'];?>'
 
     if (dataType === 'new') {
 
@@ -184,7 +195,6 @@
         document.getElementById("STEPname").value = "STEP-" + next_step_id;
         document.getElementById("StepAngle").value = 3000;
         document.getElementById("StepTorque").value  = document.getElementById('tool_min_torque').value;
-        //tool_min_torque
         document.getElementById("interrupt_alarm_off").checked = true;
         document.getElementById("over_angle_stop_off").checked = true;
         document.getElementById("StepDirection_cw").checked = true;
@@ -258,6 +268,7 @@
         let StepTorqueTS = document.getElementById("StepTorqueTS").value;
         let StepTorqueDownShift = document.getElementById("StepTorqueDownShift").value;
         let StepRPMDownShift = document.getElementById("StepRPMDownShift").value;
+        let step_unit = document.getElementById("step_torque_unit").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
         const lang = getCookie('language') || 'en';
@@ -287,11 +298,19 @@
 
 
         const text = i18n[lang] || i18n['en'];
+        const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque').value);
+        const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque').value);
+        const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm').value);
+        const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
+        const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
+        //tool_max_torque_diff
+        console.log("Tool_Max_Torque_Diff =", Tool_Max_Torque_Diff);
 
         let check = input_check();
         console.log(check);
+        return;
 
-        if (check) {
+        if (check.valid) {
             if (StepEnableThreshold !== "0") {
                 alertify.confirm(
                     text.title,
@@ -391,25 +410,33 @@
         return check_val;
     } 
     
-   function input_check() {
-    
+    function input_check() {
         const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque').value);
         const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque').value);
         const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm').value);
         const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
+        const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
+
+        if (
+            [Tool_Max_Torque, Tool_Min_Torque, Tool_Max_RPM, Tool_Min_RPM, Tool_Max_Torque_Diff].some(isNaN)
+        ) {
+            alert("Tool min/max config is invalid.");
+            return { valid: false, errors: ["Tool config invalid"] };
+        }
 
         const StepOption = parseInt(document.getElementById("StepOption").value);
         const StepMoniByWin = getCheckboxValue();
         const StepTorqueVal = parseFloat(document.getElementById("StepTorque").value);
         const delta = Tool_Min_Torque * 0.05;
+
         const StepEnableThreshold = document.querySelector('input[name="StepEnableThreshold"]:checked')?.value ?? "0";
         const StepEnableDownShift = document.querySelector('input[name="StepEnableDownShift"]:checked')?.value ?? "0";
 
         const limits = {
             torque: {
-                torque: { min: Tool_Min_Torque, max: Tool_Max_Torque },
+                torque: { min: Tool_Min_Torque, max: Tool_Max_Torque_Diff },
                 torqueTS: { min: Tool_Min_Torque, max: Tool_Max_Torque },
-                torqueDownshift: { min:0, max: Tool_Min_Torque },
+                torqueDownshift: { min: 0, max: Tool_Min_Torque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
                 limitHi: { min: StepTorqueVal + delta, max: Tool_Max_Torque * 1.1 },
                 limitLo: { min: 0, max: StepTorqueVal - delta }
@@ -426,8 +453,7 @@
         };
 
         let conditions = [
-            { id: 'STEPname', pattern: /^[\w\u4E00-\u9FA5\-]+$/, min: null, max: null },
-            { id: 'StepDelay', pattern: /^\d{1,4}$/, min: 0, max: 2000 },
+            //{ id: 'STEPname', pattern: /^[\w\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.5 },
             { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift },
@@ -435,53 +461,27 @@
             { id: 'StepTorqueTS', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueTS }
         ];
 
-        
-        if (StepEnableThreshold == 1) {
-            const stepTorqueTS = conditions.find(c => c.id === 'StepTorqueTS');
-            if (stepTorqueTS) {
-                stepTorqueTS.min = 0;
-                stepTorqueTS.max = 99999;
-            }
+        if (StepEnableThreshold === "1") {
+            const ts = conditions.find(c => c.id === 'StepTorqueTS');
+            ts.min = 0;
+            ts.max = 99999;
         }
 
-        
-        if (StepEnableDownShift == 1) {
-            const StepTorqueDownShift = conditions.find(c => c.id === 'StepTorqueDownShift');
-            if (StepTorqueDownShift) {
-                StepTorqueDownShift.min = 0;
-                StepTorqueDownShift.max = 99999;
-            }
-
-            const StepRPMDownShift = conditions.find(c => c.id === 'StepRPMDownShift');
-            if (StepRPMDownShift) {
-                StepRPMDownShift.min = Tool_Min_RPM;
-                StepRPMDownShift.max = Tool_Max_RPM;
-            }
+        if (StepEnableDownShift === "1") {
+            const td = conditions.find(c => c.id === 'StepTorqueDownShift');
+            if (td) td.min = 0, td.max = 99999;
         }
 
-             
-        if (StepEnableDownShift == 2) {
-            const StepTorqueDownShift = conditions.find(c => c.id === 'StepTorqueDownShift');
-            if (StepTorqueDownShift) {
-                StepTorqueDownShift.min = Tool_Min_Torque;
-                StepTorqueDownShift.max = Tool_Max_Torque;
-            }
-
-            const StepRPMDownShift = conditions.find(c => c.id === 'StepRPMDownShift');
-            if (StepRPMDownShift) {
-                StepRPMDownShift.min = Tool_Min_RPM;
-                StepRPMDownShift.max = Tool_Max_RPM;
-            }
+        if (StepEnableDownShift === "2") {
+            const td = conditions.find(c => c.id === 'StepTorqueDownShift');
+            if (td) td.min = Tool_Min_Torque, td.max = Tool_Max_Torque;
         }
-
-
-
 
         if (StepOption === 0) {
             conditions.push(
-                { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1})?$/, ...limits.torque.torque },
-                { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, min: limits.torque.limitHi.min, max: limits.torque.limitHi.max },
-                { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, min: limits.torque.limitLo.min, max: limits.torque.limitLo.max },
+                { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
+                { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitHi },
+                { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
                 { id: StepMoniByWin == 0 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
                 { id: StepMoniByWin == 0 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
@@ -494,9 +494,7 @@
                 { id: StepMoniByWin == 0 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         } else if (StepOption === 2) {
-            conditions.push(
-                { id: 'StepTime', pattern: /^\d{1,5}$/, ...limits.time.time }
-            );
+            conditions.push({ id: 'StepTime', pattern: /^\d{1,5}$/, ...limits.time.time });
         }
 
         let errors = [];
@@ -504,26 +502,23 @@
         for (const cond of conditions) {
             const el = document.getElementById(cond.id);
             const val = el?.value?.trim();
+            const parsed = parseFloat(val);
             const feedback = el?.nextElementSibling;
 
             let invalid = (
-                !val ||
-                !cond.pattern.test(val) ||
-                (cond.min !== null && parseFloat(val) < cond.min) ||
-                (cond.max !== null && parseFloat(val) > cond.max)
+                val === "" || isNaN(parsed) ||
+                (cond.min !== null && !isNaN(cond.min) && parsed < cond.min) ||
+                (cond.max !== null && !isNaN(cond.max) && parsed > cond.max) ||
+                !cond.pattern.test(val)
             );
 
             if (invalid) {
                 el?.classList.add("is-invalid");
-
                 if (feedback && feedback.classList.contains("invalid-feedback")) {
-                    if (cond.min !== null && cond.max !== null) {
-                        feedback.innerText = `Range: ${cond.min} ~ ${cond.max}`;
-                    } else {
-                        feedback.innerText = `Invalid input`;
-                    }
+                    feedback.innerText = (cond.min !== null && cond.max !== null)
+                        ? `Range: ${cond.min} ~ ${cond.max}`
+                        : `Invalid input`;
                 }
-
                 errors.push(cond.id);
             } else {
                 el?.classList.remove("is-invalid");
@@ -535,43 +530,44 @@
 
         return {
             valid: errors.length === 0,
-            errors: errors
+            errors
         };
-}
-
-
-function checkAndDisableDownshiftIfNotLastStep() {
-    const job_id = document.getElementById("JOBID")?.value;
-    const seq_id = document.getElementById("SEQID")?.value;
-    const step_id = document.getElementById("StepSelect")?.value;
-
-    if (job_id && seq_id && step_id) {
-        $.post("?url=Step/check_step_is_last", {
-            jobid: job_id,
-            seqid: seq_id,
-            stepid: step_id
-        }, function (response) {
-            let res = JSON.parse(response);
-            if (res.is_last === "N") {
-                disableDownshiftFields();
-            }
-        });
     }
 
-    function disableDownshiftFields() {
-        const fields = [
-            "downshift_mode_off",
-            "downshift_mode_torque",
-            "downshift_mode_angle",
-            "StepTorqueDownShift",
-            "StepRPMDownShift"
-        ];
-        fields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.disabled = true;
-        });
+
+
+    function checkAndDisableDownshiftIfNotLastStep() {
+        const job_id = document.getElementById("JOBID")?.value;
+        const seq_id = document.getElementById("SEQID")?.value;
+        const step_id = document.getElementById("StepSelect")?.value;
+
+        if (job_id && seq_id && step_id) {
+            $.post("?url=Step/check_step_is_last", {
+                jobid: job_id,
+                seqid: seq_id,
+                stepid: step_id
+            }, function (response) {
+                let res = JSON.parse(response);
+                if (res.is_last === "N") {
+                    disableDownshiftFields();
+                }
+            });
+        }
+
+        function disableDownshiftFields() {
+            const fields = [
+                "downshift_mode_off",
+                "downshift_mode_torque",
+                "downshift_mode_angle",
+                "StepTorqueDownShift",
+                "StepRPMDownShift"
+            ];
+            fields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = true;
+            });
+        }
     }
-}
 
 
 

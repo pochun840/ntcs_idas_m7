@@ -164,12 +164,14 @@ class Data extends Controller
         $mode = $_POST['mode'] ?? 'ALL';
 
         // 根據系統設定路徑
-        $base_path = (strtoupper(PHP_OS_FAMILY) === 'LINUX') 
-            ? "/var/www/html/ntcs/"
-            : "../";
 
+        if(PHP_OS_FAMILY  ==="LINUX"){
+            $base_path = '/var/www/html/database/';
+        }else{
+            $base_path =  '../';
+        }
+      
         $db_path = $base_path . "ntcs_data.db";
-
         if (!file_exists($db_path)) {
             echo json_encode(['success' => false, 'msg' => "資料庫不存在"]);
             return;
@@ -258,8 +260,5 @@ class Data extends Controller
         }
     }
 
-
-        
-    
 }
 ?>

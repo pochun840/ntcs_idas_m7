@@ -305,11 +305,11 @@ $text['column_total'] = 'Total';
 $text['column_count'] = 'Count';
 $text['column_status'] = 'Status';
 
-$text['kgf.m'] = 'Kgf-m';
-$text['N.m'] = 'N-m';
-$text['kgf.cm'] = 'Kgf-cm';
-$text['lbf.in'] = 'In-lbs';
-
+$text['kgf.m'] = 'Kgf.m';
+$text['N.m'] = 'N.m';
+$text['kgf.cm'] = 'Kgf.cm';
+$text['lbf.in'] = 'In.lbs';
+$text['cN.m'] = 'cN.m';
 
 
 

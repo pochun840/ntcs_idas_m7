@@ -29,10 +29,12 @@
     </div>
 
     <div style="display:none;">
-        <input id="tool_max_torque" value="<?php echo $data['tools_info']['final_hi_torque']; ?>">
+        <input id="tool_max_torque" value="<?php echo $data['tools_info']['tool_high_torque']; ?>">
+        <input id="tool_max_torque_diff" value="<?php echo $data['tools_info']['tools_high_torque_diff']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['tool_low_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
+        <input id="step_torque_unit" value="<?php echo $data['step_torque_unit'];?>">
 
         
     </div>
@@ -97,33 +99,37 @@
                         </div>
                         <hr class="hr" />
                         <div class="col-12 row t2 mt-3">
-                            <?php if($data['type'] == 'edit'){?>
-                                <?php   if($data['step']['StepOption'] == 0 ){?>   
-                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
-                                <?php }else if($data['step']['StepOption'] == 1 ){?>
-                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Angle'];?> :</div>
-                                <?php }else if($data['step']['StepOption'] == 2 ) {?>
-                                    <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Time'];?>:</div>
-                                <?php } ?>
+                            <?php
+                                $type = $data['type'];
+                                $stepOption = ($type === 'edit') ? (int)($data['step']['StepOption'] ?? 0) : 0;
+                                $torqueUnitName = $text[$data['torque_unit']] ?? $data['torque_unit'];
 
-                            <?php }else{?>
-                                <div class="col-3"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
-                            <?php } ?>
-                             
-                        
-                            <div class="col-9" id='StepTorque_item' style="display: block;" >
-                                <input id="StepTorque"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : ''; ?>">
-                                <div class="invalid-feedback"></div>
-                            </div>
-                            <div class="col-9" id='StepAngle_item' style="display: none;" >
-                                <input id="StepAngle"   class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepAngle'] : ''; ?>"  >
-                                <div class="invalid-feedback"></div>
-                            </div>
+                                // 標籤
+                                $label = ($stepOption === 0) 
+                                    ? $text['Target_Torque'] . " ($torqueUnitName):" 
+                                    : $text['Target_Angle'] . " :";
 
-                            <div class="col-9" id='StepTime_item' style="display:  none;" >
-                                <input id="StepTime"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTime'] : ''; ?>">
-                                <div class="invalid-feedback"></div>
-                            </div>
+                                // 控制欄位顯示
+                                $torqueDisplay = ($stepOption === 0) ? 'block' : 'none';
+                                $angleDisplay  = ($stepOption === 1) ? 'block' : 'none';
+                                ?>
+
+                                <div class="col-12 row t2 mt-3">
+                                    <div class="col-3" id="targetLabel"><?php echo $label; ?></div>
+
+                                    <div class="col-9" id="StepTorque_item" style="display: <?php echo $torqueDisplay; ?>;">
+                                        <input id="StepTorque" class="form-control form-control-sm"
+                                            value="<?php echo ($type === 'edit') ? htmlspecialchars($data['step']['StepTorque']) : ''; ?>">
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+
+                                    <div class="col-9" id="StepAngle_item" style="display: <?php echo $angleDisplay; ?>;">
+                                        <input id="StepAngle" class="form-control form-control-sm"
+                                            value="<?php echo ($type === 'edit') ? htmlspecialchars($data['step']['StepAngle']) : ''; ?>">
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+                                </div>
+
 
                         </div>
                         <hr class="hr" />
@@ -246,7 +252,7 @@
                         <div class="col-12 row t2 mt-3">
                             <div class="col-3"><?php echo $text['Run_Down_Speed'];?> :</div>
                             <div class="col-9">
-                                <input id="StepRPM" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPM'] : ''; ?>">
+                                <input id="StepRPM" min="20" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPM'] : ''; ?>">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
