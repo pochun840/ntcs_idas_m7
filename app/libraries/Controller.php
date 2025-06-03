@@ -241,5 +241,86 @@ class Controller
         }
     }
 
+    
+
+    //用起子的狀態 來判斷是否可以匯入匯出資料???? 
+    public function idas_check(){
+
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 4345;
+        $quantity = 1;
+
+        $response = ['result' => null, 'error' => ''];
+
+        // 驗證 IP 格式
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $response['error'] = "無效的 IP 位址：$ip";
+            echo json_encode($response);
+            return;
+        }
+
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
+
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            $response['result'] = $data[1] ?? null;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+
+        echo json_encode($response);
+    }
+
+
+        
+    //取得控制器 目前用了多少容量
+    public function check_controller_size(){
+
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 269;
+        $quantity = 1;
+
+        $response = ['result' => null, 'error' => ''];
+
+        // 驗證 IP 格式
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $response['error'] = "無效的 IP 位址：$ip";
+            echo json_encode($response);
+            return;
+        }
+
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
+
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            $response['result'] = $data[1] ?? null;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+
+        echo json_encode($response);
+    }
+
+
 
 }

@@ -1,20 +1,14 @@
 <?php
 class Datas{
-    private $db;//condb control box
-    private $db_dev;//devdb tool
-    private $db_data;//devdb tool
-    private $dbh;
 
+    private $db_data;
     // 在建構子將 Database 物件實例化
-    public function __construct()
-    {
-        $this->db = new Database;
-        $this->db = $this->db->getDb();
+    public function __construct(){
 
-        $this->db_data = new Database;
-        $this->db_data = $this->db_data->getDb_data();
+        $db_instance = new Database;
+        $this->db_data = $db_instance->getDb_data();
 
-        $this->dbh = new Database;
+
 
     }
 
@@ -44,8 +38,7 @@ class Datas{
         $sql = "SELECT * FROM ntcs_data 
                 WHERE data_time BETWEEN '".$start_date."' AND '".$end_date."'
                 ORDER BY data_time DESC LIMIT 10000";
-        
-        //echo $sql;   
+                
         $statement = $this->db_data->prepare($sql);
         
         if($statement != false){
@@ -56,6 +49,21 @@ class Datas{
         }else{
             return array();
         }
+    }
+
+
+    public function get_data_for_year(){
+
+        $sql = "SELECT strftime('%Y', data_time) AS year, COUNT(*) AS total_rows FROM ntcs_data GROUP BY year ORDER BY year ASC";
+        $statement = $this->db_data->prepare($sql);
+        if($statement != false){
+            $results = $statement->execute();
+            $row = $statement->fetchall(PDO::FETCH_ASSOC);
+            return $row;
+        }else{
+            return array();
+        }
+
     }
 
 }

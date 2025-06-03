@@ -32,6 +32,11 @@ class Settings extends Controller
         $job_list = $this->SettingModel->get_job_list();
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         $idas_version = $this->SettingModel->get_idas_version();
+        $disk_usage_percent = $this->SettingModel->system_storage();
+
+
+        //$controller_size = $this->check_controller_size();
+        
 
         $iDAS_version = $idas_version['config_value'];
 
@@ -51,7 +56,8 @@ class Settings extends Controller
             'torque_unit'     => $torque_unit,
             'sample_rate'     => $sample_rate,
             'barcode_mode'    => $barcode_mode,
-            'idas_version'   => $iDAS_version
+            'idas_version'   => $iDAS_version,
+            'disk_usage_percent' => $disk_usage_percent
 
         );
 
@@ -63,6 +69,12 @@ class Settings extends Controller
        
 
     }
+
+
+
+
+
+
 
 
     //修改密碼 
@@ -407,26 +419,6 @@ class Settings extends Controller
         exit();
     }
 
-
-    public function system_storage()
-    {
-        $EMMC_BASE = "/home/kls/tcc/resource/db_emmc/"; //目標目錄路徑
-        if( PHP_OS_FAMILY == 'Linux'){
-            $size = 0;
-            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($EMMC_BASE)) as $file) {
-                if ($file->isFile()) {
-                    $size += $file->getSize();
-                }
-            }
-
-            $gigatmp = $size / 1024 / 1024 / 1024;
-            $device_diskfull_percent = ceil(($gigatmp / 1.1) * 100);
-
-            echo "{$device_diskfull_percent}";
-        }else{
-            echo "X";
-        }
-    }
 
     public function get_file_list($value='')
     {

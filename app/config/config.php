@@ -21,6 +21,8 @@ $language = array(
 define('LANGUAGE',$language);
 
 
+define('CONTROLLER_IP', '127.0.0.1');
+
 // 每次刷新都取最新時間，避免快取
 define('ASSET_VERSION', date('YmdHi')); 
 

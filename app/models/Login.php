@@ -58,6 +58,7 @@ class Login{
     #紀錄登錄
     public function logLoginAttempt($ip) {
 
+        
         // 插入登录尝试记录
         /*$stmt = $this->db_iDas_login->prepare("INSERT INTO login_attempts (ip) VALUES (:ip)");
         $stmt->bindValue(':ip', $ip);

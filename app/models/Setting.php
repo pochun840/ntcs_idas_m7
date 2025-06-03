@@ -56,25 +56,30 @@ class Setting{
         return $row;
     }
 
-    /*public function GetDeviceInfo()
-    {
-        $sql = "SELECT * FROM device_info ";
-        $statement = $this->db_dev->prepare($sql);
-        $results = $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
 
-        return $row;
-    }*/
+    public function system_storage(){
+        
+        $EMMC_BASE = "/var/www/html/database/";
+        $TOTAL_CAPACITY_GB = 1.1;  // 預設總容量（可從 config 抽出）
 
-    public function GetToolInfo()
-    {
-        $sql = "SELECT * FROM tool_info ";
-        $statement = $this->db_dev->prepare($sql);
-        $results = $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        $percent = 'X';
 
-        return $row;
+        if (PHP_OS_FAMILY === 'Linux') {
+            $size = 0;
+            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($EMMC_BASE)) as $file) {
+                if ($file->isFile()) {
+                    $size += $file->getSize();
+                }
+            }
+
+            $gigatmp = $size / 1024 / 1024 / 1024;
+            $percent = ceil(($gigatmp / $TOTAL_CAPACITY_GB) * 100);
+        }
+
+        return $percent;
     }
+
+
 
     public function GetOperator_priviledge()
     {
