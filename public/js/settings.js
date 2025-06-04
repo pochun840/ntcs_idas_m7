@@ -1,32 +1,143 @@
+$(document).ready(function () {
+    /*const sectionMap = {
+        "Controller": "Controller_Setting",
+        "System": "System_Setting",
+        "Barcode": "Barcode_Setting",
+        "Connect": "Connect_Setting",
+        "Update": "iDas-Update_Setting"
+    };
 
-document.addEventListener('DOMContentLoaded', function() {
-    function updateTime() {
-        var currentTime = new Date();
-        var hours = currentTime.getHours();
-        var minutes = currentTime.getMinutes();
-        var seconds = currentTime.getSeconds();
-        var period = hours >= 12 ? 'PM' : 'AM';
-    
-        hours = hours % 12;
-        hours = hours ? hours : 12; // 0 should be 12
-        minutes = minutes < 10 ? '0'+minutes : minutes;
-        seconds = seconds < 10 ? '0'+seconds : seconds;
-    
-        var timeString = currentTime.getFullYear() + '-' + 
-                            ('0' + (currentTime.getMonth() + 1)).slice(-2) + '-' + 
-                            ('0' + currentTime.getDate()).slice(-2) + ' ' + 
-                            ('0' + hours).slice(-2) + ':' + 
-                            ('0' + minutes).slice(-2) + ':' + 
-                            ('0' + seconds).slice(-2) + ' ' + period;
-    
-        document.getElementById('currentSystemTime').innerText = timeString;
-    }
-    
-    updateTime();
-    // 每秒更新一次時間
-    setInterval(updateTime, 1000);
-    
+    const lastSection = sessionStorage.getItem('last_section') || 'Controller_Setting';
+
+    $('.divMode').addClass('hidden').removeClass('active');
+    $('#' + lastSection).removeClass('hidden').addClass('active');
+
+    $('.button').removeClass('active');
+    if (lastSection === 'Controller_Setting') $('#bnt1').addClass('active');
+    if (lastSection === 'System_Setting') $('#bnt2').addClass('active');
+    if (lastSection === 'Barcode_Setting') $('#bnt3').addClass('active');
+    if (lastSection === 'Connect_Setting') $('#bnt4').addClass('active');
+    if (lastSection === 'iDas-Update_Setting') $('#bnt5').addClass('active');*/
+
+    getCurrentSystemTime();
 });
+
+
+function change_datetime() {
+    var newTime = document.getElementById("newTime").value;
+    var language = getCookie('language') || 'default';
+
+    var messages = {
+        'zh-tw': {
+            'select': '請選擇時間',
+            'success': '設定成功',
+            'fail': '設定失敗',
+            'error': '通訊錯誤，請稍後再試。'
+        },
+        'zh-cn': {
+            'select': '请选择时间',
+            'success': '设置成功',
+            'fail': '设置失败',
+            'error': '通信错误，请稍后再试。'
+        },
+        'default': {
+            'select': 'Please select a time',
+            'success': 'Success',
+            'fail': 'Failed',
+            'error': 'Communication error. Please try again later.'
+        }
+    };
+
+    var msg = messages[language] || messages['default'];
+
+    if (!newTime) {
+        alert(msg.select);
+        return;
+    }
+
+    document.getElementById('spinner').style.display = 'block';
+
+    $.ajax({
+        type: "POST",
+        url: "?url=Settings/edit_system_date",
+        data: { datetime: newTime },
+        dataType: "json",
+        success: function(response) {
+            document.getElementById('spinner').style.display = 'none';
+
+            if (response.error) {
+                alertify.alert(msg.fail, response.error);
+            } else {
+                alertify.alert(msg.success, msg.success);
+                setTimeout(function () {
+                    alertify.closeAll();
+                    location.reload(); // ✅ 自動重整
+                }, 3000); // ✅ 自動關閉時間：3秒
+            }
+        },
+        error: function() {
+            document.getElementById('spinner').style.display = 'none';
+            alertify.alert(msg.fail, msg.error);
+        }
+    });
+}
+
+
+
+
+function getCurrentSystemTime() {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            var serverTime = xhr.responseText.trim().replace(/-/g, "/");
+            var serverDateTime = new Date(serverTime);
+            updateCurrentTime(serverDateTime);
+        }
+    };
+    xhr.open("GET", "?url=Settings/get_system_time", true);
+    xhr.send();
+}
+
+function updateCurrentTime(serverDateTime) {
+    var el = document.getElementById("currentSystemTime");
+
+    function pad(n) {
+        return n < 10 ? '0' + n : n;
+    }
+
+    function formatTime(date) {
+        var year = date.getFullYear();
+        var month = pad(date.getMonth() + 1);
+        var day = pad(date.getDate());
+        var hour = date.getHours();
+        var minute = pad(date.getMinutes());
+        var second = pad(date.getSeconds());
+
+        let isPM = hour >= 12;
+        let period = isPM ? '下午' : '上午';
+
+        // 使用 12 小時制顯示
+        let hour12 = hour % 12 || 12;
+
+        return `${year}/${month}/${day} ${period} ${pad(hour12)}:${minute}:${second}`;
+    }
+
+    // 初次顯示
+    let lastText = formatTime(serverDateTime);
+    el.innerText = lastText;
+
+    // 每秒更新一次，但只有在內容變化時才更新畫面，避免閃爍
+    setInterval(function () {
+        serverDateTime.setSeconds(serverDateTime.getSeconds() + 1);
+        let currentText = formatTime(serverDateTime);
+
+        if (el.innerText !== currentText) {
+            el.innerText = currentText;
+        }
+    }, 1000);
+}
+
+
 
 
 function controller_save(){
@@ -670,6 +781,7 @@ function delete_barcode() {
     });
     
     if(del_barcode_id){
+        document.getElementById('spinner').style.display = 'block';
         $.ajax({
             url: "?url=Settings/delete_barcodes",
             method: "POST",
@@ -678,18 +790,39 @@ function delete_barcode() {
 
             },
             success: function(response) {
-                //console.log(response);
-                //alert(response);
-                $.ajax({
-                    url: "?url=Settings/show_Barcodes",
-                    method: "GET",
-                    success: function(html) {
-                        $('#total_barcodes').html(html);  
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error fetching barcodes:", error);
-                    }
-                });
+                var responseData = JSON.parse(response);  // 解析返回的 JSON 資料
+                
+                // 延遲 1000 毫秒後隱藏加載動畫，並在隱藏後顯示 alertify 彈跳視窗
+                setTimeout(function() {
+                    document.getElementById('spinner').style.display = 'none';  
+
+                    // 顯示 alertify 彈跳視窗
+                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                        // 彈跳視窗關閉後刷新頁面
+                        // 存儲頁面顯示狀態到 sessionStorage
+                        sessionStorage.setItem('Barcode_Setting', 'block');
+                        sessionStorage.setItem('Controller_Setting', 'none');
+                        
+                        history.go(0);  // 重新加載頁面
+                    });
+
+                    // 在 3 秒後自動關閉 alertify 彈跳視窗，並執行 AJAX 請求來刷新條形碼列表
+                    setTimeout(function() {
+                        alertify.closeAll();  // 關閉所有開啟的 alertify 彈跳視窗
+                        
+                        // 刷新條形碼列表
+                        $.ajax({
+                            url: "?url=Settings/show_Barcodes",
+                            method: "GET",
+                            success: function(html) {
+                                $('#total_barcodes').html(html);  
+                            },
+                            error: function(xhr, status, error) {
+                                console.error("獲取條形碼時出錯:", error);
+                            }
+                        });
+                    }, 3000); // 延遲 3 秒
+                }, 1000); // 延遲 1000 毫秒
             },
             error: function(xhr, status, error) {
                 
@@ -698,3 +831,4 @@ function delete_barcode() {
     }
     
 }
+

@@ -893,14 +893,16 @@ class Settings extends Controller
             $input_check = false;
         }
         if($input_check){
-           $res = $this->SettingModel->delete_job_barcode($barcode);
+            $res = $this->SettingModel->delete_job_barcode($barcode);
 
-           if($res){
-                $res_msg = 'delete  barcode :'. $barcode['job_id'].' success';
+            if($res){
+                $res_msg = 'del barcode :'. $barcode['job_id'].'success';
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
+
            }else{
-                $res_msg = 'delete  barcode :'. $barcode['job_id'].' fail';
+                $res_msg = 'del barcode :'. $barcode['job_id'].'fail';
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
            }
-           echo $res_msg;
         }
       
     }

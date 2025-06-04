@@ -42,6 +42,11 @@ class Dashboards extends Controller
 
         #顯示 當前的鎖附記錄最新一筆的資料
         $data_info  = $this->DashboardModel->get_Data();
+
+        if(empty($data_info)){
+            $data_info = '';
+            
+        }
         $status_arr = $this->MiscellaneousModel->details('status');
 
         #處理曲線圖的樣式
