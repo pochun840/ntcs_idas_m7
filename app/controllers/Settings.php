@@ -6,6 +6,7 @@ class Settings extends Controller
     private $AdminModel;
     private $ToolModel;
     private $MiscellaneousModel;
+    private $DataModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -13,6 +14,7 @@ class Settings extends Controller
         $this->AdminModel = $this->model('Admin');
         $this->ToolModel = $this->model('Tool');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->DataModel = $this->model('Datas');
     }
 
     // 取得所有info
@@ -34,9 +36,7 @@ class Settings extends Controller
         $idas_version = $this->SettingModel->get_idas_version();
         $disk_usage_percent = $this->SettingModel->system_storage();
 
-
-        //$controller_size = $this->check_controller_size();
-        
+        $history_year_arr = $this->DataModel->get_data_for_year();
 
         $iDAS_version = $idas_version['config_value'];
 
@@ -57,7 +57,8 @@ class Settings extends Controller
             'sample_rate'     => $sample_rate,
             'barcode_mode'    => $barcode_mode,
             'idas_version'   => $iDAS_version,
-            'disk_usage_percent' => $disk_usage_percent
+            'disk_usage_percent' => $disk_usage_percent,
+            'history_year_arr' => $history_year_arr 
 
         );
 
@@ -67,15 +68,7 @@ class Settings extends Controller
             $this->view('setting/index', $data);
         }
        
-
     }
-
-
-
-
-
-
-
 
     //修改密碼 
     public function edit_password(){
@@ -361,7 +354,7 @@ class Settings extends Controller
                 'KLS_NTCS.Lin',  // 原來的 .Lin 檔案
                 'ntcs_barcode.db', // 原來的 .db 檔案
                 'ntcs_data.db', // 原來的 .db 檔案
-                'ntcs_device.db' // 原來的 .db 檔案
+                //'ntcs_device.db' // 原來的 .db 檔案
             ];
         } else {
     
@@ -451,41 +444,73 @@ class Settings extends Controller
         echo json_encode(array_values($fileList));
     }
 
-    public function delete_files()
-    {
-        if ($_SERVER["REQUEST_METHOD"] === "POST") {
-            $data = json_decode(file_get_contents("php://input"), true);
-            $filesToDelete = $data["files"];
 
-            if( PHP_OS_FAMILY == 'Linux'){
-                $folderPath = "/home/kls/tcc/resource/db_emmc"; // 修改為你的資料夾路徑
-            }else{
-                $folderPath = "../"; // 修改為你的資料夾路徑
-            }
 
-            $result = ["message" => ""];
+    //刪除鎖附記路的年份
+    //取得年份後 用modbus 刪除
+    public function delete_files(){
 
-            foreach ($filesToDelete as $fileName) {
-                $filePath = $folderPath . "/" . $fileName;
-                if (file_exists($filePath) && is_file($filePath)) {
-                    if (unlink($filePath)) {
-                        $result["message"] .= "成功刪除檔案：$fileName\n";
-                        $this->logMessage('delete DB success:'. json_encode($result).'');
-                    } else {
-                        $result["message"] .= "無法刪除檔案：$fileName\n";
-                        $this->logMessage('delete DB fail:'. json_encode($result).'');
-                    }
-                } else {
-                    $result["message"] .= "檔案不存在：$fileName\n";
-                }
-            }
-
-            echo json_encode($result);
-        } else {
-            echo json_encode(["message" => "無效的請求方法"]);
+        
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
         }
 
+
+        if (!empty($_POST['del_year_id']) && isset($_POST['del_year_id'])) {
+            $del_year_id = $_POST['del_year_id'];
+        } else {
+            echo json_encode([
+                'result' => false,
+                'res_type' => 'Error',
+                'res_msg' => 'Invalid input'
+            ]);
+            return;
+        }
+
+        $temp_del_year = $del_year_id[0]; // 只處理第一筆
+
+        // 檢查是否可以刪除（Modbus 狀態檢查）
+        $idas_result = $this->idas_check();
+        if ($idas_result['result'] != 0) {
+            echo json_encode([
+                'result' => false,
+                'res_type' => 'Error',
+                'res_msg' => 'Tool not disabled'
+            ]);
+            return;
+        }
+
+        // 執行 Modbus 寫入刪除年份
+        $controller_ip = CONTROLLER_IP;
+        $year = array($temp_del_year);
+
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $modbus = new ModbusMaster($controller_ip, "TCP");
+
+        try {
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+            $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
+
+            $modbus->writeMultipleRegister(0, 517, $year, $dataTypes);
+
+            echo json_encode([
+                'result' => true,
+                'res_type' => 'Success',
+                'res_msg' => $text['delete_text'].$text['success'] 
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'result' => false,
+                'res_type' => 'Error',
+                'res_msg' => $text['delete_text'].$text['fail'] 
+            ]);
+        }
     }
+
+        
+
 
     public function firmware_update() //FTP 上傳檔案大小限制 : 500M
     {
@@ -745,14 +770,21 @@ class Settings extends Controller
     //update barcode
     public function Update_Barcode()
     {
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
+        }
+
+
         $input_check = true;
         $barcode = array();
         //$error_message = '';
+
+        
         if( !empty($_POST['barcode_name']) && isset($_POST['barcode_name'])  ){
             $barcode['barcode_name'] = $_POST['barcode_name'];
-            /*if (strlen($barcode['barcode_name']) > 54) {
-                $input_check = false;
-            }*/
+       
         }else{ 
             $input_check = false;
         }
@@ -788,12 +820,14 @@ class Settings extends Controller
 
         if($input_check){
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);
+
             if($barcode_result){
                 $res_msg = 'edit barcode :'. $barcode['barcode_name'].' success';
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
             }else{
-                $res_msg = 'edit barcode :'. $barcode['barcode_name'].' fail';
+                 $res_msg = 'edit barcode :'. $barcode['barcode_name'].' fail';
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
             }
-            echo $res_msg;    
         }
     }
 
@@ -1401,5 +1435,11 @@ class Settings extends Controller
          }
 
          return true;
-    }    
+    } 
+
+
+
+
+
+    
 }

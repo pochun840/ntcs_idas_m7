@@ -113,7 +113,6 @@ function handleNewEvent() {
     disableRadioList(temp);
     disableOptions('#Event_Option', tempA);
     disableOptions('#Event_Option', temp_event, true); // 變灰顯示
-
     document.getElementById('newinput').style.display = 'block';
 }
 
@@ -434,12 +433,14 @@ function crud_job_event(action) {
             break;
 
         case 'del':
+            document.querySelector(".main-content").classList.add("overlay-active");
             if (input_event) {
                 delete_input_id(job_id, input_event);
             }
             break;
 
         case 'edit':
+            document.querySelector(".main-content").classList.add("overlay-active");
             if (!input_event) return;
 
             const selectedEditRows = document.querySelectorAll('#input_jobid_select tr.selected');
@@ -451,6 +452,7 @@ function crud_job_event(action) {
             break;
 
         case 'copy':
+            document.querySelector(".main-content").classList.add("overlay-active");
             if (!input_event) return;
 
             handleCopyJobEvent();
@@ -470,8 +472,9 @@ function handleNewJobEvent() {
     disableRadioList(temp);
     disableOptions('#Event_Option', tempA);
     disableOptions('#Event_Option', temp_event, true); // 顯示灰色但禁用
-
     document.getElementById('newinput').style.display = 'block';
+
+    
 }
 
 function handleEditJobEvent() {

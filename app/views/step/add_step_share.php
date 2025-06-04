@@ -304,12 +304,11 @@
         const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
         //tool_max_torque_diff
-        console.log("Tool_Max_Torque_Diff =", Tool_Max_Torque_Diff);
+        //console.log("Tool_Max_Torque_Diff =", Tool_Max_Torque_Diff);
 
         let check = input_check();
         console.log(check);
-        return;
-
+        //return;
         if (check.valid) {
             if (StepEnableThreshold !== "0") {
                 alertify.confirm(
@@ -460,6 +459,16 @@
             { id: 'StepTorqueDownShift', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueDownshift },
             { id: 'StepTorqueTS', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueTS }
         ];
+
+        // 根據啟用狀態過濾不需要驗證的欄位
+        if (StepEnableThreshold === "0") {
+            conditions = conditions.filter(c => c.id !== 'StepTorqueTS');
+        }
+
+        if (StepEnableDownShift === "0") {
+            conditions = conditions.filter(c => !['StepTorqueDownShift', 'StepRPMDownShift'].includes(c.id));
+        }
+
 
         if (StepEnableThreshold === "1") {
             const ts = conditions.find(c => c.id === 'StepTorqueTS');

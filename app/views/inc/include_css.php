@@ -100,7 +100,7 @@ function include_css() {
         $isMobile = preg_match('/Mobile|Android|iPhone|iPad|iPod/i', $userAgent);
 
         // 不在 Inputs 或 Outputs 頁面時，根據裝置載入對應的 CSS
-        if (!in_array($route, ['Inputs', 'Outputs'])) {
+        if (!in_array($route, ['Inputs11', 'Outputs232'])) {
             $cssFile = $isMobile ? 'share_m.css' : 'share.css';
             echo '<link rel="stylesheet" href="' . URLROOT . 'css/' . $cssFile . '?v=' . ASSET_VERSION . '">' . "\n";
         }

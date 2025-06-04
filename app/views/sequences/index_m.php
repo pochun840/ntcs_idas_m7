@@ -72,7 +72,7 @@
         </div>
 
         <div class="buttonbox">
-        <?php  $status = count($data['total_seq']) >=  100 ? 'disabled' : ''; ?>
+        <?php  $status =  $data['total_seq'] >=  100 ? 'disabled' : ''; ?>
 
             <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_seq('new');" <?php echo $status;?> >
             <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_seq('edit');">

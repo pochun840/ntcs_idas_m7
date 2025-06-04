@@ -1,3 +1,5 @@
+
+
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -547,7 +549,7 @@
 
                 				        <label for="from_job_name" class="t1 col-4 col-form-label"><?php echo $text['job_name'];?> :</label>
                 				        <div class="col-5 t2 ">
-                				            <input type="text" class="form-control" id="from_job_name" disabled>
+                				            <input type="text" class="form-control" id="from_job_name" value='' disabled >
                 				        </div>
                 				    </div>
                 			    </div>

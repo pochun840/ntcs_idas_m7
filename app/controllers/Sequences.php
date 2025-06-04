@@ -24,7 +24,8 @@ class Sequences extends Controller
         $sequences  = $this->sequenceModel->getSequences_by_job_id($job_id);
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
 
-        $total_seq = $this->sequenceModel->countseq($job_id );
+        $total_seq = (int)$this->sequenceModel->countseq($job_id);
+
 
         if(empty($sequences)){
             $seq_id = 1;

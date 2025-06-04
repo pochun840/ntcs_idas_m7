@@ -161,8 +161,6 @@ class Dashboards extends Controller
 
         $chart_info['x_val'] = json_encode($x_val);
 
-
-
         
         return $chart_info;
     }

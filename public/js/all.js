@@ -229,6 +229,18 @@ function closebutton(elementId) {
 }
 
 
+function closebutton_io(elementId) {
+    // 確保傳入的 elementId 有效，並且元素存在
+    document.getElementById(elementId).style.display = 'none';
+   
+    // 確保 .main-content 元素存在
+    var mainContent = document.querySelector(".main-content");
+    if (mainContent) {
+        mainContent.classList.remove("overlay-active");
+    }
+}
+
+
 function success_response(response, spinnerId = 'spinner', autoClose = false) {
     const responseData = JSON.parse(response);
 
