@@ -21,7 +21,6 @@
     <div class="row t2" style="margin: 10px 0;">
         <div class="col-3 t1">Agent Type:</div>
         <div class="col">
-            <form id="agent_type_form" method="post">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="agent_type" id="agent_type_0" value="0" <?php if($data['agent_type'] == 0){ echo "checked";} ?> >
                     <label class="form-check-label" for="agent_type_0">None</label>
@@ -35,9 +34,8 @@
                     <label class="form-check-label" for="agent_type_2">Server</label>
                 </div>
 
-                <input type="button" onclick="set_agent_type()" value="<?php echo $text['save']; ?>"
-                    class="all-btn w3-submit w3-border w3-round-large" style="float: right;">
-            </form>
+                <input type="button" onclick="agent_type_save()" value="<?php echo $text['save']; ?>"
+                class="all-btn w3-submit w3-border w3-round-large" style="float: right;">
         </div>
     </div>
 

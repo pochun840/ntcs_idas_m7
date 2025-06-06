@@ -351,55 +351,83 @@ function toggleBarcodeSeq() {
 }
 
 
-function Export_SystemConfig(argument) {
+function Export_SystemConfig() {
     var xhr = new XMLHttpRequest();
-    xhr.responseType = "blob";  
-    
-    xhr.onload = function() {
+    xhr.responseType = "blob";
+    xhr.onload = function () {
         if (xhr.status === 200) {
             var a = document.createElement("a");
             a.href = window.URL.createObjectURL(xhr.response);
-            a.download = "data.zip";  
-            a.style.display = "none";
+            a.download = "NTCS_Config_Pack.zip";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        } else {
-            console.error("Download failed with status: " + xhr.status);
         }
     };
-
-  
     xhr.open("GET", "?url=Settings/export_sysytem_config", true);
     xhr.send();
 }
 
 
-function Import_SystemConfig(){
 
-    var bbs = document.getElementById("import-file-uploader").files[0];
+
+function Import_SystemConfig() {
+    var import_file = document.getElementById("import-file-uploader").files[0];
     var form = new FormData();
-    form.append("file", bbs)
-    var url = '?url=Settings/Import_Config';        
+    form.append("file", import_file);
+    var url = '?url=Settings/Import_Config';
+    
+    // 語言設置
+    var language = getCookie('language') || 'en';
+    var text_info, title, confirm_text;
+    
+    if(language == "zh-cn") {
+        text_info = '您確定要導入資料庫檔案嗎？';
+        title = '導入配置';
+        confirm_text = '您確定要進行此操作嗎？';
+    } else if(language == "zh-tw") {
+        text_info = '您確定要導入資料庫檔案嗎？';
+        title = '導入配置';
+        confirm_text = '您確定要進行此操作嗎？';
+    } else {
+        text_info = 'Are you sure you want to import the database file?';
+        title = 'Import Configuration';
+        confirm_text = 'Are you sure you want to perform this action?';
+    }
 
-    if(bbs == undefined){
-        
-    }else{
-        $.ajax({ // 提醒
-            type: "POST",
-            processData: false,
-            cache: false,
-            contentType: false,
-            data: form,
-            dataType: "json",
-            url: url,
-            beforeSend: function() {
-                $('#overlay').removeClass('hidden');
-            },
-        }).done(function(result) { //成功且有回傳值才會執行
-            $('#overlay').addClass('hidden');
-            document.getElementById("import-file-uploader").value = '';
+    if (import_file) {
+        alertify.confirm(confirm_text, function(result) {
+            if (result) {
+                document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
+
+                $.ajax({
+                    url: url,
+                    method: "POST",
+                    data: form,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        var responseData = JSON.parse(response);
+
+                        setTimeout(function() {
+                            document.getElementById('spinner').style.display = 'none';
+                            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                                history.go(0); 
+                            });
+
+                            setTimeout(function() {
+                                alertify.closeAll(); 
+                            }, 3000);
+                        }, 1000);
+                    },
+                    error: function(xhr, status, error) {
+                        alertify.alert('Error', 'An error occurred while importing the configuration file.');
+                    }
+                });
+            }
         });
+    } else {
+        alertify.alert(title, text_info); // 如果 import_file 沒有值，顯示提示訊息
     }
 }
 
@@ -540,7 +568,7 @@ function set_max_link(argument) {
 
 }
 
-function set_agent_ip(){
+function set_agent_ip_22(){
     var agent_server_ip = document.getElementById('agent_server_ip').value;
     agent_server_ip = agent_server_ip.replace(/\s*/g,""); 
     if(agent_server_ip){
@@ -553,7 +581,7 @@ function set_agent_ip(){
             success: function(response) {
                 console.log(response);
                 alert(response);
-                //history.go(0);
+    
             },
             error: function(xhr, status, error) {
                 
@@ -563,6 +591,8 @@ function set_agent_ip(){
     }
 
 }
+
+
 
 function set_agent_type(argument) {
     var  agent_type = document.querySelector('input[name="agent_type"]:checked').value;
@@ -892,4 +922,37 @@ function agent_ip_save() {
             }, 3000); 
         });
     }
+}
+
+
+function agent_type_save(){
+
+    var agent_type = document.querySelector('input[name="agent_type"]:checked').value;
+    if(agent_type){
+        document.querySelector(".main-content").classList.add("overlay-active");
+        document.getElementById('spinner').style.display = 'block';
+
+        $.ajax({
+            url: "?url=Admins/SetAgentType",
+            method: "POST",
+            data:{ 
+                agent_type: agent_type
+            },
+            success: function(response) {
+                var responseData = JSON.parse(response);
+                alertify.alert(responseData.res_type, responseData.res_msg);
+                
+                setTimeout(function() {
+                    alertify.closeAll(); 
+                    document.getElementById('spinner').style.display = 'none';
+                    document.querySelector(".main-content").classList.remove("overlay-active"); 
+                }, 3000); 
+            },
+            
+            error: function(xhr, status, error) {
+                
+            }
+        });   
+    }
+
 }

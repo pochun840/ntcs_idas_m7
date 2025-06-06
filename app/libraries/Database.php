@@ -50,7 +50,6 @@ class Database
             'iDas_device' => 'data_device_local.db',
             'iDas_tools'  => 'ntcs_device_IDAS.db',
             'barcode'     => 'ntcs_barcode_IDAS.db',
-            'itccdev'     => 'itccdev.db'
         ];
 
         // ✅ 初始化資料庫連線

@@ -3,9 +3,12 @@
 class Admins extends Controller
 {
     // 在建構子中將 Post 物件（Model）實例化
+    private $MiscellaneousModel;
+    private $AdminModel;
     public function __construct()
     {
         $this->AdminModel = $this->model('Admin');
+        $this->MiscellaneousModel = $this->model('Miscellaneous');
     }
 
     // 取得所有info
@@ -96,22 +99,28 @@ class Admins extends Controller
     }
 
     //
-    public function SetAgentIp()
-    {
-        $result = false;
-        $error_message = '';
-        if (isset($_POST['ip']) ) {
-            $ip = $_POST['ip'];
+    public function SetAgentIp(){
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
+        }
+
+        if (isset($_POST['agent_server_ip'])) {
+            $ip = $_POST['agent_server_ip'];
             $result = $this->AdminModel->Set_Agent_Ip($ip);
         }
-        if($result){
-            $res_msg = 'Edit: IP  success';
-        }else{
-            $res_msg = 'Edit: IP  fail';
-        }
-        echo $res_msg;
 
-      
+        if($result){
+            $res_ip = $ip;
+            $res_msg = $text['Edit'].' IP:'.$res_ip."  ".$text['success'];
+            $this->MiscellaneousModel->generateErrorResponse('Succes', $res_msg,$res_ip);
+
+        }else{
+            $res_ip = $ip;
+            $res_msg = $text['Edit'].' IP:'.$res_ip."  ".$text['fail'];
+            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg,$res_ip);
+        }
     }
 
     //
@@ -123,12 +132,16 @@ class Admins extends Controller
             $result = $this->AdminModel->Set_Das_Config('agent_type',$agent_type);
         }
         
+        
         if($result){
             $res_msg = 'Edit: AgentType  success';
+            $this->MiscellaneousModel->generateErrorResponse('Succes', $res_msg);
+
         }else{
             $res_msg = 'Edit: AgentType  fail';
+            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
         }
-        echo $res_msg;
+
     }
 
     public function AgentTest()

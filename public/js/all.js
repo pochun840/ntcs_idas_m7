@@ -299,14 +299,13 @@ function checkAuthToken() {
     // 檢查 auth_token 是否存在
     const authToken = getCookie('auth_token');
     if (!authToken) {
-        alertify.alert(titleText, msg, function () {
-            window.location.href = "/login";
-        });
+        alert(titleText + "\n\n" + msg);
+        window.location.href = "/login";
     }
 }
 
 // 呼叫檢查
-checkAuthToken();
+//checkAuthToken();
 
 
 function success_response_seq(response, spinnerId = 'spinner', redirectUrl = null) {
