@@ -113,6 +113,7 @@ function handleNewEvent() {
     disableRadioList(temp);
     disableOptions('#Event_Option', tempA);
     disableOptions('#Event_Option', temp_event, true); // 變灰顯示
+    showOverlay();
     document.getElementById('newinput').style.display = 'block';
 }
 
@@ -303,6 +304,7 @@ function edit_input_id() {
             },
             success: function (response) {
                 input_success_res(response, job_id, get_input_by_job_id, 'edit_input');
+                hideOverlay();
             },
             error: function (xhr, status, error) {
                 console.error("edit_input_event failed:", status, error);
@@ -386,7 +388,7 @@ function delete_input_id(job_id,input_event){
        title = '刪除任務';
    } else {
        text_info = 'Are you sure?';
-       title = 'Delete Job';
+       title = 'Delete Event';
    }
    
    if (job_id) {
@@ -406,6 +408,7 @@ function delete_input_id(job_id,input_event){
                    },
                    success: function(response) {
                         input_success_res(response, job_id, get_input_by_job_id, 'edit_input');
+                        hideOverlay();
                    },
                    error: function(xhr, status, error) {
                        alertify.error("刪除失敗，請稍後再試！");
@@ -417,6 +420,7 @@ function delete_input_id(job_id,input_event){
             function() {
                 // 取消 callback 可選寫在這裡（目前略過）
                 document.querySelector(".main-content").classList.remove("overlay-active");
+                hideOverlay();
             }
         ).set('labels', {ok:'YES', cancel:'NO'}); // 修改按鈕文字
     }
@@ -434,6 +438,7 @@ function crud_job_event(action) {
 
         case 'del':
             document.querySelector(".main-content").classList.add("overlay-active");
+              showOverlay();
             if (input_event) {
                 delete_input_id(job_id, input_event);
             }
@@ -447,18 +452,20 @@ function crud_job_event(action) {
             if (!selectedEditRows.length) {
                 return;
             }
-
+            showOverlay();
             handleEditJobEvent();
             break;
 
         case 'copy':
             document.querySelector(".main-content").classList.add("overlay-active");
+              showOverlay();
             if (!input_event) return;
 
             handleCopyJobEvent();
             break;
 
         case 'unified':
+            //showOverlay();
             handleUnifiedJobEvent();
             break;
 
@@ -472,6 +479,7 @@ function handleNewJobEvent() {
     disableRadioList(temp);
     disableOptions('#Event_Option', tempA);
     disableOptions('#Event_Option', temp_event, true); // 顯示灰色但禁用
+    showOverlay();
     document.getElementById('newinput').style.display = 'block';
 
     
@@ -606,6 +614,8 @@ function create_input_id(){
             },
             success: function (response) {
                input_success_res(response, job_id, get_input_by_job_id, 'newinput');
+                hideOverlay();
+
             },
             error: function(xhr, status, error) {
                 
@@ -646,7 +656,8 @@ function copy_input_id() {
                to_job_id: to_job_id
            },
            success: function (response) {
-             input_success_res(response, job_id, get_input_by_job_id, 'newinput');
+             input_success_res(response, job_id, get_input_by_job_id, 'copyinput');
+             hideOverlay();
            },
            error: function () {
                alertify.error("複製失敗，請稍後再試！");
@@ -663,53 +674,6 @@ function copy_input_id() {
        //alertify.message("自動取消複製操作");
    }, 3000);
 }
-
-
-/*function copy_input_id(){
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='若设定已存在，将会取代原有设定';
-    }else if(language == "zh-tw"){
-        var text_info ='若設定已存在，將會取代原有設定';
-    }else{
-        var text_info ='If the job input already exists, it will replace the original setting';
-    }
-    alertify.confirm( text_info , function (e) {
-        if (e) {
-            var to_job_id = document.getElementById("JobSelect1").value;
-            if(to_job_id){
-                $.ajax({
-                    url: "?url=Inputs/copy_input_event",
-                    method: "POST",
-                    data: { 
-                        from_job_id: job_id,
-                        to_job_id: to_job_id
-                    },
-                    success: function(response) {
-                        
-                        document.getElementById('copyinput').style.display='none';
-                        var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                            get_input_by_job_id(job_id);
-                        });
-
-                        
-                    },
-                    error: function(xhr, status, error) {
-                        
-                    }
-                });
-        
-            }
-
-        } else {
-            // cancel
-        }
-    });
-
-}*/
-
-
 
 function get_input_by_job_id(jobid){
     $.ajax({
@@ -993,7 +957,13 @@ function input_success_res(response, job_id, callbackFn, hideElementId = 'newinp
 }
 
 
+function showOverlay() {
+    document.getElementById("modal-overlay").style.display = "block";
+}
 
+function hideOverlay() {
+    document.getElementById("modal-overlay").style.display = "none";
+}
 </script>
 
 

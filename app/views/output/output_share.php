@@ -44,191 +44,148 @@ window.onclick = function(event) {
     }
 }
 
-function crud_job_event(argument){
-    var table = document.getElementById('output_table');
-    var selectedRow = table.querySelector('tr.selected');
+function crud_job_event(argument) {
+    const table = document.getElementById('output_table');
+    const selectedRow = table.querySelector('tr.selected');
+
     if (selectedRow) {
-        var dataEventValue = selectedRow.getAttribute('data-event');
-        del_output_val = dataEventValue;
-        output_event = del_output_val;
-
-        var dataOutputPinElement = selectedRow.querySelector('[data-outputpin]');
-        var dataOutputPinValue = dataOutputPinElement ? dataOutputPinElement.getAttribute('data-outputpin') : null;
-        output_pinval = dataOutputPinValue;
-
-
-
-    }
-    
-    if(argument == 'del' && job_id != '' &&  del_output_val){
-        delete_output_id(job_id,del_output_val);
+        output_event = selectedRow.getAttribute('data-event');
+        output_pinval = selectedRow.querySelector('[data-outputpin]')?.getAttribute('data-outputpin') || null;
+        del_output_val = output_event;
     }
 
-    if(argument == 'new' && job_id != ''){
+    if (!job_id) return;
 
-        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-        /*if (!selectedRows.length > 0) {
-            getLanguageMessage('language'); 
-            return;
-        }*/
+    const showModal = (id) => document.getElementById(id).style.display = 'block';
 
-        if (Array.isArray(temp)){ 
-            temp.forEach(function(element) {
-                var radio = document.getElementById(element);
-                if (radio && radio.type === 'radio') { 
-                    radio.disabled = true; 
-                }
-            });
-        } 
-
-        var filtered_array = [];
-        temp.forEach(function(element) {
-            // 檢查是否是以 'pin' 開頭並且不包含 'edit_pin'
-            if (element.includes('pin') && !element.includes('edit_pin')) {
-                filtered_array.push(element);
+    switch (argument) {
+        case 'del':
+            if (del_output_val) {
+                showOverlay();
+                delete_output_id(job_id, del_output_val);
             }
-        });
+            break;
 
-    
-        disableElements(filtered_array);
-
-        document.getElementById('new_output').style.display='block';
-        var eventOption = document.getElementById('Event_Option');
-        eventOption.addEventListener('change', function() {
-            var selectedOptionId = eventOption.options[eventOption.selectedIndex].value;
-            if(selectedOptionId == 7 || selectedOptionId == 8 || selectedOptionId == 9){
-                toggleElementsInRange(1, 11, 2, true);
-            }else{
-                toggleElementsInRange(1, 11, 2, false);
-                disableElements(filtered_array);
+        case 'new':
+            // 禁用所有 pin radio
+            if (Array.isArray(temp)) {
+                temp.forEach(id => {
+                    const radio = document.getElementById(id);
+                    if (radio?.type === 'radio') radio.disabled = true;
+                });
             }
-        }); 
 
+            // 篩選非 edit 的 pin 元素
+            const filtered_array = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
+            disableElements(filtered_array);
 
-        //針對已選過的event做 disabled
-        let options = document.querySelectorAll('#Event_Option option');
-        options.forEach(option => {
-            if (tempA.includes(option.value)) {
-                option.disabled = true;
-            }
-        });
+            // 控制 modal 開啟
+            showOverlay();
+            showModal('new_output');
 
-        
-    }
-
-    //&& output_event != ''
-    if (argument === 'edit' && job_id != '' && output_event != '') {
-
-        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-        if (!selectedRows.length > 0) {
-            getLanguageMessage('language'); 
-            return;
-        }
-        
-
-        var selectElement = document.getElementById('edit_event_option');
-        if (Array.isArray(temp)) { 
-            temp.forEach(id => {
-                var radio = document.getElementById(id);
-
-                if (radio && radio.type === 'radio') { 
-                    radio.disabled = true; 
-                }
+            // event select change handler
+            const eventOption = document.getElementById('Event_Option');
+            eventOption.addEventListener('change', () => {
+                const selectedOptionId = eventOption.value;
+                const isSpecial = ['7', '8', '9'].includes(selectedOptionId);
+                toggleElementsInRange(1, 11, 2, isSpecial);
+                if (!isSpecial) disableElements(filtered_array);
             });
 
-            let tempC = temp.slice(); 
+            // 禁用已選 event
+            document.querySelectorAll('#Event_Option option').forEach(option => {
+                if (tempA.includes(option.value)) option.disabled = true;
+            });
 
-            const filtered_C = tempC.filter(item => item.includes("edit_pin"));
-            filtered_C.forEach(function(id) {
-      
-                var match = id.match(/(edit_pin\d+)_(\d+)/);
-                if (match) {
-                    var basePinId = match[1]; 
-                    var pinNumber = match[2]; 
+            break;
 
-                    for (var i = 0; i <= 2; i++) {
-                        var pinElementId = basePinId + "_" + i;
-                        var pinElement = document.getElementById(pinElementId);
-                        if (pinElement && pinElement.type === 'radio') {
-                            pinElement.disabled = true;
+        case 'edit':
+            if (!output_event) return;
+            showOverlay();
+            const selectedEditRows = document.querySelectorAll('#output_jobid_select tr.selected');
+            if (!selectedEditRows.length) {
+                //getLanguageMessage('language');
+                return;
+            }
+
+            // 禁用所有 pin radio
+            if (Array.isArray(temp)) {
+                temp.forEach(id => {
+                    const radio = document.getElementById(id);
+                    if (radio?.type === 'radio') radio.disabled = true;
+                });
+
+                // 處理 edit_pin 組
+                temp.filter(id => id.includes("edit_pin")).forEach(id => {
+                    const match = id.match(/(edit_pin\d+)_(\d+)/);
+                    if (match) {
+                        const basePinId = match[1];
+                        for (let i = 0; i <= 2; i++) {
+                            const pinId = `${basePinId}_${i}`;
+                            const pin = document.getElementById(pinId);
+                            if (pin?.type === 'radio') pin.disabled = true;
                         }
+
+                        const timeId = `edit_time${basePinId.replace('edit_pin', '')}`;
+                        const timeElement = document.getElementById(timeId);
+                        if (timeElement) timeElement.disabled = true;
                     }
-
-                    // 禁用 edit_time 相關的元素
-                    var timeElementId = 'edit_time' + basePinId.slice(3);
-                    const toremove = "t_pin"; 
-                    timeElementId = timeElementId.replace(toremove,'');
-          
-                    var timeElement = document.getElementById(timeElementId);
-                    if (timeElement) {
-                        timeElement.disabled = true;
-                    }
-                }
-            });
-        }
-
-
-        //該事件的pin的 所有radio 及 input 全部都要可以填
-        if(output_pinval != ''){
-
-            const idsToDisable = [
-                `edit_pin${output_pinval}_0`,
-                `edit_pin${output_pinval}_1`,
-                `edit_pin${output_pinval}_2`,
-                `edit_time${output_pinval}`
-            ];
-
-            idsToDisable.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.disabled = false;
-                }
-            });
-            
-        }
-
-        get_output_info(job_id, output_event);
-    }
-
-    if(argument == 'copy' && job_id != '' && output_event != ''){
-
-        var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['JOBname'];
-
-        document.getElementById("from_job_id").value = job_id;
-        document.getElementById("from_job_name").value = from_job_name_bk;
-
-        var selectElement = document.getElementById('JobSelect1');
-        var options = selectElement.getElementsByTagName('option');
-        
-        for (var i = 0; i < options.length; i++) {
-            var optionId = options[i].getAttribute('id');
-            var optionValue = options[i].value;
-            if(optionValue == job_id){
-                options[i].disabled = true; 
-                options[i].classList.add('disabled_input'); 
+                });
             }
-        }
 
-        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-        if (selectedRows.length > 0) {
-            document.getElementById('copyinput').style.display='block';
-        }else{
-            getLanguageMessage('language');
-        }            
-    }
+            // 啟用該事件的指定 pin 控制
+            if (output_pinval) {
+                ['0', '1', '2'].forEach(suffix => {
+                    const el = document.getElementById(`edit_pin${output_pinval}_${suffix}`);
+                    if (el) el.disabled = false;
+                });
 
-    if(argument == 'unified' && job_id != ''){
-        enableButton();
-        resetBackgroundColor();
-        if(output_job != job_id){
-            alignsubmit(job_id);  
-        }else{
-            resetalignsubmit(job_id);
-        }
-        
+                const timeEl = document.getElementById(`edit_time${output_pinval}`);
+                if (timeEl) timeEl.disabled = false;
+            }
+
+            get_output_info(job_id, output_event);
+            break;
+
+        case 'copy':
+            if (!output_event) return;
+            showOverlay();
+            const jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
+            document.getElementById("from_job_id").value = job_id;
+            document.getElementById("from_job_name").value = jobinfo[job_id]['JOBname'];
+
+            const jobSelect = document.getElementById('JobSelect1');
+            Array.from(jobSelect.options).forEach(opt => {
+                if (opt.value === job_id) {
+                    opt.disabled = true;
+                    opt.classList.add('disabled_input');
+                }
+            });
+
+            const selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+            if (selectedRows.length > 0) {
+                showModal('copy_output');
+            } else {
+                getLanguageMessage('language');
+            }
+            break;
+
+        case 'unified':
+            enableButton();
+            resetBackgroundColor();
+            if (output_job !== job_id) {
+                alignsubmit(job_id);
+            } else {
+                resetalignsubmit(job_id);
+            }
+            break;
+
+        default:
+            console.warn(`Unknown action: ${argument}`);
+            break;
     }
 }
+
 
 function collectPinValues(selector) {
     var pinOptions = document.querySelectorAll(selector);
@@ -356,28 +313,58 @@ function job_confirm(){
 
 //delete
 function delete_output_id(job_id,del_output_val){
-    if(job_id && del_output_val){
-        $.ajax({
-            url: "?url=Outputs/delete_output",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                output_event: del_output_val,
-             
+
+   var language = getCookie('language');
+   var text_info, title;
+
+   if (language === "zh-cn") {
+       text_info = '你确定吗？';
+       title = '刪除任務';
+   } else if (language === "zh-tw") {
+       text_info = '你確定嗎？';
+       title = '刪除任務';
+   } else {
+       text_info = 'Are you sure?';
+       title = 'Delete Event';
+   }
+   
+   if (job_id) {
+       alertify.confirm(
+           title, // 標題
+           text_info, // 提示文字
+           function() {
+               //使用者選擇「是」後執行刪除動作
+               document.getElementById('spinner').style.display = 'block';
+
+               $.ajax({
+                    url: "?url=Outputs/delete_output",
+                   method: "POST",
+                   data: { 
+                       job_id: job_id,
+                       output_event: del_output_val,
+                   },
+                   success: function(response) {
+                        input_success_res(response, job_id, get_output_by_job_id, 'edit_input');
+                        hideOverlay();
+                   },
+                   error: function(xhr, status, error) {
+                       alertify.error("刪除失敗，請稍後再試！");
+                       document.querySelector(".main-content").classList.remove("overlay-active"); 
+                       document.getElementById('spinner').style.display = 'none';
+                   }
+               });
             },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_output_by_job_id(job_id);
-                });
-                 
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
+            function() {
+                // 取消 callback 可選寫在這裡（目前略過）
+                document.querySelector(".main-content").classList.remove("overlay-active");
+                hideOverlay();
             }
-        });     
-    }   
+        ).set('labels', {ok:'YES', cancel:'NO'}); // 修改按鈕文字
+    }
 }
+
+
+
 
 function get_output_by_job_id(job_id){
     $.ajax({
@@ -485,6 +472,9 @@ function create_output_id() {
         var wave_on =  document.getElementById(time_ms).value;
 
         if (job_id) {
+
+            document.getElementById('spinner').style.display = 'block';
+
             $.ajax({
                 url: "?url=Outputs/create_output_event",
                 method: "POST",
@@ -496,11 +486,8 @@ function create_output_id() {
                     wave_on: wave_on
                 },
                 success: function(response) {
-                    var responseData = JSON.parse(response);
-                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                        get_output_by_job_id(job_id);
-                    });
-                    document.getElementById('new_output').style.display = 'none';
+                    output_success_res(response, job_id, get_output_by_job_id, 'new_output');
+                    hideOverlay();
 
                 },
                 error: function(xhr, status, error) {
@@ -524,6 +511,9 @@ function edit_output_id(){
     var time_ms = 'edit_time'+ output_pin;
     var wave_on =  document.getElementById(time_ms).value;
     if(job_id){
+
+        document.getElementById('spinner').style.display = 'block';
+
         $.ajax({
             url: "?url=Outputs/edit_output_event",
             method: "POST",
@@ -536,14 +526,9 @@ function edit_output_id(){
                 old_output_event: old_output_event
             },
             success: function(response) {
-                
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_output_by_job_id(job_id);
-                });
+                output_success_res(response, job_id, get_output_by_job_id, 'edit_output');
+                hideOverlay();
 
-                document.getElementById('edit_output').style.display='none';
-                
             },
             error: function(xhr, status, error) {
                 console.error("AJAX request failed:", status, error);
@@ -614,6 +599,7 @@ function copy_output_id(){
         if (e) {
             var to_job_id = document.getElementById("JobSelect1").value;
             if(to_job_id){
+                document.getElementById('spinner').style.display = 'block';
                 $.ajax({
                     url: "?url=Outputs/copy_output",
                     method: "POST",
@@ -622,13 +608,8 @@ function copy_output_id(){
                         to_job_id: to_job_id
                     },
                     success: function(response) {
-
-                        var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                            get_output_by_job_id(job_id);
-                        });
-
-                        document.getElementById('copy_output').style.display='none';
+                        output_success_res(response, job_id, get_output_by_job_id, 'copy_output');
+                        hideOverlay();
 
                     },
                     error: function(xhr, status, error) {
@@ -639,6 +620,7 @@ function copy_output_id(){
             } 
         } else {
             // cancel
+            hideOverlay();
         }
     });
     document.getElementById('copy_output').style.display='none';
@@ -891,6 +873,33 @@ function getLanguageMessage(cookieName) {
       message =  'Please select the event to delete';
     }
    alertify.alert(message);
+}
+
+
+function showOverlay() {
+    document.getElementById("modal-overlay").style.display = "block";
+}
+
+function hideOverlay() {
+    document.getElementById("modal-overlay").style.display = "none";
+}
+
+function output_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
+    var responseData = JSON.parse(response);
+    alertify.alert(responseData.res_type, responseData.res_msg);
+
+    setTimeout(function () {
+        alertify.closeAll();
+        document.querySelector(".main-content").classList.remove("overlay-active");
+        document.getElementById('spinner').style.display = 'none';
+
+        if (typeof callbackFn === 'function') {
+            callbackFn(job_id);
+        }
+    }, 2000);
+
+    const hideEl = document.getElementById(hideElementId);
+    if (hideEl) hideEl.style.display = 'none';
 }
 
 </script>

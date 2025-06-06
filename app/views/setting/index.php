@@ -151,81 +151,42 @@ function idas_update() {
     });
 }*/
 
-function OpenButton(ButtonMode){
 
-    if (ButtonMode == "Controller")
-    {
-        document.getElementById('Controller_Setting').style.display = "";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt1').classList.add("active");
-        document.getElementById('bnt2').classList.remove("active");   
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
-    }
-    else if (ButtonMode == "System")
-    {
-        document.getElementById('System_Setting').style.display = "";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt2').classList.add("active");
-        document.getElementById('bnt1').classList.remove("active");
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
 
+
+
+function OpenButton(ButtonMode) {
+    const sections = {
+        "Controller": "Controller_Setting",
+        "System": "System_Setting",
+        "Barcode": "Barcode_Setting",
+        "Connect": "Connect_Setting",
+        "Update": "iDas-Update_Setting"
+    };
+
+    const buttons = {
+        "Controller": "bnt1",
+        "System": "bnt2",
+        "Barcode": "bnt3",
+        "Connect": "bnt4",
+        "Update": "bnt5"
+    };
+
+    // 隱藏所有區塊 + 移除按鈕 active 樣式
+    for (const key in sections) {
+        const sectionId = sections[key];
+        const buttonId = buttons[key];
+        document.getElementById(sectionId).style.display = "none";
+        document.getElementById(buttonId).classList.remove("active");
     }
-    else if (ButtonMode == "Barcode")
-    {
-        document.getElementById('Barcode_Setting').style.display = "";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt3').classList.add("active");
-        document.getElementById('bnt2').classList.remove("active");
-        document.getElementById('bnt1').classList.remove("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
-    }
-    else if (ButtonMode == "Connect")
-    {
-        document.getElementById('Connect_Setting').style.display = "";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt4').classList.add("active");
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt2').classList.remove("active");
-        document.getElementById('bnt1').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
-    }
-    else if (ButtonMode == "Update")
-    {
-        document.getElementById('iDas-Update_Setting').style.display = "";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('bnt5').classList.add("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt2').classList.remove("active");
-        document.getElementById('bnt1').classList.remove("active");
-    }
-    else
-    {
-        //alert("Function ["+ ButtonMode +"] is under constructing ...");
+
+    // 顯示對應區塊 + 加上 active 樣式
+    if (sections[ButtonMode] && buttons[ButtonMode]) {
+        document.getElementById(sections[ButtonMode]).style.display = "";
+        document.getElementById(buttons[ButtonMode]).classList.add("active");
+    } else {
+        console.warn("Unknown ButtonMode:", ButtonMode);
     }
 }
-
-
-
 
 </script>    

@@ -50,6 +50,7 @@ class Database
             'iDas_device' => 'data_device_local.db',
             'iDas_tools'  => 'ntcs_device_IDAS.db',
             'barcode'     => 'ntcs_barcode_IDAS.db',
+            'itccdev'     => 'itccdev.db'
         ];
 
         // ✅ 初始化資料庫連線
@@ -89,4 +90,5 @@ class Database
     public function getDb_das_tools()   { return $this->db_iDas_tools ?? null; }
     public function getDb_das_barcode() { return $this->db_barcode ?? null; }
     public function getDb()             { return $this->db_con ?? null; }
+    public function getDb_das_agent()   { return $this->db__iDas_agent ?? null; }
 }

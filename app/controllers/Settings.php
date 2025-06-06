@@ -304,39 +304,41 @@ class Settings extends Controller
     }
 
 
-    public function edit_system_date()
-    {
-        if( PHP_OS_FAMILY == 'Linux'){
-            $dateTime = $_POST["datetime"];
-            // 驗證日期時間格式
-            if (!preg_match("/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/", $dateTime)) {
-                // echo "請提供有效的日期和時間格式（YYYY-MM-DD HH:MM:SS）。";
-                echo json_encode(array('error' => '請提供有效的日期和時間格式（YYYY-MM-DD HH:MM:SS）。'));
+
+
+    public function edit_system_date() {
+
+        if (PHP_OS_FAMILY == 'Linux') {
+            $dateTime = $_POST["datetime"] ?? '';
+            $dateTime = str_replace("T", " ", $dateTime); // YYYY-MM-DD HH:MM
+    
+            if (!preg_match("/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/", $dateTime)) {
+                echo json_encode(['error' => '請提供有效的日期和時間格式（YYYY-MM-DD HH:MM）。']);
                 exit;
             }
+    
             exec("sudo timedatectl set-ntp no");
-            $rr = exec("sudo date -s ".$dateTime." ");
-            exec("sudo hwclock --systohc ");
-
-            if($rr != false){
-                $this->logMessage('set date -s '.$dateTime.' success');
-            }else{
-                $this->logMessage('set date -s '.$dateTime.' fail');
-            }
-
-
-            echo json_encode(array('error' => '','result' => $rr));
-            exit();
+            $escapedDateTime = escapeshellarg($dateTime);
+            $rr = exec("sudo date -s $escapedDateTime");
+            exec("sudo hwclock --systohc");
+    
+            $this->logMessage("set date -s {$dateTime} " . ($rr !== false ? "success" : "fail"));
+    
+            echo json_encode(['error' => '', 'result' => $rr]);
+        } else {
+            echo json_encode(['error' => '非 Linux 系統無法設定時間']);
         }
+        exit;
     }
+    
 
-    public function get_system_time()
-    {
-        header("Content-Type: text/plain; charset=utf-8");
+
+    public function get_system_time(){
         
-        date_default_timezone_set("GMT0");
-        $systemTime = date('Y-m-d H:i:s');
-        echo $systemTime;
+        header("Content-Type: text/plain; charset=utf-8");
+        $output = shell_exec("date '+%Y-%m-%d %H:%M:%S'");
+    
+        echo trim($output);
     }
 
     public function firmware_reset()
@@ -351,18 +353,18 @@ class Settings extends Controller
             // Linux 路徑配置
             $file_path = '/var/www/html/database/';
             $files = [
-                'KLS_NTCS.Lin',  // 原來的 .Lin 檔案
-                'ntcs_barcode.db', // 原來的 .db 檔案
-                'ntcs_data.db', // 原來的 .db 檔案
-                //'ntcs_device.db' // 原來的 .db 檔案
+                'KLS_NTCS_IDAS.Lin',  // 原來的 .Lin 檔案
+                'ntcs_barcode_IDAS.db', // 原來的 .db 檔案
+                //'ntcs_data.db', // 原來的 .db 檔案
+                'ntcs_device_IDAS.db' // 原來的 .db 檔案
             ];
         } else {
     
             $files = [
-                '../KLS_NTCS.Lin',
-                '../ntcs_barcode.db',
-                '../ntcs_data.db',
-                '../ntcs_device.db'
+                '../KLS_NTCS_IDAS.Lin',
+                '../ntcs_barcode_IDAS.db',
+                //'../ntcs_data.db',
+                '../ntcs_device_IDAS.db'
             ];
         }
 

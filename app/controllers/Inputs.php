@@ -208,7 +208,7 @@ class Inputs extends Controller
         }
 
         if( isset($_POST['gateconfirm'])  ){
-            $input_data['gateconfirm'] = $_POST['gateconfirm'];
+            $input_data['Wp_Ready_Confirm'] = $_POST['gateconfirm'];
         }else{ 
             $input_check = false; 
         }

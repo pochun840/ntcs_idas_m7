@@ -138,7 +138,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: auto">
                 <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('editjob').style.display='none'"
+                    <span onclick="closebutton('editjob')"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px; margin: 3px; font-size: 4.5vmin">&times;</span>
                     <h3 id='modal_title'><?php echo $text['edit_job'];?></h3>
                 </header>
@@ -263,6 +263,7 @@
     <!-- 加载動畫 OP -->
         <?php require_once '../app/views/inc/include_spinner.php';?>
     <!-- 加载動畫 ED -->
+     
 
 
 

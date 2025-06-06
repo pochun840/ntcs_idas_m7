@@ -90,7 +90,7 @@
                 <div class="modal-dialog modal-lg" style="top: 3%;">
                     <div class="modal-content w3-animate-zoom" style="width:65%">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('new_output').style.display='none'"
+                            <span onclick="closebutton('new_output')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['new_event'];?></h3>
                         </header>
@@ -135,7 +135,7 @@
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="create_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('new_output').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('new_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -146,7 +146,7 @@
                 <div class="modal-dialog modal-lg" style="top: 3%;">
                     <div class="modal-content w3-animate-zoom" style="width:65%">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('edit_output').style.display='none'"
+                            <span onclick="closebutton('edit_output')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['edit_event'];?></h3>
                         </header>
@@ -191,7 +191,7 @@
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="edit_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('edit_output').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('edit_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -202,9 +202,9 @@
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content w3-animate-zoom" style="width: 60%;">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('copy_output').style.display='none'"
+                            <span onclick="closebutton('copy_output')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
-                            <h3 id='modal_title'><?php echo $text['copy_input'];?></h3>
+                            <h3 id='modal_title'><?php echo $text['copy_output'];?></h3>
                         </header>
 
                         <div class="modal-body">
@@ -245,7 +245,7 @@
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="copy_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('copy_output').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('copy_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -258,7 +258,22 @@
         <?php require_once '../app/views/inc/include_spinner.php';?>
     <!-- 加载動畫 ED -->
 
+    <div id="modal-overlay"></div>
 
 </div>
 
 <?php require_once '../app/views/output/output_share.php';?>
+
+
+<style>
+#modal-overlay {
+  display: none; /* 預設隱藏 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5); /* 灰色半透明 */
+  z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
+}
+</style>
