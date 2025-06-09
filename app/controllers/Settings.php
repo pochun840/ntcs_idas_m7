@@ -41,6 +41,7 @@ class Settings extends Controller
         $iDAS_version = $idas_version['config_value'];
 
         $barcodes = $this->GetBarcodes();
+
         
         $data = array(
             'lang_arr'        => $lang,
@@ -188,7 +189,7 @@ class Settings extends Controller
             $array2int = $this->bitArrayToDecimal($priviledge);
             $result = $this->SettingModel->Edit_Priviledge($array2int);
 
-            if($result){// copy DB
+            if($result){
                 $copy_result =  $this->copyDB_to_RamdiskDB();
                 if($copy_result){
                     $this->logMessage('edit_permission:set '.$array2int.' copyDB success');
@@ -430,7 +431,6 @@ class Settings extends Controller
     //取得年份後 用modbus 刪除
     public function delete_files(){
 
-        
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
             include $file;
@@ -846,15 +846,17 @@ class Settings extends Controller
         }else{ 
             $input_check = false;
         }
+
+
         if($input_check){
             $res = $this->SettingModel->delete_job_barcode($barcode);
 
             if($res){
-                $res_msg = 'del barcode :'. $barcode['job_id'].'success';
+                $res_msg = 'del barcode :'. $barcode['job_id'][0].'success';
                 $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
 
            }else{
-                $res_msg = 'del barcode :'. $barcode['job_id'].'fail';
+                $res_msg = 'del barcode :'. $barcode['job_id'][0].'fail';
                 $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
            }
         }

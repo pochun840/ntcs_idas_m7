@@ -18,6 +18,8 @@ class Job{
                 FROM JOB_lst
                 LEFT JOIN SEQ_lst ON JOB_lst.JOBID = SEQ_lst.JOBID 
                 WHERE JOB_lst.JOBID != ''
+                      AND JOB_lst.JOBID != 0 
+                      AND JOB_lst.JOBID != 221
                 GROUP BY JOB_lst.JOBID";
 
         $statement = $this->db_iDas->prepare($sql);

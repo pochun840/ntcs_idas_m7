@@ -371,6 +371,7 @@ class Miscellaneous{
             'res_msg'  => $errorMessage
         );
         echo json_encode($response);
+        exit;
     }
 
 

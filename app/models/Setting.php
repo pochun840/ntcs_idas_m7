@@ -369,13 +369,20 @@ class Setting{
         $results = $statement->execute();
         $rows = $statement->fetchall(PDO::FETCH_ASSOC);
 
-        return $rows;
+        $filtered_job_list = array_filter($rows, function($job) {
+            return $job['JOBID'] != 0 && $job['JOBID'] != 221;
+        });
+
+        
+        return array_values($filtered_job_list);
+
+
     }
 
     //get all job seq
     public function get_seq_list($job_id)
     {
-        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst WHERE JOBID = :JOBID AND act = 1 order by SEQID  ASC ";
+        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst  WHERE JOBID NOT IN (0, 221) AND JOBID = :JOBID AND act = 1 order by SEQID  ASC ";
         $statement = $this->db_iDas ->prepare($sql);
         $statement->bindValue(':JOBID', $job_id);
         $results = $statement->execute();
@@ -399,7 +406,8 @@ class Setting{
     //delete job barcdoe
     public function delete_job_barcode($barcode){
 
-        foreach($barcode as $key =>$val){
+        foreach($barcode['job_id'] as $key =>$val){
+
             $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id = :job_id ";
             $statement = $this->db_barcode->prepare($sql);
             $statement->bindValue(':job_id', $val[0]);

@@ -47,7 +47,7 @@ class Database
             'data'        => 'ntcs_data.db',
             'iDas'        => 'KLS_NTCS_IDAS.Lin',
             'iDas_login'  => 'das.db',
-            'iDas_device' => 'data_device_local.db',
+            'iDas_device' => 'data_device.db',
             'iDas_tools'  => 'ntcs_device_IDAS.db',
             'barcode'     => 'ntcs_barcode_IDAS.db',
         ];

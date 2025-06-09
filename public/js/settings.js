@@ -776,7 +776,7 @@ function update_barcode(){
                         sessionStorage.setItem('Barcode_Setting', 'block');
                         sessionStorage.setItem('Controller_Setting', 'none');
                         
-                        history.go(0);  // 重新加載頁面
+                        //history.go(0);  // 重新加載頁面
                     });
 
                     // 在 3 秒後自動關閉 alertify 彈跳視窗，並執行 AJAX 請求來刷新條形碼列表
@@ -806,64 +806,57 @@ function update_barcode(){
 }
 
 function delete_barcode() {
-    var del_barcode_id = [];
-    var checkboxes = document.querySelectorAll('input[name="barcode_check"]:checked');
-    
-    checkboxes.forEach(function (checkbox) {
-        del_barcode_id.push(checkbox.value);
-    });
-    
-    if(del_barcode_id){
-        document.getElementById('spinner').style.display = 'block';
-        $.ajax({
-            url: "?url=Settings/delete_barcodes",
-            method: "POST",
-            data:{ 
-                del_barcode_id: del_barcode_id
+    const del_barcode_id = [];
+    const checkboxes = document.querySelectorAll('input[name="barcode_check"]:checked');
 
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);  // 解析返回的 JSON 資料
-                
-                // 延遲 1000 毫秒後隱藏加載動畫，並在隱藏後顯示 alertify 彈跳視窗
-                setTimeout(function() {
-                    document.getElementById('spinner').style.display = 'none';  
+    checkboxes.forEach(checkbox => del_barcode_id.push(checkbox.value));
 
-                    // 顯示 alertify 彈跳視窗
-                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                        // 彈跳視窗關閉後刷新頁面
-                        // 存儲頁面顯示狀態到 sessionStorage
-                        sessionStorage.setItem('Barcode_Setting', 'block');
-                        sessionStorage.setItem('Controller_Setting', 'none');
-                        
-                        history.go(0);  // 重新加載頁面
+    if (del_barcode_id.length === 0) return;
+
+    document.getElementById('spinner').style.display = 'block';
+
+    $.ajax({
+        url: "?url=Settings/delete_barcodes",
+        method: "POST",
+        data: { del_barcode_id: del_barcode_id },
+        dataType: 'json', // ✅ 強制回傳格式為 JSON，避免 JSON.parse 錯誤
+        success: function(response) {
+            const { res_type, res_msg } = response;
+
+            setTimeout(function () {
+                document.getElementById('spinner').style.display = 'none';
+
+                alertify.alert(res_type, res_msg, function () {
+                    sessionStorage.setItem('Barcode_Setting', 'block');
+                    sessionStorage.setItem('Controller_Setting', 'none');
+                    //history.go(0); // 頁面重載
+                });
+
+                setTimeout(function () {
+                    alertify.closeAll();
+
+                    // ✅ 刷新條碼列表區塊
+                    $.ajax({
+                        url: "?url=Settings/show_Barcodes",
+                        method: "GET",
+                        success: function (html) {
+                            $('#total_barcodes').html(html);
+                        },
+                        error: function (xhr, status, error) {
+                            console.error("刷新條碼失敗:", error);
+                        }
                     });
-
-                    // 在 3 秒後自動關閉 alertify 彈跳視窗，並執行 AJAX 請求來刷新條形碼列表
-                    setTimeout(function() {
-                        alertify.closeAll();  // 關閉所有開啟的 alertify 彈跳視窗
-                        
-                        // 刷新條形碼列表
-                        $.ajax({
-                            url: "?url=Settings/show_Barcodes",
-                            method: "GET",
-                            success: function(html) {
-                                $('#total_barcodes').html(html);  
-                            },
-                            error: function(xhr, status, error) {
-                                console.error("獲取條形碼時出錯:", error);
-                            }
-                        });
-                    }, 3000); // 延遲 3 秒
-                }, 1000); // 延遲 1000 毫秒
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });   
-    }
-    
+                }, 3000);
+            }, 1000);
+        },
+        error: function(xhr, status, error) {
+            document.getElementById('spinner').style.display = 'none';
+            console.error("刪除時發生錯誤:", error);
+            alertify.alert("Error", "無法刪除條碼，請稍後再試。");
+        }
+    });
 }
+
 
 
 function agent_ip_save() {
