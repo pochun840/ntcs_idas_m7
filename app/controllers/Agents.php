@@ -3,17 +3,19 @@
 class Agents extends Controller
 {
     private $AdminModel;
+    private $SettingModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->AdminModel = $this->model('Admin');
+        $this->SettingModel = $this->model('Setting');
     }
 
     // 取得所有info
     public function index(){
 
         $isMobile = $this->isMobileCheck();
-        $device_info = $this->Device_Info();
+        $device_info = $this->SettingModel->GetControllerInfo();
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         // $Controller_Info = $this->ToolModel->GetControllerInfo();        
 

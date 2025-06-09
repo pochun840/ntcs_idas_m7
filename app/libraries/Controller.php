@@ -209,7 +209,7 @@ class Controller
     {
         try {
             if (PHP_OS_FAMILY === 'Linux') {
-                $db_path = '/var/www/html/database/data_device_local.db';
+                $db_path = '/var/www/html/database/data_device.db';
             } else {
                 $db_path = '../data_device.db';
             }
@@ -320,129 +320,7 @@ class Controller
         echo json_encode($response);
     }
 
-
-
-      
-    /*public function current_save(){
-
-        // 取得 device_version 的版本
-        $device_version_json = $this->Get_Device_version();
-        $device_array = json_decode($device_version_json, true);
-
-        $device_version = $device_array['device_version'] ?? null;
-        $device_version = (float)$device_version; 
-        if ($device_version >=1.27) {
-
-            $res_unit = $this->unit_no();
-            $last_unit = end($res_unit);
-
-            // 使用 switch 處理 multiple 的對應邏輯
-            switch ($last_unit) {
-                case 0:
-                    $multiple = 10000;
-                    break;
-                case 1:
-                    $multiple = 1000;
-                    break;
-                case 2:
-                case 3: // 合併相同結果的條件
-                    $multiple = 100;
-                    break;
-                case 4:
-                    $multiple = 10;
-                    break;
-                default:
-                    $multiple = 10000; // 預設值，防止未定義的情況
-            }
-        }else{
-            $multiple = 100;
-        }
-
-
-
-        $input = file_get_contents('php://input');
-        $data = json_decode($input, true);
-      
-        if (isset($data['target_q'], $data['rpm'], $data['joint_offset'],$data['tolerance'])) {
-
-            $controller_ip = $this->EquipmentModel->GetControllerIP(1);
-            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-            $modbus = new ModbusMaster($controller_ip, "TCP");
-            try {
-                $modbus->port = 502;
-                $modbus->timeout_sec = 10;
-
-                $data['target_q'] = (int)((float)$data['target_q'] * $multiple);
-
-                $percentage = $data['tolerance'] / 100; 
-
-                $lower_limit = $data['target_q']  - ($data['target_q']  * $percentage); //下限
-                $upper_limit = $data['target_q']  + ($data['target_q']  * $percentage); // 上限
-
-
-                //如果 $data['joint_offset'] = +0.02 or -0.06  
-                if (preg_match('/([+-]?)(\d*\.?\d+)/', $data['joint_offset'], $matches)) {
-
-                    $sign = $matches[1];   // 取正負號
-                    $number = $matches[2]; // 取數字 
-                    
-
-                    if( $sign == '+'  || $sign == ''){
-                        $data_sign = array(0);
-                    }else{
-                        $data_sign = array(1);
-                    }
-
-                   
-                }
-
-
-                $number_val = (int)((float) $number * $multiple);
-                $data_targqt_q = array(0,$data['target_q'],$last_unit);
-
-                $data_rpm = array($data['rpm']);
-                //$data_offset = array($number_val);
-                $data_offset = array(0);
-                $data_offset_sec = array($number_val);
-
-
-                $lower_limit_arr = array(0,$lower_limit);
-                $upper_limit_arr = array(0,$upper_limit);
-                $data_job = array(221);
-                $data_open = array(1);
-                $tools_start = array(1);
-                
-
-                $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
-
-                $modbus->writeMultipleRegister(0, 1135, $data_open, $dataTypes); // 進階開啟
-                $modbus->writeMultipleRegister(0, 1147, $data_targqt_q, $dataTypes); //目標扭力
-                $modbus->writeMultipleRegister(0, 1151, $data_rpm, $dataTypes); //轉速
-                $modbus->writeMultipleRegister(0, 1152, $data_sign, $dataTypes); //補償值
-                $modbus->writeMultipleRegister(0, 1153, $data_offset, $dataTypes); //補償值(只有數值)
-                $modbus->writeMultipleRegister(0, 1154, $data_offset_sec, $dataTypes); //補償值(只有數值)
-                $modbus->writeMultipleRegister(0, 1155, $upper_limit_arr, $dataTypes); //上限
-                $modbus->writeMultipleRegister(0, 1157, $lower_limit_arr, $dataTypes); //下限
-                $modbus->writeMultipleRegister(0, 463,  $data_job, $dataTypes); //切換job
-                $modbus->writeMultipleRegister(0, 461,  $tools_start, $dataTypes);//起子啟用
-
-                echo $modbus->status;
-                exit();
-
-            } catch (Exception $e) {
-                echo $modbus->status;
-                exit();
-            }
-            
-
-        } else {
-          
-        }
-
-    }*/
-
-
-    public function Call_Controller_Job()
+    /*public function Call_Controller_Job()
     {
         //get controller ip
         $controller_ip = $this->EquipmentModel->GetControllerIP(1);
@@ -491,7 +369,7 @@ class Controller
         echo json_encode($job_detail);
         exit();
         
-    }
+    }*/
 
 
 }

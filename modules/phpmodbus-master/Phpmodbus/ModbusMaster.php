@@ -136,35 +136,49 @@ class ModbusMaster {
    *
    * @return bool
    */
-  private function rec(){
-    socket_set_nonblock($this->sock);
-    $readsocks[] = $this->sock;     
-    $writesocks = NULL;
-    $exceptsocks = NULL;
-    $rec = "";
-    $lastAccess = time();
-    while (socket_select($readsocks, 
-            $writesocks, 
-            $exceptsocks,
-            0, 
-            300000) !== FALSE) {
-            $this->status .= "Wait data ... \n";
-        if (in_array($this->sock, $readsocks)) {
-            while (@socket_recv($this->sock, $rec, 2000, 0)) {
-                $this->status .= "Data received\n";
-                return $rec;
-            }
-            $lastAccess = time();
-        } else {             
-            if (time()-$lastAccess >= $this->timeout_sec) {
-                throw new Exception( "Watchdog time expired [ " .
-                  $this->timeout_sec . " sec]!!! Connection to " . 
-                  $this->host . " is not established.");
-            }
-        }
-        $readsocks[] = $this->sock;
-    }
-  } 
+  private function rec() {
+      socket_set_nonblock($this->sock);
+      $rec = "";
+      $lastAccess = time();
+
+      while (true) {
+          $readsocks = [$this->sock]; // 每次迴圈重建 read list
+          $writesocks = null;
+          $exceptsocks = null;
+
+          $select = @socket_select($readsocks, $writesocks, $exceptsocks, 0, 300000); // 300ms
+
+          if ($select === false) {
+              $this->status .= "socket_select failed: " . socket_strerror(socket_last_error()) . "\n";
+              throw new Exception("Socket select failed.");
+          }
+
+          if ($select > 0 && in_array($this->sock, $readsocks)) {
+              $buffer = '';
+              $bytes = @socket_recv($this->sock, $buffer, 2048, 0);
+              if ($bytes === false) {
+                  $this->status .= "socket_recv failed: " . socket_strerror(socket_last_error()) . "\n";
+                  throw new Exception("Socket receive failed.");
+              } elseif ($bytes === 0) {
+                  $this->status .= "Connection closed by peer\n";
+                  break;
+              } else {
+                  $rec .= $buffer;
+                  $this->status .= "Data received: $bytes bytes\n";
+                  return $rec; // 根據原設計，接收一次即 return
+              }
+
+              $lastAccess = time();
+          } else {
+              if (time() - $lastAccess >= $this->timeout_sec) {
+                  throw new Exception("Watchdog timeout: No data received in {$this->timeout_sec} seconds. Host: {$this->host}");
+              }
+          }
+      }
+
+      return $rec;
+  }
+
   
   /**
    * responseCode

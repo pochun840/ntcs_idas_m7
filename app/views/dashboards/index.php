@@ -87,27 +87,30 @@ function language_change(language){
 
 
 function DB_sync_idas(argument) {
-    var language = getCookie('language');
+    const language = getCookie('language');
 
-    var titles = {
-        "zh-cn": { "D2C": '同步 iDas的数据库到控制器' },
-        "zh-tw": { "D2C": '同步iDas的DB到控制器' },
-        "default": { "D2C": 'Sync iDas DB to controller' }
+    const titles = {
+        "zh-cn": { "D2C": '同步 iDas的数据库到控制器', "C2D": '同步控制器的数据库到iDas' },
+        "zh-tw": { "D2C": '同步iDas的DB到控制器', "C2D": '同步控制器的DB到iDas' },
+        "default": { "D2C": 'Sync iDas DB to controller', "C2D": 'Sync controller DB to iDas' }
     };
 
-    var messages = {
-        "zh-cn": { "D2C": '同步后目前控制器上的资料将被覆盖，确认是否同步' },
-        "zh-tw": { "D2C": '同步後目前控制器上的資料將被覆蓋，確認是否同步' },
-        "default": { "D2C": "After synchronization, the controller's current data will be overwritten. Confirm sync" }
+    const messages = {
+        "zh-cn": { "D2C": '同步后目前控制器上的资料将被覆盖，确认是否同步', "C2D": '同步后目前iDas上的资料将被覆盖，确认是否同步' },
+        "zh-tw": { "D2C": '同步後目前控制器上的資料將被覆蓋，確認是否同步', "C2D": '同步後目前iDas上的資料將被覆蓋，確認是否同步' },
+        "default": {
+            "D2C": "After synchronization, the controller's data will be overwritten. Confirm?",
+            "C2D": "After synchronization, iDas data will be overwritten. Confirm?"
+        }
     };
 
-    var syncingTexts = {
+    const syncingTexts = {
         "zh-cn": "同步中，请稍候...",
         "zh-tw": "同步中，請稍候...",
         "default": "Syncing, please wait..."
     };
 
-    var errorMessages = {
+    const errorMessages = {
         "zh-cn": {
             "login": "目前控制器有人登入，无法进行同步！",
             "check": "无法确认控制器登入状态",
@@ -128,133 +131,141 @@ function DB_sync_idas(argument) {
         }
     };
 
-    var title = titles[language]?.[argument] || titles["default"][argument];
-    var message = messages[language]?.[argument] || messages["default"][argument];
-    var syncingText = syncingTexts[language] || syncingTexts["default"];
-    var errorText = errorMessages[language] || errorMessages["default"];
+    const title = titles[language]?.[argument] || titles["default"][argument];
+    const message = messages[language]?.[argument] || messages["default"][argument];
+    const syncingText = syncingTexts[language] || syncingTexts["default"];
+    const errorText = errorMessages[language] || errorMessages["default"];
 
-    alertify.confirm(title, message,
-        function () {
-            // 新增：登入檢查
-            $.ajax({
-                url: "?url=Settings/get_controller_login",
-                method: "POST",
-                success: function (response) {
-                    var loginStatus = parseInt(response);
-                    if (loginStatus !== 0) {
-                        showAlertAutoClose('Error', errorText.login);
-                        return;
-                    }
-
-                    // 通過登入檢查後開始同步流程
-                    var totalSeconds = 8;
-                    var progress = 0;
-                    var intervalTime = (totalSeconds * 1000) / 100;
-
-                    addOverlay();
-                    createProgressDialog(syncingText);
-
-                    var interval = setInterval(function () {
-                        progress += 1;
-                        if (progress >= 100) {
-                            progress = 100;
-                            clearInterval(interval);
-                            removeProgressDialog();
-
-                            $.ajax({
-                                url: "?url=Settings/Sync_check_db",
-                                method: "POST",
-                                data: { argument: argument },
-                                success: function (response) {
-                                    try {
-                                        var responseData = JSON.parse(response);
-                                        showAlertAutoClose(responseData.res_type, responseData.res_msg);
-                                        setTimeout(function () {
-                                            removeOverlay();
-                                            if (responseData.res_type === "Success") history.go(0);
-                                        }, 3000);
-                                    } catch (e) {
-                                        console.error("Response JSON parse error:", e, response);
-                                        showAlertAutoClose('Error', errorText.json);
-                                        setTimeout(removeOverlay, 3000);
-                                    }
-                                },
-                                error: function (xhr, status, error) {
-                                    console.error("AJAX request failed:", status, error);
-                                    showAlertAutoClose('Error', errorText.syncFail);
-                                    setTimeout(removeOverlay, 3000);
-                                }
-                            });
+    alertify.confirm(title, message, function () {
+        $.ajax({
+            url: "?url=Settings/get_controller_login",
+            method: "POST",
+            success: function (response) {
+                try {
+                        const result = JSON.parse(response);
+                        if (!result.result) {
+                            showAlertAutoClose('Error', result.res_msg || errorText.check);
+                            return;
                         }
+                        // ✅ 通過檢查：開始同步
+                        startSyncProcess(argument, syncingText, errorText);
 
-                        var progressBar = document.getElementById('syncProgress');
-                        if (progressBar) progressBar.value = progress;
-
-                        var syncText = document.getElementById('syncText');
-                        if (syncText) syncText.innerHTML = syncingText + ' ' + progress + '%';
-                    }, intervalTime);
-                },
-                error: function (xhr, status, error) {
-                    console.error("AJAX login check failed:", status, error);
-                    showAlertAutoClose('Error', errorText.check);
+                } catch (e) {
+                    console.error("Login check parse error:", e, response);
+                    showAlertAutoClose('Error', errorText.json);
                 }
-            });
-        },
-        function () {
-            //alertify.error('已取消');
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX login check failed:", status, error);
+                showAlertAutoClose('Error', errorText.check);
+            }
+        });
+    }, function () {});
+
+    function startSyncProcess(argument, syncingText, errorText) {
+        let progress = 0;
+        const totalSeconds = 8;
+        const intervalTime = (totalSeconds * 1000) / 100;
+
+        addOverlay();
+        createProgressDialog(syncingText);
+
+        const interval = setInterval(() => {
+            progress += 1;
+            const progressBar = document.getElementById('syncProgress');
+            const syncText = document.getElementById('syncText');
+            if (progressBar) progressBar.value = progress;
+            if (syncText) syncText.innerText = syncingText + ' ' + progress + '%';
+
+            if (progress >= 100) {
+                clearInterval(interval);
+                removeProgressDialog();
+
+                $.ajax({
+                    url: getSyncUrl(argument),
+                    method: "POST",
+                    data: { argument },
+                    success: function (response) {
+                        try {
+                            const res = JSON.parse(response);
+                            showAlertAutoClose(res.res_type, res.res_msg);
+                            setTimeout(() => {
+                                removeOverlay();
+                                if (res.res_type === "Success") history.go(0);
+                            }, 3000);
+                        } catch (e) {
+                            console.error("Response parse error:", e, response);
+                            showAlertAutoClose('Error', errorText.json);
+                            setTimeout(removeOverlay, 3000);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Sync failed:", status, error);
+                        showAlertAutoClose('Error', errorText.syncFail);
+                        setTimeout(removeOverlay, 3000);
+                    }
+                });
+            }
+        }, intervalTime);
+    }
+
+    function getSyncUrl(argument) {
+        switch (argument) {
+            case 'D2C': return '?url=Settings/Sync_check_db';
+            case 'C2D': return '?url=Settings/Sync_check_db_load';
+            default: return '';
         }
-    );
+    }
 
     function showAlertAutoClose(title, message, delay = 3000) {
         const dialog = alertify.alert(title, message);
         dialog.set('onshow', function () {
-            setTimeout(() => {
-                alertify.dismissAll();
-            }, delay);
+            setTimeout(() => alertify.dismissAll(), delay);
         });
     }
 
     function addOverlay() {
-        var overlay = document.createElement('div');
+        if (document.getElementById('overlayMask')) return;
+        const overlay = document.createElement('div');
         overlay.id = 'overlayMask';
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
-        overlay.style.zIndex = '9998';
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            top: '0', left: '0', width: '100%', height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            zIndex: '9998'
+        });
         document.body.appendChild(overlay);
     }
 
     function removeOverlay() {
-        var overlay = document.getElementById('overlayMask');
+        const overlay = document.getElementById('overlayMask');
         if (overlay) overlay.remove();
     }
 
     function createProgressDialog(syncingText) {
-        var dialog = document.createElement("div");
+        const dialog = document.createElement("div");
         dialog.id = "customProgressDialog";
-        dialog.style.position = "fixed";
-        dialog.style.top = "30%";
-        dialog.style.left = "50%";
-        dialog.style.transform = "translate(-50%, -30%)";
-        dialog.style.padding = "20px";
-        dialog.style.background = "#fff";
-        dialog.style.borderRadius = "10px";
-        dialog.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
-        dialog.style.zIndex = "9999";
-        dialog.innerHTML =
-            '<div id="syncText" style="margin-bottom: 10px; text-align:center;">' + syncingText + ' 0%</div>' +
-            '<progress id="syncProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>';
+        Object.assign(dialog.style, {
+            position: "fixed", top: "30%", left: "50%",
+            transform: "translate(-50%, -30%)",
+            padding: "20px", background: "#fff", borderRadius: "10px",
+            boxShadow: "0 0 10px rgba(0,0,0,0.3)", zIndex: "9999"
+        });
+        dialog.innerHTML = `
+            <div id="syncText" style="margin-bottom: 10px; text-align:center;">${syncingText} 0%</div>
+            <progress id="syncProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+        `;
         document.body.appendChild(dialog);
     }
 
     function removeProgressDialog() {
-        var dialog = document.getElementById("customProgressDialog");
+        const dialog = document.getElementById("customProgressDialog");
         if (dialog) dialog.remove();
     }
 }
+
+
+
 
 
 function DB_sync_idas_load(argument) {

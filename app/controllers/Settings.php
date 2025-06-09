@@ -580,65 +580,71 @@ class Settings extends Controller
     }
 
 
-
-    //把  /var/www/html/database/data.db 備份為 /var/www/html/database/data_bk.db
-    //並把 data_bk.db 再另存一個.db 檔名為iDas_data.db
+    
     public function Sync_check_db() {
         $file = $this->MiscellaneousModel->lang_load();
-        if (!empty($file)) {
-            include $file;
-        }
-    
-        $input_check = true;
-        if (!empty($_POST['argument']) && isset($_POST['argument'])) {
-            $argument = $_POST['argument'];
-        } else {
-            $argument = '';
-        }
-    
-        $argument = 'D2C';
-        $Das_DB_Location = '/var/www/html/database/iDas_data.db'; // iDas 資料庫路徑
-        $Con_DB_Location = '/var/www/html/database/data.db'; // 控制器資料庫路徑
-        $Backup_DB_Location = '/var/www/html/database/data_bk.db'; // 備份資料庫路徑
-    
-        if (!empty($argument)) {
-            if (PHP_OS_FAMILY == 'Linux' && $argument == 'D2C') {
-    
-                // 時間差異提醒
-                if (filemtime($Con_DB_Location) > filemtime($Das_DB_Location)) {
-                    $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
-                }
-    
-                // DB 欄位差異判斷
-                if (!$this->Database_Column_Diff()) {
-                    $warning .= 'DB 結構不相同';
-                }
-    
-                // 備份並複製文件
-                $res_backup = $this->SettingModel->backup_CopyFile($Con_DB_Location, $Backup_DB_Location);
-    
-                if ($res_backup) {
-                    // 複製備份文件為 iDas_data.db
-                    if (file_exists($Backup_DB_Location)) {
-                        if (file_exists($Das_DB_Location)) {
-                            unlink($Das_DB_Location); // 刪除已存在的 iDas_data.db
-                        }
-                        copy($Backup_DB_Location, $Das_DB_Location); // 複製備份文件為 iDas_data.db
-                        $res_msg = "同步成功";
-                        $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-                    } else {
-                        $res_msg = "備份文件不存在";
-                        $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                    }
-                } else {
-                    $res_msg = "備份錯誤";
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                }
-    
-                echo $res_msg;
+        if (!empty($file)) include $file;
+
+        $argument = $_POST['argument'] ?? '';
+
+        $src2       = '/var/www/html/database/ntcs_barcode.db';
+        $midPath    = '/mnt/ramdisk/iDas.db';
+        $finalPath  = '/mnt/ramdisk/ftp/iDas.db';
+
+        if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
+
+            if (!file_exists($src2)) {
+                return $this->MiscellaneousModel->generateErrorResponse('Error', 'ntcs_barcode_IDAS.db not found');
+            }
+
+            // ✅ Step 1: 複製到 RAMDISK 中繼路徑
+            if (!copy($src2, $midPath)) {
+                $this->logMessage("Copy failed: iDas.cfg ($src2 -> $midPath)");
+                return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.cfg to RAMDISK");
+            }
+
+            // ✅ Step 2: 設定權限為 777
+            if (!chmod($midPath, 0777)) {
+                $this->logMessage("chmod failed: $midPath");
+                return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to chmod iDas.cfg");
+            }
+
+            // ✅ Step 3: 移動到 FTP 目錄
+            if (!rename($midPath, $finalPath)) {
+                $this->logMessage("Move failed: $midPath -> $finalPath");
+                return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.cfg to ftp/");
+            }
+
+            $this->logMessage("iDas.cfg copied, chmod 777, and moved to ftp: $finalPath");
+
+            // ✅ Step 4: 通知控制器 via Modbus
+            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+            $modbus = new ModbusMaster("127.0.0.1", "TCP");
+
+            try {
+                $modbus->port = 502;
+                $modbus->timeout_sec = 10;
+
+                // ➤ 寫入地址 506：主資料（16 筆 INT）
+                $data506   = array_merge([1, 26948, 24947], array_fill(0, 13, 0));
+                $dataTypes = array_fill(0, 16, 'INT');
+
+                $modbus->writeMultipleRegister(0, 506, $data506, $dataTypes);
+                $this->logMessage("Modbus write 506: " . implode(',', $data506));
+
+                return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+            } catch (Exception $e) {
+                $this->logMessage('Modbus write fail: ' . $e->getMessage());
+                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
             }
         }
+
+        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
     }
+
+
+
+
     
     
     public  function Sync_check_db_load(){
@@ -1415,17 +1421,55 @@ class Settings extends Controller
 
 
     
-    public function get_controller_login(){
+    public function get_controller_login() {
+        // ✅ 檢查是否可同步（Modbus 工具狀態）
+        $idas_result = $this->idas_check();
 
-        //判斷控制器是否有登出
-        $Controller_Info = $this->ToolModel->GetControllerInfo();
-        if(!empty($Controller_Info)){
-            $user_logIn = $Controller_Info['user_logIn'];
-            $user_logIn = (int)$user_logIn;
-            echo $user_logIn;
+
+        if (!isset($idas_result['result']) || (int)$idas_result['result'] !== 0) {
+            echo json_encode([
+                'result'   => false,
+                'login'    => 0,
+                'res_type' => 'SuccessError',
+                'res_msg'  => 'Tool not disabled'
+            ]);
+            return;
+        }else{
+             echo json_encode([
+                'result'   => true,
+                'login'    => 1,
+                'res_type' => 'Success',
+                'res_msg'  => 'Tool is disabled, login status returned'
+            ]);
+            return;
+
         }
+
+        // ✅ 檢查控制器登入狀態
+        /*$Controller_Info = $this->ToolModel->GetControllerInfo();
+
+        if (!empty($Controller_Info)) {
+            $user_logIn = isset($Controller_Info['user_logIn']) ? (int)$Controller_Info['user_logIn'] : 1;
+
+            echo json_encode([
+                'result'   => true,
+                'login'    => $user_logIn,  // ✅ 根據真實狀態
+                'res_type' => 'Success',
+                'res_msg'  => 'Tool is disabled, login status returned'
+            ]);
+            return;
+        }*/
+
+        // ✅ 若 Controller info 取得失敗，預設視為登入中（保守處理）
+        /*echo json_encode([
+            'result'   => false,
+            'login'    => 1,
+            'res_type' => 'Error',
+            'res_msg'  => 'Controller info not found'
+        ]);*/
     }
-    
+
+
 
 
 

@@ -124,7 +124,12 @@
               const data = JSON.parse(jsonMessage);
 
               // 检查IP是否在映射中
+              console.log(data.client_ip);
+
               if (ipToTableRow.has(data.client_ip)) {
+
+                console.log(data);
+                
                   // 如果IP已存在，更新现有行
                   const row = ipToTableRow.get(data.client_ip);
                   // row.cells[0].textContent = 1;
@@ -134,10 +139,10 @@
                   row.cells[4].textContent = data.data_time;
                   row.cells[5].textContent = data.job_id;
                   row.cells[6].textContent = data.sequence_id;
-                  row.cells[7].textContent = data.fasten_torque;
+                  row.cells[7].textContent = data.final_fasten_torque;
                   row.cells[8].textContent = torque_unit[data.torque_unit].status;
-                  row.cells[9].textContent = data.fasten_angle;
-                  row.cells[10].textContent = data.max_screw_count;
+                  row.cells[9].textContent = data.final_fasten_angle;
+                  row.cells[10].textContent = data.total_screw_count;
                   row.cells[11].textContent = data.last_screw_count;
                   row.cells[12].textContent = fasten_status[data.fasten_status].status;
                   // row.classList.add("breathing-row");// 閃的css
@@ -149,6 +154,9 @@
 
                   // 更新其他单元格
               } else {
+
+              console.log(data);
+              
                   if(data.client_ip != null){
                   // 如果IP不存在，创建一行
                   const table = document.getElementById("data-table").getElementsByTagName('tbody')[0];
@@ -160,10 +168,10 @@
                   row.insertCell(4).textContent = data.data_time;
                   row.insertCell(5).textContent = data.job_id;
                   row.insertCell(6).textContent = data.sequence_id;
-                  row.insertCell(7).textContent = data.fasten_torque;
+                  row.insertCell(7).textContent = data.final_fasten_torque;
                   row.insertCell(8).textContent = torque_unit[data.torque_unit].status;
-                  row.insertCell(9).textContent = data.fasten_angle;
-                  row.insertCell(10).textContent = data.max_screw_count;
+                  row.insertCell(9).textContent = data.final_fasten_angle;
+                  row.insertCell(10).textContent = data.total_screw_count;
                   row.insertCell(11).textContent = data.last_screw_count;
                   row.insertCell(12).textContent = fasten_status[data.fasten_status].status;
                   // row.className = "breathing-row";// 閃的css
