@@ -25,7 +25,6 @@ class Agents extends Controller
             'device_info' => $device_info,
             'agent_icon' => 'true',
         ];
-
         
         $this->view('agent/index', $data);
     }

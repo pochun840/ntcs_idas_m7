@@ -105,6 +105,9 @@
           { index: 5, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
           { index: 6, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
           { index: 7, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
+          { index: 8, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
+          { index: 9, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
+          { index: 10, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
         ];
   // 用于跟踪IP到表格行的映射
   const ipToTableRow = new Map();
@@ -119,6 +122,8 @@
       if (match) {
           const clientNumber = match[1];
           const jsonMessage = match[2];
+          const DEVICE_TYPE_7 = <?php echo json_encode(DEVICE_TYPE_7); ?>;
+
 
           try {
               const data = JSON.parse(jsonMessage);
@@ -128,12 +133,12 @@
 
               if (ipToTableRow.has(data.client_ip)) {
 
-                console.log(data);
+
                 
                   // 如果IP已存在，更新现有行
                   const row = ipToTableRow.get(data.client_ip);
                   // row.cells[0].textContent = 1;
-                  row.cells[1].textContent = device_type[data.device_type].status;
+                  row.cells[1].textContent = DEVICE_TYPE_7;
                   row.cells[2].textContent = data.device_name;
                   row.cells[3].textContent = data.client_ip;
                   row.cells[4].textContent = data.data_time;
@@ -155,6 +160,7 @@
                   // 更新其他单元格
               } else {
 
+              console.log(data.device_type);  
               console.log(data);
               
                   if(data.client_ip != null){
@@ -162,7 +168,8 @@
                   const table = document.getElementById("data-table").getElementsByTagName('tbody')[0];
                   const row = table.insertRow();
                   row.insertCell(0).textContent = ipToTableRow.size+1;
-                  row.insertCell(1).textContent = device_type[data.device_type].status;
+                  row.insertCell(1).textContent = DEVICE_TYPE_7;
+                  //row.insertCell(1).textContent = device_type[data.device_type].status;
                   row.insertCell(2).textContent = data.device_name;
                   row.insertCell(3).textContent = data.client_ip;
                   row.insertCell(4).textContent = data.data_time;

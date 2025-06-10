@@ -76,7 +76,7 @@ switch ( ICONMODE ) {
 		define('TITLE_INDEX',       'KILEWS');              // 首頁title
 		define('SUBTITLE_INDEX',    'iDAS FOR KILEWS');     // 首頁subtitle
 		define('TITLE_AGENT',       'KILEWS IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_7',     'KL-GTCS');    // Agent頁title
+		define('DEVICE_TYPE_7',     'NTCS-M7');    // Agent頁title
 		break;
 	case '4': // MyTorque
 		define('ICON_NORMAL',       URLROOT.'img/MY-icon/yellow-192x192.png');
@@ -86,7 +86,7 @@ switch ( ICONMODE ) {
 		define('TITLE_INDEX',       'MYTORQ');
 		define('SUBTITLE_INDEX',    'iDAS FOR MY-SIRIUS');
 		define('TITLE_AGENT',       'MYTORQ IoT Agent');
-		define('DEVICE_TYPE_7',     'MY-SIRIUS');    // Agent頁title
+		define('DEVICE_TYPE_7',     'NTCS-M7');    // Agent頁title
 		break;
 	case '2': // 上海 shanhai
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
@@ -96,7 +96,7 @@ switch ( ICONMODE ) {
 		define('TITLE_INDEX',       'KILEWS');              // 首頁title
 		define('SUBTITLE_INDEX',    'iDAS FOR KILEWS');     // 首頁subtitle
 		define('TITLE_AGENT',       'KILEWS IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_7',     'KL-EPIC');    // Agent頁title
+		define('DEVICE_TYPE_7',     'NTCS-M7');    // Agent頁title
 		break;
 	case '5': // 晶元SUMAKE
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
@@ -106,7 +106,7 @@ switch ( ICONMODE ) {
 		define('TITLE_INDEX',       'SUMAKE');              // 首頁title
 		define('SUBTITLE_INDEX',    'iDAS FOR SMT-C2');     // 首頁subtitle
 		define('TITLE_AGENT',       'SUMAKE IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_7',     'SMT-C2');    // Agent頁title
+		define('DEVICE_TYPE_7',     'NTCS-M7');    // Agent頁title
 		break;
 	case '6': // DELTA
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
@@ -116,7 +116,7 @@ switch ( ICONMODE ) {
 		define('TITLE_INDEX',       'DELTA');              // 首頁title
 		define('SUBTITLE_INDEX',    'iDAS FOR XTCA1');     // 首頁subtitle
 		define('TITLE_AGENT',       'DELTA IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_7',     'XTCA1');    // Agent頁title
+		define('DEVICE_TYPE_7',     'NTCS-M7');    // Agent頁title
 		break;
 	case '7': // 白牌
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
@@ -126,7 +126,7 @@ switch ( ICONMODE ) {
 		define('TITLE_INDEX',       '');              // 首頁title
 		define('SUBTITLE_INDEX',    'iDAS FOR OPT-GK TRS1');     // 首頁subtitle
 		define('TITLE_AGENT',       'IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_7',     'OPT-GK TRS1');    // Agent頁title
+		define('DEVICE_TYPE_7',     'NTCS-M7');    // Agent頁title
 		break;
 	// case '8':
 	// 	// code...
@@ -141,9 +141,9 @@ switch ( ICONMODE ) {
 		define('ICON_AGENT',        URLROOT.'img/192.png');
 		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');
 		define('TITLE_INDEX',       'KILEWS');
-		define('SUBTITLE_INDEX',    'iDAS for TCC-M7');
+		define('SUBTITLE_INDEX',    'iDAS for NTCS-M7');
 		define('TITLE_AGENT',       'KILEWS IoT Agent');
-		define('DEVICE_TYPE_7',     'KL-GTCS');    // Agent頁title
+		define('DEVICE_TYPE_7',     'NTCS-M7');    // Agent頁title
 		break;
 }
 
