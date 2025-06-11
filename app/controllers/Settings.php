@@ -582,57 +582,83 @@ class Settings extends Controller
 
     
     public function Sync_check_db() {
+
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
 
-        $src2       = '/var/www/html/database/ntcs_barcode.db';
-        $midPath    = '/mnt/ramdisk/iDas.db';
-        $finalPath  = '/mnt/ramdisk/ftp/iDas.db';
+        $src1       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $midPath1   = '/mnt/ramdisk/11.Lin';
+        $finalPath1 = '/mnt/ramdisk/ftp/11.Lin';
+
+        $src2       = '/var/www/html/database/ntcs_barcode_IDAS.db';
+        $midPath2   = '/mnt/ramdisk/11.db';
+        $finalPath2 = '/mnt/ramdisk/ftp/11.db';
 
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
 
-            if (!file_exists($src2)) {
-                return $this->MiscellaneousModel->generateErrorResponse('Error', 'ntcs_barcode_IDAS.db not found');
+            if (!file_exists($src1) || !file_exists($src2)) {
+                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Source file(s) missing: ' .
+                    (!file_exists($src1) ? 'KLS_NTCS_IDAS.Lin ' : '') .
+                    (!file_exists($src2) ? 'ntcs_barcode_IDAS.db' : ''));
             }
 
-            // ✅ Step 1: 複製到 RAMDISK 中繼路徑
-            if (!copy($src2, $midPath)) {
-                $this->logMessage("Copy failed: iDas.cfg ($src2 -> $midPath)");
-                return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.cfg to RAMDISK");
-            }
-
-            // ✅ Step 2: 設定權限為 777
-            if (!chmod($midPath, 0777)) {
-                $this->logMessage("chmod failed: $midPath");
-                return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to chmod iDas.cfg");
-            }
-
-            // ✅ Step 3: 移動到 FTP 目錄
-            if (!rename($midPath, $finalPath)) {
-                $this->logMessage("Move failed: $midPath -> $finalPath");
-                return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.cfg to ftp/");
-            }
-
-            $this->logMessage("iDas.cfg copied, chmod 777, and moved to ftp: $finalPath");
-
-            // ✅ Step 4: 通知控制器 via Modbus
+            // Modbus 初始化
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
 
             try {
-                $modbus->port = 502;
-                $modbus->timeout_sec = 10;
+                //  Step 1: 同步 .Lin
+                if (!copy($src1, $midPath1)) {
+                    $this->logMessage("Copy failed: $src1 -> $midPath1");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.Lin");
+                }
+                chmod($midPath1, 0777);
+                if (!rename($midPath1, $finalPath1)) {
+                    $this->logMessage("Move failed: $midPath1 -> $finalPath1");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.Lin");
+                }
+                $this->logMessage("11.Lin copied and moved to FTP");
 
-                // ➤ 寫入地址 506：主資料（16 筆 INT）
-                $data506   = array_merge([1, 26948, 24947], array_fill(0, 13, 0));
-                $dataTypes = array_fill(0, 16, 'INT');
+                //  Step 2: 通知 Modbus：Lin 完成
+                $baseValues_Lin = [1, 12593];
+                $data_Lin = array_merge($baseValues_Lin, array_fill(0, 16 - count($baseValues_Lin), 0));
+                $modbus->writeMultipleRegister(0, 506, $data_Lin, array_fill(0, 16, 'INT'));
+                $this->logMessage("Modbus write (Lin): " . implode(',', $data_Lin));
 
-                $modbus->writeMultipleRegister(0, 506, $data506, $dataTypes);
-                $this->logMessage("Modbus write 506: " . implode(',', $data506));
+                // Step 3: 延遲 1 秒
+                usleep(1000000); // 1 秒
+
+                // Step 4: 移除 11.Lin
+                unlink($finalPath1);
+                
+                // Step 5: 同步 .db
+                if (!copy($src2, $midPath2)) {
+                    $this->logMessage("Copy failed: $src2 -> $midPath2");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.db");
+                }
+                chmod($midPath2, 0777);
+                if (!rename($midPath2, $finalPath2)) {
+                    $this->logMessage("Move failed: $midPath2 -> $finalPath2");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.db");
+                }
+                $this->logMessage("11.db copied and moved to FTP");
+
+                // Step 6: 通知 Modbus：DB 完成
+                $baseValues_DB = [1, 12593];
+                $data_DB = array_merge($baseValues_DB, array_fill(0, 16 - count($baseValues_DB), 0));
+                $modbus->writeMultipleRegister(0, 506, $data_DB, array_fill(0, 16, 'INT'));
+                $this->logMessage("Modbus write (DB): " . implode(',', $data_DB));
+
+
+                // Step 7: 移除 11.db
+                //unlink($finalPath2);
 
                 return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+
             } catch (Exception $e) {
                 $this->logMessage('Modbus write fail: ' . $e->getMessage());
                 return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
@@ -641,6 +667,8 @@ class Settings extends Controller
 
         return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
     }
+
+
 
 
 
@@ -785,6 +813,13 @@ class Settings extends Controller
                 $barcode[$map['key']] = ""; // 非必填欄位預設值
             }
         }
+
+
+
+        if($barcode['barcode_seq'] == "-1"){
+            $barcode['barcode_seq'] = "";
+        }
+
 
         if ($input_check) {
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);

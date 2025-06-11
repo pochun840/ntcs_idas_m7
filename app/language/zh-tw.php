@@ -168,6 +168,9 @@ $text['opt'] = '最佳化';
 $text['soft'] = '軟';
 $text['hard'] = '硬';
 $text['ok_time'] = "OK one持續時間";
+$text['WORK_MONI_MODE'] = '工作時間提示模式';
+$text['DT_Time'] = '顆數間隔時間';
+$text['TT_Time'] = '工序完成時間';
 
 //step
 $text['step_management'] = '步驟管理';

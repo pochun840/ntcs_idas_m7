@@ -11,8 +11,9 @@
 }
 
 .small-input {
-    width: 130px; /* 縮小寬度 */
-    height: 2rem; /* 固定高度 */
+    max-width: 100%;
+    height: 2rem;
+    font-size: 13px;
 }
 
 .custom-style {
@@ -35,11 +36,13 @@
             <h3><?php echo ($data['type'] == 'edit') ? $text['edit_seq'] : $text['new_seq']; ?></h3>
         </header>
     </div>
+    
     <div style="display:none;">
         <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
+        
     </div>
 
     <div class="main-content">
@@ -77,13 +80,13 @@
                     <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
                         <div class="col-5" ><?php echo $text['seq_name'];?>:</div>
                         <div class="col-7">
-                            <input id="SEQname" class="form-control small-input" style="width: 40%;"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : ''; ?>">
+                            <input id="SEQname" class="form-control small-input" style="width: 40%;"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['SEQname'] : 'SEQ-'.$data['next_seq_id']; ?>">
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
 
                         <hr style="border: 1px solid #ccc; width: 100%; margin: 20px 0;">
-
+        
                         <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
                             <div class="col-5"><?php echo $text['tightening_repeat'];?>:</div>
                             <div class="col-7">
@@ -100,7 +103,7 @@
                         </div>
 
                         <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
-                            <div class="col-5"><?php echo "DT";?> (sec):</div>
+                            <div class="col-5"><?php echo $text['DT_Time'];?> (<?php echo $text['Second'];?>):</div>
                             <div class="col-7">
                                 <input id="dt_time" class="form-control small-input" style="idth: 60%;"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">(0-60)
                                 <div class="invalid-feedback"></div>
@@ -108,7 +111,7 @@
                         </div>
 
                         <div class="col-12 row t2 mt-3" style="font-size: 13px; margin-right: 5px;">
-                            <div class="col-5"><?php echo "TT";?> (sec):</div>
+                            <div class="col-5"><?php echo $text['TT_Time'];?> (<?php echo $text['Second'];?>):</div>
                             <div class="col-7">
                                 <input id="tt_time" class="form-control small-input" style="idth: 60%;"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">(0-60)
                                 <div class="invalid-feedback"></div>
@@ -311,3 +314,17 @@
 
 
 <?php require_once '../app/views/sequences/add_seq_share.php';?>
+<style>
+#your_container_id {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0; /* 填滿整個視窗 */
+    z-index: 9999;
+    background-color: #fff;
+    overflow-y: auto; /* 允許內部上下滾動 */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+</style>

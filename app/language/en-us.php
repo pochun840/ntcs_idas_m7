@@ -105,6 +105,9 @@ $text['Second'] = 'Sec';
 $text['Copy_Sequence'] = 'Copy Sequence';
 $text['OK_All_Stop'] = 'OK All Stop';
 $text['torque_unit'] = 'Torque unit';
+$text['DT_Time'] = 'DT Time';
+$text['TT_Time'] = 'TT Time';
+
 
 $text['join'] ='Join';
 $text['opt'] = 'OPT';

@@ -115,6 +115,9 @@ $text['hard'] = '硬';
 $text['ok_all_alarm_time'] = 'OK All 持续时间';
 $text['tighten_repeat'] = '锁附颗数';
 $text['ok_time'] = "OK one持续时间";
+$text['DT_Time'] = '颗数间隔时间';
+$text['TT_Time'] = '工序完成时间';
+
 //normalstep
 $text['normal_step'] = '快速工序目标';
 $text['torque'] = '扭力';

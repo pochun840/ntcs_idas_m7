@@ -10,11 +10,12 @@
         </table>
     </div>
 
-   <div style="display:none;">
+    <div style="display:none;">
         <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
+        
         
     </div>
 
@@ -53,7 +54,7 @@
                             </div>
                         </div>
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo $text['Timeout'];?> (sec):</div>
+                            <div class="col-3"><?php echo $text['Timeout'];?> (<?php echo $text['Second'];?>):</div>
                             <div class="col-9">
                                 <input id="timeout" class="form-control"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">(0-60)
                                 <div class="invalid-feedback"></div>
@@ -61,7 +62,7 @@
                         </div>
 
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo "DT";?> (sec):</div>
+                            <div class="col-3"><?php echo $text['DT_Time'];?> (<?php echo $text['Second'];?>):</div>
                             <div class="col-9">
                                 <input id="dt_time" class="form-control"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['dt_time'] : ''; ?>">(0-99)
                                 <div class="invalid-feedback"></div>
@@ -69,7 +70,7 @@
                         </div>
 
                         <div class="col-12 row t2 mt-3">
-                            <div class="col-3"><?php echo "TT";?> (sec):</div>
+                            <div class="col-3"><?php echo $text['TT_Time'];?> (<?php echo $text['Second'];?>):</div>
                             <div class="col-9">
                                 <input id="tt_time" class="form-control"  value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['tt_time'] : ''; ?>">(0-6000)
                                 <div class="invalid-feedback"></div>
