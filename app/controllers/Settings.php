@@ -633,7 +633,13 @@ class Settings extends Controller
                 usleep(1000000); // 1 秒
 
                 // Step 4: 移除 11.Lin
-                unlink($finalPath1);
+                $renamedPath = '/mnt/ramdisk/ftp/11_tmp.Lin';
+                if (!rename($finalPath1, $renamedPath)) {
+                    $this->logMessage("Rename failed: $finalPath1 -> $renamedPath");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.Lin");
+                }
+                $this->logMessage("11.Lin renamed to 11_tmp.Lin");
+                //unlink($finalPath1);
                 
                 // Step 5: 同步 .db
                 if (!copy($src2, $midPath2)) {
@@ -655,7 +661,12 @@ class Settings extends Controller
 
 
                 // Step 7: 移除 11.db
-                //unlink($finalPath2);
+                $renamedPath_2 = '/mnt/ramdisk/ftp/11_db_temp.db';
+                if (!rename($finalPath2, $renamedPath_2)) {
+                    $this->logMessage("Rename failed: $$finalPath2 -> $renamedPath_2");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.db");
+                }
+                $this->logMessage("11.Lin renamed to 11_tmp.Lin");
 
                 return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
 
@@ -670,68 +681,117 @@ class Settings extends Controller
 
 
 
-
-
-
     
-    
-    public  function Sync_check_db_load(){
+    public function Sync_check_db_load() {
 
         $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
-   
-        if (!empty($_POST['argument']) && isset($_POST['argument'])) {
-            $argument = $_POST['argument'];
-        }else{
-            $argument = '';
-        }
+        if (!empty($file)) include $file;
 
-        $Das_DB_Location = '/var/www/html/database/iDas_data.db'; //idas 
-        $Con_DB_Location = '/var/www/html/database/data.db'; //控制器
+        $argument = $_POST['argument'] ?? '';
 
-        if(!empty($argument)){
-            if( PHP_OS_FAMILY == 'Linux' && $argument == 'C2D'){
+        $src1 = '/home/kls/NTCS7/KLS_NTCS.Lin';
+        $dst1 = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $tmp1 = '/mnt/ramdisk/ftp/11.Lin';
 
-                //時間差異提醒
-                if( filemtime($Con_DB_Location) > filemtime($Das_DB_Location) ){
-                    $notice = $text['system_sync_notice'].date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
+        $src2 = '/home/kls/NTCS7/ntcs_barcode.db';
+        $dst2 = '/var/www/html/database/ntcs_barcode_IDAS.db';
+        $tmp2 = '/mnt/ramdisk/ftp/11_tmp.db';
+
+        $Con_DB_Location = $src1;
+        $Das_DB_Location = $dst1;
+
+        if (!empty($argument) && PHP_OS_FAMILY === 'Linux' && $argument === 'C2D') {
+            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+            $modbus = new ModbusMaster("127.0.0.1", "TCP");
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+
+            try {
+                // 第一步：複製 KLS_NTCS.Lin 到 KLS_NTCS_IDAS.Lin
+                if (!copy($src1, $dst1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '複製 KLS_NTCS.Lin 失敗');
                 }
 
-                //DB欄位差異判斷
-                if(!$this->Database_Column_Diff()){
-                    $warning .= 'DB is different';
+                // 時間差異提醒
+                if (filemtime($Con_DB_Location) > filemtime($Das_DB_Location)) {
+                    $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
+                    $this->logMessage($notice);
                 }
 
+                // DB欄位差異判斷
+                $this->Database_Column_Diff($src1, $dst1);
 
-                $sourceFile = '/var/www/html/database/data.db';
-                $backupFile = '/var/www/html/database/data_bk.db';
-                $newFile = '/var/www/html/database/iDas_data.db';
-
-                $res  = $this->SettingModel->backupRemoveAndCopyDatabase($sourceFile, $backupFile, $newFile);
-                $result = array();
-                if($res){
-                    $res_msg  = "SYNC Success";
-                    $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-                }else{
-                    $res_msg  = "SYNC Error";
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+                // SHA1 驗證檔案一致性
+                if (sha1_file($src1) !== sha1_file($dst1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '.Lin 檔案 SHA1 不一致');
                 }
 
+                // 建立 /mnt/ramdisk/ftp/11.Lin 檔案
+                if (!copy($dst1, $tmp1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '建立 11.Lin 失敗');
+                }
+
+                // 使用 Modbus 通知 .Lin 同步完成
+                $data1 = array(1, 12593);
+                $dataTypes1 = array_fill(0, count($data1), 'INT');
+                $modbus->writeMultipleRegister(0, 506, $data1, $dataTypes1);
+                $this->logMessage('Modbus 寫入 (.Lin)：' . implode(',', $data1));
+
+                // 刪除 11.Lin 檔案
+                unlink($tmp1);
+
+                // 延遲 1 秒
+                usleep(1000000);
+
+                // 第二步：複製 ntcs_barcode.db 到 ntcs_barcode_IDAS.db
+                if (!copy($src2, $dst2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '複製 ntcs_barcode.db 失敗');
+                }
+
+                // 時間差異提醒
+                if (filemtime($src2) > filemtime($dst2)) {
+                    $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($src2));
+                    $this->logMessage($notice);
+                }
+
+                // DB欄位差異判斷
+                $this->Database_Column_Diff($src2, $dst2);
+
+                // SHA1 驗證檔案一致性
+                if (sha1_file($src2) !== sha1_file($dst2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '.db 檔案 SHA1 不一致');
+                }
+
+                // 建立 /mnt/ramdisk/ftp/11_tmp.db 檔案
+                if (!copy($dst2, $tmp2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '建立 11_tmp.db 失敗');
+                }
+
+                // 使用 Modbus 通知 .db 同步完成
+                $data2 = array(1, 12593, 24436, 28016);
+                $dataTypes2 = array_fill(0, count($data2), 'INT');
+                $modbus->writeMultipleRegister(0, 506, $data2, $dataTypes2);
+                $this->logMessage('Modbus 寫入 (.db)：' . implode(',', $data2));
+
+                // 刪除 11_tmp.db 檔案
+                unlink($tmp2);
+
+                return $this->MiscellaneousModel->generateErrorResponse('Success', '' . ($text['success'] ?? 'success'));
+
+            } catch (Exception $e) {
+                $this->logMessage('Modbus 錯誤：' . $e->getMessage());
+                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus 通訊失敗');
             }
         }
+
+        return $this->MiscellaneousModel->generateErrorResponse('Error', '非法的參數或非支援的作業系統');
     }
-        
-
-
     
     
     //get barcode
-    public function GetBarcodes()
-    {
-        $barcodes = $this->SettingModel->GetAllBarcodes();
+    public function GetBarcodes(){
 
+        $barcodes = $this->SettingModel->GetAllBarcodes();
         return $barcodes;
     }
 
@@ -1346,27 +1406,27 @@ class Settings extends Controller
     }
 
     //DB欄位差異判斷
-    function Database_Column_Diff()
-    {
-        $dbPath1 = '/var/www/html/database/iDas_data.db';
-        $dbPath2 = '/var/www/html/database/data.db';
+    public function Database_Column_Diff($dbPath1, $dbPath2){
 
+        // 比對兩個資料庫的表結構
         if ($this->validateTableStructure($dbPath1, $dbPath2)) {
-            echo "两个数据库的表结构相同。\n";
+            $this->logMessage("✔ 資料庫結構相同：$dbPath1 vs $dbPath2");
         } else {
-            echo "两个数据库的表结构不同。\n";
+            $this->logMessage("✘ 資料庫結構不同：$dbPath1 vs $dbPath2");
             return false;
         }
 
-        //確認idas的設定db沒有null
+        // 確認第一個 DB 沒有 null 欄位
         $result = $this->checkForNullValues($dbPath1);
-        if(!$result){
+        if (!$result) {
+            $this->logMessage("✘ 檢查 $dbPath1 時發現欄位為 NULL");
             return false;
-        }else{
-            return true;
         }
+
         return true;
     }
+
+
 
 
     // 連接到SQLite資料庫

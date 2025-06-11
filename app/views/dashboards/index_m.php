@@ -44,7 +44,7 @@
                             <!--<button class="menu-item lime" id="" style="font-size: 24px" onclick="window.location.href='?url=Agents'">Agent</button>-->
                             <!--<button class="menu-item lime" id="agent" style="font-size: 24px" ><span style="visibility: hidden;">Agent</span></button>-->
                     <?php } ?>
-                            <button class="menu-item indigo" id="load" style="font-size: 24px" onclick="DB_sync_idas_load('C2D')"><span style="visibility: hidden;">Load</span></button>
+                            <button class="menu-item indigo" id="load" style="font-size: 24px" onclick="DB_sync_idas('C2D')"><span style="visibility: hidden;">Load</span></button>
                             <button class="menu-item deep-orange" id="save" style="font-size: 24px;" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
                 </div>
                 <?php } ?>
@@ -93,120 +93,183 @@ function language_change(language){
 }
 
 function DB_sync_idas(argument) {
-    var language = getCookie('language');
-    var titles = {
-        "zh-cn": {
-            "C2D": '同步控制器的DB到iDas',
-            "D2C": '同步iDas的DB到控制器'
-        },
-        "zh-tw": {
-            "C2D": '同步控制器的DB到iDas',
-            "D2C": '同步iDas的DB到控制器'
-        },
+    const language = getCookie('language');
+
+    const titles = {
+        "zh-cn": { "D2C": '同步 iDas的数据库到控制器', "C2D": '同步控制器的数据库到iDas' },
+        "zh-tw": { "D2C": '同步iDas的DB到控制器', "C2D": '同步控制器的DB到iDas' },
+        "default": { "D2C": 'Sync iDas DB to controller', "C2D": 'Sync controller DB to iDas' }
+    };
+
+    const messages = {
+        "zh-cn": { "D2C": '同步后目前控制器上的资料将被覆盖，确认是否同步', "C2D": '同步后目前iDas上的资料将被覆盖，确认是否同步' },
+        "zh-tw": { "D2C": '同步後目前控制器上的資料將被覆蓋，確認是否同步', "C2D": '同步後目前iDas上的資料將被覆蓋，確認是否同步' },
         "default": {
-            "C2D": 'Sync controller DB to iDas',
-            "D2C": 'Sync iDas DB to controller'
+            "D2C": "After synchronization, the controller's data will be overwritten. Confirm?",
+            "C2D": "After synchronization, iDas data will be overwritten. Confirm?"
         }
     };
 
-    var messages = {
+    const syncingTexts = {
+        "zh-cn": "同步中，请稍候...",
+        "zh-tw": "同步中，請稍候...",
+        "default": "Syncing, please wait..."
+    };
+
+    const errorMessages = {
         "zh-cn": {
-            "C2D": '同步后目前iDas上的资料将被覆盖，确认是否同步',
-            "D2C": '同步后目前控制器上的资料将被覆盖，确认是否同步'
+            "login": "目前控制器有人登入，无法进行同步！",
+            "check": "无法确认控制器登入状态",
+            "syncFail": "同步失败，请稍后再试",
+            "json": "回传资料错误"
         },
         "zh-tw": {
-            "C2D": '同步後目前iDas上的資料將被覆蓋，確認是否同步',
-            "D2C": '同步後目前控制器上的資料將被覆蓋，確認是否同步'
+            "login": "目前控制器有人登入，無法進行同步！",
+            "check": "無法確認控制器登入狀態",
+            "syncFail": "同步失敗，請稍後再試",
+            "json": "回傳資料錯誤"
         },
         "default": {
-            "C2D": 'After synchronization, the current data on iDas will be overwritten',
-            "D2C": 'After synchronization, the data on the controller will be overwritten'
+            "login": "Someone is logged in on the controller. Sync cannot proceed.",
+            "check": "Unable to verify controller login status",
+            "syncFail": "Synchronization failed. Please try again later.",
+            "json": "Invalid response from server"
         }
     };
 
-    var title = titles[language] ? titles[language][argument] : titles["default"][argument];
-    var message = messages[language] ? messages[language][argument] : messages["default"][argument];
+    const title = titles[language]?.[argument] || titles["default"][argument];
+    const message = messages[language]?.[argument] || messages["default"][argument];
+    const syncingText = syncingTexts[language] || syncingTexts["default"];
+    const errorText = errorMessages[language] || errorMessages["default"];
 
-    alertify.confirm(title, message, 
-            function () {
+    alertify.confirm(title, message, function () {
+        $.ajax({
+            url: "?url=Settings/get_controller_login",
+            method: "POST",
+            success: function (response) {
+                try {
+                        const result = JSON.parse(response);
+                        if (!result.result) {
+                            showAlertAutoClose('Error', result.res_msg || errorText.check);
+                            return;
+                        }
+                        // ✅ 通過檢查：開始同步
+                        startSyncProcess(argument, syncingText, errorText);
+
+                } catch (e) {
+                    console.error("Login check parse error:", e, response);
+                    showAlertAutoClose('Error', errorText.json);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX login check failed:", status, error);
+                showAlertAutoClose('Error', errorText.check);
+            }
+        });
+    }, function () {});
+
+    function startSyncProcess(argument, syncingText, errorText) {
+        let progress = 0;
+        const totalSeconds = 8;
+        const intervalTime = (totalSeconds * 1000) / 100;
+
+        addOverlay();
+        createProgressDialog(syncingText);
+
+        const interval = setInterval(() => {
+            progress += 1;
+            const progressBar = document.getElementById('syncProgress');
+            const syncText = document.getElementById('syncText');
+            if (progressBar) progressBar.value = progress;
+            if (syncText) syncText.innerText = syncingText + ' ' + progress + '%';
+
+            if (progress >= 100) {
+                clearInterval(interval);
+                removeProgressDialog();
+
                 $.ajax({
-                    url: "?url=Settings/Sync_check_db",
+                    url: getSyncUrl(argument),
                     method: "POST",
-                    data: { argument: argument },
+                    data: { argument },
                     success: function (response) {
-                        var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function () {
-                            history.go(0);
-                        });
+                        try {
+                            const res = JSON.parse(response);
+                            showAlertAutoClose(res.res_type, res.res_msg);
+                            setTimeout(() => {
+                                removeOverlay();
+                                if (res.res_type === "Success") history.go(0);
+                            }, 3000);
+                        } catch (e) {
+                            console.error("Response parse error:", e, response);
+                            showAlertAutoClose('Error', errorText.json);
+                            setTimeout(removeOverlay, 3000);
+                        }
                     },
                     error: function (xhr, status, error) {
-                        console.error("AJAX request failed:", status, error);
+                        console.error("Sync failed:", status, error);
+                        showAlertAutoClose('Error', errorText.syncFail);
+                        setTimeout(removeOverlay, 3000);
                     }
                 });
-            }, 
-            function () {
-                alertify.error('Cancelled');
             }
-        )
-}
-function DB_sync_idas_load(argument){
-    var language = getCookie('language');
-    var titles = {
-        "zh-cn": {
-            "C2D": '同步控制器的DB到iDas',
-            "D2C": '同步iDas的DB到控制器'
-        },
-        "zh-tw": {
-            "C2D": '同步控制器的DB到iDas',
-            "D2C": '同步iDas的DB到控制器'
-        },
-        "default": {
-            "C2D": 'Sync controller DB to iDas',
-            "D2C": 'Sync iDas DB to controller'
+        }, intervalTime);
+    }
+
+    function getSyncUrl(argument) {
+        switch (argument) {
+            case 'D2C': return '?url=Settings/Sync_check_db';
+            case 'C2D': return '?url=Settings/Sync_check_db_load';
+            default: return '';
         }
-    };
+    }
 
-    var messages = {
-        "zh-cn": {
-            "C2D": '同步后目前iDas上的资料将被覆盖，确认是否同步',
-            "D2C": '同步后目前控制器上的资料将被覆盖，确认是否同步'
-        },
-        "zh-tw": {
-            "C2D": '同步後目前iDas上的資料將被覆蓋，確認是否同步',
-            "D2C": '同步後目前控制器上的資料將被覆蓋，確認是否同步'
-        },
-        "default": {
-            "C2D": 'After synchronization, the current data on iDas will be overwritten',
-            "D2C": 'After synchronization, the data on the controller will be overwritten'
-        }
-    };
+    function showAlertAutoClose(title, message, delay = 3000) {
+        const dialog = alertify.alert(title, message);
+        dialog.set('onshow', function () {
+            setTimeout(() => alertify.dismissAll(), delay);
+        });
+    }
 
-    var title = titles[language] ? titles[language][argument] : titles["default"][argument];
-    var message = messages[language] ? messages[language][argument] : messages["default"][argument];
+    function addOverlay() {
+        if (document.getElementById('overlayMask')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'overlayMask';
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            top: '0', left: '0', width: '100%', height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            zIndex: '9998'
+        });
+        document.body.appendChild(overlay);
+    }
 
-    alertify.confirm(title, message, 
-            function () {
-                $.ajax({
-                    url: "?url=Settings/Sync_check_db_load",
-                    method: "POST",
-                    data: { argument: argument },
-                    success: function (response) {
-                        /*var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function () {
-                            history.go(0);
-                        });*/
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("AJAX request failed:", status, error);
-                    }
-                });
-            }, 
-            function () {
-                alertify.error('Cancelled');
-            }
-        )
+    function removeOverlay() {
+        const overlay = document.getElementById('overlayMask');
+        if (overlay) overlay.remove();
+    }
 
+    function createProgressDialog(syncingText) {
+        const dialog = document.createElement("div");
+        dialog.id = "customProgressDialog";
+        Object.assign(dialog.style, {
+            position: "fixed", top: "30%", left: "50%",
+            transform: "translate(-50%, -30%)",
+            padding: "20px", background: "#fff", borderRadius: "10px",
+            boxShadow: "0 0 10px rgba(0,0,0,0.3)", zIndex: "9999"
+        });
+        dialog.innerHTML = `
+            <div id="syncText" style="margin-bottom: 10px; text-align:center;">${syncingText} 0%</div>
+            <progress id="syncProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+        `;
+        document.body.appendChild(dialog);
+    }
+
+    function removeProgressDialog() {
+        const dialog = document.getElementById("customProgressDialog");
+        if (dialog) dialog.remove();
+    }
 }
+
 </script>
 
 <style>
