@@ -21,42 +21,59 @@
 
             </div>
 
-            <div class="button col pt-5">
-                <button class="menu-item blue" id="job_manager" style="font-size: 20px;" onclick="window.location.href='?url=Jobs/index'"><span style="visibility: hidden;">Job</span></button>
-                <button class="menu-item purple" id="operation" style="font-size: 20px" onclick="window.location.href='?url=Dashboards/operation'"><span style="visibility: hidden;">Operation</span></button>
-                <br>
+            <div class="w3-center button-container" style="margin: 20px">
+                <button class="menu-item blue" id="job_manager" onclick="window.location.href='?url=Jobs/index'"><span style="visibility: hidden;">Job</span></button>
+                <button class="menu-item purple" id="operation" onclick="window.location.href='?url=Dashboards/operation'"><span style="visibility: hidden;">Operation</span></button>
                 
-                <button class="menu-item green" id="io_input" style="font-size: 20px;"   onclick="window.location.href='?url=Inputs/index'"><span style="visibility: hidden;">IO Input</span></button>
-                <button class="menu-item orange" id="io_output" style="font-size: 20px"  onclick="window.location.href='?url=Outputs/index'"><span style="visibility: hidden;">IO Output</span></button>
-                <br>
+                <button class="menu-item green" id="io_input" onclick="window.location.href='?url=Inputs/index'"><span style="visibility: hidden;">IO Input</span></button>
+                <button class="menu-item orange" id="io_output" onclick="window.location.href='?url=Outputs/index'"><span style="visibility: hidden;">IO Output</span></button>
 
-                <button class="menu-item lightblue" id="data" style="font-size: 20px" onclick="window.location.href='?url=Data/index'"><span style="visibility: hidden;">Data</span></button>
-                <button class="menu-item pink" id="tool" style="font-size: 20px" onclick="window.location.href='?url=Tools/index'"><span style="visibility: hidden;">Tool</span></button>
-                <br>
+                <button class="menu-item lightblue" id="data" onclick="window.location.href='?url=Data/index'"><span style="visibility: hidden;">Data</span></button>
+                <button class="menu-item pink" id="tool" onclick="window.location.href='?url=Tools/index'"><span style="visibility: hidden;">Tool</span></button>
                 
-                <button class="menu-item PaleGreen" id="setting" style="font-size: 20px;" onclick="window.location.href='?url=Settings/index'"><span style="visibility: hidden;">Setting</span></button>
-                <button class="menu-item lime" id="" style="font-size: 24px" onclick="window.location.href='?url=Agents'">Agent</button>
-                <br>
+                <button class="menu-item PaleGreen" id="setting" onclick="window.location.href='?url=Settings/index'"><span style="visibility: hidden;">Setting</span></button>
                
-                <?php if($_SESSION['privilege'] == 'admin'){ ?>
-                <div>
+               <?php if($_SESSION['privilege'] == 'admin'){ ?>
                     <?php if($data['agent_type'] == '2'){ ?>
-                            <!--<button class="menu-item lime" id="" style="font-size: 24px" onclick="window.location.href='?url=Agents'">Agent</button>-->
-                            <!--<button class="menu-item lime" id="agent" style="font-size: 24px" ><span style="visibility: hidden;">Agent</span></button>-->
+                            <button class="menu-item lime" id="agent" onclick="window.location.href='?url=Agents'"><span style="visibility: hidden;">Agent</span></button>
                     <?php } ?>
-                            <button class="menu-item indigo" id="load" style="font-size: 24px" onclick="DB_sync_idas('C2D')"><span style="visibility: hidden;">Load</span></button>
-                            <button class="menu-item deep-orange" id="save" style="font-size: 24px;" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
-                </div>
+                        <button class="menu-item indigo" id="load" onclick="DB_sync_idas_load('C2D')"><span style="visibility: hidden;">Load</span></button>
+                        <button class="menu-item deep-orange" id="save" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
                 <?php } ?>
-
             </div>
         </div>
     </div>
 </div>
 
-</body>
+<style>
+.button-container 
+{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Center buttons in the container */
+    gap: 10px; /* Adjust space between buttons */
+}
 
-</html>
+/* Khi màn hình nhỏ (dưới 768px), hiển thị 2 nút trên 1 hàng */
+@media (max-width: 768px) {
+    .button-container {
+        justify-content: space-evenly; /* Chia đều không gian giữa các nút */
+    }
+    
+}
+
+@media only screen and (max-width: 768px) {
+    .bottom-right {
+        position: fixed; /* 固定在螢幕右下角 */
+        bottom: 10px;  /* 距離頁面底部 10px */
+        right: 10px;   /* 距離頁面右邊 10px */
+        color: white;
+        font-size: 18px;
+    }
+}
+
+</style>
+
 <script>
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -342,5 +359,6 @@ function DB_sync_idas(argument) {
     #agent:hover {
         background: url("<?php echo $text['img_agent_hover']; ?>") no-repeat;
     }
-            
+
+
 </style>

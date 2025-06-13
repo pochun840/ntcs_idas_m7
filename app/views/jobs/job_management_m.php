@@ -67,7 +67,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: auto">
                 <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('newjob').style.display='none'"
+                    <span onclick="closebutton('newjob');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px; margin: 3px; font-size: 4.5vmin">&times;</span>
                     <h3 id='modal_title'><?php echo $text['new_job'];?></h3>
                 </header>
@@ -83,7 +83,7 @@
                         <div class="row">
                             <div for="job-name" class="col-6 t1"><?php echo $text['job_name'];?>:</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="job_name" maxlength="" >
+                                <input type="text" class="form-control input-ms" id="job_name" maxlength="" value ='<?php echo "JOB-".$data['jobint'];?>'  >
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>

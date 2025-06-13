@@ -12,13 +12,10 @@
                 </div>
 
      
-                <div style=" margin-top: 5%">   
+                <div style="margin-top: 3%">   
                     <h1 class="col-ms-3 pt-5"  style="font-size: 50px;"><?php echo TITLE_INDEX; ?></h1>
                     <div style="text-shadow:2px 2px 0 #444; font-size: 30px" class="text w3-center w3-text-yellow"><?php echo SUBTITLE_INDEX; ?></div>
                 </div>
-             
-             
-
             </div>
 
             <div class="button col pt-5">
