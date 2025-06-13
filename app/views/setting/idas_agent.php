@@ -1,24 +1,24 @@
 <div id="Connect_Setting" class="divMode" style="display: none; overflow-x: hidden;" >
 
     <div class="row">
-        <div class="col t1" style="padding-left: 3%; font-weight: bold; padding-top: 1.5%; font-size: 1.1em;">
+        <div class="col t1" style="padding-left: 3%; font-weight: bold; padding-top: 1.5%;">
             <?php echo $text['system_connect_setting']; ?>
         </div>
     </div>
 
     <!-- Agent IP -->
-    <div class="row t2 align-items-center" style="margin: 10px 0;">
+    <div class="row t2 align-items-center">
         <div class="col-3 t1">Agent IP:</div>
         <div class="col">
                 <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
                     value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
                 <span style="margin-left: 10px;"></span>
-                <input type="button"  onclick="agent_ip_save()"  value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right;">
+                <input type="button"  onclick="agent_ip_save()"  value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" >
         </div>
     </div>
 
     <!-- Agent Type -->
-    <div class="row t2" style="margin: 10px 0;">
+    <div class="row t2">
         <div class="col-3 t1">Agent Type:</div>
         <div class="col">
                 <div class="form-check form-check-inline">
@@ -35,23 +35,22 @@
                 </div>
 
                 <input type="button" onclick="agent_type_save()" value="<?php echo $text['save']; ?>"
-                class="all-btn w3-submit w3-border w3-round-large" style="float: right;">
+                class="all-btn w3-submit w3-border w3-round-large" >
         </div>
     </div>
 
     <!-- Status -->
-    <div class="row t2" style="margin: 10px 0;">
+    <div class="row t2">
         <div class="col-3 t1"></div>
         <div class="col">
             <div style="margin-bottom: 5px;">
                 <span>Client Status: </span><span id="c_status" style="display:inline-block;"></span>&nbsp;&nbsp;
                 <span>Server Status: </span><span id="s_status" style="display:inline-block;"></span>
-            </div>
-
-            <div>
+ 
                 <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck()">Check</button>
                 <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck('start')">START</button>
                 <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck('stop')">STOP</button>
+ 
             </div>
         </div>
     </div>

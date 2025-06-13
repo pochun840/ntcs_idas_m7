@@ -48,19 +48,87 @@ body
     padding: 5px 5px;
 }
 
+.menu-button 
+{
+    display: flex;
+    padding-top: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    max-width: 100%;
+}
+
+/* Khi màn hình dọc (portrait) */
+@media screen and (orientation: portrait) {
+    .menu-button {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* 5 cột, mỗi cột chiếm 1 phần */
+        grid-template-rows: auto auto; /* 2 hàng */
+        gap: 1px;
+    }
+
+    .button 
+    {
+        flex: 1 1 auto; /* Để button tự co giãn */
+        text-align: center;
+    }
+
+    /* Hàng 1: 2 button đầu tiên */
+    .button:nth-child(1) {
+        grid-column: 1 / 2;
+        grid-row: 1;
+    }
+
+    .button:nth-child(2) {
+        grid-column: 2 / 3;
+        grid-row: 1;
+    }
+
+    /* Hàng 2: 3 button còn lại */
+    .button:nth-child(3) {
+        grid-column: 3 / 4;
+        grid-row: 1;
+    }
+
+    .button:nth-child(4) {
+        grid-column: 4 / 5;
+        grid-row: 1;
+    }
+
+    .button:nth-child(5) {
+        grid-column: 7 / 6;
+        grid-row: 1;
+    }
+}
+
+/* Khi màn hình ngang (landscape) */
+@media screen and (orientation: landscape) {
+    .menu-button {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        max-height: 60px; /* Giảm chiều cao */
+    }
+
+    .button {
+        flex: 1;
+        padding: 5px;
+    }
+}
+
 .button
 {
     background-color: #888888; /* Green */
     border:  1px outset #CCFFFF;
     border-radius: 8px;;
     color: white;
-    padding: 5px;
+    padding: 2px;
     text-align: center;
     text-decoration: none;
     display: inline-block;
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
-    margin: 4px 10px;
+    margin: 4px 2px;
 }
 
 .button:hover
@@ -75,14 +143,27 @@ body
     background-color: #0d6efd;
 }
 
-.divMode
-{
-    border-radius: 10px;
-    height: calc(100vh - 280px);
+.divMode {
+    font-size: 2vmin;
+    height: calc(100vh - 180px);
     margin: 4px 0px;
     background-color: #FCFCFC;
-    box-shadow: 0px 2px 4px 1px rgba(0,0,0,0.2);    
+
+    overflow-y: auto; /* Cho phép cuộn dọc */
+    overflow-x: hidden; /* Không cho cuộn ngang */
+
+    justify-content: center;
+    align-items: center;
+
+    -ms-overflow-style: none;  /* IE, Edge */
+    scrollbar-width: none;     /* Firefox */
 }
+
+/* Ẩn scrollbar trên WebKit */
+.divMode::-webkit-scrollbar {
+    display: none;
+}
+
 
 .all-btn
 {
@@ -95,11 +176,19 @@ body
     box-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.2);
 }
 
+/* Connect Setting Button Delete */
+#delete-btn 
+{
+    height: 25px;
+    width: 25px;
+    vertical-align: middle;
+}
+
 select
 {
-    height: 30px;
-    width: 152px;
-    font-size: 18px;
+    height: 35px;
+    width: 150px;
+    font-size: 16px;
     border: 1px solid #CCCCCC;
     cursor: pointer;
     border-radius: 5px;
@@ -129,13 +218,13 @@ th, td
     vertical-align: middle;
 }
 
-.w3-table-all
+.w3-table
 {
     width: 100%;
     border-collapse: collapse;
 }
 
-.w3-table-all th, .w3-table-all td
+.w3-table th, .w3-table td
 {
     border: 1px solid #ddd;
     padding: 5px;
@@ -351,6 +440,35 @@ th, td
     background: linear-gradient(left, #8391A6, #536175);
 }
 
-.t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;padding-left: 5%}
-.t2{font-size: 17px; margin: 5px 0px;}
-.t3{font-size: 17px; height: 30px; margin-bottom:2px}
+.t1{font-size: 17px; margin: 3px 0px; display: flex; align-items: center;padding-left: 2%}
+.t2{font-size: 17px; margin: 3px 0px;}
+.t3{font-size: 17px; height: 30px; margin-bottom:2px}  
+.selected { background-color: #9AC0CD !important;}
+.input-pin img{ height: 25px; width: 40px}
+.output-pin img{ height: 25px; width: 45px}
+.disabled_input{ color: #999; pointer-events: none;}
+.zoom{zoom:1.2; vertical-align: middle}
+
+.year-item
+{
+    font-size: 17px;        /* thay 14px theo ý bạn */
+    display: inline-flex;   /* cho phép align-items */
+    align-items: center;    /* căn dọc giữa */
+    gap: 4px;               /* khoảng cách checkbox‑số năm */
+}
+
+.year-checkbox
+{
+    margin: 0;              /* bỏ margin mặc định của bootstrap */
+}
+
+.progress.custom-bg {
+    background-color: #8393A0; 
+    height: 25px;
+}
+
+.progress-bar.custom-bar 
+{
+    background-color: #34C7AC;
+    color: #fff;
+}

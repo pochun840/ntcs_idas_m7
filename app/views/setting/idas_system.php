@@ -1,13 +1,13 @@
-<div id="System_Setting" class="divMode_1" style="display: none">
-    <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_setting'];?></div>
+<div id="System_Setting" class="divMode" style="display: none;">
+    <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%;"><?php echo $text['system_setting'];?></div>
 
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_sys_date'];?>(UTC):</div>
         <div class="col t2">
             <form onsubmit="change_datetime();return false;">
-                        <span id="currentSystemTime"></span>
-                        <input type="datetime-local" id="newTime" value="" size="25" required class="w3-submit w3-border" style="margin: 0px 0px 5px; height: 32px">
-                        <input type="submit" value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
+                <span id="currentSystemTime"></span>
+                <input type="datetime-local" id="newTime" value="" size="25" required class="w3-submit w3-border">
+                <input type="submit" value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
             </form>
         </div>        
     </div>          
@@ -35,8 +35,8 @@
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_diskfull_warning']; ?>:</div>
         <div class="col t2">
-            <div class="progress" style="height: 20px; width: 40%; background-color: #eee; border-radius: 10px;">
-                <div id="disk-usage-bar" class="progress-bar" style="width: 0%; height: 100%; border-radius: 10px; text-align: center; color: white;font-weight: bold;">0%</div>
+            <div class="progress custom-bg" style="height: 25px; width: 40%; border-radius: 10px;">
+                <div id="disk-usage-bar" class="progress-bar custom-bar" style="border-radius: 10px; text-align: center; color: white;font-weight: bold;">0%</div>
             </div>
         </div>
     </div>
@@ -47,12 +47,15 @@
             <?php 
                 if (!empty($data['history_year_arr'])) {
                     foreach ($data['history_year_arr']['year'] as $key => $val) { ?>
-                        <input type="checkbox"
+                        <label class="year-item">
+                        <input type="checkbox" 
+                            class="year-checkbox zoom form-check-input"
                             name="year[]"
                             value="<?php echo htmlspecialchars($val); ?>"
                             onclick="onlyOne(this)"
                             <?php echo ($key === 0) ? 'checked' : ''; ?>>
                         <?php echo htmlspecialchars($val); ?>&nbsp;&nbsp;
+                        </label>
                 <?php }
                 }
             ?>
@@ -108,6 +111,7 @@
             bar.style.backgroundColor = '#e53935'; // 紅
         }
     })();
+
 
 
     function onlyOne(checkbox) {
