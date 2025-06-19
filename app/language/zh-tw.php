@@ -443,6 +443,13 @@ $text['system_connect_username'] = '登入帳號';
 $text['system_connect_timestamp'] = '最後連線時間';
 $text['csv_file_path'] = '檔案路徑';
 
+//commmand
+$text['command'] = '命令';
+$text['switch_job'] = '切換工作';
+$text['get_job'] = '讀取工作';
+
+
+
 //main 主畫面image url
 $text['img_job'] = '../public/img/home_job_tw.png';
 $text['img_job_hover'] = '../public/img/home_job_m_tw.png';
@@ -464,6 +471,8 @@ $text['img_save'] = '../public/img/home_save_tw.png';
 $text['img_save_hover'] = '../public/img/home_save_m_tw.png';
 $text['img_agent'] = '../public/img/home_agent_tw.png';
 $text['img_agent_hover'] = '../public/img/home_m_agent_tw.png';
+$text['img_remote'] = '../public/img/home_command_tw.png';
+$text['img_remote_hover'] = '../public/img/home_m_command_tw.png';
 
 $text['unfasten_force'] = '超出範圍 1 - 10';
 $text['error_job_name'] = 'JOB名稱輸入有誤';
@@ -596,3 +605,35 @@ $error_message['SEQ_COMPLETED'] = '工序完成按確認';
 $error_message['JOB_COMPLETED'] = '工作完成按確認';
 $error_message['WORKPIECE_RECOVERY'] = '工件復歸按確認';
 $error_message['target_torque_empty'] = '目標扭力為必填欄位';
+
+$error_message['ERR_0'] = '';
+$error_message['ERR_1'] = '控制器溫度異常';
+$error_message['ERR_2'] = '馬達溫度異常';
+$error_message['ERR_3'] = '馬達電流過高';
+$error_message['ERR_4'] = '馬達峰值電流過高';
+$error_message['ERR_5'] = '扭力超出上限';
+$error_message['ERR_6'] = '馬達運轉異常';
+$error_message['ERR_7'] = '鎖附時間低於下限';
+$error_message['ERR_8'] = '超時鎖附';
+$error_message['ERR_9'] = '編碼器無脈波';
+$error_message['ERR_10'] = '霍爾傳感器無脈波';
+$error_message['ERR_11'] = '母線電壓過高';
+$error_message['ERR_12'] = '母線電壓過低';
+$error_message['ERR_13'] = '設定工序異常';
+$error_message['ERR_14'] = '設定步驟異常';
+$error_message['ERR_15'] = '起子控制器通訊異常';
+$error_message['ERR_16'] = '控制器Flash驗證碼錯誤';
+$error_message['ERR_17'] = '控制器Fram驗證碼錯誤';
+$error_message['ERR_18'] = '角度超出上限';
+$error_message['ERR_19'] = '硬體保護異常';
+$error_message['ERR_20'] = '啟動開關設置錯誤';
+$error_message['ERR_21'] = '步驟數設置不一致';
+$error_message['ERR_22'] = '起子基板FRAM異常';
+$error_message['ERR_23'] = '扭力低於下限';
+$error_message['ERR_24'] = '角度低於下限';
+$error_message['ERR_25'] = '操作未完成';
+$error_message['ERR_26'] = '工序完成按確認';
+$error_message['ERR_27'] = '工作完成按確認';
+$error_message['ERR_28'] = '工件復歸按確認';
+$error_message['ERR_29'] = '目標扭力為必填欄位';
+$error_message['ERR_30'] = '控制器尚未登出';

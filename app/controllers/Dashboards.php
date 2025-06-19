@@ -36,64 +36,87 @@ class Dashboards extends Controller
 
     }
 
-    // operation即時面板
-    public function operation(){
 
-        $isMobile = $this->isMobileCheck();
+    public function operation() {
 
-        // 最新一筆鎖附資料
-        $data_info = $this->DashboardModel->get_Data();
-        if (empty($data_info)) {
-            $data_info = '';
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) include $file;
+
+        $isMobile   = $this->isMobileCheck();
+        $data_info  = $this->DashboardModel->get_Data() ?? [];
+
+        if (!empty($data_info['error_message'])) {
+            $data_info['error_message'] = $error_message['ERR_' . $data_info['error_message']] ?? $data_info['error_message'];
         }
 
-        $status_arr = $this->MiscellaneousModel->details('status');
+        $status_arr       = $this->MiscellaneousModel->details('status');
+        $chart_mode       = isset($_GET['chart']) && $_GET['chart'] >= 1 && $_GET['chart'] <= 6 ? (int)$_GET['chart'] : 1;
+        $chat_mode_arr    = $chart_mode;
+        $x_val            = $this->DashboardModel->get_csv_first_column();
+        if (!empty($x_val)) $x_val = array_slice($x_val, 1);
 
-        // 取得圖表模式（限 1~6）
-        $chart_mode = !empty($_GET['chart']) ? $_GET['chart'] : 1;
-        if ($chart_mode < 1 || $chart_mode > 6) {
-            $chart_mode = 1;
-        }
+        $chart_menu_arr   = $this->MiscellaneousModel->details('chart_menu');
+        $chart_mode_arr   = $this->MiscellaneousModel->details('chart_mode');
+        $echart_name      = explode("/", $chart_mode_arr[$chart_mode]);
 
-        $id = "None"; // CSV 對應 ID（目前用途可能保留）
-        $chat_mode_arr = $chart_mode;
+        $temp_chart       = [];
+        $csvdata_arr      = $this->DashboardModel->get_info($chart_mode);
 
-        // 取得 x 軸資料（通常為時間或序列）
-        $x_val = $this->DashboardModel->get_csv_first_column($id);
-        if (!empty($x_val)) {
-            $x_val = array_slice($x_val, 1); // 移除 header
-        }
+        // ➤ Torque 統一範圍：用 mode 5 的 torque
+        $unified_min_torque = 0;
+        $unified_max_torque = 100;
 
-        // 取得圖表對應名稱（如 Torque/Angle）
-        $chart_menu_arr  = $this->MiscellaneousModel->details('chart_menu');
-        $chart_mode_arr  = $this->MiscellaneousModel->details('chart_mode');
-        $echart_name     = explode("/", $chart_mode_arr[$chart_mode]);
-
-        // 預設空圖表（防止未定義錯誤）
-        $temp_chart = [];
-
-        // 抓取對應的資料內容（依 chart_mode 不同格式可能不同）
-        $csvdata_arr = $this->DashboardModel->get_info($chart_mode);
-
-        if (!empty($csvdata_arr)) {
-            if ($chart_mode != 5) {
-                $csvdata_arr = array_slice($csvdata_arr, 1);
-                $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $chat_mode_arr, $x_val);
-            } else {
-                // ✅ 防呆：chart_mode == 5 要有 torque 和 rpm 且為陣列
-                if (isset($csvdata_arr['torque'], $csvdata_arr['rpm']) &&
-                    is_array($csvdata_arr['torque']) &&
-                    is_array($csvdata_arr['rpm'])) {
-
-                    array_shift($csvdata_arr['torque']);
-                    array_shift($csvdata_arr['rpm']);
-
-                    $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $chat_mode_arr, $x_val);
-                }
+        $torque_range_mode5 = $this->DashboardModel->get_info(5);
+        if (!empty($torque_range_mode5['torque'])) {
+            $torque_vals = $torque_range_mode5['torque'];
+            array_shift($torque_vals);
+            if (!empty($torque_vals)) {
+                $unified_min_torque = min($torque_vals);
+                $unified_max_torque = max($torque_vals);
             }
         }
 
-        // 組成畫面資料
+        // ➤ RPM 統一範圍：用 mode 3 的 rpm
+        $unified_min_rpm = null;
+        $unified_max_rpm = null;
+
+        $rpm_range_mode3 = $this->DashboardModel->get_info(3);
+        if (!empty($rpm_range_mode3['rpm'])) {
+            $rpm_vals = $rpm_range_mode3['rpm'];
+            array_shift($rpm_vals);
+            if (!empty($rpm_vals)) {
+                $unified_min_rpm = min($rpm_vals);
+                $unified_max_rpm = max($rpm_vals);
+            }
+        }
+
+        if (!empty($csvdata_arr)) {
+            if ($chart_mode !== 5) {
+                $csvdata_arr = array_slice($csvdata_arr, 1); // 去標頭
+                $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $chat_mode_arr, $x_val);
+            } elseif (isset($csvdata_arr['torque'], $csvdata_arr['rpm']) &&
+                    is_array($csvdata_arr['torque']) && is_array($csvdata_arr['rpm'])) {
+                array_shift($csvdata_arr['torque']);
+                array_shift($csvdata_arr['rpm']);
+                $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $chat_mode_arr, $x_val);
+            }
+
+            // ➤ 套用 torque 範圍
+            if (in_array($chart_mode, [1, 4, 5])) {
+                $temp_chart['min_torque'] = $unified_min_torque;
+                $temp_chart['max_torque'] = $unified_max_torque;
+            }
+
+            // ➤ chart_mode == 5 要額外套用 rpm 統一範圍
+            /*if ($chart_mode == 5 && $unified_max_rpm > $unified_min_rpm) {
+                $temp_chart['min_rpm'] = $unified_min_rpm;
+                $temp_chart['max_rpm'] = $unified_max_rpm;
+            }*/
+
+            if (!isset($temp_chart['min_torque'])) $temp_chart['min_torque'] = 0;
+            if (!isset($temp_chart['max_torque'])) $temp_chart['max_torque'] = 100;
+        }
+
         $data = [
             'isMobile'       => $isMobile,
             'chart_info'     => $temp_chart,
@@ -101,16 +124,27 @@ class Dashboards extends Controller
             'chart_mode'     => $chart_mode,
             'chart_menu_arr' => $chart_menu_arr,
             'data_info'      => $data_info,
-            'status_arr'     => $status_arr
+            'status_arr'     => $status_arr,
+            'text'           => $text ?? []
         ];
 
-        // 依裝置選擇對應畫面
+        if (
+            (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
+            isset($_GET['ajax'])
+        ) {
+            header('Content-Type: application/json');
+            echo json_encode($data);
+            return;
+        }
+
         if ($isMobile) {
             $this->view('dashboards/operation_m', $data);
         } else {
             $this->view('dashboards/operation', $data);
         }
     }
+
+
 
 
 
@@ -139,75 +173,61 @@ class Dashboards extends Controller
     }
 
 
-
     private function ChartData($chat_mode, $csvdata_arr, $chat_mode_arr, $x_val) {
         $chart_info = [];
+        $chat_mode = (int)$chat_mode;
 
-        $chat_mode = (int)$chat_mode; // 確保比較型別一致
+        // 預設值
+        $torque = [];
+        $rpm = [];
 
-        if (in_array($chat_mode, [1, 3, 4])) {
-            // 單一折線圖（Torque、Angle 或 RPM）
-            if (!empty($csvdata_arr) && is_array($csvdata_arr)) {
-                $chart_info['y_val'] = json_encode($csvdata_arr);
-                $chart_info['max'] = max($csvdata_arr);
-                $chart_info['min'] = min($csvdata_arr);
-            } else {
-                $chart_info['y_val'] = "[]";
-                $chart_info['max'] = 0;
-                $chart_info['min'] = 0;
+        if ($chat_mode === 5) {
+            // ➤ 雙軸：Torque + RPM
+            $torque = isset($csvdata_arr['torque']) ? $csvdata_arr['torque'] : [];
+            $rpm    = isset($csvdata_arr['rpm']) ? $csvdata_arr['rpm'] : [];
+
+            $chart_info['y_val_torque'] = $torque;
+            $chart_info['max_torque']   = !empty($torque) ? max($torque) : 0;
+            $chart_info['min_torque']   = !empty($torque) ? min($torque) : 0;
+
+            $chart_info['y_val_rpm']    = $rpm;
+            $chart_info['max_rpm']      = !empty($rpm) ? max($rpm) : 0;
+            $chart_info['min_rpm']      = !empty($rpm) ? min($rpm) : 0;
+
+            // 主軸 y_val 統一為 torque
+            $chart_info['y_val'] = $torque;
+            $chart_info['max']   = !empty($torque) ? max($torque) : 0;
+            $chart_info['min']   = !empty($torque) ? min($torque) : 0;
+
+        } else if (in_array($chat_mode, [1, 2, 3, 4])) {
+            // ➤ 單軸：Torque / Angle / RPM
+            $chart_info['y_val'] = $csvdata_arr;
+            $chart_info['max']   = !empty($csvdata_arr) ? max($csvdata_arr) : 0;
+            $chart_info['min']   = !empty($csvdata_arr) ? min($csvdata_arr) : 0;
+
+            if (in_array($chat_mode, [1, 4])) {
+                // ➤ mode 1 和 4 額外補 torque 用於座標統一
+                $torque = $csvdata_arr;
+                $chart_info['y_val_torque'] = $torque;
+                $chart_info['max_torque']   = !empty($torque) ? max($torque) : 0;
+                $chart_info['min_torque']   = !empty($torque) ? min($torque) : 0;
             }
-
-        } else if ($chat_mode === 5) {
-            // 雙 Y 軸：Torque + RPM
-            if (
-                isset($csvdata_arr['torque'], $csvdata_arr['rpm']) &&
-                is_array($csvdata_arr['torque']) &&
-                is_array($csvdata_arr['rpm']) &&
-                !empty($csvdata_arr['torque']) &&
-                !empty($csvdata_arr['rpm'])
-            ) {
-                $chart_info['y_val_torque'] = json_encode($csvdata_arr['torque']);
-                $chart_info['y_val_rpm']    = json_encode($csvdata_arr['rpm']);
-
-                $chart_info['max_torque'] = max($csvdata_arr['torque']);
-                $chart_info['min_torque'] = min($csvdata_arr['torque']);
-                $chart_info['max_rpm']    = max($csvdata_arr['rpm']);
-                $chart_info['min_rpm']    = min($csvdata_arr['rpm']);
-            } else {
-                $chart_info['y_val_torque'] = "[]";
-                $chart_info['y_val_rpm']    = "[]";
-                $chart_info['max_torque']  = 0;
-                $chart_info['min_torque']  = 0;
-                $chart_info['max_rpm']     = 0;
-                $chart_info['min_rpm']     = 0;
-            }
-
-            $chart_info['y_val'] = "[]"; // 統一補 y_val 為空（ECharts 使用可能會用到）
-
         } else {
-            // 其他情況：一般陣列資料
-            if (!empty($csvdata_arr) && is_array($csvdata_arr)) {
-                $chart_info['y_val'] = json_encode($csvdata_arr);
-                $chart_info['max'] = max($csvdata_arr);
-                $chart_info['min'] = min($csvdata_arr);
-            } else {
-                $chart_info['y_val'] = "[]";
-                $chart_info['max'] = 0;
-                $chart_info['min'] = 0;
-            }
+            // ➤ fallback，空圖
+            $chart_info['y_val'] = [];
+            $chart_info['max']   = 0;
+            $chart_info['min']   = 0;
         }
 
-        // 處理 X 軸數值顯示：去掉 .0
-        $x_val = array_map(function($value) {
+        // ➤ x 軸整數格式化
+        $chart_info['x_val'] = array_map(function($value) {
             return ($value == (int)$value) ? (int)$value : $value;
         }, $x_val);
-
-        $chart_info['x_val'] = json_encode($x_val);
 
         return $chart_info;
     }
 
 
-    
+ 
 }
 ?>

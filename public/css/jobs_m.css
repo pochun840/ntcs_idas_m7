@@ -71,13 +71,13 @@ th, td
     vertical-align: middle;
 }
 
-.w3-table-all
+.w3-table
 {
     width: 100%;
     border-collapse: collapse;
 }
 
-.w3-table-all th, .w3-table-all td
+.w3-table th, .w3-table td
 {
     border: 1px solid #ddd;
     padding: 8px;
@@ -93,7 +93,7 @@ th, td
     color: white;
 }
 
-.w3-table-all img
+.w3-table img
 {
     vertical-align: middle; /* Vertically center images within cells */
 }
@@ -112,14 +112,20 @@ th, td
 .scrollbar
 {
     float: left;
-    height: calc(100vh - 200px);
+    height: calc(100vh - 280px);
     width: 100%;
     overflow-y: scroll;
 }
 
+@media screen and (orientation: landscape) {
+    .scrollbar {
+        height: 45vh !important; /* Tăng chiều cao khi quay ngang */
+    }
+}
+
 .force-overflow
 {
-    min-height: 50vh;
+    min-height: 40vh;
 }
 
 #wrapper
@@ -184,7 +190,8 @@ th, td
 {
     display: flex;
     justify-content: space-around;
-    padding: 0px 30%;
+    padding: 0px 0px;
+    font-size: 3vmin;
 }
 
 .buttonbox input
@@ -211,19 +218,6 @@ th, td
     background-color: #DDDDDD;
     box-shadow: 0 5px #666;
     transform: translateY(4px);
-}
-
-/* The Modal (background) */
-.modal
-{
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 3; /* Sit on top */
-    left: 0;
-    top: 0;
-    width: 100%; /* Full width */
-    overflow: auto; /* Enable scroll if needed */
-    padding-top: 10px;
 }
 
 /* Modal Content/Box */

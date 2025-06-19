@@ -13,9 +13,9 @@
             <div class="table-container">
                 <div class="scrollbar" id="style-jobtable">
                     <div class="force-overflow">
-                        <table id="job_table" class="table w3-table-all w3-hoverable">
+                        <table id="job_table" class="table w3-table">
                             <thead id="header-table">
-                                <tr class="w3-dark-grey" style="font-size: 2.5vmin">
+                                <tr class="w3-dark-grey" style="font-size: 2.8vmin">
                                     <th><?php echo $text['job_id'];?></th>
                                     <th><?php echo $text['job_name'];?></th>
                                     <th><?php echo $text['total_seq'];?></th>
@@ -23,19 +23,16 @@
                                 </tr>
                             </thead>
 
-                            <tbody style="font-size: 2vmin;text-align: center;">
+                            <tbody style="font-size: 2.8vmin; text-align: center;">
                                 <?php foreach($data['jobs'] as $key =>$val){?>
-										<tr >
-											<td id='job_id' ><?php echo $val['JOBID'];?></td>
-											<td><?php echo $val['JOBname'];?></td>
-											<td><?php echo $val['total_seq'];?></td>
-                                            <?php $url ='?url=Sequences/index/'.$val['JOBID'];?>
-                                            <td><img id="Add_Seq" src="./img/btn_plus.png" onclick="location.href='<?php echo $url;?>'">
-
-                                		</tr>
-
-									<?php }?>
-                                
+								    <tr>
+								        <td id='job_id' ><?php echo $val['JOBID'];?></td>
+										<td><?php echo $val['JOBname'];?></td>
+										<td><?php echo $val['total_seq'];?></td>
+                                        <?php $url ='?url=Sequences/index/'.$val['JOBID'];?>
+                                        <td><img id="Add_Seq" src="./img/btn_plus.png" onclick="location.href='<?php echo $url;?>'">
+                               		</tr>
+								<?php }?>
                             </tbody>
                         </table>
                     </div>
@@ -65,7 +62,7 @@
     <!-- Add New Job -->
     <div id="newjob" class="modal">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto">
+            <div class="modal-content w3-animate-zoom" style="width: 90%">
                 <header class="w3-container modal-header">
                     <span onclick="closebutton('newjob');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px; margin: 3px; font-size: 4.5vmin">&times;</span>
@@ -73,15 +70,15 @@
                 </header>
 
                 <div class="modal-body">
-                    <form id="new_job_form" style="padding-left: 5%">
+                    <form id="new_job_form" style="padding-left: 3%">
                         <div class="row">
-                            <div for="job-id" class="col-6 t1"><?php echo $text['job_id'];?>:</div>
+                            <div for="job-id" class="col-5 t1"><?php echo $text['job_id'];?>:</div>
                             <div class="col-4 t2">
                                 <input type="text" class="form-control input-ms" id="job_id" maxlength="" value='<?php echo $data['jobint'];?>'>
                             </div>
                         </div>
                         <div class="row">
-                            <div for="job-name" class="col-6 t1"><?php echo $text['job_name'];?>:</div>
+                            <div for="job-name" class="col-5 t1"><?php echo $text['job_name'];?>:</div>
                             <div class="col-4 t2">
                                 <input type="text" class="form-control input-ms" id="job_name" maxlength="" value ='<?php echo "JOB-".$data['jobint'];?>'  >
                                 <div class="invalid-feedback"></div>
@@ -89,9 +86,8 @@
                         </div>
 
                         <div class="row">
-                            <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['job_ok'];?> :</div>
-                            <div class="col t2" >
-
+                            <div for="Unscrew-Direction" class="col-5 t1"><?php echo $text['job_ok'];?> :</div>
+                            <div class="col t2">
                                 <div class="form-check form-check-inline">
             					  <input class="form-check-input" type="radio" name="job_ok" id="job_off" value="0" >
             					  <label class="form-check-label" for="job_off"> <?php  echo $text['OFF_text']; ?></label>
@@ -105,7 +101,7 @@
                         </div>
 
                         <div class="row">
-                            <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['job_ok_stop'];?> :</div>
+                            <div for="Unscrew-Direction" class="col-5 t1"><?php echo $text['job_ok_stop'];?> :</div>
                             <div class="col t2" >
 
                                 <div class="form-check form-check-inline">
@@ -120,8 +116,6 @@
                             </div>
                         </div>
 
-                        
-                      
                     </form>
                 </div>
 
@@ -136,7 +130,7 @@
     <!-- edit Job -->
     <div id="editjob" class="modal">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto">
+            <div class="modal-content w3-animate-zoom"  style="width: 90%">
                 <header class="w3-container modal-header">
                     <span onclick="closebutton('editjob')"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px; margin: 3px; font-size: 4.5vmin">&times;</span>
@@ -144,15 +138,15 @@
                 </header>
 
                 <div class="modal-body">
-                    <form id="new_job_form" style="padding-left: 5%">
+                    <form id="new_job_form" style="padding-left: 3%">
                         <div class="row">
-                            <div for="job-id" class="col-6 t1"><?php echo $text['job_id'];?>:</div>
+                            <div for="job-id" class="col-5 t1"><?php echo $text['job_id'];?>:</div>
                             <div class="col-4 t2">
                                 <input type="text" class="form-control input-ms" id="edit_jobid" maxlength="" value='<?php echo $data['jobint'];?>'>
                             </div>
                         </div>
                         <div class="row">
-                            <div for="job-name" class="col-6 t1"><?php echo $text['job_name'];?>:</div>
+                            <div for="job-name" class="col-5 t1"><?php echo $text['job_name'];?>:</div>
                             <div class="col-4 t2">
                                 <input type="text" class="form-control input-ms" id="edit_jobname" maxlength="" >
                                 <div class="invalid-feedback"></div>
@@ -160,7 +154,7 @@
                         </div>
 
                         <div class="row">
-                            <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['job_ok'];?> :</div>
+                            <div for="Unscrew-Direction" class="col-5 t1"><?php echo $text['job_ok'];?> :</div>
                             <div class="col t2" >
 
                                 <div class="form-check form-check-inline">
@@ -176,7 +170,7 @@
                         </div>
 
                         <div class="row">
-                            <div for="Unscrew-Direction" class="col-6 t1"><?php echo $text['job_ok_stop'];?> :</div>
+                            <div for="Unscrew-Direction" class="col-5 t1"><?php echo $text['job_ok_stop'];?> :</div>
                             <div class="col t2" >
 
                                 <div class="form-check form-check-inline">
@@ -209,9 +203,9 @@
     <!-- Copy Job -->
     <div id="copyjob" class="modal">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto">
+            <div class="modal-content w3-animate-zoom" style="width: 90%">
                 <header class="w3-container modal-header">
-                    <span onclick="hideElementById('copyjob');"
+                    <span onclick="closebutton('copyjob');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px;font-size: 4.5vmin; margin: 3px">&times;</span>
                     <h3 id='modal_title'><?php echo $text['copy_job'];?></h3>
                 </header>
@@ -221,14 +215,14 @@
         	            <label for="from_job_id" class="col col-form-label" style="font-weight: bold"><?php echo $text['copy_from'];?></label>
         	            <div style="padding-left: 10%;">
         		            <div class="row">
-        				        <label for="from_job_id" class="t1 col-4 col-form-label"><?php echo $text['job_id'];?> :</label>
-        				        <div class="col-5 t2 ">
+        				        <label for="from_job_id" class="t1 col-5 col-form-label"><?php echo $text['job_id'];?> :</label>
+        				        <div class="col-4 t2 ">
         				            <input type="number" class="form-control" id="from_job_id" disabled>
         				        </div>
         				    </div>
         				    <div class="row">
-        				        <label for="from_job_name" class="t1 col-4 col-form-label"><?php echo $text['job_name'];?> :</label>
-        				        <div class="t2 col-5">
+        				        <label for="from_job_name" class="t1 col-5 col-form-label"><?php echo $text['job_name'];?> :</label>
+        				        <div class="t2 col-4">
         				            <input type="text" class="form-control" id="from_job_name" disabled>
         				        </div>
         				    </div>
@@ -237,14 +231,14 @@
         			    <label for="from_job_id" class="col col-form-label" style="font-weight: bold"><?php echo $text['copy_to'];?></label>
         			    <div style="padding-left: 10%;">
         				    <div class="row">
-        				        <label for="to_job_id" class="t1 col-4 col-form-label"><?php echo $text['job_id'];?> :</label>
-        				        <div class="t2 col-5" >
+        				        <label for="to_job_id" class="t1 col-5 col-form-label"><?php echo $text['job_id'];?> :</label>
+        				        <div class="t2 col-4" >
         				            <input type="number" class="form-control" id="to_job_id">
         				        </div>
         				    </div>
         				    <div class="row">
-        				        <label for="to_job_name" class="t1 col-4 col-form-label"><?php echo $text['job_name'];?> :</label>
-        				        <div class="t2 col-5">
+        				        <label for="to_job_name" class="t1 col-5 col-form-label"><?php echo $text['job_name'];?> :</label>
+        				        <div class="t2 col-4">
         				            <input type="text" class="form-control" id="to_job_name">
         				        </div>
         				    </div>

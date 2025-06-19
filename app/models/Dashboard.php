@@ -85,6 +85,7 @@ class Dashboard{
         return $rows;
     }
 
+
     public function get_info($chat_mode) {
         $resultarr = [];
 
@@ -93,38 +94,52 @@ class Dashboard{
         $csv_files = glob($csv_folder . "*.csv");
 
         if (empty($csv_files)) {
-            return null;
+            return [];
         }
 
-        // 按建立時間排序，最新的排最前面
-        usort($csv_files, function ($a, $b) {
-            return filectime($b) - filectime($a);
-        });
-
+        // 取得最新 CSV 檔
+        usort($csv_files, fn($a, $b) => filectime($b) - filectime($a));
         $latest_file = $csv_files[0];
 
-        // 讀取內容
+        // 讀取並轉為陣列
         $csv_content = file_get_contents($latest_file);
         if (empty($csv_content)) {
-            return null;
+            return [];
         }
 
         $lines = explode("\n", $csv_content);
         $csv_array = array_map('str_getcsv', $lines);
-        $csv_array = array_filter($csv_array); // 避免最後多一行空白
+        $csv_array = array_filter($csv_array); // 過濾空行
 
-        // 處理資料欄位
-        $position = (int)$chat_mode;
+        // ➤ 統一 Torque 資料（欄位 1）
+        if (in_array((int)$chat_mode, [1, 4, 5])) {
+            $torque = [];
+            foreach ($csv_array as $row) {
+                if (isset($row[1])) {
+                    $torque[] = $row[1];
+                }
+            }
 
-        // chat_mode == 5 需要 torque 與 rpm
-        if ($chat_mode == 5) {
-            return [
-                'torque' => $this->get_info(1), // 位置 1: Torque
-                'rpm'    => $this->get_info(3)  // 位置 3: RPM
-            ];
+            // ➤ Mode 5：再補 RPM（欄位 3）
+            if ((int)$chat_mode === 5) {
+                $rpm = [];
+                foreach ($csv_array as $row) {
+                    if (isset($row[3])) {
+                        $rpm[] = $row[3];
+                    }
+                }
+
+                return [
+                    'torque' => $torque,
+                    'rpm' => $rpm
+                ];
+            }
+
+            return $torque;
         }
 
-        // 一般模式下讀取特定欄位資料
+        // ➤ Mode 2（Angle = 第2欄） 或 Mode 3（RPM = 第3欄）
+        $position = (int)$chat_mode;
         foreach ($csv_array as $row) {
             if (isset($row[$position])) {
                 $resultarr[] = $row[$position];
@@ -136,7 +151,9 @@ class Dashboard{
 
 
 
-    public function get_csv_first_column($no) {
+
+
+    public function get_csv_first_column() {
         
         $first_column = array();
 

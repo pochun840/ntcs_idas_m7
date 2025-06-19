@@ -89,13 +89,11 @@
 
 
     function toggleStepTorqueTS() {
-
-          
-        var dataType = "<?php echo $data['type']; ?>";
+        const dataType = "<?php echo $data['type']; ?>";
         const stepTorqueTS = document.getElementById('StepTorqueTS');
+        const stepTorqueTSBlock = document.getElementById('StepTorqueTS_block'); // 新增這一行
         const showTorque = document.getElementById('show_torque');
         const showAngle = document.getElementById('show_angle');
-        const toolMinTorque = document.getElementById('tool_min_torque')?.value || 0;
         const thresholdBlock = document.getElementById('threshold_block');
 
         const isModeOff = document.getElementById('threshold_mode_off').checked;
@@ -103,31 +101,31 @@
         const isModeAngle = document.getElementById('threshold_mode_angle').checked;
 
         // 初始全部隱藏 + 停用
-        [showTorque, showAngle, stepTorqueTS].forEach(el => {
-            if (el) {
-                el.style.display = 'none';
-            }
+        [showTorque, showAngle, stepTorqueTSBlock].forEach(el => {
+            if (el) el.style.display = 'none';
         });
         if (stepTorqueTS) stepTorqueTS.disabled = true;
 
+        // 顯示 torque 模式
         if (isModeTorque) {
+            if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
             if (stepTorqueTS) {
-                stepTorqueTS.style.display = 'block';
                 stepTorqueTS.disabled = false;
-                if(dataType === 'new'){
+                if (dataType === 'new') {
                     stepTorqueTS.value = 0;
                 }
             }
             if (showTorque) showTorque.style.display = 'block';
+        }
 
-        } else if (isModeAngle) {
-            if (stepTorqueTS) {
-                stepTorqueTS.style.display = 'block';
-                stepTorqueTS.disabled = false; // ✅ 角度模式也允許輸入
-            }
+        // 顯示 angle 模式
+        else if (isModeAngle) {
+            if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
+            if (stepTorqueTS) stepTorqueTS.disabled = false;
             if (showAngle) showAngle.style.display = 'block';
         }
 
+        // threshold 整塊區域
         if (thresholdBlock) {
             thresholdBlock.style.display = isModeOff ? 'none' : 'flex';
         }
@@ -137,53 +135,62 @@
 
 
 
-    function toggleDownShift() {
 
-        var dataType = "<?php echo $data['type']; ?>";
+    function toggleDownShift() {
+        
+        const dataType = "<?php echo $data['type']; ?>";
 
         const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
         const StepRPMDownShift = document.getElementById('StepRPMDownShift');
+        const StepTorqueDownShift_block = document.getElementById('StepTorqueDownShift_block');
         const showDownshiftTorque = document.getElementById('show_downshift_torque');
         const showDownshiftAngle = document.getElementById('show_downshift_angle');
         const downshiftBlock = document.getElementById('downshift_block');
         const downshiftSpeedBlock = document.getElementById('downshift_speed_block');
-        const toolMinTorque = document.getElementById('tool_min_torque')?.value || 0;
 
         const isModeOff = document.getElementById('downshift_mode_off').checked;
         const isModeTorque = document.getElementById('downshift_mode_torque').checked;
         const isModeAngle = document.getElementById('downshift_mode_angle').checked;
 
         // 預設全部隱藏與 disabled
-        showDownshiftTorque.style.display = 'none';
-        showDownshiftAngle.style.display = 'none';
-        StepTorqueDownShift.style.display = 'none';
-        StepTorqueDownShift.disabled = true;
-        StepRPMDownShift.disabled = true;
+        if (showDownshiftTorque) showDownshiftTorque.style.display = 'none';
+        if (showDownshiftAngle) showDownshiftAngle.style.display = 'none';
+        if (StepTorqueDownShift) {
+            StepTorqueDownShift.disabled = true;
+            StepTorqueDownShift.style.display = 'none';
+        }
+        if (StepRPMDownShift) StepRPMDownShift.disabled = true;
+        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none'; // ✅ 預設隱藏整塊
 
+        // TORQUE 模式
         if (isModeTorque) {
-            StepTorqueDownShift.style.display = 'block';
-            StepTorqueDownShift.disabled = false;
-            StepRPMDownShift.disabled = false;
-            if(dataType === 'new'){
-                StepTorqueDownShift.value = 0;
+            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex'; // ✅ 顯示整塊
+            if (StepTorqueDownShift) {
+                StepTorqueDownShift.style.display = 'block';
+                StepTorqueDownShift.disabled = false;
+                if (dataType === 'new') {
+                    StepTorqueDownShift.value = 0;
+                }
             }
-            showDownshiftTorque.style.display = 'block';
-        } else if (isModeAngle) {
-            StepTorqueDownShift.style.display = 'block';  // 仍需啟用 torque 輸入
-            StepTorqueDownShift.disabled = false;
-            StepRPMDownShift.disabled = false;
-            showDownshiftAngle.style.display = 'block';
+            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
+            if (showDownshiftTorque) showDownshiftTorque.style.display = 'block';
         }
 
-        // 控制整塊顯示
-        if (downshiftBlock) {
-            downshiftBlock.style.display = isModeOff ? 'none' : 'flex';
+        // ANGLE 模式
+        else if (isModeAngle) {
+            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex'; // ✅ 顯示整塊
+            if (StepTorqueDownShift) {
+                StepTorqueDownShift.style.display = 'block';
+                StepTorqueDownShift.disabled = false;
+            }
+            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
+            if (showDownshiftAngle) showDownshiftAngle.style.display = 'block';
         }
-        if (downshiftSpeedBlock) {
-            downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
-        }
+
+        // 控制附加區塊
+        if (downshiftBlock) downshiftBlock.style.display = isModeOff ? 'none' : 'flex';
+        if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
     }
-
 
 
 

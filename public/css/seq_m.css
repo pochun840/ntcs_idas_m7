@@ -103,7 +103,7 @@ th, td
     border-collapse: collapse;
 }
 
-.w3-table-all th, .w3-table-all td
+.w3-tableth, .w3-table td
 {
     border: 1px solid #ddd;
     padding: 8px;
@@ -119,7 +119,7 @@ th, td
     color: white;
 }
 
-.w3-table-all img
+.w3-table img
 {
     vertical-align: middle; /* Vertically center images within cells */
 }
@@ -133,14 +133,26 @@ th, td
     z-index: 2;
 }
 
+#header-table th {
+    text-align: center;
+    vertical-align: middle;
+}
+
 /* scrollbar style */
 .scrollbar
 {
     float: left;
-    height: calc(100vh - 220px);
+    height: calc(100vh - 350px);
     width: 100%;
     overflow-y: scroll;
 }
+
+@media screen and (orientation: landscape) {
+    .scrollbar {
+        height: 38vh !important; /* Tăng chiều cao khi quay ngang */
+    }
+}
+
 
 .force-overflow
 {
@@ -209,7 +221,7 @@ th, td
 {
     display: flex;
     justify-content: space-around;
-    padding: 0px 30%;
+    padding: 0px 15%;
 }
 
 .buttonbox input
@@ -359,7 +371,11 @@ th, td
     transition: color 0.s ease, background-color 0.3s ease, border-bottom-color 0.3s ease;
 }
 
-
+input:disabled 
+{
+    opacity: 1; /* Giữ độ rõ nét */
+    color: #000; /* Đảm bảo chữ vẫn có màu đen rõ ràng */
+}
 
 .t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;}
 .t2{font-size: 17px; margin: 5px 0px;}

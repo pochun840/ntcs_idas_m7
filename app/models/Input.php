@@ -55,7 +55,7 @@ class Input{
     //get all job
     public function get_job_list()
     {
-        $sql = " SELECT  * FROM  JOB_lst  ORDER BY JOBID ASC ";
+        $sql = " SELECT  * FROM  JOB_lst  WHERE JOBID NOT IN('0','221') ORDER BY JOBID ASC ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute();
         $result = $statement->fetchAll();

@@ -31,11 +31,13 @@
                
                 <?php if($_SESSION['privilege'] == 'admin'){ ?>
                 <div>
+                    <button class="menu-item lime" id="remote" style="font-size: 20px" onclick="window.location.href='?url=Remotes'"><span style="visibility: hidden;">Remotes</span></button>
+
                     <?php if($data['agent_type'] == '2'){ ?>
-                            <button class="menu-item lime" id="agent" style="font-size: 24px"  onclick="window.location.href='?url=Agents'" ><span style="visibility: hidden;">Agent</span></button>
+                            <button class="menu-item lime" id="agent" style="font-size: 20px"  onclick="window.location.href='?url=Agents'" ><span style="visibility: hidden;">Agent</span></button>
                     <?php } ?>
-                            <button class="menu-item indigo" id="load" style="font-size: 24px" onclick="DB_sync_idas('C2D')"><span style="visibility: hidden;">Load</span></button>
-                            <button class="menu-item deep-orange" id="save" style="font-size: 24px;" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
+                            <button class="menu-item indigo" id="load" style="font-size: 20px" onclick="DB_sync_idas('C2D')"><span style="visibility: hidden;">Load</span></button>
+                            <button class="menu-item deep-orange" id="save" style="font-size: 20px;" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
                 </div>
                 <?php } ?>
 
@@ -336,5 +338,14 @@ function DB_sync_idas(argument) {
     #agent:hover {
         background: url("<?php echo $text['img_agent_hover']; ?>") no-repeat;
     }
+
+        
+    #remote {
+        background: url("<?php echo $text['img_remote']; ?>") no-repeat;
+    }
+    #remote:hover {
+        background: url("<?php echo $text['img_remote_hover']; ?>") no-repeat;
+    }
+    
             
 </style>

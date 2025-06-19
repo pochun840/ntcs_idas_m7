@@ -11,9 +11,9 @@
     <div class="main-content">
         <div class="center-content">
             <div class="topnav">
-                <label style="font-size:3vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
-                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="1" disabled style="height:30px; font-size:3vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
-                <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"><?php echo $text['select'];?></button>
+                <label style="font-size:3.2vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="1" disabled style="height:30px; font-size:3.2vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
+                <button id="Button_Select" class="w3-button w3-border w3-round-large" type="button" onclick="document.getElementById('JobSelect').style.display='block'"><?php echo $text['select'];?></button>
             </div>
 
             <!-- Job Select Modal -->
@@ -47,7 +47,7 @@
                 <div id="TableInputSetting" class="table-container">
                     <div class="scrollbar-inputtable" id="style-inputtable">
                         <div class="force-overflow-inputtable">
-                            <table id="input_table" class="table w3-table-all w3-hoverable">
+                            <table id="input_table" class="table w3-table">
                                 <thead id="header-table">
                                     <tr class="w3-dark-grey" style="font-size: 2.6vmin">
                                         <th width="60%"><?php echo $text['event'];?></th>
@@ -67,7 +67,7 @@
                                     </tr>
                                 </thead>
 
-                                <tbody id="input_jobid_select"  style="font-size: 2.5vmin;text-align: center;">
+                                <tbody id="input_jobid_select"  style="font-size: 2.6vmin;text-align: center;">
                                    
                                    
                                 </tbody>
@@ -92,7 +92,7 @@
                 <div id="TableDataInput" style="display: none" class="table-container">
                     <div id="Event_List" style="margin-top: 10px;background-color: #F2F2D9;">
                         <div class="w3-border-bottom" style="font-size: 20px;">Event List</div>
-                        <table class="table w3-table-all w3-hoverable" style="font-size: 2vmin">
+                        <table class="table w3-table-all w3-hoverable" style="font-size: 2.5vmin">
                             <tr>
                                 <td class="w3-left-align">1-50 SW Job ID</td>
                                 <td class="w3-left-align">101 <?php echo $text['disable'];?></td>

@@ -912,6 +912,36 @@ class Settings extends Controller
         exit();
     }
 
+        
+    public function GetJobSeq_for_modbus(){
+
+        $input_check = true;
+        $error_message = '';
+        
+        if( !empty($_GET['job_id']) && isset($_GET['job_id'])  ){
+            $job_id = $_GET['job_id'];
+        }else{ 
+            $input_check = false;
+            $error_message .= "job_id,";
+        }
+
+        if($input_check){
+            $result = $this->SettingModel->get_seq_list_for_modbus($job_id);
+            echo json_encode($result);
+            exit();
+        }else{
+            $data = [
+                'result' => 'fail',
+                'error_message' => $error_message
+            ];
+            echo json_encode($data);
+            exit();
+        }
+
+
+    }
+
+
 
     public function GetJobBarcode()
     {

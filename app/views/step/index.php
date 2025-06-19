@@ -25,7 +25,7 @@
             </div>
 
             <div class="table-container">
-                <table id="step_table" class="table w3-table-all w3-hoverable">
+                <table id="step_table" class="table w3-table">
                     <thead id="header-table">
                         <tr class="w3-dark-grey">
                             <th><?php echo $text['step_id'];?></th>

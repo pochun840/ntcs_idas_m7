@@ -1,5 +1,5 @@
 
-<link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_setting_m.css" type="text/css">
+<link rel="stylesheet" href="<?php echo URLROOT; ?>css/setting_m.css" type="text/css">
 
 <div class="container-ms">
     <div class="w3-text-white w3-center">
@@ -12,568 +12,49 @@
     </div>
     <div class="main-content">
         <div class="center-content">
-            <div class="menu-button w3-center">
-                <button id="bnt1" name="Controller_Display" class="button active" onclick="OpenButton('Controller')"><?php echo $text['controller_setting'];?></button>
-                <button id="bnt2" name="System_Display" class="button" onclick="OpenButton('System')"><?php echo $text['system_setting'];?></button>
-                <button id="bnt3" name="Barcode_Display" class="button" onclick="OpenButton('Barcode')"><?php echo $text['system_barcode_setting'] ;?></button>
-                <button id="bnt4" name="Connect_Display" class="button" onclick="OpenButton('Connect')"><?php echo $text['system_connect_setting'];?></button>
-                <button id="bnt5" name="iDas_Display" class="button" onclick="OpenButton('Update')">iDAS</button>
+            <div class="menu-button w3-center" id="button_setting">
+                <button id="bnt1" name="Controller_Display" class="t4 button active" onclick="OpenButton('Controller')"><?php echo $text['controller_setting'];?></button>
+                <button id="bnt2" name="System_Display" class="t4 button" onclick="OpenButton('System')"><?php echo $text['system_setting'];?></button>
+                <button id="bnt3" name="Barcode_Display" class="t4 button" onclick="OpenButton('Barcode')"><?php echo $text['system_barcode_setting'] ;?></button>
+                <button id="bnt4" name="Connect_Display" class="t4 button" onclick="OpenButton('Connect')"><?php echo $text['system_connect_setting'];?></button>
+                <button id="bnt5" name="iDas_Display" class="t4 button" onclick="OpenButton('Update')">iDAS</button>
             </div>
 
-            <!-- Controller Setting -->        
-            <div id="Controller_Setting" class="divMode">
-                <div class="col t1" style="font-weight: bold; padding-top: 1%"><?php echo $text['controller_setting'];?></div>
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_id'];?>:</div>
-                    <div class="col t2">
-                        <input id="control_id" name="control_id" type="number" max=250 min=1 maxlength="3" value="<?php echo $data['controller_info']['device_id'];?>" class="t3 form-control"  required>
-                    </div>
-                </div>    
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_name'];?>:</div>
-                    <div class="col t2">
-                        <input id="control_name" name="control_name" maxlength="14" type="text" value="<?php echo $data['controller_info']['device_name'];?>"  class="t3 form-control"  required>
-                    </div>
-                </div> 
-                
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_diskfull_warning'];?>:</div>
-                    <div class="col t2">
-                        <input id="storage_warning" name="storage_warning" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['storage_warning']) ? $data['controller_info']['storage_warning'] : ''; ?>" class="t3 form-control"  required>
-                        <div class="invalid-feedback"></div>
-                    </div>
-                </div>
-
-                
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_torque_filter'];?>:</div>
-                    <div class="col t2">
-                        <input id="torque_filter" name="torque_filter" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['torque_filter']) ? $data['controller_info']['torque_filter'] : ''; ?>" class="t3 form-control"  required>
-                        <div class="invalid-feedback"></div>
-                    </div>
-                </div>
-            
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['torque_unit'];?>:</div>
-                    <div class="col t2">
-                        <select id="select_torque_unit" name="select_torque_unit">
-                            <?php foreach($data['torque_unit'] as $k_unit =>$v_unit){?>
-                                <option value="<?php echo $k_unit; ?>" 
-                                    <?php echo ($k_unit == $data['controller_info']['torque_unit']) ? 'selected' : ''; ?>>
-                                <?php echo $v_unit; ?>
-                                </option>
-                            <?php } ?>
-                        </select>
-                    </div>
-                </div> 
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_language'];?>:</div>
-                    <div class="col-4 t2">
-                        <select id="select_language" name="select_language">
-                            <?php foreach($data['lang_arr'] as $k_lang =>$v_lang){?>
-                            <option value="<?php echo $k_lang;?>"  <?php echo $k_lang == $data['controller_info']['device_language'] ? 'selected' : ''; ?> ><?php echo $v_lang;?></option>
-                            <?php } ?>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Circular Archive_text'];?>:</div>
-                    <div class="col t2" >
-                        <div class="col-4 form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="circular_archive"  value="0"  <?php echo $data['controller_info']['circular_archive'] == 0 ? 'checked="checked"' : ''; ?>>
-                            <label class="form-check-label" for=""><?php echo $text['switch_off'];?></label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="circular_archive"  value="1"  <?php echo $data['controller_info']['circular_archive'] == 1 ? 'checked="checked"' : ''; ?> >
-                            <label class="form-check-label" for="`"><?php echo $text['switch_on'];?></label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_batch'];?>:</div>
-                    <div class="col t2" >
-      			      	<div class="col-4 form-check form-check-inline">
-                            <!--
-                            <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1" <//?php echo $data['controller_info']['batch'] == 1 ? 'checked="checked"' : ''; ?>>
-            				--> 
-        				    <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1">
-                            <label class="form-check-label" for="dec"><?php echo $text['system_dec'];?></label>
-            			</div>
-            			<div class="form-check form-check-inline">
-                            <!--
-            			    <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2" <//?php echo $data['controller_info']['batch'] == 2 ? 'checked="checked"' : ''; ?>>
-            			    -->
-                            <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2">
-            				<label class="form-check-label" for="inc"><?php echo $text['system_inc'];?></label>
-            			</div>
-                    </div>
-                </div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Blackout Recovery_text'];?>:</div>
-                    <div class="col t2">
-                        <div class="col-4 form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_off" value="0"  <?php echo $data['controller_info']['blackout_recovery'] == 0 ? 'checked="checked"' : ''; ?>>
-                            <label class="form-check-label"><?php echo $text['switch_off'];?></label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1"  <?php echo $data['controller_info']['blackout_recovery'] == 1 ? 'checked="checked"' : ''; ?>>
-                            <label class="form-check-label"><?php echo $text['switch_on'];?></label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_buzzer'];?>:</div>
-                    <div class="col t2">
-      			      	<div class="col-4 form-check form-check-inline">
-           				    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-on" value="1"  <?php echo $data['controller_info']['buzzer_mode'] == 1 ? 'checked="checked"' : ''; ?>>
-               				<label class="form-check-label" for="buzzer-on"><?php echo $text['switch_on'];?></label>
-               			</div>
-              			<div class="form-check form-check-inline">
-               			    <input class="form-check-input" type="radio" name="buzzer-option" id="buzzer-off" value="2" <?php echo $data['controller_info']['buzzer_mode'] == 2 ? 'checked="checked"' : ''; ?>>
-               				<label class="form-check-label" for="buzzer-off"><?php echo $text['switch_off'];?></label>
-               			</div>
-                    </div>
-                </div>
-
-                <div class="col t1" style="font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Downshift_Torque'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="global_downshift_torque" name="global_downshift_torque" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_torque']) ? $data['controller_info']['global_downshift_torque'] : ''; ?>" class="t3 form-control"  required>
-                        <div class="invalid-feedback"></div>
-                    </div>
-                </div>
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Downshift_Speed'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="global_downshift_speed" name="global_downshift_speed" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_speed']) ? $data['controller_info']['global_downshift_speed'] : ''; ?>" class="t3 form-control"  required>
-                        <div class="invalid-feedback"></div>
-                    </div>
-                </div>
-
-                <div style="text-align: center;margin-top: 20px;">
-                    <button class="all-btn w3-button w3-border w3-round-large" onclick="cc_save()"><?php echo $text['save'];?></button>
-                </div>
-
-                <hr class="hr">
-
-                <div class="col t1" style="font-weight: bold; padding-top: 1%"><?php echo $text['Button_Access_With_Password_text'];?></div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Clear_Seq_Button_text'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="clearseq_button_pwd" name="clearseq_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['clearseq_button_pwd']) ? $data['controller_info']['clearseq_button_pwd'] : ''; ?>"  class="t3 form-control"  required>
-                    </div>
-                </div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Clear_button_text'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="clear_button_pwd" name="clear_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['clear_button_pwd']) ? $data['controller_info']['clear_button_pwd'] : ''; ?>" class="t3 form-control"  required>
-                    </div>
-                </div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Confirm_button_text'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="confirm_button_pwd" name="confirm_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['confirm_button_pwd']) ? $data['controller_info']['confirm_button_pwd'] : ''; ?>" class="t3 form-control"  required>
-                    </div>
-                </div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Enable_button_text'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="enable_button_pwd" name="enable_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['enable_button_pwd']) ? $data['controller_info']['enable_button_pwd'] : ''; ?>" class="t3 form-control"  required>
-                    </div>
-                </div>
+        
+            <!-- idas_controller OP -->
+                <?php require_once '../app/views/setting/idas_controller_m.php';?>
+            <!-- idas_controller ED -->
 
 
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Disable_button_text'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="disable_button_pwd" name="disable_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['disable_button_pwd']) ? $data['controller_info']['disable_button_pwd'] : ''; ?>" class="t3 form-control"  required>
-                    </div>
-                </div>
+            <!-- idas_system OP -->
+                <?php require_once '../app/views/setting/idas_system_m.php';?>
+            <!-- idas_system ED -->
+               
+                                        
+            <!-- idas_barcode OP -->
+                <?php require_once '../app/views/setting/idas_barcode_m.php';?>
+            <!-- idas_barcode ED -->
 
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['Skip_button_text'];?>:</div>
-                    <div class="col-3 t2">
-                        <input id="skip_button_pwd" name="skip_button_pwd" maxlength="4" type="text" value="<?php echo isset($data['controller_info']['skip_button_pwd']) ? $data['controller_info']['skip_button_pwd'] : ''; ?>" class="t3 form-control"  required>
-                    </div>
-                </div>
-
-                <div style="text-align: center;margin-top: 20px;">
-                    <button class="all-btn w3-button w3-border w3-round-large" id="save_pwd" onclick="save_pwd()"><?php echo $text['save'];?></button>
-                </div>
-    
-                <hr class="hr">
-
-                <div class="col t1" style="font-weight: bold; padding-top: 1%"><?php echo $text['Background_Color_text'];?></div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['job_ok'];?>:</div>
-                    <div class="col t2" >
-                        <div class="col-4 form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_green" value="1"   <?php echo $data['controller_info']['okjobcolor'] == 1 ? 'checked="checked"' : ''; ?>>
-                            <label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_yellow" value="2"  <?php echo $data['controller_info']['okjobcolor'] == 2 ? 'checked="checked"' : ''; ?> >
-                            <label class="form-check-label" for=""><?php echo $text['yellow_text'];?></label>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['OK_Sequence'];?>:</div>
-                    <div class="col t2" >
-                        <div class="col-4 form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_green" value="1"  <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?>>
-                            <label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_yellow" value="2"  <?php echo $data['controller_info']['okseqcolor'] == 2 ? 'checked="checked"' : ''; ?> >
-                            <label class="form-check-label" for="`"><?php echo $text['yellow_text'];?></label>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div style="text-align: center;margin-top: 20px; margin-bottom:10px">
-                    <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="background_save()"><?php echo $text['save'];?></button>
-                </div>
-
-            </div>
+            <!-- idas_agent OP -->
+                <?php require_once '../app/views/setting/idas_agent.php';?>
+            <!-- idas_agent ED -->
 
             
-            <!-- System Setting -->
-            <div id="System_Setting" class="divMode" style="display: none">
-                <div class="col t1" style="font-weight: bold; padding-top: 1%;"><?php echo $text['system_setting'];?></div>
-                <!--
-                <div class="col t1"><?php echo $text['system_password'];?>:</div>
-                <div class="row t2 border-bottom">
-                    <div class="col t2">
-                        <form id="edit_password" method="get" style="margin: 3px 0px; margin-left: 15%">
-                            <input type="password" id="new_password" size="18" placeholder="<//?php echo $text['system_new_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round"><br>
-                            <input type="password" id="comfirm_password" size="18" placeholder="<//?php echo $text['system_confirm_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">
-                            <input type="button" value="<//?php echo $text['save'];?>"  onclick="edit_password()"  class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                        </form>
-                    </div>        
-                </div>          
-                -->
-                <div class="col t1"><?php echo $text['system_sys_date'];?>(UTC):</div>
-                <div class="row t2">
-                    <div class="col t2">
-                        <form style="margin-left: 10%">
-                            <span id="currentSystemTime"></span><br>
-                            <input type="datetime-local" id="newTime" value="" required class="t3 w3-submit w3-border w3-round" style="width: 200px">
-                            <input type="button" value="<?php echo $text['save'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right" onclick="time_save()">
-                        </form>
-                    </div>        
-                </div>  
-                <hr class="hr">        
-                <div class="row t2">
-                    <div class="col t1"><?php echo $text['system_export_config'];?>:</div>
-                    <div class="col t2">
-                        <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="Export_SystemConfig();"><?php echo $text['system_export_config'];?></button>
-                    </div>        
-                </div> 
-                <hr class="hr">
-                        
-                <div class="col t1"><?php echo $text['system_import_config'];?>:</div>         
-                <div class="row t2">
-                    <div class="col t2" style="margin-left: 10%">
-                        <input type="file" id="import-file-uploader" data-target="import-file-uploader" accept=".cfg" class="t3 w3-submit w3-border w3-round" style="width: 250px">
-                    </div>        
-                    <div class="col t2">
-                        <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="Import_SystemConfig();"><?php echo $text['system_import_config'];?></button>
-                    </div>
-                </div>  
-                <hr class="hr">                
-                        
-                <div class="col t1"><?php echo $text['system_firmware_update'];?>:</div>
-                <div class="row t2">
-                    <div class="col t2" style="margin-left: 10%">
-                        <input type="file" id="firmware-file-uploader" data-target="firmware-file-uploader" accept=".cfg" class="t3 w3-submit w3-border w3-round" style="width: 250px">
-                    </div>        
-                    <div class="col t2">
-                        <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="Firmware_Update();" ><?php echo $text['system_firmware_update'];?></button>
-                    </div>
-                </div>  
-                <hr class="hr">   
+            <!-- idas_update OP -->
+                <?php require_once '../app/views/setting/idas_update_m.php';?>
+            <!-- idas_update ED -->
 
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_diskfull_warning']; ?>:</div>
-                    <div class="col t2">
-                        <div class="progress custom-bg" style="height: 25px; width: 100%; border-radius: 10px;">
-                            <div id="disk-usage-bar" class="progress-bar custom-bar" style="border-radius: 10px; text-align: center; color: white;font-weight: bold;">0%</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row t2">
-                    <div class="col-6 t1"><?php echo $text['system_delete_database']; ?></div>
-                    <div class="col t2">
-                        <?php 
-                            if (!empty($data['history_year_arr'])) {
-                                foreach ($data['history_year_arr']['year'] as $key => $val) { ?>
-                                    <label class="year-item">
-                                    <input type="checkbox" 
-                                        class="year-checkbox zoom form-check-input"
-                                        name="year[]"
-                                        value="<?php echo htmlspecialchars($val); ?>"
-                                        onclick="onlyOne(this)"
-                                        <?php echo ($key === 0) ? 'checked' : ''; ?>>
-                                    <?php echo htmlspecialchars($val); ?>&nbsp;&nbsp;
-                                    </label>
-                                <?php }
-                            }
-                        ?>
-                    </div>  
-                </div>
-                <div class="row t2">
-                    <div class="col t2" style="margin-bottom:5px">
-                        <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="deleteSelectedFiles();"><?php echo $text['delete_text']; ?></button>
-                    </div>   
-                </div>
-
-            </div>
-
-            <!-- barcode Setting -->
-            <div id="Barcode_Setting" class="divMode" style="display: none">
-                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_barcode_setting'] ;?></div>
-                <div class="barcode-scrollbar" id="style-barcode">
-                    <div class="barcode-force-overflow">                
-                        <div class="table-container" style="padding: 0px 10px;">
-                            <div class="scrollbar" id="style-table">
-                                <div class="force-overflow">
-                                    <table id="job_table" class="table w3-table-all w3-hoverable">
-                                        <thead id="header-table" style="font-size: 2.3vmin;text-align: center;">
-                                            <tr class="w3-dark-grey">
-                                                <th></th>
-                                                <th><?php echo $text['job_id'];?></th>
-                                                <th><?php echo $text['job_name'];?></th>
-                                                <th><?php echo $text['system_barcode'];?></th>
-                                                <th><?php echo $text['system_barcode_from'];?></th>
-                                                <th>Count</th>
-                                            </tr>
-                                        </thead>
-
-                                        <tbody style="font-size: 2.2vmin;text-align: center;" id='total_barcodes'>
-                                        <?php foreach ($data['barcodes'] as $k_b =>$v_b){?>
-                                            <tr >
-
-                                                <td style="text-align: center; vertical-align: middle;" >
-                                                    <input class="form-check-input" type="checkbox" name="barcode_check" id="barcode_check" value="<?php echo $v_b['barcode_selected_job'];?>" style="zoom:1.2">
-                                                </td> 
-                                                <td><?php echo $v_b['barcode_selected_job'];?></td>
-                                                <td><?php echo $v_b['job_name'];?></td>
-                                                <td><?php echo $v_b['barcode'];?></td>
-                                                <td><?php echo $v_b['barcode_range_from'];?></td>
-                                                <td><?php echo $v_b['barcode_range_count'];?></td>
-                                            </tr>
-                                        <?php } ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                         
-                        <hr>
-                                       
-                        <div class="row t2">
-                            <div class="col-4 t1"><?php echo $text['system_barcode'];?>:</div>
-                            <div class="col-8 t2">
-                                <input id="barcode_name" name="barcode_name" style="height: 32px" type="text" value="" maxlength="54" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="row t2">
-                            <div class="col-4 t1"><?php echo $text['system_barcode_match_from'];?>:</div>
-                            <div class="col-5 t2">
-                                <input id="barcode_from" name="barcode_from" style="height: 32px" type="text" value="" class="form-control">
-                            </div>
-                        </div>
-                        <div class="row t2">
-                            <div class="col-4 t1"><?php echo $text['system_barcode_match_to'];?>:</div>
-                            <div class="col-5 t2">
-                                <input id="barcode_count" name="barcode_count" style="height: 32px" type="text" value="" class="form-control">
-                            </div>
-                        </div>
-                        <div class="row t2">
-                            <div class="col-4 t1"><?php echo $text['select_job'];?>:</div>
-                            <div class="col-5 t2">
-                            <select class="form-select" id="barcode_job" name="barcode_job">
-                                <option value="-1"><?php echo $text['system_barcode_select_job_m'];?></option>
-                                    <?php
-                                    foreach ($data['job_list'] as $key => $value) {?>
-                                        <option value='<?php echo $value['job_id'];?>'><?php echo $value['job_id']." ".$value['job_name'];?></option>
-                                    <?php }?>
                                     
-                            </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>    
-                        
-                <div style="text-align: center;margin-top: 30px;">
-                    <button class="all-btn w3-button w3-border w3-round-large" onclick="update_barcode()" ><?php echo $text['save'];?></button>&nbsp;&nbsp;
-                    <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode()" ><?php echo $text['delete_text'];?></button>
-                </div>               
-            </div>
-
-            <!-- Connection Setting -->
-            <div id="Connect_Setting" class="divMode" style="display: none">
-                <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_connect_setting'];?></div>
-                <div class="connect-scrollbar" id="style-connection">
-                    <div class="connect-force-overflow">
-                        <div class="col t1"><?php echo $text['system_connect_number'];?>:</div>
-                        <div class="row t2 border-bottom">
-                            <div class="col t2">
-                                <form id="edit_max_link" style="margin: 3px 0px; margin-left: 14%" method="post">
-                                    <input type="text" name="max_user" id="max_user" inputmode="numeric" pattern="[0-9]*" min='1' size="15" maxlength="2" required class="t3 w3-submit w3-border w3-round"><br>
-                                    <span><?php echo $text['system_connect_max_number'];?> : <?php echo $data['max_user']; ?></span>
-                                    <input type="button" onclick="set_max_link()" value="Save" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <div class="col t1"><?php echo $text['system_connect_guest_pwd'];?>:</div>
-                        <div class="row t2 border-bottom">
-                            <div class="col t2">
-                                <form  style="margin: 3px 0px; margin-left: 14%">
-                                    <input type="password" id="new_password_guest" size="15" placeholder="<?php echo $text['system_new_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">&nbsp;
-                                    <input type="password" id="comfirm_password_guest" size="15" placeholder="<?php echo $text['system_confirm_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">
-                                    <input type="button" value="Save" onclick ="button_save_password_gust()" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                                </form>
-                            </div>        
-                        </div>          
-
-                        <div class="col t1">Agent IP:</div>
-                        <div class="row t2 border-bottom">
-                            <div class="col t2">
-                                <form id="agent_ip" style="margin: 3px 0px; margin-left: 14%" method="post">
-                                    <input type="text" name="agent_server_ip" id="agent_server_ip" size="15" required class="t3 w3-submit w3-border w3-round"><br>
-                                    <span>Agent IP : <?php echo $data['agent_server_ip']; ?></span> 
-                                    <input type="button" value="Save" onclick="set_agent_ip()" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="col t1">Agent Type:</div>
-                        <div class="row t2">
-                            <div class="col t2">
-                                <form id="agent_type_form"  method="post" style="margin: 3px 0px; margin-left: 9%">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="agent_type" id="agent_type_0" value="0">
-                                        <label class="form-check-label" for="agent_type_0">None</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="agent_type" id="agent_type_1" value="1">
-                                        <label class="form-check-label" for="agent_type_1">Client</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="agent_type" id="agent_type_2" value="2" required>
-                                        <label class="form-check-label" for="agent_type_2">Server</label>
-                                    </div>
-                                    <input type="button" value="Save" onclick="set_agent_type()" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                            </div>
-                            <div class="row">
-                                <div class="col t2" style="margin: 3px 0px; margin-left: 9%">
-                                    <span>Client Status:<div id="c_status" style="display:inline-block;"></div></span>
-                                    <span>Server Status:<div id="s_status" style="display:inline-block;"></div></span>
-
-                                    <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px"  onclick="StatusCheck()"  >Check</button>
-                                    <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px;" onclick="StatusCheck('start')">START</button>
-                                    <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px"  onclick="StatusCheck('stop')" >STOP</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr>
-                        
-                        <form action="" method="post" style="padding: 0px 10px">
-                            <div class="table-responsive" style="overflow-y: auto; margin-bottom: 20px">
-                                <div class="scrollbar" id="style-table">
-                                    <div class="scrollbar-force-overflow">
-                                        <table class="table w3-table-all w3-hoverable">
-                                            <thead id="header-table" style="font-size: 2.3vmin;text-align: center;">
-                                                <tr class="w3-dark-grey">
-                                                    <th><?php echo $text['select'];?></th>
-                                                    <th><?php echo $text['system_connect_username'];?></th>
-                                                    <th>IP</th>
-                                                    <th><?php echo $text['system_connect_timestamp'];?></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody style="font-size: 2.2vmin;text-align: center;">
-                                                <?php foreach($data['active_session'] as $key =>$val){?>
-                                                    <tr>
-                                                        <td style="text-align: center; vertical-align: middle;">
-                                                            <input class="form-check-input" type="checkbox" name="barcode_check" id="" value="<?php echo $val['id'];?>" style="zoom:1.2">
-                                                        </td>
-                                                        <td><?php echo $val['username'];?></td>
-                                                        <td><?php echo $val['ip'];?></td>
-                                                        <td><?php echo $val['timestamp'];?></td>
-
-                                                    </tr>
-                                                <?php }?>
-                                                
-                                              
-                                            
-                                              
-                                                
-                                            </tbody>
-                                        </table>
-                                    </div>    
-                                </div>
-                                <input type="submit" value="<?php echo $text['Delete'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right; margin-top: 10px">                              
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- iDas Update Setting -->
-            <div id="iDas-Update_Setting" class="divMode" style="display: none;">
-                <div class="col t1" style="padding-top: 5%">Current iDAS Version:</div>
-                <div class="row t2">
-                    <div class="col-6 t2" style="margin-left: 20%">
-                        <input id="idas_software_version" name="idas_software_version" type="text" value="<?php echo $data['iDas_Vesion'];?>"  style="height: 32px" class="form-control" disabled>
-                    </div>
-                </div>
-
-                <div class="col t1">Match Controller Version:</div>
-                <div class="row t2">
-                    <div class="col-6 t2" style="margin-left: 20%">
-                        <input id="match_control_version" name="match_control_version" type="text" value="" style="height: 32px" class="form-control" disabled>
-                    </div>
-                </div>
-
-                <div class="col t1">Upload file:</div>
-                <div class="row t2">
-                    <div class="col-8 t2" style="margin-left: 20%">
-                        <input type="file" id="file-uploader" data-target="file-uploader" accept=".pack" class="form-control" style="height: 32px;">
-                    </div>
-                </div>
-
-                <div style="text-align: center;margin-top:50px;">
-                    <input class="all-btn w3-submit w3-border w3-round-large" type="button" value="Update" onclick='idas_update();'>
-                </div> 
-            </div>
         </div>
-    </div>        
+    </div>    
+    
+    <!-- 加载動畫 OP -->
+        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
 </div>
 
 <script>
-
-
-
 
 function time_save(){
     var newTime = document.getElementById('newTime').value;
@@ -731,5 +212,32 @@ function OpenButton(ButtonMode){
         //alert("Function ["+ ButtonMode +"] is under constructing ...");
     }
 }
+
+// 切換表格頁面
+function changePage(tableId, direction) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const tableRows = table.getElementsByTagName("tr");
+    const totalRows = tableRows.length - 1; // 不算標題行
+
+    // 更新表格的頁面狀態
+    tableState[tableId] += direction;
+
+    // 確保頁面不會超過總頁數
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+    if (tableState[tableId] < 0) tableState[tableId] = 0;
+    if (tableState[tableId] >= totalPages) tableState[tableId] = totalPages - 1;
+
+    // 顯示當前頁面
+    showPage(tableId, tableState[tableId]);
+}
+
+// **當頁面載入完成時，確保表格顯示第一頁的兩行資料**
+document.addEventListener("DOMContentLoaded", () => {
+    showPage("job_table", 0);
+    showPage("connection-table", 0);
+});
+
 
 </script>    
