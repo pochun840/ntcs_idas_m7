@@ -171,7 +171,9 @@ function DB_sync_idas(argument) {
 
         const interval = setInterval(() => {
             progress += 1;
-            const progressBar = document.getElementById('syncProgress');
+            const progressBar = document.getElementById('animatedProgressBar');
+            if (progressBar) progressBar.style.width = progress + "%";
+
             const syncText = document.getElementById('syncText');
             if (progressBar) progressBar.value = progress;
             if (syncText) syncText.innerText = syncingText + ' ' + progress + '%';
@@ -242,20 +244,67 @@ function DB_sync_idas(argument) {
     }
 
     function createProgressDialog(syncingText) {
+
         const dialog = document.createElement("div");
         dialog.id = "customProgressDialog";
         Object.assign(dialog.style, {
             position: "fixed", top: "30%", left: "50%",
             transform: "translate(-50%, -30%)",
-            padding: "20px", background: "#fff", borderRadius: "10px",
-            boxShadow: "0 0 10px rgba(0,0,0,0.3)", zIndex: "9999"
+            padding: "20px", background: "#fff", borderRadius: "20px",
+            boxShadow: "0 0 20px rgba(0,0,0,0.3)", zIndex: "9999",
+            width: "300px", textAlign: "center", fontFamily: "Arial"
         });
+
         dialog.innerHTML = `
-            <div id="syncText" style="margin-bottom: 10px; text-align:center;">${syncingText} 0%</div>
-            <progress id="syncProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+            <div id="syncText" style="margin-bottom: 10px; font-size: 16px; font-weight: bold;">
+                ${syncingText} 0%
+            </div>
+            <div class="spinner"></div>
+            <div class="progress-bar-container" style="margin-top: 15px;">
+                <div class="progress-bar-fill" id="animatedProgressBar"></div>
+            </div>
+            <style>
+            .spinner {
+                margin: 10px auto;
+                width: 32px;
+                height: 32px;
+                border: 4px solid #ddd;
+                border-top: 4px solid #00bfff;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            .progress-bar-container {
+                width: 100%;
+                height: 20px;
+                background: #e0e0e0;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .progress-bar-fill {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(270deg, #4facfe, #00f2fe);
+                background-size: 400% 400%;
+                animation: gradientMove 4s ease infinite;
+                border-radius: 10px;
+                transition: width 0.2s ease-in-out;
+            }
+
+            @keyframes gradientMove {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+            </style>
         `;
         document.body.appendChild(dialog);
     }
+
 
     function removeProgressDialog() {
         const dialog = document.getElementById("customProgressDialog");

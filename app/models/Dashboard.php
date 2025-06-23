@@ -86,20 +86,21 @@ class Dashboard{
     }
 
 
-    public function get_info($chat_mode) {
+    public function get_info($chat_mode, $id) {
+        
         $resultarr = [];
 
-        // 找出最新的 CSV 檔案
+        // 找出所有符合 $id 的 CSV 檔案
         $csv_folder = "/mnt/ramdisk/ftp/";
-        $csv_files = glob($csv_folder . "*.csv");
+        $csv_files = glob($csv_folder . $id . "__*.csv");  // ✅ 根據 ID 篩選檔名開頭
 
         if (empty($csv_files)) {
             return [];
         }
 
-        // 取得最新 CSV 檔
+        // 根據建立時間由新到舊排序
         usort($csv_files, fn($a, $b) => filectime($b) - filectime($a));
-        $latest_file = $csv_files[0];
+        $latest_file = $csv_files[0];  // 最新的符合檔案
 
         // 讀取並轉為陣列
         $csv_content = file_get_contents($latest_file);
@@ -111,7 +112,7 @@ class Dashboard{
         $csv_array = array_map('str_getcsv', $lines);
         $csv_array = array_filter($csv_array); // 過濾空行
 
-        // ➤ 統一 Torque 資料（欄位 1）
+        // ➤ Torque 模式 (1, 4, 5)：抓欄位 1
         if (in_array((int)$chat_mode, [1, 4, 5])) {
             $torque = [];
             foreach ($csv_array as $row) {
@@ -120,7 +121,7 @@ class Dashboard{
                 }
             }
 
-            // ➤ Mode 5：再補 RPM（欄位 3）
+            // ➤ Mode 5：再抓 RPM 欄位（第 3 欄）
             if ((int)$chat_mode === 5) {
                 $rpm = [];
                 foreach ($csv_array as $row) {
@@ -152,15 +153,12 @@ class Dashboard{
 
 
 
-
-    public function get_csv_first_column() {
-        
+    public function get_csv_first_column($id) {
         $first_column = array();
-
         $folder = "/mnt/ramdisk/ftp/";
 
-        // 取得所有 .csv 結尾的檔案
-        $file_list = glob($folder . "*.csv");
+        // 取得所有以指定 ID 開頭且結尾為 .csv 的檔案
+        $file_list = glob($folder . $id . "__*.csv");
 
         if (!empty($file_list)) {
             // 根據建立時間從新到舊排序
@@ -168,7 +166,7 @@ class Dashboard{
                 return filectime($b) - filectime($a);
             });
 
-            $latest_file = $file_list[0]; // 最新的 CSV 檔案
+            $latest_file = $file_list[0]; // 最新的一個符合條件的檔案
 
             if (file_exists($latest_file)) {
                 $csvdata_tmp = file_get_contents($latest_file);
@@ -179,7 +177,7 @@ class Dashboard{
 
                     foreach ($csv_array as $subarray) {
                         if (isset($subarray[0])) {
-                            $first_column[] = $subarray[0]; // 取第一欄
+                            $first_column[] = $subarray[0]; // 取出第一欄
                         }
                     }
                 }
@@ -189,8 +187,10 @@ class Dashboard{
         return $first_column;
     }
 
+
+
     public function get_Data(){
-        $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 1";
+        $sql = "SELECT * FROM ntcs_data ORDER BY  id DESC LIMIT 1";
         $statement = $this->db_data->prepare($sql);
         if ($statement) { 
             $statement->execute();

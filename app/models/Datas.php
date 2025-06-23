@@ -75,4 +75,28 @@ class Datas{
         }
     }
 
+
+    public function get_operation_info() {
+
+        if (is_null($this->db_data)) {
+            return null;
+        }
+    
+        $sql = "SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1";
+    
+        try {
+            $statement = $this->db_data->prepare($sql);
+            $statement->execute();
+            $result = $statement->fetch(PDO::FETCH_ASSOC); 
+            $statement = null; // 釋放資源
+            return $result ?: null; // 沒資料也回傳 null
+        } catch (PDOException $e) {
+            $statement = null; // 釋放資源
+            return null; // 發生錯誤也回傳 null
+        }
+    }
+
+
+
+
 }

@@ -5,12 +5,16 @@ class Dashboards extends Controller
     private $DashboardModel;
     private $AdminModel;
     private $MiscellaneousModel;
+    private $DataModel;
+    private $SettingModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->DashboardModel = $this->model('Dashboard');
         $this->AdminModel = $this->model('Admin');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->DataModel = $this->model('Datas');
+        $this->SettingModel = $this->model('Setting');
     }
 
     // 取得所有Jobs
@@ -38,35 +42,63 @@ class Dashboards extends Controller
 
 
     public function operation() {
-
+        
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $isMobile   = $this->isMobileCheck();
         $data_info  = $this->DashboardModel->get_Data() ?? [];
+        $controller_info = $this->SettingModel->GetControllerInfo();
+        $status_arr       = $this->MiscellaneousModel->details('status');
 
-        if (!empty($data_info['error_message'])) {
+        if (!empty($data_info['fasten_status'])) {
+        
             $data_info['error_message'] = $error_message['ERR_' . $data_info['error_message']] ?? $data_info['error_message'];
+
+            $fastenStatus = (string)$data_info['fasten_status'];
+
+            // 預設為綠色（成功狀態）
+            $color = 'green';
+
+            if (in_array($fastenStatus, ['5', '6'])) {
+                $controller_info = $this->SettingModel->GetControllerInfo();
+                $color = ($controller_info['okseqcolor'] ?? 0) == 1 ? 'green' : 'yellow';
+            } elseif (in_array($fastenStatus, ['7', '8'])) {
+                $color = 'red';
+            }
+
+
+            $data_info['fasten_status_text'] = $status_arr[$fastenStatus];
+            $data_info['result_status_color_text'] = $color;
+
+            //
         }
 
-        $status_arr       = $this->MiscellaneousModel->details('status');
+
+
+        // 最新鎖附資料取得 ID
+        $id = null;
+        $first_data = $this->get_current_data();
+        if (!empty($first_data)) {
+            $id = $first_data['id'];
+        }
+
         $chart_mode       = isset($_GET['chart']) && $_GET['chart'] >= 1 && $_GET['chart'] <= 6 ? (int)$_GET['chart'] : 1;
         $chat_mode_arr    = $chart_mode;
-        $x_val            = $this->DashboardModel->get_csv_first_column();
+        $x_val            = $this->DashboardModel->get_csv_first_column($id);
         if (!empty($x_val)) $x_val = array_slice($x_val, 1);
 
         $chart_menu_arr   = $this->MiscellaneousModel->details('chart_menu');
         $chart_mode_arr   = $this->MiscellaneousModel->details('chart_mode');
         $echart_name      = explode("/", $chart_mode_arr[$chart_mode]);
 
-        $temp_chart       = [];
-        $csvdata_arr      = $this->DashboardModel->get_info($chart_mode);
+        $temp_chart       = null;
+        $csvdata_arr      = $this->DashboardModel->get_info($chart_mode, $id);
 
-        // ➤ Torque 統一範圍：用 mode 5 的 torque
+        // Torque 統一範圍：用 mode 5 的 torque
         $unified_min_torque = 0;
         $unified_max_torque = 100;
-
-        $torque_range_mode5 = $this->DashboardModel->get_info(5);
+        $torque_range_mode5 = $this->DashboardModel->get_info(5, $id);
         if (!empty($torque_range_mode5['torque'])) {
             $torque_vals = $torque_range_mode5['torque'];
             array_shift($torque_vals);
@@ -76,11 +108,10 @@ class Dashboards extends Controller
             }
         }
 
-        // ➤ RPM 統一範圍：用 mode 3 的 rpm
+        // RPM 統一範圍：用 mode 3 的 rpm
         $unified_min_rpm = null;
         $unified_max_rpm = null;
-
-        $rpm_range_mode3 = $this->DashboardModel->get_info(3);
+        $rpm_range_mode3 = $this->DashboardModel->get_info(3, $id);
         if (!empty($rpm_range_mode3['rpm'])) {
             $rpm_vals = $rpm_range_mode3['rpm'];
             array_shift($rpm_vals);
@@ -90,36 +121,42 @@ class Dashboards extends Controller
             }
         }
 
+        // ✅ 當資料不為空時才處理圖表
         if (!empty($csvdata_arr)) {
             if ($chart_mode !== 5) {
-                $csvdata_arr = array_slice($csvdata_arr, 1); // 去標頭
+                $csvdata_arr = array_slice($csvdata_arr, 1);
                 $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $chat_mode_arr, $x_val);
-            } elseif (isset($csvdata_arr['torque'], $csvdata_arr['rpm']) &&
-                    is_array($csvdata_arr['torque']) && is_array($csvdata_arr['rpm'])) {
+            } elseif (
+                isset($csvdata_arr['torque'], $csvdata_arr['rpm']) &&
+                is_array($csvdata_arr['torque']) && is_array($csvdata_arr['rpm']) &&
+                !empty($csvdata_arr['torque']) && !empty($csvdata_arr['rpm'])
+            ) {
                 array_shift($csvdata_arr['torque']);
                 array_shift($csvdata_arr['rpm']);
                 $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $chat_mode_arr, $x_val);
             }
 
-            // ➤ 套用 torque 範圍
-            if (in_array($chart_mode, [1, 4, 5])) {
-                $temp_chart['min_torque'] = $unified_min_torque;
-                $temp_chart['max_torque'] = $unified_max_torque;
+            // 如果成功取得圖表資料才套用 min/max
+            if (!empty($temp_chart)) {
+                if (in_array($chart_mode, [1, 4, 5])) {
+                    $temp_chart['min_torque'] = $unified_min_torque;
+                    $temp_chart['max_torque'] = $unified_max_torque;
+                }
+
+                if ($chart_mode == 5 && $unified_max_rpm > $unified_min_rpm) {
+                    $temp_chart['min_rpm'] = $unified_min_rpm;
+                    $temp_chart['max_rpm'] = $unified_max_rpm;
+                }
+
+                if (!isset($temp_chart['min_torque'])) $temp_chart['min_torque'] = 0;
+                if (!isset($temp_chart['max_torque'])) $temp_chart['max_torque'] = 100;
             }
-
-            // ➤ chart_mode == 5 要額外套用 rpm 統一範圍
-            /*if ($chart_mode == 5 && $unified_max_rpm > $unified_min_rpm) {
-                $temp_chart['min_rpm'] = $unified_min_rpm;
-                $temp_chart['max_rpm'] = $unified_max_rpm;
-            }*/
-
-            if (!isset($temp_chart['min_torque'])) $temp_chart['min_torque'] = 0;
-            if (!isset($temp_chart['max_torque'])) $temp_chart['max_torque'] = 100;
         }
 
+        // 打包回前端
         $data = [
             'isMobile'       => $isMobile,
-            'chart_info'     => $temp_chart,
+            'chart_info'     => $temp_chart, // 若為 null，前端會顯示「無可用資料」
             'echart_name'    => $echart_name,
             'chart_mode'     => $chart_mode,
             'chart_menu_arr' => $chart_menu_arr,
@@ -128,6 +165,7 @@ class Dashboards extends Controller
             'text'           => $text ?? []
         ];
 
+        // 如果是 AJAX 請求，回傳 JSON
         if (
             (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
             isset($_GET['ajax'])
@@ -137,14 +175,13 @@ class Dashboards extends Controller
             return;
         }
 
+        // 否則載入網頁
         if ($isMobile) {
             $this->view('dashboards/operation_m', $data);
         } else {
             $this->view('dashboards/operation', $data);
         }
     }
-
-
 
 
 
@@ -225,6 +262,19 @@ class Dashboards extends Controller
         }, $x_val);
 
         return $chart_info;
+    }
+
+
+    
+    public function get_current_data(){
+
+        $status_arr = $this->MiscellaneousModel->details('status');
+        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+
+        $current_data = $this->DataModel->get_operation_info(); 
+
+        return $current_data;
+    
     }
 
 
