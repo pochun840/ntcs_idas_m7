@@ -66,7 +66,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: 70%">
                 <header class="w3-container modal-header">
-                    <span onclick="hideElementById('newjob');"
+                    <span onclick="closebutton('newjob');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                     <h3 id='modal_title'><?php echo $text['new_job'];?></h3>
                 </header>
@@ -136,7 +136,7 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: 70%">
                 <header class="w3-container modal-header">
-                    <span onclick="hideElementById('editjob');"
+                    <span onclick="closebutton('editjob')"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                     <h3 id='modal_title'><?php echo $text['edit_job'];?></h3>
                 </header>
@@ -207,7 +207,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: 60%">
                 <header class="w3-container modal-header">
-                    <span onclick="hideElementById('copyjob');"
+                    <span onclick="closebutton('copyjob');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                     <h3 id='modal_title'><?php echo $text['copy_job'];?></h3>
                 </header>
@@ -260,8 +260,10 @@
         <?php require_once '../app/views/inc/include_spinner.php';?>
     <!-- 加载動畫 ED -->
 
-
+                                        
 
 </div>
+
+
 
 <?php require_once '../app/views/jobs/jobs_share.php';?>

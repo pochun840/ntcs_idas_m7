@@ -98,7 +98,7 @@ class Controller
     public function LoginCheck($value='')
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/ntcsidas/das.db'); 
+            $con_db = new PDO('sqlite:/var/www/html/database/das.db'); 
         }else{
             $con_db = new PDO('sqlite:../data.db'); 
         }
@@ -207,21 +207,169 @@ class Controller
     //取得tcscon device table資訊
     public function Device_Info()
     {
-        if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/ntcsidas/data_device.db'); 
-        }else{
-            $con_db = new PDO('sqlite:../data_device.db'); 
-            
+        try {
+            if (PHP_OS_FAMILY === 'Linux') {
+                $db_path = '/var/www/html/database/data_device.db';
+            } else {
+                $db_path = '../data_device.db';
+            }
+
+            if (!file_exists($db_path)) {
+                throw new Exception("❌ Database file not found: $db_path");
+            }
+
+            $con_db = new PDO('sqlite:' . $db_path);
+            $con_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $con_db->exec('PRAGMA encoding = "UTF-8"');
+
+            $sql = 'SELECT * FROM device';
+
+            $statement = $con_db->prepare($sql);
+            if (!$statement) {
+                $errorInfo = $con_db->errorInfo();
+                throw new Exception("❌ SQL prepare failed: " . $errorInfo[2]);
+            }
+
+            $statement->execute();
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+            return $row;
+        } catch (Exception $e) {
+            error_log($e->getMessage());
+            echo $e->getMessage(); // 或回傳空陣列 return [];
+            return null;
+        }
+    }
+
+    
+
+    //用起子的狀態 來判斷是否可以匯入匯出資料???? 
+    public function idas_check(){
+
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 4345;
+        $quantity = 1;
+
+        $response = ['result' => null, 'error' => ''];
+
+        // 驗證 IP 格式
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $response['error'] = "無效的 IP 位址：$ip";
+            echo json_encode($response);
+            return;
         }
 
-        $con_db->exec('set names utf-8'); 
-        $sql = 'SELECT * FROM device';
-        $statement = $con_db->prepare($sql);
-        $results = $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
 
-        return $row;        
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            $response['result'] = $data[1] ?? null;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+
+        return $response;
     }
+
+        
+    //取得控制器 目前用了多少容量
+    public function check_controller_size(){
+
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 269;
+        $quantity = 1;
+
+        $response = ['result' => null, 'error' => ''];
+
+        // 驗證 IP 格式
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $response['error'] = "無效的 IP 位址：$ip";
+            echo json_encode($response);
+            return;
+        }
+
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
+
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            $response['result'] = $data[1] ?? null;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+
+        echo json_encode($response);
+    }
+
+    /*public function Call_Controller_Job()
+    {
+        //get controller ip
+        $controller_ip = $this->EquipmentModel->GetControllerIP(1);
+
+        $input_check = true;
+        $error_message = '';
+        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
+            $job_id = $_POST['job_id'];
+        }else{ 
+            $input_check = false;
+            $error_message .= "job_id,";
+        }
+        if( !empty($_POST['seq_id']) && isset($_POST['seq_id'])  ){
+            $seq_id = $_POST['seq_id'];
+        }else{ 
+            $input_check = false;
+            $error_message .= "seq_id,";
+        }
+
+        if ($input_check) {
+            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+            $modbus = new ModbusMaster($controller_ip, "TCP");
+            try {
+                $modbus->port = 502;
+                $modbus->timeout_sec = 10;
+                $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
+                
+                // FC 16
+                $test = array(0);
+                $test1 = array(1);
+                $modbus->writeMultipleRegister(0, 517, $test, $dataTypes);//起子禁用
+                echo $modbus->status;
+                exit();
+
+            } catch (Exception $e) {
+             
+                $this->logMessage('operation-1','result-2',json_encode( array('job_id'=> $job_id,'seq_id'=> $seq_id, 'raw' => $_POST ) ));
+                echo $modbus->status;
+                exit();
+            }
+        }else{
+            echo json_encode(array('error' => $error_message));
+            exit();
+        }
+
+        echo json_encode($job_detail);
+        exit();
+        
+    }*/
 
 
 }

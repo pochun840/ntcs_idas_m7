@@ -43,6 +43,7 @@ function include_css() {
         'Tools'     => ['pc' => 'tools.css'],
         'Data'      => ['pc' => 'data.css'],
         'Agents'    => ['pc' => 'agent.css'],
+        'Remotes'   => ['pc' => 'jobs.css'],
     ];
 
     $cssFile = null;
@@ -56,7 +57,6 @@ function include_css() {
         } else {
             $cssFile = 'operation.css'; // fallback
         }
-
 
     // 特例處理 - In 模組
     } elseif ($controller === 'In') {

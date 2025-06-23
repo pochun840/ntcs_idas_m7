@@ -218,6 +218,28 @@ function deleteCookie(name) {
 }
 
 function closebutton(elementId) {
+    // 關閉指定 modal
+    const modal = document.getElementById(elementId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+
+    // 移除 main-content 的效果（若有）
+    const mainContent = document.querySelector(".main-content");
+    if (mainContent) {
+        mainContent.classList.remove("overlay-active");
+    }
+
+    // 關閉遮罩（若存在）
+    const overlay = document.getElementById("modal-overlay");
+    if (overlay) {
+        overlay.style.display = "none";
+    }
+}
+
+
+
+function closebutton_io(elementId) {
     // 確保傳入的 elementId 有效，並且元素存在
     document.getElementById(elementId).style.display = 'none';
    
@@ -277,14 +299,13 @@ function checkAuthToken() {
     // 檢查 auth_token 是否存在
     const authToken = getCookie('auth_token');
     if (!authToken) {
-        alertify.alert(titleText, msg, function () {
-            window.location.href = "/login";
-        });
+        alert(titleText + "\n\n" + msg);
+        window.location.href = "/login";
     }
 }
 
 // 呼叫檢查
-checkAuthToken();
+//checkAuthToken();
 
 
 function success_response_seq(response, spinnerId = 'spinner', redirectUrl = null) {
@@ -336,3 +357,5 @@ function handleAjaxResponse(responseData) {
         alert("回傳格式錯誤");
     }
 }
+
+

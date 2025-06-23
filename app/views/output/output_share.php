@@ -1,21 +1,832 @@
 <script>
- function getLanguageMessage(cookieName) {
-    var value = "; " + document.cookie;
-    var parts = value.split("; " + cookieName + "=");
-    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
-    var message;
-    if (language === 'en-us') {
-       message =  'Please select the event to delete';
-    } else if (language === 'zh-cn') {
-       message =  '请选择要删除的事件';
-    } else if (language === 'zh-tw') {
-       message =  '請點選要刪除的事件';
-    } else {
-      message =  'Please select the event to delete';
-    }
-   alertify.alert(message);
-}   
+var job_id; 
+var output_event;
+var temp;
+var tempA;
+var buttonDisabled = false;
+var backgroundColorYellow = false;
+var output_job;
+var all_job;
+var del_output_val;
+var output_pinval;
+var temp_event;
+$(document).ready(function () {
+    highlight_row_input('output_table');
 
+    var all_output_job = '<?php echo $data['device_data']['device_output_all_job']?>';
+    job_id = all_output_job ;
+    output_job = all_output_job;
+    if(job_id){
+        get_output_by_job_id(job_id);
+        document.getElementById('Button_Select').disabled = true;
+        document.getElementById('job_id').style.backgroundColor = 'yellow';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  var observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      var headerElements = document.querySelectorAll('.ajs-header');
+      headerElements.forEach(function(headerElement) {
+        headerElement.parentNode.removeChild(headerElement);
+      });
+    });
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+});
+
+var modal = document.getElementById('newinput');
+
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+
+function crud_job_event(argument) {
+    const table = document.getElementById('output_table');
+    const selectedRow = table.querySelector('tr.selected');
+
+    if (selectedRow) {
+        output_event = selectedRow.getAttribute('data-event');
+        output_pinval = selectedRow.querySelector('[data-outputpin]')?.getAttribute('data-outputpin') || null;
+        del_output_val = output_event;
+    }
+
+    if (!job_id) return;
+
+    const showModal = (id) => document.getElementById(id).style.display = 'block';
+
+    switch (argument) {
+        case 'del':
+            if (del_output_val) {
+                showOverlay();
+                delete_output_id(job_id, del_output_val);
+            }
+            break;
+
+        case 'new':
+            // 禁用所有 pin radio
+            if (Array.isArray(temp)) {
+                temp.forEach(id => {
+                    const radio = document.getElementById(id);
+                    if (radio?.type === 'radio') radio.disabled = true;
+                });
+            }
+
+            // 篩選非 edit 的 pin 元素
+            const filtered_array = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
+            disableElements(filtered_array);
+
+            // 控制 modal 開啟
+            showOverlay();
+            showModal('new_output');
+
+            // event select change handler
+            const eventOption = document.getElementById('Event_Option');
+            eventOption.addEventListener('change', () => {
+                const selectedOptionId = eventOption.value;
+                const isSpecial = ['7', '8', '9'].includes(selectedOptionId);
+                toggleElementsInRange(1, 11, 2, isSpecial);
+                if (!isSpecial) disableElements(filtered_array);
+            });
+
+            // 禁用已選 event
+            document.querySelectorAll('#Event_Option option').forEach(option => {
+                if (tempA.includes(option.value)) option.disabled = true;
+            });
+
+            break;
+
+        case 'edit':
+            if (!output_event) return;
+            showOverlay();
+            const selectedEditRows = document.querySelectorAll('#output_jobid_select tr.selected');
+            if (!selectedEditRows.length) {
+                //getLanguageMessage('language');
+                return;
+            }
+
+            // 禁用所有 pin radio
+            if (Array.isArray(temp)) {
+                temp.forEach(id => {
+                    const radio = document.getElementById(id);
+                    if (radio?.type === 'radio') radio.disabled = true;
+                });
+
+                // 處理 edit_pin 組
+                temp.filter(id => id.includes("edit_pin")).forEach(id => {
+                    const match = id.match(/(edit_pin\d+)_(\d+)/);
+                    if (match) {
+                        const basePinId = match[1];
+                        for (let i = 0; i <= 2; i++) {
+                            const pinId = `${basePinId}_${i}`;
+                            const pin = document.getElementById(pinId);
+                            if (pin?.type === 'radio') pin.disabled = true;
+                        }
+
+                        const timeId = `edit_time${basePinId.replace('edit_pin', '')}`;
+                        const timeElement = document.getElementById(timeId);
+                        if (timeElement) timeElement.disabled = true;
+                    }
+                });
+            }
+
+            // 啟用該事件的指定 pin 控制
+            if (output_pinval) {
+                ['0', '1', '2'].forEach(suffix => {
+                    const el = document.getElementById(`edit_pin${output_pinval}_${suffix}`);
+                    if (el) el.disabled = false;
+                });
+
+                const timeEl = document.getElementById(`edit_time${output_pinval}`);
+                if (timeEl) timeEl.disabled = false;
+            }
+
+            get_output_info(job_id, output_event);
+            break;
+
+        case 'copy':
+            if (!output_event) return;
+            showOverlay();
+            const jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
+            document.getElementById("from_job_id").value = job_id;
+            document.getElementById("from_job_name").value = jobinfo[job_id]['JOBname'];
+
+            const jobSelect = document.getElementById('JobSelect1');
+            Array.from(jobSelect.options).forEach(opt => {
+                if (opt.value === job_id) {
+                    opt.disabled = true;
+                    opt.classList.add('disabled_input');
+                }
+            });
+
+            const selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
+            if (selectedRows.length > 0) {
+                showModal('copy_output');
+            } else {
+                getLanguageMessage('language');
+            }
+            break;
+
+        case 'unified':
+            enableButton();
+            resetBackgroundColor();
+            if (output_job !== job_id) {
+                alignsubmit(job_id);
+            } else {
+                resetalignsubmit(job_id);
+            }
+            break;
+
+        default:
+            console.warn(`Unknown action: ${argument}`);
+            break;
+    }
+}
+
+
+function collectPinValues(selector) {
+    var pinOptions = document.querySelectorAll(selector);
+    var selectedValues = [];
+
+    pinOptions.forEach(function(option) {
+        if (option.checked){ 
+            var radioInfo = {
+                id: option.id,
+                value: option.value
+            };
+            selectedValues.push(radioInfo);
+        }
+    });
+
+    return selectedValues;
+}
+
+
+function toggleElementsInRange(start, end, suffix, disable) {
+    for (var i = start; i <= end; i++) {
+    
+        for (var j = 0; j <= 1; j++) { 
+            var id = 'pin' + i + '_' + j;
+            var element = document.getElementById(id);
+            if (element) {
+                element.disabled = disable;
+            }
+        }
+
+        var timeId = 'time' + i;
+        console.log(timeId);
+        var timeElement = document.getElementById(timeId);
+        if (timeElement) {
+            timeElement.disabled = disable;
+        }
+    }
+}
+
+
+
+var old_output_event; 
+var output_event;
+function job_confirm(){
+    var jobid = document.getElementById("JobNameSelect").value;
+    localStorage.setItem("jobid", jobid);
+    job_id = jobid;
+    all_job = jobid;
+
+    if(jobid){
+        $.ajax({
+            url: "?url=Outputs/get_output_by_job_id",
+            method: "POST",
+            data:{ 
+                job_id: job_id,
+            },
+            success: function(response) {
+                var data = JSON.parse(response);
+                var job_outputlist = data.job_outputlist;
+                temp = data.temp;
+                tempA = data.tempA;
+
+
+                document.getElementById("output_jobid_select").innerHTML = job_outputlist;
+                document.getElementById("JobSelect").style.display = 'none';
+                document.getElementById("job_id").value = job_id;
+            
+                var rows = document.querySelectorAll('#output_jobid_select tr');
+                rows.forEach(function(row) {
+                    row.addEventListener('click', function() { 
+
+                        row.getAttribute('data-event');
+                        output_event = row.getAttribute('data-event');
+                   
+ 
+                    });
+                });
+
+                var language = getCookie('language');
+                if(language == "zh-cn"){
+                    document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
+                    document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
+                    document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
+                    document.getElementById('4') && (document.getElementById('4').textContent = '低于下限');
+                    document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信号');
+                    document.getElementById('6') && (document.getElementById('6').textContent = '工作任务完成信号');
+                    document.getElementById('7') && (document.getElementById('7').textContent = '马达信号');
+                    document.getElementById('8') && (document.getElementById('8').textContent = '启动信号');
+                    document.getElementById('9') && (document.getElementById('9').textContent = '拆螺丝');
+                    document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
+                    document.getElementById('11') && (document.getElementById('11').textContent = '条码');
+                    document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
+                    document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
+                    document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
+                    document.getElementById('15') && (document.getElementById('15').textContent = '自定义4');
+                    document.getElementById('16') && (document.getElementById('16').textContent = '自定义5');
+
+                } 
+                else if(language == "zh-tw"){
+                    document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
+                    document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
+                    document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
+                    document.getElementById('4') && (document.getElementById('4').textContent = '低於下限');
+                    document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信號');
+                    document.getElementById('6') && (document.getElementById('6').textContent = '完工信號');
+                    document.getElementById('7') && (document.getElementById('7').textContent = '馬達信號');
+                    document.getElementById('8') && (document.getElementById('8').textContent = '啟動信號');
+                    document.getElementById('9') && (document.getElementById('9').textContent = '拆螺絲');
+                    document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
+                    document.getElementById('11') && (document.getElementById('11').textContent = '條碼');
+                    document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
+                    document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
+                    document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
+                    document.getElementById('15') && (document.getElementById('15').textContent = '自定義4');
+                    document.getElementById('16') && (document.getElementById('16').textContent = '自定義5');
+                }
+
+            },
+            error: function(xhr, status, error) {
+            
+            }
+        });
+    }
+}
+
+//delete
+function delete_output_id(job_id,del_output_val){
+
+   var language = getCookie('language');
+   var text_info, title;
+
+   if (language === "zh-cn") {
+       text_info = '你确定吗？';
+       title = '刪除任務';
+   } else if (language === "zh-tw") {
+       text_info = '你確定嗎？';
+       title = '刪除任務';
+   } else {
+       text_info = 'Are you sure?';
+       title = 'Delete Event';
+   }
+   
+   if (job_id) {
+       alertify.confirm(
+           title, // 標題
+           text_info, // 提示文字
+           function() {
+               //使用者選擇「是」後執行刪除動作
+               document.getElementById('spinner').style.display = 'block';
+
+               $.ajax({
+                    url: "?url=Outputs/delete_output",
+                   method: "POST",
+                   data: { 
+                       job_id: job_id,
+                       output_event: del_output_val,
+                   },
+                   success: function(response) {
+                        input_success_res(response, job_id, get_output_by_job_id, 'edit_input');
+                        hideOverlay();
+                   },
+                   error: function(xhr, status, error) {
+                       alertify.error("刪除失敗，請稍後再試！");
+                       document.querySelector(".main-content").classList.remove("overlay-active"); 
+                       document.getElementById('spinner').style.display = 'none';
+                   }
+               });
+            },
+            function() {
+                // 取消 callback 可選寫在這裡（目前略過）
+                document.querySelector(".main-content").classList.remove("overlay-active");
+                hideOverlay();
+            }
+        ).set('labels', {ok:'YES', cancel:'NO'}); // 修改按鈕文字
+    }
+}
+
+
+
+
+function get_output_by_job_id(job_id){
+    $.ajax({
+        url: "?url=Outputs/get_output_by_job_id",
+        method: "POST",
+        data: { 
+            job_id: job_id,
+        },
+        success: function(response) {
+            var data = JSON.parse(response);
+            var job_outputlist = data.job_outputlist;
+            temp = data.temp;
+            tempA = data.tempA;
+
+            document.getElementById("output_jobid_select").innerHTML = job_outputlist;
+            document.getElementById("JobSelect").style.display = 'none';
+            document.getElementById("job_id").value = job_id;
+        
+            var rows = document.querySelectorAll('#output_jobid_select tr');
+            rows.forEach(function(row) {
+                row.addEventListener('click', function() { 
+                    output_event = this.className; 
+                });
+            });
+
+            
+            var language = getCookie('language');
+            if(language == "zh-cn"){
+                document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
+                document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
+                document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
+                document.getElementById('4') && (document.getElementById('4').textContent = '低于下限');
+                document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信号');
+                document.getElementById('6') && (document.getElementById('6').textContent = '工作任务完成信号');
+                document.getElementById('7') && (document.getElementById('7').textContent = '马达信号');
+                document.getElementById('8') && (document.getElementById('8').textContent = '启动信号');
+                document.getElementById('9') && (document.getElementById('9').textContent = '拆螺丝');
+                document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
+                document.getElementById('11') && (document.getElementById('11').textContent = '条码');
+                document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
+                document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
+                document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
+                document.getElementById('15') && (document.getElementById('15').textContent = '自定义4');
+                document.getElementById('16') && (document.getElementById('16').textContent = '自定义5');
+
+            } 
+            else if(language == "zh-tw"){
+                document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
+                document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
+                document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
+                document.getElementById('4') && (document.getElementById('4').textContent = '低於下限');
+                document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信號');
+                document.getElementById('6') && (document.getElementById('6').textContent = '完工信號');
+                document.getElementById('7') && (document.getElementById('7').textContent = '馬達信號');
+                document.getElementById('8') && (document.getElementById('8').textContent = '啟動信號');
+                document.getElementById('9') && (document.getElementById('9').textContent = '拆螺絲');
+                document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
+                document.getElementById('11') && (document.getElementById('11').textContent = '條碼');
+                document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
+                document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
+                document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
+                document.getElementById('15') && (document.getElementById('15').textContent = '自定義4');
+                document.getElementById('16') && (document.getElementById('16').textContent = '自定義5');
+            }
+            
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX request failed:", status, error);
+        }
+    }); 
+
+}
+
+function collectPinValues(selector) {
+    var pinOptions = document.querySelectorAll(selector);
+    var selectedValues = [];
+
+    pinOptions.forEach(function(option) {
+        if (option.checked){ 
+            var radioInfo = {
+                id: option.id,
+                value: option.value
+            };
+            selectedValues.push(radioInfo);
+        }
+    });
+
+    return selectedValues;
+}
+
+
+function create_output_id() {
+    var output_event = document.getElementById("Event_Option").value;
+    var pinval = collectPinValues('input[name="pin_option"]');
+  
+
+    if (pinval.length > 0) {
+        var pin_old = pinval[0]['id']; 
+        var wave = pinval[0]['value'];
+        
+        var match = pin_old.match(/\d+/); 
+        var output_pin = match ? parseInt(match[0]) : null;
+        
+        var time_ms = 'time'+ output_pin;
+        var wave_on =  document.getElementById(time_ms).value;
+
+        if (job_id) {
+
+            document.getElementById('spinner').style.display = 'block';
+
+            $.ajax({
+                url: "?url=Outputs/create_output_event",
+                method: "POST",
+                data: { 
+                    job_id: job_id,
+                    output_pin: output_pin,
+                    output_event: output_event,
+                    wave: wave,
+                    wave_on: wave_on
+                },
+                success: function(response) {
+                    output_success_res(response, job_id, get_output_by_job_id, 'new_output');
+                    hideOverlay();
+
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX request failed:", status, error);
+                }
+            });
+        }
+    } else {
+        //console.error("No pinval found or pinval[0] is undefined.");
+    }
+}
+
+function edit_output_id(){
+    var output_event = document.getElementById("edit_event_option").value;
+    var pinval       = collectPinValues('input[name="edit_pin_option"]');
+    var pin_old      = pinval[0]['id'];
+    var wave         = pinval[0]['value'];
+    var match        = pin_old.match(/\d+/); 
+    var output_pin   = match ? parseInt(match[0]) : null;
+
+    var time_ms = 'edit_time'+ output_pin;
+    var wave_on =  document.getElementById(time_ms).value;
+    if(job_id){
+
+        document.getElementById('spinner').style.display = 'block';
+
+        $.ajax({
+            url: "?url=Outputs/edit_output_event",
+            method: "POST",
+            data: { 
+                job_id: job_id,
+                output_pin: output_pin,
+                output_event: output_event,
+                wave: wave,
+                wave_on: wave_on,
+                old_output_event: old_output_event
+            },
+            success: function(response) {
+                output_success_res(response, job_id, get_output_by_job_id, 'edit_output');
+                hideOverlay();
+
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+            }
+        });         
+    }
+}
+function resetalignsubmit(job_id) {
+
+    var job_id_new = 0;
+    if(job_id_new == 0){
+        $.ajax({
+            url: "?url=Outputs/output_alljob",
+            method: "POST",
+            data: {
+                job_id_new: job_id_new
+            },
+            success: function (response) {
+                get_output_by_job_id(job_id);
+            },
+            error: function (xhr, status, error) {
+
+            }
+        });
+
+    }
+
+}
+function alignsubmit(job_id) {
+    if (job_id) {
+        $.ajax({
+            url: "?url=Outputs/output_alljob",
+            method: "POST",
+            data: {
+                job_id: job_id
+            },
+            success: function (response) {
+                get_output_by_job_id(job_id);
+            
+                buttonDisabled = !buttonDisabled;
+                document.getElementById('Button_Select').disabled = buttonDisabled;
+     
+                backgroundColorYellow = !backgroundColorYellow;
+                if (backgroundColorYellow) {
+                    document.getElementById('job_id').style.backgroundColor = 'yellow';
+                } else {
+                    document.getElementById('job_id').style.backgroundColor = '';
+                }
+            },
+            error: function (xhr, status, error) {
+
+            }
+        });
+    }
+}
+//copy
+function copy_output_id(){
+
+    var language = getCookie('language');
+    if(language == "zh-cn"){
+        var text_info ='若设定已存在，将会取代原有设定';
+    }else if(language == "zh-tw"){
+        var text_info ='若設定已存在，將會取代原有設定';
+    }else{
+        var text_info ='If the job input already exists, it will replace the original setting';
+    }
+    alertify.confirm( text_info, function (e) {
+        if (e) {
+            var to_job_id = document.getElementById("JobSelect1").value;
+            if(to_job_id){
+                document.getElementById('spinner').style.display = 'block';
+                $.ajax({
+                    url: "?url=Outputs/copy_output",
+                    method: "POST",
+                    data: { 
+                        from_job_id: job_id,
+                        to_job_id: to_job_id
+                    },
+                    success: function(response) {
+                        output_success_res(response, job_id, get_output_by_job_id, 'copy_output');
+                        hideOverlay();
+
+                    },
+                    error: function(xhr, status, error) {
+                        
+                    }
+                });
+        
+            } 
+        } else {
+            // cancel
+            hideOverlay();
+        }
+    });
+    document.getElementById('copy_output').style.display='none';
+}
+
+function updateInputsBasedOnRadioSelection() {
+   
+    for (let i = 1; i <= 11; i++) {
+        let radioId = 'pin' + i + '_3';
+        let inputId = 'time' + i;
+        
+        let radioElement = document.getElementById(radioId);
+        let inputElement = document.getElementById(inputId);
+
+        if (radioElement && inputElement) {
+            inputElement.disabled = !radioElement.checked;
+        }
+    }
+}
+
+function get_output_info(job_id,output_event){
+
+    if(job_id && output_event){
+     $.ajax({
+             url: "?url=Outputs/check_job_event",
+             method: "POST",
+             data: { 
+                 job_id: job_id,
+                 output_event: output_event
+             },
+             success: function(response) {
+                if (response === 'no_data') {
+                    getLanguageMessage('language');
+                    return;
+                }
+
+                document.getElementById('edit_output').style.display = 'block';
+
+
+                var responseJSON = JSON.stringify(response);
+                var cleanString = responseJSON.replace(/Array|\\n/g, '');
+                var cleanString = cleanString.substring(2, cleanString.length - 2);
+                var [, job_id] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
+                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
+
+
+                var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
+                var radioButton = document.getElementById(edit_output_pin);
+
+                if (radioButton) {
+                    radioButton.removeAttribute('disabled');  
+                } else {
+                    console.warn('Radio button not found:', edit_output_pin); 
+                }
+
+                var time_ms = 'edit_time'+ output_pin;
+                if(wave != 2){
+                    var time_id = 'edit_time' + output_pin;
+                    var element = document.getElementById(time_id);
+                    
+                    if(element){
+                        element.disabled = true
+                    }
+                }
+                    
+                //完工信號 && 馬達信號 && 啟動信號
+                if (output_event == 8  || output_event == 6 || output_event == 7 ) {
+                  
+                    for(let i = 1; i <= 11; i++) {
+                        let element1 = document.getElementById(`edit_pin${i}_0`);
+                        if (element1) {
+                            element1.disabled = true;
+                        }
+                
+                        let element2 = document.getElementById(`edit_pin${i}_1`);
+                        if (element2) {
+                            element2.disabled = true;
+                        }
+                    }
+
+                    if (Array.isArray(temp)) {
+                        //過濾出包含 "edit_pin" 的字串
+                        const filteredArray = temp.filter(item => item.includes("edit_pin"));
+                        const updatedArray = filteredArray.map(item => {
+                            // 如果字串為空，直接返回
+                            if (item.length === 0) {
+                                return item;
+                            }
+                            //強制字串的最後一個字元更換為 '3'
+                            return item.slice(0, -1) + '3';
+                        });
+                        
+                        console.log("Updated Array:", updatedArray);
+                        updatedArray.forEach(item => {
+                            const radio = document.getElementById(item);
+                            if (radio && radio.type === 'radio') {
+                                radio.disabled = true;
+                            }
+                        });
+
+                    }
+                    
+                }else{
+                    //alert('wqw');
+                }
+
+
+                let result = edit_output_pin.replace(/^edit_pin/, "");
+                result = result.replace(/(_[0-9]{1,2})$/, ""); 
+
+                //檢查id = new_variable是否存在,存在做disabled
+                var new_variable = 'edit_time'+ result;
+                var element = document.getElementById(new_variable);
+                if (element) {
+                    element.disabled = true;  
+                }
+          
+                document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
+                old_output_even = output_event;
+                if(radioButton){
+                    radioButton.checked = true;
+                }
+                 
+                document.querySelector("select[name='edit_event_option']").value = output_event;
+                document.getElementById("edit_event_option").onchange = function() {
+                    var selectedValue = this.value; 
+                };
+
+
+             },
+             error: function(xhr, status, error) {
+                 console.error("AJAX request failed:", status, error);
+             }
+     });      
+    }
+  
+}
+
+
+function toggleOnputTime(inputId, checked, option) {
+    var inputElement = document.getElementById(inputId);
+    if (!inputElement) {
+        return; 
+    }
+
+    if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
+
+        if (inputElement.checked !== checked) {
+           
+        }
+    }
+    
+ 
+    if(option == 1 || option == 3){
+        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
+        
+        var element = document.getElementById(newId);
+        if (element) {
+            element.disabled = true;
+        }
+    }else{
+        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
+        var element = document.getElementById(newId);
+        if (element) {
+            element.disabled = false;
+        }
+    }    
+}
+
+
+
+
+
+function toggleOnputTime_edit(inputId, checked, option) {
+    var inputElement = document.getElementById(inputId);
+    
+    if (!inputElement) {
+        return; 
+    }
+
+   
+    if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
+
+        if (inputElement.checked !== checked) {
+           
+        }
+    }
+
+    if(option == 1 || option == 3){
+        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
+        
+        var element = document.getElementById(newId);
+        if (element) {
+            element.disabled = true;
+        }
+    }else{
+        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
+        var element = document.getElementById(newId);
+        if (element) {
+            element.disabled = false;
+        }
+    }    
+}
 
 
 function disableElements(filtered_array) {
@@ -47,280 +858,56 @@ function disableElements(filtered_array) {
 }
 
 
-
-
-function toggleOnputTimeCommon(prefix, inputId, checked, option) {
-    const inputElement = document.getElementById(inputId);
-    if (!inputElement) return;
-
-    // 避免不必要的動作（你預留的，但沒用，可根據需求加上）
-    if ((inputElement.type === 'checkbox' || inputElement.type === 'radio') &&
-        inputElement.checked !== checked) {
-        // 可加入額外處理
+function getLanguageMessage(cookieName) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + cookieName + "=");
+    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
+    var message;
+    if (language === 'en-us') {
+       message =  'Please select the event to delete';
+    } else if (language === 'zh-cn') {
+       message =  '请选择要删除的事件';
+    } else if (language === 'zh-tw') {
+       message =  '請點選要刪除的事件';
+    } else {
+      message =  'Please select the event to delete';
     }
+   alertify.alert(message);
+}
 
-    const regex = new RegExp(`^${prefix}pin(\\d+)_\\d+$`);
-    const match = inputId.match(regex);
 
-    if (match) {
-        const newId = `${prefix}time${match[1]}`;
-        const timeElement = document.getElementById(newId);
-        if (timeElement) {
-            timeElement.disabled = (option == 1 || option == 3);
+function showOverlay() {
+    document.getElementById("modal-overlay").style.display = "block";
+}
+
+function hideOverlay() {
+    document.getElementById("modal-overlay").style.display = "none";
+}
+
+function output_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
+    var responseData = JSON.parse(response);
+    alertify.alert(responseData.res_type, responseData.res_msg);
+
+    setTimeout(function () {
+        alertify.closeAll();
+        document.querySelector(".main-content").classList.remove("overlay-active");
+        document.getElementById('spinner').style.display = 'none';
+
+        if (typeof callbackFn === 'function') {
+            callbackFn(job_id);
         }
-    }
+    }, 2000);
+
+    const hideEl = document.getElementById(hideElementId);
+    if (hideEl) hideEl.style.display = 'none';
 }
-
-function updateInputsBasedOnRadioSelection() {
-   
-    for (let i = 1; i <= 11; i++) {
-        let radioId = 'pin' + i + '_3';
-        let inputId = 'time' + i;
-        
-        let radioElement = document.getElementById(radioId);
-        let inputElement = document.getElementById(inputId);
-
-        if (radioElement && inputElement) {
-            inputElement.disabled = !radioElement.checked;
-        }
-    }
-}
-
-function collectPinValues(selector) {
-    var pinOptions = document.querySelectorAll(selector);
-    var selectedValues = [];
-
-    pinOptions.forEach(function(option) {
-        if (option.checked){ 
-            var radioInfo = {
-                id: option.id,
-                value: option.value
-            };
-            selectedValues.push(radioInfo);
-        }
-    });
-
-    return selectedValues;
-}
-
-
-function copy_output_id(){
-
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='若设定已存在，将会取代原有设定';
-    }else if(language == "zh-tw"){
-        var text_info ='若設定已存在，將會取代原有設定';
-    }else{
-        var text_info ='If the job input already exists, it will replace the original setting';
-    }
-    alertify.confirm( text_info, function (e) {
-        if (e) {
-            var to_job_id = document.getElementById("JobSelect1").value;
-            if(to_job_id){
-                $.ajax({
-                    url: "?url=Outputs/copy_output",
-                    method: "POST",
-                    data: { 
-                        from_job_id: job_id,
-                        to_job_id: to_job_id
-                    },
-                    success: function(response) {
-
-                        var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                            get_output_by_job_id(job_id);
-                        });
-
-                        document.getElementById('copy_output').style.display='none';
-
-                    },
-                    error: function(xhr, status, error) {
-                        
-                    }
-                });
-        
-            } 
-        } else {
-            // cancel
-        }
-    });
-    document.getElementById('copy_output').style.display='none';
-}
-
-function alignsubmit(job_id) {
-    if (job_id) {
-        $.ajax({
-            url: "?url=Outputs/output_alljob",
-            method: "POST",
-            data: {
-                job_id: job_id
-            },
-            success: function (response) {
-                get_output_by_job_id(job_id);
-            
-                buttonDisabled = !buttonDisabled;
-                document.getElementById('Button_Select').disabled = buttonDisabled;
-     
-                backgroundColorYellow = !backgroundColorYellow;
-                if (backgroundColorYellow) {
-                    document.getElementById('job_id').style.backgroundColor = 'yellow';
-                } else {
-                    document.getElementById('job_id').style.backgroundColor = '';
-                }
-            },
-            error: function (xhr, status, error) {
-
-            }
-        });
-    }
-}
-
-function crud_job_event(argument) {
-    const table = document.getElementById('output_table');
-    const selectedRow = table.querySelector('tr.selected');
-    if (selectedRow) {
-        output_event = selectedRow.getAttribute('data-event');
-        const pinElement = selectedRow.querySelector('[data-outputpin]');
-        output_pinval = pinElement ? pinElement.getAttribute('data-outputpin') : '';
-        del_output_val = output_event;
-    }
-
-    switch (argument) {
-        case 'del':
-            if (job_id && del_output_val) {
-                delete_output_id(job_id, del_output_val);
-            }
-            break;
-
-        case 'new':
-            if (!job_id) return;
-
-            disableElements(temp);
-
-            // 過濾出非 edit 的 pin，單獨處理
-            const filtered_array = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
-            disableElements(filtered_array);
-
-            document.getElementById('new_output').style.display = 'block';
-
-            const eventOption = document.getElementById('Event_Option');
-            eventOption.addEventListener('change', function () {
-                const selectedValue = eventOption.value;
-                const lockEvents = ['7', '8', '9'];
-                const shouldLock = lockEvents.includes(selectedValue);
-                toggleElementsInRange(1, 11, 2, shouldLock);
-                if (!shouldLock) disableElements(filtered_array);
-            });
-
-            document.querySelectorAll('#Event_Option option').forEach(opt => {
-                if (tempA.includes(opt.value)) opt.disabled = true;
-            });
-
-            break;
-
-        case 'edit':
-            if (!job_id || !output_event) return;
-
-            const rows = document.querySelectorAll('#output_jobid_select tr.selected');
-            if (!rows.length) {
-                getLanguageMessage('language');
-                return;
-            }
-
-            disableElements(temp);
-
-            // disable 所有 edit_pin radio 和 edit_time
-            temp.filter(id => id.includes('edit_pin')).forEach(id => {
-                const match = id.match(/(edit_pin\d+)_(\d+)/);
-                if (!match) return;
-                const baseId = match[1].replace('edit_pin', '');
-                for (let i = 0; i <= 2; i++) {
-                    const el = document.getElementById(`edit_pin${baseId}_${i}`);
-                    if (el) el.disabled = true;
-                }
-
-                const timeEl = document.getElementById(`edit_time${baseId}`);
-                if (timeEl) timeEl.disabled = true;
-            });
-
-            // 啟用目前選中的 pin 對應的 radio + time
-            if (output_pinval) {
-                ['0', '1', '2'].forEach(i => {
-                    const id = `edit_pin${output_pinval}_${i}`;
-                    const el = document.getElementById(id);
-                    if (el) el.disabled = false;
-                });
-                const timeEl = document.getElementById(`edit_time${output_pinval}`);
-                if (timeEl) timeEl.disabled = false;
-            }
-
-            get_output_info(job_id, output_event);
-            break;
-
-        case 'copy':
-            if (!job_id || !output_event) return;
-
-            const jobinfo = window.job_list_new || {};
-            document.getElementById("from_job_id").value = job_id;
-            document.getElementById("from_job_name").value = jobinfo[job_id]?.JOBname || '';
-
-            document.querySelectorAll('#JobSelect1 option').forEach(opt => {
-                if (opt.value == job_id) {
-                    opt.disabled = true;
-                    opt.classList.add('disabled_input');
-                }
-            });
-
-            const selectedCopyRows = document.querySelectorAll('#output_jobid_select tr.selected');
-            if (selectedCopyRows.length > 0) {
-                document.getElementById('copyinput').style.display = 'block';
-            } else {
-                getLanguageMessage('language');
-            }
-
-            break;
-
-        case 'unified':
-            if (!job_id) return;
-
-            enableButton();
-            resetBackgroundColor();
-            if (output_job !== job_id) {
-                alignsubmit(job_id);
-            } else {
-                resetalignsubmit(job_id);
-            }
-            break;
-    }
-}
-
-function disableElements(idArray) {
-    if (!Array.isArray(idArray)) return;
-    idArray.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.disabled = true;
-    });
-}
-
-function toggleElementsInRange(start, end, waveMax = 1, disable = true, includeTime = true, pinPrefix = 'pin', timePrefix = 'time') {
-    for (let i = start; i <= end; i++) {
-        // 控制 pin{i}_{j}
-        for (let j = 0; j <= waveMax; j++) {
-            const id = `${pinPrefix}${i}_${j}`;
-            const el = document.getElementById(id);
-            if (el) el.disabled = disable;
-        }
-
-        // 控制 time{i}
-        if (includeTime) {
-            const timeId = `${timePrefix}${i}`;
-            const timeEl = document.getElementById(timeId);
-            if (timeEl) timeEl.disabled = disable;
-        }
-    }
-}
-
-
 
 </script>
+
+<style>
+    #output_table td,
+    #output_table th {
+        width: 100px; 
+        padding: 10px;
+    }
+</style>

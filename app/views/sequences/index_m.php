@@ -20,9 +20,9 @@
             <div class="table-container">
                 <div class="scrollbar" id="style-seqtable">
                     <div class="force-overflow">
-                        <table id="seq_table" class="table w3-table-all w3-hoverable">
+                        <table id="seq_table" class="table w3-table">
                             <thead id="header-table">
-                                <tr class="w3-dark-grey" style="font-size: 2.4vmin">
+                                <tr class="w3-dark-grey" style="font-size: 2.6vmin">
                                     <th><?php echo $text['seq_id'];?></th>
                                     <th><?php echo $text['seq_name'];?></th>
                                     <th><?php echo $text['tightening_repeat'];?></th>
@@ -34,7 +34,7 @@
                                 </tr>
                             </thead>
 
-                            <tbody style="font-size: 2vmin;text-align: center;">
+                            <tbody style="font-size: 2.6vmin; text-align: center;">
                                 <?php foreach($data['sequences'] as $key =>$val) {?>
                                     <tr>
                                         <td class="seq-id"> <?php echo $val['SEQID'];?></td>
@@ -72,7 +72,7 @@
         </div>
 
         <div class="buttonbox">
-        <?php  $status = count($data['total_seq']) >=  100 ? 'disabled' : ''; ?>
+        <?php  $status =  $data['total_seq'] >=  100 ? 'disabled' : ''; ?>
 
             <input id="S3" name="Seq_Manager_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"  onclick="cound_seq('new');" <?php echo $status;?> >
             <input id="S6" name="Seq_Manager_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="cound_seq('edit');">
@@ -84,9 +84,9 @@
     <!-- Copy Sequence -->
     <div id="copyseq" class="modal">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: auto">
+            <div class="modal-content w3-animate-zoom" style="width: 90%">
                 <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('copyseq').style.display='none'"
+                    <span onclick="closebutton('copyseq');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; height: 43px;font-size: 4.5vmin; margin: 3px">&times;</span>
                     <h3 id='modal_title'><?php echo $text['Copy_Sequence'];?></h3>
                 </header>
@@ -96,14 +96,14 @@
         	            <label for="from_seq_id" class="col col-form-label" style="font-weight: bold"><?php echo $text['copy_from'];?></label>
         	            <div style="padding-left: 10%">
         		            <div class="row">
-        				        <label for="from_seq_id" class="t1 col-4 col-form-label"><?php echo $text['seq_id'];?> :</label>
-        				        <div class="col-5 t2 ">
+        				        <label for="from_seq_id" class="t1 col-5 col-form-label"><?php echo $text['seq_id'];?> :</label>
+        				        <div class="col-4 t2 ">
         				            <input type="text" class="form-control" id="from_seq_id" disabled>
         				        </div>
         				    </div>
         				    <div class="row">
-        				        <label for="from_seq_name" class="t1 col-4 col-form-label"><?php echo $text['seq_name'];?> :</label>
-        				        <div class="t2 col-5">
+        				        <label for="from_seq_name" class="t1 col-5 col-form-label"><?php echo $text['seq_name'];?> :</label>
+        				        <div class="t2 col-4">
         				            <input type="text" class="form-control" id="from_seq_name" disabled>
         				        </div>
         				    </div>
@@ -112,15 +112,15 @@
         			    <label for="from_seq_id" class="col col-form-label" style="font-weight: bold"><?php echo $text['copy_to'];?></label>
         			    <div style="padding-left: 10%">
         				    <div class="row">
-        				        <label for="to_seq_id" class="t1 col-4 col-form-label"><?php echo $text['seq_id'];?> :</label>
-        				        <div class="t2 col-5">
-        				            <input type="number" class="form-control" id="to_seq_id">
+        				        <label for="to_seq_id" class="t1 col-5 col-form-label"><?php echo $text['seq_id'];?> :</label>
+        				        <div class="t2 col-4">
+        				            <input type="number" class="form-control" id="to_seq_id" value='<?php echo $data['next_seq_id'];?>'>
         				        </div>
         				    </div>
         				    <div class="row">
-        				        <label for="to_seq_name" class="t1 col-4 col-form-label"><?php echo $text['seq_name'];?> :</label>
-        				        <div class="t2 col-5">
-        				            <input type="text" class="form-control" id="to_seq_name">
+        				        <label for="to_seq_name" class="t1 col-5 col-form-label"><?php echo $text['seq_name'];?> :</label>
+        				        <div class="t2 col-4">
+        				            <input type="text" class="form-control" id="to_seq_name" value='<?php echo "SEQ-".$data['next_seq_id'];?>'>
         				        </div>
         				    </div>
         			    </div>
@@ -129,7 +129,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="copy_seq_by_id()"><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('copyseq');" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('copyseq');" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>

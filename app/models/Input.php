@@ -1,25 +1,15 @@
 <?php
 
-class Input{
-    private $db;//condb control box
-    private $dbh;
+class Input{   
     private $db_iDas;
+    private $db_iDas_device;
 
     // 在建構子將 Database 物件實例化
-    public function __construct()
-    {
-        $this->db = new Database;
-        $this->db = $this->db->getDb();
-
-        $this->dbh = new Database;
-
-
-        $this->db_iDas = new Database;
-        $this->db_iDas = $this->db_iDas->getDb_das();
-
-        $this->db_iDas_device = new Database;
-        $this->db_iDas_device = $this->db_iDas_device->getDb_das_device();
-
+    public function __construct(){
+        
+        $db_instance = new Database();             
+        $this->db_iDas = $db_instance->getDb_das();       
+        $this->db_iDas_device = $db_instance->getDb_das_device();
 
     }
 
@@ -36,19 +26,36 @@ class Input{
 
     //get device_input_alljob
     public function get_input_alljob()
-    {   
-        $sql = "SELECT * FROM device ";
-        $statement = $this->db_iDas_device->prepare($sql);
-        $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
+    {
+        $sql = "SELECT * FROM device";
 
+        // 檢查資料庫連線
+        if (!($this->db_iDas_device instanceof PDO)) {
+            error_log("❌ db_iDas_device is not a valid PDO instance");
+            die("❌ 無效的資料庫連線 (db_iDas_device)");
+        }
+
+        $statement = $this->db_iDas_device->prepare($sql);
+
+        // 檢查 prepare 是否成功
+        if (!$statement) {
+            $errorInfo = $this->db_iDas_device->errorInfo();
+            error_log("❌ SQL Prepare Failed: $sql");
+            error_log("❌ Error Info: " . print_r($errorInfo, true));
+            die("❌ SQL 準備失敗: 請檢查資料表 device 是否存在");
+        }
+
+        $statement->execute();
+
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
         return $row;
     }
+
 
     //get all job
     public function get_job_list()
     {
-        $sql = " SELECT  * FROM  JOB_lst  ORDER BY JOBID ASC ";
+        $sql = " SELECT  * FROM  JOB_lst  WHERE JOBID NOT IN('0','221') ORDER BY JOBID ASC ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute();
         $result = $statement->fetchAll();
@@ -97,7 +104,7 @@ class Input{
         $statement->bindValue(':Pin', $input_data['Pin']);
         $statement->bindValue(':EvenID', $input_data['EvenID']);
         $statement->bindValue(':signal', $input_data['signal']);
-        $statement->bindValue(':Wp_Ready_Confirm', $input_data['gateconfirm']);
+        $statement->bindValue(':Wp_Ready_Confirm', $input_data['Wp_Ready_Confirm']);
     
         $results = $statement->execute();
     

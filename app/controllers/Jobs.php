@@ -21,19 +21,27 @@ class Jobs extends Controller
     // 取得所有Jobs
     public function index(){
         $data = array();
-        
 
         $isMobile  = $this->isMobileCheck();
         $jobs      = $this->jobModel->getJobs();
         $direction = $this->MiscellaneousModel->details('reverse_direction');
 
+        // 取得下個可用的 job_id
         $next_job_id_arr = $this->jobModel->get_head_job_id();
         $next_job_id = (int)$next_job_id_arr['missing_id'];
-        if(!empty($jobs)){
+
+        // 避開 0 與 221
+        $invalid_ids = [0, 221];
+        while (in_array($next_job_id, $invalid_ids)) {
+            $next_job_id++;
+        }
+
+        // 計算 jobIdInt
+        if (!empty($jobs)) {
             $lastRow  = end($jobs);
-            $jobIdInt = intval($lastRow['JOBID']) + 1 ;   
-        }else{
-            $lastRow  = 1; 
+            $jobIdInt = intval($lastRow['JOBID']) + 1;
+        } else {
+            $lastRow  = 1;
             $jobIdInt = 1;
         }
 
@@ -42,14 +50,15 @@ class Jobs extends Controller
             'jobs' => $jobs,
             'next_job_id' => $next_job_id,
         );
-        
-        if($isMobile){
-            $this->view('jobs/job_management_m',$data);
-        }else{
+
+        if ($isMobile) {
+            $this->view('jobs/job_management_m', $data);
+        } else {
             $this->view('jobs/job_management', $data);
         }
-
     }
+
+
 
 
     #create 
@@ -264,7 +273,8 @@ class Jobs extends Controller
                             
                         }
 
-                        $insertedrecords = $this->jobModel->copy_sequence_by_job_id($new_temp_seq);                
+                        $insertedrecords = $this->jobModel->copy_sequence_by_job_id($new_temp_seq);  
+    
                     }
 
                     if(!empty($select_step)){

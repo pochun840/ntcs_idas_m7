@@ -1,32 +1,146 @@
+$(document).ready(function () {
+    /*const sectionMap = {
+        "Controller": "Controller_Setting",
+        "System": "System_Setting",
+        "Barcode": "Barcode_Setting",
+        "Connect": "Connect_Setting",
+        "Update": "iDas-Update_Setting"
+    };
 
-document.addEventListener('DOMContentLoaded', function() {
-    function updateTime() {
-        var currentTime = new Date();
-        var hours = currentTime.getHours();
-        var minutes = currentTime.getMinutes();
-        var seconds = currentTime.getSeconds();
-        var period = hours >= 12 ? 'PM' : 'AM';
-    
-        hours = hours % 12;
-        hours = hours ? hours : 12; // 0 should be 12
-        minutes = minutes < 10 ? '0'+minutes : minutes;
-        seconds = seconds < 10 ? '0'+seconds : seconds;
-    
-        var timeString = currentTime.getFullYear() + '-' + 
-                            ('0' + (currentTime.getMonth() + 1)).slice(-2) + '-' + 
-                            ('0' + currentTime.getDate()).slice(-2) + ' ' + 
-                            ('0' + hours).slice(-2) + ':' + 
-                            ('0' + minutes).slice(-2) + ':' + 
-                            ('0' + seconds).slice(-2) + ' ' + period;
-    
-        document.getElementById('currentSystemTime').innerText = timeString;
-    }
-    
-    updateTime();
-    // 每秒更新一次時間
-    setInterval(updateTime, 1000);
-    
+    const lastSection = sessionStorage.getItem('last_section') || 'Controller_Setting';
+
+    $('.divMode').addClass('hidden').removeClass('active');
+    $('#' + lastSection).removeClass('hidden').addClass('active');
+
+    $('.button').removeClass('active');
+    if (lastSection === 'Controller_Setting') $('#bnt1').addClass('active');
+    if (lastSection === 'System_Setting') $('#bnt2').addClass('active');
+    if (lastSection === 'Barcode_Setting') $('#bnt3').addClass('active');
+    if (lastSection === 'Connect_Setting') $('#bnt4').addClass('active');
+    if (lastSection === 'iDas-Update_Setting') $('#bnt5').addClass('active');*/
+
+    getCurrentSystemTime();
 });
+
+
+function change_datetime() {
+    var newTime = document.getElementById("newTime").value;
+    var language = getCookie('language') || 'default';
+
+    var messages = {
+        'zh-tw': {
+            'select': '請選擇時間',
+            'success': '設定成功',
+            'fail': '設定失敗',
+            'error': '通訊錯誤，請稍後再試。'
+        },
+        'zh-cn': {
+            'select': '请选择时间',
+            'success': '设置成功',
+            'fail': '设置失败',
+            'error': '通信错误，请稍后再试。'
+        },
+        'default': {
+            'select': 'Please select a time',
+            'success': 'Success',
+            'fail': 'Failed',
+            'error': 'Communication error. Please try again later.'
+        }
+    };
+
+    var msg = messages[language] || messages['default'];
+
+    if (!newTime) {
+        alert(msg.select);
+        return;
+    }
+
+    document.getElementById('spinner').style.display = 'block';
+
+    $.ajax({
+        type: "POST",
+        url: "?url=Settings/edit_system_date",
+        data: { datetime: newTime },
+        dataType: "json",
+        success: function(response) {
+            document.getElementById('spinner').style.display = 'none';
+
+            if (response.error) {
+                alertify.alert(msg.fail, response.error);
+            } else {
+                alertify.alert(msg.success, msg.success);
+                setTimeout(function () {
+                    alertify.closeAll();
+                    location.reload(); // ✅ 自動重整
+                }, 3000); // ✅ 自動關閉時間：3秒
+                document.getElementById('Controller_Setting').style.display = "none";
+                document.getElementById('System_Setting').style.display = "block";
+            }
+
+        },
+        error: function() {
+            document.getElementById('spinner').style.display = 'none';
+            alertify.alert(msg.fail, msg.error);
+        }
+    });
+}
+
+
+
+
+function getCurrentSystemTime() {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            var serverTime = xhr.responseText.trim().replace(/-/g, "/");
+            var serverDateTime = new Date(serverTime);
+            updateCurrentTime(serverDateTime);
+        }
+    };
+    xhr.open("GET", "?url=Settings/get_system_time", true);
+    xhr.send();
+}
+
+function updateCurrentTime(serverDateTime) {
+    var el = document.getElementById("currentSystemTime");
+
+    function pad(n) {
+        return n < 10 ? '0' + n : n;
+    }
+
+    function formatTime(date) {
+        var year = date.getFullYear();
+        var month = pad(date.getMonth() + 1);
+        var day = pad(date.getDate());
+        var hour = date.getHours();
+        var minute = pad(date.getMinutes());
+        var second = pad(date.getSeconds());
+
+        let isPM = hour >= 12;
+        let period = isPM ? '下午' : '上午';
+
+        // 使用 12 小時制顯示
+        let hour12 = hour % 12 || 12;
+
+        return `${year}/${month}/${day} ${period} ${pad(hour12)}:${minute}:${second}`;
+    }
+
+    // 初次顯示
+    let lastText = formatTime(serverDateTime);
+    el.innerText = lastText;
+
+    // 每秒更新一次，但只有在內容變化時才更新畫面，避免閃爍
+    setInterval(function () {
+        serverDateTime.setSeconds(serverDateTime.getSeconds() + 1);
+        let currentText = formatTime(serverDateTime);
+
+        if (el.innerText !== currentText) {
+            el.innerText = currentText;
+        }
+    }, 1000);
+}
+
+
 
 
 function controller_save(){
@@ -39,8 +153,8 @@ function controller_save(){
     var control_name = document.getElementById('control_name').value;
     var storage_warning = document.getElementById('storage_warning').value;
     var torque_filter   = document.getElementById('torque_filter').value;
-    var lang_val = document.getElementById('select_language').value; //語言
-    var unit_val = document.getElementById('select_torque_unit').value; //扭力單位 
+    var lang_val = document.getElementById('select_language').value; 
+    var unit_val = document.getElementById('select_torque_unit').value; 
     var counting_method_val =  document.querySelector('input[name="counting_method"]:checked').value;
     var circular_archive_val = document.querySelector('input[name="circular_archive"]:checked').value;
     var blackout_recovery_val = document.querySelector('input[name="blackout_recovery"]:checked').value;
@@ -120,9 +234,6 @@ function input_check_setting(argument) {
         }
 
     });
-
-    console.log(conditions)
-
     return isFormValid;
 
 }
@@ -150,7 +261,7 @@ function save_pwd(){
         !isValidInput(enablePwd) || 
         !isValidInput(disablePwd) || 
         !isValidInput(skipPwd)) {
-        alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
+        //alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
         return; // 如果驗證失敗，停止函式執行
     }
     document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
@@ -240,58 +351,83 @@ function toggleBarcodeSeq() {
 }
 
 
-
-
-
-function Export_SystemConfig(argument) {
+function Export_SystemConfig() {
     var xhr = new XMLHttpRequest();
-    xhr.responseType = "blob";  
-    
-    xhr.onload = function() {
+    xhr.responseType = "blob";
+    xhr.onload = function () {
         if (xhr.status === 200) {
             var a = document.createElement("a");
             a.href = window.URL.createObjectURL(xhr.response);
-            a.download = "data.zip";  
-            a.style.display = "none";
+            a.download = "NTCS_Config_Pack.zip";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        } else {
-            console.error("Download failed with status: " + xhr.status);
         }
     };
-
-  
     xhr.open("GET", "?url=Settings/export_sysytem_config", true);
     xhr.send();
 }
 
 
-function Import_SystemConfig(){
 
-    var bbs = document.getElementById("import-file-uploader").files[0];
+
+function Import_SystemConfig() {
+    var import_file = document.getElementById("import-file-uploader").files[0];
     var form = new FormData();
-    form.append("file", bbs)
-    var url = '?url=Settings/Import_Config';        
+    form.append("file", import_file);
+    var url = '?url=Settings/Import_Config';
+    
+    // 語言設置
+    var language = getCookie('language') || 'en';
+    var text_info, title, confirm_text;
+    
+    if(language == "zh-cn") {
+        text_info = '您確定要導入資料庫檔案嗎？';
+        title = '導入配置';
+        confirm_text = '您確定要進行此操作嗎？';
+    } else if(language == "zh-tw") {
+        text_info = '您確定要導入資料庫檔案嗎？';
+        title = '導入配置';
+        confirm_text = '您確定要進行此操作嗎？';
+    } else {
+        text_info = 'Are you sure you want to import the database file?';
+        title = 'Import Configuration';
+        confirm_text = 'Are you sure you want to perform this action?';
+    }
 
-    if(bbs == undefined){
-        
-    }else{
-        $.ajax({ // 提醒
-            type: "POST",
-            processData: false,
-            cache: false,
-            contentType: false,
-            data: form,
-            dataType: "json",
-            url: url,
-            beforeSend: function() {
-                $('#overlay').removeClass('hidden');
-            },
-        }).done(function(result) { //成功且有回傳值才會執行
-            $('#overlay').addClass('hidden');
-            document.getElementById("import-file-uploader").value = '';
+    if (import_file) {
+        alertify.confirm(confirm_text, function(result) {
+            if (result) {
+                document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
+
+                $.ajax({
+                    url: url,
+                    method: "POST",
+                    data: form,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        var responseData = JSON.parse(response);
+
+                        setTimeout(function() {
+                            document.getElementById('spinner').style.display = 'none';
+                            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                                history.go(0); 
+                            });
+
+                            setTimeout(function() {
+                                alertify.closeAll(); 
+                            }, 3000);
+                        }, 1000);
+                    },
+                    error: function(xhr, status, error) {
+                        alertify.alert('Error', 'An error occurred while importing the configuration file.');
+                    }
+                });
+            }
         });
+    } else {
+        alertify.alert(title, text_info); // 如果 import_file 沒有值，顯示提示訊息
     }
 }
 
@@ -392,10 +528,6 @@ function OpenButton(ButtonMode){
         document.getElementById('bnt2').classList.remove("active");
         document.getElementById('bnt1').classList.remove("active");
     }
-    else
-    {
-        //alert("Function ["+ ButtonMode +"] is under constructing ...");
-    }
 }
 
 
@@ -403,7 +535,6 @@ function OpenButton(ButtonMode){
 function getCookie(name) 
 {
     var nameEQ = name + "=";
-    //alert(document.cookie);
     var ca = document.cookie.split(';');
     for (var i = 0; i < ca.length; i++) {
         var c = ca[i];
@@ -437,7 +568,7 @@ function set_max_link(argument) {
 
 }
 
-function set_agent_ip(){
+function set_agent_ip_22(){
     var agent_server_ip = document.getElementById('agent_server_ip').value;
     agent_server_ip = agent_server_ip.replace(/\s*/g,""); 
     if(agent_server_ip){
@@ -450,7 +581,7 @@ function set_agent_ip(){
             success: function(response) {
                 console.log(response);
                 alert(response);
-                //history.go(0);
+    
             },
             error: function(xhr, status, error) {
                 
@@ -460,6 +591,8 @@ function set_agent_ip(){
     }
 
 }
+
+
 
 function set_agent_type(argument) {
     var  agent_type = document.querySelector('input[name="agent_type"]:checked').value;
@@ -484,10 +617,10 @@ function set_agent_type(argument) {
 }
 
 function StatusCheck(action) {
-    var work_icon = '<svg height="18" width="18" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M9.001.666A8.336 8.336 0 0 0 .668 8.999c0 4.6 3.733 8.334 8.333 8.334s8.334-3.734 8.334-8.334S13.6.666 9 .666Zm0 15a6.676 6.676 0 0 1-6.666-6.667A6.676 6.676 0 0 1 9 2.333a6.676 6.676 0 0 1 6.667 6.666A6.676 6.676 0 0 1 9 15.666Zm-1.666-4.833L5.168 8.666 4.001 9.833l3.334 3.333L14 6.499l-1.166-1.166-5.5 5.5Z" fill="#1E8E3E" fill-rule="evenodd"></path></svg>';
-    var not_work_icon = '<svg height="18" width="18" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M11.16 5.666 9 7.824 6.843 5.666 5.668 6.841l2.158 2.158-2.158 2.159 1.175 1.175 2.158-2.159 2.159 2.159 1.175-1.175-2.159-2.159 2.159-2.158-1.175-1.175ZM9 .666A8.326 8.326 0 0 0 .668 8.999a8.326 8.326 0 0 0 8.333 8.334 8.326 8.326 0 0 0 8.334-8.334A8.326 8.326 0 0 0 9 .666Zm0 15a6.676 6.676 0 0 1-6.666-6.667A6.676 6.676 0 0 1 9 2.333a6.676 6.676 0 0 1 6.667 6.666A6.676 6.676 0 0 1 9 15.666Z" fill="#D93025" fill-rule="evenodd"></path></svg>';
+    let work_icon = '<svg height="18" width="18" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M9.001.666A8.336 8.336 0 0 0 .668 8.999c0 4.6 3.733 8.334 8.333 8.334s8.334-3.734 8.334-8.334S13.6.666 9 .666Zm0 15a6.676 6.676 0 0 1-6.666-6.667A6.676 6.676 0 0 1 9 2.333a6.676 6.676 0 0 1 6.667 6.666A6.676 6.676 0 0 1 9 15.666Zm-1.666-4.833L5.168 8.666 4.001 9.833l3.334 3.333L14 6.499l-1.166-1.166-5.5 5.5Z" fill="#1E8E3E" fill-rule="evenodd"></path></svg>';
+    let not_work_icon = '<svg height="18" width="18" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M11.16 5.666 9 7.824 6.843 5.666 5.668 6.841l2.158 2.158-2.158 2.159 1.175 1.175 2.158-2.159 2.159 2.159 1.175-1.175-2.159-2.159 2.159-2.158-1.175-1.175ZM9 .666A8.326 8.326 0 0 0 .668 8.999a8.326 8.326 0 0 0 8.333 8.334 8.326 8.326 0 0 0 8.334-8.334A8.326 8.326 0 0 0 9 .666Zm0 15a6.676 6.676 0 0 1-6.666-6.667A6.676 6.676 0 0 1 9 2.333a6.676 6.676 0 0 1 6.667 6.666A6.676 6.676 0 0 1 9 15.666Z" fill="#D93025" fill-rule="evenodd"></path></svg>';
 
-    var url = '?url=Admins/AgentTest';
+    let url = '?url=Admins/AgentTest';
     if(action == 'start'){
         url = '?url=Admins/StartAgent';
     }
@@ -495,26 +628,32 @@ function StatusCheck(action) {
         url = '?url=Admins/CloseAgent';
     }
 
-    if(action ){
-        $.ajax({
-            url: url,
-            method: "POST",
-            data:{ 
-           
-            },
-            success: function(response) {
-                console.log(response);
-        
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });   
-    }
-
+    $.ajax({ // 提醒
+        type: "POST",
+        data: { },
+        dataType: "json",
+        url: url,
+        beforeSend: function() {
+            $('#overlay').removeClass('hidden');
+        },
+    }).done(function(result) { //成功且有回傳值才會執行
+        $('#overlay').addClass('hidden');
+        if(result.server_status == "true"){
+            document.getElementById('s_status').innerHTML = work_icon;
+        }else{
+            document.getElementById('s_status').innerHTML = not_work_icon;
+        }
+        if(result.server_status == "true"){
+            document.getElementById('c_status').innerHTML = work_icon;
+        }else{
+            document.getElementById('c_status').innerHTML = not_work_icon;
+        }
+    });
 }
 
+
 function idas_update() {
+
     var ff = document.querySelector('#file-uploader').files;
     var bb = document.getElementById("file-uploader").files[0];
     var form = new FormData();
@@ -543,8 +682,66 @@ function idas_update() {
    
 }
 
+function input_check_savebarcode() {
+
+    let conditions = [
+        { id: 'barcode_content',  pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]{1,100}$/, min: null, max: null },
+        { id: 'barcode_mask_from', pattern: /^[0-9]+$/, min: 1, max: 54 },
+        { id: 'barcode_mask_count', pattern: /^[0-9]+$/, min: 1, max: 100 },
+
+    ];
+
+    let isFormValid = true;
+
+    conditions.forEach(function(input) {
+        var element = document.getElementById(input.id);
+        if (input.id !== 'barcode_content') {
+            element.nextElementSibling.innerHTML = `${input.min} ~ ${input.max}`;
+        }
+
+        if (!validateInput(element, input.pattern, input.min, input.max)) {
+            isFormValid = false;
+        }
+    });
+
+    return isFormValid;
+}
+
+function validateInput(element, pattern, min, max) {
+    let value = element.value.trim();
+    let isValid = true;
+
+    // 验证空值
+    if (value === "") {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 验证正则
+    else if (!pattern.test(value)) {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 验证最小值
+    else if (min !== null && parseFloat(value) < min) {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 验证最大值
+    else if (max !== null && parseFloat(value) > max) {
+        element.classList.add("is-invalid");
+        isValid = false;
+    }
+    // 通过验证
+    else {
+        element.classList.remove("is-invalid");
+    }
+
+    return isValid;
+}
+
 
 function update_barcode(){
+
     var barcode_name  = document.getElementById("barcode_name").value;
     var barcode_from  = document.getElementById("barcode_from").value;
     var barcode_count = document.getElementById("barcode_count").value;
@@ -553,6 +750,10 @@ function update_barcode(){
     var barcode_seq   = document.querySelector("select[name='barcode_seq']").value;
     
     if(barcode_name){
+
+        document.getElementById('spinner').style.display = 'block';
+
+
         $.ajax({
             url: "?url=Settings/Update_Barcode",
             method: "POST",
@@ -565,18 +766,41 @@ function update_barcode(){
                 barcode_mode: barcode_mode
             },
             success: function(response) {
-                console.log(response);
-                //alert(response);
-                $.ajax({
-                    url: "?url=Settings/show_Barcodes",
-                    method: "GET",
-                    success: function(html) {
-                        $('#total_barcodes').html(html);  
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error fetching barcodes:", error);
-                    }
-                });
+                var responseData = JSON.parse(response);  // 解析返回的 JSON 資料
+                
+                // 延遲 1000 毫秒後隱藏加載動畫，並在隱藏後顯示 alertify 彈跳視窗
+                setTimeout(function() {
+                    // 隱藏 'copyjob' 和 'spinner' 加載動畫
+                    document.querySelector(".main-content").classList.remove("overlay-active");
+                    document.getElementById('spinner').style.display = 'none';  
+
+                    // 顯示 alertify 彈跳視窗
+                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                        // 彈跳視窗關閉後刷新頁面
+                        // 存儲頁面顯示狀態到 sessionStorage
+                        sessionStorage.setItem('Barcode_Setting', 'block');
+                        sessionStorage.setItem('Controller_Setting', 'none');
+                        
+                        //history.go(0);  // 重新加載頁面
+                    });
+
+                    // 在 3 秒後自動關閉 alertify 彈跳視窗，並執行 AJAX 請求來刷新條形碼列表
+                    setTimeout(function() {
+                        alertify.closeAll();  // 關閉所有開啟的 alertify 彈跳視窗
+                        
+                        // 刷新條形碼列表
+                        $.ajax({
+                            url: "?url=Settings/show_Barcodes",
+                            method: "GET",
+                            success: function(html) {
+                                $('#total_barcodes').html(html);  
+                            },
+                            error: function(xhr, status, error) {
+                                console.error("獲取條形碼時出錯:", error);
+                            }
+                        });
+                    }, 3000); // 延遲 3 秒
+                }, 1000); // 延遲 1000 毫秒
             },
             error: function(xhr, status, error) {
                 
@@ -587,39 +811,146 @@ function update_barcode(){
 }
 
 function delete_barcode() {
-    var del_barcode_id = [];
-    var checkboxes = document.querySelectorAll('input[name="barcode_check"]:checked');
-    
-    checkboxes.forEach(function (checkbox) {
-        del_barcode_id.push(checkbox.value);
-    });
-    
-    if(del_barcode_id){
-        $.ajax({
-            url: "?url=Settings/delete_barcodes",
-            method: "POST",
-            data:{ 
-                del_barcode_id: del_barcode_id
+    const del_barcode_id = [];
+    const checkboxes = document.querySelectorAll('input[name="barcode_check"]:checked');
 
+    checkboxes.forEach(checkbox => del_barcode_id.push(checkbox.value));
+
+    if (del_barcode_id.length === 0) return;
+
+    document.getElementById('spinner').style.display = 'block';
+
+    $.ajax({
+        url: "?url=Settings/delete_barcodes",
+        method: "POST",
+        data: { del_barcode_id: del_barcode_id },
+        dataType: 'json', // ✅ 強制回傳格式為 JSON，避免 JSON.parse 錯誤
+        success: function(response) {
+            const { res_type, res_msg } = response;
+
+            setTimeout(function () {
+                document.getElementById('spinner').style.display = 'none';
+
+                alertify.alert(res_type, res_msg, function () {
+                    sessionStorage.setItem('Barcode_Setting', 'block');
+                    sessionStorage.setItem('Controller_Setting', 'none');
+                    //history.go(0); // 頁面重載
+                });
+
+                setTimeout(function () {
+                    alertify.closeAll();
+
+                    // ✅ 刷新條碼列表區塊
+                    $.ajax({
+                        url: "?url=Settings/show_Barcodes",
+                        method: "GET",
+                        success: function (html) {
+                            $('#total_barcodes').html(html);
+                        },
+                        error: function (xhr, status, error) {
+                            console.error("刷新條碼失敗:", error);
+                        }
+                    });
+                }, 3000);
+            }, 1000);
+        },
+        error: function(xhr, status, error) {
+            document.getElementById('spinner').style.display = 'none';
+            console.error("刪除時發生錯誤:", error);
+            alertify.alert("Error", "無法刪除條碼，請稍後再試。");
+        }
+    });
+}
+
+
+
+function agent_ip_save() {
+    var language = getCookie('language') || 'en-us'; 
+    var agent_server_ip = document.getElementById('agent_server_ip').value;
+
+    // 正規表達式：檢查 IPv4 位址的格式是否正確
+    var ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
+    // 錯誤提示訊息
+    var errorMessage = {
+        'en-us': "Please enter a valid IP address.",
+        'zh-tw': "請輸入有效的 IP 地址。",
+        'zh_cn': "请输入有效的 IP 地址。"  
+    };
+
+    // 如果有填寫 IP，且格式符合正規表達式
+    if (agent_server_ip && ipRegex.test(agent_server_ip)) {  
+        
+        // 顯示加載動畫
+        document.getElementById('spinner').style.display = 'block';
+
+        $.ajax({
+            url: "?url=Admins/SetAgentIp",
+            method: "POST",
+            data: { 
+                agent_server_ip: agent_server_ip
             },
             success: function(response) {
-                //console.log(response);
-                //alert(response);
-                $.ajax({
-                    url: "?url=Settings/show_Barcodes",
-                    method: "GET",
-                    success: function(html) {
-                        $('#total_barcodes').html(html);  
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error fetching barcodes:", error);
-                    }
-                });
+                var responseData = JSON.parse(response); 
+
+
+                setTimeout(function() {
+                    document.getElementById('spinner').style.display = 'none';
+                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                        sessionStorage.setItem('Connect_Setting', 'block');
+                        sessionStorage.setItem('Controller_Setting', 'none');
+                        //history.go(0); 
+                    });
+
+                    setTimeout(function() {
+                        alertify.closeAll(); 
+                    }, 3000);
+                }, 1000);
+
+                document.getElementById('agent_server_ip').innerText = responseData.res_number;
             },
+
+            error: function(xhr, status, error) {
+            }
+        });
+    } else {
+        alertify.alert("Error", language === 'en-us' ? errorMessage.en : (language === 'zh-tw' ? errorMessage.zh : errorMessage.zh_cn), function() {
+            setTimeout(function() {
+                alertify.closeAll();  
+            }, 3000); 
+        });
+    }
+}
+
+
+function agent_type_save(){
+
+    var agent_type = document.querySelector('input[name="agent_type"]:checked').value;
+    if(agent_type){
+        document.querySelector(".main-content").classList.add("overlay-active");
+        document.getElementById('spinner').style.display = 'block';
+
+        $.ajax({
+            url: "?url=Admins/SetAgentType",
+            method: "POST",
+            data:{ 
+                agent_type: agent_type
+            },
+            success: function(response) {
+                var responseData = JSON.parse(response);
+                alertify.alert(responseData.res_type, responseData.res_msg);
+                
+                setTimeout(function() {
+                    alertify.closeAll(); 
+                    document.getElementById('spinner').style.display = 'none';
+                    document.querySelector(".main-content").classList.remove("overlay-active"); 
+                }, 3000); 
+            },
+            
             error: function(xhr, status, error) {
                 
             }
         });   
     }
-    
+
 }

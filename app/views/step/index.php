@@ -25,7 +25,7 @@
             </div>
 
             <div class="table-container">
-                <table id="step_table" class="table w3-table-all w3-hoverable">
+                <table id="step_table" class="table w3-table">
                     <thead id="header-table">
                         <tr class="w3-dark-grey">
                             <th><?php echo $text['step_id'];?></th>
@@ -80,7 +80,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: 80%">
                 <header class="w3-container modal-header">
-                    <span onclick="hideElementById('editstep');"
+                    <span onclick="closebutton('editstep');"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                     <h3 id='modal_title'><?php echo $text['edit_step'];?></h3>
                 </header>
@@ -204,7 +204,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="" class="button-modal" onclick="edit_step_save()" ><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="hideElementById('edittep');"  class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('edittep');"  class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>
@@ -215,7 +215,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content w3-animate-zoom" style="width: 60%">
                 <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('copystep').style.display='none'"
+                    <span onclick="closebutton('copystep')"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                     <h3 id='modal_title'><?php echo $text['copy_step'];?></h3>
                 </header>
@@ -246,7 +246,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="copyButton" class="button-modal" onclick="copy_step_by_id_ajax()" ><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="document.getElementById('copystep').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('copystep')" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>

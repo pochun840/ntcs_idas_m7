@@ -11,44 +11,48 @@
     <div class="main-content">
         <div class="center-content">
             <div class="topnav">
-                <label style="font-size:3vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
+                <label style="font-size:3.2vmin;color: #000; padding-left: 0%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
                 <input type="text" id="job_id" name="job_id" size="5" maxlength="20" value="<?php echo $data['job_id'];?>" disabled
-                style="height:28px; font-size:3vmin;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
+                style="height:28px; font-size:3.2vmin;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
 
-                <label style="font-size:3vmin;color: #000; padding-left: 2%" for="seq_id"><?php echo $text['seq_id'];?> :</label>&nbsp;
+                <label style="font-size:3.2vmin;color: #000; padding-left: 0%" for="seq_id"><?php echo $text['seq_id'];?> :</label>&nbsp;
                 <input type="text" id="seq_id" name="seq_id" size="5" maxlength="20" value="1" disabled
-                style="height:28px; font-size:3vmin;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
+                style="height:28px; font-size:3.2vmin;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
 
-                <button id="back_btn" type="button" onclick="goToPage()"><?php echo $text['return'];?></button>
+                  <?php $url = '?url=Step/index/' . $data['job_id']."/".$data['seq_id']; ?>
+                <button id="back_btn" type="button" onclick="window.location.href='<?php echo $url; ?>';"><?php echo $text['return'];?></button>
             </div>
 
             <div class="table-container">
-                <table id="step_table" class="table w3-table-all w3-hoverable">
-                    <thead id="header-table" style="2.5vmin">
-                        <tr class="w3-dark-grey">
-                            <th><?php echo $text['step_id'];?></th>
-                            <th><?php echo $text['step_target_type'];?></th>
-                            <th><?php echo $text['direction'];?></th>
-                            <th><?php echo $text['rpm'];?></th>
-                            <th><?php echo $text['up'];?></th>
-                            <th><?php echo $text['down'];?></th>
-                        </tr>
-                    </thead>
+                <div class="scrollbar" id="style-steptable">
+                    <div class="force-overflow">
+                        <table id="step_table" class="table w3-table ">
+                            <thead id="header-table">
+                                <tr class="w3-dark-grey"  style="font-size: 2.6vmin">
+                                    <th><?php echo $text['step_id'];?></th>
+                                    <th><?php echo $text['step_target_type'];?></th>
+                                    <th><?php echo $text['direction'];?></th>
+                                    <th><?php echo $text['rpm'];?></th>
+                                    <th><?php echo $text['up'];?></th>
+                                    <th><?php echo $text['down'];?></th>
+                                </tr>
+                            </thead>
 
-                    <tbody style="font-size: 2vmin;text-align: center;">
-                  
-                        <?php foreach($data['step'] as $key =>$val){?>
-                            <tr>
-                                <td><?php echo $val['StepSelect'];?></td>
-                                <td><?php echo $text[$data['target_option'][$val['StepOption']]];?></td>
-                                <td><?php echo $text[$data['direction'][$val['StepDirection']]];?></td>
-                                <td><?php echo $val['StepRPM'];?></td>
-                                <td><img src="./img/btn_up.png" onclick="MoveUp(this);"></td>
-                                <td><img src="./img/btn_down.png"onclick="MoveDown(this);"></td>
-                            </tr>
-                        <?php } ?>
-                    </tbody>
-                </table>
+                            <tbody style="font-size: 2.6vmin;text-align: center;">
+                                <?php foreach($data['step'] as $key =>$val){?>
+                                    <tr>
+                                        <td><?php echo $val['StepSelect'];?></td>
+                                        <td><?php echo $text[$data['target_option'][$val['StepOption']]];?></td>
+                                        <td><?php echo $text[$data['direction'][$val['StepDirection']]];?></td>
+                                        <td><?php echo $val['StepRPM'];?></td>
+                                        <td><img src="./img/btn_up.png" onclick="MoveUp(this);"></td>
+                                        <td><img src="./img/btn_down.png"onclick="MoveDown(this);"></td>
+                                    </tr>
+                                <?php } ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -75,9 +79,9 @@
     <!-- Copy Step -->
     <div id="copystep" class="modal">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content w3-animate-zoom" style="width: 60%">
+            <div class="modal-content w3-animate-zoom" style="width: 90%">
                 <header class="w3-container modal-header">
-                    <span onclick="document.getElementById('copystep').style.display='none'"
+                    <span onclick="closebutton('copystep')"
                         class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                     <h3 id='modal_title'><?php echo $text['copy_step'];?></h3>
                 </header>
@@ -87,8 +91,8 @@
         	            <label for="from_step_id" class="col col-form-label" style="font-weight: bold"><?php echo $text['copy_from'];?></label>
         	            <div style="padding-left: 10%">
         		            <div class="row">
-        				        <label for="from_step_id" class="t1 col-4 col-form-label"><?php echo $text['step_id'];?> :</label>
-        				        <div class="col-5 t2 ">
+        				        <label for="from_step_id" class="t1 col-5 col-form-label"><?php echo $text['step_id'];?> :</label>
+        				        <div class="col-4 t2 ">
         				            <input type="number" class="form-control" id="from_step_id" disabled>
         				        </div>
         				    </div>
@@ -97,8 +101,8 @@
         			    <label for="from_step_id" class="col col-form-label" style="font-weight: bold"><?php echo $text['copy_to'];?></label>
         			    <div style="padding-left: 10%">
         				    <div class="row">
-        				        <label for="to_step_id" class="t1 col-4 col-form-label"><?php echo $text['step_id'];?> :</label>
-        				        <div class="t2 col-5">
+        				        <label for="to_step_id" class="t1 col-5 col-form-label"><?php echo $text['step_id'];?> :</label>
+        				        <div class="t2 col-4">
         				            <input type="number" class="form-control" id="to_step_id">
         				        </div>
         				    </div>
@@ -108,7 +112,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button id="copyButton" class="button-modal" onclick="copy_step_by_id_ajax()" ><?php echo $text['save'];?></button>
-                    <button id="" class="button-modal" onclick="document.getElementById('copystep').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                    <button id="" class="button-modal" onclick="closebutton('copystep')" class="closebtn"><?php echo $text['close'];?></button>
                 </div>
             </div>
         </div>

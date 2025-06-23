@@ -16,7 +16,7 @@ function cound_step(action) {
 
     // 有選取列時才執行這些操作
     if (requiresSelection && !stepid) {
-        alert("請先選擇一筆 Step 資料！");
+        //alert("請先選擇一筆 Step 資料！");
         return;
     }
 

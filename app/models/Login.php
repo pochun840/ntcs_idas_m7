@@ -1,9 +1,10 @@
 <?php
 
 class Login{
-    private $db;//condb control box
-    private $db_dev;//devdb tool
-    private $db_iDas;//iDas db
+    private $db;
+    private $db_dev;
+    private $db_iDas;
+    private $db_iDas_login;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
@@ -40,10 +41,6 @@ class Login{
         $statement->bindValue(':name', $username);
         $statement->execute();        
         
-        // $sql = "SELECT operator_loginflag,operator_adminpwd,operator_priviledge FROM operator";
-        // $statement = $this->db_iDas->prepare($sql);
-        // $statement->execute();
-
         return $statement->fetch();
     }
 
@@ -61,6 +58,7 @@ class Login{
     #紀錄登錄
     public function logLoginAttempt($ip) {
 
+        
         // 插入登录尝试记录
         /*$stmt = $this->db_iDas_login->prepare("INSERT INTO login_attempts (ip) VALUES (:ip)");
         $stmt->bindValue(':ip', $ip);
@@ -97,6 +95,7 @@ class Login{
         // 计算过期时间戳 10分鐘
         date_default_timezone_set('UTC');
         $expired_timestamp = date('Y-m-d H:i:s',time() - 600);
+
 
         // 删除过期的会话记录
         $stmt = $this->db_iDas_login->prepare("DELETE FROM active_sessions WHERE timestamp < :expired_timestamp");

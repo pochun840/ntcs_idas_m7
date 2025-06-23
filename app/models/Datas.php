@@ -1,25 +1,19 @@
 <?php
 class Datas{
-    private $db;//condb control box
-    private $db_dev;//devdb tool
-    private $db_data;//devdb tool
-    private $dbh;
 
+    private $db_data;
     // 在建構子將 Database 物件實例化
-    public function __construct()
-    {
-        $this->db = new Database;
-        $this->db = $this->db->getDb();
+    public function __construct(){
 
-        $this->db_data = new Database;
-        $this->db_data = $this->db_data->getDb_data();
+        $db_instance = new Database;
+        $this->db_data = $db_instance->getDb_data();
 
-        $this->dbh = new Database;
+
 
     }
 
-    public function getData($type)
-    {
+    public function getData($type){
+        
         $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 100 ";
         if($type == 'OK'){
             $sql = "SELECT * FROM ( SELECT * FROM ntcs_data WHERE fasten_status in('4')  ORDER BY data_time DESC LIMIT 100 ) AS recent_data ORDER BY data_time DESC ";
@@ -39,13 +33,12 @@ class Datas{
         }
     }
 
-    public function get_range_data($start_date,$end_date)
-    {
+    public function get_range_data($start_date,$end_date){
+
         $sql = "SELECT * FROM ntcs_data 
                 WHERE data_time BETWEEN '".$start_date."' AND '".$end_date."'
                 ORDER BY data_time DESC LIMIT 10000";
-        
-        //echo $sql;   
+                
         $statement = $this->db_data->prepare($sql);
         
         if($statement != false){
@@ -57,5 +50,53 @@ class Datas{
             return array();
         }
     }
+
+    public function get_data_for_year(){
+
+        $sql = "SELECT strftime('%Y', data_time) AS year, COUNT(*) AS total FROM ntcs_data GROUP BY year ORDER BY year ASC";
+        $statement = $this->db_data->prepare($sql);
+        if($statement != false){
+            $statement->execute();
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+            $result = [
+                'year' => [],
+                'total' => []
+            ];
+
+            foreach ($rows as $row) {
+                $result['year'][] = $row['year'];
+                $result['total'][] = $row['total'];
+            }
+
+            return $result;
+        } else {
+            return ['year' => [], 'total' => []];
+        }
+    }
+
+
+    public function get_operation_info() {
+
+        if (is_null($this->db_data)) {
+            return null;
+        }
+    
+        $sql = "SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1";
+    
+        try {
+            $statement = $this->db_data->prepare($sql);
+            $statement->execute();
+            $result = $statement->fetch(PDO::FETCH_ASSOC); 
+            $statement = null; // 釋放資源
+            return $result ?: null; // 沒資料也回傳 null
+        } catch (PDOException $e) {
+            $statement = null; // 釋放資源
+            return null; // 發生錯誤也回傳 null
+        }
+    }
+
+
+
 
 }

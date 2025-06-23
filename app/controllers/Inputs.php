@@ -2,12 +2,15 @@
 
 class Inputs extends Controller
 {
+
+    private $InputModel;
+    private $MiscellaneousModel;
+
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->InputModel = $this->model('Input');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
-        $this->jobModel = $this->model('Job');
     }
 
     // 取得所有Inputs
@@ -16,6 +19,7 @@ class Inputs extends Controller
         //要檢查是否有alljobinput，有的話要直接帶入
         $isMobile = $this->isMobileCheck();
         $joblist  = $this->InputModel->get_job_list();
+        
         $event    = $this->MiscellaneousModel->details('io_input');
         $device_data = $this->InputModel->get_input_alljob();
 
@@ -112,7 +116,16 @@ class Inputs extends Controller
                         $job_inputlist .= '<td>EVENT</td>';
                         $job_inputlist .= '</tr>';
                     }
-    
+
+                    //檢查並補上 101 或 102
+                    if (!empty($temp_event)) {
+                        if (in_array("101", $temp_event) && !in_array("102", $temp_event)) {
+                            $temp_event[] = "102";
+                        } elseif (in_array("102", $temp_event) && !in_array("101", $temp_event)) {
+                            $temp_event[] = "101";
+                        }
+                    }
+                    
                     
                 }
 
@@ -195,7 +208,7 @@ class Inputs extends Controller
         }
 
         if( isset($_POST['gateconfirm'])  ){
-            $input_data['gateconfirm'] = $_POST['gateconfirm'];
+            $input_data['Wp_Ready_Confirm'] = $_POST['gateconfirm'];
         }else{ 
             $input_check = false; 
         }

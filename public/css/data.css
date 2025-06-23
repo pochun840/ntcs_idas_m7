@@ -98,13 +98,13 @@ th, td
     vertical-align: middle;
 }
 
-.w3-table-all
+.w3-table
 {
     width: 100%;
     border-collapse: collapse;
 }
 
-.w3-table-all th, .w3-table-all td
+.w3-table th, .w3-table td
 {
     border: 1px solid #ddd;
     padding: 8px;
@@ -140,14 +140,14 @@ tfoot th
 .scrollbar
 {
     float: left;
-    height: calc(100vh - 270px);
+    height: calc(100vh - 180px);
     width: 100%;
     overflow-y: scroll;
 }
 
 .force-overflow
 {
-    min-height: 60vh;
+    min-height: 50vh;
 }
 
 #wrapper

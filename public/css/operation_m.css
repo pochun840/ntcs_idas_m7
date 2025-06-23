@@ -93,7 +93,7 @@ body
 
 .item-result
 {
-    background-color: #FFEF62;
+    /*background-color: #FFEF62;*/
     height: 17vh;
     font-size: 3vmin;
     margin: 5px;
@@ -128,59 +128,78 @@ body
     width: 50%;
 }
 
-.chart-setting
-{
-    display: flex;
-    flex-direction: column; 
-    align-items: center;
-}
-
-.button-chart 
-{
-    display: flex;
-    flex-direction: row; 
-    gap: 10px;
-}
-
-.btn-chart 
-{
-    padding: 10px 20px; 
-    margin: 5px; 
-    border: 1px solid #ccc;
-    background-color: #f0f0f0;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.btn-chart.active 
-{
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-chart:hover 
-{
-    background-color: #0056b3;
-    color: white;
-}
-
-.display-chart 
+.chart-setting 
 {
     width: 100%;
-    background-color: #fff; 
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+    clear: both; /* nếu dùng float trong các phần khác */
 }
 
-.btn-chart
-{
-    height: 32px;
-    margin: 5px 0;
-    padding: 0 3px;
+.button-chart {
+    display: flex;
+    flex-wrap: wrap;             /* Cho phép xuống dòng */
+    justify-content: center;     /* Căn giữa cả cụm nút */
+    gap: 6px;
+    padding: 5px;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
+}
+
+/* Cài đặt mặc định: 1 hàng 5 nút (ngang) */
+.btn-chart {
+    flex: 0 0 calc((100% - 24px) / 5);  /* 5 nút chia đều (4 khoảng cách 6px = 24px) */
+    max-width: 120px;
+    font-size: clamp(10px, 3vw, 14px);
+    height: 30px;
+    padding: 5px 4px;
     background-color: #6E8085;
+    color: white;
+    border: none;
     border-radius: 5px;
-    color: #fff;
-    border: 0px solid #6E8085;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    font-size: 2vmin;
+    white-space: normal;         /* Cho phép xuống dòng nếu cần */
     text-align: center;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    word-break: break-word;
+}
+
+/* Khi màn hình nhỏ (quay dọc), chia 2 hàng: 3 nút + 2 nút */
+@media (max-width: 500px) {
+    .btn-chart {
+        flex: 0 0 calc((100% - 12px) / 3); /* Mỗi hàng có 3 nút max (2 khoảng cách = 12px) */
+    }
+    .button-chart button:nth-child(4),
+    .button-chart button:nth-child(5) {
+        flex: 0 0 calc((100% - 6px) / 2); /* 2 nút hàng dưới chia đều */
+    }
+}
+
+
+.btn-chart.active,
+.btn-chart:hover {
+    background-color: #007bff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Biểu đồ hiển thị */
+.display-chart {
+    width: 100%;
+    flex-grow: 1;
+    background-color: #fff;
+    padding: 0px;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+input:disabled 
+{
+    opacity: 1; /* Giữ độ rõ nét */
+    color: #000; /* Đảm bảo chữ vẫn có màu đen rõ ràng */
 }
 

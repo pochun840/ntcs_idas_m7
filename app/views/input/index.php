@@ -1,5 +1,5 @@
 
-<link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_input.css" type="text/css">
+
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -138,7 +138,7 @@
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content w3-animate-zoom" style="width: 70%">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('newinput').style.display='none'"
+                            <span onclick="closebutton('newinput')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['new_event'];?></h3>
                         </header>
@@ -327,7 +327,7 @@
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="create_input_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('newinput').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('newinput')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -338,7 +338,7 @@
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content w3-animate-zoom" style="width: 70%">
                     <header class="w3-container modal-header">
-                        <span onclick="document.getElementById('edit_input').style.display='none'"
+                        <span onclick="closebutton('edit_input')"
                             class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                         <h3 id='modal_title'><?php echo $text['edit_event'];?></h3>
                     </header>
@@ -521,7 +521,7 @@
 
                     <div class="modal-footer justify-content-center">
                         <button id="" class="button-modal" onclick="edit_input_id()"><?php echo $text['save'];?></button>
-                        <button id="" class="button-modal" onclick="document.getElementById('edit_input').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                        <button id="" class="button-modal" onclick="closebutton('edit_input')" class="closebtn"><?php echo $text['close'];?></button>
                     </div>
                     </div>
                 </div>
@@ -532,7 +532,7 @@
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content w3-animate-zoom" style="width: 60%;">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('copyinput').style.display='none'"
+                            <span onclick="closebutton('copyinput')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['copy_input'];?></h3>
                         </header>
@@ -549,7 +549,7 @@
 
                 				        <label for="from_job_name" class="t1 col-4 col-form-label"><?php echo $text['job_name'];?> :</label>
                 				        <div class="col-5 t2 ">
-                				            <input type="text" class="form-control" id="from_job_name" disabled>
+                				            <input type="text" class="form-control" id="from_job_name" value='' disabled >
                 				        </div>
                 				    </div>
                 			    </div>
@@ -576,760 +576,34 @@
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="copy_input_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('copyinput').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('copyinput')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- 加载動畫 OP -->
+        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
+    <div id="modal-overlay"></div>
+
 </div>
 
-<script>
+<?php require_once '../app/views/input/input_share.php';?>
 
 
-var job_id; 
-var input_event;
-var temp;
-var tempA;
-var tempB;
-var selectedValue;
-var old_input_event;
-var all_job;
-var buttonDisabled = false;
-var backgroundColorYellow = false;
-var input_job;
-var temp_event;
-
-$(document).ready(function () {
-    highlight_row_input('input_table');
- 
-    var all_input_job = '<?php echo $data['device_data']['device_input_all_job']?>';
-    job_id = all_input_job;
-    input_job = all_input_job;
-    if(job_id){
-        get_input_by_job_id(job_id);
-        document.getElementById('Button_Select').disabled = true;
-        document.getElementById('job_id').style.backgroundColor = 'yellow';
-    }
-
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      var headerElements = document.querySelectorAll('.ajs-header');
-      headerElements.forEach(function(headerElement) {
-        headerElement.parentNode.removeChild(headerElement);
-      });
-    });
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-});
-
-document.getElementById("Event_Option").onchange = function() {
-    var selectedValue = this.value; 
-    handleEventChange(selectedValue); 
-};
-
-// Div Mode
-function toggleDivs() {
-    var tableInputSetting = document.getElementById('TableInputSetting');
-    var tableDataInput = document.getElementById('TableDataInput');
-
-    if (tableInputSetting.style.display === 'none') {
-        tableInputSetting.style.display = 'block';
-        tableDataInput.style.display = 'none';
-    } else {
-        tableInputSetting.style.display = 'none';
-        tableDataInput.style.display = 'block';
-    }
-}
-
-function showTableInputSetting() {
-    document.getElementById('TableInputSetting').style.display = 'block';
-    document.getElementById('TableDataInput').style.display = 'none';
-
-    document.getElementById('input_menu').style.display = 'block';
-}
-
-// Get the modal
-var modal = document.getElementById('newinput');
-
-
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-}
-
-function crud_job_event(argument){
-    if(argument == 'new' && job_id != ''){
-
-     
-
-        //針對已設定的pin角位disable
-        if (Array.isArray(temp)){ 
-            temp.forEach(function(element) {
-                var radio = document.getElementById(element);
-                if (radio && radio.type === 'radio') { 
-                    radio.disabled = true; 
-                }
-            });
-        } 
-        
-        //針對已設定的事件option做反灰+disable
-        if (Array.isArray(tempA)){
-            tempA.forEach(function(element){
-                var option = document.querySelector('#Event_Option option[value="' + element + '"]');
-                if(option){
-                    if (option.selected){
-                        selectedValue = element;
-                    }
-
-                    option.disabled = true;
-                    option.classList.add('disabled_input');
-                }
-            });
-        }
-
-        //下拉式選單(選擇event事件)
-        console.log(temp_event);
-        if (Array.isArray(temp_event)){
-            let options = document.querySelectorAll('#Event_Option option');
-            options.forEach(option => {
-                if (temp_event.includes(option.value)) {
-                    option.disabled = true;  
-                    option.style.color = 'gray'; 
-                }
-            });
-        }
-
-        document.getElementById('newinput').style.display='block';
-    } 
-    
-    if(argument == 'del' && job_id  != '' &&  input_event != '')  {
-
-        delete_input_id(job_id,input_event);
-    }
-
-
-    if(argument == 'edit' && job_id != '' && input_event != ''){
-
-        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
-        if (!selectedRows.length > 0) {
-            getLanguageMessage('language'); 
-            return;
-        }
-
-
-        var selectElement = document.getElementById('edit_Event_Option');
-        if(selectElement){
-            selectElement.disabled = true;
-            var options = selectElement.options;
-            for (var i = 0; i < options.length; i++) {
-                options[i].disabled = true;
-                options[i].classList.add('disabled_input');
-            }
-        }
-    
-        if (Array.isArray(temp)){
-            temp.forEach(function(element){
-                var radio = document.getElementById(element);
-                if (radio && radio.type === 'radio'){
-                    radio.disabled = true;
-                }
-            });
-        }
-        
-        get_input_info(job_id,input_event);
-        handleEventChange(input_event); 
-        //document.getElementById('edit_input').style.display='block';  
-    }
-
-    if(argument == 'copy' && job_id != '' && input_event != ''){
-        var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['JOBname'];
-
-        document.getElementById("from_job_id").value = job_id;
-        document.getElementById("from_job_name").value = from_job_name_bk;
-        var selectElement = document.getElementById('JobSelect1');
-        var options = selectElement.getElementsByTagName('option');
-
-        for (var i = 0; i < options.length; i++) {
-            var optionId = options[i].getAttribute('id');
-            var optionValue = options[i].value;
-            if(optionValue == job_id){
-                options[i].disabled = true; 
-                options[i].classList.add('disabled_input'); 
-            
-            }
-        }
-
-        var selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
-        if (selectedRows.length > 0) {
-            document.getElementById('copyinput').style.display='block';
-        }else{
-            getLanguageMessage('language');
-        }    
-
-    }
-
-    if(argument == 'unified' && job_id != ''){
-        enableButton();
-        resetBackgroundColor();
-
-        if(input_job != job_id){
-
-            alignsubmit(job_id);  
-        }else{
-            resetalignsubmit(job_id);
-        }
-    }
-}
-
-
-
-function handleEventChange(selectedValue) {
-    if(selectedValue ==109){
-        document.getElementById('work_goc').style.display = 'block';
-    }else{
-        document.getElementById('work_goc').style.display = 'none';
-    }
-}
-
-function edit_handleEventChange(selectedValue,gateconfirm) {
-    if(selectedValue ==109){
-        document.getElementById('edit_work_goc').style.display = 'block';
-    }else{
-        document.getElementById('edit_work_goc').style.display = 'none';
-    }
-
-}
-
-
-function job_confirm(){
-    var jobid = document.getElementById("JobNameSelect").value;
-    localStorage.setItem("jobid", jobid);
-    job_id = jobid;
-    all_job = jobid;
-    
-
-    if(jobid){
-        $.ajax({
-            url: "?url=Inputs/get_input_by_job_id",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-            },
-            success: function(response) {
-                var data = JSON.parse(response);
-                var job_inputlist = data.job_inputlist;
-                temp = data.temp;
-                tempA = data.tempA;
-                temp_event = data.temp_event;
-
-                document.getElementById("input_jobid_select").innerHTML = job_inputlist;
-                document.getElementById("JobSelect").style.display = 'none';
-                document.getElementById("job_id").value = jobid;
-
-                var s3Button = document.getElementById('S3');
-          
-            
-                var rows = document.querySelectorAll('#input_jobid_select tr');
-                rows.forEach(function(row) {
-                    row.addEventListener('click', function() { 
-                        input_event = this.className; 
-                        old_input_event = this.className;
-                    
-                    });
-                });
-
-                var language = getCookie('language');
-                if(language == "zh-cn"){
-
-                    document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = '启用');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '颗数清除');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '确认');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '启动');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺丝');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重启');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感应');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定义1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定义2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定义3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定义4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定义5');
-                
-                }else if(language =="zh-tw"){
-                    document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = 'Enable');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '清除顆數');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '確認');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺絲');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定義1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定義2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定義3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定義4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定義5');
-                }
-
-
-            },
-            error: function(xhr, status, error) {
-            
-            }
-        }); 
-    }
-}
-
-
-
-function tablesubmit(keyno){
-    if(keyno =='show'){
-        document.getElementById('TableDataInput').style.display = 'block';
-        document.getElementById('input_menu').style.display = 'none';
-        get_input_by_job_id(job_id);
-    }
-}
-
-function collectPinValues(selector) {
-    var pinOptions = document.querySelectorAll(selector);
-    var selectedValues = [];
-
-    pinOptions.forEach(function(option) {
-        if (option.checked){ 
-            var radioInfo = {
-                id: option.id,
-                value: option.value
-            };
-            selectedValues.push(radioInfo);
-        }
-    });
-
-    return selectedValues;
-}
-
-//delete
-function delete_input_id(jobid,input_event){
-
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/delete_input",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-             
-            },
-            success: function(response) {
-            
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
-
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });     
-    }
-
-}
-
-
-//create
-function create_input_id(){
- 
-    var input_event = document.getElementById("Event_Option").value;
-    var pinval      = collectPinValues('input[name="pin_option"]');
-    var pin_old   = pinval[0]['id'];
-    var input_wave  = pinval[0]['value'];
-    var pagemode    = 1;
-    var input_seqid = 0;
-
-    if(input_event == 109){
-        var selectedOption = document.querySelector('input[name="gateconfirm"]:checked');
-        var gateconfirm    = selectedOption ? selectedOption.value : 0;
-    }else{
-        var gateconfirm	 = 0;
-    }
-
-
-    var input_pin = pin_old.match(/\d+/)[0];
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/create_input_event",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-                input_pin: 	input_pin,
-                input_wave: input_wave,
-                gateconfirm: gateconfirm,
-                pagemode: pagemode,
-                input_seqid: input_seqid
-            },
-            success: function(response) {
-
-                document.getElementById('newinput').style.display='none';
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-
-    }
-}
-
-//copy
-function copy_input_id(){
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='若设定已存在，将会取代原有设定';
-    }else if(language == "zh-tw"){
-        var text_info ='若設定已存在，將會取代原有設定';
-    }else{
-        var text_info ='If the job input already exists, it will replace the original setting';
-    }
-    alertify.confirm( text_info , function (e) {
-        if (e) {
-            var to_job_id = document.getElementById("JobSelect1").value;
-            if(to_job_id){
-                $.ajax({
-                    url: "?url=Inputs/copy_input_event",
-                    method: "POST",
-                    data: { 
-                        from_job_id: job_id,
-                        to_job_id: to_job_id
-                    },
-                    success: function(response) {
-                        
-                        document.getElementById('copyinput').style.display='none';
-                        var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                            get_input_by_job_id(job_id);
-                        });
-
-                        
-                    },
-                    error: function(xhr, status, error) {
-                        
-                    }
-                });
-        
-            }
-
-        } else {
-            // cancel
-        }
-    });
-
-}
-
-function resetalignsubmit(job_id) {
-
-    var job_id_new = 0;
-
-    if(job_id_new == 0){
-        console.log(job_id_new);
-        console.log(job_id);
-        $.ajax({
-            url: "?url=Inputs/input_alljob_cancel",
-            method: "POST",
-            data: {
-                job_id_new: job_id_new
-            },
-            success: function (response) {
-                get_input_by_job_id(job_id);
-            },
-            error: function (xhr, status, error) {
-
-            }
-        });
-    }
-}
-
-function alignsubmit(job_id) {
-    if (job_id) {
-        $.ajax({
-            url: "?url=Inputs/input_alljob",
-            method: "POST",
-            data: {
-                job_id: job_id
-            },
-            success: function (response) {
-                get_input_by_job_id(job_id);
-                buttonDisabled = !buttonDisabled;
-                document.getElementById('Button_Select').disabled = buttonDisabled;
-     
-                backgroundColorYellow = !backgroundColorYellow;
-                if (backgroundColorYellow){
-                    document.getElementById('job_id').style.backgroundColor = 'yellow';
-                }else{
-                    document.getElementById('job_id').style.backgroundColor = '';
-                }
-            },
-            error: function (xhr, status, error) {
-
-            }
-        });
-    }
-}
-
-function enableButton() {
-    var button = document.getElementById('Button_Select');
-    if (button.disabled) {
-        button.disabled = false;
-    }
-}
-
-function resetBackgroundColor() {
-    var jobInput = document.getElementById('job_id');
-    if (jobInput.style.backgroundColor === 'yellow') {
-        jobInput.style.backgroundColor = '';
-    }
-}
-
-function get_input_info(){
-
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/check_job_event_conflict",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-            },
-            success: function(response) {
-                if (response === 'no_data') {
-                    getLanguageMessage('language');
-                    return;
-                }
-
-                document.getElementById('edit_input').style.display='block';  
-
-
-                var responseJSON = JSON.stringify(response);
-                var cleanString = responseJSON.replace(/Array|\\n/g, '');
-                var cleanString = cleanString.substring(2, cleanString.length - 2);
-
-                var [, jobid] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, null];
-                var [, gateconfirm] = cleanString.match(/\[Wp_Ready_Confirm]\s*=>\s*([^ ]+)/) || [, null];
-
-        
-                if(input_wave == 1){
-                    var wave = "_high";
-                }else{
-                    var wave = "_low";
-                }
-                
-                var edit_input_pin = "edit_pin" + input_pin + wave;
-                var radioButton = document.getElementById(edit_input_pin);
-                radioButton.removeAttribute('disabled');
-                old_input_event = input_event;
-                
-                if(radioButton){
-                    radioButton.checked = true;
-                    if(wave == '_high'){
-                        var nstr = "edit_pin" + input_pin + '_low';
-                    }else{
-                        var nstr = "edit_pin" + input_pin + '_high';
-                    }
-                    var element = document.getElementById(nstr);
-                    if(element){
-                        element.disabled = false; 
-                    } 
-                }
-
-                if(input_event != 109){
-                    document.getElementById('edit_work_goc').style.display = 'none';
-                }else{
-
-                    document.getElementById('edit_work_goc').style.display = 'block';
-
-                    if(gateconfirm == 1){
-                        document.getElementById("edit_gateconfirm_1").checked = true;
-                    }
-
-                    if(gateconfirm == 0){
-                        document.getElementById("edit_gateconfirm_0").checked = true;
-                    }
-
-                }
-                
-                document.querySelector("select[name='edit_Event_Option']").value = input_event;
-
-                document.getElementById("edit_Event_Option").onchange = function() {
-                    var selectedValue = this.value; 
-                    edit_handleEventChange(selectedValue,gateconfirm); 
-                };
-
-             
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-   
-        
-    }
-
-}
-
-function get_input_by_job_id(jobid){
-    $.ajax({
-        url: "?url=Inputs/get_input_by_job_id",
-        method: "POST",
-        data: { 
-            jobid: jobid,
-        },
-        success: function(response) {
-
-            var data = JSON.parse(response);
-            var job_inputlist = data.job_inputlist;
-            temp = data.temp;
-            tempA = data.tempA;
-
-            document.getElementById("input_jobid_select").innerHTML = job_inputlist;
-            document.getElementById("JobSelect").style.display = 'none';
-            document.getElementById("job_id").value = jobid;
-        
-            var rows = document.querySelectorAll('#input_jobid_select tr');
-            rows.forEach(function(row) {
-                row.addEventListener('click', function() { 
-                    input_event = this.className; 
-                });
-            });
-
-            var language = getCookie('language');
-                if(language == "zh-cn"){
-
-                    document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = '启用');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '颗数清除');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '确认');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '启动');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺丝');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重启');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感应');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定义1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定义2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定义3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定义4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定义5');
-                
-                }else if(language =="zh-tw"){
-                    document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = 'Enable');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '清除顆數');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '確認');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺絲');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定義1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定義2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定義3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定義4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定義5');
-                }
-
-        },
-        error: function(xhr, status, error) {
-            console.error("AJAX request failed:", status, error);
-        }
-    }); 
-}
-
-
-function edit_input_id(){
-
-    var input_event = document.getElementById("edit_Event_Option").value;
-    var pinval      = collectPinValues('input[name="edit_pin_option"]');
-    var pin_old   = pinval[0]['id'];
-    var input_wave  = pinval[0]['value'];
-    var pagemode    = 1;
-    var input_seqid = 0;
-    var input_pin = pin_old.match(/\d+/)[0];
-
-    if(input_event == 109){
-        var selectedOption = document.querySelector('input[name="edit_gateconfirm"]:checked');
-        var gateconfirm    = selectedOption ? selectedOption.value : 0;
-    }else{
-        var gateconfirm	 = 0;
-    }
-
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/edit_input_event",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-                input_pin: 	input_pin,
-                input_wave: input_wave,
-                gateconfirm: gateconfirm,
-                pagemode: pagemode,
-                input_seqid: input_seqid,
-                old_input_event: old_input_event
-            },
-            success: function(response) {
-
-                document.getElementById('edit_input').style.display='none';
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
-
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-
-    }
-}
-
-function getLanguageMessage(cookieName) {
-    var value = "; " + document.cookie;
-    var parts = value.split("; " + cookieName + "=");
-    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
-    var message;
-    if (language === 'en-us') {
-       message =  'Please select the event to delete';
-    } else if (language === 'zh-cn') {
-       message =  '请选择要删除的事件';
-    } else if (language === 'zh-tw') {
-       message =  '請點選要刪除的事件';
-    } else {
-      message =  'Please select the event to delete';
-    }
-   alertify.alert(message);
-}
-
-</script>
 <style>
-    #input_table td,
-    #input_table th {
-        width: 100px; 
-        padding: 10px;
-    }
+#modal-overlay {
+  display: none; /* 預設隱藏 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5); /* 灰色半透明 */
+  z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
+}
 </style>

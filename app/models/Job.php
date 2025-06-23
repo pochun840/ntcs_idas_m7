@@ -1,18 +1,12 @@
 <?php
 
 class Job{
-    private $db;//condb control box
-    private $db_dev;//devdb tool
-    private $dbh;
-    private $tool_max_rpm;
-    private $tool_min_rpm;
     private $db_iDas;
-
     // 在建構子將 Database 物件實例化
-    public function __construct()
-    {
-        $this->db_iDas = new Database;
-        $this->db_iDas = $this->db_iDas->getDb_das();
+    public function __construct(){
+        
+        $db_instance = new Database;
+        $this->db_iDas = $db_instance->getDb_das();
   
 
     }
@@ -24,6 +18,8 @@ class Job{
                 FROM JOB_lst
                 LEFT JOIN SEQ_lst ON JOB_lst.JOBID = SEQ_lst.JOBID 
                 WHERE JOB_lst.JOBID != ''
+                      AND JOB_lst.JOBID != 0 
+                      AND JOB_lst.JOBID != 221
                 GROUP BY JOB_lst.JOBID";
 
         $statement = $this->db_iDas->prepare($sql);
@@ -263,9 +259,9 @@ class Job{
                     ':unscrew_count_switch' => $seq['unscrew_count_switch'],
                     ':unscrew_torque_threshold' => $seq['unscrew_torque_threshold'],
                     ':seq_unit' => isset($seq['seq_unit']) ? $seq['seq_unit'] : 0,
-                    ':unscrew_angle_threshold' => $seq['unscrew_angle_threshold'] ?? null,
-                    ':dt_time' => $seq['dt_time'] ?? null,
-                    ':tt_time' => $seq['tt_time'] ?? null,
+                    ':unscrew_angle_threshold' => $seq['unscrew_angle_threshold'] ?? 0,
+                    ':dt_time' => $seq['dt_time'] ?? 0,
+                    ':tt_time' => $seq['tt_time'] ?? 0,
 
 
 

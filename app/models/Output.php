@@ -1,16 +1,12 @@
 <?php
 
 class Output{
-    private $db;//condb control box
-    private $dbh;
 
+    private $db_iDas;
+    private $db_iDas_device;
     // 在建構子將 Database 物件實例化
-    public function __construct()
-    {
+    public function __construct(){
         
-
-        $this->dbh = new Database;
-
         $this->db_iDas = new Database;
         $this->db_iDas = $this->db_iDas->getDb_das();
 

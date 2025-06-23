@@ -14,7 +14,7 @@ function cound_job(action) {
 
     // 若需要 jobid 的操作卻沒選取列
     if (needJobid.includes(action) && !jobid) {
-        alertify.warning("Please select a job first.");
+        //alertify.warning("Please select a job first.");
         return;
     }
 

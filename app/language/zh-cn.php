@@ -115,6 +115,9 @@ $text['hard'] = '硬';
 $text['ok_all_alarm_time'] = 'OK All 持续时间';
 $text['tighten_repeat'] = '锁附颗数';
 $text['ok_time'] = "OK one持续时间";
+$text['DT_Time'] = '颗数间隔时间';
+$text['TT_Time'] = '工序完成时间';
+
 //normalstep
 $text['normal_step'] = '快速工序目标';
 $text['torque'] = '扭力';
@@ -254,7 +257,7 @@ $text['NG'] = 'NG';
 $text['NG-High'] = '超出上限';
 $text['NG-Low'] = '低于下限';
 $text['OK-Sequence'] = '工序完成信号';
-$text['OK-Job'] = '工作任务完成信号';
+$text['OK-JOB'] = '工作任务完成信号';
 $text['Tool Runing'] = '马达信号';
 $text['Tool Trigger'] = '启动信号';
 $text['Reverse'] = '拆螺丝';
@@ -295,6 +298,7 @@ $text['kgf.m'] = '公斤米';
 $text['N.m'] = '牛頓米';
 $text['kgf.cm'] = '公斤公分';
 $text['lbf.in'] = '英磅英吋';
+$text['cN.m'] = '厘牛米';
 
 
 
@@ -444,6 +448,13 @@ $text['system_connect_username'] = '登入帐号';
 $text['system_connect_timestamp'] = '最后连线时间';
 $text['csv_file_path'] = '档案路径';
 
+//commmand
+$text['command'] = '命令';
+$text['switch_job'] = '切换工作';
+$text['get_job'] = '读取工作';
+
+
+
 //main 主畫面image url
 $text['img_job'] = '../public/img/home_job_cn.png';
 $text['img_job_hover'] = '../public/img/home_job_m_cn.png';
@@ -465,6 +476,9 @@ $text['img_save'] = '../public/img/home_save_cn.png';
 $text['img_save_hover'] = '../public/img/home_save_m_cn.png';
 $text['img_agent'] = '../public/img/home_agent_cn.png';
 $text['img_agent_hover'] = '../public/img/home_m_agent_cn.png';
+$text['img_remote'] = '../public/img/home_command_cn.png';
+$text['img_remote_hover'] = '../public/img/home_m_command_cn.png';
+
 $text['unfasten_force'] = '超出范围 1 - 10';
 $text['error_job_name'] = '工作名称输入有误';
 $text['error_seq_name'] = '工序名称输入有误';
@@ -593,3 +607,36 @@ $error_message['SEQ_COMPLETED'] = '工序完成按确认';
 $error_message['JOB_COMPLETED'] = '工作完成按确认';
 $error_message['WORKPIECE_RECOVERY'] = '工件复归按确认';
 $error_message['target_torque_empty'] = '目标扭力为必填栏位';
+
+
+$error_message['ERR_0'] = '';
+$error_message['ERR_1'] = 'ERR-CONT-TEMP';
+$error_message['ERR_2'] = 'ERR_MOT_TEMP';
+$error_message['ERR_3'] = '马达电流过高';
+$error_message['ERR_4'] = '马达峰值电流过高';
+$error_message['ERR_5'] = '扭力超出上限';
+$error_message['ERR_6'] = '马达运转异常';
+$error_message['ERR_7'] = '锁附时间低于下限';
+$error_message['ERR_8'] = '超时锁附';
+$error_message['ERR_9'] = '编码器无脉波';
+$error_message['ERR_10'] = '霍尔传感器无脉波';
+$error_message['ERR_11'] = '母线电压过高';
+$error_message['ERR_12'] = '母线电压过低';
+$error_message['ERR_13'] = '设定工序异常';
+$error_message['ERR_14'] = '设定步骤异常';
+$error_message['ERR_15'] = '起子控制器通讯异常';
+$error_message['ERR_16'] = '控制器Flash验证码错误';
+$error_message['ERR_17'] = '控制器Fram验证码错误';
+$error_message['ERR_18'] = '角度超出上限';
+$error_message['ERR_19'] = '硬体保护异常';
+$error_message['ERR_20'] = '启动开关设置错误';
+$error_message['ERR_21'] = '步骤数设置不一致';
+$error_message['ERR_22'] = '起子基板FRAM异常';
+$error_message['ERR_23'] = '扭力低于下限';
+$error_message['ERR_24'] = '角度低于下限';
+$error_message['ERR_25'] = '操作未完成';
+$error_message['ERR_26'] = '工序完成按确认';
+$error_message['ERR_27'] = '工作完成按确认';
+$error_message['ERR_28'] = '工件复归按确认';
+$error_message['ERR_29'] = '目标扭力为必填栏位';
+$error_message['ERR_30'] = '控制器尚未登出';

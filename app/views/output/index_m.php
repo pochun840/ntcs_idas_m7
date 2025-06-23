@@ -15,35 +15,37 @@
         <div class="center-content">
             <div class="topnav">
                 <label style="font-size:3vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
-                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="1" disabled style="height:30px; font-size:3vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="1" disabled style="height:30px; font-size:3.2vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
                 <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"><?php echo $text['select'];?></button>
             </div>
 
             <!-- Job Select Modal -->
-            <div id="JobSelect" class="modal" style="width: 325px;">
-                <form class="w3-modal-content w3-animate-zoom" style="top: 13%;" action="">
-                    <div class="w3-light-grey">
-                        <header class="w3-container w3-dark-grey" style="height: 48px">
-                            <span onclick="document.getElementById('JobSelect').style.display='none'" class="w3-button w3-red w3-large w3-display-topright" style="margin: 2px">&times;</span>
-                            <h3 style="margin: 5px"><?php echo $text['job_select'];?></h3>
-                        </header>
-                        <div class="modal-body">
-                            <div class="row">
-                                <div class="col-2 t2" style="margin-left: 3px">
-                                    <select style="margin: center" id="JobNameSelect" name="JobNameSelect" size="200">
-                                        <?php foreach($data['job_list'] as $key =>$val){?>
-                                            <option value="<?php echo $val['JOBID'];?>"><?php echo $val['JOBname'];?></option>
-                                        <?php }?>                                                                                                                                
-                                     </select>
+             <div id="JobSelect" class="modal" style="width: 70%; top: 13%;">
+                <div class="modal-dialog modal-lg">
+                    <form class="modal-content w3-animate-zoom" action="">
+                        <div class="w3-light-grey">
+                            <header class="w3-container w3-dark-grey" style="height: 48px">
+                                <span onclick="document.getElementById('JobSelect').style.display='none'" class="w3-button w3-red w3-large w3-display-topright" style="margin: 2px">&times;</span>
+                                <h3 style="margin: 5px"><?php echo $text['job_select'];?></h3>
+                            </header>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-12 t2 px-3"> <!-- col-12 cho toàn dòng, px-3 để có khoảng cách ngang -->
+                                        <select id="JobNameSelect" name="JobNameSelect">
+                                            <?php foreach($data['job_list'] as $key => $val) { ?>
+                                                <option value="<?php echo $val['JOBID']; ?>"><?php echo $val['JOBname']; ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>    
-                    </div>
-                    <div class="modal-footer justify-content-center w3-dark-grey" style="height: 48px">
-                        <button id="select_confirm" type="button" class="btn btn-primary" onclick='job_confirm()'><?php echo $text['confirm'];?></button>
-                        <button id="select_close" type="button" class="btn btn-secondary" onclick="document.getElementById('JobSelect').style.display='none'" ><?php echo $text['close'];?></button>
-                    </div>
-                </form>
+                            </div>    
+                        </div>
+                        <div class="modal-footer justify-content-center w3-dark-grey" style="height: 48px">
+                            <button id="select_confirm" type="button" class="btn btn-primary" onclick='job_confirm()'><?php echo $text['confirm'];?></button>
+                            <button id="select_close" type="button" class="btn btn-secondary" onclick="document.getElementById('JobSelect').style.display='none'" ><?php echo $text['close'];?></button>
+                        </div>
+                    </form>
+                </div>    
             </div>
 
             <!-- Table Input -->
@@ -51,7 +53,7 @@
                 <div class="table-container">
                     <div class="scrollbar" id="style-outputtable">
                         <div class="force-overflow">
-                            <table id="output_table" class="table w3-table-all w3-hoverable">
+                            <table id="output_table" class="table w3-table">
                                 <thead id="header-table">
                                     <tr class="w3-dark-grey" style="font-size: 2.6vmin">
                                         <th class="w3-center"><?php echo $text['event'];?></th>
@@ -61,7 +63,7 @@
                                     </tr>
                                </thead>
 
-                                <tbody style="font-size: 2.5vmin;text-align: center;" id="output_jobid_select" >
+                                <tbody style="font-size: 2.6vmin;text-align: center;" id="output_jobid_select" >
                                 </tbody>
                             </table>
                         </div>
@@ -82,18 +84,18 @@
             <!-- Add New Output -->
             <div id="new_output" class="modal">
                 <div class="modal-dialog modal-lg" style="top: 6%;">
-                    <div class="modal-content w3-animate-zoom" style="width: auto">
+                    <div class="modal-content w3-animate-zoom" style="width: 98%">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('new_output').style.display='none'"
+                            <span onclick="closebutton('new_output')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['new_event'];?></h3>
                         </header>
 
                         <div class="modal-body" id="new_output">
-                            <form id="new_output_from" style="padding-left: 2%; padding-right: 1%">
+                            <form id="new_output_from" style="padding-left: 1%; padding-right: 1%">
                                 <div class="row">
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?> :</div>
-                                    <div class="col-2 t2">
+                                    <div class="col-3 t2">
                                         <select id="Event_Option" class="col custom-file">
                                         <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
                                            	<?php foreach($data['event_output'] as $key =>$val){?>
@@ -102,42 +104,36 @@
                                         </select>
                                     </div>
                                 </div>
-                                <?php for ($i = 1; $i <= 11; $i++) {?>
-                                    <div class="row output-pin">
-                                        <div class="col t1"><?php echo $i;?>:</div>
-                                        <div class="col t2 form-check form-check-inline">
-                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime('pin<?php echo $i; ?>_0', this.checked,'1')" >
-                                            <label class="form-check-label" for="pin1_signal01"><img src="./img/signal01.png"></label>
-                                        </div>
-                                        <div class="col t2 form-check form-check-inline">
-                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'2')" >
-                                            <label class="form-check-label" for="pin1_signal02"><img src="./img/signal02.png"></label>
-                                        </div>
-                                        <div class="col t2 form-check form-check-inline">
-                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'3')" >
-                                            <label class="form-check-label" for="pin1_trigger"><img src="./img/trigger.png"></label>
-                                        </div>
-                                        <div class="col-3 t2">
-                                            <input type="text" class="t4 form-control" id="time<?php echo $i; ?>"   placeholder="ms" value="" >
-                                        </div>
-                                     </div>
-                                
-
-                                <?php } ?>
-                               
-                               
-                                
-                             
-                                
-                                
-
-
+                                <div class="newEvent-scrollbar" id="style-newEvent">
+                                    <div class="newEvent-force-overflow">
+                                        <?php for ($i = 1; $i <= 11; $i++) {?>
+                                            <div class="row output-pin">
+                                                <div class="col t1"><?php echo $i;?>:</div>
+                                                <div class="col t2 form-check form-check-inline">
+                                                    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime('pin<?php echo $i; ?>_0', this.checked,'1')" >
+                                                    <label class="form-check-label" for="pin1_signal01"><img src="./img/signal01.png"></label>
+                                                </div>
+                                                <div class="col t2 form-check form-check-inline">
+                                                    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'2')" >
+                                                    <label class="form-check-label" for="pin1_signal02"><img src="./img/signal02.png"></label>
+                                                </div>
+                                                <div class="col t2 form-check form-check-inline">
+                                                    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'3')" >
+                                                    <label class="form-check-label" for="pin1_trigger"><img src="./img/trigger.png"></label>
+                                                </div>
+                                                <div class="col-3 t2">
+                                                    <input type="text" class="t4 form-control" id="time<?php echo $i; ?>"   placeholder="ms" value="" >
+                                                </div>
+                                            </div>
+                                        <?php } ?>
+                                    </div>
+                                </div>
                             </form>
                         </div>
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="create_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('new_output').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('new_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -148,13 +144,13 @@
                 <div class="modal-dialog modal-lg" style="top: 6%;">
                     <div class="modal-content w3-animate-zoom" style="width: auto">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('edit_output').style.display='none'"
+                            <span onclick="closebutton('edit_output')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['edit_event'];?></h3>
                         </header>
 
                         <div class="modal-body" id="new_output">
-                            <form id="new_output_from" style="padding-left: 2%; padding-right: 1%">
+                            <form id="new_output_from" style="padding-left: 1%; padding-right: 1%">
                                 <div class="row">
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?> :</div>
                                     <div class="col-2 t2">
@@ -193,7 +189,7 @@
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="edit_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('edit_output').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('edit_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -204,7 +200,7 @@
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content w3-animate-zoom" style="width: auto">
                         <header class="w3-container modal-header">
-                            <span onclick="document.getElementById('copy_output').style.display='none'"
+                            <span onclick="closebutton('copy_output')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['copy_input'];?></h3>
                         </header>
@@ -247,915 +243,36 @@
 
                         <div class="modal-footer justify-content-center">
                             <button id="" class="button-modal" onclick="copy_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="document.getElementById('copy_output').style.display='none'" class="closebtn"><?php echo $text['close'];?></button>
+                            <button id="" class="button-modal" onclick="closebutton('copy_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <!-- 加载動畫 OP -->
+        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <!-- 加载動畫 ED -->
+
+    <div id="modal-overlay"></div>
+
 </div>
 
-<script>
-var job_id; 
-var output_event;
-var temp;
-var tempA;
-var buttonDisabled = false;
-var backgroundColorYellow = false;
-var output_job;
-var all_job;
-var del_output_val;
-var output_pinval;
+<?php require_once '../app/views/output/output_share.php';?>
 
-$(document).ready(function () {
-    highlight_row_input('output_table');
-
-    var all_output_job = '<?php echo $data['device_data']['device_output_all_job']?>';
-    job_id = all_output_job ;
-    output_job = all_output_job;
-    if(job_id){
-        get_output_by_job_id(job_id);
-        document.getElementById('Button_Select').disabled = true;
-        document.getElementById('job_id').style.backgroundColor = 'yellow';
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      var headerElements = document.querySelectorAll('.ajs-header');
-      headerElements.forEach(function(headerElement) {
-        headerElement.parentNode.removeChild(headerElement);
-      });
-    });
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-});
-
-var modal = document.getElementById('newinput');
-
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
+<style>
+#modal-overlay {
+  display: none; /* 預設隱藏 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5); /* 灰色半透明 */
+  z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
 }
+</style>
 
-function crud_job_event(argument){
-    var table = document.getElementById('output_table');
-    var selectedRow = table.querySelector('tr.selected');
-    if (selectedRow) {
-        var dataEventValue = selectedRow.getAttribute('data-event');
-        del_output_val = dataEventValue;
-        output_event = del_output_val;
-
-        var dataOutputPinElement = selectedRow.querySelector('[data-outputpin]');
-        var dataOutputPinValue = dataOutputPinElement ? dataOutputPinElement.getAttribute('data-outputpin') : null;
-        output_pinval = dataOutputPinValue;
-
-
-
-    }
-    
-    if(argument == 'del' && job_id != '' &&  del_output_val){
-        delete_output_id(job_id,del_output_val);
-    }
-
-    if(argument == 'new' && job_id != ''){
-
-        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-        /*if (!selectedRows.length > 0) {
-            getLanguageMessage('language'); 
-            return;
-        }*/
-        console.log(output_event);
-        if (Array.isArray(temp)){ 
-            temp.forEach(function(element) {
-                var radio = document.getElementById(element);
-                if (radio && radio.type === 'radio') { 
-                    radio.disabled = true; 
-                }
-            });
-        } 
-
-        var filtered_array = [];
-
-        temp.forEach(function(element) {
-            // 檢查是否是以 'pin' 開頭並且不包含 'edit_pin'
-            if (element.includes('pin') && !element.includes('edit_pin')) {
-                filtered_array.push(element);
-            }
-        });
-
-    
-        disableElements(filtered_array);
-    
-        
-        document.getElementById('new_output').style.display='block';
-        var eventOption = document.getElementById('Event_Option');
-        eventOption.addEventListener('change', function() {
-            var selectedOptionId = eventOption.options[eventOption.selectedIndex].value;
-            if(selectedOptionId == 7 || selectedOptionId == 8 || selectedOptionId == 9){
-                toggleElementsInRange(1, 11, 2, true);
-            }else{
-                toggleElementsInRange(1, 11, 2, false);
-                disableElements(filtered_array);
-            }
-        }); 
-
-        //針對已選過的event做 disabled 
-        let options = document.querySelectorAll('#Event_Option option');
-        options.forEach(option => {
-            if (tempA.includes(option.value)) {
-                option.disabled = true;
-            }
-        });
-
-
-
-        
-    }
-
-    //&& output_event != ''
-    if (argument === 'edit' && job_id != '' && output_event != '') {
-
-        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-        if (!selectedRows.length > 0) {
-            getLanguageMessage('language'); 
-            return;
-        }
-        
-
-        var selectElement = document.getElementById('edit_event_option');
-        if (Array.isArray(temp)) { 
-            temp.forEach(id => {
-                var radio = document.getElementById(id);
-
-                if (radio && radio.type === 'radio') { 
-                    radio.disabled = true; 
-                }
-            });
-
-            let tempC = temp.slice(); 
-
-            const filtered_C = tempC.filter(item => item.includes("edit_pin"));
-            filtered_C.forEach(function(id) {
-      
-                var match = id.match(/(edit_pin\d+)_(\d+)/);
-                if (match) {
-                    var basePinId = match[1]; 
-                    var pinNumber = match[2]; 
-
-                    for (var i = 0; i <= 2; i++) {
-                        var pinElementId = basePinId + "_" + i;
-                        var pinElement = document.getElementById(pinElementId);
-                        if (pinElement && pinElement.type === 'radio') {
-                            pinElement.disabled = true;
-                        }
-                    }
-
-                    // 禁用 edit_time 相關的元素
-                    var timeElementId = 'edit_time' + basePinId.slice(3);
-                    const toremove = "t_pin"; 
-                    timeElementId = timeElementId.replace(toremove,'');
-          
-                    var timeElement = document.getElementById(timeElementId);
-                    if (timeElement) {
-                        timeElement.disabled = true;
-                    }
-                }
-            });
-        }
-
-
-        //該事件的pin的 所有radio 及 input 全部都要可以填
-        if(output_pinval != ''){
-
-            const idsToDisable = [
-                `edit_pin${output_pinval}_0`,
-                `edit_pin${output_pinval}_1`,
-                `edit_pin${output_pinval}_2`,
-                `edit_time${output_pinval}`
-            ];
-
-            idsToDisable.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.disabled = false;
-                }
-            });
-            
-        }
-
-        get_output_info(job_id, output_event);
-    }
-
-    if(argument == 'copy' && job_id != '' && output_event != ''){
-
-        var jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
-        var from_job_name_bk = jobinfo[job_id]['JOBname'];
-
-        document.getElementById("from_job_id").value = job_id;
-        document.getElementById("from_job_name").value = from_job_name_bk;
-
-        var selectElement = document.getElementById('JobSelect1');
-        var options = selectElement.getElementsByTagName('option');
-        
-        for (var i = 0; i < options.length; i++) {
-            var optionId = options[i].getAttribute('id');
-            var optionValue = options[i].value;
-            if(optionValue == job_id){
-                options[i].disabled = true; 
-                options[i].classList.add('disabled_input'); 
-            }
-        }
-
-        var selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-        if (selectedRows.length > 0) {
-            document.getElementById('copy_output').style.display='block';
-        }else{
-            getLanguageMessage('language');
-        }            
-    }
-
-    if(argument == 'unified' && job_id != ''){
-        enableButton();
-        resetBackgroundColor();
-        if(output_job != job_id){
-            alignsubmit(job_id);  
-        }else{
-            resetalignsubmit(job_id);
-        }
-        
-    }
-}
-
-function collectPinValues(selector) {
-    var pinOptions = document.querySelectorAll(selector);
-    var selectedValues = [];
-
-    pinOptions.forEach(function(option) {
-        if (option.checked){ 
-            var radioInfo = {
-                id: option.id,
-                value: option.value
-            };
-            selectedValues.push(radioInfo);
-        }
-    });
-
-    return selectedValues;
-}
-
-
-function toggleElementsInRange(start, end, suffix, disable) {
-    for (var i = start; i <= end; i++) {
-    
-        for (var j = 0; j <= 1; j++) { 
-            var id = 'pin' + i + '_' + j;
-            var element = document.getElementById(id);
-            if (element) {
-                element.disabled = disable;
-            }
-        }
-
-        var timeId = 'time' + i;
-        console.log(timeId);
-        var timeElement = document.getElementById(timeId);
-        if (timeElement) {
-            timeElement.disabled = disable;
-        }
-    }
-}
-
-
-
-var old_output_event; 
-var output_event;
-function job_confirm(){
-    var jobid = document.getElementById("JobNameSelect").value;
-    localStorage.setItem("jobid", jobid);
-    job_id = jobid;
-    all_job = jobid;
-
-    if(jobid){
-        $.ajax({
-            url: "?url=Outputs/get_output_by_job_id",
-            method: "POST",
-            data:{ 
-                job_id: job_id,
-            },
-            success: function(response) {
-                var data = JSON.parse(response);
-                var job_outputlist = data.job_outputlist;
-                temp = data.temp;
-                tempA = data.tempA;
-
-
-                document.getElementById("output_jobid_select").innerHTML = job_outputlist;
-                document.getElementById("JobSelect").style.display = 'none';
-                document.getElementById("job_id").value = job_id;
-            
-                var rows = document.querySelectorAll('#output_jobid_select tr');
-                rows.forEach(function(row) {
-                    row.addEventListener('click', function() { 
-
-                        row.getAttribute('data-event');
-                        output_event = row.getAttribute('data-event');
-                   
- 
-                    });
-                });
-
-                var language = getCookie('language');
-                alert(language);
-                if(language == "zh-cn"){
-                    document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
-                    document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
-                    document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
-                    document.getElementById('4') && (document.getElementById('4').textContent = '低于下限');
-                    document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信号');
-                    document.getElementById('6') && (document.getElementById('6').textContent = '工作任务完成信号');
-                    document.getElementById('7') && (document.getElementById('7').textContent = '马达信号');
-                    document.getElementById('8') && (document.getElementById('8').textContent = '启动信号');
-                    document.getElementById('9') && (document.getElementById('9').textContent = '拆螺丝');
-                    document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
-                    document.getElementById('11') && (document.getElementById('11').textContent = '条码');
-                    document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
-                    document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
-                    document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
-                    document.getElementById('15') && (document.getElementById('15').textContent = '自定义4');
-                    document.getElementById('16') && (document.getElementById('16').textContent = '自定义5');
-
-                } 
-                else if(language == "zh-tw"){
-                    document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
-                    document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
-                    document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
-                    document.getElementById('4') && (document.getElementById('4').textContent = '低於下限');
-                    document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信號');
-                    document.getElementById('6') && (document.getElementById('6').textContent = '完工信號');
-                    document.getElementById('7') && (document.getElementById('7').textContent = '馬達信號');
-                    document.getElementById('8') && (document.getElementById('8').textContent = '啟動信號');
-                    document.getElementById('9') && (document.getElementById('9').textContent = '拆螺絲');
-                    document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
-                    document.getElementById('11') && (document.getElementById('11').textContent = '條碼');
-                    document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
-                    document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
-                    document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
-                    document.getElementById('15') && (document.getElementById('15').textContent = '自定義4');
-                    document.getElementById('16') && (document.getElementById('16').textContent = '自定義5');
-                }
-
-            },
-            error: function(xhr, status, error) {
-            
-            }
-        });
-    }
-}
-
-//delete
-function delete_output_id(job_id,del_output_val){
-    if(job_id && del_output_val){
-        $.ajax({
-            url: "?url=Outputs/delete_output",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                output_event: del_output_val,
-             
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_output_by_job_id(job_id);
-                });
-                 
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });     
-    }   
-}
-
-function get_output_by_job_id(job_id){
-    $.ajax({
-        url: "?url=Outputs/get_output_by_job_id",
-        method: "POST",
-        data: { 
-            job_id: job_id,
-        },
-        success: function(response) {
-            var data = JSON.parse(response);
-            var job_outputlist = data.job_outputlist;
-            temp = data.temp;
-            tempA = data.tempA;
-
-            document.getElementById("output_jobid_select").innerHTML = job_outputlist;
-            document.getElementById("JobSelect").style.display = 'none';
-            document.getElementById("job_id").value = job_id;
-        
-            var rows = document.querySelectorAll('#output_jobid_select tr');
-            rows.forEach(function(row) {
-                row.addEventListener('click', function() { 
-                    output_event = this.className; 
-                });
-            });
-
-            
-            var language = getCookie('language');
-            if(language == "zh-cn"){
-                document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
-                document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
-                document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
-                document.getElementById('4') && (document.getElementById('4').textContent = '低于下限');
-                document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信号');
-                document.getElementById('6') && (document.getElementById('6').textContent = '工作任务完成信号');
-                document.getElementById('7') && (document.getElementById('7').textContent = '马达信号');
-                document.getElementById('8') && (document.getElementById('8').textContent = '启动信号');
-                document.getElementById('9') && (document.getElementById('9').textContent = '拆螺丝');
-                document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
-                document.getElementById('11') && (document.getElementById('11').textContent = '条码');
-                document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
-                document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
-                document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
-                document.getElementById('15') && (document.getElementById('15').textContent = '自定义4');
-                document.getElementById('16') && (document.getElementById('16').textContent = '自定义5');
-
-            } 
-            else if(language == "zh-tw"){
-                document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
-                document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
-                document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
-                document.getElementById('4') && (document.getElementById('4').textContent = '低於下限');
-                document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信號');
-                document.getElementById('6') && (document.getElementById('6').textContent = '完工信號');
-                document.getElementById('7') && (document.getElementById('7').textContent = '馬達信號');
-                document.getElementById('8') && (document.getElementById('8').textContent = '啟動信號');
-                document.getElementById('9') && (document.getElementById('9').textContent = '拆螺絲');
-                document.getElementById('10') && (document.getElementById('10').textContent = 'BS');
-                document.getElementById('11') && (document.getElementById('11').textContent = '條碼');
-                document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
-                document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
-                document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
-                document.getElementById('15') && (document.getElementById('15').textContent = '自定義4');
-                document.getElementById('16') && (document.getElementById('16').textContent = '自定義5');
-            }
-            
-        },
-        error: function(xhr, status, error) {
-            console.error("AJAX request failed:", status, error);
-        }
-    }); 
-
-}
-
-function collectPinValues(selector) {
-    var pinOptions = document.querySelectorAll(selector);
-    var selectedValues = [];
-
-    pinOptions.forEach(function(option) {
-        if (option.checked){ 
-            var radioInfo = {
-                id: option.id,
-                value: option.value
-            };
-            selectedValues.push(radioInfo);
-        }
-    });
-
-    return selectedValues;
-}
-
-
-function create_output_id() {
-    var output_event = document.getElementById("Event_Option").value;
-    var pinval = collectPinValues('input[name="pin_option"]');
-  
-
-    if (pinval.length > 0) {
-        var pin_old = pinval[0]['id']; 
-        var wave = pinval[0]['value'];
-        
-        var match = pin_old.match(/\d+/); 
-        var output_pin = match ? parseInt(match[0]) : null;
-        
-        var time_ms = 'time'+ output_pin;
-        var wave_on =  document.getElementById(time_ms).value;
-
-        if (job_id) {
-            $.ajax({
-                url: "?url=Outputs/create_output_event",
-                method: "POST",
-                data: { 
-                    job_id: job_id,
-                    output_pin: output_pin,
-                    output_event: output_event,
-                    wave: wave,
-                    wave_on: wave_on
-                },
-                success: function(response) {
-                    var responseData = JSON.parse(response);
-                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                        get_output_by_job_id(job_id);
-                    });
-                    document.getElementById('new_output').style.display = 'none';
-
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX request failed:", status, error);
-                }
-            });
-        }
-    } else {
-        //console.error("No pinval found or pinval[0] is undefined.");
-    }
-}
-
-function edit_output_id(){
-    var output_event = document.getElementById("edit_event_option").value;
-    var pinval       = collectPinValues('input[name="edit_pin_option"]');
-    var pin_old      = pinval[0]['id'];
-    var wave         = pinval[0]['value'];
-    var match        = pin_old.match(/\d+/); 
-    var output_pin   = match ? parseInt(match[0]) : null;
-
-    var time_ms = 'edit_time'+ output_pin;
-    var wave_on =  document.getElementById(time_ms).value;
-    if(job_id){
-        $.ajax({
-            url: "?url=Outputs/edit_output_event",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                output_pin: output_pin,
-                output_event: output_event,
-                wave: wave,
-                wave_on: wave_on,
-                old_output_event: old_output_event
-            },
-            success: function(response) {
-                
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_output_by_job_id(job_id);
-                });
-
-                document.getElementById('edit_output').style.display='none';
-                
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });         
-    }
-}
-function resetalignsubmit(job_id) {
-
-    var job_id_new = 0;
-    if(job_id_new == 0){
-        $.ajax({
-            url: "?url=Outputs/output_alljob",
-            method: "POST",
-            data: {
-                job_id_new: job_id_new
-            },
-            success: function (response) {
-                get_output_by_job_id(job_id);
-            },
-            error: function (xhr, status, error) {
-
-            }
-        });
-
-    }
-
-}
-function alignsubmit(job_id) {
-    if (job_id) {
-        $.ajax({
-            url: "?url=Outputs/output_alljob",
-            method: "POST",
-            data: {
-                job_id: job_id
-            },
-            success: function (response) {
-                get_output_by_job_id(job_id);
-            
-                buttonDisabled = !buttonDisabled;
-                document.getElementById('Button_Select').disabled = buttonDisabled;
-     
-                backgroundColorYellow = !backgroundColorYellow;
-                if (backgroundColorYellow) {
-                    document.getElementById('job_id').style.backgroundColor = 'yellow';
-                } else {
-                    document.getElementById('job_id').style.backgroundColor = '';
-                }
-            },
-            error: function (xhr, status, error) {
-
-            }
-        });
-    }
-}
-//copy
-function copy_output_id(){
-
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='若设定已存在，将会取代原有设定';
-    }else if(language == "zh-tw"){
-        var text_info ='若設定已存在，將會取代原有設定';
-    }else{
-        var text_info ='If the job input already exists, it will replace the original setting';
-    }
-    alertify.confirm( text_info, function (e) {
-        if (e) {
-            var to_job_id = document.getElementById("JobSelect1").value;
-            if(to_job_id){
-                $.ajax({
-                    url: "?url=Outputs/copy_output",
-                    method: "POST",
-                    data: { 
-                        from_job_id: job_id,
-                        to_job_id: to_job_id
-                    },
-                    success: function(response) {
-
-                        var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                            get_output_by_job_id(job_id);
-                        });
-
-                        document.getElementById('copy_output').style.display='none';
-
-                    },
-                    error: function(xhr, status, error) {
-                        
-                    }
-                });
-        
-            } 
-        } else {
-            // cancel
-        }
-    });
-    document.getElementById('copy_output').style.display='none';
-}
-
-function updateInputsBasedOnRadioSelection() {
-   
-    for (let i = 1; i <= 11; i++) {
-        let radioId = 'pin' + i + '_3';
-        let inputId = 'time' + i;
-        
-        let radioElement = document.getElementById(radioId);
-        let inputElement = document.getElementById(inputId);
-
-        if (radioElement && inputElement) {
-            inputElement.disabled = !radioElement.checked;
-        }
-    }
-}
-
-function get_output_info(job_id,output_event){
-
-    if(job_id && output_event){
-     $.ajax({
-             url: "?url=Outputs/check_job_event",
-             method: "POST",
-             data: { 
-                 job_id: job_id,
-                 output_event: output_event
-             },
-             success: function(response) {
-                if (response === 'no_data') {
-                    getLanguageMessage('language');
-                    return;
-                }
-
-                document.getElementById('edit_output').style.display = 'block';
-
-
-                var responseJSON = JSON.stringify(response);
-                var cleanString = responseJSON.replace(/Array|\\n/g, '');
-                var cleanString = cleanString.substring(2, cleanString.length - 2);
-                var [, job_id] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, ''];
-                var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
-                var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
-                var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
-                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
-
-
-                var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
-                var radioButton = document.getElementById(edit_output_pin);
-
-                if (radioButton) {
-                    radioButton.removeAttribute('disabled');  
-                } else {
-                    console.warn('Radio button not found:', edit_output_pin); 
-                }
-
-                var time_ms = 'edit_time'+ output_pin;
-                if(wave != 2){
-                    var time_id = 'edit_time' + output_pin;
-                    var element = document.getElementById(time_id);
-                    
-                    if(element){
-                        element.disabled = true
-                    }
-                }
-                    
-                //完工信號 && 馬達信號 && 啟動信號
-                if (output_event == 8  || output_event == 6 || output_event == 7 ) {
-                  
-                    for(let i = 1; i <= 11; i++) {
-                        let element1 = document.getElementById(`edit_pin${i}_0`);
-                        if (element1) {
-                            element1.disabled = true;
-                        }
-                
-                        let element2 = document.getElementById(`edit_pin${i}_1`);
-                        if (element2) {
-                            element2.disabled = true;
-                        }
-                    }
-
-                    if (Array.isArray(temp)) {
-                        //過濾出包含 "edit_pin" 的字串
-                        const filteredArray = temp.filter(item => item.includes("edit_pin"));
-                        const updatedArray = filteredArray.map(item => {
-                            // 如果字串為空，直接返回
-                            if (item.length === 0) {
-                                return item;
-                            }
-                            //強制字串的最後一個字元更換為 '3'
-                            return item.slice(0, -1) + '3';
-                        });
-                        
-                        console.log("Updated Array:", updatedArray);
-                        updatedArray.forEach(item => {
-                            const radio = document.getElementById(item);
-                            if (radio && radio.type === 'radio') {
-                                radio.disabled = true;
-                            }
-                        });
-
-                    }
-                    
-                }else{
-                    //alert('wqw');
-                }
-
-
-                let result = edit_output_pin.replace(/^edit_pin/, "");
-                result = result.replace(/(_[0-9]{1,2})$/, ""); 
-
-                //檢查id = new_variable是否存在,存在做disabled
-                var new_variable = 'edit_time'+ result;
-                var element = document.getElementById(new_variable);
-                if (element) {
-                    element.disabled = true;  
-                }
-          
-                document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
-                old_output_even = output_event;
-                if(radioButton){
-                    radioButton.checked = true;
-                }
-                 
-                document.querySelector("select[name='edit_event_option']").value = output_event;
-                document.getElementById("edit_event_option").onchange = function() {
-                    var selectedValue = this.value; 
-                };
-
-
-             },
-             error: function(xhr, status, error) {
-                 console.error("AJAX request failed:", status, error);
-             }
-     });      
-    }
-  
-}
-
-
-function toggleOnputTime(inputId, checked, option) {
-    var inputElement = document.getElementById(inputId);
-    if (!inputElement) {
-        return; 
-    }
-
-    if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
-
-        if (inputElement.checked !== checked) {
-           
-        }
-    }
-    
- 
-    if(option == 1 || option == 3){
-        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
-        
-        var element = document.getElementById(newId);
-        if (element) {
-            element.disabled = true;
-        }
-    }else{
-        var newId = inputId.replace(/^pin(\d+)_\d+$/, 'time$1');
-        var element = document.getElementById(newId);
-        if (element) {
-            element.disabled = false;
-        }
-    }    
-}
-
-
-
-
-
-function toggleOnputTime_edit(inputId, checked, option) {
-    var inputElement = document.getElementById(inputId);
-    
-    if (!inputElement) {
-        return; 
-    }
-
-   
-    if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
-
-        if (inputElement.checked !== checked) {
-           
-        }
-    }
-
-    if(option == 1 || option == 3){
-        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
-        
-        var element = document.getElementById(newId);
-        if (element) {
-            element.disabled = true;
-        }
-    }else{
-        var newId = inputId.replace(/^edit_pin(\d+)_\d+$/, 'edit_time$1');
-        var element = document.getElementById(newId);
-        if (element) {
-            element.disabled = false;
-        }
-    }    
-}
-
-
-function disableElements(filtered_array) {
-    // 生成新的 id 数组，去除末尾的数字并添加 "_0", "_1", "_2" 和 "time1" 到 "time11"
-    let new_array = filtered_array
-        .map(item => item.replace(/_\d$/, ''))  // 去除原始字符串末尾的数字
-        .flatMap(item => {
-            let result = [
-                item + "_0",
-                item + "_1",
-                item + "_2"
-            ];
-
-            // 新增 "time" + 1 到 11
-            for (let i = 1; i <= 11; i++) {
-                result.push("time" + i);
-            }
-
-            return result;
-        });
-
-    // 遍历新生成的 id 数组，如果元素存在就禁用它
-    new_array.forEach(id => {
-        let element = document.getElementById(id); 
-        if (element) {
-            element.disabled = true;  // 禁用该元素
-        }
-    });
-}
-
-
-function getLanguageMessage(cookieName) {
-    var value = "; " + document.cookie;
-    var parts = value.split("; " + cookieName + "=");
-    var language = (parts.length == 2) ? parts.pop().split(";").shift() : '';
-    var message;
-    if (language === 'en-us') {
-       message =  'Please select the event to delete';
-    } else if (language === 'zh-cn') {
-       message =  '请选择要删除的事件';
-    } else if (language === 'zh-tw') {
-       message =  '請點選要刪除的事件';
-    } else {
-      message =  'Please select the event to delete';
-    }
-   alertify.alert(message);
-}
-
-</script>
 <style>
     #output_table td,
     #output_table th {

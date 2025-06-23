@@ -38,24 +38,5 @@ class Tool{
         return $row;
     }
 
-    /*public function GetDeviceInfo()
-    {
-        $sql = "SELECT * FROM device_info ";
-        $statement = $this->db_dev->prepare($sql);
-        $results = $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
-
-        return $row;
-    }
-
-    public function GetToolInfo()
-    {
-        $sql = "SELECT * FROM tool_info ";
-        $statement = $this->db_dev->prepare($sql);
-        $results = $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
-
-        return $row;
-    }*/
 
 }

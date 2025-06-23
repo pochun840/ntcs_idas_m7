@@ -34,8 +34,8 @@
    
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['torque_unit'];?>:</div>
-        <div class="col-3 t2">
-            <select class="form-select" id="select_torque_unit" name="select_torque_unit">
+        <div class="col t2">
+            <select id="select_torque_unit" name="select_torque_unit">
                 <?php foreach($data['torque_unit'] as $k_unit =>$v_unit){?>
                     <option value="<?php echo $k_unit; ?>" 
                         <?php echo ($k_unit == $data['controller_info']['torque_unit']) ? 'selected' : ''; ?>>
@@ -50,9 +50,9 @@
 
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_language'];?>:</div>
-        <div class="col-3 t2">
+        <div class="col t2">
         
-        <select class="form-select" id="select_language" name="select_language">
+        <select id="select_language" name="select_language">
             <?php foreach($data['lang_arr'] as $k_lang => $v_lang) { ?>
                 <option value="<?php echo $k_lang; ?>" 
                         <?php echo ($k_lang == $data['controller_info']['language']) ? 'selected' : ''; ?>>
@@ -116,9 +116,7 @@
             </div>
         </div>
     </div>
-
-
-    
+ 
     <!--<div style="text-align: center;margin-top: 50px;">
         <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="cc_save()"><?php //echo $text['save'];?></button>
     </div>-->
@@ -140,9 +138,10 @@
         </div>
     </div>
 
-    <div style="text-align: center;margin-top: 50px;">
+    <div style="text-align: center;margin-top: 30px;">
         <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="controller_save()"><?php echo $text['save'];?></button>
     </div>
+    <hr class="hr">
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Button_Access_With_Password_text'];?></div>
 
@@ -189,10 +188,10 @@
         </div>
     </div>
 
-    <div style="text-align: center;margin-top: 50px;">
+    <div style="text-align: center;margin-top: 30px;">
         <button class="all-btn w3-button w3-border w3-round-large" id="save_pwd" onclick="save_pwd()"><?php echo $text['save'];?></button>
     </div>
-
+    <hr class="hr">
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Background_Color_text'];?></div>
 
@@ -227,7 +226,7 @@
     </div>
 
 
-    <div style="text-align: center;margin-top: 50px;">
+    <div style="text-align: center;margin-top: 30px; margin-bottom:10px">
         <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="background_save()"><?php echo $text['save'];?></button>
     </div>
 

@@ -68,7 +68,7 @@ $text['Angle_Calculation'] = 'Angle Calculation';
 //$text['advanced_seq_management'] = 'Advanced Job - Sequence Management';
 $text['seq_management'] = 'Sequence Management';
 $text['seq_id'] = 'Seq ID';
-$text['seq_name'] = 'Sequence Name';
+$text['seq_name'] = 'Seq Name';
 $text['target_type'] = 'Target Type';
 $text['tightening_repeat'] = 'TR';
 
@@ -85,8 +85,8 @@ $text['edit_seq'] = 'Edit Sequence';
 $text['del_seq'] = 'Delete Sequence';
 $text['NG_Stop'] = 'NG Stop';
 $text['Choose_option'] = 'Option';
-$text['OK_Sequence'] = 'OK Sequence';
-$text['OK_Sequence_Stop'] = 'OK Sequence Stop';
+$text['OK_Sequence'] = 'OK Seq';
+$text['OK_Sequence_Stop'] = 'OK Seq Stop';
 $text['Timeout'] = 'Timeout';
 $text['total_step'] = 'Total step';
 $text['add_step'] = 'Add step';
@@ -105,6 +105,9 @@ $text['Second'] = 'Sec';
 $text['Copy_Sequence'] = 'Copy Sequence';
 $text['OK_All_Stop'] = 'OK All Stop';
 $text['torque_unit'] = 'Torque unit';
+$text['DT_Time'] = 'DT Time';
+$text['TT_Time'] = 'TT Time';
+
 
 $text['join'] ='Join';
 $text['opt'] = 'OPT';
@@ -247,7 +250,7 @@ $text['NG'] = 'NG';
 $text['NG-High'] = 'NG-High';
 $text['NG-Low'] = 'NG-Low';
 $text['OK-Sequence'] = 'OK-Sequence';
-$text['OK-Job'] = 'OK-JOB';
+$text['OK-JOB'] = 'OK-JOB';
 $text['Tool Runing'] = 'Tool Running';
 $text['Tool Trigger'] = 'Tool Trigger';
 $text['Reverse'] = 'Reverse';
@@ -305,11 +308,11 @@ $text['column_total'] = 'Total';
 $text['column_count'] = 'Count';
 $text['column_status'] = 'Status';
 
-$text['kgf.m'] = 'Kgf-m';
-$text['N.m'] = 'N-m';
-$text['kgf.cm'] = 'Kgf-cm';
-$text['lbf.in'] = 'In-lbs';
-
+$text['kgf.m'] = 'Kgf.m';
+$text['N.m'] = 'N.m';
+$text['kgf.cm'] = 'Kgf.cm';
+$text['lbf.in'] = 'In.lbs';
+$text['cN.m'] = 'cN.m';
 
 
 
@@ -390,7 +393,7 @@ $text['system_page_block'] = 'PAGE_BLOCK';
 $text['system_sys_date'] = 'System Date';
 $text['system_export_config'] = 'Export Config';
 $text['system_import_config'] = 'Import Config';
-$text['system_delete_database'] = 'Delete Tightening Data';
+$text['system_delete_database'] = 'Del Tighten Data';
 $text['system_firmware_reset'] = 'Defaults Setting Resets';
 $text['system_firmware_update'] = 'Firmware Update';
 $text['system_screwdriver_setting'] = 'Tool Select';
@@ -448,6 +451,12 @@ $text['system_connect_username'] = 'User';
 $text['system_connect_timestamp'] = 'Last connection time';
 $text['csv_file_path'] = 'File Path';
 
+//commmand
+$text['command'] = 'Command';
+$text['switch_job'] = 'Switch Job';
+$text['get_job'] = 'Get Job';
+
+
 
 //main 主畫面image url
 $text['img_job'] = '../public/img/home_job_en.png';
@@ -470,6 +479,9 @@ $text['img_save'] = '../public/img/home_save_en.png';
 $text['img_save_hover'] = '../public/img/home_save_m_en.png';
 $text['img_agent'] = '../public/img/home_agent_en.png';
 $text['img_agent_hover'] = '../public/img/home_m_agent_en.png';
+$text['img_remote'] = '../public/img/home_command_en.png';
+$text['img_remote_hover'] = '../public/img/home_m_command_en.png';
+
 $text['unfasten_force'] = 'Out of range 1 - 10';
 $text['error_job_name'] = 'JOB name input error';
 $text['error_seq_name'] = 'SEQ name input error';
@@ -598,3 +610,35 @@ $error_message['SEQ_COMPLETED'] = 'SEQ-COMPLETED';
 $error_message['JOB_COMPLETED'] = 'JOB-COMPLETED';
 $error_message['WORKPIECE_RECOVERY'] = 'WORKPIECE-RECOVERY';
 $error_message['target_torque_empty'] = 'target_torque is a required field';
+
+$error_message['ERR_0'] = '';
+$error_message['ERR_1'] = 'ERR-CONT-TEMP';
+$error_message['ERR_2'] = 'ERR-MOT-TEMP';
+$error_message['ERR_3'] = 'ERR-MOT-CURR';
+$error_message['ERR_4'] = 'ERR-MOT-PEAK-CURR';
+$error_message['ERR_5'] = 'ERR-HIGH-TORQUE';
+$error_message['ERR_6'] = 'ERR-DEADLOCK';
+$error_message['ERR_7'] = 'ERR-PROC-MINTIME';
+$error_message['ERR_8'] = 'ERR-PROC-MAXTIME';
+$error_message['ERR_9'] = 'ERR-ENCODER';
+$error_message['ERR_10'] = 'ERR-HALL';
+$error_message['ERR_11'] = 'ERR-BUSVOLT-HIGH';
+$error_message['ERR_12'] = 'ERR-BUSVOLT-LOW';
+$error_message['ERR_13'] = 'ERR-PROC-NA';
+$error_message['ERR_14'] = 'ERR-STEP-NA';
+$error_message['ERR_15'] = 'ERR-DMS-COMM';
+$error_message['ERR_16'] = 'ERR-FLASH';
+$error_message['ERR_17'] = 'ERR-FRAM';
+$error_message['ERR_18'] = 'ERR-HIGH-ANGLE';
+$error_message['ERR_19'] = 'ERR-PROTECT-CIRCUIT';
+$error_message['ERR_20'] = 'ERR-SWITCH-CONFIG';
+$error_message['ERR_21'] = 'ERR-STEP-NOT-REC';
+$error_message['ERR_22'] = 'ERR-TMD-FRAM';
+$error_message['ERR_23'] = 'ERR-LOW-TORQUE';
+$error_message['ERR_24'] = 'ERR-LOW-ANGLE';
+$error_message['ERR_25'] = 'ERR-PROC-NOT-FINISH';
+$error_message['ERR_26'] = 'SEQ-COMPLETED';
+$error_message['ERR_27'] = 'JOB-COMPLETED';
+$error_message['ERR_28'] = 'WORKPIECE-RECOVERY';
+$error_message['ERR_29'] = 'target_torque is a required field';
+$error_message['ERR_30'] = 'The controller has not logged out';

@@ -6,6 +6,7 @@ class Settings extends Controller
     private $AdminModel;
     private $ToolModel;
     private $MiscellaneousModel;
+    private $DataModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -13,6 +14,7 @@ class Settings extends Controller
         $this->AdminModel = $this->model('Admin');
         $this->ToolModel = $this->model('Tool');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->DataModel = $this->model('Datas');
     }
 
     // 取得所有info
@@ -32,12 +34,15 @@ class Settings extends Controller
         $job_list = $this->SettingModel->get_job_list();
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         $idas_version = $this->SettingModel->get_idas_version();
+        $disk_usage_percent = $this->SettingModel->system_storage();
+
+        $history_year_arr = $this->DataModel->get_data_for_year();
 
         $iDAS_version = $idas_version['config_value'];
 
         $barcodes = $this->GetBarcodes();
+
         
-        $data = array();
         $data = array(
             'lang_arr'        => $lang,
             'controller_info' => $controller_info,
@@ -51,7 +56,9 @@ class Settings extends Controller
             'torque_unit'     => $torque_unit,
             'sample_rate'     => $sample_rate,
             'barcode_mode'    => $barcode_mode,
-            'idas_version'   => $iDAS_version
+            'idas_version'   => $iDAS_version,
+            'disk_usage_percent' => $disk_usage_percent,
+            'history_year_arr' => $history_year_arr 
 
         );
 
@@ -61,9 +68,7 @@ class Settings extends Controller
             $this->view('setting/index', $data);
         }
        
-
     }
-
 
     //修改密碼 
     public function edit_password(){
@@ -184,7 +189,7 @@ class Settings extends Controller
             $array2int = $this->bitArrayToDecimal($priviledge);
             $result = $this->SettingModel->Edit_Priviledge($array2int);
 
-            if($result){// copy DB
+            if($result){
                 $copy_result =  $this->copyDB_to_RamdiskDB();
                 if($copy_result){
                     $this->logMessage('edit_permission:set '.$array2int.' copyDB success');
@@ -299,39 +304,41 @@ class Settings extends Controller
     }
 
 
-    public function edit_system_date()
-    {
-        if( PHP_OS_FAMILY == 'Linux'){
-            $dateTime = $_POST["datetime"];
-            // 驗證日期時間格式
-            if (!preg_match("/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/", $dateTime)) {
-                // echo "請提供有效的日期和時間格式（YYYY-MM-DD HH:MM:SS）。";
-                echo json_encode(array('error' => '請提供有效的日期和時間格式（YYYY-MM-DD HH:MM:SS）。'));
+
+
+    public function edit_system_date() {
+
+        if (PHP_OS_FAMILY == 'Linux') {
+            $dateTime = $_POST["datetime"] ?? '';
+            $dateTime = str_replace("T", " ", $dateTime); // YYYY-MM-DD HH:MM
+    
+            if (!preg_match("/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/", $dateTime)) {
+                echo json_encode(['error' => '請提供有效的日期和時間格式（YYYY-MM-DD HH:MM）。']);
                 exit;
             }
+    
             exec("sudo timedatectl set-ntp no");
-            $rr = exec("sudo date -s ".$dateTime." ");
-            exec("sudo hwclock --systohc ");
-
-            if($rr != false){
-                $this->logMessage('set date -s '.$dateTime.' success');
-            }else{
-                $this->logMessage('set date -s '.$dateTime.' fail');
-            }
-
-
-            echo json_encode(array('error' => '','result' => $rr));
-            exit();
+            $escapedDateTime = escapeshellarg($dateTime);
+            $rr = exec("sudo date -s $escapedDateTime");
+            exec("sudo hwclock --systohc");
+    
+            $this->logMessage("set date -s {$dateTime} " . ($rr !== false ? "success" : "fail"));
+    
+            echo json_encode(['error' => '', 'result' => $rr]);
+        } else {
+            echo json_encode(['error' => '非 Linux 系統無法設定時間']);
         }
+        exit;
     }
+    
 
-    public function get_system_time()
-    {
-        header("Content-Type: text/plain; charset=utf-8");
+
+    public function get_system_time(){
         
-        date_default_timezone_set("GMT0");
-        $systemTime = date('Y-m-d H:i:s');
-        echo $systemTime;
+        header("Content-Type: text/plain; charset=utf-8");
+        $output = shell_exec("date '+%Y-%m-%d %H:%M:%S'");
+    
+        echo trim($output);
     }
 
     public function firmware_reset()
@@ -339,94 +346,53 @@ class Settings extends Controller
         // code...
     }
 
-    public function export_sysytem_config()
-    {
-        
+
+
+    public function export_sysytem_config() {
         if (PHP_OS_FAMILY == 'Linux') {
-            // Linux 路徑配置
-            $file_path = '/var/www/html/database/';
-            $files = [
-                'KLS_NTCS.Lin',  // 原來的 .Lin 檔案
-                'ntcs_barcode.db', // 原來的 .db 檔案
-                'ntcs_data.db', // 原來的 .db 檔案
-                'ntcs_device.db' // 原來的 .db 檔案
-            ];
-        } else {
-    
-            $files = [
-                '../KLS_NTCS.Lin',
-                '../ntcs_barcode.db',
-                '../ntcs_data.db',
-                '../ntcs_device.db'
-            ];
-        }
+            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+            $modbus = new ModbusMaster("127.0.0.1", "TCP");
+            try {
+                $modbus->port = 502;
+                $data = [1];
+                $dataTypes = array_fill(0, 16, "INT");
+                $modbus->writeMultipleRegister(0, 505, $data, $dataTypes);
+                $this->logMessage('modbus write 505 ,array = ' . implode("','", $data));
 
-        $zip = new ZipArchive();
-        $zip_filename = 'data.zip'; 
+                // 要打包的檔案與對應名稱
+                $files = [
+                    "/mnt/ramdisk/ftp/KLS_NTCS.Lin"      => "KLS_NTCS.Lin",
+                    "/mnt/ramdisk/ftp/ntcs_barcode.db"   => "ntcs_barcode.cfg"
+                ];
 
-        if ($zip->open($zip_filename, ZipArchive::CREATE) !== TRUE) {
-            echo json_encode(array('status' => 'error', 'message' => 'Unable to create ZIP file.'));
-            exit();
-        }
-
-        foreach ($files as $file) {
-            $file_path = realpath($file); 
-
-            if (file_exists($file_path)) {
-            
-                $file_info = pathinfo($file_path);
-                $file_extension = $file_info['extension'];
-
-                if ($file_extension === 'db') {
-                    $cfgContent = file_get_contents($file_path);
-                    if (strpos($cfgContent, 'table - device') !== false) {
-                        $cfgContent = preg_replace('/table - device.*?\n/', '', $cfgContent);
-                    }
-
-                    $zip->addFromString($file_info['filename'] . '.cfg', $cfgContent);
-                } else {
-            
-                    $zip->addFile($file_path, $file_info['basename']);
+                $zipPath = "/mnt/ramdisk/ftp/NTCS_Config_Pack.zip";
+                $zip = new ZipArchive();
+                if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                    throw new Exception("無法建立 zip 檔案");
                 }
-            } else {
-                echo json_encode(array('status' => 'error', 'message' => 'File not found: ' . $file));
+
+                foreach ($files as $filePath => $nameInZip) {
+                    if (file_exists($filePath)) {
+                        $zip->addFile($filePath, $nameInZip);
+                    }
+                }
+                $zip->close();
+
+                // 設定下載 header
+                header("Content-Type: application/zip");
+                header("Content-Disposition: attachment; filename=NTCS_Config_Pack.zip");
+                header("Content-Length: " . filesize($zipPath));
+                readfile($zipPath);
+                exit();
+
+            } catch (Exception $e) {
+                $this->logMessage('modbus write 505 fail');
+                echo json_encode(['error' => 'modbus error']);
                 exit();
             }
         }
-
-    
-        $zip->close();
-        header("Content-Type: application/zip");
-        header("Content-Disposition: attachment; filename=" . $zip_filename);
-        header("Content-Length: " . filesize($zip_filename));
-
-        readfile($zip_filename);
-
-        unlink($zip_filename);
-
-        exit();
     }
 
-
-    public function system_storage()
-    {
-        $EMMC_BASE = "/home/kls/tcc/resource/db_emmc/"; //目標目錄路徑
-        if( PHP_OS_FAMILY == 'Linux'){
-            $size = 0;
-            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($EMMC_BASE)) as $file) {
-                if ($file->isFile()) {
-                    $size += $file->getSize();
-                }
-            }
-
-            $gigatmp = $size / 1024 / 1024 / 1024;
-            $device_diskfull_percent = ceil(($gigatmp / 1.1) * 100);
-
-            echo "{$device_diskfull_percent}";
-        }else{
-            echo "X";
-        }
-    }
 
     public function get_file_list($value='')
     {
@@ -459,41 +425,72 @@ class Settings extends Controller
         echo json_encode(array_values($fileList));
     }
 
-    public function delete_files()
-    {
-        if ($_SERVER["REQUEST_METHOD"] === "POST") {
-            $data = json_decode(file_get_contents("php://input"), true);
-            $filesToDelete = $data["files"];
 
-            if( PHP_OS_FAMILY == 'Linux'){
-                $folderPath = "/home/kls/tcc/resource/db_emmc"; // 修改為你的資料夾路徑
-            }else{
-                $folderPath = "../"; // 修改為你的資料夾路徑
-            }
 
-            $result = ["message" => ""];
+    //刪除鎖附記路的年份
+    //取得年份後 用modbus 刪除
+    public function delete_files(){
 
-            foreach ($filesToDelete as $fileName) {
-                $filePath = $folderPath . "/" . $fileName;
-                if (file_exists($filePath) && is_file($filePath)) {
-                    if (unlink($filePath)) {
-                        $result["message"] .= "成功刪除檔案：$fileName\n";
-                        $this->logMessage('delete DB success:'. json_encode($result).'');
-                    } else {
-                        $result["message"] .= "無法刪除檔案：$fileName\n";
-                        $this->logMessage('delete DB fail:'. json_encode($result).'');
-                    }
-                } else {
-                    $result["message"] .= "檔案不存在：$fileName\n";
-                }
-            }
-
-            echo json_encode($result);
-        } else {
-            echo json_encode(["message" => "無效的請求方法"]);
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
         }
 
+
+        if (!empty($_POST['del_year_id']) && isset($_POST['del_year_id'])) {
+            $del_year_id = $_POST['del_year_id'];
+        } else {
+            echo json_encode([
+                'result' => false,
+                'res_type' => 'Error',
+                'res_msg' => 'Invalid input'
+            ]);
+            return;
+        }
+
+        $temp_del_year = $del_year_id[0]; // 只處理第一筆
+
+        // 檢查是否可以刪除（Modbus 狀態檢查）
+        $idas_result = $this->idas_check();
+        if ($idas_result['result'] != 0) {
+            echo json_encode([
+                'result' => false,
+                'res_type' => 'Error',
+                'res_msg' => 'Tool not disabled'
+            ]);
+            return;
+        }
+
+        // 執行 Modbus 寫入刪除年份
+        $controller_ip = CONTROLLER_IP;
+        $year = array($temp_del_year);
+
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $modbus = new ModbusMaster($controller_ip, "TCP");
+
+        try {
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+            $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
+
+            $modbus->writeMultipleRegister(0, 517, $year, $dataTypes);
+
+            echo json_encode([
+                'result' => true,
+                'res_type' => 'Success',
+                'res_msg' => $text['delete_text'].$text['success'] 
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'result' => false,
+                'res_type' => 'Error',
+                'res_msg' => $text['delete_text'].$text['fail'] 
+            ]);
+        }
     }
+
+        
+
 
     public function firmware_update() //FTP 上傳檔案大小限制 : 500M
     {
@@ -583,124 +580,218 @@ class Settings extends Controller
     }
 
 
-
-    //把  /var/www/html/database/data.db 備份為 /var/www/html/database/data_bk.db
-    //並把 data_bk.db 再另存一個.db 檔名為iDas_data.db
+    
     public function Sync_check_db() {
+
         $file = $this->MiscellaneousModel->lang_load();
-        if (!empty($file)) {
-            include $file;
+        if (!empty($file)) include $file;
+
+        $argument = $_POST['argument'] ?? '';
+
+        $src1       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $midPath1   = '/mnt/ramdisk/11.Lin';
+        $finalPath1 = '/mnt/ramdisk/ftp/11.Lin';
+
+        $src2       = '/var/www/html/database/ntcs_barcode_IDAS.db';
+        $midPath2   = '/mnt/ramdisk/11.db';
+        $finalPath2 = '/mnt/ramdisk/ftp/11.db';
+
+        if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
+
+            if (!file_exists($src1) || !file_exists($src2)) {
+                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Source file(s) missing: ' .
+                    (!file_exists($src1) ? 'KLS_NTCS_IDAS.Lin ' : '') .
+                    (!file_exists($src2) ? 'ntcs_barcode_IDAS.db' : ''));
+            }
+
+            // Modbus 初始化
+            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+            $modbus = new ModbusMaster("127.0.0.1", "TCP");
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+
+            try {
+                //  Step 1: 同步 .Lin
+                if (!copy($src1, $midPath1)) {
+                    $this->logMessage("Copy failed: $src1 -> $midPath1");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.Lin");
+                }
+                chmod($midPath1, 0777);
+                if (!rename($midPath1, $finalPath1)) {
+                    $this->logMessage("Move failed: $midPath1 -> $finalPath1");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.Lin");
+                }
+                $this->logMessage("11.Lin copied and moved to FTP");
+
+                //  Step 2: 通知 Modbus：Lin 完成
+                $baseValues_Lin = [1, 12593];
+                $data_Lin = array_merge($baseValues_Lin, array_fill(0, 16 - count($baseValues_Lin), 0));
+                $modbus->writeMultipleRegister(0, 506, $data_Lin, array_fill(0, 16, 'INT'));
+                $this->logMessage("Modbus write (Lin): " . implode(',', $data_Lin));
+
+                // Step 3: 延遲 1 秒
+                usleep(1000000); // 1 秒
+
+                // Step 4: 移除 11.Lin
+                $renamedPath = '/mnt/ramdisk/ftp/11_tmp.Lin';
+                if (!rename($finalPath1, $renamedPath)) {
+                    $this->logMessage("Rename failed: $finalPath1 -> $renamedPath");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.Lin");
+                }
+                $this->logMessage("11.Lin renamed to 11_tmp.Lin");
+                //unlink($finalPath1);
+                
+                // Step 5: 同步 .db
+                if (!copy($src2, $midPath2)) {
+                    $this->logMessage("Copy failed: $src2 -> $midPath2");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.db");
+                }
+                chmod($midPath2, 0777);
+                if (!rename($midPath2, $finalPath2)) {
+                    $this->logMessage("Move failed: $midPath2 -> $finalPath2");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.db");
+                }
+                $this->logMessage("11.db copied and moved to FTP");
+
+                // Step 6: 通知 Modbus：DB 完成
+                $baseValues_DB = [1, 12593];
+                $data_DB = array_merge($baseValues_DB, array_fill(0, 16 - count($baseValues_DB), 0));
+                $modbus->writeMultipleRegister(0, 506, $data_DB, array_fill(0, 16, 'INT'));
+                $this->logMessage("Modbus write (DB): " . implode(',', $data_DB));
+
+
+                // Step 7: 移除 11.db
+                $renamedPath_2 = '/mnt/ramdisk/ftp/11_db_temp.db';
+                if (!rename($finalPath2, $renamedPath_2)) {
+                    $this->logMessage("Rename failed: $$finalPath2 -> $renamedPath_2");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.db");
+                }
+                $this->logMessage("11.Lin renamed to 11_tmp.Lin");
+
+                return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+
+            } catch (Exception $e) {
+                $this->logMessage('Modbus write fail: ' . $e->getMessage());
+                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
+            }
         }
+
+        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+    }
+
+
+
     
-        $input_check = true;
-        if (!empty($_POST['argument']) && isset($_POST['argument'])) {
-            $argument = $_POST['argument'];
-        } else {
-            $argument = '';
-        }
-    
-        $argument = 'D2C';
-        $Das_DB_Location = '/var/www/html/database/iDas_data.db'; // iDas 資料庫路徑
-        $Con_DB_Location = '/var/www/html/database/data.db'; // 控制器資料庫路徑
-        $Backup_DB_Location = '/var/www/html/database/data_bk.db'; // 備份資料庫路徑
-    
-        if (!empty($argument)) {
-            if (PHP_OS_FAMILY == 'Linux' && $argument == 'D2C') {
-    
+    public function Sync_check_db_load() {
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) include $file;
+
+        $argument = $_POST['argument'] ?? '';
+
+        $src1 = '/home/kls/NTCS7/KLS_NTCS.Lin';
+        $dst1 = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $tmp1 = '/mnt/ramdisk/ftp/11.Lin';
+
+        $src2 = '/home/kls/NTCS7/ntcs_barcode.db';
+        $dst2 = '/var/www/html/database/ntcs_barcode_IDAS.db';
+        $tmp2 = '/mnt/ramdisk/ftp/11_tmp.db';
+
+        $Con_DB_Location = $src1;
+        $Das_DB_Location = $dst1;
+
+        if (!empty($argument) && PHP_OS_FAMILY === 'Linux' && $argument === 'C2D') {
+            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+            $modbus = new ModbusMaster("127.0.0.1", "TCP");
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+
+            try {
+                // 第一步：複製 KLS_NTCS.Lin 到 KLS_NTCS_IDAS.Lin
+                if (!copy($src1, $dst1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '複製 KLS_NTCS.Lin 失敗');
+                }
+
                 // 時間差異提醒
                 if (filemtime($Con_DB_Location) > filemtime($Das_DB_Location)) {
                     $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
+                    $this->logMessage($notice);
                 }
-    
-                // DB 欄位差異判斷
-                if (!$this->Database_Column_Diff()) {
-                    $warning .= 'DB 結構不相同';
+
+                // DB欄位差異判斷
+                $this->Database_Column_Diff($src1, $dst1);
+
+                // SHA1 驗證檔案一致性
+                if (sha1_file($src1) !== sha1_file($dst1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '.Lin 檔案 SHA1 不一致');
                 }
-    
-                // 備份並複製文件
-                $res_backup = $this->SettingModel->backup_CopyFile($Con_DB_Location, $Backup_DB_Location);
-    
-                if ($res_backup) {
-                    // 複製備份文件為 iDas_data.db
-                    if (file_exists($Backup_DB_Location)) {
-                        if (file_exists($Das_DB_Location)) {
-                            unlink($Das_DB_Location); // 刪除已存在的 iDas_data.db
-                        }
-                        copy($Backup_DB_Location, $Das_DB_Location); // 複製備份文件為 iDas_data.db
-                        $res_msg = "同步成功";
-                        $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-                    } else {
-                        $res_msg = "備份文件不存在";
-                        $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                    }
-                } else {
-                    $res_msg = "備份錯誤";
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+
+                // 建立 /mnt/ramdisk/ftp/11.Lin 檔案
+                if (!copy($dst1, $tmp1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '建立 11.Lin 失敗');
                 }
-    
-                echo $res_msg;
+
+                // 使用 Modbus 通知 .Lin 同步完成
+                $data1 = array(1, 12593);
+                $dataTypes1 = array_fill(0, count($data1), 'INT');
+                $modbus->writeMultipleRegister(0, 506, $data1, $dataTypes1);
+                $this->logMessage('Modbus 寫入 (.Lin)：' . implode(',', $data1));
+
+                // 刪除 11.Lin 檔案
+                unlink($tmp1);
+
+                // 延遲 1 秒
+                usleep(1000000);
+
+                // 第二步：複製 ntcs_barcode.db 到 ntcs_barcode_IDAS.db
+                if (!copy($src2, $dst2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '複製 ntcs_barcode.db 失敗');
+                }
+
+                // 時間差異提醒
+                if (filemtime($src2) > filemtime($dst2)) {
+                    $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($src2));
+                    $this->logMessage($notice);
+                }
+
+                // DB欄位差異判斷
+                $this->Database_Column_Diff($src2, $dst2);
+
+                // SHA1 驗證檔案一致性
+                if (sha1_file($src2) !== sha1_file($dst2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '.db 檔案 SHA1 不一致');
+                }
+
+                // 建立 /mnt/ramdisk/ftp/11_tmp.db 檔案
+                if (!copy($dst2, $tmp2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', '建立 11_tmp.db 失敗');
+                }
+
+                // 使用 Modbus 通知 .db 同步完成
+                $data2 = array(1, 12593, 24436, 28016);
+                $dataTypes2 = array_fill(0, count($data2), 'INT');
+                $modbus->writeMultipleRegister(0, 506, $data2, $dataTypes2);
+                $this->logMessage('Modbus 寫入 (.db)：' . implode(',', $data2));
+
+                // 刪除 11_tmp.db 檔案
+                unlink($tmp2);
+
+                return $this->MiscellaneousModel->generateErrorResponse('Success', '' . ($text['success'] ?? 'success'));
+
+            } catch (Exception $e) {
+                $this->logMessage('Modbus 錯誤：' . $e->getMessage());
+                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus 通訊失敗');
             }
         }
+
+        return $this->MiscellaneousModel->generateErrorResponse('Error', '非法的參數或非支援的作業系統');
     }
-    
-    
-    public  function Sync_check_db_load(){
-
-        $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
-   
-        if (!empty($_POST['argument']) && isset($_POST['argument'])) {
-            $argument = $_POST['argument'];
-        }else{
-            $argument = '';
-        }
-
-        $Das_DB_Location = '/var/www/html/database/iDas_data.db'; //idas 
-        $Con_DB_Location = '/var/www/html/database/data.db'; //控制器
-
-        if(!empty($argument)){
-            if( PHP_OS_FAMILY == 'Linux' && $argument == 'C2D'){
-
-                //時間差異提醒
-                if( filemtime($Con_DB_Location) > filemtime($Das_DB_Location) ){
-                    $notice = $text['system_sync_notice'].date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
-                }
-
-                //DB欄位差異判斷
-                if(!$this->Database_Column_Diff()){
-                    $warning .= 'DB is different';
-                }
-
-
-                $sourceFile = '/var/www/html/database/data.db';
-                $backupFile = '/var/www/html/database/data_bk.db';
-                $newFile = '/var/www/html/database/iDas_data.db';
-
-                $res  = $this->SettingModel->backupRemoveAndCopyDatabase($sourceFile, $backupFile, $newFile);
-                $result = array();
-                if($res){
-                    $res_msg  = "SYNC Success";
-                    $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-                }else{
-                    $res_msg  = "SYNC Error";
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
-                }
-
-            }
-        }
-    }
-        
-
-
     
     
     //get barcode
-    public function GetBarcodes()
-    {
-        $barcodes = $this->SettingModel->GetAllBarcodes();
+    public function GetBarcodes(){
 
+        $barcodes = $this->SettingModel->GetAllBarcodes();
         return $barcodes;
     }
 
@@ -751,75 +842,91 @@ class Settings extends Controller
     }
 
     //update barcode
-    public function Update_Barcode()
-    {
+    public function Update_Barcode(){
+
+
+        // 語系載入
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) {
+            include $file;
+        }
+
+        // 欄位定義（key 對應 + 是否必填）
+        $fields = [
+            'barcode_name'  => ['key' => 'barcode_name',         'required' => true],
+            'barcode_from'  => ['key' => 'barcode_range_from',   'required' => true],
+            'barcode_count' => ['key' => 'barcode_range_count',  'required' => true],
+            'barcode_job'   => ['key' => 'barcode_job',          'required' => true],
+            'barcode_mode'  => ['key' => 'barcode_mode',         'required' => true],
+            'barcode_seq'   => ['key' => 'barcode_seq',          'required' => false],
+        ];
+
+        $barcode = [];
         $input_check = true;
-        $barcode = array();
-        //$error_message = '';
-        if( !empty($_POST['barcode_name']) && isset($_POST['barcode_name'])  ){
-            $barcode['barcode_name'] = $_POST['barcode_name'];
-            /*if (strlen($barcode['barcode_name']) > 54) {
+
+        foreach ($fields as $post_key => $map) {
+            if (isset($_POST[$post_key]) && ($_POST[$post_key] !== '' || !$map['required'])) {
+                $barcode[$map['key']] = $_POST[$post_key];
+            } elseif ($map['required']) {
                 $input_check = false;
-            }*/
-        }else{ 
-            $input_check = false;
-        }
-        if( !empty($_POST['barcode_from']) && isset($_POST['barcode_from'])  ){
-            $barcode['barcode_range_from'] = $_POST['barcode_from'];
-        }else{ 
-            $input_check = false;
-        }
-        if( !empty($_POST['barcode_count']) && isset($_POST['barcode_count'])  ){
-            $barcode['barcode_range_count'] = $_POST['barcode_count'];
-        }else{ 
-            $input_check = false;
-        }
-        
-        if( isset($_POST['barcode_job'])  ){
-            $barcode['barcode_job'] = $_POST['barcode_job'];
-        }else{ 
-            $input_check = false;
+            } else {
+                $barcode[$map['key']] = ""; // 非必填欄位預設值
+            }
         }
 
-        if( isset($_POST['barcode_mode'])  ){
-            $barcode['barcode_mode'] = $_POST['barcode_mode'];
-        }else{ 
-            $input_check = false;
-        }
 
-        if( isset($_POST['barcode_seq'])  ){
-            $barcode['barcode_seq'] = $_POST['barcode_seq'];
-        }else{ 
+
+        if($barcode['barcode_seq'] == "-1"){
             $barcode['barcode_seq'] = "";
         }
-        
 
-        if($input_check){
+
+        if ($input_check) {
             $barcode_result = $this->SettingModel->Update_Barcode($barcode);
-            if($barcode_result){
-                $res_msg = 'edit barcode :'. $barcode['barcode_name'].' success';
-            }else{
-                $res_msg = 'edit barcode :'. $barcode['barcode_name'].' fail';
-            }
-            echo $res_msg;    
+
+            $res_type = $barcode_result ? 'Success' : 'Error';
+            $res_msg = ($barcode_result ? 'edit barcode :' : 'edit barcode :') . $barcode['barcode_name'] . ($barcode_result ? ' success' : ' fail');
+            $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+        } else {
+            $res_msg = $text['input_error'] ?? 'Required fields missing.';
+            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
         }
     }
 
-    public function GetJobSeq()
-    {
+
+
+    public function GetJobSeq(){
+
+        $job_id = $_POST['job_id'] ?? null;
+
+        if ($job_id) {
+            $result = $this->SettingModel->get_seq_list($job_id);
+            echo json_encode($result);
+        } else {
+            echo json_encode([
+                'result' => 'fail',
+                'error_message' => 'Missing job_id'
+            ]);
+        }
+
+        exit();
+    }
+
+        
+    public function GetJobSeq_for_modbus(){
+
         $input_check = true;
         $error_message = '';
-        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $job_id = $_POST['job_id'];
+        
+        if( !empty($_GET['job_id']) && isset($_GET['job_id'])  ){
+            $job_id = $_GET['job_id'];
         }else{ 
             $input_check = false;
             $error_message .= "job_id,";
         }
 
         if($input_check){
-
- 
-            $result = $this->SettingModel->get_seq_list($job_id);
+            $result = $this->SettingModel->get_seq_list_for_modbus($job_id);
             echo json_encode($result);
             exit();
         }else{
@@ -830,7 +937,11 @@ class Settings extends Controller
             echo json_encode($data);
             exit();
         }
+
+
     }
+
+
 
     public function GetJobBarcode()
     {
@@ -866,15 +977,19 @@ class Settings extends Controller
         }else{ 
             $input_check = false;
         }
-        if($input_check){
-           $res = $this->SettingModel->delete_job_barcode($barcode);
 
-           if($res){
-                $res_msg = 'delete  barcode :'. $barcode['job_id'].' success';
+
+        if($input_check){
+            $res = $this->SettingModel->delete_job_barcode($barcode);
+
+            if($res){
+                $res_msg = 'del barcode :'. $barcode['job_id'][0].'success';
+                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
+
            }else{
-                $res_msg = 'delete  barcode :'. $barcode['job_id'].' fail';
+                $res_msg = 'del barcode :'. $barcode['job_id'][0].'fail';
+                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
            }
-           echo $res_msg;
         }
       
     }
@@ -1017,210 +1132,227 @@ class Settings extends Controller
     }
 
     public function edit_global_downshift(){
-        
+
+        // 載入語系
         $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
+        if (!empty($file)) {
             include $file;
         }
-        $global_downshift_arr = array();
+
+        $fields = ['global_downshift_torque', 'global_downshift_speed'];
+        $global_downshift_arr = [];
         $input_check = true;
-        if(!empty($_POST['global_downshift_torque']) && isset($_POST['global_downshift_torque'])){
-            $global_downshift_arr['global_downshift_torque'] = $_POST['global_downshift_torque'];
-        }else{ 
-            $input_check = false;
+
+        foreach ($fields as $field) {
+            $value = trim($_POST[$field] ?? '');
+            if ($value === '') {
+                $input_check = false;
+            }
+            $global_downshift_arr[$field] = $value;
         }
 
-        if(!empty($_POST['global_downshift_speed']) && isset($_POST['global_downshift_speed'])){
-            $global_downshift_arr['global_downshift_speed'] = $_POST['global_downshift_speed'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if($input_check){
+        if ($input_check) {
             $result = $this->SettingModel->edit_feature_global_downshift($global_downshift_arr);
 
-            if( $result){
-                $res_msg = $text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
-            }else{
-                $res_msg = $text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
-            }
-
+            $res_type = $result ? 'Success' : 'Error';
+            $res_msg  = $result ? ($text['success'] ?? 'Operation succeeded.') : ($text['fail'] ?? 'Operation failed.');
+            $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+        } else {
+            $this->MiscellaneousModel->generateErrorResponse('Error', $text['input_error'] ?? 'Required fields missing.');
         }
     }
+
 
 
     public function edit_background_color(){
-        
+
+        // 載入語系
         $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
+        if (!empty($file)) {
             include $file;
         }
 
-        $color_arr = array();
-        $input_check = true;
-        if(!empty($_POST['okjobcolor']) && isset($_POST['okjobcolor'])){
-            $color_arr['okjobcolor'] = $_POST['okjobcolor'];
-        }else{ 
-            $input_check = false;
-        }
+        // 欄位定義
+        $fields = ['okjobcolor', 'okseqcolor'];
+        $color_arr = [];
+        $input_valid = true;
 
-        if(!empty($_POST['okseqcolor']) && isset($_POST['okseqcolor'])){
-            $color_arr['okseqcolor'] = $_POST['okseqcolor'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if($input_check){
-            $result = $this->SettingModel->edit_feature_color($color_arr);
-
-            if( $result){
-                $res_msg = $text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
-            }else{
-                $res_msg = $text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+        foreach ($fields as $field) {
+            $value = trim($_POST[$field] ?? '');
+            if ($value === '') {
+                $input_valid = false;
             }
-
+            $color_arr[$field] = $value;
         }
 
+        if (!$input_valid) {
+            $this->MiscellaneousModel->generateErrorResponse('Error', $text['input_error'] ?? 'Missing required color values.');
+            return;
+        }
 
-
-
+        $result = $this->SettingModel->edit_feature_color($color_arr);
+        $res_type = $result ? 'Success' : 'Error';
+        $res_msg  = $result ? ($text['success'] ?? 'Update successful.') : ($text['fail'] ?? 'Update failed.');
+        $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
     }
+
+
+    
     public function edit_feature_pwd(){
 
-        
+        // 載入語系檔
         $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
+        if (!empty($file)) {
             include $file;
         }
 
+        // 欲接收的欄位對應鍵名
+        $fields = [
+            'clear_seq' => 'clearseq_button_pwd',
+            'clear'     => 'clear_button_pwd',
+            'confirm'   => 'confirm_button_pwd',
+            'enable'    => 'enable_button_pwd',
+            'disable'   => 'disable_button_pwd',
+            'skip'      => 'skip_button_pwd'
+        ];
 
+        $pwd_arr = [];
         $input_check = true;
-        $pwd_arr = array();
 
-        if(!empty($_POST['clear_seq']) && isset($_POST['clear_seq'])){
-            $pwd_arr['clearseq_button_pwd'] = $_POST['clear_seq'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['clear']) && isset($_POST['clear'])){
-            $pwd_arr['clear_button_pwd'] = $_POST['clear'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['confirm']) && isset($_POST['confirm'])){
-            $pwd_arr['confirm_button_pwd'] = $_POST['confirm'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['enable']) && isset($_POST['enable'])){
-            $pwd_arr['enable_button_pwd'] = $_POST['enable'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['disable']) && isset($_POST['disable'])){
-            $pwd_arr['disable_button_pwd'] = $_POST['disable'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if(!empty($_POST['skip']) && isset($_POST['skip'])){
-            $pwd_arr['skip_button_pwd'] = $_POST['skip'];
-        }else{ 
-            $input_check = false;
-        }
-
-        if($input_check){
-            $result = $this->SettingModel->edit_feature_pwd($pwd_arr);
-
-            if( $result){
-                $res_msg = $text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
-            }else{
-                $res_msg = $text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
-            }
-
-        }
-
-
-    }
-
-
-    public function Import_Config()
-    {
-        $file_location = '';
-        $result = '';
-
-        if(empty($_FILES)){
-            echo json_encode(["Error" => 'no file']);
-            exit();
-        }
-
-
-        if( PHP_OS_FAMILY == 'Linux'){
-            /*$this->logMessage('Import config start');
-
-            $destination = "/mnt/ramdisk/FTP/iDas.cfg";
-            //將檔案移到指定位置
-            $result =  move_uploaded_file($_FILES['file']['tmp_name'], $destination);
-
-            if ($result) {
-                require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-                $modbus = new ModbusMaster("127.0.0.1", "TCP");
-                try {
-                    $modbus->port = 502;
-                    $modbus->timeout_sec = 10;
-                    $data = array(1, 26948, 24947);
-                    $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
-
-                    // FC 16
-                    $modbus->writeMultipleRegister(0, 506, $data, $dataTypes);
-                    $this->logMessage('modbus write 506 ,array = '.implode("','", $data));
-                    $this->logMessage('modbus status:'.$modbus->status);
-                    $this->logMessage('Import config end');
-                    echo json_encode(array('error' => ''));
-                    exit();
-
-                } catch (Exception $e) {
-                    // Print error information if any
-                    // echo $modbus;
-                    // echo $e;
-                    $this->logMessage('modbus write 506 fail');
-                    $this->logMessage('modbus status:'.$modbus->status);
-                    $this->logMessage('Import config end');
-                    echo json_encode(array('error' => 'modbus error'));
-                    exit();
-                }
+        // 統一檢查每個欄位是否存在並賦值
+        foreach ($fields as $post_key => $pwd_key) {
+            if (!empty($_POST[$post_key])) {
+                $pwd_arr[$pwd_key] = $_POST[$post_key];
             } else {
-                $this->logMessage('copy db error');
-                $this->logMessage('Import config end');
-                echo json_encode(array('error' => 'copy db error'));
-                exit();
-            }*/
-
-        }else{
-            // $this->logMessage('Import config start');
-            $destination = "../KLS_NTCS_IDAS.Lin";
-            $result =  move_uploaded_file($_FILES['file']['tmp_name'], $destination);
-            if($result){
-                echo json_encode(["error" => '']);
-                exit();
-            }else{
-                echo json_encode(["error" => 'fail']);
-                exit();
-            }            
+                $input_check = false;
+            }
         }
 
-        echo json_encode(["message" => $result]);
+        // 有錯就不送出
+        if (!$input_check) {
+            $this->MiscellaneousModel->generateErrorResponse('Error', $text['input_error'] ?? 'Input missing.');
+            return;
+        }
+
+        // 寫入設定
+        $result = $this->SettingModel->edit_feature_pwd($pwd_arr);
+
+        if ($result) {
+            $this->MiscellaneousModel->generateErrorResponse('Success', $text['success'] ?? 'Saved successfully.');
+        } else {
+            $this->MiscellaneousModel->generateErrorResponse('Error', $text['fail'] ?? 'Save failed.');
+        }
     }
+
+
+    public function Import_Config(){
+        
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) {
+            include $file;
+        }
+
+        // 驗證上傳
+        if (empty($_FILES) || !isset($_FILES['file'])) {
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'No file uploaded.');
+            return;  // 使用 return 代替 exit()，避免中斷執行
+        }
+
+        $file_name = $_FILES['file']['name'];
+        $file_info = pathinfo($file_name);
+        $ext = strtolower($file_info['extension']);
+        $tmp_file = $_FILES['file']['tmp_name'];
+        $ftp_dir = "/mnt/ramdisk/";
+
+        // 驗證上傳文件是否為 .pack 格式
+        if ($ext !== 'pack') {
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Only .pack files are allowed.');
+            return; // 使用 return 代替 exit()
+        }
+
+        // 確保目錄存在且可寫
+        if (!is_dir($ftp_dir) || !is_writable($ftp_dir)) {
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Upload directory not writable.');
+            return; // 使用 return 代替 exit()
+        }
+
+        // 儲存 .pack 文件並解壓縮
+        $tempZipPath = $ftp_dir . "uploaded_tmp.zip";
+        if (!move_uploaded_file($tmp_file, $tempZipPath)) {
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Failed to save uploaded file.');
+            return; // 使用 return 代替 exit()
+        }
+
+        // 解壓縮檔案
+        $zip = new ZipArchive();
+        if ($zip->open($tempZipPath) === TRUE) {
+            $zip->extractTo($ftp_dir);
+            $zip->close();
+            unlink($tempZipPath);  // 刪除臨時 zip 檔案
+        } else {
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Failed to extract .pack file.');
+            return; // 使用 return 代替 exit()
+        }
+
+        // 尋找 .cfg 和 .Lin 文件
+        $cfg_file = '';
+        $lin_file = '';
+        foreach (scandir($ftp_dir) as $f) {
+            if (preg_match('/\.cfg$/i', $f)) {
+                $cfg_file = $f;
+            } elseif (preg_match('/\.lin$/i', $f)) {
+                $lin_file = $f;
+            }
+        }
+
+        // 檢查是否找到所需的檔案
+        if (!$cfg_file || !$lin_file) {
+            $this->MiscellaneousModel->generateErrorResponse('Error', '.cfg or .Lin file not found in .pack.');
+            return; // 使用 return 代替 exit()
+        }
+
+        // 重新命名文件
+        $cfg_path = $ftp_dir . "iDas.cfg";
+        $lin_path = $ftp_dir . "iDas.Lin";
+        @rename($ftp_dir . $cfg_file, $cfg_path);
+        @rename($ftp_dir . $lin_file, $lin_path);
+
+        // 執行 Modbus 寫入
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $modbus = new ModbusMaster("127.0.0.1", "TCP");
+
+        try {
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+            $data = [1, 26948, 24947]; // iDas
+            $dataTypes = array_fill(0, 16, "INT");
+
+            $modbus->writeMultipleRegister(0, 506, $data, $dataTypes);
+            $this->logMessage("modbus write 506 ,array = " . implode("','", $data));
+            $this->logMessage("modbus status: " . $modbus->status);
+            $this->logMessage("Import config end");
+
+            // 成功回應
+            $this->MiscellaneousModel->generateErrorResponse('Success', 'Import successful.');
+
+            // 第二次寫入 Modbus
+            $modbus->writeMultipleRegister(0, 462, [1], $dataTypes);
+
+        } catch (Exception $e) {
+            // 錯誤處理
+            $this->logMessage('modbus write 506 fail');
+            $this->logMessage('modbus status: ' . $modbus->status);
+            $this->logMessage('Import config end');
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus error.');
+        }
+    }
+
+
+
+
+
+
+
 
     public function FirmwareUpdate()
     {
@@ -1304,27 +1436,27 @@ class Settings extends Controller
     }
 
     //DB欄位差異判斷
-    function Database_Column_Diff()
-    {
-        $dbPath1 = '/var/www/html/database/iDas_data.db';
-        $dbPath2 = '/var/www/html/database/data.db';
+    public function Database_Column_Diff($dbPath1, $dbPath2){
 
+        // 比對兩個資料庫的表結構
         if ($this->validateTableStructure($dbPath1, $dbPath2)) {
-            echo "两个数据库的表结构相同。\n";
+            $this->logMessage("✔ 資料庫結構相同：$dbPath1 vs $dbPath2");
         } else {
-            echo "两个数据库的表结构不同。\n";
+            $this->logMessage("✘ 資料庫結構不同：$dbPath1 vs $dbPath2");
             return false;
         }
 
-        //確認idas的設定db沒有null
+        // 確認第一個 DB 沒有 null 欄位
         $result = $this->checkForNullValues($dbPath1);
-        if(!$result){
+        if (!$result) {
+            $this->logMessage("✘ 檢查 $dbPath1 時發現欄位為 NULL");
             return false;
-        }else{
-            return true;
         }
+
         return true;
     }
+
+
 
 
     // 連接到SQLite資料庫
@@ -1409,5 +1541,62 @@ class Settings extends Controller
          }
 
          return true;
-    }    
+    } 
+
+
+
+    
+    public function get_controller_login() {
+        // ✅ 檢查是否可同步（Modbus 工具狀態）
+        $idas_result = $this->idas_check();
+
+
+        if (!isset($idas_result['result']) || (int)$idas_result['result'] !== 0) {
+            echo json_encode([
+                'result'   => false,
+                'login'    => 0,
+                'res_type' => 'SuccessError',
+                'res_msg'  => 'Tool not disabled'
+            ]);
+            return;
+        }else{
+             echo json_encode([
+                'result'   => true,
+                'login'    => 1,
+                'res_type' => 'Success',
+                'res_msg'  => 'Tool is disabled, login status returned'
+            ]);
+            return;
+
+        }
+
+        // ✅ 檢查控制器登入狀態
+        /*$Controller_Info = $this->ToolModel->GetControllerInfo();
+
+        if (!empty($Controller_Info)) {
+            $user_logIn = isset($Controller_Info['user_logIn']) ? (int)$Controller_Info['user_logIn'] : 1;
+
+            echo json_encode([
+                'result'   => true,
+                'login'    => $user_logIn,  // ✅ 根據真實狀態
+                'res_type' => 'Success',
+                'res_msg'  => 'Tool is disabled, login status returned'
+            ]);
+            return;
+        }*/
+
+        // ✅ 若 Controller info 取得失敗，預設視為登入中（保守處理）
+        /*echo json_encode([
+            'result'   => false,
+            'login'    => 1,
+            'res_type' => 'Error',
+            'res_msg'  => 'Controller info not found'
+        ]);*/
+    }
+
+
+
+
+
+    
 }

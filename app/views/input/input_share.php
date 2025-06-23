@@ -1,4 +1,79 @@
 <script>
+var job_id; 
+var input_event;
+var temp;
+var tempA;
+var tempB;
+var selectedValue;
+var old_input_event;
+var all_job;
+var buttonDisabled = false;
+var backgroundColorYellow = false;
+var input_job;
+var temp_event;
+
+$(document).ready(function () {
+    highlight_row_input('input_table');
+ 
+    var all_input_job = '<?php echo $data['device_data']['device_input_all_job']?>';
+    job_id = all_input_job;
+    input_job = all_input_job;
+    if(job_id){
+        get_input_by_job_id(job_id);
+        document.getElementById('Button_Select').disabled = true;
+        document.getElementById('job_id').style.backgroundColor = 'yellow';
+    }
+
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  var observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      var headerElements = document.querySelectorAll('.ajs-header');
+      headerElements.forEach(function(headerElement) {
+        headerElement.parentNode.removeChild(headerElement);
+      });
+    });
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+});
+
+document.getElementById("Event_Option").onchange = function() {
+    var selectedValue = this.value; 
+    handleEventChange(selectedValue); 
+};
+
+// Div Mode
+function toggleDivs() {
+    var tableInputSetting = document.getElementById('TableInputSetting');
+    var tableDataInput = document.getElementById('TableDataInput');
+
+    if (tableInputSetting.style.display === 'none') {
+        tableInputSetting.style.display = 'block';
+        tableDataInput.style.display = 'none';
+    } else {
+        tableInputSetting.style.display = 'none';
+        tableDataInput.style.display = 'block';
+    }
+}
+
+function showTableInputSetting() {
+    document.getElementById('TableInputSetting').style.display = 'block';
+    document.getElementById('TableDataInput').style.display = 'none';
+
+    document.getElementById('input_menu').style.display = 'block';
+}
+
+// Get the modal
+var modal = document.getElementById('newinput');
+
+
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
 
 function toggleDivs() {
     var tableInputSetting = document.getElementById('TableInputSetting');
@@ -38,7 +113,7 @@ function handleNewEvent() {
     disableRadioList(temp);
     disableOptions('#Event_Option', tempA);
     disableOptions('#Event_Option', temp_event, true); // 變灰顯示
-
+    showOverlay();
     document.getElementById('newinput').style.display = 'block';
 }
 
@@ -212,6 +287,8 @@ function edit_input_id() {
     }
 
     if (job_id) {
+        document.getElementById('spinner').style.display = 'block';
+
         $.ajax({
             url: "?url=Inputs/edit_input_event",
             method: "POST",
@@ -226,12 +303,8 @@ function edit_input_id() {
                 old_input_event
             },
             success: function (response) {
-                document.getElementById('edit_input').style.display = 'none';
-                const responseData = JSON.parse(response);
-
-                alertify.alert(responseData.res_type, responseData.res_msg, function () {
-                    get_input_by_job_id(job_id);
-                });
+                input_success_res(response, job_id, get_input_by_job_id, 'edit_input');
+                hideOverlay();
             },
             error: function (xhr, status, error) {
                 console.error("edit_input_event failed:", status, error);
@@ -302,32 +375,57 @@ function alignsubmit(job_id) {
 }
 
 
-function delete_input_id(jobid,input_event){
+function delete_input_id(job_id,input_event){
 
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/delete_input",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-             
-            },
-            success: function(response) {
-            
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
+   var language = getCookie('language');
+   var text_info, title;
 
+   if (language === "zh-cn") {
+       text_info = '你确定吗？';
+       title = '刪除任務';
+   } else if (language === "zh-tw") {
+       text_info = '你確定嗎？';
+       title = '刪除任務';
+   } else {
+       text_info = 'Are you sure?';
+       title = 'Delete Event';
+   }
+   
+   if (job_id) {
+       alertify.confirm(
+           title, // 標題
+           text_info, // 提示文字
+           function() {
+               //使用者選擇「是」後執行刪除動作
+               document.getElementById('spinner').style.display = 'block';
+
+               $.ajax({
+                   url: "?url=Inputs/delete_input",
+                   method: "POST",
+                   data: { 
+                       job_id: job_id,
+                       input_event: input_event
+                   },
+                   success: function(response) {
+                        input_success_res(response, job_id, get_input_by_job_id, 'edit_input');
+                        hideOverlay();
+                   },
+                   error: function(xhr, status, error) {
+                       alertify.error("刪除失敗，請稍後再試！");
+                       document.querySelector(".main-content").classList.remove("overlay-active"); 
+                       document.getElementById('spinner').style.display = 'none';
+                   }
+               });
             },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
+            function() {
+                // 取消 callback 可選寫在這裡（目前略過）
+                document.querySelector(".main-content").classList.remove("overlay-active");
+                hideOverlay();
             }
-        });     
+        ).set('labels', {ok:'YES', cancel:'NO'}); // 修改按鈕文字
     }
-
 }
+
 
 
 function crud_job_event(action) {
@@ -339,30 +437,35 @@ function crud_job_event(action) {
             break;
 
         case 'del':
+            document.querySelector(".main-content").classList.add("overlay-active");
+              showOverlay();
             if (input_event) {
                 delete_input_id(job_id, input_event);
             }
             break;
 
         case 'edit':
+            document.querySelector(".main-content").classList.add("overlay-active");
             if (!input_event) return;
 
             const selectedEditRows = document.querySelectorAll('#input_jobid_select tr.selected');
             if (!selectedEditRows.length) {
-                getLanguageMessage('language');
                 return;
             }
-
+            showOverlay();
             handleEditJobEvent();
             break;
 
         case 'copy':
+            document.querySelector(".main-content").classList.add("overlay-active");
+              showOverlay();
             if (!input_event) return;
 
             handleCopyJobEvent();
             break;
 
         case 'unified':
+            //showOverlay();
             handleUnifiedJobEvent();
             break;
 
@@ -376,8 +479,10 @@ function handleNewJobEvent() {
     disableRadioList(temp);
     disableOptions('#Event_Option', tempA);
     disableOptions('#Event_Option', temp_event, true); // 顯示灰色但禁用
-
+    showOverlay();
     document.getElementById('newinput').style.display = 'block';
+
+    
 }
 
 function handleEditJobEvent() {
@@ -480,11 +585,8 @@ function create_input_id(){
 
     //檢查是否有選擇 pin，如果沒有就中斷
     if (!pinval || pinval.length === 0) {
-        //alertify.error("請選擇一個 Pin！");
         return;
     }
-
-
 
     if(input_event == 109){
         var selectedOption = document.querySelector('input[name="gateconfirm"]:checked');
@@ -496,6 +598,8 @@ function create_input_id(){
 
     var input_pin = pin_old.match(/\d+/)[0];
     if(job_id){
+       document.getElementById('spinner').style.display = 'block';
+
         $.ajax({
             url: "?url=Inputs/create_input_event",
             method: "POST",
@@ -508,13 +612,10 @@ function create_input_id(){
                 pagemode: pagemode,
                 input_seqid: input_seqid
             },
-            success: function(response) {
+            success: function (response) {
+               input_success_res(response, job_id, get_input_by_job_id, 'newinput');
+                hideOverlay();
 
-                document.getElementById('newinput').style.display='none';
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                    get_input_by_job_id(job_id);
-                });
             },
             error: function(xhr, status, error) {
                 
@@ -525,51 +626,54 @@ function create_input_id(){
 }
 
 
-function copy_input_id(){
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='若设定已存在，将会取代原有设定';
-    }else if(language == "zh-tw"){
-        var text_info ='若設定已存在，將會取代原有設定';
-    }else{
-        var text_info ='If the job input already exists, it will replace the original setting';
-    }
-    alertify.confirm( text_info , function (e) {
-        if (e) {
-            var to_job_id = document.getElementById("JobSelect1").value;
-            if(to_job_id){
-                $.ajax({
-                    url: "?url=Inputs/copy_input_event",
-                    method: "POST",
-                    data: { 
-                        from_job_id: job_id,
-                        to_job_id: to_job_id
-                    },
-                    success: function(response) {
-                        
-                        document.getElementById('copyinput').style.display='none';
-                        var responseData = JSON.parse(response);
-                        alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                            get_input_by_job_id(job_id);
-                        });
+function copy_input_id() {
+   var language = getCookie('language') || 'en-us';
 
-                        
-                    },
-                    error: function(xhr, status, error) {
-                        
-                    }
-                });
-        
-            }
+   var messages = {
+       'zh-cn': '若设定已存在，将会取代原有设定',
+       'zh-tw': '若設定已存在，將會取代原有設定',
+       'en-us': 'If the job input already exists, it will replace the original setting'
+   };
 
-        } else {
-            // cancel
-        }
-    });
+   var text_info = messages[language] || messages['en-us'];
 
+   // 建立 confirm 視窗
+   var confirmDialog = alertify.confirm(text_info, function (confirmed) {
+       // 使用者點選後取消自動關閉計時器
+       clearTimeout(autoCancelTimer);
+       if (!confirmed) return;
+
+       var to_job_id = document.getElementById("JobSelect1").value;
+       if (!to_job_id) return;
+
+       document.getElementById('spinner').style.display = 'block';
+
+       $.ajax({
+           url: "?url=Inputs/copy_input_event",
+           method: "POST",
+           data: {
+               from_job_id: job_id,
+               to_job_id: to_job_id
+           },
+           success: function (response) {
+             input_success_res(response, job_id, get_input_by_job_id, 'copyinput');
+             hideOverlay();
+           },
+           error: function () {
+               alertify.error("複製失敗，請稍後再試！");
+               document.getElementById('spinner').style.display = 'none';
+               document.querySelector(".main-content").classList.remove("overlay-active");
+           }
+       });
+   });
+
+   // 自動取消邏輯：3 秒後自動關閉 confirm 視窗
+   var autoCancelTimer = setTimeout(function () {
+       alertify.closeAll(); // 關閉 alertify 視窗
+       // 可選提示
+       //alertify.message("自動取消複製操作");
+   }, 3000);
 }
-
-
 
 function get_input_by_job_id(jobid){
     $.ajax({
@@ -651,7 +755,6 @@ function get_input_info(){
             },
             success: function(response) {
                 if (response === 'no_data') {
-                    getLanguageMessage('language');
                     return;
                 }
 
@@ -834,6 +937,33 @@ function job_confirm(){
     }
 }
 
+
+function input_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
+    var responseData = JSON.parse(response);
+    alertify.alert(responseData.res_type, responseData.res_msg);
+
+    setTimeout(function () {
+        alertify.closeAll();
+        document.querySelector(".main-content").classList.remove("overlay-active");
+        document.getElementById('spinner').style.display = 'none';
+
+        if (typeof callbackFn === 'function') {
+            callbackFn(job_id);
+        }
+    }, 2000);
+
+    const hideEl = document.getElementById(hideElementId);
+    if (hideEl) hideEl.style.display = 'none';
+}
+
+
+function showOverlay() {
+    document.getElementById("modal-overlay").style.display = "block";
+}
+
+function hideOverlay() {
+    document.getElementById("modal-overlay").style.display = "none";
+}
 </script>
 
 

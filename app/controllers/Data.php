@@ -83,80 +83,86 @@ class Data extends Controller
 
 
     public function exportData() {
+        
         $input_check = true;
-    
-        #檢查開始日期
+
+        // 檢查開始日期
         if (!empty($_POST['start_date']) && isset($_POST['start_date'])) {
             $start_date = $_POST['start_date'] . ":00";
         } else {
             $input_check = false;
         }
-    
-        #檢查結束日期
+
+        // 檢查結束日期
         if (!empty($_POST['end_date']) && isset($_POST['end_date'])) {
             $end_date = $_POST['end_date'] . ":00";
         } else {
             $input_check = false;
         }
-    
-        #確認是否有選擇類型 
-        $expert_val = isset($_POST['expert_val']) ? $_POST['expert_val'] : "0";
-    
+
+        // 匯出格式
+        $expert_val = $_POST['expert_val'] ?? "0";
+
         if ($input_check) {
             $dataset = $this->DataModel->get_range_data($start_date, $end_date);
-    
+
             if (count($dataset) === 0) {
-                echo json_encode(array("error" => "無法找到符合條件的資料"));
+                echo json_encode(["error" => "無法找到符合條件的資料"]);
                 exit();
-            } else {
-                $dataset = array_slice($dataset, 0, 10000);    
-                if ($dataset && $expert_val == "0") {
-                    $csv_headers = array_keys($dataset[0]);
-                    header('Content-Type: text/csv; charset=utf-8');
-                    header('Content-Disposition: attachment; filename=data.csv');
-        
-                    $output = fopen('php://output', 'w');
-                    fputcsv($output, $csv_headers);
-        
-                    foreach ($dataset as $row) {
-                        fputcsv($output, $row);
-                    }
-        
-                    fclose($output);
+            }
+
+            $dataset = array_slice($dataset, 0, 10000);
+            $csv_headers = array_keys($dataset[0]);
+            $timestamp = date("Ymd");
+            $csv_filename = "NTCS_data_{$timestamp}.csv";
+            $zip_filename = "NTCS_data_{$timestamp}.zip";
+
+            if ($expert_val === "0") {
+                // 匯出 CSV
+                header('Content-Type: text/csv; charset=utf-8');
+                header("Content-Disposition: attachment; filename={$csv_filename}");
+
+                $output = fopen('php://output', 'w');
+                fputcsv($output, $csv_headers);
+                foreach ($dataset as $row) {
+                    fputcsv($output, $row);
+                }
+                fclose($output);
+                exit();
+
+            } elseif ($expert_val === "1") {
+                // 匯出 ZIP + CSV
+                $csv_content = implode(',', $csv_headers) . "\n";
+                foreach ($dataset as $row) {
+                    $csv_content .= implode(',', $row) . "\n";
+                }
+
+                $zip = new ZipArchive();
+                $temp_zip_path = tempnam(sys_get_temp_dir(), 'ntcs_zip');
+                $temp_zip_final = $temp_zip_path . '.zip';
+
+                if ($zip->open($temp_zip_final, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                    $zip->addFromString($csv_filename, $csv_content); // zip 中的檔案名稱
+                    $zip->close();
+
+                    header('Content-Type: application/zip');
+                    header("Content-Disposition: attachment; filename={$zip_filename}");
+                    header('Content-Length: ' . filesize($temp_zip_final));
+                    readfile($temp_zip_final);
+                    unlink($temp_zip_final);
                     exit();
-                } elseif ($dataset && $expert_val == "1") {
-                    $csv_content = '';
-                    $csv_headers = array_keys($dataset[0]);
-                    $csv_content .= implode(',', $csv_headers) . "\n";
-        
-                    foreach ($dataset as $row) {
-                        $csv_content .= implode(',', $row) . "\n";
-                    }
-        
-                    $zip = new ZipArchive();
-                    $zip_filename = tempnam(sys_get_temp_dir(), 'exported_data') . '.zip';
-        
-                    if ($zip->open($zip_filename, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-                        $zip->addFromString("data.csv", $csv_content);
-                        $zip->close();
-        
-                        header('Content-Type: application/zip');
-                        header('Content-Disposition: attachment; filename=exported_data.zip');
-                        header('Content-Length: ' . filesize($zip_filename));
-                        readfile($zip_filename);
-                        unlink($zip_filename);
-                        exit();
-                    } else {
-                        echo json_encode(array("error" => "無法建立 ZIP 檔案"));
-                        exit();
-                    }
+                } else {
+                    echo json_encode(["error" => "無法建立 ZIP 檔案"]);
+                    exit();
                 }
             }
+
         } else {
-            echo json_encode(array("error" => "輸入參數不正確"));
+            echo json_encode(["error" => "輸入參數不正確"]);
             exit();
         }
     }
+
 
 
     public function getreal_time_data() {
@@ -164,10 +170,12 @@ class Data extends Controller
         $mode = $_POST['mode'] ?? 'ALL';
 
         // 根據系統設定路徑
-        $base_path = (strtoupper(PHP_OS_FAMILY) === 'LINUX') 
-            ? "/var/www/html/ntcs/"
-            : "../";
-
+        if(PHP_OS_FAMILY  ==="Linux"){
+            $base_path = '/var/www/html/database/';
+        }else{
+            $base_path =  '../';
+        }
+      
         $db_path = $base_path . "ntcs_data.db";
 
         if (!file_exists($db_path)) {
@@ -196,7 +204,6 @@ class Data extends Controller
    
         }
 
-      
         echo json_encode([
             'success' => true,
             'records' => $res_data,
@@ -258,8 +265,5 @@ class Data extends Controller
         }
     }
 
-
-        
-    
 }
 ?>

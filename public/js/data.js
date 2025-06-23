@@ -41,22 +41,25 @@ function exportData() {
                 expert_val: expert_val
             },
             xhrFields: {
-                responseType: 'blob' 
+                responseType: 'blob'
             },
             success: function(response, status, xhr) {
-                // 如果 response 返回错误信息
-                if (response.error) {
-                    alertify.alert(response.error); // 使用 alertify 弹窗显示错误
-                    return;
+                const disposition = xhr.getResponseHeader('Content-Disposition');
+                let filename = 'downloaded_file';
+
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    const matches = disposition.match(/filename="?([^"]+)"?/);
+                    if (matches && matches.length > 1) {
+                        filename = matches[1];
+                    }
                 }
 
-                var contentType = xhr.getResponseHeader('Content-Type');
-                var filename = expert_val === "1" ? 'exported_data.zip' : 'data.csv';  
-                var blob = new Blob([response], { type: contentType });
-                var link = document.createElement('a');
+                const contentType = xhr.getResponseHeader('Content-Type');
+                const blob = new Blob([response], { type: contentType });
+
+                const link = document.createElement('a');
                 link.href = window.URL.createObjectURL(blob);
                 link.setAttribute('download', filename);
-
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);

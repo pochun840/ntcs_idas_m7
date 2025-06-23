@@ -12,9 +12,6 @@ class Dashboard{
         $this->db = new Database;
         $this->db = $this->db->getDb();
 
-        $this->db_dev = new Database;
-        $this->db_dev = $this->db_dev->getDb_dev();
-
         $this->db_data = new Database;
         $this->db_data = $this->db_data->getDb_data();
 
@@ -88,99 +85,109 @@ class Dashboard{
         return $rows;
     }
 
-    public function get_info($no, $chat_mode) {
-        $resultarr = array();
+
+    public function get_info($chat_mode, $id) {
         
-        if (!empty($no)) {
-            #檔案類型
-            $file_arr = array('_0p5', '_1p0', '_2p0');
-            $csv_array = array();
-            $resultarr = array();
-            
-            foreach ($file_arr as $v_f) {
-                // public/data/DATALOG_20241126074447_DEVICE_0000009437_0p5.csv
-                //$infile = "../public/data/DATALOG_000000".$no.$v_f.".csv";
-                //$infile = "../public/data/DATALOG_20241126074447_DEVICE_000000" . $no . $v_f . ".csv";
-                $infile = "../public/data/DATALOG_20241220150526_DEVICE_".$no."_0p5.csv";
-                // echo $infile; die();
-                if (file_exists($infile)) {
-                    $csvdata_tmp = file_get_contents($infile);
-                    
-                    if (!empty($csvdata_tmp)) {
-                        $csvdata = $csvdata_tmp;
-                        $lines = explode("\n", $csvdata);
-                        $csv_array = array_map('str_getcsv', $lines);
-                        break;
-                    }
+        $resultarr = [];
+
+        // 找出所有符合 $id 的 CSV 檔案
+        $csv_folder = "/mnt/ramdisk/ftp/";
+        $csv_files = glob($csv_folder . $id . "__*.csv");  // ✅ 根據 ID 篩選檔名開頭
+
+        if (empty($csv_files)) {
+            return [];
+        }
+
+        // 根據建立時間由新到舊排序
+        usort($csv_files, fn($a, $b) => filectime($b) - filectime($a));
+        $latest_file = $csv_files[0];  // 最新的符合檔案
+
+        // 讀取並轉為陣列
+        $csv_content = file_get_contents($latest_file);
+        if (empty($csv_content)) {
+            return [];
+        }
+
+        $lines = explode("\n", $csv_content);
+        $csv_array = array_map('str_getcsv', $lines);
+        $csv_array = array_filter($csv_array); // 過濾空行
+
+        // ➤ Torque 模式 (1, 4, 5)：抓欄位 1
+        if (in_array((int)$chat_mode, [1, 4, 5])) {
+            $torque = [];
+            foreach ($csv_array as $row) {
+                if (isset($row[1])) {
+                    $torque[] = $row[1];
                 }
             }
-            
-            if (empty($csv_array)) {
-                $resultarr = null;
-            } else {
-                $position = (int)$chat_mode;
-                
-                // 如果是 $chat_mode == "5"，則先獲取 $chat_mode == "1" 和 $chat_mode == "3" 的結果
-                if ($chat_mode == "5") {
-                    // 取得 chat_mode == "1" 的結果並儲存至 $resultarr['torque']
-                    $resultarr['torque'] = $this->get_info($no, "1");
-                    // 取得 chat_mode == "3" 的結果並儲存至 $resultarr['rpm']
-                    $resultarr['rpm'] = $this->get_info($no, "3");
-                }
-    
-                // 處理當前的 $chat_mode 邏輯
-                foreach ($csv_array as $subarray) {
-                    if (isset($subarray[$position])) {
-                        // 如果是 chat_mode == "5" 或 "6"
-                        if ($chat_mode == "5" || $chat_mode == "6") {
-                            if ($chat_mode == "6" && $position == 6) {
-                                $resultarr['torque'][] = $subarray[1];
-                            } else {
-                                // 存儲數據到 torque
-                                $resultarr['torque'][] = $subarray[$position];
-                            }
-                        } else {
-                            $resultarr[] = $subarray[$position];
-                        }
+
+            // ➤ Mode 5：再抓 RPM 欄位（第 3 欄）
+            if ((int)$chat_mode === 5) {
+                $rpm = [];
+                foreach ($csv_array as $row) {
+                    if (isset($row[3])) {
+                        $rpm[] = $row[3];
                     }
                 }
+
+                return [
+                    'torque' => $torque,
+                    'rpm' => $rpm
+                ];
+            }
+
+            return $torque;
+        }
+
+        // ➤ Mode 2（Angle = 第2欄） 或 Mode 3（RPM = 第3欄）
+        $position = (int)$chat_mode;
+        foreach ($csv_array as $row) {
+            if (isset($row[$position])) {
+                $resultarr[] = $row[$position];
             }
         }
-    
+
         return $resultarr;
     }
 
-    public function get_csv_first_column($no) {
+
+
+
+    public function get_csv_first_column($id) {
         $first_column = array();
-        
-        // 檔案類型
-        $file_arr = array('_0p5', '_1p0', '_2p0');
-        
-        foreach ($file_arr as $v_f) {
-            //$infile = "../public/data/DATALOG_20241126074447_DEVICE_000000" . $no . $v_f . ".csv";
-            $infile = "../public/data/DATALOG_20241220150526_DEVICE_".$no."_0p5.csv";
-            //echo $infile;die();
-            if (file_exists($infile)) {
-                $csvdata_tmp = file_get_contents($infile);
-                
+        $folder = "/mnt/ramdisk/ftp/";
+
+        // 取得所有以指定 ID 開頭且結尾為 .csv 的檔案
+        $file_list = glob($folder . $id . "__*.csv");
+
+        if (!empty($file_list)) {
+            // 根據建立時間從新到舊排序
+            usort($file_list, function ($a, $b) {
+                return filectime($b) - filectime($a);
+            });
+
+            $latest_file = $file_list[0]; // 最新的一個符合條件的檔案
+
+            if (file_exists($latest_file)) {
+                $csvdata_tmp = file_get_contents($latest_file);
+
                 if (!empty($csvdata_tmp)) {
-                    $csvdata = $csvdata_tmp;
-                    $lines = explode("\n", $csvdata);
+                    $lines = explode("\n", $csvdata_tmp);
                     $csv_array = array_map('str_getcsv', $lines);
-                    
-                    // 取得每行的第一個欄位 (即 A 欄位)
+
                     foreach ($csv_array as $subarray) {
-                        // 確保該行有數據
                         if (isset($subarray[0])) {
-                            $first_column[] = $subarray[0];  // 將 A 欄位的數據加入
+                            $first_column[] = $subarray[0]; // 取出第一欄
                         }
                     }
-                    break;  // 若找到檔案後，就退出循環
                 }
             }
         }
+
         return $first_column;
     }
+
+
 
     public function get_Data(){
         $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 1";

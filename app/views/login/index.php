@@ -45,16 +45,22 @@
 
   </script>
 <style>
-.container-ms
+
+html, body
 {
-    margin: 0 auto;
-    padding: 20px;
-    width: 100%;
-    height: 100vh;
+    margin: 0;
+    padding: 0px;
     background-color: #000000;
     background-image: url(./img/vn.jpg);
     background-size: cover;
     background-position: center;
+}
+
+.container-ms
+{
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
 }
 
 .center-content

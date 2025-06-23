@@ -13,7 +13,7 @@ use function Swoole\Coroutine\run;
 // $data_db_name = "data".$Year.".db";
 // $db_data = new PDO('sqlite:/var/www/html/database/'.$data_db_name); //鎖附結果DB
 
-$db_iDas = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/das.db'); //das設定DB
+$db_iDas = new PDO('sqlite:/var/www/html/database/das.db'); //das設定DB
 
 $result = $db_iDas->query("SELECT * FROM config WHERE config_name = 'agent_type' ");
 $rows = $result->fetch(PDO::FETCH_ASSOC);
@@ -39,6 +39,7 @@ run(function () {
     while(true) {
         if ($ret) { // 確認是否連線成功
             while(true) {
+                
                 $message = GetLastResult();
                 $res = $client->push($message);
                 // var_dump($client->recv());
@@ -60,50 +61,55 @@ run(function () {
 
 
 
-function GetLastResult()
-{
-    $Year = date("Y");// data db 用西元年命名
-    $data_db_name = "data".$Year.".db";
-    if(file_exists('/home/kls/tcc/resource/db_emmc/'.$data_db_name)){
-        $db_data = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/'.$data_db_name); //鎖附結果DB
-        $result = $db_data->query("SELECT * FROM data ORDER BY system_sn DESC LIMIT 1");
-        $row = $result->fetch(PDO::FETCH_ASSOC);
+function GetLastResult() {
+    $row = [];
 
-        if(file_exists('/home/kls/tcc/resource/db_emmc/tcscon.db')){
-            $db_tcscon = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/tcscon.db'); //鎖附結果DB
-            $result = $db_tcscon->query("SELECT * FROM device");
-            $device_info = $result->fetch(PDO::FETCH_ASSOC);
-            $row['device_name'] = $device_info['device_name'];
+    if (file_exists('/var/www/html/database/ntcs_data.db')) {
+        $db_data = new PDO('sqlite:/var/www/html/database/ntcs_data.db');
+        $result = $db_data->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1");
+
+        $row = $result->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return json_encode(['message' => 'ntcs_data table is empty']);
         }
 
-        $db_data = null;//release
-        $db_tcscon = null;//release
-        $result = null;//release
+        if (file_exists('/var/www/html/database/ntcs_device_IDAS.db')) {
+            $db_tcscon = new PDO('sqlite:/var/www/html/database/ntcs_device_IDAS.db');
+            $result2 = $db_tcscon->query("SELECT * FROM ntcs_device_test");
+            $device_info = $result2->fetch(PDO::FETCH_ASSOC);
 
-        $ip = getIp();
-        $row['client_ip'] = $ip;
-        
+            if ($device_info && isset($device_info['device_name'])) {
+                $row['device_name'] = $device_info['device_name'];
+            } else {
+                $row['device_name'] = 'unknown';
+            }
 
+            $db_tcscon = null;
+        }
+
+        $row['client_ip'] = getIp();
+
+        $db_data = null;
         return json_encode($row);
-    }else{
-        $row['message'] = 'data db not found';
-        return json_encode($row);
+    } else {
+        return json_encode(['message' => 'data db not found']);
     }
-    
 }
 
-function getIp()
-    {
-        if( PHP_OS_FAMILY == 'Linux'){
-            // $eth0Ip = '';
-            // $eth0Ip = trim(shell_exec("/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1"));
-            $Ips = trim(shell_exec("/sbin/ip -o -4 addr list  | awk '{print $4}' | cut -d/ -f1"));
-            $Ip = explode(PHP_EOL, $Ips);
-            
-            return strtoupper($Ip[1]);
-        }else{
-            $host_addr= gethostname();
-            $ip_addr = gethostbyname($host_addr);
-            return strtoupper($ip_addr);
-        }
+
+
+function getIp(){
+
+    if( PHP_OS_FAMILY == 'Linux'){
+        // $eth0Ip = '';
+        // $eth0Ip = trim(shell_exec("/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1"));
+        $Ips = trim(shell_exec("/sbin/ip -o -4 addr list  | awk '{print $4}' | cut -d/ -f1"));
+        $Ip = explode(PHP_EOL, $Ips);
+        
+        return strtoupper($Ip[1]);
+    }else{
+        $host_addr= gethostname();
+        $ip_addr = gethostbyname($host_addr);
+        return strtoupper($ip_addr);
     }
+}
