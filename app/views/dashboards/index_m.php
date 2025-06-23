@@ -413,6 +413,7 @@ function DB_sync_idas(argument) {
         background: url("<?php echo $text['img_agent_hover']; ?>") no-repeat;
     }
 
+<<<<<<< HEAD
             
     #remote {
         background: url("<?php echo $text['img_remote']; ?>") no-repeat;
@@ -422,5 +423,7 @@ function DB_sync_idas(argument) {
     }
 
 
+=======
+>>>>>>> f061b544ab981960c2783410852e35d03eb74dfe
 
 </style>
