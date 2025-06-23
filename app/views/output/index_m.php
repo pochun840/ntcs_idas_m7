@@ -15,35 +15,37 @@
         <div class="center-content">
             <div class="topnav">
                 <label style="font-size:3vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
-                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="1" disabled style="height:30px; font-size:3vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="1" disabled style="height:30px; font-size:3.2vmin;text-align: center; background-color: #DDDDDD; border:0;">&nbsp;&nbsp;
                 <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"><?php echo $text['select'];?></button>
             </div>
 
             <!-- Job Select Modal -->
-            <div id="JobSelect" class="modal" style="width: 325px;">
-                <form class="w3-modal-content w3-animate-zoom" style="top: 13%;" action="">
-                    <div class="w3-light-grey">
-                        <header class="w3-container w3-dark-grey" style="height: 48px">
-                            <span onclick="document.getElementById('JobSelect').style.display='none'" class="w3-button w3-red w3-large w3-display-topright" style="margin: 2px">&times;</span>
-                            <h3 style="margin: 5px"><?php echo $text['job_select'];?></h3>
-                        </header>
-                        <div class="modal-body">
-                            <div class="row">
-                                <div class="col-2 t2" style="margin-left: 3px">
-                                    <select style="margin: center" id="JobNameSelect" name="JobNameSelect" size="200">
-                                        <?php foreach($data['job_list'] as $key =>$val){?>
-                                            <option value="<?php echo $val['JOBID'];?>"><?php echo $val['JOBname'];?></option>
-                                        <?php }?>                                                                                                                                
-                                     </select>
+             <div id="JobSelect" class="modal" style="width: 70%; top: 13%;">
+                <div class="modal-dialog modal-lg">
+                    <form class="modal-content w3-animate-zoom" action="">
+                        <div class="w3-light-grey">
+                            <header class="w3-container w3-dark-grey" style="height: 48px">
+                                <span onclick="document.getElementById('JobSelect').style.display='none'" class="w3-button w3-red w3-large w3-display-topright" style="margin: 2px">&times;</span>
+                                <h3 style="margin: 5px"><?php echo $text['job_select'];?></h3>
+                            </header>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-12 t2 px-3"> <!-- col-12 cho toàn dòng, px-3 để có khoảng cách ngang -->
+                                        <select id="JobNameSelect" name="JobNameSelect">
+                                            <?php foreach($data['job_list'] as $key => $val) { ?>
+                                                <option value="<?php echo $val['JOBID']; ?>"><?php echo $val['JOBname']; ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>    
-                    </div>
-                    <div class="modal-footer justify-content-center w3-dark-grey" style="height: 48px">
-                        <button id="select_confirm" type="button" class="btn btn-primary" onclick='job_confirm()'><?php echo $text['confirm'];?></button>
-                        <button id="select_close" type="button" class="btn btn-secondary" onclick="document.getElementById('JobSelect').style.display='none'" ><?php echo $text['close'];?></button>
-                    </div>
-                </form>
+                            </div>    
+                        </div>
+                        <div class="modal-footer justify-content-center w3-dark-grey" style="height: 48px">
+                            <button id="select_confirm" type="button" class="btn btn-primary" onclick='job_confirm()'><?php echo $text['confirm'];?></button>
+                            <button id="select_close" type="button" class="btn btn-secondary" onclick="document.getElementById('JobSelect').style.display='none'" ><?php echo $text['close'];?></button>
+                        </div>
+                    </form>
+                </div>    
             </div>
 
             <!-- Table Input -->
@@ -51,7 +53,7 @@
                 <div class="table-container">
                     <div class="scrollbar" id="style-outputtable">
                         <div class="force-overflow">
-                            <table id="output_table" class="table w3-table-all w3-hoverable">
+                            <table id="output_table" class="table w3-table">
                                 <thead id="header-table">
                                     <tr class="w3-dark-grey" style="font-size: 2.6vmin">
                                         <th class="w3-center"><?php echo $text['event'];?></th>
@@ -61,7 +63,7 @@
                                     </tr>
                                </thead>
 
-                                <tbody style="font-size: 2.5vmin;text-align: center;" id="output_jobid_select" >
+                                <tbody style="font-size: 2.6vmin;text-align: center;" id="output_jobid_select" >
                                 </tbody>
                             </table>
                         </div>
@@ -82,7 +84,7 @@
             <!-- Add New Output -->
             <div id="new_output" class="modal">
                 <div class="modal-dialog modal-lg" style="top: 6%;">
-                    <div class="modal-content w3-animate-zoom" style="width: auto">
+                    <div class="modal-content w3-animate-zoom" style="width: 98%">
                         <header class="w3-container modal-header">
                             <span onclick="closebutton('new_output')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
@@ -90,10 +92,10 @@
                         </header>
 
                         <div class="modal-body" id="new_output">
-                            <form id="new_output_from" style="padding-left: 2%; padding-right: 1%">
+                            <form id="new_output_from" style="padding-left: 1%; padding-right: 1%">
                                 <div class="row">
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?> :</div>
-                                    <div class="col-2 t2">
+                                    <div class="col-3 t2">
                                         <select id="Event_Option" class="col custom-file">
                                         <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
                                            	<?php foreach($data['event_output'] as $key =>$val){?>
@@ -102,36 +104,30 @@
                                         </select>
                                     </div>
                                 </div>
-                                <?php for ($i = 1; $i <= 11; $i++) {?>
-                                    <div class="row output-pin">
-                                        <div class="col t1"><?php echo $i;?>:</div>
-                                        <div class="col t2 form-check form-check-inline">
-                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime('pin<?php echo $i; ?>_0', this.checked,'1')" >
-                                            <label class="form-check-label" for="pin1_signal01"><img src="./img/signal01.png"></label>
-                                        </div>
-                                        <div class="col t2 form-check form-check-inline">
-                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'2')" >
-                                            <label class="form-check-label" for="pin1_signal02"><img src="./img/signal02.png"></label>
-                                        </div>
-                                        <div class="col t2 form-check form-check-inline">
-                                            <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'3')" >
-                                            <label class="form-check-label" for="pin1_trigger"><img src="./img/trigger.png"></label>
-                                        </div>
-                                        <div class="col-3 t2">
-                                            <input type="text" class="t4 form-control" id="time<?php echo $i; ?>"   placeholder="ms" value="" >
-                                        </div>
-                                     </div>
-                                
-
-                                <?php } ?>
-                               
-                               
-                                
-                             
-                                
-                                
-
-
+                                <div class="newEvent-scrollbar" id="style-newEvent">
+                                    <div class="newEvent-force-overflow">
+                                        <?php for ($i = 1; $i <= 11; $i++) {?>
+                                            <div class="row output-pin">
+                                                <div class="col t1"><?php echo $i;?>:</div>
+                                                <div class="col t2 form-check form-check-inline">
+                                                    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime('pin<?php echo $i; ?>_0', this.checked,'1')" >
+                                                    <label class="form-check-label" for="pin1_signal01"><img src="./img/signal01.png"></label>
+                                                </div>
+                                                <div class="col t2 form-check form-check-inline">
+                                                    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime('pin<?php echo $i; ?>_1', this.checked,'2')" >
+                                                    <label class="form-check-label" for="pin1_signal02"><img src="./img/signal02.png"></label>
+                                                </div>
+                                                <div class="col t2 form-check form-check-inline">
+                                                    <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_2" value="2"  onclick="toggleOnputTime('pin<?php echo $i; ?>_2', this.checked,'3')" >
+                                                    <label class="form-check-label" for="pin1_trigger"><img src="./img/trigger.png"></label>
+                                                </div>
+                                                <div class="col-3 t2">
+                                                    <input type="text" class="t4 form-control" id="time<?php echo $i; ?>"   placeholder="ms" value="" >
+                                                </div>
+                                            </div>
+                                        <?php } ?>
+                                    </div>
+                                </div>
                             </form>
                         </div>
 
@@ -154,7 +150,7 @@
                         </header>
 
                         <div class="modal-body" id="new_output">
-                            <form id="new_output_from" style="padding-left: 2%; padding-right: 1%">
+                            <form id="new_output_from" style="padding-left: 1%; padding-right: 1%">
                                 <div class="row">
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?> :</div>
                                     <div class="col-2 t2">
