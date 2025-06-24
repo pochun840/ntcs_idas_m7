@@ -265,6 +265,7 @@ function fetchChartAndRender() {
             document.getElementById("Target_Angle").innerText = info.final_fasten_angle ?? '-';
             document.getElementById("Torque_Result").innerText = textMap[statusKey] ?? statusKey;
             document.getElementById("Message").innerText = info.error_message ?? '';
+            document.getElementById("fasten_status_color").style.backgroundColor  = info.result_status_color_text;
 
             // ✅ 比對圖表資料是否需要更新
             const currentChartInfo = JSON.stringify(data.chart_info);

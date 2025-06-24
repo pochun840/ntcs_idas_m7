@@ -6,12 +6,12 @@
         </div>
     </div>
 
-    <div class="col t1">Match Controller Version:</div>
+    <!--<div class="col t1">Match Controller Version:</div>
     <div class="row t2">
         <div class="col t2" style="margin-left: 10%">
             <input id="match_control_version" name="match_control_version" type="text" value="" style="height: 32px; width: 250px" class="form-control" disabled>
         </div>
-    </div>
+    </div>-->
 
     <div class="col t1">Upload file:</div>
     <div class="row t2">

@@ -8,12 +8,12 @@
             <input id="idas_software_version" name="idas_software_version" type="text" value="<?php echo $data['idas_version'];?>" style="height: 32px" class="form-control" value="" disabled>
         </div>
     </div>
-    <div class="row t2">
+    <!--<div class="row t2">
         <div class="col-3 t1">Match Controller Version:</div>
         <div class="col-3 t2">
             <input id="match_control_version" name="match_control_version" type="text" value="" style="height: 32px" class="form-control" disabled>
         </div>
-    </div>
+    </div>-->
     <div class="row t2">
         <div class="col-3 t1">Upload file:</div>
         <div class="col-3 t2">

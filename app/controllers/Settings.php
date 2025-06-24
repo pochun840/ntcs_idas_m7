@@ -349,6 +349,7 @@ class Settings extends Controller
 
 
     public function export_sysytem_config() {
+        
         if (PHP_OS_FAMILY == 'Linux') {
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
@@ -994,80 +995,156 @@ class Settings extends Controller
       
     }
 
-    public function iDas_Update()
-    {
-        $filename = 'update_package.pack';
-        $file_location = '';
-        $message = '';
-        if( PHP_OS_FAMILY == 'Linux'){
-            $file_location = '/mnt/ramdisk/';
-        }else{//windows暫不考慮升級，可能整包升級
-            $file_location = $_SERVER['DOCUMENT_ROOT'].'/';
-            echo json_encode(["message" => 'not for windows']);
-            exit();
-        }
 
-        if(empty($_FILES)){
-            echo json_encode(["message" => 'no file']);
-            exit();
-        }
+     #IDAS上傳 20250624 修改
+    public function iDas_Update() {
 
-        if ( 0 < $_FILES['file']['error'] ) {
-            echo json_encode(["message" => $_FILES['file']['error']]);
-            exit();
-        } else {
-            //將檔案移到指定位置
-            $result =  move_uploaded_file($_FILES['file']['tmp_name'], $file_location . $filename);
-        }
+        // 1. 紀錄目前 PHP 的上傳限制，方便除錯
+        $maxUpload = ini_get('upload_max_filesize');
+        $postMax = ini_get('post_max_size');
+        error_log("目前 upload_max_filesize: $maxUpload");
+        error_log("目前 post_max_size: $postMax");
 
-        $extract_result = $this->Extract_File($file_location,$filename);
-        $file_path = $file_location.'package_temp/package/verify';
-        
-        if (file_exists($file_path) && $extract_result) {
-            $str = file_get_contents($file_path); //將整個檔案內容讀入到一個字串中
-            $str = str_replace("\r\n", "<br />", $str);
-            $verify_data = json_decode($str,true);
-            $result = $verify_data;
 
-            $package_version = $verify_data['Package_Version'];
-            $match_gtcs_version = $verify_data['Match_GTCS_Version'];
-            $match_gtcs_db_version = $verify_data['Match_GTCS_DB_Version'];
+        // 2. 載入語系檔，供 $text 語系變數使用
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) include $file;
 
-            $current_device_info = $this->SettingModel->get_update_info();
+        // 3. 取得目前 iDAS 版本，之後會用來比對 info.json 的版本
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
 
-            //gtcs與gtcs db版本與更新包相符才會將檔案升級
-            if( $match_gtcs_version == $current_device_info['device_version'] && $match_gtcs_db_version == $current_device_info['tcscondb_version'] ){
-                if( PHP_OS_FAMILY == 'Linux'){
-                    $destination = '/var/www/html/tcc/';
-                }else{
-                    $destination = $file_location.'/tcc';
-                }
-                exec("sudo chmod 777 -R /var/www/html/tcc");
+        //  4. 根據系統平台（Linux 或 Windows）設定根目錄與解壓縮路徑
+        $file_location = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/' : $_SERVER['DOCUMENT_ROOT'] . '/';
+        $extract_path = $file_location . 'extracted/';
+        $main_folder = ''; // 後面會指定為解壓出來的主資料夾路徑
 
-                $this->copyFolder($file_location.'/package_temp/package/das',$destination); //複製資料夾
-                
-                //update current idas version
-                $this->SettingModel->update_idas_vesrion($package_version);
-                $this->SettingModel->update_idas_match_gtcs_app_version($match_gtcs_version);
-                //update file permissions
-                exec("sudo chmod 777 -R /var/www/html/das");
 
-            }else{
-                $message = 'version not match';
-            
+        try {
+            //  5. 驗證上傳檔案是否存在且無錯誤
+            if (empty($_FILES['file']) || $_FILES['file']['error'] !== 0) {
+                $msg = empty($_FILES['file']) ? 'No file uploaded.' : 'File upload error: ' . $_FILES['file']['error'];
+                return $this->sendResponse('Error', $msg);
             }
 
-            $this->deleteFolder($file_location.'package_temp'); //刪除資料夾
-            unlink($file_location.''.$filename); //刪除檔案
+            //  6. 檢查檔案大小（限制為 30MB 以內）
+            if ($_FILES['file']['size'] > 30 * 1024 * 1024) {
+                return $this->sendResponse('Error', '檔案大小超過限制：30MB');
+            }
 
-        }else{
-            $this->deleteFolder($file_location.'/package_temp'); //刪除資料夾
-            unlink($file_location.''.$filename); //刪除檔案
-            $message = 'wrong file';
+            //  7. 驗證副檔名必須為 .pack
+            $uploaded_filename = $_FILES['file']['name'];
+            if (strtolower(pathinfo($uploaded_filename, PATHINFO_EXTENSION)) !== 'pack') {
+                return $this->sendResponse('Error', '上傳檔案必須為 .pack 格式，目前為：' . $uploaded_filename);
+            }
+
+            //  8. 使用 ZipArchive 解壓縮 .pack 檔案
+            $zip = new ZipArchive();
+            if ($zip->open($_FILES['file']['tmp_name']) !== TRUE) {
+                return $this->sendResponse('Error', '無法開啟 .pack 更新檔案');
+            }
+
+            //  9. 若解壓縮目錄不存在就先建立
+            if (!is_dir($extract_path)) mkdir($extract_path, 0777, true);
+
+            //  10. 解壓縮至指定目錄
+            if (!$zip->extractTo($extract_path)) {
+                $zip->close();
+                return $this->sendResponse('Error', '解壓縮失敗');
+            }
+            $zip->close();
+
+            //  11. 找出解壓縮後的主資料夾
+            $folders = array_filter(scandir($extract_path), fn($f) => is_dir($extract_path . $f) && !in_array($f, ['.', '..']));
+            if (empty($folders)) {
+                return $this->sendResponse('Error', '未找到解壓縮資料夾');
+            }
+
+            //  12. 指定主資料夾與 info.json 路徑
+            $main_folder = $extract_path . reset($folders);
+            $info_json_url = $main_folder . "/info.json";
+
+            //  13. 檢查 info.json 是否存在
+            if (!file_exists($info_json_url)) {
+                return $this->sendResponse('Error', '缺少 info.json，無法驗證更新檔');
+            }
+
+            //  14. 解析 info.json，取得更新檔版本資訊
+            $verify_data = json_decode(@file_get_contents($info_json_url), true);
+            if (!$verify_data || !isset($verify_data['idas_version'])) {
+                return $this->sendResponse('Error', 'info.json 格式錯誤或缺少 idas_version');
+            }
+
+            // 15. 比對版本：如果更新檔比目前版本還舊，就不更新 (相同或更新版本可繼續更新) 
+            $match_tcc_version = $verify_data['idas_version'];
+            if (version_compare($match_tcc_version, $iDas_Vesion, '<')) {
+                return $this->sendResponse('Error', "更新檔版本低於目前版本，無法更新（目前版本：$iDas_Vesion，更新版本：$match_tcc_version）");
+            }
+           
+
+            // 16. 將 $verify_data['Match_TCC_Version'] 寫入到資料庫
+            $this->AdminModel->Set_idas_version($verify_data['idas_version']);
+
+
+            //  17. 指定最終目標目錄（部署到 /ntcs_idas/ 下）
+            $target_directory = $_SERVER['DOCUMENT_ROOT'] . '/ntcs_idas/';
+            if (!is_dir($target_directory)) mkdir($target_directory, 0777, true);
+
+            //  18. 複製解壓出來的檔案到正式目錄
+            $this->copyDirectory($main_folder, $target_directory);
+
+            //  19. 強制登出控制器使用者（安全性與更新重啟）
+            $this->setting_logout();
+
+        
+            //  20. 成功更新回應
+            return $this->sendResponse('Success', '更新成功，已將檔案移動至 ntcs_idas 目錄');
+
+        } finally {
+            //  21. 無論成功或失敗，清除主資料夾與解壓縮目錄
+            if (!empty($main_folder) && is_dir($main_folder)) {
+                $this->deleteDirectory($main_folder);
+            }
+            if (is_dir($extract_path)) {
+                $this->deleteDirectory($extract_path);
+            }
         }
-
-        echo json_encode(["message" => $message]);
+        
     }
+
+    
+    private function sendResponse($type, $msg) {
+        $this->MiscellaneousModel->generateErrorResponse($type, $msg);
+        exit();
+    }
+
+    private function copyDirectory($source, $destination) {
+        if (!is_dir($destination)) mkdir($destination, 0777, true);
+        foreach (scandir($source) as $file) {
+            if (!in_array($file, ['.', '..'])) {
+                $src = $source . '/' . $file;
+                $dst = $destination . '/' . $file;
+                if (is_dir($src)) {
+                    $this->copyDirectory($src, $dst);
+                } else {
+                    if (file_exists($dst)) unlink($dst);
+                    copy($src, $dst);
+                }
+            }
+        }
+    }
+
+    private function deleteDirectory($dir) {
+        if (!is_dir($dir)) return;
+        foreach (scandir($dir) as $file) {
+            if (!in_array($file, ['.', '..'])) {
+                $path = $dir . '/' . $file;
+                is_dir($path) ? $this->deleteDirectory($path) : unlink($path);
+            }
+        }
+        rmdir($dir);
+    }
+
+
 
     public function Extract_File($file_location,$filename)
     {
@@ -1544,6 +1621,12 @@ class Settings extends Controller
     } 
 
 
+    
+    public function setting_logout() {
+        foreach ($_COOKIE as $key => $value) {
+            setcookie($key, '', time() - 3600, '/');
+        }
+    }
 
     
     public function get_controller_login() {

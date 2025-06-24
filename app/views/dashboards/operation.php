@@ -175,7 +175,7 @@ function renderChart(chart_mode, chart_info) {
     const safeMaxTorque = Number(chart_info.max_torque ?? 100);
     const torqueStep = (safeMaxTorque - safeMinTorque) / (tickCount - 1);
     const torqueTicks = Array.from({ length: tickCount }, (_, i) =>
-        parseFloat((safeMinTorque + i * torqueStep).toFixed(5))
+        parseFloat((safeMinTorque + i * torqueStep).toFixed(2))
     );
 
     if (chart_mode === "5") {
@@ -302,7 +302,7 @@ function renderChart(chart_mode, chart_info) {
                 max: torqueTicks[tickCount - 1],
                 interval: torqueStep,
                 splitNumber: tickCount - 1,
-                axisLabel: { color: '#000', fontSize: 12 },
+                axisLabel: { color: '#000', fontSize: 12 , formatter: val => parseFloat(val).toFixed(3) },
                 splitLine: { show: true }
             }] : [ {
                 type: 'value',
@@ -371,6 +371,7 @@ function fetchChartAndRender() {
             document.getElementById("Target_Angle").innerText = info.final_fasten_angle ?? '-';
             document.getElementById("Torque_Result").innerText = textMap[statusKey] ?? statusKey;
             document.getElementById("Message").innerText = info.error_message ?? '';
+            document.getElementById("fasten_status_color").style.backgroundColor  = info.result_status_color_text;
 
             // ✅ 比對圖表資料是否需要更新
             const currentChartInfo = JSON.stringify(data.chart_info);
