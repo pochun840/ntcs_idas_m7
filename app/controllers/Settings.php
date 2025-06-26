@@ -1081,7 +1081,7 @@ class Settings extends Controller
             }
            
 
-            // 16. 將 $verify_data['Match_TCC_Version'] 寫入到資料庫
+            // 16. 將 $verify_data['idas_version'] 寫入到資料庫
             $this->AdminModel->Set_idas_version($verify_data['idas_version']);
 
 

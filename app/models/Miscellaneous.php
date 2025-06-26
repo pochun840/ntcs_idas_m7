@@ -270,21 +270,21 @@ class Miscellaneous{
         }
     }
 
-    public function convert_all_torque_units($value, $inputType) {
+    public function convert_all_torque_units($value, $inputType, $useExcelMode = true) {
         $unit_names = [
             0 => "kgf.m",
             1 => "N.m",
             2 => "kgf.cm",
-            3 => "lbf.in",
+            3 => "Lbf.in",
             4 => "cN.m"
         ];
 
         $decimals = [
-            0 => 4, // kgf.m
-            1 => 3, // N.m
-            2 => 2, // kgf.cm
-            3 => 2, // lbf.in
-            4 => 1  // cN.m
+            0 => 4,
+            1 => 3,
+            2 => 2,
+            3 => 2,
+            4 => 3  // ✅ 建議保留更多位數，方便轉換
         ];
 
         if (!is_numeric($value) || !isset($unit_names[$inputType])) {
@@ -293,29 +293,41 @@ class Miscellaneous{
 
         $value = floatval($value);
 
-        // Step 1: 先轉換為 N.m
+        // ✅ Step 1: 將輸入單位轉為 N.m 作為中介
         switch ($inputType) {
-            case 0: $Nm = $value * 9.80392156; break; // kgf.m → N.m
-            case 1: $Nm = $value; break;              // N.m
-            case 2: $Nm = $value * 0.0980392156; break; // kgf.cm → N.m
-            case 3: $Nm = $value * 0.1129411763712; break; // lbf.in → N.m
-            case 4: $Nm = $value * 0.001; break; // cN.m → N.m
+            case 0: $Nm = $value * 9.80665; break;             // kgf.m → N.m
+            case 1: $Nm = $value; break;                       // N.m
+            case 2: $Nm = $value * 0.0980665; break;           // kgf.cm → N.m
+            case 3: $Nm = $value * 0.112984829333; break;      // Lbf.in → N.m
+            case 4: $Nm = $value * 0.01; break;                // cN.m → N.m
             default: return "Invalid unit index.";
         }
 
         $result = [];
 
-        // Step 2: 從 N.m 轉換為所有單位
+        // ✅ Step 2: N.m 轉為目標單位
         foreach ($unit_names as $targetType => $unitName) {
-            switch ($targetType) {
-                case 0: $converted = $Nm * 0.102; break; // N.m → kgf.m
-                case 1: $converted = $Nm; break;
-                case 2: $converted = $Nm * 10.2; break;
-                case 3: $converted = $Nm * 10.2 * 0.86805; break;
-                case 4: $converted = $Nm * 100; break; // N.m → cN.m
+            if ($useExcelMode) {
+                switch ($targetType) {
+                    case 0: $converted = $Nm * 0.10197; break;        // N.m → kgf.m (Excel)
+                    case 1: $converted = $Nm; break;
+                    case 2: $converted = $Nm * 10.2; break;
+                    case 3: $converted = $Nm * 8.85411; break;
+                    case 4: $converted = $Nm * 100; break;            // N.m → cN.m
+                    default: continue 2;
+                }
+            } else {
+                switch ($targetType) {
+                    case 0: $converted = $Nm / 9.80665; break;
+                    case 1: $converted = $Nm; break;
+                    case 2: $converted = $Nm / 0.0980665; break;
+                    case 3: $converted = $Nm / 0.112984829333; break;
+                    case 4: $converted = $Nm * 100; break;
+                    default: continue 2;
+                }
             }
 
-            // 四捨五入，保留固定小數位（不去尾）
+            // ✅ 四捨五入 & 保留固定位數（.000）
             $rounded = round($converted, $decimals[$targetType]);
             $result[$unitName] = number_format($rounded, $decimals[$targetType], '.', '');
         }
@@ -324,17 +336,89 @@ class Miscellaneous{
     }
 
 
+
+    public function convert_single_torque_unit($value, $from_unit, $to_unit, $useExcelMode = true) {
+        if (!is_numeric($value)) return 0;
+
+        $value = floatval($value);
+
+        // 小數點保留位數定義（根據單位）
+        $decimals = [
+            0 => 4, // kgf.m
+            1 => 3, // N.m
+            2 => 2, // kgf.cm
+            3 => 2, // Lbf.in
+            4 => 1  // cN.m
+        ];
+
+        // Step 1：先轉成 N.m（中介單位）
+        switch ($from_unit) {
+            case 0: $Nm = $value * 9.80665; break;
+            case 1: $Nm = $value; break;
+            case 2: $Nm = $value * 0.0980665; break;
+            case 3: $Nm = $value * 0.112984829333; break;
+            case 4: $Nm = $value * 0.01; break;
+            default: return 0;
+        }
+
+        // Step 2：再轉成目標單位
+        if ($useExcelMode) {
+            switch ($to_unit) {
+                case 0: $converted = $Nm * 0.10197; break;
+                case 1: $converted = $Nm; break;
+                case 2: $converted = $Nm * 10.2; break;
+                case 3: $converted = $Nm * 8.85411; break;
+                case 4: $converted = $Nm * 100; break;
+                default: return 0;
+            }
+        } else {
+            switch ($to_unit) {
+                case 0: $converted = $Nm / 9.80665; break;
+                case 1: $converted = $Nm; break;
+                case 2: $converted = $Nm / 0.0980665; break;
+                case 3: $converted = $Nm / 0.112984829333; break;
+                case 4: $converted = $Nm * 100; break;
+                default: return 0;
+            }
+        }
+
+        // 回傳固定格式的小數點字串
+        $dec = $decimals[$to_unit] ?? 3;
+        return number_format(round($converted, $dec), $dec, '.', '');
+    }
+
+
+
+
+
+    /*public function convert_single_torque_unit($value, $from_unit, $to_unit) {
+        $result = $this->convert_all_torque_units($value, $from_unit);
+        $unit_map = [
+            0 => 'kgf.m',
+            1 => 'N.m',
+            2 => 'kgf.cm',
+            3 => 'Lbf.in',
+            4 => 'cN.m'
+        ];
+        $target_unit = $unit_map[$to_unit] ?? null;
+        return $target_unit && isset($result[$target_unit]) ? (float)$result[$target_unit] : 0;
+    }*/
+
+
+   
+
     public function get_unit_name_by_index($index) {
         $unit_map = [
             0 => "kgf.m",
             1 => "N.m",
             2 => "kgf.cm",
-            3 => "lbf.in",
+            3 => "Lbf.in",
             4 => "cN.m"
         ];
         return isset($unit_map[$index]) ? $unit_map[$index] : null;
     }
 
+  
     public function batch_convert_grouped_by_unit_chart(array $values, int $inputType) {
         $unit_keys = ["kgf.m", "N.m", "kgf.cm", "lbf.in", "cN.m"];
         $result = array_fill_keys($unit_keys, []); // 預設空陣列

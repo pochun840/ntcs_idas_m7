@@ -214,7 +214,7 @@
         document.getElementById("step_limit_lo_ang").value = 30;
         document.getElementById("StepHiAngle").value = 30600;
         document.getElementById("StepLoAngle").value = 0;
-        document.getElementById('StepHiTorque').value = (+document.getElementById('tool_max_torque').value || 0).toFixed(4);
+        document.getElementById('StepHiTorque').value = (+document.getElementById('tool_high_torque').value || 0).toFixed(4);
         document.getElementById("StepLoTorque").value = (0).toFixed(4);  
         document.getElementById("StepDelay").value = 0;
         document.getElementById("StepRPM").value = 500;
@@ -233,6 +233,8 @@
 
 
     function save_or_edit_step(isEdit = false) {
+
+
         let data = new FormData();
 
         let job_id = document.getElementById("JOBID").value;
@@ -314,7 +316,7 @@
         //console.log("Tool_Max_Torque_Diff =", Tool_Max_Torque_Diff);
 
         let check = input_check();
-        console.log(check);
+        //console.log(check);
         //return;
         if (check.valid) {
             if (StepEnableThreshold !== "0") {
@@ -416,6 +418,7 @@
         return check_val;
     } 
     
+
     function input_check() {
         const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque').value);
         const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque').value);
@@ -423,10 +426,32 @@
         const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
 
-        if (
-            [Tool_Max_Torque, Tool_Min_Torque, Tool_Max_RPM, Tool_Min_RPM, Tool_Max_Torque_Diff].some(isNaN)
-        ) {
-            alert("Tool min/max config is invalid.");
+        const idsToCheck = ['tool_max_torque', 'tool_min_torque', 'tool_max_rpm', 'tool_min_rpm', 'tool_max_torque_diff'];
+
+        let toolError = false;
+        idsToCheck.forEach(id => {
+            const el = document.getElementById(id);
+            const value = parseFloat(el.value);
+            const feedback = el.nextElementSibling;
+            if (isNaN(value)) {
+                el.classList.add("is-invalid");
+                if (feedback && feedback.classList.contains("invalid-feedback")) {
+                    feedback.innerText = "Invalid number";
+                    feedback.classList.add("d-block");
+                    feedback.style.display = "block";
+                }
+                toolError = true;
+            } else {
+                el.classList.remove("is-invalid");
+                if (feedback) {
+                    feedback.innerText = '';
+                    feedback.classList.remove("d-block");
+                    feedback.style.display = "none";
+                }
+            }
+        });
+
+        if (toolError) {
             return { valid: false, errors: ["Tool config invalid"] };
         }
 
@@ -450,8 +475,8 @@
             angle: {
                 angle: { min: 1, max: 30600 },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
-                limitHi: { min: parseFloat(document.getElementById("StepAngle").value), max: 30600 },
-                limitLo: { min: 0, max: parseFloat(document.getElementById("StepHiAngle").value) }
+                limitHi: { min: parseFloat(document.getElementById("StepAngle")?.value || 0), max: 30600 },
+                limitLo: { min: 0, max: parseFloat(document.getElementById("StepHiAngle")?.value || 0) }
             },
             time: {
                 time: { min: 0, max: 20 }
@@ -459,7 +484,6 @@
         };
 
         let conditions = [
-            //{ id: 'STEPname', pattern: /^[\w\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.5 },
             { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift },
@@ -467,7 +491,6 @@
             { id: 'StepTorqueTS', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueTS }
         ];
 
-        // 根據啟用狀態過濾不需要驗證的欄位
         if (StepEnableThreshold === "0") {
             conditions = conditions.filter(c => c.id !== 'StepTorqueTS');
         }
@@ -476,11 +499,9 @@
             conditions = conditions.filter(c => !['StepTorqueDownShift', 'StepRPMDownShift'].includes(c.id));
         }
 
-
         if (StepEnableThreshold === "1") {
             const ts = conditions.find(c => c.id === 'StepTorqueTS');
-            ts.min = 0;
-            ts.max = 99999;
+            if (ts) ts.min = 0, ts.max = 99999;
         }
 
         if (StepEnableDownShift === "1") {
@@ -513,42 +534,61 @@
             conditions.push({ id: 'StepTime', pattern: /^\d{1,5}$/, ...limits.time.time });
         }
 
-        let errors = [];
-
-        for (const cond of conditions) {
-            const el = document.getElementById(cond.id);
-            const val = el?.value?.trim();
+        // ✅ validateInput 子函數
+        function validateInput(el, pattern, min, max) {
+            if (!el) return false;
+            const val = el.value.trim();
             const parsed = parseFloat(val);
-            const feedback = el?.nextElementSibling;
-
-            let invalid = (
+            const feedback = el.nextElementSibling;
+            const invalid = (
                 val === "" || isNaN(parsed) ||
-                (cond.min !== null && !isNaN(cond.min) && parsed < cond.min) ||
-                (cond.max !== null && !isNaN(cond.max) && parsed > cond.max) ||
-                !cond.pattern.test(val)
+                (min !== null && !isNaN(min) && parsed < min) ||
+                (max !== null && !isNaN(max) && parsed > max) ||
+                !pattern.test(val)
             );
 
             if (invalid) {
-                el?.classList.add("is-invalid");
+                el.classList.add("is-invalid");
                 if (feedback && feedback.classList.contains("invalid-feedback")) {
-                    feedback.innerText = (cond.min !== null && cond.max !== null)
-                        ? `Range: ${cond.min} ~ ${cond.max}`
+                    feedback.innerText = (min !== null && max !== null)
+                        ? `Range: ${min} ~ ${max}`
                         : `Invalid input`;
+                    feedback.classList.add("d-block");
+                    feedback.style.display = "block";
                 }
-                errors.push(cond.id);
             } else {
-                el?.classList.remove("is-invalid");
+                el.classList.remove("is-invalid");
                 if (feedback && feedback.classList.contains("invalid-feedback")) {
                     feedback.innerText = '';
+                    feedback.classList.remove("d-block");
+                    feedback.style.display = "none";
                 }
             }
+
+            return !invalid;
         }
 
+        // 執行驗證
+        let isValid = true;
+        let errorList = [];
+
+        conditions.forEach(cond => {
+            const el = document.getElementById(cond.id);
+            const valid = validateInput(el, cond.pattern, cond.min, cond.max);
+            if (!valid) {
+                isValid = false;
+                errorList.push(cond.id);
+            }
+        });
+
         return {
-            valid: errors.length === 0,
-            errors
+            valid: isValid,
+            errors: errorList
         };
     }
+
+
+
 
 
 

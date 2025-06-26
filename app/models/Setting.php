@@ -50,9 +50,6 @@ class Setting{
         $statement->bindValue(':device_id', $control_id);
         $statement->execute();
         $row = $statement->fetch(PDO::FETCH_ASSOC); 
-
-
-    
         return $row;
     }
 
