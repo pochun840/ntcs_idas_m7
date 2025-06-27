@@ -13,10 +13,10 @@
         <div class="center-content">
             <div class="topnav">
                 <label style="font-size:18px;color: #fff; padding-left: 1%" for="job_name"><?php echo $data['text']['job_name'];?> :</label>&nbsp;
-                <input type="text" id="Job_Name" name="Job_Name" size="15" maxlength="20" value="<?php echo $data['data_info']['job_name'] ?? '***'; ?>" disabled>
+                <input type="text" id="Job_Name" name="Job_Name" size="15" maxlength="20"  disabled>
 
                 <label style="font-size:18px;color: #fff; padding-left: 2%" for="seq_name"><?php echo $data['text']['seq_name'];?> :</label>&nbsp;
-                <input type="text" id="Seq_Name" name="Seq_Name" size="15" maxlength="20" value="<?php echo $data['data_info']['sequence_name'] ?? '***';?>" disabled>
+                <input type="text" id="Seq_Name" name="Seq_Name" size="15" maxlength="20"  disabled>
 
                 <label style="font-size:18px;color: #fff; padding-left: 2%" for="screw"><?php echo $data['text']['screws'];?> :</label>&nbsp;
                 <input type="text" id="Screws" name="Screws" size="4" maxlength="20" value="<?php echo $data['data_info']['total_screw_count'] ?? '***';?>" disabled>
@@ -25,7 +25,7 @@
             <div class="operation-setting">
                 <div class="column">
                     <div class="item-target-torque w3-display-container">
-                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo $data['text']['final_torque'] ;?>(<?php echo $data['text']['N.m'];?>)</div>
+                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo $data['text']['final_torque'] ;?>(<?php echo $data['text'][$data['data_info']['final_torque_unit']];?>)</div>
                         <div id="Target_Torque" class="w3-display-middle" style="font-size: 6vmin"><?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?></div>
                     </div>
 
@@ -364,8 +364,10 @@ function fetchChartAndRender() {
             const textMap = data.text || {};
             const statusKey = info.fasten_status_text ?? '-';
 
-            document.getElementById("Job_Name").value = info.job_name ?? '***';
-            document.getElementById("Seq_Name").value = info.sequence_name ?? '***';
+            document.getElementById("Job_Name").value = info.job_id + "/" +info.job_name ?? '***';
+            document.getElementById("Seq_Name").value = info.sequence_id + "/" + info.sequence_name ?? '***';
+            document.getElementById("Screws").value = info.	last_screw_count + "/" + info.total_screw_count  ?? '***';
+
             document.getElementById("Screws").value = info.total_screw_count ?? '***';
             document.getElementById("Target_Torque").innerText = info.final_fasten_torque ?? '-';
             document.getElementById("Target_Angle").innerText = info.final_fasten_angle ?? '-';

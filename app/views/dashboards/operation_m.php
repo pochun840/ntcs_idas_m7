@@ -19,13 +19,13 @@
         <div class="center-content">
             <div class="topnav">
                 <label style="color: #fff;" for="job_name"><?php echo  $data['text']['job'];?>:</label>
-                <input type="text" id="Job_Name" name="Job_Name" size="10" maxlength="20" value="<?php echo $data['data_info']['job_name'] ?? '***'; ?>" disabled>
+                <input type="text" id="Job_Name" name="Job_Name" size="10" maxlength="20"  disabled>
 
                 <label style="color: #fff;" for="seq_name"><?php echo  $data['text']['sequence'];?>:</label>
-                <input type="text" id="Seq_Name" name="Seq_Name" size="10" maxlength="20" value="<?php echo $data['data_info']['sequence_name'] ?? '***';?>"   disabled>
+                <input type="text" id="Seq_Name" name="Seq_Name" size="10" maxlength="20"    disabled>
 
                 <label style="color: #fff;" for="screw"><?php echo  $data['text']['screws'];?>:</label>
-                <input type="text" id="Screws" name="Screws" size="4" maxlength="20"  value="<?php echo $data['data_info']['total_screw_count'] ?? '***';?>"  disabled>
+                <input type="text" id="Screws" name="Screws" size="4" maxlength="20"    disabled>
             </div>
             
             <div class="operation-setting">
@@ -258,9 +258,9 @@ function fetchChartAndRender() {
             const textMap = data.text || {};
             const statusKey = info.fasten_status_text ?? '-';
 
-            document.getElementById("Job_Name").value = info.job_name ?? '***';
-            document.getElementById("Seq_Name").value = info.sequence_name ?? '***';
-            document.getElementById("Screws").value = info.total_screw_count ?? '***';
+            document.getElementById("Job_Name").value = info.job_id + "/" +info.job_name ?? '***';
+            document.getElementById("Seq_Name").value = info.sequence_id + "/" + info.sequence_name ?? '***';
+            document.getElementById("Screws").value = info.	last_screw_count + "/" + info.total_screw_count  ?? '***';
             document.getElementById("Target_Torque").innerText = info.final_fasten_torque ?? '-';
             document.getElementById("Target_Angle").innerText = info.final_fasten_angle ?? '-';
             document.getElementById("Torque_Result").innerText = textMap[statusKey] ?? statusKey;
