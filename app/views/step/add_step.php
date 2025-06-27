@@ -27,11 +27,12 @@
     </div>
 
    
-    <div style="display:block;">
+    <div style="display:none;">
         <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
         <input id="tool_max_torque_diff" value="<?php echo $data['tools_info']['tool_high_torque']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
         <input id="tool_high_torque" value="<?php echo $data['tools_info']['tool_high_torque']; ?>">
+        <input id="tool_low_torque" value="<?php echo $data['tools_info']['tool_low_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
         <input id="step_torque_unit" value="<?php echo $data['step_torque_unit'];?>">

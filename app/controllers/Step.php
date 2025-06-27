@@ -433,7 +433,8 @@ class Step extends Controller
             $next_step_id = count($step) + 1 ;
         }
 
-        $torque_arr   = $this->MiscellaneousModel->details("torque_unit");
+        $torque_arr     = $this->MiscellaneousModel->details("torque_unit");
+        $decimals_arr   = $this->MiscellaneousModel->details("decimals");
         //計算參數的數量
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
@@ -513,29 +514,38 @@ class Step extends Controller
             $unit_arr = $this->MiscellaneousModel->details('torque_unit');
             $unit_name = $unit_arr[$torque_unit] ?? 'N.m';
 
+            $precision = $decimals_arr[$torque_unit] ?? 3;
+
             foreach (['min_torque', 'max_torque'] as $key) {
                 if (!empty($tools[$key]) && is_numeric($tools[$key])) {
 
-                    // ➤ 假設原始為 N.mm，所以除以 1000 得到 N.m
-                    $base_value = $tools[$key] / 1000;
+                    // 呼叫 model 中的轉換與格式化方法
+                    $result = $this->MiscellaneousModel->convert_and_format_torque_full(
+                        $tools[$key],        // 原始值 (N.mm)
+                        $torque_unit,        // 目標單位代碼 (0~4)
+                        $unit_name           // 單位名稱（對應 array key）
+                    );
 
-                    // ➤ 轉換：from_unit = N.m(1), to_unit = $torque_unit
-                    $converted = $this->MiscellaneousModel->convert_single_torque_unit($base_value, 1, $torque_unit);
+                    // ➤ 取 raw 數值並做 round
+                    $converted_value = round($result['raw_converted'], $precision);
 
-                    // ➤ 取轉換結果（防錯）
-                    $converted_value = is_array($converted)
-                        ? ($converted[$unit_name] ?? 0)
-                        : (is_numeric($converted) ? $converted : 0);
-
+                    // ➤ 存回數字型態（非字串）
                     $tools[$key] = $converted_value;
 
-                    // 如果是 max_torque 額外處理兩個欄位
                     if ($key === 'max_torque') {
-                        $tools['tools_high_torque_diff'] = number_format($converted_value, 3);
-                        $tools['tool_high_torque'] = number_format($converted_value * 1.10, 3);
+                        $tools['tools_high_torque_diff'] = number_format($converted_value, $precision);
+                        $tools['tool_high_torque'] = number_format($converted_value * 1.10, $precision);
+                        $tools['max_torque']  = number_format($tools['max_torque'], $precision);
+                    }
+
+                    if($key === 'min_torque'){
+                        $tools['min_torque']  = number_format($tools['min_torque'], $precision);
                     }
                 }
             }
+
+            $tools['tool_low_torque'] = number_format(0, $decimals_arr[$torque_unit] ?? 3);
+
 
             // 補上控制器單位（若之後還要用）
             $tools['torque_unit'] = $torque_unit;
@@ -555,8 +565,11 @@ class Step extends Controller
             $unit_name = $unit_arr[$device_torque_unit] ?? 'N.m';
 
             // 單位不同才進行轉換
-            if ($step_torque_unit !== $device_torque_unit) {
-                $torque_keys = [
+
+ 
+            if ($step_torque_unit != $device_torque_unit) {
+
+                $fields = [
                     'StepTorque',
                     'StepHiTorque',
                     'StepLoTorque',
@@ -564,41 +577,51 @@ class Step extends Controller
                     'StepTorqueDownShift'
                 ];
 
-                foreach ($torque_keys as $key) {
-                    if (isset($step[$key]) && is_numeric($step[$key])) {
-                        $converted = $this->MiscellaneousModel->convert_single_torque_unit($step[$key], 1, $device_torque_unit);
-                        $step[$key] = is_array($converted) ? ($converted[$unit_name] ?? 0) : (is_numeric($converted) ? $converted : 0);
+                foreach ($fields as $field) {
+                    if (isset($step[$field])) {
+
+                        $converted = $this->MiscellaneousModel->convert_single_torque_unit(
+                            $step[$field],
+                            $step_torque_unit,     // 正確 from_unit
+                            $device_torque_unit    // 正確 to_unit
+                        );
+
+                        // 若回傳陣列 → 取正確單位
+                        $step[$field] = is_array($converted)
+                            ? ($converted[$unit_name] ?? 0)
+                            : (is_numeric($converted) ? $converted : 0);
                     }
                 }
-            }
 
-            // ✅ 額外處理 max_torque 欄位（使用 ToolModel 資料）
-            $tools = $this->ToolModel->GetToolInfo()[0] ?? [];
-            if (!empty($tools['max_torque'])) {
-                    // ➤ 先轉成 N.m
-                    $base_value = $tools['max_torque'] / 1000;
 
-                    // ➤ 執行單位轉換（from N.m to device unit）
-                    $converted = $this->MiscellaneousModel->convert_single_torque_unit($base_value, 1, $device_torque_unit);
+                if(!empty($tools)){
 
-                    // ➤ 取出轉換後數值
-                    $converted_value = is_array($converted)
-                        ? ($converted[$unit_name] ?? 0)
-                        : (is_numeric($converted) ? $converted : 0);
+                    $tools['min_torque'] = $tools['min_torque']/1000;
+                    $tools['min_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['min_torque'],$step_torque_unit,$device_torque_unit);
+              
+                    $tools['max_torque'] = $tools['max_torque']/1000;
+                    $tools['max_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['max_torque'],$step_torque_unit,$device_torque_unit);
+                   
 
-                    // ➤ 額外處理欄位
-                    $tools['tool_max_torque_diff'] = number_format($converted_value, 3);        // 原始轉換值
-                    $tools['tool_high_torque'] = number_format($converted_value * 1.10, 3);     // 加 10%
+
+
                 }
 
-                $step['torque_unit'] = $device_torque_unit;
-            }
-
-            if (!empty($tools['min_torque'])) {
-
+                $torque_unit = $device_torque_unit;   
                 
+                
+            }else{
+
+                $torque_unit = $step_torque_unit;
             }
-            
+
+            $precision = $decimals_arr[$torque_unit] ?? 3;
+            $tools['tool_high_torque'] = $step['StepHiTorque'];
+            $tools['tool_low_torque '] =  $step['StepLoTorque'];
+      
+
+        }
+
 
         $isMobile = $this->isMobileCheck();
         $data = array(
@@ -614,17 +637,13 @@ class Step extends Controller
 
         );
 
-        echo "<pre>";
-        print_r($data);
-        echo "</pre>";
 
-
-        
         if($isMobile){
             $this->view('step/add_step_m', $data);
         }else{
             $this->view('step/add_step', $data);
         }
+
     }
 
 

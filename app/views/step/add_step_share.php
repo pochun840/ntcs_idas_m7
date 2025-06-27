@@ -214,8 +214,8 @@
         document.getElementById("step_limit_lo_ang").value = 30;
         document.getElementById("StepHiAngle").value = 30600;
         document.getElementById("StepLoAngle").value = 0;
-        document.getElementById('StepHiTorque').value = (+document.getElementById('tool_high_torque').value || 0).toFixed(4);
-        document.getElementById("StepLoTorque").value = (0).toFixed(4);  
+        document.getElementById('StepHiTorque').value = document.getElementById('tool_high_torque').value;
+        document.getElementById("StepLoTorque").value = document.getElementById('tool_low_torque').value;
         document.getElementById("StepDelay").value = 0;
         document.getElementById("StepRPM").value = 500;
         document.getElementById("k_value").value = 0;
@@ -279,6 +279,8 @@
         let StepRPMDownShift = document.getElementById("StepRPMDownShift").value;
         let step_unit = document.getElementById("step_torque_unit").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+        alert(step_unit);
 
         const lang = getCookie('language') || 'en';
         const i18n = {
@@ -377,6 +379,7 @@
             data.append("StepHiAngle", StepHiAngle);
             data.append("StepLoAngle", StepLoAngle);
             data.append("KValue", KValue);
+            data.append("step_unit",step_unit);
 
             document.querySelector(".main-content").classList.add("overlay-active");
             document.getElementById("spinner").style.display = 'block';
@@ -420,8 +423,27 @@
     
 
     function input_check() {
+
+
+        const decimals = {
+            0: 4,
+            1: 3,
+            2: 2,
+            3: 2,
+            4: 1
+        };
+
+        //const increment = parseFloat((1 / Math.pow(10, precision)).toFixed(precision));
+
+
+        const torque_unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
+        const precision = decimals[torque_unit] ?? 3;
+        const increment = parseFloat((1 / Math.pow(10, precision)).toFixed(precision));
+
+
         const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque').value);
         const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque').value);
+
         const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm').value);
         const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
@@ -465,12 +487,12 @@
 
         const limits = {
             torque: {
-                torque: { min: Tool_Min_Torque, max: Tool_Max_Torque_Diff },
+                torque: { min: Tool_Min_Torque, max: Tool_Max_Torque },
                 torqueTS: { min: Tool_Min_Torque, max: Tool_Max_Torque },
                 torqueDownshift: { min: 0, max: Tool_Min_Torque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
-                limitHi: { min: StepTorqueVal + delta, max: Tool_Max_Torque * 1.1 },
-                limitLo: { min: 0, max: StepTorqueVal - delta }
+                limitHi: { min: StepTorqueVal > 0 ? parseFloat((StepTorqueVal + increment).toFixed(precision)): 0, max: Tool_Max_Torque * 1.1 },
+                limitLo: { min: 0, max: (StepTorqueVal - delta < 0) ? 0 : StepTorqueVal - delta }
             },
             angle: {
                 angle: { min: 1, max: 30600 },
@@ -551,8 +573,8 @@
                 el.classList.add("is-invalid");
                 if (feedback && feedback.classList.contains("invalid-feedback")) {
                     feedback.innerText = (min !== null && max !== null)
-                        ? `Range: ${min} ~ ${max}`
-                        : `Invalid input`;
+                           ? `Range: ${min.toFixed(precision)} ~ ${max.toFixed(precision)}`
+                           : `Invalid input`;
                     feedback.classList.add("d-block");
                     feedback.style.display = "block";
                 }

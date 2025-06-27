@@ -177,6 +177,27 @@ class Miscellaneous{
             );    
         }
 
+
+        if($mode =="decimals"){
+            $array = array(
+                0 => 4, // KGF-M
+                1 => 3, // N.m
+                2 => 2, // KGF-cm
+                3 => 2, // Lbf
+                4 => 1  // cN.m
+            );
+
+        }
+
+
+        $decimals = [
+    0 => 4, // KGF-M
+    1 => 3, // N.m
+    2 => 2, // KGF-cm
+    3 => 2, // Lbf
+    4 => 1  // cN.m
+];
+
         return $array;
 
     }
@@ -389,6 +410,57 @@ class Miscellaneous{
 
 
 
+    public function convert_tool_torque_info($tools, $torque_unit, $unit_name, $decimals_arr, $device_torque_unit){
+
+        $precision = $decimals_arr[$torque_unit] ?? 3;
+
+        foreach (['min_torque', 'max_torque'] as $key) {
+            if (!empty($tools[$key]) && is_numeric($tools[$key])) {
+
+                // ➤ 先從 N.mm → N.m
+                $value_nm = $tools[$key] / 1000;
+
+                $result = $this->convert_and_format_torque_full(
+                    $value_nm,
+                    $torque_unit,
+                    $unit_name
+                );
+
+                $converted_value = round($result['raw_converted'], $precision);
+
+                $tools[$key] = $converted_value;
+
+                $formatted_value = number_format($converted_value, $precision);
+
+                if ($key === 'max_torque') {
+                    $tools['tools_high_torque_diff'] = $formatted_value;
+                    $tools['tool_high_torque'] = number_format($converted_value * 1.10, $precision);
+                    $tools['max_torque'] = $formatted_value;
+                }
+
+                if ($key === 'min_torque') {
+                    $tools['min_torque'] = $formatted_value;
+                }
+            }
+        }
+
+        // ➤ tool_low_torque
+        $converted_zero = $this->convert_single_torque_unit(
+            0,
+            $device_torque_unit,
+            $torque_unit
+        );
+
+        $converted_zero = floatval($converted_zero);
+
+        $tools['tool_low_torque'] = number_format(
+            $converted_zero,
+            $precision
+        );
+
+        return $tools;
+    }
+
 
 
     /*public function convert_single_torque_unit($value, $from_unit, $to_unit) {
@@ -437,7 +509,37 @@ class Miscellaneous{
 
 
 
-    
+    public function convert_and_format_torque_full($raw_value, $to_unit_id, $unit_name){
+
+            // 原始為 N.mm → 換算成 N.m
+            $base_value = $raw_value / 1000;
+
+            // 執行轉換
+            $converted = $this->convert_single_torque_unit($base_value, 1, $to_unit_id);
+
+            // 抓出實際數值
+            $converted_value = is_array($converted)
+                ? ($converted[$unit_name] ?? 0)
+                : (is_numeric($converted) ? $converted : 0);
+
+            // 小數位設定
+            $decimals = [
+                0 => 4, // KGF-M
+                1 => 3, // N.m
+                2 => 2, // KGF-cm
+                3 => 2, // Lbf
+                4 => 1  // cN.m
+            ];
+            $precision = isset($decimals[$to_unit_id]) ? $decimals[$to_unit_id] : 3;
+
+            return [
+                'converted_value' => number_format($converted_value, $precision),
+                'high_torque'     => number_format($converted_value * 1.10, $precision),
+                'raw_converted'   => $converted_value
+            ];
+    }
+
+
 
     public function lang_load(){
 
