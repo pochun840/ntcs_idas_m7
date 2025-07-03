@@ -4,6 +4,7 @@ class Miscellaneous{
     private $db;//condb control box
     private $db_data;//devdb tool
     private $dbh;
+    private $db_iDas_tools;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
@@ -61,8 +62,8 @@ class Miscellaneous{
                 102 => 'Enable',
                 103 => 'Clear',
                 104 => 'Confirm',
-                105 => 'Start-IN(Remote)',
-                106 => 'Unscrew(Remote)',
+                105 => 'Start-IN',
+                106 => 'Reverse',
                 107 => 'Sequence Clear',
                 108 => 'Reboot',
                 109 => 'Gate Once',
@@ -82,7 +83,7 @@ class Miscellaneous{
                 3   => 'NG-High',
                 4   => 'NG-Low',
                 5   => 'OK-Sequence',
-                6   => 'OK-Job',
+                6   => 'OK-JOB',
                 7   => 'Tool Runing',
                 8   => 'Tool Trigger',
                 9   => 'Reverse',
@@ -189,15 +190,6 @@ class Miscellaneous{
 
         }
 
-
-        $decimals = [
-    0 => 4, // KGF-M
-    1 => 3, // N.m
-    2 => 2, // KGF-cm
-    3 => 2, // Lbf
-    4 => 1  // cN.m
-];
-
         return $array;
 
     }
@@ -243,49 +235,6 @@ class Miscellaneous{
                        $value > 0 && 
                        $value <= 10;
                        
-            default:
-                return false;
-        }
-    }
-
-
-    public function seq_validate($value, $type) {
-        switch ($type) {
-            // Seq_name
-            case 'name':
-                return !empty($value) && 
-                       preg_match('/^[a-zA-Z0-9-]+$/', $value) && 
-                       strlen($value) <= 12;
-    
-            // 顆數
-            case 'tightenRepeat':
-                return is_numeric($value) && 
-                       $value >= 1 && 
-                       $value <= 99;
-            
-            //join_val
-            case 'join_val':
-                return !empty($value);
-                
-
-            // OKTIME
-            case 'okTime':
-                return is_numeric($value) && 
-                       $value >= 0.0 && 
-                       $value <= 9.9;
-    
-            // K_value
-            case 'kValue':
-                return is_numeric($value) && 
-                       $value >= 30 && 
-                       $value <= 300;
-    
-            // offset
-            case 'offset':
-                return is_numeric($value) && 
-                       $value >= -254 && 
-                       $value <= 254;
-    
             default:
                 return false;
         }

@@ -954,3 +954,13 @@ function agent_type_save(){
     }
 
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    var input = document.getElementById('barcode_name');
+    if (input) {
+        input.addEventListener('input', function() {
+            var length = this.value.length;
+            document.getElementById('barcode_count').value = length;
+        });
+    }
+});

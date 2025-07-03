@@ -1,24 +1,17 @@
 <?php
 
 class Login{
-    private $db;
-    private $db_dev;
     private $db_iDas;
     private $db_iDas_login;
 
     // 在建構子將 Database 物件實例化
-    public function __construct()
-    {
-        $this->db = new Database;
-        $this->db = $this->db->getDb();
+    public function __construct(){
 
         $this->db_iDas = new Database;
         $this->db_iDas = $this->db_iDas->getDb_das();
 
         $this->db_iDas_login = new Database;
         $this->db_iDas_login  = $this->db_iDas_login->getDb_das_login();
-
-
 
     }
 

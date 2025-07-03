@@ -642,3 +642,14 @@ $error_message['ERR_27'] = 'JOB-COMPLETED';
 $error_message['ERR_28'] = 'WORKPIECE-RECOVERY';
 $error_message['ERR_29'] = 'target_torque is a required field';
 $error_message['ERR_30'] = 'The controller has not logged out';
+
+
+$text['over_size_text'] = 'The file size exceeds the limit: 30MB';
+$text['invalid_file_extension'] = 'The uploaded file must be in .pack format. Current file:';
+$text['cannot_open_pack'] = 'Unable to open the .pack update file';
+$text['extract_failed'] = 'Extraction failed';
+$text['no_extracted_folder'] = 'No extracted folder found';
+$text['missing_info_json'] ='Missing info.json, unable to verify the update file';
+$text['info_json_invalid'] = 'info.json format error or missing Match_TCC_Version';
+$text['version_too_low'] = 'The update file version is lower than the current version and cannot be updated. Current version:';
+$text['update_success'] = 'Update successful. Files have been moved to the tccidas directory';
