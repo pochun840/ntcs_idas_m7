@@ -565,8 +565,6 @@ class Step extends Controller
             $unit_name = $unit_arr[$device_torque_unit] ?? 'N.m';
 
             // 單位不同才進行轉換
-
- 
             if ($step_torque_unit != $device_torque_unit) {
 
                 $fields = [
@@ -596,22 +594,22 @@ class Step extends Controller
 
                 if(!empty($tools)){
 
-                    $tools['min_torque'] = $tools['min_torque']/1000;
-                    $tools['min_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['min_torque'],$step_torque_unit,$device_torque_unit);
-              
-                    $tools['max_torque'] = $tools['max_torque']/1000;
-                    $tools['max_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['max_torque'],$step_torque_unit,$device_torque_unit);
-                   
-
-
-
+                    $tools['min_torque'] = $this->MiscellaneousModel->convert_all_torque_units_temp($tools['min_torque'] / 1000, 1)[$unit_arr[$device_torque_unit]];
+                    $tools['max_torque'] = $this->MiscellaneousModel->convert_all_torque_units_temp($tools['max_torque'] / 1000, 1)[$unit_arr[$device_torque_unit]];
+ 
                 }
 
                 $torque_unit = $device_torque_unit;   
-                
-                
-            }else{
+                                
+        }else{
 
+                $tools['min_torque'] = $tools['min_torque']/1000;
+                $tools['min_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['min_torque'],$step_torque_unit,$device_torque_unit);
+            
+                $tools['max_torque'] = $tools['max_torque']/1000;
+                $tools['max_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['max_torque'],$step_torque_unit,$device_torque_unit);
+                
+                
                 $torque_unit = $step_torque_unit;
             }
 
@@ -619,9 +617,7 @@ class Step extends Controller
             $tools['tool_high_torque'] = $step['StepHiTorque'];
             $tools['tool_low_torque '] =  $step['StepLoTorque'];
       
-
         }
-
 
         $isMobile = $this->isMobileCheck();
         $data = array(

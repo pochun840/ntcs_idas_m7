@@ -582,7 +582,7 @@ class Settings extends Controller
 
 
     
-    public function Sync_check_db() {
+    public function Sync_check_db(){
 
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
@@ -600,9 +600,12 @@ class Settings extends Controller
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
 
             if (!file_exists($src1) || !file_exists($src2)) {
-                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Source file(s) missing: ' .
+                return $this->MiscellaneousModel->generateErrorResponse(
+                    'Error',
+                    'Source file(s) missing: ' .
                     (!file_exists($src1) ? 'KLS_NTCS_IDAS.Lin ' : '') .
-                    (!file_exists($src2) ? 'ntcs_barcode_IDAS.db' : ''));
+                    (!file_exists($src2) ? 'ntcs_barcode_IDAS.db' : '')
+                );
             }
 
             // Modbus 初始化
@@ -612,19 +615,21 @@ class Settings extends Controller
             $modbus->timeout_sec = 10;
 
             try {
-                //  Step 1: 同步 .Lin
+                // Step 1: 同步 .Lin
                 if (!copy($src1, $midPath1)) {
                     $this->logMessage("Copy failed: $src1 -> $midPath1");
                     return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.Lin");
                 }
-                chmod($midPath1, 0777);
-                if (!rename($midPath1, $finalPath1)) {
-                    $this->logMessage("Move failed: $midPath1 -> $finalPath1");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.Lin");
-                }
-                $this->logMessage("11.Lin copied and moved to FTP");
+                @chmod($midPath1, 0777);
 
-                //  Step 2: 通知 Modbus：Lin 完成
+                if (!copy($midPath1, $finalPath1)) {
+                    $this->logMessage("Copy failed: $midPath1 -> $finalPath1");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.Lin to FTP");
+                }
+                unlink($midPath1);
+                $this->logMessage("11.Lin copied to FTP via copy + unlink");
+
+                // Step 2: 通知 Modbus：Lin 完成
                 $baseValues_Lin = [1, 12593];
                 $data_Lin = array_merge($baseValues_Lin, array_fill(0, 16 - count($baseValues_Lin), 0));
                 $modbus->writeMultipleRegister(0, 506, $data_Lin, array_fill(0, 16, 'INT'));
@@ -633,26 +638,28 @@ class Settings extends Controller
                 // Step 3: 延遲 1 秒
                 usleep(1000000); // 1 秒
 
-                // Step 4: 移除 11.Lin
+                // Step 4: 將 11.Lin 改名為 11_tmp.Lin（用 copy + unlink）
                 $renamedPath = '/mnt/ramdisk/ftp/11_tmp.Lin';
-                if (!rename($finalPath1, $renamedPath)) {
-                    $this->logMessage("Rename failed: $finalPath1 -> $renamedPath");
+                if (!copy($finalPath1, $renamedPath)) {
+                    $this->logMessage("Copy failed: $finalPath1 -> $renamedPath");
                     return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.Lin");
                 }
-                $this->logMessage("11.Lin renamed to 11_tmp.Lin");
-                //unlink($finalPath1);
-                
+                unlink($finalPath1);
+                $this->logMessage("11.Lin renamed to 11_tmp.Lin via copy + unlink");
+
                 // Step 5: 同步 .db
                 if (!copy($src2, $midPath2)) {
                     $this->logMessage("Copy failed: $src2 -> $midPath2");
                     return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.db");
                 }
-                chmod($midPath2, 0777);
-                if (!rename($midPath2, $finalPath2)) {
-                    $this->logMessage("Move failed: $midPath2 -> $finalPath2");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to move iDas.db");
+                @chmod($midPath2, 0777);
+
+                if (!copy($midPath2, $finalPath2)) {
+                    $this->logMessage("Copy failed: $midPath2 -> $finalPath2");
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.db to FTP");
                 }
-                $this->logMessage("11.db copied and moved to FTP");
+                unlink($midPath2);
+                $this->logMessage("11.db copied to FTP via copy + unlink");
 
                 // Step 6: 通知 Modbus：DB 完成
                 $baseValues_DB = [1, 12593];
@@ -660,17 +667,19 @@ class Settings extends Controller
                 $modbus->writeMultipleRegister(0, 506, $data_DB, array_fill(0, 16, 'INT'));
                 $this->logMessage("Modbus write (DB): " . implode(',', $data_DB));
 
-
-                // Step 7: 移除 11.db
+                // Step 7: 將 11.db 改名為 11_db_temp.db（用 copy + unlink）
                 $renamedPath_2 = '/mnt/ramdisk/ftp/11_db_temp.db';
-                if (!rename($finalPath2, $renamedPath_2)) {
-                    $this->logMessage("Rename failed: $$finalPath2 -> $renamedPath_2");
+                if (!copy($finalPath2, $renamedPath_2)) {
+                    $this->logMessage("Copy failed: $finalPath2 -> $renamedPath_2");
                     return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.db");
                 }
-                $this->logMessage("11.Lin renamed to 11_tmp.Lin");
+                unlink($finalPath2);
+                $this->logMessage("11.db renamed to 11_db_temp.db via copy + unlink");
 
                 return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
 
+                
+                
             } catch (Exception $e) {
                 $this->logMessage('Modbus write fail: ' . $e->getMessage());
                 return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
@@ -679,6 +688,8 @@ class Settings extends Controller
 
         return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
     }
+
+
 
 
 
@@ -1633,8 +1644,7 @@ class Settings extends Controller
         // ✅ 檢查是否可同步（Modbus 工具狀態）
         $idas_result = $this->idas_check();
 
-
-        if (!isset($idas_result['result']) || (int)$idas_result['result'] !== 0) {
+        if (!isset($idas_result['result']) || (int)$idas_result['result'] != 0) {
             echo json_encode([
                 'result'   => false,
                 'login'    => 0,
@@ -1675,6 +1685,11 @@ class Settings extends Controller
             'res_type' => 'Error',
             'res_msg'  => 'Controller info not found'
         ]);*/
+    }
+
+
+    private function reset(){
+        
     }
 
 

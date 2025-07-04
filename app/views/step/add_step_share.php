@@ -280,8 +280,6 @@
         let step_unit = document.getElementById("step_torque_unit").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-        alert(step_unit);
-
         const lang = getCookie('language') || 'en';
         const i18n = {
             'en': {

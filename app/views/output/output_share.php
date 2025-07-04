@@ -457,9 +457,9 @@ function collectPinValues(selector) {
 
 
 function create_output_id() {
+
     var output_event = document.getElementById("Event_Option").value;
     var pinval = collectPinValues('input[name="pin_option"]');
-  
 
     if (pinval.length > 0) {
         var pin_old = pinval[0]['id']; 
@@ -468,11 +468,35 @@ function create_output_id() {
         var match = pin_old.match(/\d+/); 
         var output_pin = match ? parseInt(match[0]) : null;
         
-        var time_ms = 'time'+ output_pin;
-        var wave_on =  document.getElementById(time_ms).value;
+        var time_ms = 'time' + output_pin;
+        var wave_on = document.getElementById(time_ms).value;
+
+        //  加進來的檢查邏輯
+        const skipEvents = [7,8,9,10,11,12,13,14,15,16];
+
+        var language = getCookie('language');
+
+        var messages = {
+            'en-us': "Please enter a wave value between 100 and 10000.",
+            'zh-tw': "範圍介於100和10000之間。",
+            'zh-cn': "范围介于100和10000之间。"
+        };
+
+        if (!language) {
+            language = 'en-us';
+        }
+
+        if (wave == 3 && !skipEvents.includes(Number(output_event))) {
+            if (wave_on < 100 || wave_on > 10000) {
+                alertify.alert(messages[language]);
+                setTimeout(function () {
+                    alertify.closeAll();
+                }, 3000);
+                return;
+            }
+        }
 
         if (job_id) {
-
             document.getElementById('spinner').style.display = 'block';
 
             $.ajax({
@@ -488,7 +512,6 @@ function create_output_id() {
                 success: function(response) {
                     output_success_res(response, job_id, get_output_by_job_id, 'new_output');
                     hideOverlay();
-
                 },
                 error: function(xhr, status, error) {
                     console.error("AJAX request failed:", status, error);
@@ -496,9 +519,10 @@ function create_output_id() {
             });
         }
     } else {
-        //console.error("No pinval found or pinval[0] is undefined.");
+        console.error("No pinval found or pinval[0] is undefined.");
     }
 }
+
 
 function edit_output_id(){
     var output_event = document.getElementById("edit_event_option").value;

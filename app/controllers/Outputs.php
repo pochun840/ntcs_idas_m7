@@ -387,12 +387,12 @@ class Outputs extends Controller
         }else{ 
             $input_check = false; 
         }
-        if( !empty($_POST['output_pin']) && isset($_POST['output_pin'])  ){ //new
+        if( !empty($_POST['output_pin']) && isset($_POST['output_pin'])  ){
             $output_data['Pin'] = $_POST['output_pin'];
         }else{ 
             $input_check = false; 
         }
-        if( !empty($_POST['output_event']) && isset($_POST['output_event'])  ){ //old
+        if( !empty($_POST['output_event']) && isset($_POST['output_event'])  ){
             $output_data['EvenID'] = $_POST['output_event'];
         }else{ 
             $input_check = false; 
@@ -404,8 +404,7 @@ class Outputs extends Controller
             $output_data['signal'] = 0;
         }
 
-
-        if( $_POST['wave_on'] == ""){
+        if($_POST['wave_on'] == ""){
             $output_data['durate'] = '';
         }else{
             $output_data['durate'] = $_POST['wave_on'];
@@ -415,14 +414,14 @@ class Outputs extends Controller
             $output_data['durate'] = '';
         }
 
-     
+        // ➤ 這行是關鍵，先給預設值
+        $res = false;
 
         $count = $this->OutputModel->check_event_conflict($output_data['JOBID'],$output_data['EvenID']);
         if ($count > 0){
-          
             $res = $this->OutputModel->edit_output($output_data);
         }
-        
+
         if($res){
             $res_type = 'Success';
             $res_msg = $text['edit_event'].$text['job_id'].':'.$output_data['JOBID'].','.$text['event'].':'.$text[$event[$output_data['EvenID']]]."  ".$text['success'];
@@ -438,6 +437,7 @@ class Outputs extends Controller
 
         echo json_encode($result);
     }
+
 
     public function get_other_event_by_job_id(){
 

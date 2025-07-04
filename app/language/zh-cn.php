@@ -228,7 +228,7 @@ $text['YES'] = '是';
 $text['NO'] = '否';
 $text['mode'] = '模式';
 
-$text['Start-IN(Remote)'] = '启动';
+$text['Start-IN'] = '启动';
 $text['REVERSE_IN'] = '拆螺丝';
 $text['Unscrew(Remote)'] = '拆螺丝';
 $text['Disable'] = '禁用';

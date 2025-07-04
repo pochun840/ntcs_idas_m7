@@ -227,8 +227,8 @@ $text['gate_confirm'] = 'Workpiece Ready Confirm';
 $text['YES'] = 'YES';
 $text['NO'] = 'NO';
 
-$text['Start-IN(Remote)'] = 'Start IN(Remote)';
-$text['Unscrew(Remote)'] = 'Unscrew(Remote)';
+$text['Start-IN'] = 'Start IN';
+$text['Unscrew(Remote)'] = 'Unscrew';
 $text['REVERSE_IN'] = 'Reverse(Remote)';
 $text['Disable'] = 'Disable';
 $text['Enable'] = 'Enable';
