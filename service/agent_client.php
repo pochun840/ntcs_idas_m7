@@ -64,8 +64,8 @@ run(function () {
 function GetLastResult() {
     $row = [];
 
-    if (file_exists('/var/www/html/database/ntcs_data.db')) {
-        $db_data = new PDO('sqlite:/var/www/html/database/ntcs_data.db');
+    if (file_exists('/home/kls/NTCS7/ntcs_data.db')) {
+        $db_data = new PDO('sqlite:/home/kls/NTCS7/ntcs_data.db');
         $result = $db_data->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1");
 
         $row = $result->fetch(PDO::FETCH_ASSOC);

@@ -580,106 +580,90 @@ class Settings extends Controller
 
     }
 
-
-    
-    public function Sync_check_db(){
+    public function Sync_check_db() {
 
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
 
-        $src1       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        $midPath1   = '/mnt/ramdisk/11.Lin';
-        $finalPath1 = '/mnt/ramdisk/ftp/11.Lin';
+        $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $midPath1     = '/mnt/ramdisk/11.Lin';
+        $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
 
-        $src2       = '/var/www/html/database/ntcs_barcode_IDAS.db';
-        $midPath2   = '/mnt/ramdisk/11.db';
-        $finalPath2 = '/mnt/ramdisk/ftp/11.db';
+        $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
+        $midPath2     = '/mnt/ramdisk/11.db';
+        $finalPath2   = '/mnt/ramdisk/ftp/11.db';
+
+        $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
+        $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
 
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
 
+            // Check if source files exist
             if (!file_exists($src1) || !file_exists($src2)) {
+                $missingFiles = [];
+                if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
+                if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
+
                 return $this->MiscellaneousModel->generateErrorResponse(
                     'Error',
-                    'Source file(s) missing: ' .
-                    (!file_exists($src1) ? 'KLS_NTCS_IDAS.Lin ' : '') .
-                    (!file_exists($src2) ? 'ntcs_barcode_IDAS.db' : '')
+                    'Source file(s) missing: ' . implode(', ', $missingFiles)
                 );
             }
 
-            // Modbus 初始化
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
             $modbus->port = 502;
             $modbus->timeout_sec = 10;
 
             try {
-                // Step 1: 同步 .Lin
-                if (!copy($src1, $midPath1)) {
-                    $this->logMessage("Copy failed: $src1 -> $midPath1");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.Lin");
+                // ----------- Sync LIN File -----------
+                if (!$this->safeCopy($src1, $midPath1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1");
                 }
                 @chmod($midPath1, 0777);
 
-                if (!copy($midPath1, $finalPath1)) {
-                    $this->logMessage("Copy failed: $midPath1 -> $finalPath1");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.Lin to FTP");
+                if (!$this->safeCopy($midPath1, $finalPath1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath1");
                 }
                 unlink($midPath1);
-                $this->logMessage("11.Lin copied to FTP via copy + unlink");
+                $this->logMessage("$src1 copied to FTP");
 
-                // Step 2: 通知 Modbus：Lin 完成
-                $baseValues_Lin = [1, 12593];
-                $data_Lin = array_merge($baseValues_Lin, array_fill(0, 16 - count($baseValues_Lin), 0));
-                $modbus->writeMultipleRegister(0, 506, $data_Lin, array_fill(0, 16, 'INT'));
-                $this->logMessage("Modbus write (Lin): " . implode(',', $data_Lin));
+                $this->notifyModbus($modbus, [1, 12593], "LIN");
 
-                // Step 3: 延遲 1 秒
-                usleep(1000000); // 1 秒
-
-                // Step 4: 將 11.Lin 改名為 11_tmp.Lin（用 copy + unlink）
-                $renamedPath = '/mnt/ramdisk/ftp/11_tmp.Lin';
-                if (!copy($finalPath1, $renamedPath)) {
-                    $this->logMessage("Copy failed: $finalPath1 -> $renamedPath");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.Lin");
+                // Rename LIN file
+                if (!$this->safeCopy($finalPath1, $renamedPath1)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
                 }
                 unlink($finalPath1);
-                $this->logMessage("11.Lin renamed to 11_tmp.Lin via copy + unlink");
+                $this->logMessage("$finalPath1 renamed to $renamedPath1");
 
-                // Step 5: 同步 .db
-                if (!copy($src2, $midPath2)) {
-                    $this->logMessage("Copy failed: $src2 -> $midPath2");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.db");
+                usleep(1_000_000); // sleep 1 sec
+
+                // ----------- Sync DB File -----------
+                if (!$this->safeCopy($src2, $midPath2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2");
                 }
                 @chmod($midPath2, 0777);
 
-                if (!copy($midPath2, $finalPath2)) {
-                    $this->logMessage("Copy failed: $midPath2 -> $finalPath2");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy iDas.db to FTP");
+                if (!$this->safeCopy($midPath2, $finalPath2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath2");
                 }
                 unlink($midPath2);
-                $this->logMessage("11.db copied to FTP via copy + unlink");
+                $this->logMessage("$src2 copied to FTP");
 
-                // Step 6: 通知 Modbus：DB 完成
-                $baseValues_DB = [1, 12593];
-                $data_DB = array_merge($baseValues_DB, array_fill(0, 16 - count($baseValues_DB), 0));
-                $modbus->writeMultipleRegister(0, 506, $data_DB, array_fill(0, 16, 'INT'));
-                $this->logMessage("Modbus write (DB): " . implode(',', $data_DB));
+                $this->notifyModbus($modbus, [1, 12593], "DB");
 
-                // Step 7: 將 11.db 改名為 11_db_temp.db（用 copy + unlink）
-                $renamedPath_2 = '/mnt/ramdisk/ftp/11_db_temp.db';
-                if (!copy($finalPath2, $renamedPath_2)) {
-                    $this->logMessage("Copy failed: $finalPath2 -> $renamedPath_2");
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename 11.db");
+                // Rename DB file
+                if (!$this->safeCopy($finalPath2, $renamedPath2)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
                 }
                 unlink($finalPath2);
-                $this->logMessage("11.db renamed to 11_db_temp.db via copy + unlink");
+                $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
                 return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
 
-                
-                
             } catch (Exception $e) {
                 $this->logMessage('Modbus write fail: ' . $e->getMessage());
                 return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
@@ -690,11 +674,7 @@ class Settings extends Controller
     }
 
 
-
-
-
-    
-    public function Sync_check_db_load() {
+    public function Sync_check_db_load(){
 
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
@@ -744,13 +724,15 @@ class Settings extends Controller
                 }
 
                 // 使用 Modbus 通知 .Lin 同步完成
-                $data1 = array(1, 12593);
+                $data1 = [1, 12593];
                 $dataTypes1 = array_fill(0, count($data1), 'INT');
                 $modbus->writeMultipleRegister(0, 506, $data1, $dataTypes1);
                 $this->logMessage('Modbus 寫入 (.Lin)：' . implode(',', $data1));
 
                 // 刪除 11.Lin 檔案
-                unlink($tmp1);
+                if (file_exists($tmp1)) {
+                    unlink($tmp1);
+                }
 
                 // 延遲 1 秒
                 usleep(1000000);
@@ -780,24 +762,73 @@ class Settings extends Controller
                 }
 
                 // 使用 Modbus 通知 .db 同步完成
-                $data2 = array(1, 12593, 24436, 28016);
+                $data2 = [1, 12593, 24436, 28016];
                 $dataTypes2 = array_fill(0, count($data2), 'INT');
                 $modbus->writeMultipleRegister(0, 506, $data2, $dataTypes2);
                 $this->logMessage('Modbus 寫入 (.db)：' . implode(',', $data2));
 
                 // 刪除 11_tmp.db 檔案
-                unlink($tmp2);
+                if (file_exists($tmp2)) {
+                    unlink($tmp2);
+                }
 
                 return $this->MiscellaneousModel->generateErrorResponse('Success', '' . ($text['success'] ?? 'success'));
 
             } catch (Exception $e) {
-                $this->logMessage('Modbus 錯誤：' . $e->getMessage());
-                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus 通訊失敗');
+                $errorMessage = 'Modbus 錯誤：' . $e->getMessage();
+                $trace = $e->getTraceAsString();
+
+                $this->logMessage($errorMessage);
+                $this->logMessage("Stack trace:\n" . $trace);
+
+                file_put_contents('/tmp/modbus_error.log',
+                    date('Y-m-d H:i:s') . " - " . $errorMessage . "\n" . $trace . "\n\n",
+                    FILE_APPEND
+                );
+
+                return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
             }
         }
 
         return $this->MiscellaneousModel->generateErrorResponse('Error', '非法的參數或非支援的作業系統');
     }
+
+
+
+
+
+
+
+    
+    /**
+     * 安全複製檔案，若 copy 失敗會寫 log
+     */
+    private function safeCopy($src, $dst) {
+        if (copy($src, $dst)) {
+            $this->logMessage("Copied: $src -> $dst");
+            return true;
+        } else {
+            $this->logMessage("Failed copy: $src -> $dst");
+            return false;
+        }
+    }
+
+    /**
+     * 發送 Modbus 訊號
+     */
+    private function notifyModbus($modbus, $data, $tag = "") {
+        $dataTypes = array_fill(0, 16, 'INT');
+        $payload = array_merge($data, array_fill(0, 16 - count($data), 0));
+
+        $modbus->writeMultipleRegister(0, 506, $payload, $dataTypes);
+        $this->logMessage("Modbus write ($tag): " . implode(',', $payload));
+    }
+
+  
+
+    
+
+
     
     
     //get barcode
@@ -1685,16 +1716,5 @@ class Settings extends Controller
             'res_type' => 'Error',
             'res_msg'  => 'Controller info not found'
         ]);*/
-    }
-
-
-    private function reset(){
-        
-    }
-
-
-
-
-
-    
+    }    
 }

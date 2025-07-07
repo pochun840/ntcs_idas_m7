@@ -53,6 +53,9 @@ class Dashboards extends Controller
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
 
 
+        //
+
+
         //取得控制器的扭力單位 
         $res_device = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)$res_device['torque_unit'];
@@ -313,9 +316,6 @@ class Dashboards extends Controller
 
         return $current_data;
     
-    }
-
-
- 
+    } 
 }
 ?>

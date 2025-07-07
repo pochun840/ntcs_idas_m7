@@ -171,12 +171,13 @@ class Data extends Controller
 
         // 根據系統設定路徑
         if(PHP_OS_FAMILY  ==="Linux"){
-            $base_path = '/var/www/html/database/';
+            $base_path = '/home/kls/NTCS7/';
         }else{
             $base_path =  '../';
         }
       
         $db_path = $base_path . "ntcs_data.db";
+
 
         if (!file_exists($db_path)) {
             echo json_encode(['success' => false, 'msg' => "資料庫不存在"]);
@@ -264,6 +265,25 @@ class Data extends Controller
             }
         }
     }
+
+    public function test(){
+
+        $directory = '/home/kls'; // 指定目錄路徑
+
+        // 取得目錄中的檔案和子目錄列表
+		$fileList = scandir($directory);
+
+		// 移除 "." 和 ".." 兩個特殊條目
+		$fileList = array_diff($fileList, array('.', '..'));
+
+		$data_db_name = 'ntcs_data.db';
+		$db_data = new PDO('sqlite:/home/kls/NTCS7/'.$data_db_name); //鎖附結果DB
+        $result = $db_data->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1");
+        $row = $result->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    
+
 
 }
 ?>

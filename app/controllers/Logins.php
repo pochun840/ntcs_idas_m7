@@ -51,6 +51,11 @@ class Logins extends Controller
             
             
             if($this->verifyCredentials($username,$authToken)){
+
+
+                //
+                //$this->ntcs_data_db_sysnc();
+
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
                 return true;
@@ -232,6 +237,46 @@ class Logins extends Controller
             $this->logout();
             $this->view('login/index', $data);
             exit();
+        }
+    }
+
+
+    public function ntcs_data_db_sysnc() {
+        
+        header('Content-Type: application/json');
+
+        $src = '/home/kls/NTCS7/ntcs_data.db';
+        $dst = '/var/www/html/database/ntcs_data.db';
+
+        if (!file_exists($src)) {
+            echo json_encode([
+                "status" => "error",
+                "message" => "來源檔案不存在！"
+            ]);
+            return;
+        }
+
+        $src_mtime = filemtime($src);
+        $dst_mtime = file_exists($dst) ? filemtime($dst) : 0;
+
+        if ($src_mtime > $dst_mtime) {
+            if (copy($src, $dst)) {
+                chmod($dst, 0777);
+                echo json_encode([
+                    "status" => "success",
+                    "message" => "同步完成！"
+                ]);
+            } else {
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "同步失敗！"
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "status" => "ok",
+                "message" => "無需同步。"
+            ]);
         }
     }
 

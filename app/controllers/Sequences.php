@@ -488,6 +488,7 @@ class Sequences extends Controller
 
 
     public function variation($job_id = null, $seq_id = null) {
+        
         // 預設 job_id 為 1
         $job_id = $job_id ?? 1;
 

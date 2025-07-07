@@ -390,9 +390,12 @@ function fetchChartAndRender() {
         });
 }
 
+
 // 初次載入 + 每 1 秒更新
 fetchChartAndRender();
 setInterval(fetchChartAndRender, 1000);
+
+
 
 // 旋轉或調整螢幕大小時 → 圖表會自動調整 - Khi xoay hoặc resize màn hình → biểu đồ tự điều chỉnh lại
 window.addEventListener("resize", () => myChart?.resize?.());

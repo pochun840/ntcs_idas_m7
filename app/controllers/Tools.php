@@ -91,6 +91,5 @@ class Tools extends Controller
             return strtoupper($ip_addr);
         }
     }
-
 }
 ?>

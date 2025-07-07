@@ -130,7 +130,8 @@
 
               // 检查IP是否在映射中
               console.log(data.client_ip);
-
+              console.log('weeee');
+              console.log(data);
               if (ipToTableRow.has(data.client_ip)) {
 
 

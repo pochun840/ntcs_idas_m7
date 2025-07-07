@@ -245,6 +245,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
     }
 
 
+
     function updateTable(mode, records, unit_arr, status_arr,color_arr) {
         const tbodyId = `res_data_${mode.toLowerCase()}_tbody`;
         const tbody = document.getElementById(tbodyId);
@@ -284,6 +285,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         currentMode = this.value;
         fetchRealTimeData(currentMode);
     });
+
 
 </script>
 </body>
