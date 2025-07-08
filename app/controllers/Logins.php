@@ -54,7 +54,7 @@ class Logins extends Controller
 
 
                 //
-                //$this->ntcs_data_db_sysnc();
+                $this->ntcs_data_db_sysnc();
 
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
@@ -243,7 +243,7 @@ class Logins extends Controller
 
     public function ntcs_data_db_sysnc() {
         
-        header('Content-Type: application/json');
+        //header('Content-Type: application/json');
 
         $src = '/home/kls/NTCS7/ntcs_data.db';
         $dst = '/var/www/html/database/ntcs_data.db';

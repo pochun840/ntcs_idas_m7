@@ -111,31 +111,27 @@ class Datas{
     }
 
 
-   public function get_operation_info() {
     
-    $data_db_path = '/home/kls/NTCS7/ntcs_data.db';
+    public function get_operation_info() {
 
-    if (!file_exists($data_db_path)) {
-        error_log("❌ 檔案不存在: $data_db_path");
-        return [];
-    }
-
-    try {
-        $db_data = new PDO('sqlite:' . $data_db_path);
-        $db_data->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
+        if (is_null($this->db_data)) {
+            return null;
+        }
+    
         $sql = "SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1";
-        $stmt = $db_data->query($sql);
-
-        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
-
-        return $rows;
-    } catch (PDOException $e) {
-        error_log("❌ SQLite 連線失敗: " . $e->getMessage());
-        return [];
+    
+        try {
+            $statement = $this->db_data->prepare($sql);
+            $statement->execute();
+            $result = $statement->fetch(PDO::FETCH_ASSOC); 
+            $statement = null; // 釋放資源
+            return $result ?: null; // 沒資料也回傳 null
+        } catch (PDOException $e) {
+            $statement = null; // 釋放資源
+            return null; // 發生錯誤也回傳 null
+        }
     }
-}
-
+    
 
 
 
