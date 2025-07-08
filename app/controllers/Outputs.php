@@ -245,6 +245,11 @@ class Outputs extends Controller
                     $output_data[$key]['signal'] = $val['signal'];
                     $output_data[$key]['durate'] = $val['durate'];
 
+
+                    if($output_data[$key]['durate'] == ""){
+                        $output_data[$key]['durate'] = 100;
+                    }
+
                     $res = $this->OutputModel->create_output($output_data[$key]);
                     $result = array();
                     if($res){

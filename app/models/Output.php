@@ -86,12 +86,17 @@ class Output{
 
     public function create_output($output_data) {    
 
-        $output_data['stop_trig']  = 1;
+        // 預設值處理
+        if (!isset($output_data['durate']) || $output_data['durate'] === '' || $output_data['durate'] === null) {
+            $output_data['durate'] = 100;
+        }
+
+        $output_data['stop_trig'] = 1;
         $output_data['cycle'] = 1;
 
         $sql = "INSERT INTO `JOBOutput_lst` (JOBID, Pin, EvenID, signal, durate, stop_trig, cycle) ";
         $sql .= "VALUES (:jobid, :pin, :evenid, :signal, :durate, :stop_trig, :cycle) ";        
-    
+
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':jobid', $output_data['JOBID']);
         $statement->bindValue(':pin', $output_data['Pin']);
@@ -106,14 +111,21 @@ class Output{
     }
 
 
-    public function edit_output($output_data){
+
+
+    public function edit_output($output_data) {
+
+        // 預設 durate 值
+        if (!isset($output_data['durate']) || $output_data['durate'] === '' || $output_data['durate'] === null) {
+            $output_data['durate'] = 100;
+        }
 
         $sql = "UPDATE `JOBOutput_lst` 
-        SET EvenID = :EvenID, 
-            Pin  = :Pin,
-            signal = :signal, 
-            durate = :durate ";
-        $sql .= "WHERE EvenID = :EvenID  AND JOBID = :JOBID ";
+                SET EvenID = :EvenID, 
+                    Pin = :Pin,
+                    signal = :signal, 
+                    durate = :durate 
+                WHERE EvenID = :EvenID AND JOBID = :JOBID";
 
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':JOBID', $output_data['JOBID']);
@@ -122,9 +134,10 @@ class Output{
         $statement->bindValue(':signal', $output_data['signal']);
         $statement->bindValue(':durate', $output_data['durate']);
         $results = $statement->execute();
+        
         return $results;
+    }
 
-    } 
 
     public function copy_output_by_id($from_job_id,$to_job_id){
         // 判斷job_id是否存在，若存在就先把舊的刪除

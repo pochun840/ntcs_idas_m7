@@ -364,6 +364,23 @@ function delete_output_id(job_id,del_output_val){
 }
 
 
+function input_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
+    var responseData = JSON.parse(response);
+    alertify.alert(responseData.res_type, responseData.res_msg);
+
+    setTimeout(function () {
+        alertify.closeAll();
+        document.querySelector(".main-content").classList.remove("overlay-active");
+        document.getElementById('spinner').style.display = 'none';
+
+        if (typeof callbackFn === 'function') {
+            callbackFn(job_id);
+        }
+    }, 2000);
+
+    const hideEl = document.getElementById(hideElementId);
+    if (hideEl) hideEl.style.display = 'none';
+}
 
 
 function get_output_by_job_id(job_id){

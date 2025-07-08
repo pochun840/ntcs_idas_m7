@@ -56,6 +56,35 @@ class Logins extends Controller
                 //
                 $this->ntcs_data_db_sysnc();
 
+                $dir = '/mnt/ramdisk/ftp';
+
+                if (@chmod($dir, 0777)) {
+                    echo json_encode([
+                        "status" => "success",
+                        "message" => "✅ PHP chmod 成功"
+                    ]);
+                } else {
+                    // 如果 PHP chmod 失敗 → 改用 sudo
+                    $cmd = 'sudo chmod 777 ' . escapeshellarg($dir);
+                    $output = shell_exec($cmd . ' 2>&1');
+
+                    // 檢查結果
+                    clearstatcache(); // 清快取
+                    $perms = substr(sprintf('%o', fileperms($dir)), -4);
+                    if ($perms == '0777') {
+                        echo json_encode([
+                            "status" => "success",
+                            "message" => "✅ sudo chmod 成功"
+                        ]);
+                    } else {
+                        echo json_encode([
+                            "status" => "error",
+                            "message" => "❌ sudo chmod 失敗，結果：" . $output
+                        ]);
+                    }
+                }
+
+
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
                 return true;

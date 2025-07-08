@@ -244,7 +244,24 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         .catch(error => console.error('❌ 資料載入失敗:', error));
     }
 
+    function syncNtcsDataDb() {
+      const url = `${window.location.protocol}//${window.location.hostname}/ntcs_idas/public/?url=Data/ntcs_data_db_sysnc`;
 
+      fetch(url, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        document.getElementById("result").textContent =
+          `[${data.status}] ${data.message}`;
+      })
+      .catch(err => {
+        console.error("❌ 呼叫失敗", err);
+        document.getElementById("result").textContent =
+          "❌ 呼叫失敗";
+      });
+    }
 
     function updateTable(mode, records, unit_arr, status_arr,color_arr) {
         const tbodyId = `res_data_${mode.toLowerCase()}_tbody`;
@@ -286,6 +303,12 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         fetchRealTimeData(currentMode);
     });
 
+
+    // 頁面載入就先執行一次
+    //syncNtcsDataDb();
+
+    // 每 2 秒呼叫一次
+    //setInterval(syncNtcsDataDb, 2000);
 
 </script>
 </body>

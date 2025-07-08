@@ -94,22 +94,21 @@ class Input{
     }
 
     public function create_input($input_data) {   
-
-
         $sql = "INSERT INTO `JOBInput_lst` (JOBID, Pin, EvenID, signal, Wp_Ready_Confirm) ";
         $sql .= "VALUES (:JOBID, :Pin, :EvenID, :signal, :Wp_Ready_Confirm) ";
-    
+
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':JOBID', $input_data['JOBID']);
         $statement->bindValue(':Pin', $input_data['Pin']);
         $statement->bindValue(':EvenID', $input_data['EvenID']);
         $statement->bindValue(':signal', $input_data['signal']);
-        $statement->bindValue(':Wp_Ready_Confirm', $input_data['Wp_Ready_Confirm']);
-    
+        $statement->bindValue(':Wp_Ready_Confirm', $input_data['Wp_Ready_Confirm'] ?? 0);
+
         $results = $statement->execute();
-    
+
         return $results;
     }
+
 
    
 
