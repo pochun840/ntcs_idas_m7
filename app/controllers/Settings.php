@@ -41,7 +41,6 @@ class Settings extends Controller
         $iDAS_version = $idas_version['config_value'];
 
         $barcodes = $this->GetBarcodes();
-
         
         $data = array(
             'lang_arr'        => $lang,

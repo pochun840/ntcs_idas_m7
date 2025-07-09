@@ -4,6 +4,7 @@
         if (typeof toggleDownShift === 'function') toggleDownShift();
     });
 
+
     function updateLabel() {
         const rawUnit = '<?php echo $data['torque_unit']; ?>';
         const language = getCookie('language') || 'default';
@@ -20,71 +21,84 @@
         };
         const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
 
-        // 標籤文字
+        // 標籤文字 (改用 mapping)
         const labelTexts = {
-            'zh-cn': ['目标扭矩', '目标角度', '目标时间'],
-            'zh-tw': ['目標扭力', '目標角度', '目標時間'],
-            'default': ['Target Torque', 'Target Angle', 'Target Time']
+            'zh-cn': {
+                2: '目标扭矩',
+                1: '目标角度'
+            },
+            'zh-tw': {
+                2: '目標扭力',
+                1: '目標角度'
+            },
+            'default': {
+                2: 'Target Torque',
+                1: 'Target Angle'
+            }
         };
         const textSet = labelTexts[language] || labelTexts['default'];
-        const labelPrefix = textSet[selectVal] || textSet[0];
+        const labelPrefix = textSet[selectVal] || 'Target';
 
-        label.textContent = selectVal === 0 ? `${labelPrefix} (${translatedUnit}):` : `${labelPrefix}:`;
+        // 更新標籤文字
+        label.textContent = selectVal === 2
+            ? `${labelPrefix} (${translatedUnit}):`
+            : `${labelPrefix}:`;
 
-        // 顯示對應欄位區塊
-        ['StepTorque_item', 'StepAngle_item'].forEach((id, idx) => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.style.display = (idx === selectVal) ? 'block' : 'none';
-            } else {
-                console.warn(`❗ Missing element with ID: ${id}`);
-            }
+        // 先全部隱藏
+        ['StepTorque_item', 'StepAngle_item'].forEach(id => {
+            document.getElementById(id)?.style.setProperty('display', 'none');
         });
 
+        // 根據 selectVal 顯示對應區塊
+        if (selectVal === 2) {
+            document.getElementById('StepTorque_item')?.style.setProperty('display', 'block');
+        } else if (selectVal === 1) {
+            document.getElementById('StepAngle_item')?.style.setProperty('display', 'block');
+        }
 
         // 額外區塊顯示控制
         const showTor = document.getElementById('show_tor');
         const showAng = document.getElementById('show_ang');
+
         if (showTor && showAng) {
-            if (selectVal === 0) {
+            if (selectVal === 2) {
                 showTor.style.display = 'block';
                 showAng.style.display = 'none';
-            } else if (selectVal === 1) {
+            } else{
                 showTor.style.display = 'none';
                 showAng.style.display = 'block';
-            } else {
-                showTor.style.display = 'none';
-                showAng.style.display = 'none';
             }
-
-            
         }
 
         // 控制欄位 enable/disable
         const enableMap = {
-            0: ['StepMoniByWin_0', 'step_limit_hi_tor', 'step_limit_lo_tor'],
+            2: ['StepMoniByWin_0', 'step_limit_hi_tor', 'step_limit_lo_tor'],
             1: ['StepMoniByWin_1', 'step_limit_hi_ang', 'step_limit_lo_ang']
         };
+
         const allFields = [
             'StepMoniByWin_0', 'StepMoniByWin_1',
             'step_limit_hi_tor', 'step_limit_lo_tor',
             'step_limit_hi_ang', 'step_limit_lo_ang'
         ];
 
+        // 全部先 disable
         allFields.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.disabled = true;
         });
 
+        // 再啟用需要的欄位
         if (enableMap[selectVal]) {
             enableMap[selectVal].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.disabled = false;
             });
         }
-
-       
     }
+
+
+
 
 
 

@@ -12,18 +12,14 @@ class Datas{
     }
 
     public function getData($type) {
-        $directory = '/home/kls'; // 指定目錄路徑
+        if (PHP_OS_FAMILY === 'Linux') {
+            $directory = '/home/kls'; // 指定目錄路徑
 
-        // 取得目錄中的檔案和子目錄列表
-        $fileList = scandir($directory);
-        $fileList = array_diff($fileList, array('.', '..'));
+            // 取得目錄中的檔案和子目錄列表
+            $fileList = scandir($directory);
+            $fileList = array_diff($fileList, array('.', '..'));
 
-        // ✅ 取得現有連線
-        /*$db_data = $this->getDb_data();
-        if ($db_data === null) {
-            error_log("❌ 無法連線到 ntcs_data.db");
-            return [];
-        }*/
+        }
 
         // 預設 SQL
         $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 100";

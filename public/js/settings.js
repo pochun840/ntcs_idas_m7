@@ -652,7 +652,7 @@ function StatusCheck(action) {
 }
 
 
-function idas_update() {
+/*function idas_update() {
 
     var ff = document.querySelector('#file-uploader').files;
     var bb = document.getElementById("file-uploader").files[0];
@@ -680,7 +680,68 @@ function idas_update() {
         });      
     }
    
+}*/
+
+function idas_update() {
+    var import_file = document.getElementById("file-uploader").files[0];
+    var form = new FormData();
+    form.append("file", import_file);
+    var url = '?url=Settings/iDas_Update';
+
+    // 語言設定
+    var language = getCookie('language') || 'en-us';
+    var title, confirm_text, empty_file_text;
+
+    if (language === "zh-cn" || language === "zh-tw") {
+        title = 'IDAS 更新';
+        confirm_text = '您確定要導入 IDAS 更新包嗎？';
+        empty_file_text = '請先選擇要上傳的更新檔。';
+    } else {
+        title = 'IDAS UPDATE';
+        confirm_text = 'Are you sure you want to import the IDAS update package?';
+        empty_file_text = 'Please select a file to upload.';
+    }
+
+    // 未選擇檔案
+    if (!import_file) {
+        alertify.alert(title, empty_file_text);
+        return;
+    }
+
+    alertify.confirm(confirm_text, function (result) {
+        if (result) {
+            document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
+
+            $.ajax({
+                url: url,
+                method: "POST",
+                data: form,
+                processData: false,
+                contentType: false,
+                dataType: 'json', // ✅ jQuery 自動解析為物件
+                success: function (responseData) {
+                    // ✅ responseData 已是物件，無需 JSON.parse()
+                    setTimeout(function () {
+                        document.getElementById('spinner').style.display = 'none';
+                        alertify.alert(responseData.res_type, responseData.res_msg, function () {
+                            history.go(0); // 重新整理頁面
+                        });
+
+                        setTimeout(function () {
+                            alertify.closeAll();
+                        }, 3000);
+                    }, 1000);
+                },
+                error: function (xhr, status, error) {
+                    document.getElementById('spinner').style.display = 'none';
+                    alertify.alert('Error', 'An error occurred while uploading the file.');
+                    console.error("上傳錯誤：", status, error);
+                }
+            });
+        }
+    });
 }
+
 
 function input_check_savebarcode() {
 
@@ -748,6 +809,11 @@ function update_barcode(){
     var barcode_mode  = document.querySelector("select[name='barcode_mode']").value;
     var barcode_job   = document.querySelector("select[name='barcode_job']").value;
     var barcode_seq   = document.querySelector("select[name='barcode_seq']").value;
+
+
+    if( barcode_job  === "-1"){
+        return;
+    }
     
     if(barcode_name){
 

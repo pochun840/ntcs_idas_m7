@@ -7,6 +7,7 @@ class Setting{
     private $db_iDas_device;
     private $db_barcode;
     private $db_iDas_tools;
+    private $db_iDas_login;
     private $dbh;
 
     // 在建構子將 Database 物件實例化
@@ -284,6 +285,7 @@ class Setting{
         foreach ($barcodeRows as $key => &$barcodeRow) {
             $jobMatched = false; 
             foreach ($jobRows as $jobRow) {
+     
                 if ($barcodeRow['job_id'] == $jobRow['JOBID']) {
                     $barcodeRow['JOBname'] = $jobRow['JOBname'];
                     $jobMatched = true; 
@@ -294,7 +296,6 @@ class Setting{
                 unset($barcodeRows[$key]);
             }
         }
-
         return $barcodeRows; 
     }
 

@@ -91,7 +91,7 @@
                                     <select id="StepOption" class="t2 form-select" onchange="updateLabel()" style="width: 149px;">
                                         <?php 
                                             $options = array(
-                                                0 => $text['Torque'],
+                                                2 => $text['Torque'],
                                                 1 => $text['Angle'],
                                                 //2 => $text['Time']
                                             );
@@ -108,11 +108,11 @@
 
                             <div class="row">
                                 <?php if($data['type'] == 'edit'){?>
-                                    <?php   if($data['step']['StepOption'] == 0 ){?>   
+                                    <?php   if($data['step']['StepOption'] == 2 ){?>   
                                         <div class="col-6 t1"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <?php }else if($data['step']['StepOption'] == 1 ){?>
                                         <div class="col-6 t1"  id="targetLabel" ><?php echo $text['Target_Angle'];?> :</div>
-                                    <?php }else if($data['step']['StepOption'] == 2 ) {?>
+                                    <?php }else if($data['step']['StepOption'] == 3 ) {?>
                                         <div class="col-6 t1"  id="targetLabel" ><?php echo $text['Target_Time'];?>:</div>
                                     <?php } ?>
 

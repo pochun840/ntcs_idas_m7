@@ -33,7 +33,7 @@ class Step extends Controller
         $step = $this->stepModel->getStep($job_id, $seq_id);
         $target_option = $this->MiscellaneousModel->details("target_option");
         $torque_unit   = $this->MiscellaneousModel->details("torque_unit");
-        $target_option_change = $this->MiscellaneousModel->details("target_option_change");
+        $target_option_change = $this->MiscellaneousModel->details("target_option");
         $direction = $this->MiscellaneousModel->details('reverse_direction');
         $unit_arr  = $this->MiscellaneousModel->details('torque_unit');
         $seqinfo   = $this->sequenceModel->search_seqinfo($job_id,$seq_id);
@@ -58,7 +58,7 @@ class Step extends Controller
         $data = array(
             'isMobile' => $isMobile,
             'step' => $step,
-            'target_option' => $target_option,
+            'target_option' => $target_option_change,
             'target_option_change' =>$target_option_change,
             'direction' => $direction,
             'job_id' => $job_id,
@@ -72,6 +72,7 @@ class Step extends Controller
             'total_step' => $total_step
 
         );
+
 
         if($isMobile){
             $this->view('step/index_m', $data);

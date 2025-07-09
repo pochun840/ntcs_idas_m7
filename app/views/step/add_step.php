@@ -80,7 +80,7 @@
                                         <select id="StepOption" onchange="updateLabel()" style="width: 195px">
                                             <?php 
                                                     $options = array(
-                                                        0 => $text['Torque'],
+                                                        2 => $text['Torque'],
                                                         1 => $text['Angle'],
                                                         //2 => $text['Time']
                                                     );
@@ -98,22 +98,19 @@
                                 <div class="col-12 row t2 mt-3">
                                     <?php
                                         $type = $data['type'];
-                                        $stepOption = ($type === 'edit') ? (int)($data['step']['StepOption'] ?? 0) : 0;
+                                        $stepOption = ($type === 'edit') ? (int)($data['step']['StepOption'] ?? 2) : 2;
                                         $torqueUnitName = $text[$data['torque_unit']] ?? $data['torque_unit'];
-
-                                        // 標籤
-                                        $label = ($stepOption === 0) 
-                                            ? $text['Target_Torque'] . " ($torqueUnitName):" 
-                                            : $text['Target_Angle'] . " :";
-
-                                        // 控制欄位顯示
-                                        $torqueDisplay = ($stepOption === 0) ? 'block' : 'none';
-                                        $angleDisplay  = ($stepOption === 1) ? 'block' : 'none';
+                              
+                                        if($stepOption == 2){
+                                            $label  = $text['Target_Torque'] . " ($torqueUnitName):";
+                                        }else if($stepOption == 1){
+                                            $label  = $text['Target_Angle'] . " :";
+                                        }                         
                                     ?>
 
                                     <div class="col-12 row t2 mt-3">
                                         <div class="col-3" id="targetLabel"><?php echo $label; ?></div>
-                                        <div class="col-9" id="StepTorque_item" style="display: <?php echo $torqueDisplay; ?>;">
+                                        <div class="col-9" id="StepTorque_item" style="display: none;" >
                                             <input id="StepTorque" class="form-control form-control-sm"
                                                 value="<?php echo ($type === 'edit') ? htmlspecialchars($data['step']['StepTorque']) : ''; ?>">
                                             <div class="invalid-feedback"></div>

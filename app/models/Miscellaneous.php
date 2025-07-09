@@ -41,20 +41,13 @@ class Miscellaneous{
 
         if($mode == "target_option" ){
             $array = array(
-                0 => 'Torque',
+                2 => 'Torque',
                 1 => 'Angle',
-                2 => 'Delay Time',
+                //2 => 'Delay Time',
                 
             );
         }
 
-        if($mode == "target_option_change" ){
-            $array = array(
-                1 => 'Angle',
-                2 => 'Delay Time',
-                
-            );
-        }
 
         if($mode =="io_input"){
             $array = array(
