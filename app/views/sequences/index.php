@@ -42,7 +42,7 @@
                                     <td class="seq-name"><?php echo $val['SEQname'];?></td>
                                     <td><?php echo $val['seq_repeat'];?></td>
                                     <td>
-                                        <?php if($val['act']== 1){?>
+                                        <?php if($val['act']== 0){?>
                                             <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
                                         <?php }else{?>
                                             <input class="seq_enable" style="zoom:1.5; vertical-align: middle"  data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">

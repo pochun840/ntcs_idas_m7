@@ -232,13 +232,13 @@
                                 <div class="col-5 t1"><?php echo $text['Reverse_mode'];?>:</div>
                                 <div class="col t2">
                                     <div class="form-check form-check-inline zoom">
-                                        <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_auto" value="0" 
-                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 0) ? 'checked' : ''; ?> >
+                                        <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_auto" value="1" 
+                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 1) ? 'checked' : ''; ?> >
                                         <label class="form-check-label" for="unscrew_mode_auto"><?php echo $text['Auto_text'] ; ?></label>
                                     </div>
                                     <div class="form-check form-check-inline zoom" style="margin-left: -7px;">
-                                        <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_custom" value="1" 
-                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 1) ? 'checked' : ''; ?>>
+                                        <input class="form-check-input" type="radio" name="unscrew_mode" id="unscrew_mode_custom" value="0" 
+                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_mode'] == 0) ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="unscrew_mode_custom"><?php echo $text['Custom_text']; ?></label>
                                     </div>
                                 </div>
@@ -271,12 +271,12 @@
                                 <div class="col-5 t1"><?php echo $text['direction'];?>:</div>
                                 <div class="col t2">
                                     <div class="form-check form-check-inline zoom">
-                                        <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_cw" value="0"
+                                        <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_cw" value="1"
                                         <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 1) ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="unscrew_dir_cw"><?php echo $text['CW']; ?></label>
                                     </div>
                                     <div class="form-check form-check-inline zoom">
-                                        <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_ccw" value="1" 
+                                        <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_ccw" value="0" 
                                         <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 0) ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="unscrew_dir_ccw"><?php echo $text['CCW']; ?></label>
                                     </div>

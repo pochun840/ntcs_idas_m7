@@ -21,9 +21,9 @@ class Miscellaneous{
         if($mode == "reverse_direction"){
 
             $array = array(
-                0 => 'CW',
-                1 => 'CCW',
-                2 => 'Disable'
+                1 => 'CW',
+                0 => 'CCW',
+                //2 => 'Disable'
                 
             );
         }

@@ -86,7 +86,7 @@ class Sequences extends Controller
                 'SEQname' => $_POST['SEQname'] ?? null,
                 'time' => $_POST['time'] ?? null,
                 'type' => $_POST['type'] ?? null,
-                'act' => $_POST['act'] ?? null,
+                'act' => $_POST['act'] ?? 0,
                 'skip' => $_POST['skip'] ?? null,
                 'seq_repeat' => $_POST['seq_repeat'] ?? null,
                 'timeout' => $_POST['timeout'] ?? null,
@@ -372,7 +372,7 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['output'] = $val['output'];
                 $new_temp_seq[$kk_seq]['output_signal'] = $val['output_signal'];
                 $new_temp_seq[$kk_seq]['output_durat'] = $val['output_durat'];
-                $new_temp_seq[$kk_seq]['addtion'] ='';
+                $new_temp_seq[$kk_seq]['addtion'] = null;
                 $new_temp_seq[$kk_seq]['unscrew_count_switch'] = $val['unscrew_count_switch'];
                 $new_temp_seq[$kk_seq]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
                 $new_temp_seq[$kk_seq]['seq_unit'] = $val['seq_unit'];
@@ -529,8 +529,10 @@ class Sequences extends Controller
             'tools_info'    => $last_tool_info,
             'type'          => $type,
             'torque_unit'   => $torque_unit,
-            'next_seq_id'   => $next_seq_id
+            'next_seq_id'   => $next_seq_id,
+            'torque_unit_code' => $torque_unit_code
         ];
+        
 
         $this->view($isMobile ? 'sequences/add_seq_m' : 'sequences/add_seq', $data);
     }

@@ -59,6 +59,8 @@
         const data = new FormData();
         const time = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+        const seq_unit = "<?php echo $data['torque_unit_code'];?>";
+
         data.append("job_id", document.getElementById("job_id").value);
         data.append("SEQID", document.getElementById("seq_id").value);
         data.append("SEQname", document.getElementById("SEQname").value);
@@ -73,7 +75,7 @@
 
         data.append("ok_seq_val", document.querySelector('input[name="ok_seq"]:checked')?.value ?? null);
         data.append("ok_stop_val", document.querySelector('input[name="ok_stop"]:checked')?.value ?? null);
-        data.append("countType", 0);
+        data.append("countType", 1);
         data.append("ok_screw", 1);
         data.append("ng_stop", document.getElementById('ng_stop').value);
         data.append("ng_unscrew_val", document.querySelector('input[name="ng_unscrew"]:checked')?.value ?? null);
@@ -87,8 +89,8 @@
         data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
         data.append("unscrew_angle_threshold", document.getElementById("unscrew_angle_threshold").value);
         data.append("unscrew_dir_val", document.querySelector('input[name="unscrew_dir"]:checked')?.value ?? 0);
-        data.append("image", '');
-        data.append("message", '');
+        data.append("image", NULL);
+        data.append("message",NULL);
         data.append("delay", 0);
         data.append("input", 0);
         data.append("input_signal", 0);
@@ -97,6 +99,7 @@
         data.append("output_durat", 100);
         data.append("addtion", '');
         data.append("unscrew_count_switch_val", document.querySelector('input[name="unscrew_count_switch"]:checked')?.value ?? null);
+        data.append("seq_unit",seq_unit);
 
         return data;
     }
