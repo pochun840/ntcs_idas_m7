@@ -272,12 +272,12 @@
                                 <div class="col t2">
                                     <div class="form-check form-check-inline zoom">
                                         <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_cw" value="0"
-                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 0) ? 'checked' : ''; ?>>
+                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 1) ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="unscrew_dir_cw"><?php echo $text['CW']; ?></label>
                                     </div>
                                     <div class="form-check form-check-inline zoom">
                                         <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_ccw" value="1" 
-                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 1) ? 'checked' : ''; ?>>
+                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 0) ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="unscrew_dir_ccw"><?php echo $text['CCW']; ?></label>
                                     </div>
                                 </div>

@@ -1,5 +1,6 @@
 <script>
     var dataType = "<?php echo $data['type']; ?>";
+    var seq_unit = "<?php echo $data['torque_unit_code'];?>";
     window.onload = function() {
         if (dataType === 'new') {
             //SEQ頁面 預設值
@@ -14,8 +15,28 @@
             document.getElementById("accu_angle_on").checked = true;
             document.getElementById("unscrew_mode_auto").checked = true;
             document.getElementById("unscrew_rpm").value = 300;
-            document.getElementById("unscrew_dir_cw").checked = true;
+            document.getElementById("unscrew_dir_ccw").checked = true;
             document.getElementById("unscrew_forcemode_on").checked = true;
+            document.getElementById("unscrew_angle_threshold").value = 0;
+            document.getElementById("unscrew_force").value = 50;
+
+            if(seq_unit ==0){
+                document.getElementById('unscrew_torque_threshold').value = "0.00";
+            }
+            if(seq_unit == 1){
+                document.getElementById('unscrew_torque_threshold').value = "0.000";
+            }
+            if(seq_unit == 2){
+                document.getElementById('unscrew_torque_threshold').value = "0.000";
+            }
+
+            if(seq_unit == 3){
+                document.getElementById('unscrew_torque_threshold').value = "0.0000";
+            }
+
+             if(seq_unit == 4){
+                document.getElementById('unscrew_torque_threshold').value = "0.0";
+            }
 
 
             for (let i = 1; i <= 5; i++) {

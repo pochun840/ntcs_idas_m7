@@ -221,7 +221,7 @@
                                 <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
                                     <div class="col-4"><?php echo $text['Threshold_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-8">
-                                        <input id="unscrew_torque_threshold"class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
+                                        <input id="unscrew_torque_threshold"  type='text'  class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
@@ -240,12 +240,12 @@
                                         
                                         <div class="form-check form-check-inline ">
                                         <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_cw" value="0"
-                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 0) ? 'checked' : ''; ?>  >
+                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 1) ? 'checked' : ''; ?>  >
                                         <label class="form-check-label" for="direction_cw"><?php echo $text['CW']; ?></label>
                                         </div>
                                         <div class="form-check form-check-inline ">
                                         <input class="form-check-input" type="radio" name="unscrew_dir" id="unscrew_dir_ccw" value="1" 
-                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 1) ? 'checked' : ''; ?>>
+                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_dir'] == 0) ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="direction_ccw"><?php echo $text['CCW']; ?></label>
                                         </div>
                                     </div>

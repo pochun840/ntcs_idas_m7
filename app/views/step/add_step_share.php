@@ -248,7 +248,7 @@
 
     function save_or_edit_step(isEdit = false) {
 
-
+        
         let data = new FormData();
 
         let job_id = document.getElementById("JOBID").value;
@@ -330,8 +330,8 @@
         //console.log("Tool_Max_Torque_Diff =", Tool_Max_Torque_Diff);
 
         let check = input_check();
-        //console.log(check);
-        //return;
+        console.log(check);
+        return;
         if (check.valid) {
             if (StepEnableThreshold !== "0") {
                 alertify.confirm(
@@ -511,9 +511,6 @@
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
                 limitHi: { min: parseFloat(document.getElementById("StepAngle")?.value || 0), max: 30600 },
                 limitLo: { min: 0, max: parseFloat(document.getElementById("StepHiAngle")?.value || 0) }
-            },
-            time: {
-                time: { min: 0, max: 20 }
             }
         };
 
@@ -548,7 +545,7 @@
             if (td) td.min = Tool_Min_Torque, td.max = Tool_Max_Torque;
         }
 
-        if (StepOption === 0) {
+        if (StepOption === 2) {
             conditions.push(
                 { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
                 { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitHi },
@@ -564,8 +561,6 @@
                 { id: StepMoniByWin == 0 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
                 { id: StepMoniByWin == 0 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
-        } else if (StepOption === 2) {
-            conditions.push({ id: 'StepTime', pattern: /^\d{1,5}$/, ...limits.time.time });
         }
 
         // ✅ validateInput 子函數
