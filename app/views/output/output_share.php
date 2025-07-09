@@ -87,9 +87,31 @@ function crud_job_event(argument) {
             const eventOption = document.getElementById('Event_Option');
             eventOption.addEventListener('change', () => {
                 const selectedOptionId = eventOption.value;
-                const isSpecial = ['7', '8', '9'].includes(selectedOptionId);
+
+                // 群組 A: 7, 8, 9
+                const groupA = ['7', '8', '9'];
+                // 群組 B: 12~16
+                const groupB = ['12', '13', '14', '15', '16'];
+
+                const isSpecial = groupA.includes(selectedOptionId);
+                const isGroupB = groupB.includes(selectedOptionId);
+
+                // 原本邏輯
                 toggleElementsInRange(1, 11, 2, isSpecial);
                 if (!isSpecial) disableElements(filtered_array);
+
+                // 新增邏輯: 若是 group B
+                if (isGroupB) {
+                    for (let i = 1; i <= 11; i++) {
+                        // pinX_1
+                        const pin = document.getElementById(`pin${i}_1`);
+                        if (pin) pin.disabled = true;
+
+                        // timeX
+                        const time = document.getElementById(`time${i}`);
+                        if (time) time.disabled = true;
+                    }
+                }
             });
 
             // 禁用已選 event
@@ -97,7 +119,8 @@ function crud_job_event(argument) {
                 if (tempA.includes(option.value)) option.disabled = true;
             });
 
-            break;
+        break;
+
 
         case 'edit':
             if (!output_event) return;
