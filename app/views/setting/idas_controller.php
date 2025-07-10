@@ -80,11 +80,11 @@
         <div class="col-3 t1"><?php echo $text['system_batch'];?>:</div>
         <div class="col t2" >
             <div class="col-1 form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="counting_method" id="dec" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?>>
+                <input class="form-check-input" type="radio" name="counting_method" id="dec" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?>>
                 <label class="form-check-label" for="dec"><?php echo $text['system_dec'];?></label>
             </div>
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="counting_method" id="inc" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?> >
+                <input class="form-check-input" type="radio" name="counting_method" id="inc" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?> >
                 <label class="form-check-label" for="inc"><?php echo $text['system_inc'];?></label>
             </div>
         </div>

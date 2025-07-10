@@ -61,11 +61,11 @@
                 <div class="col-6 t1"><?php echo $text['Circular Archive_text'];?>:</div>
                 <div class="col t2" >
                     <div class="col-4 form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="circular_archive"  value="0"  <?php echo $data['controller_info']['circular_archive'] == 0 ? 'checked="checked"' : ''; ?>>
+                        <input class="form-check-input" type="radio" name="circular_archive"  value="1"  <?php echo $data['controller_info']['circular_archive'] == 1 ? 'checked="checked"' : ''; ?>>
                         <label class="form-check-label" for=""><?php echo $text['switch_off'];?></label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="circular_archive"  value="1"  <?php echo $data['controller_info']['circular_archive'] == 1 ? 'checked="checked"' : ''; ?> >
+                        <input class="form-check-input" type="radio" name="circular_archive"  value="0"  <?php echo $data['controller_info']['circular_archive'] == 0 ? 'checked="checked"' : ''; ?> >
                         <label class="form-check-label" for="`"><?php echo $text['switch_on'];?></label>
                     </div>
                 </div>

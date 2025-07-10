@@ -480,6 +480,8 @@ class Step extends Controller
             $res_device = $this->SettingModel->GetControllerInfo();
             $device_torque_unit = (int)$res_device['torque_unit'];
 
+
+
             if($step_torque_unit  != $device_torque_unit){
                 $torque_unit = $device_torque_unit;
             }else{
@@ -631,7 +633,6 @@ class Step extends Controller
             'step_torque_unit' =>$torque_unit
 
         );
-
 
         if($isMobile){
             $this->view('step/add_step_m', $data);
