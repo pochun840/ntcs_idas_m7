@@ -207,7 +207,6 @@ function countrows() {
     var tbody = document.querySelector('#step_table tbody');
     var rows = tbody.querySelectorAll('tr');
     var rowCount = rows.length;
-    //console.log("共有 " + rowCount + " 行");
     return rowCount;
 }
 </script>

@@ -326,12 +326,11 @@
         const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm').value);
         const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
-        //tool_max_torque_diff
-        //console.log("Tool_Max_Torque_Diff =", Tool_Max_Torque_Diff);
-
+        
         let check = input_check();
         console.log(check);
-        return;
+    
+        
         if (check.valid) {
             if (StepEnableThreshold !== "0") {
                 alertify.confirm(
@@ -362,6 +361,7 @@
         }
 
         function submit_step_ajax() {
+
             data.append("JOBID", job_id);
             data.append("SEQID", seq_id);
             data.append("StepSelect", StepSelect);
@@ -444,9 +444,6 @@
             3: 2,
             4: 1
         };
-
-        //const increment = parseFloat((1 / Math.pow(10, precision)).toFixed(precision));
-
 
         const torque_unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
         const precision = decimals[torque_unit] ?? 3;
@@ -562,6 +559,16 @@
                 { id: StepMoniByWin == 0 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         }
+
+
+        //新增 StepDelay 驗證 (共用在兩種 StepOption)
+        conditions.push({
+            id: 'StepDelay',
+            pattern: /^(?:[0-9](?:\.\d)?|9\.9)$/, 
+            min: 0,
+            max: 9.9
+        });
+
 
         // ✅ validateInput 子函數
         function validateInput(el, pattern, min, max) {

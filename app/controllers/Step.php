@@ -460,8 +460,6 @@ class Step extends Controller
         } 
 
 
-
-
         if($type == "new"){
             $res_device = $this->SettingModel->GetControllerInfo();
             if(!empty($res_device)){

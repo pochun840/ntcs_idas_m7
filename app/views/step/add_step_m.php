@@ -274,13 +274,13 @@ if ($data['type'] == 'edit') {
                                 <div class="col-6 t1"><?php echo $text['direction'];?>:</div>
                                 <div class="col t2">
                                     <div class="form-check form-check-inline zoom" style="margin-right: 18px;">
-                                        <input class="form-check-input" type="radio" name="StepDirection" id="StepDirection_cw" value="0" 
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepDirection'] == 0) ? 'checked' : ''; ?> >
+                                        <input class="form-check-input" type="radio" name="StepDirection" id="StepDirection_cw" value="1" 
+                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepDirection'] == 1) ? 'checked' : ''; ?> >
                                         <label class="form-check-label" for="direction_cw"><?php echo $text['CW']; ?></label>
                                     </div>
                                     <div class="form-check form-check-inline zoom">
-                                        <input class="form-check-input" type="radio" name="StepDirection" id="StepDirection_ccw" value="1"
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepDirection'] == 1) ? 'checked' : ''; ?>> 
+                                        <input class="form-check-input" type="radio" name="StepDirection" id="StepDirection_ccw" value="0"
+                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepDirection'] == 0) ? 'checked' : ''; ?>> 
                                         <label class="form-check-label" for="direction_ccw"><?php echo $text['CCW']; ?></label>
                                     </div>
                                 </div>
