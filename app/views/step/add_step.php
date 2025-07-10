@@ -22,6 +22,8 @@
 $StepTorque = '';
 $StepHiTorque = '';
 $StepLoTorque = '';
+$StepTorqueTS = '';
+$StepTorqueDownShift = '';
 
 if ($data['type'] == 'edit') {
     $step_unit = $data['step']['step_unit'];
@@ -41,6 +43,8 @@ if ($data['type'] == 'edit') {
     $StepTorque    = formatTorque($data['step']['StepTorque'], $decimals);
     $StepHiTorque  = formatTorque($data['step']['StepHiTorque'], $decimals);
     $StepLoTorque  = formatTorque($data['step']['StepLoTorque'], $decimals);
+    $StepTorqueTS  = formatTorque($data['step']['StepTorqueTS'], $decimals);
+    $StepTorqueDownShift = formatTorque($data['step']['StepTorqueDownShift'], $decimals);
 }
 ?>
 
@@ -332,7 +336,7 @@ if ($data['type'] == 'edit') {
                                     <div class="col-4" id="show_torque" style="display: none;"><?php echo $text['Threshold_Torque'];?>:</div>
                                     <div class="col-4" id="show_angle" style="display: none;"><?php echo $text['Threshold_Angle'];?>:</div>
                                     <div class="col-8" id="StepTorqueTS_block" >
-                                        <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepTorqueTS'])) ? number_format((float)$data['step']['StepTorqueTS'], 4) : ''; ?>">
+                                        <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?php echo ($data['type'] == 'edit') ? $StepTorqueTS : ''; ?>">
                                     </div>
                                 </div>
 
@@ -362,7 +366,7 @@ if ($data['type'] == 'edit') {
                                     <div class="col-4" id="show_downshift_torque" style="display:block;" ><?php echo $text['Downshift_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-4" id="show_downshift_angle" style="display:none;" ><?php echo $text['Downshift_Angle'];?> </div>
                                     <div class="col-8" id="StepTorqueDownShift_block"  >
-                                        <input id="StepTorqueDownShift" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueDownShift'] : ''; ?>">
+                                        <input id="StepTorqueDownShift" class="form-control form-control-sm"  value="<?php echo ($data['type'] == 'edit') ? $StepTorqueDownShift : ''; ?>" >
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
