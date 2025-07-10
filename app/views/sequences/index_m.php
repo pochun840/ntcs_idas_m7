@@ -35,18 +35,13 @@
                             </thead>
 
                             <tbody style="font-size: 2.6vmin; text-align: center;">
+                                <?php $sequenceCount = isset($data['sequences']) ? count($data['sequences']) : 0; ?>
                                 <?php foreach($data['sequences'] as $key =>$val) {?>
                                     <tr>
                                         <td class="seq-id"> <?php echo $val['SEQID'];?></td>
                                         <td class="seq-name"><?php echo $val['SEQname'];?></td>
                                         <td><?php echo $val['seq_repeat'];?></td>
-                                        <td>
-                                            <?php if($val['act']== 1){?>
-                                                <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="1"  type="checkbox" onclick="updateValue(this)"  checked>
-                                            <?php }else{?>
-                                                <input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['SEQID'];?>" id="sequence_enable"   value="0"  type="checkbox" onclick="updateValue(this)">
-                                            <?php }?>
-                                        </td>
+                                        <td><input class="seq_enable" style="zoom:1.5; vertical-align: middle" data-sequence-id="<?php echo $val['SEQID']; ?>" id="sequence_enable" value="<?php echo ($val['act'] == 1 ? '1' : '0'); ?>" type="checkbox" <?php echo ($sequenceCount > 1 ? 'onclick="updateValue(this)"' : 'disabled'); ?> <?php echo ($val['act'] == 1 ? 'checked' : ''); ?>></td>
                                         <td><img src="./img/btn_up.png"   onclick="MoveUp(this);"></td>
                                         <td><img src="./img/btn_down.png" onclick="MoveDown(this);"></td>
                                         <td><?php echo $val['total_step'];?></td>

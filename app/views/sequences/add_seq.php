@@ -1,4 +1,28 @@
 
+
+<?php
+// 預設空字串
+$unscrew_torque_threshold = '';
+
+if ($data['type'] == 'edit') {
+    $raw_val = $data['sequences']['unscrew_torque_threshold'];
+    $seq_unit = $data['sequences']['seq_unit'];  // 假設 seq_unit 也從 DB 帶出
+    
+     $decimalMap = [
+        0 => 2,
+        1 => 3, 
+        2 => 3,
+        3 => 4,
+        4 => 1,
+    ];
+    
+    $decimals = $decimalMap[$seq_unit] ?? 2;
+    
+    if ($raw_val !== '' && is_numeric($raw_val)) {
+        $unscrew_torque_threshold = number_format((float)$raw_val, $decimals, '.', '');
+    }
+}
+?>
 <link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/add_seq_step.css">
 
 <div class="container-ms" id ="your_container_id">
@@ -221,7 +245,7 @@
                                 <div class="col-12 row t2 mt-3 ps-4" id="div_torque_threshold">
                                     <div class="col-4"><?php echo $text['Threshold_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-8">
-                                        <input id="unscrew_torque_threshold"  type='text'  class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_torque_threshold'] : ''; ?>">
+                                        <input id="unscrew_torque_threshold"  type='text'  class="form-control"     value="<?php echo htmlspecialchars(($data['type'] == 'edit') ? $unscrew_torque_threshold : '', ENT_QUOTES, 'UTF-8'); ?>"> 
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>

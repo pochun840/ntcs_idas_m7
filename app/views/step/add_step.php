@@ -17,6 +17,34 @@
     }
 </style>
 
+<?php
+// 預設空字串
+$StepTorque = '';
+$StepHiTorque = '';
+$StepLoTorque = '';
+
+if ($data['type'] == 'edit') {
+    $step_unit = $data['step']['step_unit'];
+    $decimalMap = [
+        0 => 2,
+        1 => 3,
+        2 => 3,
+        3 => 4,
+        4 => 1,
+    ];
+    $decimals = $decimalMap[$step_unit] ?? 2;
+
+    function formatTorque($value, $decimals) {
+        return ($value !== '' && is_numeric($value)) ? number_format((float)$value, $decimals, '.', '') : '';
+    }
+
+    $StepTorque    = formatTorque($data['step']['StepTorque'], $decimals);
+    $StepHiTorque  = formatTorque($data['step']['StepHiTorque'], $decimals);
+    $StepLoTorque  = formatTorque($data['step']['StepLoTorque'], $decimals);
+}
+?>
+
+
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -112,7 +140,7 @@
                                         <div class="col-3" id="targetLabel"><?php echo $label; ?></div>
                                         <div class="col-9" id="StepTorque_item" style="display: none;" >
                                             <input id="StepTorque" class="form-control form-control-sm"
-                                                value="<?php echo ($type === 'edit') ? htmlspecialchars($data['step']['StepTorque']) : ''; ?>">
+                                                value="<?php echo ($type === 'edit') ? htmlspecialchars($StepTorque) : ''; ?>">
                                             <div class="invalid-feedback"></div>
                                         </div>
 
@@ -129,14 +157,14 @@
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['High_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-9">
-                                        <input id="StepHiTorque"  type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : ''; ?>" >
+                                        <input id="StepHiTorque"  type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $StepHiTorque : ''; ?>" >
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['Low_Torque']?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-9">
-                                        <input id="StepLoTorque" type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : ''; ?>">
+                                        <input id="StepLoTorque" type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $StepLoTorque : ''; ?>">
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>

@@ -243,7 +243,7 @@ function updateValue(element){
                 type_value: type_value
             },
             success: function(response) {
-                console.log(response);
+                //console.log(response);
                 history.go(0);
             },
             error: function(xhr, status, error) {

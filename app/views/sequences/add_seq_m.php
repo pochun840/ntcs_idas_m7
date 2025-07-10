@@ -28,6 +28,30 @@
 }
 
 </style>
+<?php
+// 預設空字串
+$unscrew_torque_threshold = '';
+
+if ($data['type'] == 'edit') {
+    $raw_val = $data['sequences']['unscrew_torque_threshold'];
+    $seq_unit = $data['sequences']['seq_unit'];  // 假設 seq_unit 也從 DB 帶出
+    
+    $decimalMap = [
+        0 => 2,
+        1 => 3, 
+        2 => 3,
+        3 => 4,
+        4 => 1,
+    ];
+    
+    $decimals = $decimalMap[$seq_unit] ?? 2;
+    
+    if ($raw_val !== '' && is_numeric($raw_val)) {
+        $unscrew_torque_threshold = number_format((float)$raw_val, $decimals, '.', '');
+    }
+}
+?>
+
 <?php $url = '?url=Sequences/index/' . $data['job_id']; ?>
 <div class="container-ms">
     <div class="w3-text-white w3-center">

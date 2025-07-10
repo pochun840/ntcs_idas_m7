@@ -20,7 +20,7 @@
             document.getElementById("unscrew_angle_threshold").value = 0;
             document.getElementById("unscrew_force").value = 50;
 
-            if(seq_unit ==0){
+            if(seq_unit ==0 ){
                 document.getElementById('unscrew_torque_threshold').value = "0.00";
             }
             if(seq_unit == 1){
@@ -51,7 +51,28 @@
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             let displayedValue = '<?php echo isset($data['sequences']['Thread_Calcu']) ? $data['sequences']['Thread_Calcu'] : ''; ?>';
             setCheckboxesByValue(displayedValue);
+
+
+            /*if(seq_unit ==0 ){
+                document.getElementById('unscrew_torque_threshold').value = "0.00";
+            }
+            if(seq_unit == 1){
+                document.getElementById('unscrew_torque_threshold').value = "0.000";
+            }
+            if(seq_unit == 2){
+                document.getElementById('unscrew_torque_threshold').value = "0.000";
+            }
+
+            if(seq_unit == 3){
+                document.getElementById('unscrew_torque_threshold').value = "0.0000";
+            }
+
+             if(seq_unit == 4){
+                document.getElementById('unscrew_torque_threshold').value = "0.0";
+            }*/
+
         }
+        
     };
     
     // 儲存與編輯 sequence 共用函式
@@ -89,8 +110,8 @@
         data.append("unscrew_torque_threshold", document.getElementById("unscrew_torque_threshold").value);
         data.append("unscrew_angle_threshold", document.getElementById("unscrew_angle_threshold").value);
         data.append("unscrew_dir_val", document.querySelector('input[name="unscrew_dir"]:checked')?.value ?? 0);
-        data.append("image", NULL);
-        data.append("message",NULL);
+        data.append("image", '');
+        data.append("message",'');
         data.append("delay", 0);
         data.append("input", 0);
         data.append("input_signal", 0);

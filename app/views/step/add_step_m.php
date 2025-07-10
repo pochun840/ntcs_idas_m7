@@ -30,7 +30,35 @@
     }
 
 </style>
- 
+
+<?php
+// 預設空字串
+$StepTorque = '';
+$StepHiTorque = '';
+$StepLoTorque = '';
+
+if ($data['type'] == 'edit') {
+    $step_unit = $data['step']['step_unit'];
+    $decimalMap = [
+        0 => 2,
+        1 => 3,
+        2 => 3,
+        3 => 4,
+        4 => 1,
+    ];
+    $decimals = $decimalMap[$step_unit] ?? 2;
+
+    function formatTorque($value, $decimals) {
+        return ($value !== '' && is_numeric($value)) ? number_format((float)$value, $decimals, '.', '') : '';
+    }
+
+    $StepTorque    = formatTorque($data['step']['StepTorque'], $decimals);
+    $StepHiTorque  = formatTorque($data['step']['StepHiTorque'], $decimals);
+    $StepLoTorque  = formatTorque($data['step']['StepLoTorque'], $decimals);
+}
+?>
+
+
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <header id="header">

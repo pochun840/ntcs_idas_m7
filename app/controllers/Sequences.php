@@ -3,6 +3,10 @@
 class Sequences extends Controller
 {
     // 在建構子中將 Post 物件（Model）實例化
+    private $sequenceModel;
+    private $MiscellaneousModel;
+    private $SettingModel;
+    private $ToolModel;
     public function __construct(){
 
         $this->sequenceModel = $this->model('Sequence');
@@ -20,7 +24,6 @@ class Sequences extends Controller
             $job_id = 1;
         }
 
-   
         $sequences  = $this->sequenceModel->getSequences_by_job_id($job_id);
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
 
@@ -47,8 +50,6 @@ class Sequences extends Controller
             'old_seqid' => '',
             'total_seq' => $total_seq,
             'next_seq_id' => $next_seq_id
-
-
         );
 
         if($isMobile){
@@ -70,8 +71,6 @@ class Sequences extends Controller
         if(isset($_POST['job_id'])){
         
             // 初始化數據陣列
-
-            
             if($_POST['unscrew_forcemode_val'] == 0){
                 $_POST['unscrew_force'] = $_POST['unscrew_force'];
             }else if($_POST['unscrew_forcemode_val'] == 1){
@@ -105,8 +104,8 @@ class Sequences extends Controller
                 'unscrew_force' => $_POST['unscrew_force'] ?? null,
                 'unscrew_rpm' => $_POST['unscrew_rpm'] ?? null,
                 'unscrew_dir' => $_POST['unscrew_dir_val'] ?? 0,
-                'image' => $_POST['image'] ?? null,
-                'message' => $_POST['message'] ?? null,
+                'image' => $_POST['image'] ?? '',
+                'message' => $_POST['message'] ?? '',
                 'delay' => $_POST['delay'] ?? null,
                 'input' => $_POST['input'] ?? null,
                 'input_signal' => $_POST['input_signal'] ?? null,
@@ -166,6 +165,7 @@ class Sequences extends Controller
 
         if(!empty($jobid)){
             $result = array();
+
             $res = $this->sequenceModel->delete_seq_by_id($jobid,$seqid);
             $res11 = $this->sequenceModel->delete_step_by_job_id($jobid,$seqid);
             if($res){
@@ -315,7 +315,7 @@ class Sequences extends Controller
         }
 
         if($input_check){
-            $this->sequenceModel->update_seq_type($seq_data) ;
+            $this->sequenceModel->update_seq_type($seq_data);
         }
     }
 
