@@ -85,7 +85,7 @@ class Sequences extends Controller
                 'SEQname' => $_POST['SEQname'] ?? null,
                 'time' => $_POST['time'] ?? null,
                 'type' => $_POST['type'] ?? null,
-                'act' => $_POST['act'] ?? 1,
+                'act' => $_POST['act'] ?? 0,
                 'skip' => $_POST['skip'] ?? null,
                 'seq_repeat' => $_POST['seq_repeat'] ?? null,
                 'timeout' => $_POST['timeout'] ?? null,
