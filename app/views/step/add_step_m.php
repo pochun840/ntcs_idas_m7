@@ -41,10 +41,10 @@ $StepTorqueDownShift = '';
 if ($data['type'] == 'edit') {
     $step_unit = $data['step_torque_unit'];
     $decimalMap = [
-        0 => 2,
+        0 => 4,
         1 => 3,
-        2 => 3,
-        3 => 4,
+        2 => 2,
+        3 => 2,
         4 => 1,
     ];
     $decimals = $decimalMap[$step_unit] ?? 2;

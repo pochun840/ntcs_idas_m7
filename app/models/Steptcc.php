@@ -417,4 +417,79 @@ class Steptcc{
         return $stmt->execute([$jobid, $seqid, $current_step_id]);
     }
 
+
+     /**
+     * 查詢該 JOB + SEQ 下最大的 STEP ID
+     */
+    public function getMaxStepID($job_id, $seq_id){
+
+        $sql = "SELECT MAX(	StepSelect) as max_step 
+                FROM STEP_lst 
+                WHERE JOBID = :jobid AND SEQID = :seqid";
+
+        $stmt = $this->db_iDas->prepare($sql);
+        $stmt->bindValue(':jobid', $job_id, PDO::PARAM_INT);
+        $stmt->bindValue(':seqid', $seq_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return !empty($row['max_step']) ? intval($row['max_step']) : 0;
+    }
+
+    /**
+     * 建立預設 STEP，對應 JS 預設值
+     */
+    public function createDefaultStep( $job_id,$seq_id,$tool_min_torque,$tool_high_torque,$tool_low_torque){
+
+        $max_step_id = $this->getMaxStepID($job_id, $seq_id);
+        $new_step_id = $max_step_id + 1;
+
+        $step_data = [
+            'JOBID' => $job_id,
+            'SEQID' => $seq_id,
+            'StepSelect' => 1,
+            'STEPname' => 'STEP-' . $new_step_id,
+            'type' => 0,
+            'time' => date('Y-m-d H:i:s'),
+            'act' => 0,
+            'StepSwitch' => 0,
+            'StepRPM' => 500,
+            'StepOption' => 2,
+            'StepTime' => 0,
+            'StepAngle' => 3000,
+            'StepTorque' => $tool_min_torque,
+            'StepDirection' => 1,   // cw
+            'StepDelay' => 0,
+            'StepMoniByWin' => 0,
+            'StepLimiHi' => 30,
+            'StepLimiLo' => 30,
+            'StepHiAngle' => 30600,
+            'StepLoAngle' => 0,
+            'StepHiTorque' => $tool_high_torque,
+            'StepLoTorque' => $tool_low_torque,
+            'StepAccelerateOffset' => 0,
+            'StepAccelerateOffsetSign' => 0,
+            'StepEnableTorqueOffset' => 0,
+            'StepTorqueOffset' => 0.0,
+            'StepTorqueOffsetSign' => 0,
+            'StepEnableDownShift' => 0,
+            'StepTorqueDownShift' => 0,
+            'StepRPMDownShift' => 0,
+            'StepEnableThreshold' => 0,
+            'StepTorqueTS' => 0,
+            'StepReTry' => 0,
+            'StepUnScrew' => 0,
+            'StepReTryTorq' => 0,
+            'StepReTryAngl' => 0,
+            'StepAngleRecord' => 0,
+            'StepAutoDetectAngle' => 0,
+            'InterruptAlarm' => 0,
+            'OverAngleStop' => 0,
+            'KValue' => 0,
+            'step_unit' => 0,
+        ];
+
+        return $this->create_step($step_data);
+    }
+
 }

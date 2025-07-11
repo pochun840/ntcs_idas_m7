@@ -200,33 +200,15 @@
 
 
     function setCheckboxesByValue(value) {
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         
-        // 先清空所有勾選狀態
-        checkboxes.forEach(checkbox => checkbox.checked = false);
-
-        // 根據值進行勾選
-        if (value >= 16) {
-            checkboxes[0].checked = true; // 第1個
-            value -= 16;
-        }
-        if (value >= 8) {
-            checkboxes[1].checked = true; // 第2個
-            value -= 8;
-        }
-        if (value >= 4) {
-            checkboxes[2].checked = true; // 第3個
-            value -= 4;
-        }
-        if (value >= 2) {
-            checkboxes[3].checked = true; // 第4個
-            value -= 2;
-        }
-        if (value >= 1) {
-            checkboxes[4].checked = true; // 第5個
-        }
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        
+        checkboxes.forEach((checkbox, i) => {
+            // 高位元先排前面，所以 index 0 檢查 bit 4
+            const bit = 4 - i;
+            checkbox.checked = (value & (1 << bit)) !== 0;
+        });
     }
-
 
     function input_check_seq(argument) {
         let Tool_Max_Torque = document.getElementById('tool_max_torque').value;

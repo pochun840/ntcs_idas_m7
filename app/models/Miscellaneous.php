@@ -30,11 +30,11 @@ class Miscellaneous{
 
         if($mode == "torque_unit"){
             $array = array(
-                0 => 'kgf.cm',
+                0 => 'kgf.m',
                 1 => 'N.m',
-                2 => 'lbf.in',
-                3 => 'kgf.m',
-                4 => 'cN.m',
+                2 => 'kgf.cm',
+                3 => 'Lbf.in',
+                4 => 'cN.m'
                 
             );
         }
@@ -80,8 +80,8 @@ class Miscellaneous{
                 7   => 'Tool Runing',
                 8   => 'Tool Trigger',
                 9   => 'Reverse',
-                10  => 'BS',
-                11  => 'Barcode',
+                10  => 'BSdisabled',
+                11  => 'BS',
                 12  => 'UserDefine1',
                 13  => 'UserDefine2',
                 14  => 'UserDefine3',
@@ -233,7 +233,8 @@ class Miscellaneous{
         }
     }
 
-    public function convert_all_torque_units($value, $inputType, $useExcelMode = true) {
+    public function convert_all_torque_units($value, $inputType, $useExcelMode = true){
+
         $unit_names = [
             0 => "kgf.m",
             1 => "N.m",
@@ -247,7 +248,7 @@ class Miscellaneous{
             1 => 3,
             2 => 2,
             3 => 2,
-            4 => 3  // ✅ 建議保留更多位數，方便轉換
+            4 => 1
         ];
 
         if (!is_numeric($value) || !isset($unit_names[$inputType])) {
@@ -256,27 +257,27 @@ class Miscellaneous{
 
         $value = floatval($value);
 
-        // ✅ Step 1: 將輸入單位轉為 N.m 作為中介
+        // Step 1: 轉成 N.m
         switch ($inputType) {
-            case 0: $Nm = $value * 9.80665; break;             // kgf.m → N.m
-            case 1: $Nm = $value; break;                       // N.m
-            case 2: $Nm = $value * 0.0980665; break;           // kgf.cm → N.m
-            case 3: $Nm = $value * 0.112984829333; break;      // Lbf.in → N.m
-            case 4: $Nm = $value * 0.01; break;                // cN.m → N.m
+            case 0: $Nm = $value * 9.80665; break;
+            case 1: $Nm = $value; break;
+            case 2: $Nm = $value * 0.0980665; break;
+            case 3: $Nm = $value * 0.112984829333; break;
+            case 4: $Nm = $value * 0.01; break;
             default: return "Invalid unit index.";
         }
 
         $result = [];
 
-        // ✅ Step 2: N.m 轉為目標單位
+        // Step 2: N.m → 各單位
         foreach ($unit_names as $targetType => $unitName) {
             if ($useExcelMode) {
                 switch ($targetType) {
-                    case 0: $converted = $Nm * 0.10197; break;        // N.m → kgf.m (Excel)
+                    case 0: $converted = $Nm * 0.10197; break;
                     case 1: $converted = $Nm; break;
                     case 2: $converted = $Nm * 10.2; break;
                     case 3: $converted = $Nm * 8.85411; break;
-                    case 4: $converted = $Nm * 100; break;            // N.m → cN.m
+                    case 4: $converted = $Nm * 100; break;
                     default: continue 2;
                 }
             } else {
@@ -290,13 +291,40 @@ class Miscellaneous{
                 }
             }
 
-            // ✅ 四捨五入 & 保留固定位數（.000）
-            $rounded = round($converted, $decimals[$targetType]);
+            // ✅ 使用自訂精確四捨五入
+            $rounded = $this->roundToNDecimals($converted, $decimals[$targetType]);
+
             $result[$unitName] = number_format($rounded, $decimals[$targetType], '.', '');
         }
 
         return $result;
     }
+
+
+    /**
+     * 精確四捨五入：小數點第N位，用第N+1位做四捨五入
+     *
+     * @param float $value
+     * @param int $decimal
+     * @return float
+     */
+    public function roundToNDecimals($value, $decimal){
+        
+        $multiplier = pow(10, $decimal + 1);
+        $shifted = ($value + 1e-10) * $multiplier;
+        $last_digit = intval($shifted) % 10;
+        $main_part = intval($shifted / 10);
+
+        if ($last_digit >= 5) {
+            $main_part += 1;
+        }
+
+        $rounded = $main_part / pow(10, $decimal);
+        return $rounded;
+    }
+
+
+
 
 
 
@@ -478,19 +506,6 @@ class Miscellaneous{
 
 
 
-    /*public function convert_single_torque_unit($value, $from_unit, $to_unit) {
-        $result = $this->convert_all_torque_units($value, $from_unit);
-        $unit_map = [
-            0 => 'kgf.m',
-            1 => 'N.m',
-            2 => 'kgf.cm',
-            3 => 'Lbf.in',
-            4 => 'cN.m'
-        ];
-        $target_unit = $unit_map[$to_unit] ?? null;
-        return $target_unit && isset($result[$target_unit]) ? (float)$result[$target_unit] : 0;
-    }*/
-
 
    
 
@@ -631,4 +646,69 @@ class Miscellaneous{
             return null; 
         }
     }
+
+
+
+    public function prepareToolTorqueValues($tools, $from_unit, $to_unit, $decimals_arr){
+
+        $unit_arr = $this->details('torque_unit');
+        $unit_name = $unit_arr[$to_unit] ?? 'N.m';
+        $precision = $decimals_arr[$to_unit] ?? 3;
+
+        foreach (['min_torque', 'max_torque'] as $key) {
+            if (!empty($tools[$key]) && is_numeric($tools[$key])) {
+                $converted = $this->convert_single_torque_unit(
+                    $tools[$key] / 1000,
+                    $from_unit,
+                    $to_unit
+                );
+
+                $value = is_array($converted) ? $converted[$unit_name] : $converted;
+                $tools[$key] = round($value, $precision);
+
+                if ($key === 'max_torque') {
+                    $tools['tools_high_torque_diff'] = number_format($tools[$key], $precision);
+                    $tools['tool_high_torque'] = number_format($tools[$key] * 1.10, $precision);
+                    $tools['max_torque'] = number_format($tools['max_torque'], $precision);
+                }
+
+                if ($key === 'min_torque') {
+                    $tools['min_torque'] = number_format($tools['min_torque'], $precision);
+                }
+            }
+        }
+
+        $tools['tool_low_torque'] = number_format(0, $decimals_arr[$to_unit] ?? 3);
+        $tools['torque_unit'] = $to_unit;
+
+        return $tools;
+    }
+
+    public function convertStepTorqueFields($step, $from_unit, $to_unit){
+        $unit_arr = $this->details('torque_unit');
+        $unit_name = $unit_arr[$to_unit] ?? 'N.m';
+
+        $fields = [
+            'StepTorque',
+            'StepHiTorque',
+            'StepLoTorque',
+            'StepTorqueTS',
+            'StepTorqueDownShift'
+        ];
+
+        foreach ($fields as $field) {
+            if (isset($step[$field])) {
+                $converted = $this->convert_single_torque_unit(
+                    $step[$field],
+                    $from_unit,
+                    $to_unit
+                );
+                $step[$field] = is_array($converted) ? ($converted[$unit_name] ?? 0) : $converted;
+            }
+        }
+
+        return $step;
+    }
+
+
 }

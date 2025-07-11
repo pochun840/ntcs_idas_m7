@@ -300,6 +300,8 @@ class Settings extends Controller
             $res_msg = $text['form_invalid'] ?? 'Invalid input';
             $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
         }
+
+        //
     }
 
 

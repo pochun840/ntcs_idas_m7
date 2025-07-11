@@ -420,84 +420,43 @@ class Step extends Controller
         
     }
 
-    public function variation($job_id = null, $seq_id = null,$stepid =null) {
-
-        $job_id  = $job_id ?? $_GET['job_id'] ?? null;
-        $seq_id  = $seq_id ?? $_GET['seq_id'] ?? null;
-        $stepid  = $stepid ?? $_GET['step_id'] ?? null; 
-
+    public function variation($job_id = null, $seq_id = null, $stepid = null){
+        
+        $job_id = $job_id ?? $_GET['job_id'] ?? null;
+        $seq_id = $seq_id ?? $_GET['seq_id'] ?? null;
+        $stepid = $stepid ?? $_GET['step_id'] ?? null;
 
         $step = $this->stepModel->getStep($job_id, $seq_id);
-        if(empty($step)){
-            $next_step_id = 1;
-        }else{
-            $next_step_id = count($step) + 1 ;
-        }
+        $next_step_id = empty($step) ? 1 : count($step) + 1;
 
-        $torque_arr     = $this->MiscellaneousModel->details("torque_unit");
-        $decimals_arr   = $this->MiscellaneousModel->details("decimals");
-        //計算參數的數量
+        $torque_arr = $this->MiscellaneousModel->details("torque_unit");
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
+
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
         if (!empty($seq_id)) $paramsCount++;
         if (!empty($stepid)) $paramsCount++;
 
-        if($paramsCount === 2) {
-            $type = 'new';
-            $job_id = htmlspecialchars($job_id);
-            $seq_id = htmlspecialchars($seq_id);
-            $res = $this->stepModel->getStep_count($job_id, $seq_id);
-            $StepSelect = $res[0]['total'] + 1;
-            $step = '';
+        $type = ($paramsCount === 2) ? 'new' : 'edit';
 
-        } else  {
-            $type = 'edit';
-            $job_id = htmlspecialchars($job_id);
-            $seq_id = htmlspecialchars($seq_id);
-            $StepSelect = htmlspecialchars($stepid);
+        $job_id = htmlspecialchars($job_id);
+        $seq_id = htmlspecialchars($seq_id);
+        $StepSelect = $type === 'new'
+            ? $this->stepModel->getStep_count($job_id, $seq_id)[0]['total'] + 1
+            : htmlspecialchars($stepid);
+
+        if ($type === 'edit') {
             $res = $this->stepModel->getStepNo($job_id, $seq_id, $stepid);
             $step = $res[0];
-        } 
-
-
-        if($type == "new"){
-            $res_device = $this->SettingModel->GetControllerInfo();
-            if(!empty($res_device)){
-                //取得控制器扭力單位的中文名稱
-                $step_torque_unit = (int)$res_device['torque_unit'];
-                $unit_name  = $this->MiscellaneousModel->get_unit_name_by_index($step_torque_unit);
-
-                $torque_unit = $step_torque_unit;
-                $flag ='new';
-
-            }
-        }else{
-
-            //取得該step 扭力單位的中文名稱
-            $step_torque_unit  = (int)$step['step_unit'];
-            
-            //取得控制器的扭力單位
-            $res_device = $this->SettingModel->GetControllerInfo();
-            $device_torque_unit = (int)$res_device['torque_unit'];
-
-
-
-            if($step_torque_unit  != $device_torque_unit){
-                $torque_unit = $device_torque_unit;
-            }else{
-                $torque_unit = $step_torque_unit;
-            } 
-
-            $flag ='edit';
-
+        } else {
+            $step = [];
         }
 
-        $unit_name = $torque_arr[$torque_unit];
+        $res_device = $this->SettingModel->GetControllerInfo();
+        $device_torque_unit = (int)$res_device['torque_unit'];
 
-        //取得tools的資料
         $tools = $this->ToolModel->GetToolInfo()[0] ?? [];
-
-        if(!empty($tools)) {
+        if (!empty($tools)) {
             foreach (['max_rpm', 'min_rpm'] as $key) {
                 if (isset($tools[$key])) {
                     $tools[$key] = rtrim(rtrim($tools[$key], '0'), '.');
@@ -505,141 +464,76 @@ class Step extends Controller
             }
         }
 
-        if ($flag === 'new') {
+        if ($type === 'new') {
+            $from_unit = 1; // 預設 DB 單位 N.m
+            $tools = $this->MiscellaneousModel->prepareToolTorqueValues(
+                $tools,
+                $from_unit,
+                $device_torque_unit,
+                $decimals_arr
+            );
+            $torque_unit = $device_torque_unit;
+            $flag = 'new';
 
-            // 先拿裝置設定的 torque 單位
-            $res_device = $this->SettingModel->GetControllerInfo();
-            $torque_unit = isset($res_device['torque_unit']) ? (int)$res_device['torque_unit'] : 1;
+        } else {
 
-            // 對應 torque 單位名稱（如 N.m, cN.m）
-            $unit_arr = $this->MiscellaneousModel->details('torque_unit');
-            $unit_name = $unit_arr[$torque_unit] ?? 'N.m';
-
-            $precision = $decimals_arr[$torque_unit] ?? 3;
-
-            foreach (['min_torque', 'max_torque'] as $key) {
-                if (!empty($tools[$key]) && is_numeric($tools[$key])) {
-
-                    // 呼叫 model 中的轉換與格式化方法
-                    $result = $this->MiscellaneousModel->convert_and_format_torque_full(
-                        $tools[$key],        // 原始值 (N.mm)
-                        $torque_unit,        // 目標單位代碼 (0~4)
-                        $unit_name           // 單位名稱（對應 array key）
-                    );
-
-                    // ➤ 取 raw 數值並做 round
-                    $converted_value = round($result['raw_converted'], $precision);
-
-                    // ➤ 存回數字型態（非字串）
-                    $tools[$key] = $converted_value;
-
-                    if ($key === 'max_torque') {
-                        $tools['tools_high_torque_diff'] = number_format($converted_value, $precision);
-                        $tools['tool_high_torque'] = number_format($converted_value * 1.10, $precision);
-                        $tools['max_torque']  = number_format($tools['max_torque'], $precision);
-                    }
-
-                    if($key === 'min_torque'){
-                        $tools['min_torque']  = number_format($tools['min_torque'], $precision);
-                    }
-                }
-            }
-
-            $tools['tool_low_torque'] = number_format(0, $decimals_arr[$torque_unit] ?? 3);
-
-
-            // 補上控制器單位（若之後還要用）
-            $tools['torque_unit'] = $torque_unit;
-        }
-
-
-        if ($flag == 'edit') {
-            // Step 原始單位
             $step_torque_unit = (int)$step['step_unit'];
 
-            // 控制器目前的扭力單位
-            $res_device = $this->SettingModel->GetControllerInfo();
-            $device_torque_unit = (int)$res_device['torque_unit'];
+            if ($step_torque_unit !== $device_torque_unit) {
+                $step = $this->MiscellaneousModel->convertStepTorqueFields(
+                    $step,
+                    $step_torque_unit,
+                    $device_torque_unit
+                );
 
-            // 對應單位名稱
-            $unit_arr = $this->MiscellaneousModel->details('torque_unit');
-            $unit_name = $unit_arr[$device_torque_unit] ?? 'N.m';
-
-            // 單位不同才進行轉換
-            if ($step_torque_unit != $device_torque_unit) {
-
-                $fields = [
-                    'StepTorque',
-                    'StepHiTorque',
-                    'StepLoTorque',
-                    'StepTorqueTS',
-                    'StepTorqueDownShift'
-                ];
-
-                foreach ($fields as $field) {
-                    if (isset($step[$field])) {
-
-                        $converted = $this->MiscellaneousModel->convert_single_torque_unit(
-                            $step[$field],
-                            $step_torque_unit,     // 正確 from_unit
-                            $device_torque_unit    // 正確 to_unit
-                        );
-
-                        // 若回傳陣列 → 取正確單位
-                        $step[$field] = is_array($converted)
-                            ? ($converted[$unit_name] ?? 0)
-                            : (is_numeric($converted) ? $converted : 0);
-                    }
+                if (!empty($tools)) {
+                    $tools = $this->MiscellaneousModel->prepareToolTorqueValues(
+                        $tools,
+                        $step_torque_unit,
+                        $device_torque_unit,
+                        $decimals_arr
+                    );
                 }
 
-
-                if(!empty($tools)){
-
-                    $tools['min_torque'] = $this->MiscellaneousModel->convert_all_torque_units_temp($tools['min_torque'] / 1000, 1)[$unit_arr[$device_torque_unit]];
-                    $tools['max_torque'] = $this->MiscellaneousModel->convert_all_torque_units_temp($tools['max_torque'] / 1000, 1)[$unit_arr[$device_torque_unit]];
- 
+                $torque_unit = $device_torque_unit;
+            } else {
+                
+               if (!empty($tools)) {
+                    $tools = $this->MiscellaneousModel->prepareToolTorqueValues(
+                        $tools,
+                        $step_torque_unit,
+                        $device_torque_unit,
+                        $decimals_arr
+                    );
                 }
-
-                $torque_unit = $device_torque_unit;   
-                                
-        }else{
-
-                $tools['min_torque'] = $tools['min_torque']/1000;
-                $tools['min_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['min_torque'],$step_torque_unit,$device_torque_unit);
-            
-                $tools['max_torque'] = $tools['max_torque']/1000;
-                $tools['max_torque'] = $this->MiscellaneousModel->convert_single_torque_unit($tools['max_torque'],$step_torque_unit,$device_torque_unit);
-                
-                
                 $torque_unit = $step_torque_unit;
             }
 
-            $precision = $decimals_arr[$torque_unit] ?? 3;
-            $tools['tool_high_torque'] = $step['StepHiTorque'];
-            $tools['tool_low_torque '] =  $step['StepLoTorque'];
-      
+            $tools['tool_high_torque'] = $step['StepHiTorque'] ?? 0;
+            $tools['tool_low_torque'] = $step['StepLoTorque'] ?? 0;
+            $flag = 'edit';
         }
 
+        $unit_name = $torque_arr[$torque_unit] ?? 'N.m';
+
         $isMobile = $this->isMobileCheck();
-        $data = array(
+        $data = [
             'JOBID' => $job_id,
             'SEQID' => $seq_id,
             'StepSelect' => $StepSelect,
             'type' => $type,
             'tools_info' => $tools,
-            'torque_unit' =>$unit_name,
+            'torque_unit' => $unit_name,
             'step' => $step,
             'next_step_id' => $next_step_id,
-            'step_torque_unit' =>$torque_unit
+            'step_torque_unit' => $torque_unit
+        ];
 
-        );
-
-        if($isMobile){
+        if ($isMobile) {
             $this->view('step/add_step_m', $data);
-        }else{
+        } else {
             $this->view('step/add_step', $data);
         }
-
     }
 
 

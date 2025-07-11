@@ -106,7 +106,7 @@
                             <tr>
                                 <td class="w3-left-align">103 <?php echo $text['Clear'];?></td>
                                 <td class="w3-left-align">104 <?php echo $text['Confirm'];?></td>                             
-                                <td class="w3-left-align">105 <?php echo $text['Start-IN(Remote)'];?></td>
+                                <td class="w3-left-align">105 <?php echo $text['Start-IN'];?></td>
                             </tr>
                             <tr>
                                 <td class="w3-left-align">106 <?php echo $text['Unscrew(Remote)'];?></td>
@@ -212,7 +212,7 @@
                                 <div class="row">
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?>:</div>
                                     <div class="col-2 t2">
-                                        <select id="edit_Event_Option" name ="edit_Event_Option" class="col custom-file">
+                                        <select id="edit_Event_Option" name ="edit_Event_Option" class="col custom-file" disabled>
                                             <?php foreach($data['event'] as $key =>$val){?>
                                                 <option value ='<?php echo $key;?>'><?php echo $text[$val];?></option>
                                             <?php } ?>

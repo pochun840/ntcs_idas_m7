@@ -6,7 +6,8 @@ class Jobs extends Controller
     private $ToolModel;
     private $SettingModel;
     private $MiscellaneousModel;
-
+    private $sequenceModel;
+    private $stepModel;
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
@@ -14,7 +15,9 @@ class Jobs extends Controller
         $this->jobModel = $this->model('Job');
         $this->DashboardModel = $this->model('Dashboard');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
-
+        $this->sequenceModel = $this->model('Sequence');
+        $this->stepModel = $this->model('Steptcc');
+        $this->ToolModel = $this->model('Tool');
 
     }
 
@@ -44,12 +47,15 @@ class Jobs extends Controller
             $lastRow  = 1;
             $jobIdInt = 1;
         }
+        
 
         $data = array(
             'jobint' => $jobIdInt,
             'jobs' => $jobs,
             'next_job_id' => $next_job_id,
         );
+
+
 
         if ($isMobile) {
             $this->view('jobs/job_management_m', $data);
@@ -95,6 +101,15 @@ class Jobs extends Controller
             }
     
             $res = $this->jobModel->create_job($jobdata);
+            //利用 jobid  去新增seq  && step 
+            $seq_result = $this->sequenceModel->createDefaultSeq($jobdata['job_id']);  
+
+            $tools_temp = $this->getConvertedToolInfo();
+            
+            if(!empty($tools_temp )){
+                $step_res = $this->stepModel->createDefaultStep($jobdata['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque']);
+            }
+
             $result = array();
             if($res){
                 $res_msg  = $text['New']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
@@ -346,6 +361,86 @@ class Jobs extends Controller
         }
 
     }
+
+
+    public function getConvertedToolInfo(){
+
+        $Tool_Info = $this->ToolModel->GetToolInfo();
+        $Tool_Info = end($Tool_Info);
+
+        $temp = [];
+
+        if (!empty($Tool_Info)) {
+            // 取得 Controller 設定的 torque unit
+            $res_device = $this->ToolModel->GetControllerInfo();
+            $device_torque_unit = (int)$res_device['torque_unit'];
+
+            // 對應 torque 單位名稱
+            $unit_arr = $this->MiscellaneousModel->details('torque_unit');
+            $unit_name = $unit_arr[$device_torque_unit];
+
+            // 從 DB 取出的 torque 值要先 /1000 (假設 DB 單位是 N.m)
+            $minTorqueNm = (float)$Tool_Info['min_torque'] / 1000;
+            $maxTorqueNm = ((float)$Tool_Info['max_torque'] / 1000) * 1.1;
+       
+
+            // 轉換所有 torque 單位
+            $low_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($minTorqueNm, 1,false);
+            $high_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($maxTorqueNm, 1,false);
+
+            // 定義需要補正的單位、補正值、與小數位
+            $corrections = [
+                'kgf.m'  => ['add' => 0.0001, 'decimals' => 4],
+                'kgf.cm' => ['add' => 0.01,   'decimals' => 2],
+                'Lbf.in' => ['add' => 0.01,   'decimals' => 2]
+            ];
+
+            foreach ($corrections as $unit => $info) {
+                if (isset($high_torque_arr[$unit])) {
+                    $value = (float)$high_torque_arr[$unit];
+                    $value += $info['add'];
+                    $value = $this->MiscellaneousModel->roundToNDecimals($value, $info['decimals']);
+                    $high_torque_arr[$unit] = number_format($value, $info['decimals'], '.', '');
+                }
+            }
+
+            // 存回 Tool_Info，僅保留目標單位
+            $Tool_Info['min_torque'] = $low_torque_arr[$unit_name];
+            $Tool_Info['max_torque'] = $high_torque_arr[$unit_name];
+            $Tool_Info['torque_unit_name'] = $unit_name;
+
+            // 產生 temp array
+            $temp['torque'] = $Tool_Info['min_torque'];
+            $temp['max_torque'] = $Tool_Info['max_torque'];
+
+            // 計算小數位數
+            $decimal_digits = $this->getDecimalDigits($Tool_Info['min_torque']);
+
+            if ($decimal_digits > 0) {
+                // 例如小數位數為 3 → 產生 0.001
+                $temp['min_torque'] = "0." . str_repeat("0", $decimal_digits - 1) . "0";
+            } else {
+                $temp['min_torque'] = "0";
+            }
+        }
+
+        return  $temp;
+    }
+
+    /**
+     * 計算一個數字的小數位數
+     * @param float|string $number
+     * @return int
+     */
+    private function getDecimalDigits($number){
+
+        $number = (string)$number;
+        if (strpos($number, '.') !== false) {
+            return strlen(substr(strrchr($number, '.'), 1));
+        }
+        return 0;
+    }
+
 
 }
 

@@ -126,7 +126,27 @@
             if (stepTorqueTS) {
                 stepTorqueTS.disabled = false;
                 if (dataType === 'new') {
-                    stepTorqueTS.value = 0;
+                    const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
+                    const decimals = {
+                        0: 4,
+                        1: 3,
+                        2: 2,
+                        3: 2,
+                        4: 1
+                    };
+                    const places = decimals[stepUnit] ?? 3;
+                    stepTorqueTS.value = (0).toFixed(places);
+                }else{
+                    const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
+                    const decimals = {
+                        0: 4,
+                        1: 3,
+                        2: 2,
+                        3: 2,
+                        4: 1
+                    };
+                    const places = decimals[stepUnit] ?? 3;
+                    stepTorqueTS.value = (0).toFixed(places);
                 }
             }
             if (showTorque) showTorque.style.display = 'block';
@@ -137,6 +157,8 @@
             if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
             if (stepTorqueTS) stepTorqueTS.disabled = false;
             if (showAngle) showAngle.style.display = 'block';
+
+            stepTorqueTS.value = 0;
         }
 
         // threshold 整塊區域
@@ -576,19 +598,30 @@
             const val = el.value.trim();
             const parsed = parseFloat(val);
             const feedback = el.nextElementSibling;
+
+            const roundTo = (num, digits) => {
+                if (isNaN(num)) return NaN;
+                return Number(num.toFixed(digits));
+            };
+
+            const parsedRounded = roundTo(parsed, precision);
+            const minRounded = (min !== null && !isNaN(min)) ? roundTo(min, precision) : null;
+            const maxRounded = (max !== null && !isNaN(max)) ? roundTo(max, precision) : null;
+
             const invalid = (
                 val === "" || isNaN(parsed) ||
-                (min !== null && !isNaN(min) && parsed < min) ||
-                (max !== null && !isNaN(max) && parsed > max) ||
+                (minRounded !== null && parsedRounded < minRounded) ||
+                (maxRounded !== null && parsedRounded > maxRounded) ||
                 !pattern.test(val)
             );
 
             if (invalid) {
                 el.classList.add("is-invalid");
                 if (feedback && feedback.classList.contains("invalid-feedback")) {
-                    feedback.innerText = (min !== null && max !== null)
-                           ? `Range: ${min.toFixed(precision)} ~ ${max.toFixed(precision)}`
-                           : `Invalid input`;
+                    feedback.innerText =
+                        (minRounded !== null && maxRounded !== null)
+                            ? `Range: ${minRounded} ~ ${maxRounded}`
+                            : `Invalid input`;
                     feedback.classList.add("d-block");
                     feedback.style.display = "block";
                 }
@@ -603,6 +636,7 @@
 
             return !invalid;
         }
+
 
         // 執行驗證
         let isValid = true;

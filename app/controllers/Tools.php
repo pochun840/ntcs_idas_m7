@@ -8,7 +8,7 @@ class Tools extends Controller
     public function __construct()
     {
         $this->ToolModel = $this->model('Tool');
-         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->MiscellaneousModel = $this->model('Miscellaneous');
     }
 
     // 取得所有info
