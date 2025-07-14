@@ -811,9 +811,12 @@ function update_barcode(){
     var barcode_seq   = document.querySelector("select[name='barcode_seq']").value;
 
 
-    if( barcode_job  === "-1"){
-        return;
-    }
+    if (barcode_job === "-1") return;
+    if (barcode_mode === "3" && barcode_seq === "-1") return;
+    if (!barcode_name) return;
+
+
+    
     
     if(barcode_name){
 
@@ -873,7 +876,7 @@ function update_barcode(){
             }
         });   
 
-    }  
+    }
 }
 
 function delete_barcode() {
