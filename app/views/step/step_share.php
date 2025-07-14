@@ -186,6 +186,7 @@ function sendRowInfoArray() {
         rowInfoArray: rowInfoArray
     };
  
+    
     if(rowInfoArray){
 
         $.ajax({
@@ -193,7 +194,7 @@ function sendRowInfoArray() {
             method: "POST",
             data: dataToSend,
             success: function(response) {
-                console.log(response);
+                //console.log(response);
                 history.go(0); 
             },
             error: function(xhr, status, error) {

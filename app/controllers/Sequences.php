@@ -461,6 +461,7 @@ class Sequences extends Controller
     public function adjustment_order(){
 
         if(isset($_POST['jobid'])){
+
             $jobid = $_POST['jobid'];
             $rowInfoArray = $_POST['rowInfoArray'];
             if(!empty($rowInfoArray)){
@@ -470,6 +471,7 @@ class Sequences extends Controller
                     $new_info[$index] = $v_s;
                     $index++;
                 }
+
                 $res = $this->sequenceModel->swapupdate($jobid,$rowInfoArray,$new_info);
                 
                 if($res){
@@ -478,7 +480,7 @@ class Sequences extends Controller
                     $res_msg = 'fail';
                 }
                 echo $res_msg;
-                
+                die();
             }
             
 

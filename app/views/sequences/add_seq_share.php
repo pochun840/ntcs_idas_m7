@@ -200,7 +200,7 @@
 
 
     function setCheckboxesByValue(value) {
-        
+
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         
         checkboxes.forEach((checkbox, i) => {
@@ -321,7 +321,7 @@
 
 
   //排序
-  function sendRowInfoArray() {
+  /*function sendRowInfoArray() {
 
     var jobid = '<?php echo $data['job_id']?>';
     var dataToSend = {
@@ -344,7 +344,7 @@
             console.error('Error sending data:', error);
         }
     });
-}
+}*/
 
 
 

@@ -280,16 +280,13 @@ function sendRowInfoArray() {
         jobid: jobid,
         rowInfoArray: rowInfoArray
     };
-
-    console.log(dataToSend);
-
-
+    
     $.ajax({
         url: "?url=Sequences/adjustment_order", 
         method: "POST",
         data: dataToSend,
         success: function(response) {
-            console.log(response);
+            //console.log(response);
             history.go(0); 
         },
         error: function(xhr, status, error) {
