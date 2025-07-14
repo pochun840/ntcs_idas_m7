@@ -1431,8 +1431,8 @@ class Settings extends Controller
         }
 
         // 重新命名文件
-        $cfg_path = $ftp_dir . "iDas.cfg";
-        $lin_path = $ftp_dir . "iDas.Lin";
+        $cfg_path = $ftp_dir . "/ftp/iDas.cfg";
+        $lin_path = $ftp_dir . "/ftp/iDas.Lin";
         @rename($ftp_dir . $cfg_file, $cfg_path);
         @rename($ftp_dir . $lin_file, $lin_path);
 
@@ -1456,6 +1456,10 @@ class Settings extends Controller
 
             // 第二次寫入 Modbus
             $modbus->writeMultipleRegister(0, 462, [1], $dataTypes);
+
+
+            //重啟控制器 
+            //$modbus->writeMultipleRegister(0, 462, array(1), $dataTypes);
 
         } catch (Exception $e) {
             // 錯誤處理
