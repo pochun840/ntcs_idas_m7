@@ -512,11 +512,6 @@ class Sequence{
     }
     
 
-    
-    
-    
-
-
     #驗證seq id是否重複
     public function sequence_id_repeat($jobid,$seqid)
     {
@@ -561,9 +556,7 @@ class Sequence{
         $statement->execute([$jobid, $newseqid]);
         $count = $statement->fetchColumn();
         $count = intval($count);
-       
-        //var_dump($count);
-        //die();
+
         if ($count > 0) {
             #如果資料存在，則刪除
             $deleteSql = "DELETE FROM SEQ_lst  WHERE JOBID = ? AND SEQID = ?";
@@ -712,8 +705,5 @@ class Sequence{
 
         return $results;
     }
-
-
-
-    
+   
 }

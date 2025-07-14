@@ -454,7 +454,6 @@ class Sequences extends Controller
 
         echo json_encode($result);
     
-
     }
    
     #seq 排序

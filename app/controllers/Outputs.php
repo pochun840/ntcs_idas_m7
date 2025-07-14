@@ -2,6 +2,11 @@
 
 class Outputs extends Controller
 {
+
+    private $OutputModel;
+    private $InputModel;
+    private $MiscellaneousModel;
+    private $jobModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -463,7 +468,6 @@ class Outputs extends Controller
             echo "<pre>";
             print_r($res);
             echo "</pre>";
-            die();
 
         }
 
