@@ -47,7 +47,6 @@ class Output{
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute([$output_job_id,$output_event]);
         $rows = $statement->fetch(PDO::FETCH_ASSOC);
-
         return $rows;
     }
 
@@ -87,9 +86,9 @@ class Output{
     public function create_output($output_data) {    
 
         // 預設值處理
-        /*if (!isset($output_data['durate']) || $output_data['durate'] === '' || $output_data['durate'] === null) {
+        if (!isset($output_data['durate']) || $output_data['durate'] === '' || $output_data['durate'] === null) {
             $output_data['durate'] = 100;
-        }*/
+        }
 
         $output_data['stop_trig'] = 1;
         $output_data['cycle'] = 1;
@@ -116,9 +115,9 @@ class Output{
     public function edit_output($output_data) {
 
         // 預設 durate 值
-        /*if (!isset($output_data['durate']) || $output_data['durate'] === '' || $output_data['durate'] === null) {
+        if (!isset($output_data['durate']) || $output_data['durate'] === '' || $output_data['durate'] === null) {
             $output_data['durate'] = 100;
-        }*/
+        }
 
         $sql = "UPDATE `JOBOutput_lst` 
                 SET EvenID = :EvenID, 

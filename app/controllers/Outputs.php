@@ -52,82 +52,66 @@ class Outputs extends Controller
         
     }
 
-    public function get_output_by_job_id(){
-
+    public function get_output_by_job_id() {
         $event_output = $this->MiscellaneousModel->details('io_output');
+        $job_id = $_POST['job_id'] ?? null;
 
-        $input_check = true;
-        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $job_id = $_POST['job_id'];
-        }else{ 
-            $input_check = false; 
-        }
+        $temp = [];
+        $tempA = [];
+        $job_outputlist = '';
 
-        if($input_check){
+        if (!empty($job_id)) {
             $job_outputs = $this->OutputModel->get_output_by_job_id($job_id);
-            $temp  = array(); 
-            $tempA = array();
-            $job_outputlist = ''; 
-        
-            if (!empty($job_outputs)) {
-                foreach ($job_outputs as $kk => $vv) {
-                    if (!empty($vv['Pin'])) {
-                        $pin_number = $vv['Pin'];
-                        //如果 $vv['signal'] 空值 補 0
-                        $signal_value = !empty($vv['signal']) ? $vv['signal'] : 0;
-                        $temp[] = "pin" . $pin_number."_".$signal_value;
-                        $temp[] = "edit_pin" . $pin_number."_".$signal_value;
-                    
-                    }
+            $isMobile = $this->isMobileCheck();
 
-                    if (!empty($vv['EvenID'])) {
-                        $tempA[] = $vv['EvenID'];
-                    }
+            foreach ($job_outputs ?? [] as $vv) {
+                $pin = $vv['Pin'] ?? '';
+                $event_id = $vv['EvenID'] ?? '';
+                $signal = $vv['signal'] ?? 0;
+                $durate = ($signal == 1) ? ($vv['durate'] ?: '100') : '';
 
-                    $durate = ($vv['durate'] == 0) ? '' : $vv['durate'];
-
-                    $isMobile = $this->isMobileCheck();
-                    if($isMobile){
-
-                        if($vv['signal'] == 0){
-                            $img = '<img src="./img/signal01.png" style="max-width: 50px;">';
-                        }else if($vv['signal'] == 1){
-                            $img = '<img src="./img/signal02.png" style="max-width: 50px;">';
-                        }else{
-                            $img = '<img src="./img/trigger.png" style="max-width: 50px;">';
-                        }   
-
-
-                        $job_outputlist .= "<tr data-event ='".$vv['EvenID']."'>";
-                        
-                        $job_outputlist .= "<td id='".$vv['EvenID']."'>".$event_output[$vv['EvenID']]."</td>";
-                        $job_outputlist .=  "<td data-outputpin = '".$vv['Pin']."' >".$vv['Pin']."</td>";
-                        $job_outputlist .= '<td>'.$img.'</td>';
-                        $job_outputlist .= '<td>'.$durate.'</td>';
-                        $job_outputlist .= '</tr>';
-                    }else{
-                        $job_outputlist .= "<tr data-event ='".$vv['EvenID']."'>";
-                        $job_outputlist .= "<td id='".$vv['EvenID']."'>".$event_output[$vv['EvenID']]."</td>";
-                        $job_outputlist .= $this->OutputModel->generateTableCell($vv['Pin'],$vv['signal']);
-                        $job_outputlist .= '<td>'.$durate.'</td>';
-                        $job_outputlist .= '</tr>';
-                    }
-
-                   
+                // 累積 pin 狀態
+                if (!empty($pin)) {
+                    $temp[] = "pin{$pin}_{$signal}";
+                    $temp[] = "edit_pin{$pin}_{$signal}";
                 }
 
+                // 累積事件 ID
+                if (!empty($event_id)) {
+                    $tempA[] = $event_id;
+                }
+
+                if ($isMobile) {
+                    $imgSrc = './img/trigger.png';
+                    if ($signal == 0) $imgSrc = './img/signal01.png';
+                    if ($signal == 1) $imgSrc = './img/signal02.png';
+                    $imgTag = "<img src=\"{$imgSrc}\" style=\"max-width: 50px;\">";
+
+                    $job_outputlist .= "<tr data-event=\"{$event_id}\">";
+                    $job_outputlist .= "<td id=\"{$event_id}\">" . ($event_output[$event_id] ?? '') . "</td>";
+                    $job_outputlist .= "<td data-outputpin=\"{$pin}\">{$pin}</td>";
+                    $job_outputlist .= "<td>{$imgTag}</td>";
+                    $job_outputlist .= "<td>{$durate}</td>";
+                    $job_outputlist .= "</tr>";
+                } else {
+                    $job_outputlist .= "<tr data-event=\"{$event_id}\">";
+                    $job_outputlist .= "<td id=\"{$event_id}\">" . ($event_output[$event_id] ?? '') . "</td>";
+                    $job_outputlist .= $this->OutputModel->generateTableCell($pin, $signal);
+                    $job_outputlist .= "<td>{$durate}</td>";
+                    $job_outputlist .= "</tr>";
+                }
             }
         }
 
-        $response = array(
+        echo json_encode([
             'job_outputlist' => $job_outputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'languange' => $_SESSION['language']
-        );
-        echo json_encode($response);
-        
+            'languange' => $_SESSION['language'] ?? 'en'
+        ]);
     }
+
+
     public function check_job_output_conflict($value='')
     {
         $input_check = true;
@@ -372,6 +356,12 @@ class Outputs extends Controller
             if (empty($job_outputs)) {
                 $job_outputs = 'no_data'; 
             }
+            else{
+                if($job_outputs['signal'] !=1){
+                    $job_outputs['durate'] = '';
+                }                
+            }
+
             print_r($job_outputs);  
         }
      

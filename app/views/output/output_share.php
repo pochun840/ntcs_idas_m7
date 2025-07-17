@@ -752,7 +752,7 @@ function get_output_info(job_id,output_event){
                 var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
-                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
+                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, ''];
 
 
                 var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
@@ -812,7 +812,7 @@ function get_output_info(job_id,output_event){
                     }
                     
                 }else{
-                    //alert('wqw');
+                   
                 }
 
 

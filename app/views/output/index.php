@@ -102,7 +102,6 @@
                                     <div class="col-2 t2">
                                         <select id="Event_Option" class="col custom-file">
                                         <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
-                                           <?php var_dump($data['event_output']);?>
                                            <?php foreach($data['event_output'] as $key =>$val){?>
                                                 <option value ='<?php echo $key;?>'><?php echo $text[$val];?></option>
                                             <?php } ?>
