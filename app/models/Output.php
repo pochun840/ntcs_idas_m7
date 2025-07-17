@@ -19,7 +19,7 @@ class Output{
     //get_input_by_job_id
     public function get_output_by_job_id($output_job_id)
     {   
-        $sql = "SELECT * FROM JOBOutput_lst  WHERE JOBID = ? ORDER BY EvenID ";
+        $sql = "SELECT * FROM JOBOutput_lst  WHERE JOBID = ?  ";
         $statement = $this->db_iDas->prepare($sql);
         $results = $statement->execute([$output_job_id]);
         $row = $statement->fetchall(PDO::FETCH_ASSOC);
@@ -43,9 +43,9 @@ class Output{
 
     public function check_job_event_conflict($output_job_id,$output_event){
         
-        $sql = "SELECT JOBID, Pin, EvenID, signal, durate  FROM JOBOutput_lst WHERE JOBID = ? AND EvenID = ? ";
+        $sql = "SELECT JOBID, Pin, EvenID, signal, durate  FROM JOBOutput_lst WHERE JOBID = ? ";
         $statement = $this->db_iDas->prepare($sql);
-        $statement->execute([$output_job_id,$output_event]);
+        $statement->execute([$output_job_id]);
         $rows = $statement->fetch(PDO::FETCH_ASSOC);
         return $rows;
     }

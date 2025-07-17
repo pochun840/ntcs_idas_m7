@@ -42,8 +42,6 @@ class Outputs extends Controller
             'device_data'  => $device_data,
         );
 
-
-      
         if($isMobile){
             $this->view('output/index_m', $data);
         }else{
@@ -235,7 +233,7 @@ class Outputs extends Controller
                     $output_data[$key]['durate'] = $val['durate'];
 
 
-                    if($output_data[$key]['durate'] == ""){
+                    if($output_data[$key]['durate'] != 1 ){
                         $output_data[$key]['durate'] = 100;
                     }
 
@@ -355,11 +353,6 @@ class Outputs extends Controller
             $job_outputs = $this->OutputModel->check_job_event_conflict($output_job_id, $output_event);
             if (empty($job_outputs)) {
                 $job_outputs = 'no_data'; 
-            }
-            else{
-                if($job_outputs['signal'] !=1){
-                    $job_outputs['durate'] = '';
-                }                
             }
 
             print_r($job_outputs);  

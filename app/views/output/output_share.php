@@ -746,13 +746,16 @@ function get_output_info(job_id,output_event){
 
 
                 var responseJSON = JSON.stringify(response);
+
+                console.log(responseJSON);
+                
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
                 var cleanString = cleanString.substring(2, cleanString.length - 2);
                 var [, job_id] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
-                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, ''];
+                var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
 
 
                 var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
@@ -801,7 +804,6 @@ function get_output_info(job_id,output_event){
                             return item.slice(0, -1) + '3';
                         });
                         
-                        console.log("Updated Array:", updatedArray);
                         updatedArray.forEach(item => {
                             const radio = document.getElementById(item);
                             if (radio && radio.type === 'radio') {
@@ -811,10 +813,7 @@ function get_output_info(job_id,output_event){
 
                     }
                     
-                }else{
-                   
                 }
-
 
                 let result = edit_output_pin.replace(/^edit_pin/, "");
                 result = result.replace(/(_[0-9]{1,2})$/, ""); 
@@ -826,7 +825,7 @@ function get_output_info(job_id,output_event){
                     element.disabled = true;  
                 }
           
-                document.getElementById(time_ms).value = (wave_on === '0') ? '' : wave_on;
+                document.getElementById(time_ms).value = (wave_on === 0) ? '' : wave_on;
                 old_output_even = output_event;
                 if(radioButton){
                     radioButton.checked = true;

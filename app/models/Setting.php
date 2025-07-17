@@ -389,18 +389,6 @@ class Setting{
         return $rows;
     }
 
-    //get job barcdoe
-    public function get_job_barcode($job_id)
-    {
-        $sql = "SELECT * FROM barcode WHERE barcode_selected_job = :job_id ";
-        $statement = $this->db->prepare($sql);
-        $statement->bindValue(':job_id', $job_id);
-        $results = $statement->execute();
-        $rows = $statement->fetchall(PDO::FETCH_ASSOC);
-
-        return $rows;
-    }
-
     //delete job barcdoe
     public function delete_job_barcode($barcode){
 
