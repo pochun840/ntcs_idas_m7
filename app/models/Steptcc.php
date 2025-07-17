@@ -439,7 +439,7 @@ class Steptcc{
     /**
      * 建立預設 STEP，對應 JS 預設值
      */
-    public function createDefaultStep( $job_id,$seq_id,$tool_min_torque,$tool_high_torque,$tool_low_torque){
+    public function createDefaultStep( $job_id,$seq_id,$tool_min_torque,$tool_high_torque,$tool_low_torque,$device_torque_unit){
 
         $max_step_id = $this->getMaxStepID($job_id, $seq_id);
         $new_step_id = $max_step_id + 1;
@@ -486,7 +486,7 @@ class Steptcc{
             'InterruptAlarm' => 0,
             'OverAngleStop' => 0,
             'KValue' => 0,
-            'step_unit' => 0,
+            'step_unit' => $device_torque_unit,
         ];
 
         return $this->create_step($step_data);

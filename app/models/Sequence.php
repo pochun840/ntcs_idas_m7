@@ -598,7 +598,7 @@ class Sequence{
         return !empty($row['max_seq']) ? intval($row['max_seq']) : 0;
     }
 
-    public function createDefaultSeq($job_id){
+    public function createDefaultSeq($job_id,$device_torque_unit){
 
         $max_seq_id = $this->getMaxSeqID($job_id);
         $new_seq_id = $max_seq_id + 1;
@@ -637,7 +637,7 @@ class Sequence{
             'addtion' => null,
             'unscrew_count_switch' => 0,
             'unscrew_torque_threshold' => 0,
-            'seq_unit' => 0,
+            'seq_unit' => $device_torque_unit,
             'unscrew_angle_threshold' => 0,
             'dt_time' => 0,
             'tt_time' => 0,

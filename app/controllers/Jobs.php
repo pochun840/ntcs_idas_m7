@@ -8,7 +8,7 @@ class Jobs extends Controller
     private $MiscellaneousModel;
     private $sequenceModel;
     private $stepModel;
-
+ 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -18,6 +18,7 @@ class Jobs extends Controller
         $this->sequenceModel = $this->model('Sequence');
         $this->stepModel = $this->model('Steptcc');
         $this->ToolModel = $this->model('Tool');
+        $this->SettingModel = $this->model('Setting');
 
     }
 
@@ -102,12 +103,18 @@ class Jobs extends Controller
     
             $res = $this->jobModel->create_job($jobdata);
             //利用 jobid  去新增seq  && step 
-            $seq_result = $this->sequenceModel->createDefaultSeq($jobdata['job_id']);  
+
+            
+            $res_device = $this->SettingModel->GetControllerInfo();
+            $device_torque_unit = (int)$res_device['torque_unit'];
+
+            
+            $seq_result = $this->sequenceModel->createDefaultSeq($jobdata['job_id'],$device_torque_unit);  
 
             $tools_temp = $this->getConvertedToolInfo();
             
             if(!empty($tools_temp )){
-                $step_res = $this->stepModel->createDefaultStep($jobdata['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque']);
+                $step_res = $this->stepModel->createDefaultStep($jobdata['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$device_torque_unit);
             }
 
             $result = array();
