@@ -80,7 +80,7 @@ class Miscellaneous{
                 7   => 'Tool Runing',
                 8   => 'Tool Trigger',
                 9   => 'Reverse',
-                10  => 'BSdisabled',
+                10  => 'Barcode',
                 11  => 'BS',
                 12  => 'UserDefine1',
                 13  => 'UserDefine2',
@@ -546,6 +546,36 @@ class Miscellaneous{
 
             // 執行轉換
             $converted = $this->convert_single_torque_unit($base_value, 1, $to_unit_id);
+
+            // 抓出實際數值
+            $converted_value = is_array($converted)
+                ? ($converted[$unit_name] ?? 0)
+                : (is_numeric($converted) ? $converted : 0);
+
+            // 小數位設定
+            $decimals = [
+                0 => 4, // KGF-M
+                1 => 3, // N.m
+                2 => 2, // KGF-cm
+                3 => 2, // Lbf
+                4 => 1  // cN.m
+            ];
+            $precision = isset($decimals[$to_unit_id]) ? $decimals[$to_unit_id] : 3;
+
+            return [
+                'converted_value' => number_format($converted_value, $precision),
+                'high_torque'     => number_format($converted_value * 1.10, $precision),
+                'raw_converted'   => $converted_value
+            ];
+    }
+
+    
+
+       public function convert_seq_torque($raw_value, $to_unit_id, $unit_name){
+
+
+            // 執行轉換
+            $converted = $this->convert_single_torque_unit($raw_value, 1, $to_unit_id);
 
             // 抓出實際數值
             $converted_value = is_array($converted)

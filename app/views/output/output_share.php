@@ -67,12 +67,38 @@ function crud_job_event(argument) {
             break;
 
         case 'new':
-            // 禁用所有 pin radio
+            // 清空全域變數
+            output_event = null;
+            output_pinval = null;
+            del_output_val = null;
+
+            // 清除舊選取列
+            table.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
+
+            // 重置事件選單
+            const eventOption = document.getElementById('Event_Option');
+            if (eventOption) {
+                eventOption.selectedIndex = 0;
+            }
+
+            // 清除所有 radio 的勾選狀態與禁用狀態
             if (Array.isArray(temp)) {
                 temp.forEach(id => {
                     const radio = document.getElementById(id);
-                    if (radio?.type === 'radio') radio.disabled = true;
+                    if (radio?.type === 'radio') {
+                        radio.checked = false;
+                        radio.disabled = true;
+                    }
                 });
+            }
+
+            // 清除所有 time 欄位的值與禁用狀態
+            for (let i = 1; i <= 11; i++) {
+                const time = document.getElementById(`time${i}`);
+                if (time) {
+                    time.value = '';
+                    time.disabled = false;
+                }
             }
 
             // 篩選非 edit 的 pin 元素
@@ -84,30 +110,22 @@ function crud_job_event(argument) {
             showModal('new_output');
 
             // event select change handler
-            const eventOption = document.getElementById('Event_Option');
             eventOption.addEventListener('change', () => {
                 const selectedOptionId = eventOption.value;
 
-                // 群組 A: 7, 8, 9
                 const groupA = ['7', '8', '9'];
-                // 群組 B: 12~16
                 const groupB = ['12', '13', '14', '15', '16'];
-
                 const isSpecial = groupA.includes(selectedOptionId);
                 const isGroupB = groupB.includes(selectedOptionId);
 
-                // 原本邏輯
                 toggleElementsInRange(1, 11, 2, isSpecial);
                 if (!isSpecial) disableElements(filtered_array);
 
-                // 新增邏輯: 若是 group B
                 if (isGroupB) {
                     for (let i = 1; i <= 11; i++) {
-                        // pinX_1
                         const pin = document.getElementById(`pin${i}_1`);
                         if (pin) pin.disabled = true;
 
-                        // timeX
                         const time = document.getElementById(`time${i}`);
                         if (time) time.disabled = true;
                     }
@@ -117,9 +135,12 @@ function crud_job_event(argument) {
             // 禁用已選 event
             document.querySelectorAll('#Event_Option option').forEach(option => {
                 if (tempA.includes(option.value)) option.disabled = true;
+                else option.disabled = false;
             });
 
         break;
+
+
 
 
         case 'edit':

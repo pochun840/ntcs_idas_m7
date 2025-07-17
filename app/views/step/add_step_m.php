@@ -143,8 +143,6 @@ if ($data['type'] == 'edit') {
                                         <div class="col-6 t1"  id="targetLabel" ><?php echo $text['Target_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <?php }else if($data['step']['StepOption'] == 1 ){?>
                                         <div class="col-6 t1"  id="targetLabel" ><?php echo $text['Target_Angle'];?> :</div>
-                                    <?php }else if($data['step']['StepOption'] == 3 ) {?>
-                                        <div class="col-6 t1"  id="targetLabel" ><?php echo $text['Target_Time'];?>:</div>
                                     <?php } ?>
 
                                 <?php }else{?>
@@ -153,7 +151,8 @@ if ($data['type'] == 'edit') {
                                 
                             
                                 <div class="col-5 t2" id='StepTorque_item' style="display: block;" >
-                                    <input id="StepTorque"  class="t2 form-control small-input  value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : ''; ?>">
+                                    <input id="StepTorque" class="t2 form-control small-input"  value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorque'] : ''; ?>">
+
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col-5 t2" id='StepAngle_item' style="display: none;" >
@@ -183,22 +182,22 @@ if ($data['type'] == 'edit') {
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
-                            <div class="row">
+                            <div class="row"  id='show_tor' >
                                 <div class="col">
                                     <div class="form-check form-check-inline zoom">
                                         <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="0" onchange="getCheckboxValue()"
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0) ? 'checked' : ''; ?>>
+                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "-1") ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="monitoring_torque_window"><?php echo $text['Monitor torque by window']; ?>:</label>
                                     </div>
                                     <div class="ps-0" style="display:inline-block;">
                                         <label class="form-check-label" for="monitor_torque_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
                                         <input id="step_limit_hi_tor" class="t2 form-control small-input" style=" width: 40px !important;" 
-                                            value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
+                                            value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "-1" || $data['step']['StepMoniByWin'] == "0" && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
                                         <div class="invalid-feedback"></div>
 
                                         <label class="form-check-label ps-3" for="monitor_torque_lower"><?php echo $text['Lower_text'].'(%)'; ?></label>
                                         <input id="step_limit_lo_tor" class="t2 form-control small-input" style=" width: 40px !important;" 
-                                            value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 0 && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
+                                            value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "-1" || $data['step']['StepMoniByWin'] == "0" && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
@@ -220,22 +219,22 @@ if ($data['type'] == 'edit') {
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
-                            <div class="row">
+                            <div class="row" id='show_ang'>
                                 <div class="col">
-                                    <div class="form-check form-check-inline ">
+                                    <div class="form-check form-check-inline "  >
                                         <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1" onchange="getCheckboxValue()" 
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1) ? 'checked' : ''; ?>>
+                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "1") ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="monitoring_angle_window"><?php echo $text['Monitor angle by window']; ?></label>
                                     </div>
                                     <div class="ps-0" style="display:inline-block;">
                                         <label class="form-check-label" for="monitor_angle_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
                                         <input id="step_limit_hi_ang" class="t2 form-control small-input" style=" width: 40px !important; " 
-                                            value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1 && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
+                                            value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "1"  || $data['step']['StepMoniByWin'] == "0" && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
                                         <div class="invalid-feedback"></div>
 
                                         <label class="form-check-label ps-3" for="monitor_angle_upper"><?php echo $text['Lower_text'].'(%)'; ?></label>
                                         <input id="step_limit_lo_ang"class="t2 form-control small-input" style=" width: 40px !important; " 
-                                            value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1 && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
+                                            value ='<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "1"  || $data['step']['StepMoniByWin'] == "0" && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
@@ -302,7 +301,7 @@ if ($data['type'] == 'edit') {
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
-                            <div class="row">
+                            <div class="row" style="display: none;">
                                 <div class="col-6 t1"><?php echo $text['Acceleration_text'];?>:</div>
                                 <div class="col-5 t2">
                                     <input id="k_value" class="t2 form-control small-input"   value="<?php echo ($data['type'] == 'edit') ? $data['step']['KValue'] : ''; ?>">

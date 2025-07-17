@@ -52,25 +52,6 @@
             let displayedValue = '<?php echo isset($data['sequences']['Thread_Calcu']) ? $data['sequences']['Thread_Calcu'] : ''; ?>';
             setCheckboxesByValue(displayedValue);
 
-
-            /*if(seq_unit ==0 ){
-                document.getElementById('unscrew_torque_threshold').value = "0.00";
-            }
-            if(seq_unit == 1){
-                document.getElementById('unscrew_torque_threshold').value = "0.000";
-            }
-            if(seq_unit == 2){
-                document.getElementById('unscrew_torque_threshold').value = "0.000";
-            }
-
-            if(seq_unit == 3){
-                document.getElementById('unscrew_torque_threshold').value = "0.0000";
-            }
-
-             if(seq_unit == 4){
-                document.getElementById('unscrew_torque_threshold').value = "0.0";
-            }*/
-
         }
         
     };
@@ -81,6 +62,8 @@
         const time = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
         const seq_unit = "<?php echo $data['torque_unit_code'];?>";
+
+        
 
         data.append("job_id", document.getElementById("job_id").value);
         data.append("SEQID", document.getElementById("seq_id").value);
@@ -102,7 +85,7 @@
         data.append("ng_unscrew_val", document.querySelector('input[name="ng_unscrew"]:checked')?.value ?? null);
         data.append("interrupt_alarm", 1);
         data.append("accu_angle_val", document.querySelector('input[name="accu_angle"]:checked')?.value ?? null);
-        data.append("angle_calculation_data", getCheckboxValue());
+        data.append("angle_calculation_data", getCheckboxValue_seq());
         data.append("unscrew_mode_val", document.querySelector('input[name="unscrew_mode"]:checked')?.value ?? null);
         data.append("unscrew_forcemode_val", document.querySelector('input[name="unscrew_forcemode"]:checked')?.value ?? null);
         data.append("unscrew_force", document.getElementById("unscrew_force").value);
@@ -122,6 +105,7 @@
         data.append("unscrew_count_switch_val", document.querySelector('input[name="unscrew_count_switch"]:checked')?.value ?? null);
         data.append("seq_unit",seq_unit);
 
+        
         return data;
     }
 
@@ -175,7 +159,7 @@
 
 
 
-    function getCheckboxValue() {
+    function getCheckboxValue_seq() {
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         let total = 0;
         let isChecked = false;  
@@ -230,7 +214,7 @@
             { id: 'tt_time', pattern: /^\d{0,5}?$/, min: 0, max: 6000 },
             { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
             { id: 'unscrew_rpm', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}(\.\d{1})?$/, min: 0, max: Tool_Max_Torque },
+            { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}(\.\d{1,3})?$/, min: 0, max: Tool_Max_Torque },
             { id: 'unscrew_angle_threshold', pattern: /^\d{1,5}(\.\d{1})?$/ , min: 0, max: 99999},
             { id: 'unscrew_force', pattern: /^\d{1,3}$/, min: 1, max: 100 },
         ];
@@ -240,8 +224,8 @@
             var element = document.getElementById(input.id);
             var value = element.value.trim();
 
-            // 如果 unscrew_mode_auto 被選中, 跳過 unscrew_torque_threshold 和 unscrew_force  和 unscrew_angle_threshold 的驗證 
-            if (isAutoMode && (input.id === 'unscrew_torque_threshold' || input.id === 'unscrew_force' || input.id === 'unscrew_angle_threshold')) {
+            // 如果 unscrew_mode_auto 被選中, 跳過 unscrew_torque_threshold 和 unscrew_force  和 unscrew_angle_threshold  和 unscrew_rpm 的驗證 
+            if (isAutoMode && (input.id === 'unscrew_torque_threshold' || input.id === 'unscrew_force' || input.id === 'unscrew_angle_threshold' || input.id === 'unscrew_rpm' ) ) {
                 return;
             }
             
@@ -276,9 +260,6 @@
             }
 
         });
-
-        console.log(conditions)
-
         return isFormValid;
 
     }
@@ -317,36 +298,4 @@
         document.getElementById('unscrew_mode_auto')?.addEventListener('change', toggleInputsBasedOnMode);
         document.getElementById('unscrew_mode_custom')?.addEventListener('change', toggleInputsBasedOnMode);
     });
-
-
-
-  //排序
-  /*function sendRowInfoArray() {
-
-    var jobid = '<?php echo $data['job_id']?>';
-    var dataToSend = {
-        jobid: jobid,
-        rowInfoArray: rowInfoArray
-    };
-
-    console.log(dataToSend);
-
-
-    $.ajax({
-        url: "?url=Sequences/adjustment_order", 
-        method: "POST",
-        data: dataToSend,
-        success: function(response) {
-            console.log(response);
-            history.go(0); 
-        },
-        error: function(xhr, status, error) {
-            console.error('Error sending data:', error);
-        }
-    });
-}*/
-
-
-
-
 </script>

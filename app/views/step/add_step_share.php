@@ -4,6 +4,10 @@
         if (typeof toggleDownShift === 'function') toggleDownShift();
     });
 
+    document.addEventListener("DOMContentLoaded", function () {
+        getCheckboxValue();
+    });
+
 
     function updateLabel() {
         const rawUnit = '<?php echo $data['torque_unit']; ?>';
@@ -254,7 +258,7 @@
         document.getElementById("StepLoTorque").value = document.getElementById('tool_low_torque').value;
         document.getElementById("StepDelay").value = 0;
         document.getElementById("StepRPM").value = 500;
-        document.getElementById("k_value").value = 0;
+        document.getElementById("k_value").value = 100;
         
         document.getElementById("StepTorqueDownShift").value = 0;
         document.getElementById("StepRPMDownShift").value = 0;
@@ -286,19 +290,26 @@
         let StepLoAngle = document.getElementById("StepLoAngle").value;
         let StepMoniByWin = getCheckboxValue();
 
-        if (StepOption == 0) {
+
+        /*if (StepOption == 0) {
             StepAngle = 0;
         } else {
             StepTorque = 0;
-        }
+        }*/
         let StepTime = 0;
 
-        let StepLimiHi = (StepMoniByWin == 0)
-            ? document.getElementById("step_limit_hi_tor").value
-            : document.getElementById("step_limit_hi_ang").value;
-        let StepLimiLo = (StepMoniByWin == 0)
-            ? document.getElementById("step_limit_lo_tor").value
-            : document.getElementById("step_limit_lo_ang").value;
+        let StepLimiHi, StepLimiLo;
+        if (StepMoniByWin == 0) {
+            StepLimiHi = document.getElementById("step_limit_hi_tor")?.value || "30";
+            StepLimiLo = document.getElementById("step_limit_lo_tor")?.value || "30";
+        } else if (StepMoniByWin == 1) {
+            StepLimiHi = document.getElementById("step_limit_hi_ang")?.value || "30";
+            StepLimiLo = document.getElementById("step_limit_lo_ang")?.value || "30";
+        } else {
+            StepLimiHi = "30";
+            StepLimiLo = "30";
+        }
+
 
         let interrupt_alarm = document.querySelector('input[name="interrupt_alarm"]:checked');
         let over_angle_stop = document.querySelector('input[name="over_angle_stop"]:checked');
@@ -438,22 +449,43 @@
     }
 
 
-    function getCheckboxValue() {
+    function getCheckboxValue(clickedId) {
         var checkbox0 = document.getElementById("StepMoniByWin_0");
         var checkbox1 = document.getElementById("StepMoniByWin_1");
+        var stepHiTorque = document.getElementById("StepHiTorque");
+        var stepLoTorque = document.getElementById("StepLoTorque");
+        var stepHiAngle = document.getElementById("StepHiAngle");
+        var stepLoAngle = document.getElementById("StepLoAngle");
 
         var check_val = -1;
-        if (checkbox0.checked) {
-            checkbox1.checked = false; 
 
+        if (clickedId === "StepMoniByWin_0") {
+            checkbox0.checked = true;
+            checkbox1.checked = false;
             check_val = 0;
-        } else if (checkbox1.checked) {
-            checkbox0.checked = false; 
+        } else if (clickedId === "StepMoniByWin_1") {
+            checkbox0.checked = false;
+            checkbox1.checked = true;
             check_val = 1;
-        } else {
         }
+
+        var disableTorque = check_val === 0;
+        var disableAngle = check_val === 1;
+
+        [stepHiTorque, stepLoTorque].forEach(function (el) {
+            if (el) el.disabled = disableTorque;
+        });
+        [stepHiAngle, stepLoAngle].forEach(function (el) {
+            if (el) el.disabled = disableAngle;
+        });
+
+        console.log(check_val);
         return check_val;
-    } 
+    }
+
+
+
+
     
 
     function input_check() {
@@ -535,7 +567,7 @@
 
         let conditions = [
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.5 },
+            //{ id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.5 },
             { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift },
             { id: 'StepTorqueDownShift', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueDownshift },
             { id: 'StepTorqueTS', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueTS }

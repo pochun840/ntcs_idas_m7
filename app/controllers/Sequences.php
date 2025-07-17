@@ -102,7 +102,7 @@ class Sequences extends Controller
                 'Thread_Calcu' => $_POST['angle_calculation_data'] ?? null,
                 'unscrew_mode' => $_POST['unscrew_mode_val'] ?? null,
                 'unscrew_force' => $_POST['unscrew_force'] ?? null,
-                'unscrew_rpm' => $_POST['unscrew_rpm'] ?? null,
+                'unscrew_rpm' => $_POST['unscrew_rpm'] ?? 300,
                 'unscrew_dir' => $_POST['unscrew_dir_val'] ?? 0,
                 'image' => $_POST['image'] ?? '',
                 'message' => $_POST['message'] ?? '',
@@ -496,9 +496,39 @@ class Sequences extends Controller
         $torque_unit_code = $this->SettingModel->Get_System_Toq_Unit();
         $unit_arr = $this->MiscellaneousModel->details('torque_unit');
         $torque_unit = $unit_arr[$torque_unit_code] ?? 'N.m';
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
 
-        $tools_info = $this->ToolModel->GetToolInfo();
-        $last_tool_info = end($tools_info);
+        $res_device = $this->SettingModel->GetControllerInfo();
+        $device_torque_unit = (int)$res_device['torque_unit'];
+
+        $tools_info = $this->ToolModel->GetToolInfo()[0] ?? [];
+
+        if (!empty($tools_info)) {
+            foreach (['max_rpm', 'min_rpm'] as $key) {
+                if (isset($tools_info[$key])) {
+                    $val = (float) $tools_info[$key];
+
+                    // 檢查是否為整數
+                    if (floor($val) == $val) {
+                        // 若為整數 → 輸出為沒有小數的字串
+                        $tools_info[$key] = (string) intval($val);
+                    } else {
+                        // 若有小數 → 保留原數值
+                        $tools_info[$key] = (string) $val;
+                    }
+                }
+            }
+
+
+            //
+            $from_unit = 1;
+            $tools_temp = $this->MiscellaneousModel->prepareToolTorqueValues($tools_info,$from_unit,$device_torque_unit,$decimals_arr);
+            if(!empty($tools_temp)){
+                $tools_info['max_torque'] = $tools_temp['max_torque'];
+                $tools_info['min_torque'] = $tools_temp['min_torque'];
+            }
+        }
+
 
         $isMobile = $this->isMobileCheck();
 
@@ -522,12 +552,43 @@ class Sequences extends Controller
             $sequences = $res[0];
             $type = 'edit';
             $next_seq_id = $sequences['SEQID'];
+
+            if(!empty($res[0])){
+
+                $res_device = $this->SettingModel->GetControllerInfo();
+                $device_torque_unit = (int)$res_device['torque_unit'];
+                $torque_arr = $this->MiscellaneousModel->details("torque_unit");
+                $unit_name = $torque_arr[$device_torque_unit];
+                if($sequences['unscrew_mode'] == 0 ){
+                    $temp = $this->MiscellaneousModel->convert_seq_torque($sequences['unscrew_torque_threshold'],$device_torque_unit, $unit_name);
+                    $sequences['unscrew_torque_threshold'] = $temp['converted_value'];
+                }else{
+                    $decimals = [
+                        0 => 4, // KGF-M
+                        1 => 3, // N.m
+                        2 => 2, // KGF-cm
+                        3 => 2, // Lbf
+                        4 => 1  // cN.m
+                    ];
+
+                    $precision = isset($decimals[$device_torque_unit])
+                        ? $decimals[$device_torque_unit]
+                        : 3;
+
+                    $sequences['unscrew_torque_threshold'] = number_format(
+                        (float)$sequences['unscrew_torque_threshold'],
+                        $precision
+                    ); 
+                }
+            }
+
+
         }
         $data = [
             'sequences'     => $sequences,
             'job_id'        => $job_id,
             'seq_id'        => $seq_id,
-            'tools_info'    => $last_tool_info,
+            'tools_info'    => $tools_info,
             'type'          => $type,
             'torque_unit'   => $torque_unit,
             'next_seq_id'   => $next_seq_id,

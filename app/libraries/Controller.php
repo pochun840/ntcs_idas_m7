@@ -112,97 +112,7 @@ class Controller
         return $row['operator_loginflag'];        
     }
 
-    //扭力單位轉換
-    public function unitConvert($torValue, $inputType, $TransType) {
-        $torValue = floatval($torValue);
-        $inputType = (int)($inputType);
-        $TransType = (int)($TransType);
-
-        $TorqueUnit = [
-            "N_M" => 1,
-            "KGF_M" => 0,
-            "KGF_CM" => 2,
-            "LBF_IN" => 3
-        ];
-
-
-        if ($inputType === $TorqueUnit["N_M"]) {
-            if ($TransType === $TorqueUnit["KGF_M"]) {
-                return round($torValue * 0.102, 4);
-            } elseif ($TransType === $TorqueUnit["KGF_CM"]) {
-                return round($torValue * 10.2, 2);
-            } elseif ($TransType === $TorqueUnit["LBF_IN"]) {
-                return round($torValue * 10.2 * 0.86805, 2);
-            } elseif ($TransType === $TorqueUnit["N_M"]) {
-                return round($torValue, 3);
-            }
-        } elseif ($inputType === $TorqueUnit["KGF_M"]) {
-            if ($TransType === $TorqueUnit["KGF_M"]) {
-                return round($torValue, 4);
-            } elseif ($TransType === $TorqueUnit["KGF_CM"]) {
-                return round($torValue * 100, 2);
-            } elseif ($TransType === $TorqueUnit["LBF_IN"]) {
-                return round($torValue * 100 * 0.86805, 2);
-            } elseif ($TransType === $TorqueUnit["N_M"]) {
-                return round($torValue * 9.80392156, 3);
-            }
-        } elseif ($inputType === $TorqueUnit["KGF_CM"]) {
-            if ($TransType === $TorqueUnit["KGF_M"]) {
-                return round($torValue * 0.01, 4);
-            } elseif ($TransType === $TorqueUnit["KGF_CM"]) {
-                return round($torValue, 2);
-            } elseif ($TransType === $TorqueUnit["LBF_IN"]) {
-                return round($torValue * 0.86805, 2);
-            } elseif ($TransType === $TorqueUnit["N_M"]) {
-                return round($torValue * 0.0980392156, 3);
-            }
-        } elseif ($inputType === $TorqueUnit["LBF_IN"]) {
-            if ($TransType === $TorqueUnit["KGF_M"]) {
-                return round($torValue * 1.152 * 0.01, 4);
-            } elseif ($TransType === $TorqueUnit["KGF_CM"]) {
-                return round($torValue * 1.152, 2);
-            } elseif ($TransType === $TorqueUnit["LBF_IN"]) {
-                return round($torValue, 2);
-            } elseif ($TransType === $TorqueUnit["N_M"]) {
-                return round($torValue * 0.11294117637119998, 3);
-            }
-        }
-    }
-
-    public function TorqueDelta($toolMaxTorque, $device_torque_unit) {
-        $delta = 0.0;
-        $capTrq = 0.0;
-        $checkTorque = 0;
-
-        switch ($toolMaxTorque) {
-            case 1:
-                $delta = $this->unitConvert(0.0006, 1, $device_torque_unit);
-                break;
-            case 3:
-                $delta = $this->unitConvert(0.002, 1, $device_torque_unit);
-                break;
-            case 5:
-                $delta = $this->unitConvert(0.003, 1, $device_torque_unit);
-                break;
-            case 7:
-                $delta = $this->unitConvert(0.004, 1, $device_torque_unit);
-                break;
-            case 12:
-                $delta = $this->unitConvert(0.007, 1, $device_torque_unit);
-                break;
-            case 16:
-            case 18:
-                $delta = $this->unitConvert(0.01, 1, $device_torque_unit);
-                break;
-            case 25:
-                $delta = $this->unitConvert(0.014, 1, $device_torque_unit);
-                break;
-            default:
-                $delta = $this->unitConvert(0.003, 1, $device_torque_unit);
-        }
-
-        return $delta;
-    }
+    
 
     //取得tcscon device table資訊
     public function Device_Info()
@@ -243,7 +153,7 @@ class Controller
 
     
 
-    //用起子的狀態 來判斷是否可以匯入匯出資料???? 
+    //判斷控制器的登入登出
     public function idas_check(){
 
         require_once '../app/config/config.php';  // 載入常數
@@ -252,7 +162,7 @@ class Controller
         $ip = CONTROLLER_IP;  // 使用定義的常數
         $port = 502;
         $unitId = 0;
-        $startAddress = 4345;
+        $startAddress = 29002;
         $quantity = 1;
 
         $response = ['result' => null, 'error' => ''];
@@ -349,59 +259,40 @@ class Controller
         }
 
         echo json_encode($response);
-
     }
 
-    /*public function Call_Controller_Job()
-    {
-        //get controller ip
-        $controller_ip = $this->EquipmentModel->GetControllerIP(1);
 
-        $input_check = true;
-        $error_message = '';
-        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $job_id = $_POST['job_id'];
-        }else{ 
-            $input_check = false;
-            $error_message .= "job_id,";
-        }
-        if( !empty($_POST['seq_id']) && isset($_POST['seq_id'])  ){
-            $seq_id = $_POST['seq_id'];
-        }else{ 
-            $input_check = false;
-            $error_message .= "seq_id,";
+    public function ntcs_data_db_sysnc() {
+        $this->sync_db(
+            '/home/kls/NTCS7/ntcs_data.db',
+            '/var/www/html/database/ntcs_data.db'
+        );
+
+        //執行 sync 前先刪掉目標檔案
+        $dst_device = '/var/www/html/database/ntcs_device_IDAS.db';
+        if (file_exists($dst_device)) {
+            unlink($dst_device);
         }
 
-        if ($input_check) {
-            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-            $modbus = new ModbusMaster($controller_ip, "TCP");
-            try {
-                $modbus->port = 502;
-                $modbus->timeout_sec = 10;
-                $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
-                
-                // FC 16
-                $test = array(0);
-                $test1 = array(1);
-                $modbus->writeMultipleRegister(0, 517, $test, $dataTypes);//起子禁用
-                echo $modbus->status;
-                exit();
+        $this->sync_db(
+            '/home/kls/NTCS7/ntcs_device.db',
+            $dst_device
+        );
+    }
 
-            } catch (Exception $e) {
-             
-                $this->logMessage('operation-1','result-2',json_encode( array('job_id'=> $job_id,'seq_id'=> $seq_id, 'raw' => $_POST ) ));
-                echo $modbus->status;
-                exit();
+    private function sync_db($src, $dst) {
+        if (!file_exists($src)) {
+            return;
+        }
+
+        $src_mtime = filemtime($src);
+        $dst_mtime = file_exists($dst) ? filemtime($dst) : 0;
+
+        if ($src_mtime > $dst_mtime) {
+            if (copy($src, $dst)) {
+                chmod($dst, 0777);
             }
-        }else{
-            echo json_encode(array('error' => $error_message));
-            exit();
         }
-
-        echo json_encode($job_detail);
-        exit();
-        
-    }*/
-
+    }
 
 }

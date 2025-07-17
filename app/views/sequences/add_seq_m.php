@@ -207,7 +207,7 @@ if ($data['type'] == 'edit') {
                                     }?>
                                     <?php for ($i = 1; $i <= 5; $i++) { ?>
                                         <div class="form-check form-check-inline zoom">
-                                            <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>" onchange="getCheckboxValue()" >
+                                            <input class="form-check-input" type="checkbox" id="Thread_Calcu_<?php echo $i; ?>" value="<?php echo $i; ?>" onchange="getCheckboxValue_seq()" >
                                             <label class="form-check-label" for="Thread_Calcu_<?php echo $i; ?>"><?php echo $i; ?></label>
                                         </div>
                                     <?php } ?>
@@ -272,6 +272,7 @@ if ($data['type'] == 'edit') {
                                 <div class="col-5 t1"><?php echo $text['reverse_rpm'];?> (rpm):</div>
                                 <div class="col-4 t2">
                                     <input id="unscrew_rpm" class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_rpm'] : ''; ?>">
+                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
 

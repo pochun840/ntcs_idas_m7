@@ -1679,12 +1679,12 @@ class Settings extends Controller
         // ✅ 檢查是否可同步（Modbus 工具狀態）
         $idas_result = $this->idas_check();
 
-        if (!isset($idas_result['result']) || (int)$idas_result['result'] != 0) {
+        if ($idas_result['result'] != 0) {
             echo json_encode([
                 'result'   => false,
                 'login'    => 0,
                 'res_type' => 'SuccessError',
-                'res_msg'  => 'Tool not disabled'
+                'res_msg'  => 'Controller is already logged in'
             ]);
             return;
         }else{
@@ -1692,33 +1692,14 @@ class Settings extends Controller
                 'result'   => true,
                 'login'    => 1,
                 'res_type' => 'Success',
-                'res_msg'  => 'Tool is disabled, login status returned'
+                'res_msg'  => 'Login status returned'
             ]);
             return;
 
         }
 
-        // ✅ 檢查控制器登入狀態
-        /*$Controller_Info = $this->ToolModel->GetControllerInfo();
+        $this->ntcs_data_db_sysnc();
 
-        if (!empty($Controller_Info)) {
-            $user_logIn = isset($Controller_Info['user_logIn']) ? (int)$Controller_Info['user_logIn'] : 1;
 
-            echo json_encode([
-                'result'   => true,
-                'login'    => $user_logIn,  // ✅ 根據真實狀態
-                'res_type' => 'Success',
-                'res_msg'  => 'Tool is disabled, login status returned'
-            ]);
-            return;
-        }*/
-
-        // ✅ 若 Controller info 取得失敗，預設視為登入中（保守處理）
-        /*echo json_encode([
-            'result'   => false,
-            'login'    => 1,
-            'res_type' => 'Error',
-            'res_msg'  => 'Controller info not found'
-        ]);*/
     }    
 }

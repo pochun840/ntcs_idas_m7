@@ -469,8 +469,6 @@ class Sequence{
                     END
                     WHERE JOBID = :jobid AND SEQID = :old_seq_id";
 
-                    //echo $update_step_sql;die();
-
     
                     $update_step_statement = $this->db_iDas->prepare($update_step_sql);
                     $update_step_statement->bindValue(':temp_seq_id', $temp_seq_id); // 使用 $temp_seq_id
@@ -626,7 +624,7 @@ class Sequence{
             'Thread_Calcu' => 0,
             'unscrew_mode' => 0,
             'unscrew_force' => 0,
-            'unscrew_rpm' => 0,
+            'unscrew_rpm' => 300,
             'unscrew_dir' => 0,
             'image' => null,
             'message' => null,

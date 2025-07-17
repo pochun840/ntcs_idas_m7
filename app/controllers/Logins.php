@@ -274,18 +274,26 @@ class Logins extends Controller
     }
 
 
-    public function ntcs_data_db_sysnc() {
-        
-        //header('Content-Type: application/json');
+    /*public function ntcs_data_db_sysnc() {
+        $this->sync_db(
+            '/home/kls/NTCS7/ntcs_data.db',
+            '/var/www/html/database/ntcs_data.db'
+        );
 
-        $src = '/home/kls/NTCS7/ntcs_data.db';
-        $dst = '/var/www/html/database/ntcs_data.db';
+        //執行 sync 前先刪掉目標檔案
+        $dst_device = '/var/www/html/database/ntcs_device_IDAS.db';
+        if (file_exists($dst_device)) {
+            unlink($dst_device);
+        }
 
+        $this->sync_db(
+            '/home/kls/NTCS7/ntcs_device.db',
+            $dst_device
+        );
+    }
+
+    private function sync_db($src, $dst) {
         if (!file_exists($src)) {
-            /*echo json_encode([
-                "status" => "error",
-                "message" => "來源檔案不存在！"
-            ]);*/
             return;
         }
 
@@ -295,22 +303,11 @@ class Logins extends Controller
         if ($src_mtime > $dst_mtime) {
             if (copy($src, $dst)) {
                 chmod($dst, 0777);
-                /*echo json_encode([
-                    "status" => "success",
-                    "message" => "同步完成！"
-                ]);*/
-            } else {
-                /*echo json_encode([
-                    "status" => "error",
-                    "message" => "同步失敗！"
-                ]);*/
             }
-        } else {
-            /*echo json_encode([
-                "status" => "ok",
-                "message" => "無需同步。"
-            ]);*/
         }
-    }
+    }*/
+
+
+
 
 }
