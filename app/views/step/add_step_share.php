@@ -109,7 +109,7 @@
     function toggleStepTorqueTS() {
         const dataType = "<?php echo $data['type']; ?>";
         const stepTorqueTS = document.getElementById('StepTorqueTS');
-        const stepTorqueTSBlock = document.getElementById('StepTorqueTS_block'); // 新增這一行
+        const stepTorqueTSBlock = document.getElementById('StepTorqueTS_block'); 
         const showTorque = document.getElementById('show_torque');
         const showAngle = document.getElementById('show_angle');
         const thresholdBlock = document.getElementById('threshold_block');
@@ -132,10 +132,10 @@
                 if (dataType === 'new') {
                     const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
                     const decimals = {
-                        0: 4,
+                        0: 2,
                         1: 3,
                         2: 2,
-                        3: 2,
+                        3: 4,
                         4: 1
                     };
                     const places = decimals[stepUnit] ?? 3;
@@ -143,10 +143,10 @@
                 }else{
                     const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
                     const decimals = {
-                        0: 4,
+                        0: 2,
                         1: 3,
                         2: 2,
-                        3: 2,
+                        3: 4,
                         4: 1
                     };
                     const places = decimals[stepUnit] ?? 3;
@@ -492,10 +492,10 @@
 
 
         const decimals = {
-            0: 4,
+            0: 2,
             1: 3,
             2: 2,
-            3: 2,
+            3: 4,
             4: 1
         };
 
@@ -504,12 +504,20 @@
         const increment = parseFloat((1 / Math.pow(10, precision)).toFixed(precision));
 
 
-        const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque').value);
-        const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque').value);
+        const Tool_Max_Torque = document.getElementById('check_target_tor_hi').value; //target_tor
+        const Tool_Min_Torque = document.getElementById('check_target_tor_lo').value; //target_tor
+
+        const check_hi_tor_before = document.getElementById('check_hi_tor_before').value; //check_hi_tor_before
+        const check_hi_tor_after  = document.getElementById('check_hi_tor_after').value; //check_hi_tor_after
+
+
+        const check_lo_tor_before = document.getElementById('check_lo_tor_before').value; //check_lo_tor_before
+        const check_lo_tor_after  = document.getElementById('check_lo_tor_after').value; //check_lo_tor_after
 
         const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm').value);
         const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
+
 
         const idsToCheck = ['tool_max_torque', 'tool_min_torque', 'tool_max_rpm', 'tool_min_rpm', 'tool_max_torque_diff'];
 
@@ -551,11 +559,11 @@
         const limits = {
             torque: {
                 torque: { min: Tool_Min_Torque, max: Tool_Max_Torque },
-                torqueTS: { min: Tool_Min_Torque, max: Tool_Max_Torque },
+                torqueTS: { min: check_lo_tor_before, max: Tool_Min_Torque },
                 torqueDownshift: { min: 0, max: Tool_Min_Torque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
-                limitHi: { min: StepTorqueVal > 0 ? parseFloat((StepTorqueVal + increment).toFixed(precision)): 0, max: Tool_Max_Torque * 1.1 },
-                limitLo: { min: 0, max: (StepTorqueVal - delta < 0) ? 0 : StepTorqueVal - delta }
+                limitHi: { min: check_hi_tor_before, max: check_hi_tor_after },
+                limitLo: { min: check_lo_tor_before, max: check_lo_tor_after }
             },
             angle: {
                 angle: { min: 1, max: 30600 },
@@ -632,9 +640,11 @@
             const feedback = el.nextElementSibling;
 
             const roundTo = (num, digits) => {
-                if (isNaN(num)) return NaN;
-                return Number(num.toFixed(digits));
+                const parsed = parseFloat(num);
+                if (isNaN(parsed)) return NaN;
+            return parsed.toFixed(digits); 
             };
+
 
             const parsedRounded = roundTo(parsed, precision);
             const minRounded = (min !== null && !isNaN(min)) ? roundTo(min, precision) : null;

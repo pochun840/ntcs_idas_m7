@@ -466,12 +466,7 @@ class Step extends Controller
 
         if ($type === 'new') {
             $from_unit = 1; // 預設 DB 單位 N.m
-            $tools = $this->MiscellaneousModel->prepareToolTorqueValues(
-                $tools,
-                $from_unit,
-                $device_torque_unit,
-                $decimals_arr
-            );
+            $tools = $this->MiscellaneousModel->prepareToolTorqueValues($tools,$from_unit,$device_torque_unit,$decimals_arr);
             $torque_unit = $device_torque_unit;
             $flag = 'new';
 
@@ -480,41 +475,79 @@ class Step extends Controller
             $step_torque_unit = (int)$step['step_unit'];
 
             if ($step_torque_unit !== $device_torque_unit) {
-                $step = $this->MiscellaneousModel->convertStepTorqueFields(
-                    $step,
-                    $step_torque_unit,
-                    $device_torque_unit
-                );
+                $StepTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepTorque'], $step_torque_unit); 
+                $StepHiTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepHiTorque'], $step_torque_unit); 
+
+                $step['StepTorque'] = $StepTorque_temp[$torque_arr[$device_torque_unit]];
+                $step['StepHiTorque'] = $StepHiTorque_temp[$torque_arr[$device_torque_unit]];
+                
+
 
                 if (!empty($tools)) {
-                    $tools = $this->MiscellaneousModel->prepareToolTorqueValues(
-                        $tools,
-                        $step_torque_unit,
-                        $device_torque_unit,
-                        $decimals_arr
-                    );
+                    $tools = $this->MiscellaneousModel->prepareToolTorqueValues($tools,$step_torque_unit,$device_torque_unit,$decimals_arr);
                 }
 
                 $torque_unit = $device_torque_unit;
             } else {
                 
                if (!empty($tools)) {
-                    $tools = $this->MiscellaneousModel->prepareToolTorqueValues(
-                        $tools,
-                        $step_torque_unit,
-                        $device_torque_unit,
-                        $decimals_arr
-                    );
+                    $tools = $this->MiscellaneousModel->prepareToolTorqueValues($tools,$step_torque_unit,$device_torque_unit,$decimals_arr);
                 }
                 $torque_unit = $step_torque_unit;
             }
 
+         
             $tools['tool_high_torque'] = $step['StepHiTorque'] ?? 0;
             $tools['tool_low_torque'] = $step['StepLoTorque'] ?? 0;
             $flag = 'edit';
+
+
+
+ 
+            //die();
         }
 
         $unit_name = $torque_arr[$torque_unit] ?? 'N.m';
+        
+        // 製作tor檢核
+        $tools_check = $this->ToolModel->GetToolInfo()[0] ?? [];
+
+        if (!empty($tools_check) && $type === "edit") {
+
+            $use_unit = ($step_torque_unit === $device_torque_unit) ? $device_torque_unit : $step_torque_unit;
+
+            //轉換函式
+            $convert_torque = function ($raw_value) use ($use_unit, $torque_arr) {
+                $nm_value = floatval($raw_value) / 1000;
+                $converted = $this->MiscellaneousModel->convert_all_torque_units($nm_value, 1); // 1 => N.m
+                return $converted[$torque_arr[$use_unit]] ?? 0;
+            };
+
+            // 執行轉換與檢查
+            $check_target_tor_lo = $convert_torque($tools_check['min_torque']);
+            $check_target_tor_hi = $convert_torque($tools_check['max_torque']);
+
+            $check_hi_tor_after  = $check_target_tor_hi * 1.10;
+            $decimals = $decimals_arr[$use_unit] ?? 1;
+            $check_hi_tor_after = $this->MiscellaneousModel->roundToNDecimals($check_hi_tor_after, $decimals);
+            $check_hi_tor_after = number_format($check_hi_tor_after, $decimals, '.', '');
+
+            //$step_temp = $res[0];
+
+            $tools_check['check_target_tor_lo']   = $check_target_tor_lo;
+            $tools_check['check_target_tor_hi']   = $check_target_tor_hi;
+            $tools_check['check_hi_tor_before']   = $check_target_tor_hi;
+            $tools_check['check_hi_tor_after']    = $check_hi_tor_after;
+            $tools_check['check_lo_tor_before']   = number_format(0, $decimals_arr[$use_unit] ?? 3, '.', '');
+            $tools_check['check_lo_tor_after']    = $step['StepTorque'] - (1 / pow(10, $decimals_arr[$use_unit] ?? 3));
+
+
+            $tools = array_merge($tools,$tools_check);
+        }
+
+        echo "<pre>";
+        print_r($tools_check);
+        echo "</pre>";  
 
         $isMobile = $this->isMobileCheck();
         $data = [

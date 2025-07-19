@@ -399,7 +399,10 @@ class Jobs extends Controller
             $corrections = [
                 'kgf.m'  => ['add' => 0.0001, 'decimals' => 4],
                 'kgf.cm' => ['add' => 0.01,   'decimals' => 2],
-                'Lbf.in' => ['add' => 0.01,   'decimals' => 2]
+                'Lbf.in' => ['add' => 0.01,   'decimals' => 2],
+                'N.m'    => ['add' => 0.001,  'decimals' => 3],
+                'cN.m'   => ['add' => 0.1,    'decimals' => 1],
+
             ];
 
             foreach ($corrections as $unit => $info) {

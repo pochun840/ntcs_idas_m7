@@ -29,14 +29,15 @@ class Miscellaneous{
         }
 
         if($mode == "torque_unit"){
-            $array = array(
+             $array = array(
                 0 => 'kgf.cm',
                 1 => 'N.m',
-                2 => 'Lbf.in',
+                2 => 'kgf.cmLbf.in',
                 3 => 'kgf.m',
                 4 => 'cN.m'
                 
             );
+
         }
 
         if($mode == "target_option" ){
@@ -174,10 +175,10 @@ class Miscellaneous{
 
         if($mode =="decimals"){
             $array = array(
-                0 => 2, // KGF-cm
+                0 => 2, // KGF-m
                 1 => 3, // N.m
-                2 => 2, // Lbf.in
-                3 => 4, // KGF-m
+                2 => 2, // KGF-cm
+                3 => 4, // Lbf.in
                 4 => 1  // cN.m
             );
 
@@ -235,21 +236,10 @@ class Miscellaneous{
 
     public function convert_all_torque_units($value, $inputType, $useExcelMode = true) {
 
-        $unit_names = [
-            0 => "kgf.cm",
-            1 => "N.m",
-            2 => "Lbf.in",
-            3 => "kgf.m",
-            4 => "cN.m"
-        ];
 
-        $decimals = [
-            0 => 2, // kgf.cm
-            1 => 3, // N.m
-            2 => 2, // Lbf.in
-            3 => 4, // kgf.m
-            4 => 1  // cN.m
-        ];
+        $unit_names = $this->details('torque_unit');
+        $decimals = $this->details('decimals');
+ 
 
         if (!is_numeric($value) || !isset($unit_names[$inputType])) {
             return "Invalid input.";
@@ -257,7 +247,7 @@ class Miscellaneous{
 
         $value = floatval($value);
 
-        // ✅ Step 1: 將輸入轉成 N.m（標準單位）
+        //Step 1: 轉換為 N.m
         switch ($inputType) {
             case 0: $Nm = $value * 0.0980665; break;               // kgf.cm → N.m
             case 1: $Nm = $value; break;                           // N.m → N.m
@@ -269,10 +259,9 @@ class Miscellaneous{
 
         $result = [];
 
-        // ✅ Step 2: 將 N.m 轉成所有單位
+        //Step 2: 將 N.m 轉為所有單位
         foreach ($unit_names as $targetType => $unitName) {
             if ($useExcelMode) {
-                // Excel Mode: 近似、四捨五入簡化公式
                 switch ($targetType) {
                     case 0: $converted = $Nm * 10.1971621298; break; // N.m → kgf.cm
                     case 1: $converted = $Nm; break;
@@ -282,24 +271,25 @@ class Miscellaneous{
                     default: continue 2;
                 }
             } else {
-                // 嚴謹模式：使用實際公式
                 switch ($targetType) {
-                    case 0: $converted = $Nm / 0.0980665; break;        // N.m → kgf.cm
+                    case 0: $converted = $Nm / 0.0980665; break;
                     case 1: $converted = $Nm; break;
-                    case 2: $converted = $Nm / 0.112984829333; break;   // N.m → Lbf.in
-                    case 3: $converted = $Nm / 9.80665; break;          // N.m → kgf.m
-                    case 4: $converted = $Nm * 100; break;              // N.m → cN.m
+                    case 2: $converted = $Nm / 0.112984829333; break;
+                    case 3: $converted = $Nm / 9.80665; break;
+                    case 4: $converted = $Nm * 100; break;
                     default: continue 2;
                 }
             }
 
-            // ✅ 四捨五入與格式化顯示
+            //四捨五入與格式化顯示
             $rounded = $this->roundToNDecimals($converted, $decimals[$targetType]);
             $result[$unitName] = number_format($rounded, $decimals[$targetType], '.', '');
         }
 
+
         return $result;
     }
+
 
 
 
@@ -335,14 +325,7 @@ class Miscellaneous{
 
         $value = floatval($value);
 
-        // 小數點保留位數定義（根據單位）
-        $decimals = [
-            0 => 2, // kgf.cm
-            1 => 3, // N.m
-            2 => 2, // Lbf.in
-            3 => 4, // kgf.m
-            4 => 1  // cN.m
-        ];
+        $decimals = $this->details('decimals');
 
         // Step 1：先轉成 N.m（中介單位）
         switch ($from_unit) {
@@ -381,63 +364,13 @@ class Miscellaneous{
     }
  
 
-    /*public function convert_tool_torque_info($tools, $torque_unit, $unit_name, $decimals_arr, $device_torque_unit){
-
-        $precision = $decimals_arr[$torque_unit] ?? 3;
-
-        foreach (['min_torque', 'max_torque'] as $key) {
-            if (!empty($tools[$key]) && is_numeric($tools[$key])) {
-
-                // ➤ 先從 N.mm → N.m
-                $value_nm = $tools[$key] / 1000;
-
-                $result = $this->convert_and_format_torque_full(
-                    $value_nm,
-                    $torque_unit,
-                    $unit_name
-                );
-
-                $converted_value = round($result['raw_converted'], $precision);
-
-                $tools[$key] = $converted_value;
-
-                $formatted_value = number_format($converted_value, $precision);
-
-                if ($key === 'max_torque') {
-                    $tools['tools_high_torque_diff'] = $formatted_value;
-                    $tools['tool_high_torque'] = number_format($converted_value * 1.10, $precision);
-                    $tools['max_torque'] = $formatted_value;
-                }
-
-                if ($key === 'min_torque') {
-                    $tools['min_torque'] = $formatted_value;
-                }
-            }
-        }
-
-        // ➤ tool_low_torque
-        $converted_zero = $this->convert_single_torque_unit(
-            0,
-            $device_torque_unit,
-            $torque_unit
-        );
-
-        $converted_zero = floatval($converted_zero);
-
-        $tools['tool_low_torque'] = number_format(
-            $converted_zero,
-            $precision
-        );
-
-        return $tools;
-    }*/
-
+   
 
 
 
    
 
-    public function get_unit_name_by_index($index) {
+    /*public function get_unit_name_by_index($index) {
         $unit_map = [
             0 => "kgf.cm",
             1 => "N.m",
@@ -446,7 +379,7 @@ class Miscellaneous{
             4 => "cN.m"
         ];
         return isset($unit_map[$index]) ? $unit_map[$index] : null;
-    }
+    }*/
 
   
     public function batch_convert_grouped_by_unit_chart(array $values, int $inputType) {
@@ -467,7 +400,7 @@ class Miscellaneous{
 
 
 
-    public function convert_and_format_torque_full($raw_value, $to_unit_id, $unit_name){
+    /*public function convert_and_format_torque_full($raw_value, $to_unit_id, $unit_name){
 
             // 原始為 N.mm → 換算成 N.m
             $base_value = $raw_value / 1000;
@@ -495,36 +428,31 @@ class Miscellaneous{
                 'high_torque'     => number_format($converted_value * 1.10, $precision),
                 'raw_converted'   => $converted_value
             ];
-    }
+    }*/
 
     
+    public function convert_seq_torque($raw_value, $to_unit_id, $unit_name){
 
-       public function convert_seq_torque($raw_value, $to_unit_id, $unit_name){
 
+        // 執行轉換
+        $converted = $this->convert_single_torque_unit($raw_value, 1, $to_unit_id);
 
-            // 執行轉換
-            $converted = $this->convert_single_torque_unit($raw_value, 1, $to_unit_id);
+        // 抓出實際數值
+        $converted_value = is_array($converted)
+            ? ($converted[$unit_name] ?? 0)
+            : (is_numeric($converted) ? $converted : 0);
 
-            // 抓出實際數值
-            $converted_value = is_array($converted)
-                ? ($converted[$unit_name] ?? 0)
-                : (is_numeric($converted) ? $converted : 0);
+        // 小數位設定
 
-            // 小數位設定
-            $decimals = [
-                0 => 2, // kgf.cm
-                1 => 3, // N.m
-                2 => 2, // Lbf.in
-                3 => 4, // kgf.m
-                4 => 1  // cN.m
-            ];
-            $precision = isset($decimals[$to_unit_id]) ? $decimals[$to_unit_id] : 3;
+        
+        $decimals = $this->details('decimals');
+        $precision = isset($decimals[$to_unit_id]) ? $decimals[$to_unit_id] : 3;
 
-            return [
-                'converted_value' => number_format($converted_value, $precision),
-                'high_torque'     => number_format($converted_value * 1.10, $precision),
-                'raw_converted'   => $converted_value
-            ];
+        return [
+            'converted_value' => number_format($converted_value, $precision),
+            'high_torque'     => number_format($converted_value * 1.10, $precision),
+            'raw_converted'   => $converted_value
+        ];
     }
 
 

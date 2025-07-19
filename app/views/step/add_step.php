@@ -16,22 +16,20 @@
         display: inline!important;
     }
 </style>
-
 <?php
 // 預設空字串
-$StepTorque = '';
+/*$StepTorque = '';
 $StepHiTorque = '';
 $StepLoTorque = '';
 $StepTorqueTS = '';
 $StepTorqueDownShift = '';
-
 if ($data['type'] == 'edit') {
     $step_unit = $data['step_torque_unit'];
     $decimalMap = [
-        0 => 4,
+        0 => 2,
         1 => 3,
         2 => 2,
-        3 => 2,
+        3 => 4,
         4 => 1,
     ];
     $decimals = $decimalMap[$step_unit] ?? 2;
@@ -45,8 +43,7 @@ if ($data['type'] == 'edit') {
     $StepLoTorque  = formatTorque($data['step']['StepLoTorque'], $decimals);
     $StepTorqueTS  = formatTorque($data['step']['StepTorqueTS'], $decimals);
     $StepTorqueDownShift = formatTorque($data['step']['StepTorqueDownShift'], $decimals);
-
-}
+}*/
 ?>
 
 
@@ -60,7 +57,7 @@ if ($data['type'] == 'edit') {
     </div>
 
    
-    <div style="display:none;">
+    <div style="display:block;">
         <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
         <input id="tool_max_torque_diff" value="<?php echo $data['tools_info']['tool_high_torque']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
@@ -69,6 +66,11 @@ if ($data['type'] == 'edit') {
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
         <input id="step_torque_unit" value="<?php echo $data['step_torque_unit'];?>"> 
+
+        <input id="check_target_tor_lo" value="<?php echo $data['tools_info']['check_target_tor_lo'];?>"> 
+        <input id="check_target_tor_hi" value="<?php echo $data['tools_info']['check_target_tor_hi'];?>"> 
+        <input id="check_hi_tor_before" value="<?php echo $data['tools_info']['check_hi_tor_before'];?>"> 
+        <input id="check_hi_tor_after"  value="<?php echo $data['tools_info']['check_hi_tor_after'];?>"> 
     </div>
 
     <div class="main-content">
@@ -145,7 +147,7 @@ if ($data['type'] == 'edit') {
                                         <div class="col-3" id="targetLabel"><?php echo $label; ?></div>
                                         <div class="col-9" id="StepTorque_item" style="display: none;" >
                                             <input id="StepTorque" class="form-control form-control-sm"
-                                                value="<?php echo ($type === 'edit') ? htmlspecialchars($StepTorque) : ''; ?>">
+                                                value="<?php echo ($type === 'edit') ? htmlspecialchars($data['step']['StepTorque']) : ''; ?>">
                                             <div class="invalid-feedback"></div>
                                         </div>
 
@@ -162,14 +164,14 @@ if ($data['type'] == 'edit') {
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['High_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-9">
-                                        <input id="StepHiTorque"  type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $StepHiTorque : ''; ?>" >
+                                        <input id="StepHiTorque"  type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : ''; ?>" >
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['Low_Torque']?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-9">
-                                        <input id="StepLoTorque" type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $StepLoTorque : ''; ?>">
+                                        <input id="StepLoTorque" type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : ''; ?>">
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
@@ -337,7 +339,7 @@ if ($data['type'] == 'edit') {
                                     <div class="col-4" id="show_torque" style="display: none;"><?php echo $text['Threshold_Torque'];?>:</div>
                                     <div class="col-4" id="show_angle" style="display: none;"><?php echo $text['Threshold_Angle'];?>:</div>
                                     <div class="col-8" id="StepTorqueTS_block" >
-                                        <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?php echo ($data['type'] == 'edit') ? $StepTorqueTS : ''; ?>">
+                                        <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueTS'] : ''; ?>">
                                     </div>
                                 </div>
 
@@ -367,7 +369,7 @@ if ($data['type'] == 'edit') {
                                     <div class="col-4" id="show_downshift_torque" style="display:block;" ><?php echo $text['Downshift_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-4" id="show_downshift_angle" style="display:none;" ><?php echo $text['Downshift_Angle'];?> </div>
                                     <div class="col-8" id="StepTorqueDownShift_block"  >
-                                        <input id="StepTorqueDownShift" class="form-control form-control-sm"  value="<?php echo ($data['type'] == 'edit') ? $StepTorqueDownShift : ''; ?>" >
+                                        <input id="StepTorqueDownShift" class="form-control form-control-sm"  value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueDownShift'] : ''; ?>" >
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>

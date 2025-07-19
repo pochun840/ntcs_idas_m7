@@ -49,20 +49,12 @@ class Dashboards extends Controller
         $isMobile   = $this->isMobileCheck();
         $data_info  = $this->DashboardModel->get_Data() ?? [];
         $controller_info = $this->SettingModel->GetControllerInfo();
-        $status_arr       = $this->MiscellaneousModel->details('status');
+        $status_arr = $this->MiscellaneousModel->details('status');
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-
-
-        //
-
 
         //取得控制器的扭力單位 
         $res_device = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)$res_device['torque_unit'];
-
-
-
-
         if (!empty($data_info['fasten_status'])) {
         
             $data_info['error_message'] = $error_message['ERR_' . $data_info['error_message']] ?? $data_info['error_message'];
@@ -84,8 +76,19 @@ class Dashboards extends Controller
             $data_info['result_status_color_text'] = $color;
 
 
-            $data_info['final_fasten_torque_temp'] =  $this->MiscellaneousModel->convert_all_torque_units($data_info['final_fasten_torque'], 1);
-            $data_info['final_fasten_torque'] = $data_info['final_fasten_torque_temp'][$unit_arr[$device_torque_unit]]; 
+            $data_info['torque_unit'] = (int)$data_info['torque_unit'];
+            
+
+
+            if($device_torque_unit != $data_info['torque_unit']){     
+
+                $data_info['final_fasten_torque_temp'] =  $this->MiscellaneousModel->convert_all_torque_units($data_info['final_fasten_torque'], $data_info['torque_unit']); 
+                $data_info['final_fasten_torque_temp'] = $data_info['final_fasten_torque_temp'][$unit_arr[$device_torque_unit]];
+
+            }else{
+                $data_info['final_fasten_torque_temp'] = $data_info['final_fasten_torque'];
+            }
+            $data_info['final_fasten_torque']  = $data_info['final_fasten_torque_temp'];
             $data_info['final_torque_unit'] = $unit_arr[$device_torque_unit];
     
         }
@@ -239,7 +242,11 @@ class Dashboards extends Controller
         // 取得控制器的扭力單位
         $res_device = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)$res_device['torque_unit'];
-        $unit_name = $this->MiscellaneousModel->get_unit_name_by_index($device_torque_unit);
+
+        //$unit_name = $this->MiscellaneousModel->get_unit_name_by_index($device_torque_unit);
+        $unit_arr  = $this->MiscellaneousModel->details('torque_unit');
+        $unit_name = $unit_arr[$device_torque_unit];
+        
 
         $torque = [];
         $rpm = [];
@@ -274,9 +281,11 @@ class Dashboards extends Controller
             if (in_array($chat_mode, [1, 4])) {
                 // ➤ Torque 需要轉換
                 $torque_converted = array_map(function($val) use ($device_torque_unit, $unit_name) {
+
                     $converted = $this->MiscellaneousModel->convert_single_torque_unit($val, 1, $device_torque_unit);
                     return is_array($converted) ? ($converted[$unit_name] ?? 0) : (is_numeric($converted) ? $converted : 0);
                 }, $csvdata_arr);
+
 
                 $chart_info['y_val'] = $torque_converted;
                 $chart_info['max']   = !empty($torque_converted) ? max($torque_converted) : 0;

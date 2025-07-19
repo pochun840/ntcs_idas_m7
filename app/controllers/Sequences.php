@@ -217,6 +217,13 @@ class Sequences extends Controller
         }
 
 
+
+        //取得當下 IDAS 設定的扭力單位
+        $res_device = $this->SettingModel->GetControllerInfo();
+        $device_torque_unit = (int)$res_device['torque_unit'];
+
+
+
         if(isset($_POST['job_id'])){
                           
             // 初始化數據陣列
@@ -256,7 +263,7 @@ class Sequences extends Controller
                 'addtion' => $_POST['addtion'] ?? null,
                 'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
                 'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
-                'seq_unit' => $_POST['seq_unit'] ?? 0
+                'seq_unit' => $_POST['seq_unit'] ?? $device_torque_unit
 
             );
 
@@ -563,16 +570,9 @@ class Sequences extends Controller
                     $temp = $this->MiscellaneousModel->convert_seq_torque($sequences['unscrew_torque_threshold'],$device_torque_unit, $unit_name);
                     $sequences['unscrew_torque_threshold'] = $temp['converted_value'];
                 }else{
-                    $decimals = [
-                        0 => 4, // KGF-M
-                        1 => 3, // N.m
-                        2 => 2, // KGF-cm
-                        3 => 2, // Lbf
-                        4 => 1  // cN.m
-                    ];
-
-                    $precision = isset($decimals[$device_torque_unit])
-                        ? $decimals[$device_torque_unit]
+                    
+                    $precision = isset( $decimals_arr[$device_torque_unit])
+                        ?  $decimals_arr[$device_torque_unit]
                         : 3;
 
                     $sequences['unscrew_torque_threshold'] = number_format(
@@ -580,6 +580,10 @@ class Sequences extends Controller
                         $precision
                     ); 
                 }
+
+
+                //$seq_unit = (int)$sequences['seq_unit'];
+              
             }
 
 
