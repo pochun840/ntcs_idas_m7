@@ -75,25 +75,43 @@ function crud_job_event(argument) {
             // 2. 移除選取列
             table.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
 
-            // 3. 重置事件選單
+            // ✅ 3. AJAX 載入最新的 temp、tempA、temp_event
+            $.ajax({
+                url: "?url=Outputs/get_output_by_job_id",
+                method: "POST",
+                data: { job_id },
+                async: false,  // 同步保證變數更新
+                success: function (response) {
+                    let data = JSON.parse(response);
+                    temp        = Array.isArray(data.temp)        ? data.temp        : [];
+                    tempA       = Array.isArray(data.tempA)       ? data.tempA       : [];
+                    temp_event  = Array.isArray(data.temp_event)  ? data.temp_event  : [];
+                },
+                error: function (xhr, status, error) {
+                    console.error("取得 job output 設定失敗:", status, error);
+                    temp = tempA = temp_event = []; // fallback 避免後續錯誤
+                }
+            });
+
+            // 4. 重置事件選單
             const eventOption = document.getElementById('Event_Option');
             if (eventOption) eventOption.selectedIndex = 0;
 
-            // 4. 清除並禁用所有 radio
+            // 5. 清除並禁用所有 radio
             clearAndDisableRadios(temp);
 
-            // 5. 清空並啟用 time 欄位
+            // 6. 清空並啟用 time 欄位
             resetTimeFields(1, 11);
 
-            // 6. 禁用非 edit 的 pin
+            // 7. 禁用非 edit 的 pin
             const filteredPins = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
             disableElements(filteredPins);
 
-            // 7. 顯示表單與遮罩
+            // 8. 顯示表單與遮罩
             showOverlay();
             showModal('new_output');
 
-            // 8. 綁定下拉選單變更行為
+            // 9. 綁定下拉變更邏輯
             eventOption.addEventListener('change', () => {
                 const selectedOptionId = eventOption.value;
                 const groupA = ['7', '8', '9'];
@@ -107,10 +125,12 @@ function crud_job_event(argument) {
                 if (isGroupB) disableAllPinsAndTimes(1, 11);
             });
 
-            // 9. 禁用 tempA 對應事件選項
+            // 10. 禁用 tempA 對應事件選項
             disableOptions('#Event_Option', tempA, false, true);
+            disableOptions('#Event_Option', temp_event, true, false);
 
-            break;
+        break;
+
 
 
 
@@ -990,6 +1010,32 @@ function disableAllPinsAndTimes(count) {
     }
 }
 
+function disableOptions(selector, values = [], gray = false, reset = false) {
+
+    if (!Array.isArray(values)) {
+        console.warn("disableOptions: 'values' 不是陣列，自動轉換");
+        values = [values];
+    }
+
+    const valueSet = values.map(String);
+
+    const options = document.querySelectorAll(`${selector} option`);
+    if (!options.length) return;
+
+    options.forEach(opt => {
+        if (reset) {
+            opt.disabled = false;
+            opt.style.color = '';
+            opt.classList.remove('disabled_input');
+        }
+
+        if (valueSet.includes(opt.value)) {
+            opt.disabled = true;
+            opt.classList.add('disabled_input');
+            if (gray) opt.style.color = 'gray';
+        }
+    });
+}
 
 </script>
 
