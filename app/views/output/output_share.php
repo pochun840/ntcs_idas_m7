@@ -289,8 +289,9 @@ function job_confirm(){
             success: function(response) {
                 var data = JSON.parse(response);
                 var job_outputlist = data.job_outputlist;
-                temp = data.temp;
-                tempA = data.tempA;
+
+                temp = Array.isArray(data.temp) ? data.temp : [];
+                tempA = Array.isArray(data.tempA) ? data.tempA : [];
 
 
                 document.getElementById("output_jobid_select").innerHTML = job_outputlist;

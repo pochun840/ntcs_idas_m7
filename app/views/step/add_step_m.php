@@ -31,35 +31,6 @@
 
 </style>
 
-<?php
-// 預設空字串
-$StepTorque = '';
-$StepHiTorque = '';
-$StepLoTorque = '';
-$StepTorqueTS = '';
-$StepTorqueDownShift = '';
-if ($data['type'] == 'edit') {
-    $step_unit = $data['step_torque_unit'];
-    $decimalMap = [
-        0 => 4,
-        1 => 3,
-        2 => 2,
-        3 => 2,
-        4 => 1,
-    ];
-    $decimals = $decimalMap[$step_unit] ?? 2;
-
-    function formatTorque($value, $decimals) {
-        return ($value !== '' && is_numeric($value)) ? number_format((float)$value, $decimals, '.', '') : '';
-    }
-
-    $StepTorque    = formatTorque($data['step']['StepTorque'], $decimals);
-    $StepHiTorque  = formatTorque($data['step']['StepHiTorque'], $decimals);
-    $StepLoTorque  = formatTorque($data['step']['StepLoTorque'], $decimals);
-    $StepTorqueTS  = formatTorque($data['step']['StepTorqueTS'], $decimals);
-    $StepTorqueDownShift = formatTorque($data['step']['StepTorqueDownShift'], $decimals);
-}
-?>
 
 
 <div class="container-ms">
@@ -77,7 +48,14 @@ if ($data['type'] == 'edit') {
         <input id="tool_low_torque" value="<?php echo $data['tools_info']['tool_low_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
-        <input id="step_torque_unit" value="<?php echo $data['step_torque_unit'];?>">
+        <input id="step_torque_unit" value="<?php echo $data['step_torque_unit'];?>"> 
+
+        <input id="check_target_tor_lo" value="<?php echo $data['tools_info']['check_target_tor_lo'];?>"> 
+        <input id="check_target_tor_hi" value="<?php echo $data['tools_info']['check_target_tor_hi'];?>"> 
+        <input id="check_hi_tor_before" value="<?php echo $data['tools_info']['check_hi_tor_before'];?>"> 
+        <input id="check_hi_tor_after"  value="<?php echo $data['tools_info']['check_hi_tor_after'];?>"> 
+        <input id="check_lo_tor_before" value="<?php echo $data['tools_info']['check_lo_tor_before'];?>"> 
+        <input id="check_lo_tor_after"  value="<?php echo $data['tools_info']['check_lo_tor_after'];?>"> 
     </div>
 
     <div class="main-content">

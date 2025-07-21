@@ -560,7 +560,7 @@
             torque: {
                 torque: { min: Tool_Min_Torque, max: Tool_Max_Torque },
                 torqueTS: { min: check_lo_tor_before, max: Tool_Min_Torque },
-                torqueDownshift: { min: 0, max: Tool_Min_Torque },
+                torqueDownshift: { min: check_lo_tor_before, max: Tool_Min_Torque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
                 limitHi: { min: check_hi_tor_before, max: check_hi_tor_after },
                 limitLo: { min: check_lo_tor_before, max: check_lo_tor_after }

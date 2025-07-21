@@ -57,7 +57,7 @@ if ($data['type'] == 'edit') {
     </div>
 
    
-    <div style="display:block;">
+    <div style="display:none;">
         <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
         <input id="tool_max_torque_diff" value="<?php echo $data['tools_info']['tool_high_torque']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
@@ -71,6 +71,8 @@ if ($data['type'] == 'edit') {
         <input id="check_target_tor_hi" value="<?php echo $data['tools_info']['check_target_tor_hi'];?>"> 
         <input id="check_hi_tor_before" value="<?php echo $data['tools_info']['check_hi_tor_before'];?>"> 
         <input id="check_hi_tor_after"  value="<?php echo $data['tools_info']['check_hi_tor_after'];?>"> 
+        <input id="check_lo_tor_before" value="<?php echo $data['tools_info']['check_lo_tor_before'];?>"> 
+        <input id="check_lo_tor_after"  value="<?php echo $data['tools_info']['check_lo_tor_after'];?>"> 
     </div>
 
     <div class="main-content">
@@ -340,6 +342,7 @@ if ($data['type'] == 'edit') {
                                     <div class="col-4" id="show_angle" style="display: none;"><?php echo $text['Threshold_Angle'];?>:</div>
                                     <div class="col-8" id="StepTorqueTS_block" >
                                         <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueTS'] : ''; ?>">
+                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
 

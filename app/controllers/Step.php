@@ -500,11 +500,6 @@ class Step extends Controller
             $tools['tool_high_torque'] = $step['StepHiTorque'] ?? 0;
             $tools['tool_low_torque'] = $step['StepLoTorque'] ?? 0;
             $flag = 'edit';
-
-
-
- 
-            //die();
         }
 
         $unit_name = $torque_arr[$torque_unit] ?? 'N.m';
@@ -545,9 +540,6 @@ class Step extends Controller
             $tools = array_merge($tools,$tools_check);
         }
 
-        echo "<pre>";
-        print_r($tools_check);
-        echo "</pre>";  
 
         $isMobile = $this->isMobileCheck();
         $data = [

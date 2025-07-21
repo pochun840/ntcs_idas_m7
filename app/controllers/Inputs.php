@@ -49,75 +49,78 @@ class Inputs extends Controller
     public function get_input_by_job_id($job_id){
 
         $input_check = true;
+
+        $mode = $_POST['mode'] ?? 'edit';  // 預設為 edit 模式
+
         if (!empty($_POST['jobid']) && isset($_POST['jobid'])) {
             $job_id = $_POST['jobid'];
         } else {
             $input_check = false; 
         }
 
+        $temp  = array(); 
+        $tempA = array();
+        $temp_event = array();
+        $job_inputlist = ''; 
+
         if ($input_check) {
+
+            // ✅ 若是從 job_id = 1 做 copy，則清空所有事件資料
+            if ($mode === 'copy' && $job_id == 1) {
+                $response = array(
+                    'job_inputlist' => '',
+                    'temp' => [],
+                    'tempA' => [],
+                    'temp_event' => [],
+                    'isTemplate' => true
+                );
+                echo json_encode($response);
+                return;
+            }
 
             $event = $this->MiscellaneousModel->details('io_input');
             $job_inputs = $this->InputModel->get_input_by_job_id($job_id);
-            $temp  = array(); 
-            $tempA = array();
-            $tempB = array();
-            $job_inputlist = ''; 
-    
+
             if (!empty($job_inputs)) {
                 foreach ($job_inputs as $kk => $vv) {
-
 
                     if (!empty($vv['Pin'])) {
                         $pin_number = $vv['Pin'];
                         $gateconfirm = $vv['Wp_Ready_Confirm'];
-                        $temp[] = "pin" . $pin_number . "_high";
-                        $temp[] = "pin" . $pin_number . "_low";
-                        $temp[] = "edit_pin" . $pin_number . "_high";
-                        $temp[] = "edit_pin" . $pin_number . "_low";
-                        $temp[] = "check_".$gateconfirm;
+                        $temp[] = "pin{$pin_number}_high";
+                        $temp[] = "pin{$pin_number}_low";
+                        $temp[] = "edit_pin{$pin_number}_high";
+                        $temp[] = "edit_pin{$pin_number}_low";
+                        //$temp[] = "check_{$gateconfirm}";
 
                         $temp_event[] = $vv['EvenID'];
-
+                        $tempA[] = $pin_number;
                     }
 
-                    if (!empty($vv['Pin'])) {
-                        $tempA[] = $vv['Pin'];
-                    }
-
-                
-                    
                     $isMobile = $this->isMobileCheck();
 
-                    if($isMobile){
+                    if ($isMobile) {
+                        $img = ($vv['signal'] == 1)
+                            ? '<img src="./img/high.png" style="max-width: 50px;">'
+                            : '<img src="./img/low.png" style="max-width: 50px;">';
 
-                        if($vv['signal'] == 1){
-                            $img = '<img src="./img/high.png" style="max-width: 50px;">';
-                        }else{
-                            $img = '<img src="./img/low.png" style="max-width: 50px;">';
-                        }
-                        
-
-                        $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
-                        $job_inputlist .= "<td id='".$vv['EvenID']."'>".$event[$vv['EvenID']]."</td>";
-                        $job_inputlist .= '<td>'.$vv['Pin'].'</td>';
-                        $job_inputlist .= '<td>'.$img.'</td>';
-                        $job_inputlist .= '</tr>';
-                        
-                    }else{
-   
+                        $job_inputlist .= "<tr data-event='{$vv['EvenID']}'>";
+                        $job_inputlist .= "<td id='{$vv['EvenID']}'>{$event[$vv['EvenID']]}</td>";
+                        $job_inputlist .= "<td>{$vv['Pin']}</td>";
+                        $job_inputlist .= "<td>{$img}</td>";
+                        $job_inputlist .= "</tr>";
+                    } else {
                         $Wp_Ready_Confirm = ($vv['Wp_Ready_Confirm'] == 1) ? "YES" : "NO";
-
-                        $job_inputlist .= "<tr data-event = '".$vv['EvenID']."' >";
-                        $job_inputlist .= "<td id='".$vv['EvenID']."'>".$event[$vv['EvenID']]."</td>";
-                        $job_inputlist .= $this->InputModel->generateTableCell($vv['Pin'],$vv['signal']);
-                        $job_inputlist .= '<td>'.$Wp_Ready_Confirm.'</td>';
-                        $job_inputlist .= '<td>1</td>';
-                        $job_inputlist .= '<td>EVENT</td>';
-                        $job_inputlist .= '</tr>';
+                        $job_inputlist .= "<tr data-event='{$vv['EvenID']}'>";
+                        $job_inputlist .= "<td id='{$vv['EvenID']}'>{$event[$vv['EvenID']]}</td>";
+                        $job_inputlist .= $this->InputModel->generateTableCell($vv['Pin'], $vv['signal']);
+                        $job_inputlist .= "<td>{$Wp_Ready_Confirm}</td>";
+                        $job_inputlist .= "<td>1</td>";
+                        $job_inputlist .= "<td>EVENT</td>";
+                        $job_inputlist .= "</tr>";
                     }
 
-                    //檢查並補上 101 或 102
+                    // 補齊 101 與 102 事件對應
                     if (!empty($temp_event)) {
                         if (in_array("101", $temp_event) && !in_array("102", $temp_event)) {
                             $temp_event[] = "102";
@@ -125,23 +128,21 @@ class Inputs extends Controller
                             $temp_event[] = "101";
                         }
                     }
-                    
-                    
                 }
-
             }
         }
-        
-        if(empty($temp_event)){
+
+        if (empty($temp_event)) {
             $temp_event = '';
         }
+
         $response = array(
             'job_inputlist' => $job_inputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'temp_event' => $temp_event,
-            
+            'temp_event' => $temp_event
         );
+
         echo json_encode($response);
     }
 

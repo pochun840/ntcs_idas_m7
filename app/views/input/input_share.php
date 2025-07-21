@@ -111,8 +111,9 @@ function getLanguageMessage(cookieName) {
 
 function handleNewEvent() {
     disableRadioList(temp);
-    disableOptions('#Event_Option', tempA);
-    disableOptions('#Event_Option', temp_event, true); // 變灰顯示
+    disableOptions('#Event_Option', tempA, false, true);       // ✅ 重置後再禁用 tempA
+    disableOptions('#Event_Option', temp_event, true, false);  // ✅ 只針對 temp_event 顯示灰色，不重設
+
     showOverlay();
     document.getElementById('newinput').style.display = 'block';
 }
@@ -474,16 +475,39 @@ function crud_job_event(action) {
             break;
     }
 }
-
 function handleNewJobEvent() {
-    disableRadioList(temp);
-    disableOptions('#Event_Option', tempA);
-    disableOptions('#Event_Option', temp_event, true); // 顯示灰色但禁用
+    console.log(temp);
+    console.log(tempA);
+    console.log(temp_event);
+
+    // ✅ 清除之前的 disabled 狀態
+    resetElementsByPrefix(); // 對 pin/edit_pin/類 input 做 reset
+    disableOptions('#Event_Option', [], false, true); // ✅ reset select 所有 option
+
+    // ✅ 重新禁用這些欄位
+    disableElementsByIdList(temp);
+    disableOptions('#Event_Option', tempA, false, false);  // 禁用 + 隱藏
+    disableOptions('#Event_Option', temp_event, true, false); // 禁用 + 灰色
+
     showOverlay();
     document.getElementById('newinput').style.display = 'block';
-
-    
 }
+
+
+function resetElementsByPrefix() {
+    const selectors = [
+        '[id^="pin"]',
+        '[id^="edit_pin"]'
+    ];
+    const elements = document.querySelectorAll(selectors.join(','));
+    elements.forEach(el => {
+        el.disabled = false;
+        el.classList.remove('disabled_input');
+        el.style.color = '';
+    });
+}
+
+
 
 function handleEditJobEvent() {
     //disableSelectOptions('#edit_Event_Option');
@@ -527,24 +551,24 @@ function handleUnifiedJobEvent() {
 }
 
 
-function disableRadioList(ids) {
+function disableElementsByIdList(ids) {
     if (!Array.isArray(ids)) return;
+
     ids.forEach(id => {
-        const radio = document.getElementById(id);
-        if (radio?.type === 'radio') {
-            radio.disabled = true;
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = true;
+            el.classList.add('disabled_input');
+            el.style.color = 'gray';
         }
     });
 }
 
+
 function disableOptions(selector, values = [], gray = false, reset = false) {
-    if (!Array.isArray(values)) {
-        console.warn("disableOptions: 'values' 不是陣列，自動轉換");
-        values = [values]; // 或 `return` 看你要強制還是忽略
-    }
 
+    if (!Array.isArray(values)) return;  //不是陣列就跳過
     const valueSet = values.map(String);
-
     const options = document.querySelectorAll(`${selector} option`);
     if (!options.length) return;
 
@@ -562,6 +586,7 @@ function disableOptions(selector, values = [], gray = false, reset = false) {
         }
     });
 }
+
 
 
 function disableSelectOptions(selector) {
@@ -686,8 +711,10 @@ function get_input_by_job_id(jobid){
 
             var data = JSON.parse(response);
             var job_inputlist = data.job_inputlist;
-            temp = data.temp;
-            tempA = data.tempA;
+                temp = Array.isArray(data.temp) ? data.temp : [];
+            tempA = Array.isArray(data.tempA) ? data.tempA : [];
+            temp_event = Array.isArray(data.temp_event) ? data.temp_event : [];
+
 
             document.getElementById("input_jobid_select").innerHTML = job_inputlist;
             document.getElementById("JobSelect").style.display = 'none';
