@@ -43,9 +43,9 @@ class Output{
 
     public function check_job_event_conflict($output_job_id,$output_event){
         
-        $sql = "SELECT JOBID, Pin, EvenID, signal, durate  FROM JOBOutput_lst WHERE JOBID = ? ";
+        $sql = "SELECT JOBID, Pin, EvenID, signal, durate  FROM JOBOutput_lst WHERE JOBID = ?  AND EvenID =? ";
         $statement = $this->db_iDas->prepare($sql);
-        $statement->execute([$output_job_id]);
+        $statement->execute([$output_job_id,$output_event]);
         $rows = $statement->fetch(PDO::FETCH_ASSOC);
         return $rows;
     }

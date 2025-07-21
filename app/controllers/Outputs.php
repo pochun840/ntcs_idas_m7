@@ -349,10 +349,20 @@ class Outputs extends Controller
             $input_check = false; 
         }
 
+
+        //var_dump($_POST);die();
+
         if($input_check){
             $job_outputs = $this->OutputModel->check_job_event_conflict($output_job_id, $output_event);
+           
+            
             if (empty($job_outputs)) {
                 $job_outputs = 'no_data'; 
+            }else{
+                //若 signal 不是 1，durate 要清空
+                if (isset($job_outputs['signal']) && $job_outputs['signal'] != '1') {
+                    $job_outputs['durate'] = '';
+                }
             }
 
             print_r($job_outputs);  

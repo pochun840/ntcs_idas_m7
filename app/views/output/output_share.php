@@ -132,6 +132,10 @@ function crud_job_event(argument) {
         break;
 
 
+
+
+
+
         case 'edit':
             if (!output_event) return;
             showOverlay();
@@ -177,6 +181,7 @@ function crud_job_event(argument) {
                 if (timeEl) timeEl.disabled = false;
             }
 
+            
             get_output_info(job_id, output_event);
             break;
 
@@ -717,7 +722,7 @@ function updateInputsBasedOnRadioSelection() {
 }
 
 function get_output_info(job_id,output_event){
-
+    
     if(job_id && output_event){
      $.ajax({
              url: "?url=Outputs/check_job_event",
