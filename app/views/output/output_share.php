@@ -132,10 +132,6 @@ function crud_job_event(argument) {
         break;
 
 
-
-
-
-
         case 'edit':
             if (!output_event) return;
             showOverlay();
