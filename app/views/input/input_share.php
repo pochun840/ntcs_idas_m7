@@ -476,15 +476,12 @@ function crud_job_event(action) {
     }
 }
 function handleNewJobEvent() {
-    console.log(temp);
-    console.log(tempA);
-    console.log(temp_event);
 
-    // ✅ 清除之前的 disabled 狀態
+    //清除之前的 disabled 狀態
     resetElementsByPrefix(); // 對 pin/edit_pin/類 input 做 reset
-    disableOptions('#Event_Option', [], false, true); // ✅ reset select 所有 option
+    disableOptions('#Event_Option', [], false, true); //reset select 所有 option
 
-    // ✅ 重新禁用這些欄位
+    //重新禁用這些欄位
     disableElementsByIdList(temp);
     disableOptions('#Event_Option', tempA, false, false);  // 禁用 + 隱藏
     disableOptions('#Event_Option', temp_event, true, false); // 禁用 + 灰色
