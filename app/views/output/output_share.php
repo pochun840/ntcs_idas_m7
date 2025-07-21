@@ -67,78 +67,51 @@ function crud_job_event(argument) {
             break;
 
         case 'new':
-            // 清空全域變數
+            // 1. 清空全域變數
             output_event = null;
             output_pinval = null;
             del_output_val = null;
 
-            // 清除舊選取列
+            // 2. 移除選取列
             table.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
 
-            // 重置事件選單
+            // 3. 重置事件選單
             const eventOption = document.getElementById('Event_Option');
-            if (eventOption) {
-                eventOption.selectedIndex = 0;
-            }
+            if (eventOption) eventOption.selectedIndex = 0;
 
-            // 清除所有 radio 的勾選狀態與禁用狀態
-            if (Array.isArray(temp)) {
-                temp.forEach(id => {
-                    const radio = document.getElementById(id);
-                    if (radio?.type === 'radio') {
-                        radio.checked = false;
-                        radio.disabled = true;
-                    }
-                });
-            }
+            // 4. 清除並禁用所有 radio
+            clearAndDisableRadios(temp);
 
-            // 清除所有 time 欄位的值與禁用狀態
-            for (let i = 1; i <= 11; i++) {
-                const time = document.getElementById(`time${i}`);
-                if (time) {
-                    time.value = '';
-                    time.disabled = false;
-                }
-            }
+            // 5. 清空並啟用 time 欄位
+            resetTimeFields(1, 11);
 
-            // 篩選非 edit 的 pin 元素
-            const filtered_array = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
-            disableElements(filtered_array);
+            // 6. 禁用非 edit 的 pin
+            const filteredPins = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
+            disableElements(filteredPins);
 
-            // 控制 modal 開啟
+            // 7. 顯示表單與遮罩
             showOverlay();
             showModal('new_output');
 
-            // event select change handler
+            // 8. 綁定下拉選單變更行為
             eventOption.addEventListener('change', () => {
                 const selectedOptionId = eventOption.value;
-
                 const groupA = ['7', '8', '9'];
                 const groupB = ['12', '13', '14', '15', '16'];
                 const isSpecial = groupA.includes(selectedOptionId);
                 const isGroupB = groupB.includes(selectedOptionId);
 
                 toggleElementsInRange(1, 11, 2, isSpecial);
-                if (!isSpecial) disableElements(filtered_array);
+                if (!isSpecial) disableElements(filteredPins);
 
-                if (isGroupB) {
-                    for (let i = 1; i <= 11; i++) {
-                        const pin = document.getElementById(`pin${i}_1`);
-                        if (pin) pin.disabled = true;
-
-                        const time = document.getElementById(`time${i}`);
-                        if (time) time.disabled = true;
-                    }
-                }
+                if (isGroupB) disableAllPinsAndTimes(1, 11);
             });
 
-            // 禁用已選 event
-            document.querySelectorAll('#Event_Option option').forEach(option => {
-                if (tempA.includes(option.value)) option.disabled = true;
-                else option.disabled = false;
-            });
+            // 9. 禁用 tempA 對應事件選項
+            disableOptions('#Event_Option', tempA, false, true);
 
-        break;
+            break;
+
 
 
 
@@ -986,6 +959,37 @@ function output_success_res(response, job_id, callbackFn, hideElementId = 'newin
     const hideEl = document.getElementById(hideElementId);
     if (hideEl) hideEl.style.display = 'none';
 }
+
+
+function clearAndDisableRadios(ids = []) {
+    ids.forEach(id => {
+        const radio = document.getElementById(id);
+        if (radio?.type === 'radio') {
+            radio.checked = false;
+            radio.disabled = true;
+        }
+    });
+}
+
+function resetTimeFields(start, end) {
+    for (let i = start; i <= end; i++) {
+        const el = document.getElementById(`time${i}`);
+        if (el) {
+            el.value = '';
+            el.disabled = false;
+        }
+    }
+}
+
+function disableAllPinsAndTimes(count) {
+    for (let i = 1; i <= count; i++) {
+        const pin = document.getElementById(`pin${i}_1`);
+        const time = document.getElementById(`time${i}`);
+        if (pin) pin.disabled = true;
+        if (time) time.disabled = true;
+    }
+}
+
 
 </script>
 
