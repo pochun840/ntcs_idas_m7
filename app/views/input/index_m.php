@@ -164,7 +164,7 @@
                                                 <label class="form-check-label" for="pin<?php echo $i; ?>_high"><img src="./img/high.png"></label>
                                             </div>
                                             <div class="form-check form-check-inline">
-                                                <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_low" value="2">
+                                                <input class="zoom form-check-input" type="radio" name="pin_option" id="pin<?php echo $i; ?>_low" value="0">
                                                 <label class="form-check-label" for="pin<?php echo $i; ?>_low"><img src="./img/low.png"></label>
                                             </div>
                                         </div>
@@ -229,7 +229,7 @@
                                                 <label class="form-check-label" for="edit_pin<?php echo $i; ?>_high"><img src="./img/high.png"></label>
                                             </div>
                                             <div class="form-check form-check-inline">
-                                                <input class="zoom form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_low" value="2">
+                                                <input class="zoom form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_low" value="0">
                                                 <label class="form-check-label" for="edit_pin<?php echo $i; ?>_low"><img src="./img/low.png"></label>
                                             </div>
                                         </div>

@@ -898,9 +898,9 @@ function job_confirm(){
             success: function(response) {
                 var data = JSON.parse(response);
                 var job_inputlist = data.job_inputlist;
-                temp = data.temp;
-                tempA = data.tempA;
-                temp_event = data.temp_event;
+                
+                temp  = Array.isArray(data.temp) ? data.temp : [];
+                tempA = Array.isArray(data.tempA) ? data.tempA : [];
 
                 document.getElementById("input_jobid_select").innerHTML = job_inputlist;
                 document.getElementById("JobSelect").style.display = 'none';
