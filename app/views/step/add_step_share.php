@@ -241,7 +241,7 @@
         var next_step_id = "<?php echo $data['next_step_id'];?>";
         document.getElementById("STEPname").value = "STEP-" + next_step_id;
         document.getElementById("StepAngle").value = 3000;
-        document.getElementById("StepTorque").value  = document.getElementById('tool_min_torque').value;
+        document.getElementById("StepTorque").value  = document.getElementById('check_target_tor_lo').value;
         document.getElementById("interrupt_alarm_off").checked = true;
         document.getElementById("over_angle_stop_off").checked = true;
         document.getElementById("StepDirection_cw").checked = true;
@@ -514,8 +514,9 @@
         const check_lo_tor_before = document.getElementById('check_lo_tor_before').value; //check_lo_tor_before
         const check_lo_tor_after  = document.getElementById('check_lo_tor_after').value; //check_lo_tor_after
 
-        const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm').value);
-        const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm').value);
+        const Tool_Max_RPM = document.getElementById('check_hi_rpm').value;
+        const Tool_Min_RPM = document.getElementById('check_lo_rpm').value;
+
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
 
 
@@ -609,16 +610,16 @@
                 { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
                 { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitHi },
                 { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
-                { id: StepMoniByWin == 0 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin == 0 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                { id: StepMoniByWin == "-1" ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                { id: StepMoniByWin == "-1" ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         } else if (StepOption === 1) {
             conditions.push(
                 { id: 'StepAngle', pattern: /^\d{1,5}$/, ...limits.angle.angle },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
-                { id: StepMoniByWin == 0 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin == 0 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                { id: StepMoniByWin == "1" ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                { id: StepMoniByWin == "1" ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         }
 
@@ -632,31 +633,44 @@
         });
 
 
-        // ✅ validateInput 子函數
+        //validateInput 子函數
         function validateInput(el, pattern, min, max) {
             if (!el) return false;
             const val = el.value.trim();
             const parsed = parseFloat(val);
             const feedback = el.nextElementSibling;
 
+            // 需要使用整數比較的欄位
+            const isRPMField = ['StepRPM', 'StepRPMDownShift'].includes(el.id);
+            const isLimitPercentField = ['step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id);
+
+            // 小數點四捨五入函數
             const roundTo = (num, digits) => {
                 const parsed = parseFloat(num);
                 if (isNaN(parsed)) return NaN;
-            return parsed.toFixed(digits); 
+                return parsed.toFixed(digits);
             };
 
+            // 決定用整數 or 精度四捨五入
+            const parsedRounded = (isRPMField || isLimitPercentField) ? Math.floor(parsed) : roundTo(parsed, precision);
+            const minRounded = (min !== null && !isNaN(min)) ? ((isRPMField || isLimitPercentField) ? Math.floor(min) : roundTo(min, precision)) : null;
+            const maxRounded = (max !== null && !isNaN(max)) ? ((isRPMField || isLimitPercentField) ? Math.floor(max) : roundTo(max, precision)) : null;
 
-            const parsedRounded = roundTo(parsed, precision);
-            const minRounded = (min !== null && !isNaN(min)) ? roundTo(min, precision) : null;
-            const maxRounded = (max !== null && !isNaN(max)) ? roundTo(max, precision) : null;
-
-            const invalid = (
-                val === "" || isNaN(parsed) ||
+            // 是否無效
+            let invalid = (
+                val === "" ||
+                isNaN(parsed) ||
                 (minRounded !== null && parsedRounded < minRounded) ||
                 (maxRounded !== null && parsedRounded > maxRounded) ||
                 !pattern.test(val)
             );
 
+            // 額外檢查：百分比欄位必須是整數
+            if (isLimitPercentField && !Number.isInteger(parsed)) {
+                invalid = true;
+            }
+
+            // UI 顯示錯誤
             if (invalid) {
                 el.classList.add("is-invalid");
                 if (feedback && feedback.classList.contains("invalid-feedback")) {

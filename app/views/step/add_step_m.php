@@ -56,6 +56,8 @@
         <input id="check_hi_tor_after"  value="<?php echo $data['tools_info']['check_hi_tor_after'];?>"> 
         <input id="check_lo_tor_before" value="<?php echo $data['tools_info']['check_lo_tor_before'];?>"> 
         <input id="check_lo_tor_after"  value="<?php echo $data['tools_info']['check_lo_tor_after'];?>"> 
+        <input id="check_lo_rpm" value="<?php echo $data['tools_info']['check_lo_rpm'];?>"> 
+        <input id="check_hi_rpm" value="<?php echo $data['tools_info']['check_hi_rpm'];?>"> 
     </div>
 
     <div class="main-content">

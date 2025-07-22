@@ -527,8 +527,6 @@ class Step extends Controller
             $check_hi_tor_after = $this->MiscellaneousModel->roundToNDecimals($check_hi_tor_after, $decimals);
             $check_hi_tor_after = number_format($check_hi_tor_after, $decimals, '.', '');
 
-            //$step_temp = $res[0];
-
             $tools_check['check_target_tor_lo']   = $check_target_tor_lo;
             $tools_check['check_target_tor_hi']   = $check_target_tor_hi;
             $tools_check['check_hi_tor_before']   = $check_target_tor_hi;
@@ -536,9 +534,48 @@ class Step extends Controller
             $tools_check['check_lo_tor_before']   = number_format(0, $decimals_arr[$use_unit] ?? 3, '.', '');
             $tools_check['check_lo_tor_after']    = $step['StepTorque'] - (1 / pow(10, $decimals_arr[$use_unit] ?? 3));
 
+            $tools_check['check_lo_rpm'] = (int)$tools_check['min_rpm'];
+            $tools_check['check_hi_rpm'] = (int)$tools_check['max_rpm'];
+
 
             $tools = array_merge($tools,$tools_check);
+        }else if(!empty($tools_check) && $type === "new"){
+
+                $use_unit =$device_torque_unit;
+                //轉換函式
+                $convert_torque = function ($raw_value) use ($use_unit, $torque_arr) {
+                    $nm_value = floatval($raw_value) / 1000;
+                    $converted = $this->MiscellaneousModel->convert_all_torque_units($nm_value, 1); // 1 => N.m
+                    return $converted[$torque_arr[$use_unit]] ?? 0;
+                };
+
+                // 執行轉換與檢查
+                $check_target_tor_lo = $convert_torque($tools_check['min_torque']);
+                $check_target_tor_hi = $convert_torque($tools_check['max_torque']);
+
+                $check_hi_tor_after  = $check_target_tor_hi * 1.10;
+                $decimals = $decimals_arr[$use_unit] ?? 1;
+                $check_hi_tor_after = $this->MiscellaneousModel->roundToNDecimals($check_hi_tor_after, $decimals);
+                $check_hi_tor_after = number_format($check_hi_tor_after, $decimals, '.', '');
+
+                $tools_check['check_target_tor_lo']   = $check_target_tor_lo;
+                $tools_check['check_target_tor_hi']   = $check_target_tor_hi;
+                $tools_check['check_hi_tor_before']   = $check_target_tor_hi;
+                $tools_check['check_hi_tor_after']    = $check_hi_tor_after;
+                $tools_check['check_lo_tor_before']   = number_format(0, $decimals_arr[$use_unit] ?? 3, '.', '');
+                $tools_check['check_lo_tor_after']    = $check_target_tor_lo - (1 / pow(10, $decimals_arr[$use_unit] ?? 3));
+
+                $tools_check['check_lo_rpm'] = (int)$tools_check['min_rpm'];
+                $tools_check['check_hi_rpm'] = (int)$tools_check['max_rpm'];
+
+
+
+                 $tools = array_merge($tools,$tools_check);
         }
+
+
+
+
 
 
         $isMobile = $this->isMobileCheck();

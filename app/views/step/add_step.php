@@ -16,36 +16,6 @@
         display: inline!important;
     }
 </style>
-<?php
-// 預設空字串
-/*$StepTorque = '';
-$StepHiTorque = '';
-$StepLoTorque = '';
-$StepTorqueTS = '';
-$StepTorqueDownShift = '';
-if ($data['type'] == 'edit') {
-    $step_unit = $data['step_torque_unit'];
-    $decimalMap = [
-        0 => 2,
-        1 => 3,
-        2 => 2,
-        3 => 4,
-        4 => 1,
-    ];
-    $decimals = $decimalMap[$step_unit] ?? 2;
-
-    function formatTorque($value, $decimals) {
-        return ($value !== '' && is_numeric($value)) ? number_format((float)$value, $decimals, '.', '') : '';
-    }
-
-    $StepTorque    = formatTorque($data['step']['StepTorque'], $decimals);
-    $StepHiTorque  = formatTorque($data['step']['StepHiTorque'], $decimals);
-    $StepLoTorque  = formatTorque($data['step']['StepLoTorque'], $decimals);
-    $StepTorqueTS  = formatTorque($data['step']['StepTorqueTS'], $decimals);
-    $StepTorqueDownShift = formatTorque($data['step']['StepTorqueDownShift'], $decimals);
-}*/
-?>
-
 
 <div class="container-ms">
     <div class="w3-text-white w3-center">
@@ -73,6 +43,8 @@ if ($data['type'] == 'edit') {
         <input id="check_hi_tor_after"  value="<?php echo $data['tools_info']['check_hi_tor_after'];?>"> 
         <input id="check_lo_tor_before" value="<?php echo $data['tools_info']['check_lo_tor_before'];?>"> 
         <input id="check_lo_tor_after"  value="<?php echo $data['tools_info']['check_lo_tor_after'];?>"> 
+        <input id="check_lo_rpm" value="<?php echo $data['tools_info']['check_lo_rpm'];?>"> 
+        <input id="check_hi_rpm" value="<?php echo $data['tools_info']['check_hi_rpm'];?>"> 
     </div>
 
     <div class="main-content">
@@ -186,10 +158,10 @@ if ($data['type'] == 'edit') {
                                         </div>
                                         <div class="ps-5" style="display:inline-block;">
                                             <label class="form-check-label" for="monitor_torque_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
-                                            <input id="step_limit_hi_tor"  name= '' class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "-1" || $data['step']['StepMoniByWin'] == "0"  && $data['step']['StepLimiHi']) ? $data['step']['StepLimiHi'] : ''; ?>'>
+                                            <input id="step_limit_hi_tor"  name= '' class="form-control form-control-sm" style=" width: 40px !important;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepMoniByWin'], $data['step']['StepLimiHi']) && in_array($data['step']['StepMoniByWin'], ['-1', '0'])) ? htmlspecialchars($data['step']['StepLimiHi']) : ''; ?>">
                                             <div class="invalid-feedback"></div>
                                             <label class="form-check-label ps-3" for="monitor_torque_lower"><?php echo $text['Lower_text'].'(%)'; ?></label>
-                                            <input id="step_limit_lo_tor" name= '' class="form-control form-control-sm" style=" width: 40px !important;" value= '<?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "-1"  || $data['step']['StepMoniByWin'] == "0"  && $data['step']['StepLimiLo']) ? $data['step']['StepLimiLo'] : ''; ?>'>
+                                            <input id="step_limit_lo_tor" name= '' class="form-control form-control-sm" style=" width: 40px !important;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepMoniByWin'], $data['step']['StepLimiLo']) && in_array($data['step']['StepMoniByWin'], ['-1', '0'])) ? htmlspecialchars($data['step']['StepLimiLo']) : ''; ?>">
                                             <div class="invalid-feedback"></div>
                                         </div>
                                     </div>
