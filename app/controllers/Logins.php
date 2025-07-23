@@ -12,6 +12,8 @@ class Logins extends Controller
 
     // 取得所有Jobs
     public function index($url){
+
+
         session_start();
         $device_info = $this->Device_Info();
         $_SESSION['sessionid'] = session_id();
@@ -19,6 +21,8 @@ class Logins extends Controller
         $error_message = '';
         $authToken = '';
         $account = $this->LoginModel->get_account();
+
+        $this->ntcs_data_db_sysnc();
 
        
         $data = [

@@ -14,6 +14,8 @@ class Tools extends Controller
     // 取得所有info
     public function index(){
 
+        $this->ntcs_data_db_sysnc();
+
         $isMobile = $this->isMobileCheck();
         $Tool_Info = $this->ToolModel->GetToolInfo();
         $Tool_Info = end($Tool_Info);

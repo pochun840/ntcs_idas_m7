@@ -16,6 +16,8 @@ class Inputs extends Controller
     // 取得所有Inputs
     public function index(){
 
+        $this->ntcs_data_db_sysnc();
+
         //要檢查是否有alljobinput，有的話要直接帶入
         $isMobile = $this->isMobileCheck();
         $joblist  = $this->InputModel->get_job_list();

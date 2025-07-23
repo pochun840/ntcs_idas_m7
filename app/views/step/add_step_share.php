@@ -5,7 +5,9 @@
     });
 
     document.addEventListener("DOMContentLoaded", function () {
+        // ✅ 初始化 checkbox 狀態
         getCheckboxValue();
+        updateLabel();
     });
 
 
@@ -17,167 +19,192 @@
 
         // 翻譯單位
         const unitLabels = {
-            'kgf.cm': { 'zh-cn': '公斤公分', 'zh-tw': '公斤公分',   'default': 'kgf.cm' },
-            'lbf.in': { 'zh-cn': '英磅英吋', 'zh-tw': '英磅英吋',   'default': 'lbf.in' },
-            'N.m':    { 'zh-cn': '牛顿米',   'zh-tw': '牛頓米',     'default': 'N.m' },
-            'kgf.m':  { 'zh-cn': '公斤米',   'zh-tw': '公斤公尺',   'default': 'kgf.m' },
-            'cN.m' :  { 'zh-cn': '厘牛米',   'zh-tw' : '厘牛頓米',  'default': 'cN.m'},
+            'kgf.cm': { 'zh-cn': '公斤公分', 'zh-tw': '公斤公分', 'default': 'kgf.cm' },
+            'lbf.in': { 'zh-cn': '英磅英吋', 'zh-tw': '英磅英吋', 'default': 'lbf.in' },
+            'N.m': { 'zh-cn': '牛顿米', 'zh-tw': '牛頓米', 'default': 'N.m' },
+            'kgf.m': { 'zh-cn': '公斤米', 'zh-tw': '公斤公尺', 'default': 'kgf.m' },
+            'cN.m': { 'zh-cn': '厘牛米', 'zh-tw': '厘牛頓米', 'default': 'cN.m' },
         };
         const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
 
-        // 標籤文字 (改用 mapping)
+        // 標籤文字翻譯
         const labelTexts = {
-            'zh-cn': {
-                2: '目标扭矩',
-                1: '目标角度'
-            },
-            'zh-tw': {
-                2: '目標扭力',
-                1: '目標角度'
-            },
-            'default': {
-                2: 'Target Torque',
-                1: 'Target Angle'
-            }
+            'zh-cn': { 2: '目标扭矩', 1: '目标角度' },
+            'zh-tw': { 2: '目標扭力', 1: '目標角度' },
+            'default': { 2: 'Target Torque', 1: 'Target Angle' }
         };
         const textSet = labelTexts[language] || labelTexts['default'];
         const labelPrefix = textSet[selectVal] || 'Target';
 
-        // 更新標籤文字
+        // 更新標籤內容
         label.textContent = selectVal === 2
             ? `${labelPrefix} (${translatedUnit}):`
             : `${labelPrefix}:`;
 
-        // 先全部隱藏
+        // 隱藏所有主區塊
         ['StepTorque_item', 'StepAngle_item'].forEach(id => {
             document.getElementById(id)?.style.setProperty('display', 'none');
         });
 
-        // 根據 selectVal 顯示對應區塊
+        // 顯示對應主區塊
         if (selectVal === 2) {
             document.getElementById('StepTorque_item')?.style.setProperty('display', 'block');
         } else if (selectVal === 1) {
             document.getElementById('StepAngle_item')?.style.setProperty('display', 'block');
         }
 
-        // 額外區塊顯示控制
+        // 額外顯示區塊
         const showTor = document.getElementById('show_tor');
         const showAng = document.getElementById('show_ang');
-
         if (showTor && showAng) {
-            if (selectVal === 2) {
-                showTor.style.display = 'block';
-                showAng.style.display = 'none';
-            } else{
-                showTor.style.display = 'none';
-                showAng.style.display = 'block';
-            }
+            showTor.style.display = selectVal === 2 ? 'block' : 'none';
+            showAng.style.display = selectVal === 1 ? 'block' : 'none';
         }
 
-        // 控制欄位 enable/disable
+        // 控制 StepMoniByWin 及 step_limit 欄位啟用
         const enableMap = {
             2: ['StepMoniByWin_0', 'step_limit_hi_tor', 'step_limit_lo_tor'],
             1: ['StepMoniByWin_1', 'step_limit_hi_ang', 'step_limit_lo_ang']
         };
-
         const allFields = [
             'StepMoniByWin_0', 'StepMoniByWin_1',
             'step_limit_hi_tor', 'step_limit_lo_tor',
             'step_limit_hi_ang', 'step_limit_lo_ang'
         ];
-
-        // 全部先 disable
         allFields.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.disabled = true;
         });
-
-        // 再啟用需要的欄位
         if (enableMap[selectVal]) {
             enableMap[selectVal].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.disabled = false;
             });
         }
+
+        // 控制 Hi/Lo Torque 與 Angle 欄位啟用
+        const extraFieldMap = {
+            2: ['StepHiTorque', 'StepLoTorque'],
+            1: ['StepHiAngle', 'StepLoAngle']
+        };
+        const allExtraFields = [
+            'StepHiTorque', 'StepLoTorque',
+            'StepHiAngle', 'StepLoAngle'
+        ];
+        allExtraFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = true;
+        });
+        if (extraFieldMap[selectVal]) {
+            extraFieldMap[selectVal].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = false;
+            });
+        }
+
+        // 自動勾選未勾選的 StepMoniByWin_X
+        if (selectVal === 1) {
+            const checkbox = document.getElementById('StepMoniByWin_1');
+            if (checkbox && !checkbox.checked) {
+                checkbox.checked = true;
+                getCheckboxValue('StepMoniByWin_1');
+            }
+
+            //
+            document.getElementById('StepHiAngle').disabled = false;
+            document.getElementById('StepLoAngle').disabled = false;
+            document.getElementById('StepHiTorque').disabled = true;
+            document.getElementById('StepLoTorque').disabled = true;
+
+            //檢查並補預設值
+            ['step_limit_hi_ang', 'step_limit_lo_ang'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.value.trim() === '') {
+                    el.value = '30';
+                }
+            });
+
+        }
+        if (selectVal === 2) {
+            const checkbox = document.getElementById('StepMoniByWin_0');
+            if (checkbox && !checkbox.checked) {
+                checkbox.checked = true;
+                getCheckboxValue('StepMoniByWin_0');
+            }
+
+            document.getElementById('StepHiAngle').disabled = true;
+            document.getElementById('StepLoAngle').disabled = true;
+            document.getElementById('StepHiTorque').disabled = false;
+            document.getElementById('StepLoTorque').disabled = false;
+        }
+
+
     }
-
-
-
 
 
 
     function toggleStepTorqueTS() {
         const dataType = "<?php echo $data['type']; ?>";
         const stepTorqueTS = document.getElementById('StepTorqueTS');
-        const stepTorqueTSBlock = document.getElementById('StepTorqueTS_block'); 
+        const stepTorqueTSBlock = document.getElementById('StepTorqueTS_block');
         const showTorque = document.getElementById('show_torque');
         const showAngle = document.getElementById('show_angle');
         const thresholdBlock = document.getElementById('threshold_block');
 
-        const isModeOff = document.getElementById('threshold_mode_off').checked;
-        const isModeTorque = document.getElementById('threshold_mode_torque').checked;
-        const isModeAngle = document.getElementById('threshold_mode_angle').checked;
+        const isModeOff = document.getElementById('threshold_mode_off')?.checked;
+        const isModeTorque = document.getElementById('threshold_mode_torque')?.checked;
+        const isModeAngle = document.getElementById('threshold_mode_angle')?.checked;
 
-        // 初始全部隱藏 + 停用
+        //初始全部隱藏 + 停用
         [showTorque, showAngle, stepTorqueTSBlock].forEach(el => {
             if (el) el.style.display = 'none';
         });
         if (stepTorqueTS) stepTorqueTS.disabled = true;
 
-        // 顯示 torque 模式
+        //取小數設定一次
+        const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
+        const decimals = {
+            0: 2,
+            1: 3,
+            2: 2,
+            3: 4,
+            4: 1
+        };
+        const places = decimals[stepUnit] ?? 3;
+
+        //Torque 模式
         if (isModeTorque) {
             if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
             if (stepTorqueTS) {
                 stepTorqueTS.disabled = false;
                 if (dataType === 'new') {
-                    const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
-                    const decimals = {
-                        0: 2,
-                        1: 3,
-                        2: 2,
-                        3: 4,
-                        4: 1
-                    };
-                    const places = decimals[stepUnit] ?? 3;
-                    stepTorqueTS.value = (0).toFixed(places);
-                }else{
-                    const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
-                    const decimals = {
-                        0: 2,
-                        1: 3,
-                        2: 2,
-                        3: 4,
-                        4: 1
-                    };
-                    const places = decimals[stepUnit] ?? 3;
                     stepTorqueTS.value = (0).toFixed(places);
                 }
             }
             if (showTorque) showTorque.style.display = 'block';
         }
 
-        // 顯示 angle 模式
+        //Angle 模式
         else if (isModeAngle) {
             if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
-            if (stepTorqueTS) stepTorqueTS.disabled = false;
+            if (stepTorqueTS) {
+                stepTorqueTS.disabled = false;
+                if (dataType === 'new') {
+                    stepTorqueTS.value = 0;
+                }
+            }
             if (showAngle) showAngle.style.display = 'block';
-
-            stepTorqueTS.value = 0;
         }
 
-        // threshold 整塊區域
+        //整塊顯示控制
         if (thresholdBlock) {
             thresholdBlock.style.display = isModeOff ? 'none' : 'flex';
         }
     }
 
 
-
-
-
-
     function toggleDownShift() {
-        
+
         const dataType = "<?php echo $data['type']; ?>";
 
         const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
@@ -188,11 +215,11 @@
         const downshiftBlock = document.getElementById('downshift_block');
         const downshiftSpeedBlock = document.getElementById('downshift_speed_block');
 
-        const isModeOff = document.getElementById('downshift_mode_off').checked;
-        const isModeTorque = document.getElementById('downshift_mode_torque').checked;
-        const isModeAngle = document.getElementById('downshift_mode_angle').checked;
+        const isModeOff = document.getElementById('downshift_mode_off')?.checked;
+        const isModeTorque = document.getElementById('downshift_mode_torque')?.checked;
+        const isModeAngle = document.getElementById('downshift_mode_angle')?.checked;
 
-        // 預設全部隱藏與 disabled
+        //預設全部隱藏與 disabled
         if (showDownshiftTorque) showDownshiftTorque.style.display = 'none';
         if (showDownshiftAngle) showDownshiftAngle.style.display = 'none';
         if (StepTorqueDownShift) {
@@ -200,38 +227,51 @@
             StepTorqueDownShift.style.display = 'none';
         }
         if (StepRPMDownShift) StepRPMDownShift.disabled = true;
-        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none'; // ✅ 預設隱藏整塊
+        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none';
 
-        // TORQUE 模式
+        //取得 torque unit 對應的小數位數
+        const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
+        const decimals = {
+            0: 2,
+            1: 3,
+            2: 2,
+            3: 4,
+            4: 1
+        };
+        const places = decimals[stepUnit] ?? 3;
+
+        //TORQUE 模式
         if (isModeTorque) {
-            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex'; // ✅ 顯示整塊
+            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
             if (StepTorqueDownShift) {
                 StepTorqueDownShift.style.display = 'block';
                 StepTorqueDownShift.disabled = false;
                 if (dataType === 'new') {
-                    StepTorqueDownShift.value = 0;
+                    StepTorqueDownShift.value = (0).toFixed(places);
                 }
             }
             if (StepRPMDownShift) StepRPMDownShift.disabled = false;
             if (showDownshiftTorque) showDownshiftTorque.style.display = 'block';
         }
 
-        // ANGLE 模式
+        //ANGLE 模式
         else if (isModeAngle) {
-            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex'; // ✅ 顯示整塊
+            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
             if (StepTorqueDownShift) {
                 StepTorqueDownShift.style.display = 'block';
                 StepTorqueDownShift.disabled = false;
+                if (dataType === 'new') {
+                    StepTorqueDownShift.value = (0).toFixed(places);
+                }
             }
             if (StepRPMDownShift) StepRPMDownShift.disabled = false;
             if (showDownshiftAngle) showDownshiftAngle.style.display = 'block';
         }
 
-        // 控制附加區塊
+        //控制外層區塊
         if (downshiftBlock) downshiftBlock.style.display = isModeOff ? 'none' : 'flex';
         if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
     }
-
 
 
     var dataType ='<?php echo $data['type'];?>'
@@ -641,7 +681,7 @@
             const feedback = el.nextElementSibling;
 
             // 需要使用整數比較的欄位
-            const isRPMField = ['StepRPM', 'StepRPMDownShift'].includes(el.id);
+            const isRPMField = ['StepRPM', 'StepRPMDownShift','StepAngle','StepHiAngle'].includes(el.id);
             const isLimitPercentField = ['step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id);
 
             // 小數點四捨五入函數

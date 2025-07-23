@@ -33,6 +33,8 @@ class Outputs extends Controller
             }
         }
 
+        $this->ntcs_data_db_sysnc();
+
         $data = array();
         $data = array(
             'isMobile'     => $isMobile,

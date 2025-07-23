@@ -38,7 +38,7 @@ class Sequences extends Controller
             $next_seq_id = $seq_id;
         }
 
-
+        $this->ntcs_data_db_sysnc();
         $isMobile = $this->isMobileCheck();
      
         $data =array();

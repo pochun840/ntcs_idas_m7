@@ -24,6 +24,9 @@ class Jobs extends Controller
 
     // 取得所有Jobs
     public function index(){
+
+        $this->ntcs_data_db_sysnc();
+
         $data = array();
 
         $isMobile  = $this->isMobileCheck();

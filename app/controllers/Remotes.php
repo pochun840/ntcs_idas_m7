@@ -20,7 +20,7 @@ class Remotes extends Controller
         if(!empty($file)){
             include $file;
         }*/
-
+        $this->ntcs_data_db_sysnc();
 
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();

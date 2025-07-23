@@ -17,8 +17,8 @@ class Data extends Controller
      public function index(){
         
         $type = 'ALL';
-        $isMobile = $this->isMobileCheck();
-
+        $this->ntcs_data_db_sysnc();
+        
         // 取得當前年份
         if (PHP_OS_FAMILY === 'Linux') {
             $db_path = "/var/www/html/database/data".date('Y').".db";

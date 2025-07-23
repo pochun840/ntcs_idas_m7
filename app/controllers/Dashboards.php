@@ -20,6 +20,7 @@ class Dashboards extends Controller
     // 取得所有Jobs
     public function index(){
 
+        $this->ntcs_data_db_sysnc();
         
         $isMobile = $this->isMobileCheck();
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');

@@ -40,7 +40,8 @@ class Step extends Controller
         $specs     = $this->MiscellaneousModel->getToolSpecifications();
 
         $total_step = count($step);
-      
+        $this->ntcs_data_db_sysnc();
+
         
         if(empty($step)){
             $stepid_new = 1;
@@ -572,11 +573,6 @@ class Step extends Controller
 
                  $tools = array_merge($tools,$tools_check);
         }
-
-
-
-
-
 
         $isMobile = $this->isMobileCheck();
         $data = [

@@ -14,6 +14,8 @@ class Admins extends Controller
     // 取得所有info
     public function index(){
 
+        
+
         $isMobile = $this->isMobileCheck();
         $active_session = $this->AdminModel->GetActiveSession();
         $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');

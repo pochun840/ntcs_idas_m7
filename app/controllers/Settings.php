@@ -20,6 +20,8 @@ class Settings extends Controller
     // 取得所有info
     public function index(){
 
+        $this->ntcs_data_db_sysnc();
+        
         $isMobile = $this->isMobileCheck();
 
         $lang = $this->MiscellaneousModel->details('lang');
