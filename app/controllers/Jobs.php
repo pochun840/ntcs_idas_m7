@@ -51,15 +51,13 @@ class Jobs extends Controller
             $lastRow  = 1;
             $jobIdInt = 1;
         }
-        
+
 
         $data = array(
             'jobint' => $jobIdInt,
             'jobs' => $jobs,
             'next_job_id' => $next_job_id,
         );
-
-
 
         if ($isMobile) {
             $this->view('jobs/job_management_m', $data);
