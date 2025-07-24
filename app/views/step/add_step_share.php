@@ -1,3 +1,8 @@
+
+<?php
+    $moniByWin = isset($data['step']['StepMoniByWin']) ? $data['step']['StepMoniByWin'] : null;
+    $stepOption = isset($data['step']['StepOption']) ? $data['step']['StepOption'] : null;
+?>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
         if (typeof toggleStepTorqueTS === 'function') toggleStepTorqueTS();
@@ -17,15 +22,20 @@
                 document.getElementById("StepMoniByWin_0").checked = false;
                 document.getElementById("StepMoniByWin_1").checked = false;
 
-                const forceUncheck0 = <?php echo ($data['step']['StepMoniByWin'] === "1" && $data['step']['StepOption'] === "2") ? 'true' : 'false'; ?>;
-                if (forceUncheck0) {
-                    document.getElementById("StepMoniByWin_0").checked = forceUncheck0;
+
+                if (isEditMode) {
+                    const forceUncheck0 = <?php echo ($moniByWin === "1" && $stepOption === "2") ? 'true' : 'false'; ?>;
+                    if (forceUncheck0) {
+                        document.getElementById("StepMoniByWin_0").checked = true;
+                    }
+
+                    const forceUncheck1 = <?php echo ($moniByWin === "1" && $stepOption === "1") ? 'true' : 'false'; ?>;
+                    if (forceUncheck1) {
+                        document.getElementById("StepMoniByWin_1").checked = true;
+                    }
                 }
 
-                const forceUncheck1 = <?php echo ($data['step']['StepMoniByWin'] === "1" && $data['step']['StepOption'] === "1") ? 'true' : 'false'; ?>;
-                if (forceUncheck1) {
-                    document.getElementById("StepMoniByWin_1").checked = forceUncheck1;
-                }
+               
                 
 
             
@@ -331,7 +341,7 @@
         let StepLoTorque = document.getElementById("StepLoTorque").value;
         let StepHiAngle = document.getElementById("StepHiAngle").value;
         let StepLoAngle = document.getElementById("StepLoAngle").value;
-        let StepMoniByWin = -1;  // 預設為未選
+        let StepMoniByWin = 0;  // 預設為未選
 
         if (document.getElementById("StepMoniByWin_0").checked) {
             StepMoniByWin = 1;
@@ -496,6 +506,7 @@
 
 
     function getCheckboxValue(clickedId = null) {
+
         const checkbox0 = document.getElementById("StepMoniByWin_0");
         const checkbox1 = document.getElementById("StepMoniByWin_1");
 
@@ -516,7 +527,9 @@
                 checkbox1.checked = false;
                 check_val = 0;
             } else {
-                check_val = -1;
+                // ✅ 兩者都沒勾時，預設為扭力模式
+                checkbox0.checked = true;
+                check_val = 0;
             }
         }
 
@@ -533,6 +546,7 @@
 
         console.log("check_val:", check_val);
     }
+
 
     function updateLabel() {
         const rawUnit = '<?php echo $data['torque_unit']; ?>';
@@ -681,7 +695,17 @@
         }
 
         const StepOption = parseInt(document.getElementById("StepOption").value);
-        const StepMoniByWin = getCheckboxValue();
+        
+        const checkbox0 = document.getElementById("StepMoniByWin_0");
+        const checkbox1 = document.getElementById("StepMoniByWin_1");
+
+        let StepMoniByWin = 0;  //  代表都沒勾選
+        if (checkbox0 && checkbox0.checked) {
+            StepMoniByWin = 1;
+        } else if (checkbox1 && checkbox1.checked) {
+            StepMoniByWin = 1;
+        }
+
         const StepTorqueVal = parseFloat(document.getElementById("StepTorque").value);
         const delta = Tool_Min_Torque * 0.05;
 
@@ -741,16 +765,16 @@
                 { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
                 { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitHi },
                 { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
-                { id: StepMoniByWin == "-1" ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin == "-1" ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                //{ id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                //{ id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         } else if (StepOption === 1) {
             conditions.push(
                 { id: 'StepAngle', pattern: /^\d{1,5}$/, ...limits.angle.angle },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
-                { id: StepMoniByWin == "1" ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin == "1" ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                //{ id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                //{ id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         }
 

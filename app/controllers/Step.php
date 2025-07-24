@@ -191,6 +191,7 @@ class Step extends Controller
                 $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $StepSelect);
             }
         }
+
         $step_data = [
                 'JOBID' => $JOBID,
                 'SEQID' => $SEQID,
