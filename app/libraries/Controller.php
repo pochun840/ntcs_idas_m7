@@ -268,16 +268,7 @@ class Controller
             '/var/www/html/database/ntcs_data.db'
         );
 
-        //執行 sync 前先刪掉目標檔案
-        $dst_device = '/var/www/html/database/ntcs_device_IDAS.db';
-        if (file_exists($dst_device)) {
-            unlink($dst_device);
-        }
-
-        $this->sync_db(
-            '/home/kls/NTCS7/ntcs_device.db',
-            $dst_device
-        );
+        $this->sync_ntcs_tool_data();
     }
 
     private function sync_db($src, $dst) {
@@ -292,6 +283,58 @@ class Controller
             if (copy($src, $dst)) {
                 chmod($dst, 0777);
             }
+        }
+    }
+
+
+
+    public function sync_ntcs_tool_data() {
+        $srcDB = '/home/kls/NTCS7/ntcs_device.db';
+        $dstDB = '/var/www/html/database/ntcs_device_IDAS.db';
+
+        if (!file_exists($srcDB) || !file_exists($dstDB)) {
+            //echo "來源或目標資料庫不存在";
+            return;
+        }
+
+        try {
+            // 開啟來源資料庫
+            $src = new PDO("sqlite:" . $srcDB);
+            $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 讀取來源資料
+            $query = $src->query("SELECT * FROM ntcs_tool_test");
+            $toolData = $query->fetchAll(PDO::FETCH_ASSOC);
+            $src = null;
+
+            // 開啟目標資料庫
+            $dst = new PDO("sqlite:" . $dstDB);
+            $dst->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 清除目標資料表資料
+            $dst->exec("DELETE FROM ntcs_tool_test");
+
+            // 準備欄位與插入語句
+            if (!empty($toolData)) {
+                $columns = array_keys($toolData[0]);
+                $colList = implode(',', $columns);
+                $placeholders = ':' . implode(', :', $columns);
+                $stmt = $dst->prepare("INSERT INTO ntcs_tool_test ($colList) VALUES ($placeholders)");
+
+                // 插入每筆資料
+                foreach ($toolData as $row) {
+                    foreach ($row as $key => $val) {
+                        $stmt->bindValue(":$key", $val);
+                    }
+                    $stmt->execute();
+                }
+            }
+
+            $dst = null;
+            //echo "ntcs_tool_test 資料同步完成。";
+
+        } catch (PDOException $e) {
+            //echo "同步失敗：" . $e->getMessage();
         }
     }
 

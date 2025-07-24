@@ -24,6 +24,9 @@ class Logins extends Controller
 
         $this->ntcs_data_db_sysnc();
 
+        $targetDir = '/var/www/html/extracted';
+        $this->deleteDirectory($targetDir);
+
        
         $data = [
             'error_message' => $error_message,
@@ -278,40 +281,17 @@ class Logins extends Controller
     }
 
 
-    /*public function ntcs_data_db_sysnc() {
-        $this->sync_db(
-            '/home/kls/NTCS7/ntcs_data.db',
-            '/var/www/html/database/ntcs_data.db'
-        );
+    public function deleteDirectory($dir) {
 
-        //執行 sync 前先刪掉目標檔案
-        $dst_device = '/var/www/html/database/ntcs_device_IDAS.db';
-        if (file_exists($dst_device)) {
-            unlink($dst_device);
+        if (!file_exists($dir)) return true;
+        if (!is_dir($dir)) return unlink($dir);
+
+        foreach (scandir($dir) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) return false;
         }
 
-        $this->sync_db(
-            '/home/kls/NTCS7/ntcs_device.db',
-            $dst_device
-        );
+        return rmdir($dir);
     }
-
-    private function sync_db($src, $dst) {
-        if (!file_exists($src)) {
-            return;
-        }
-
-        $src_mtime = filemtime($src);
-        $dst_mtime = file_exists($dst) ? filemtime($dst) : 0;
-
-        if ($src_mtime > $dst_mtime) {
-            if (copy($src, $dst)) {
-                chmod($dst, 0777);
-            }
-        }
-    }*/
-
-
-
 
 }
