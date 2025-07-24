@@ -294,7 +294,7 @@
         document.getElementById("step_limit_lo_ang").value = 30;
         document.getElementById("StepHiAngle").value = 30600;
         document.getElementById("StepLoAngle").value = 0;
-        document.getElementById('StepHiTorque').value = document.getElementById('tool_high_torque').value;
+        document.getElementById('StepHiTorque').value = document.getElementById('check_hi_tor_after').value;
         document.getElementById("StepLoTorque").value = document.getElementById('tool_low_torque').value;
         document.getElementById("StepDelay").value = 0;
         document.getElementById("StepRPM").value = 500;
@@ -490,37 +490,32 @@
 
 
     function getCheckboxValue(clickedId) {
-        var checkbox0 = document.getElementById("StepMoniByWin_0");
-        var checkbox1 = document.getElementById("StepMoniByWin_1");
-        var stepHiTorque = document.getElementById("StepHiTorque");
-        var stepLoTorque = document.getElementById("StepLoTorque");
-        var stepHiAngle = document.getElementById("StepHiAngle");
-        var stepLoAngle = document.getElementById("StepLoAngle");
+        const checkbox0 = document.getElementById("StepMoniByWin_0");
+        const checkbox1 = document.getElementById("StepMoniByWin_1");
 
-        var check_val = -1;
+        const stepHiTorque = document.getElementById("StepHiTorque");
+        const stepLoTorque = document.getElementById("StepLoTorque");
+        const stepHiAngle  = document.getElementById("StepHiAngle");
+        const stepLoAngle  = document.getElementById("StepLoAngle");
 
-        if (clickedId === "StepMoniByWin_0") {
-            checkbox0.checked = true;
+        let check_val = -1;
+
+        // 根據被點擊的 checkbox 來做互斥處理
+        if (clickedId === "StepMoniByWin_0" && checkbox0.checked) {
             checkbox1.checked = false;
             check_val = 0;
-        } else if (clickedId === "StepMoniByWin_1") {
+        } else if (clickedId === "StepMoniByWin_1" && checkbox1.checked) {
             checkbox0.checked = false;
-            checkbox1.checked = true;
             check_val = 1;
         }
 
-        var disableTorque = check_val === 0;
-        var disableAngle = check_val === 1;
+        const disableTorque = (check_val === 0);
+        const disableAngle  = (check_val === 1);
 
-        [stepHiTorque, stepLoTorque].forEach(function (el) {
-            if (el) el.disabled = disableTorque;
-        });
-        [stepHiAngle, stepLoAngle].forEach(function (el) {
-            if (el) el.disabled = disableAngle;
-        });
+        [stepHiTorque, stepLoTorque].forEach(el => el && (el.disabled = disableTorque));
+        [stepHiAngle, stepLoAngle].forEach(el => el && (el.disabled = disableAngle));
 
-        console.log(check_val);
-        return check_val;
+        console.log("check_val:", check_val);
     }
 
 

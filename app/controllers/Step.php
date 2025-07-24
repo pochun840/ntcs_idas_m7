@@ -449,6 +449,9 @@ class Step extends Controller
         if ($type === 'edit') {
             $res = $this->stepModel->getStepNo($job_id, $seq_id, $stepid);
             $step = $res[0];
+
+            //$step['StepTorque'] = number_format($StepTorque[$torque_arr[$device_torque_unit]], $decimals, '.', '');
+
         } else {
             $step = [];
         }
@@ -476,12 +479,22 @@ class Step extends Controller
             $step_torque_unit = (int)$step['step_unit'];
 
             if ($step_torque_unit !== $device_torque_unit) {
+
+
                 $StepTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepTorque'], $step_torque_unit); 
                 $StepHiTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepHiTorque'], $step_torque_unit); 
 
-                $step['StepTorque'] = $StepTorque_temp[$torque_arr[$device_torque_unit]];
-                $step['StepHiTorque'] = $StepHiTorque_temp[$torque_arr[$device_torque_unit]];
-                
+
+                $decimals = $decimals_arr[$device_torque_unit] ?? 3;
+                $converted_torque      = $this->MiscellaneousModel->convert_all_torque_units($step['StepTorque'], $step_torque_unit);
+                $converted_hi_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepHiTorque'], $step_torque_unit);
+                $converted_lo_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepLoTorque'], $step_torque_unit);
+
+                $unit_key = $torque_arr[$device_torque_unit] ?? 'N.m';
+
+                $step['StepTorque']    = number_format($converted_torque[$unit_key]    ?? 0, $decimals, '.', '');
+                $step['StepHiTorque']  = number_format($converted_hi_torque[$unit_key] ?? 0, $decimals, '.', '');
+                $step['StepLoTorque']  = number_format($converted_lo_torque[$unit_key] ?? 0, $decimals, '.', '');
 
 
                 if (!empty($tools)) {
@@ -491,10 +504,23 @@ class Step extends Controller
                 $torque_unit = $device_torque_unit;
             } else {
                 
-               if (!empty($tools)) {
+                if (!empty($tools)) {
                     $tools = $this->MiscellaneousModel->prepareToolTorqueValues($tools,$step_torque_unit,$device_torque_unit,$decimals_arr);
                 }
                 $torque_unit = $step_torque_unit;
+                $decimals = $decimals_arr[$step_torque_unit] ?? 3;
+                
+                $converted_torque      = $this->MiscellaneousModel->convert_all_torque_units($step['StepTorque'], $step_torque_unit);
+                $converted_hi_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepHiTorque'], $step_torque_unit);
+                $converted_lo_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepLoTorque'], $step_torque_unit);
+
+                $unit_key = $torque_arr[$step_torque_unit] ?? 'N.m';
+
+                $step['StepTorque']    = number_format($converted_torque[$unit_key]    ?? 0, $decimals, '.', '');
+                $step['StepHiTorque']  = number_format($converted_hi_torque[$unit_key] ?? 0, $decimals, '.', '');
+                $step['StepLoTorque']  = number_format($converted_lo_torque[$unit_key] ?? 0, $decimals, '.', '');
+
+
             }
 
          
@@ -573,6 +599,7 @@ class Step extends Controller
 
                  $tools = array_merge($tools,$tools_check);
         }
+
 
         $isMobile = $this->isMobileCheck();
         $data = [

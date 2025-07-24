@@ -439,11 +439,21 @@ class Steptcc{
     /**
      * 建立預設 STEP，對應 JS 預設值
      */
-    public function createDefaultStep( $job_id,$seq_id,$tool_min_torque,$tool_high_torque,$tool_low_torque,$device_torque_unit){
+    public function createDefaultStep( $job_id,$seq_id,$tool_min_torque,$tool_high_torque,$tool_low_torque,$torque,$device_torque_unit){
+
+
+        $array = array(
+            0 => 2, // KGF-m
+            1 => 3, // N.m
+            2 => 2, // KGF-cm
+            3 => 4, // Lbf.in
+            4 => 1  // cN.m
+        );
+        $precision = $decimals_arr[$device_torque_unit] ?? 3;
 
         $max_step_id = $this->getMaxStepID($job_id, $seq_id);
-        $new_step_id = $max_step_id + 1;
 
+        $new_step_id = $max_step_id + 1;
         $step_data = [
             'JOBID' => $job_id,
             'SEQID' => $seq_id,
@@ -457,7 +467,7 @@ class Steptcc{
             'StepOption' => 2,
             'StepTime' => 0,
             'StepAngle' => 3000,
-            'StepTorque' => $tool_min_torque,
+            'StepTorque' =>  number_format((float)$torque, $precision, '.', ''),
             'StepDirection' => 1,   // cw
             'StepDelay' => 0,
             'StepMoniByWin' => 0,
@@ -465,8 +475,8 @@ class Steptcc{
             'StepLimiLo' => 30,
             'StepHiAngle' => 30600,
             'StepLoAngle' => 0,
-            'StepHiTorque' => $tool_high_torque,
-            'StepLoTorque' => $tool_low_torque,
+            'StepHiTorque'   => number_format((float)$tool_high_torque, $precision, '.', ''),
+            'StepLoTorque'   => number_format((float)$tool_low_torque, $precision, '.', ''),
             'StepAccelerateOffset' => 0,
             'StepAccelerateOffsetSign' => 0,
             'StepEnableTorqueOffset' => 0,

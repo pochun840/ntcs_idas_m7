@@ -115,7 +115,7 @@ class Jobs extends Controller
             $tools_temp = $this->getConvertedToolInfo();
             
             if(!empty($tools_temp )){
-                $step_res = $this->stepModel->createDefaultStep($jobdata['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$device_torque_unit);
+                $step_res = $this->stepModel->createDefaultStep($jobdata['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$tools_temp['torque'],$device_torque_unit);
             }
 
             $result = array();
@@ -370,11 +370,10 @@ class Jobs extends Controller
 
     }
 
-
-    public function getConvertedToolInfo(){
+    public function getConvertedToolInfo() {
 
         $Tool_Info = $this->ToolModel->GetToolInfo();
-        $Tool_Info = end($Tool_Info);
+        $Tool_Info = end($Tool_Info); // 只取最後一筆
 
         $temp = [];
 
@@ -387,56 +386,43 @@ class Jobs extends Controller
             $unit_arr = $this->MiscellaneousModel->details('torque_unit');
             $unit_name = $unit_arr[$device_torque_unit];
 
+            // 對應每個 torque 單位的小數位
+            $decimals_arr = $this->MiscellaneousModel->details('decimals');
+            $torque_decimals = $decimals_arr[$device_torque_unit] ?? 3;
+
             // 從 DB 取出的 torque 值要先 /1000 (假設 DB 單位是 N.m)
             $minTorqueNm = (float)$Tool_Info['min_torque'] / 1000;
             $maxTorqueNm = ((float)$Tool_Info['max_torque'] / 1000) * 1.1;
-       
 
             // 轉換所有 torque 單位
-            $low_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($minTorqueNm, 1,false);
-            $high_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($maxTorqueNm, 1,false);
+            $low_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($minTorqueNm, 1, false);
+            $high_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($maxTorqueNm, 1, false);
 
-            // 定義需要補正的單位、補正值、與小數位
-            $corrections = [
-                'kgf.m'  => ['add' => 0.0001, 'decimals' => 4],
-                'kgf.cm' => ['add' => 0.01,   'decimals' => 2],
-                'Lbf.in' => ['add' => 0.01,   'decimals' => 2],
-                'N.m'    => ['add' => 0.001,  'decimals' => 3],
-                'cN.m'   => ['add' => 0.1,    'decimals' => 1],
-
-            ];
-
-            foreach ($corrections as $unit => $info) {
-                if (isset($high_torque_arr[$unit])) {
-                    $value = (float)$high_torque_arr[$unit];
-                    $value += $info['add'];
-                    $value = $this->MiscellaneousModel->roundToNDecimals($value, $info['decimals']);
-                    $high_torque_arr[$unit] = number_format($value, $info['decimals'], '.', '');
-                }
-            }
-
-            // 存回 Tool_Info，僅保留目標單位
-            $Tool_Info['min_torque'] = $low_torque_arr[$unit_name];
-            $Tool_Info['max_torque'] = $high_torque_arr[$unit_name];
+            // 強制小數格式（不補值，只格式化）
+            $Tool_Info['min_torque'] = number_format((float)$low_torque_arr[$unit_name], $torque_decimals, '.', '');
+            $Tool_Info['max_torque'] = number_format((float)$high_torque_arr[$unit_name], $torque_decimals, '.', '');
             $Tool_Info['torque_unit_name'] = $unit_name;
 
-            // 產生 temp array
+            // 產生 temp array（給 JS 使用）
             $temp['torque'] = $Tool_Info['min_torque'];
             $temp['max_torque'] = $Tool_Info['max_torque'];
 
-            // 計算小數位數
-            $decimal_digits = $this->getDecimalDigits($Tool_Info['min_torque']);
-
-            if ($decimal_digits > 0) {
-                // 例如小數位數為 3 → 產生 0.001
-                $temp['min_torque'] = "0." . str_repeat("0", $decimal_digits - 1) . "0";
+            // 計算 min torque 對應的小數位 → 最小有效單位
+            if ($torque_decimals > 0) {
+                $temp['min_torque'] = "0." . str_repeat("0", $torque_decimals - 1) . "0";
             } else {
-                $temp['min_torque'] = "0";
+                $temp['min_torque'] = "1";
             }
+
+            echo "<pre>";
+            print_r($temp);
+            echo "</pre>";
+            //die();
         }
 
-        return  $temp;
+        return $temp;
     }
+
 
     /**
      * 計算一個數字的小數位數

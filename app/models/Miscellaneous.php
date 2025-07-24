@@ -362,6 +362,63 @@ class Miscellaneous{
         $dec = $decimals[$to_unit] ?? 3;
         return number_format(round($converted, $dec), $dec, '.', '');
     }
+
+
+    public function brian_test($value, $from_unit, $to_unit, $useExcelMode = true) {
+        $decimals = $this->details('decimals');
+
+        // 包裝成陣列統一處理
+        $isArray = is_array($value);
+        $values = $isArray ? $value : [$value];
+
+        $results = [];
+
+        foreach ($values as $v) {
+            if (!is_numeric($v)) {
+                $results[] = 0;
+                continue;
+            }
+
+            $v = floatval($v);
+
+            // Step 1：先轉成 N.m（中介單位）
+            switch ($from_unit) {
+                case 0: $Nm = $v * 9.80665; break;
+                case 1: $Nm = $v; break;
+                case 2: $Nm = $v * 0.0980665; break;
+                case 3: $Nm = $v * 0.112984829333; break;
+                case 4: $Nm = $v * 0.01; break;
+                default: $results[] = 0; continue 2;
+            }
+
+            // Step 2：轉成目標單位
+            if ($useExcelMode) {
+                switch ($to_unit) {
+                    case 0: $converted = $Nm * 0.10197; break;
+                    case 1: $converted = $Nm; break;
+                    case 2: $converted = $Nm * 10.2; break;
+                    case 3: $converted = $Nm * 8.85411; break;
+                    case 4: $converted = $Nm * 100; break;
+                    default: $results[] = 0; continue 2;
+                }
+            } else {
+                switch ($to_unit) {
+                    case 0: $converted = $Nm / 9.80665; break;
+                    case 1: $converted = $Nm; break;
+                    case 2: $converted = $Nm / 0.0980665; break;
+                    case 3: $converted = $Nm / 0.112984829333; break;
+                    case 4: $converted = $Nm * 100; break;
+                    default: $results[] = 0; continue 2;
+                }
+            }
+
+            $dec = $decimals[$to_unit] ?? 3;
+            $results[] = (float)number_format(round($converted, $dec), $dec, '.', '');
+        }
+
+        return $isArray ? $results : $results[0];
+    }
+
  
 
    

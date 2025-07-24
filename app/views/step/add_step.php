@@ -122,7 +122,7 @@
                                         <div class="col-9" id="StepTorque_item" style="display: none;" >
                                             <input id="StepTorque" class="form-control form-control-sm"
                                                 value="<?php echo ($type === 'edit') ? htmlspecialchars($data['step']['StepTorque']) : ''; ?>">
-                                            <div class="invalid-feedback"></div>
+                                            <div class="invalid-feedback"></div><?php?>
                                         </div>
 
                                         <div class="col-9" id="StepAngle_item" style="display: <?php echo $angleDisplay; ?>;">
