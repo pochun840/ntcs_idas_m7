@@ -51,7 +51,7 @@ for (var i = 0; i < rows.length; i++) {
 
 //新增JOB
 function savejob() {
-    var jobidnew = '<?php echo $data['jobint']?>';
+    var jobidnew = '<?php echo $data['next_job_id']?>';
     var jobname_val = document.getElementById("job_name").value;
   
     var jobElement = document.querySelector('input[name="job_ok"]:checked');

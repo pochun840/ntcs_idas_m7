@@ -506,6 +506,9 @@ class Job{
     
         return $statement->fetch();
     }
+
+
+    
     
 
 

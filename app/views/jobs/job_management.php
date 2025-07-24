@@ -76,13 +76,13 @@
                         <div class="row">
                             <div for="job-id" class="col-6 t1"><?php echo $text['job_id'];?> :</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control input-ms" id="job_id" maxlength=""  value='<?php echo $data['jobint'];?>'>
+                                <input type="text" class="form-control input-ms" id="job_id" maxlength=""  value='<?php echo $data['next_job_id'];?>'>
                             </div>
                         </div>
                         <div class="row">
                             <div for="job-name" class="col-6 t1"><?php echo $text['job_name'];?> :</div>
                             <div class="col-4 t2">
-                                <input type="text" class="form-control"  id="job_name" maxlength="" value ='<?php echo "JOB-".$data['jobint'];?>' >
+                                <input type="text" class="form-control"  id="job_name" maxlength="" value ='<?php echo "JOB-".$data['next_job_id'];?>' >
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>

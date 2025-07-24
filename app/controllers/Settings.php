@@ -684,125 +684,41 @@ class Settings extends Controller
 
         $argument = $_POST['argument'] ?? '';
 
+        // 設定來源與目的地檔案路徑
         $src1 = '/home/kls/NTCS7/KLS_NTCS.Lin';
         $dst1 = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        $tmp1 = '/mnt/ramdisk/ftp/11.Lin';
 
         $src2 = '/home/kls/NTCS7/ntcs_barcode.db';
         $dst2 = '/var/www/html/database/ntcs_barcode_IDAS.db';
-        $tmp2 = '/mnt/ramdisk/ftp/11_tmp.db';
 
+        // 預設來源與目的地為 Controller → iDAS
         $Con_DB_Location = $src1;
         $Das_DB_Location = $dst1;
 
-        if (!empty($argument) && PHP_OS_FAMILY === 'Linux' && $argument === 'C2D') {
-            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-            $modbus = new ModbusMaster("127.0.0.1", "TCP");
-            $modbus->port = 502;
-            $modbus->timeout_sec = 10;
+        if (!empty($argument) && PHP_OS_FAMILY === 'Linux') {
 
-            try {
-                // 第一步：複製 KLS_NTCS.Lin 到 KLS_NTCS_IDAS.Lin
-                if (!copy($src1, $dst1)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', '複製 KLS_NTCS.Lin 失敗');
+            if ($argument === 'C2D') {
+                // Controller → iDAS 同步檔案
+                if (file_exists($Con_DB_Location)) {
+                    if (copy($Con_DB_Location, $Das_DB_Location)) {
+                        return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+                    } else {
+                        return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
+                    }
+                } else {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
                 }
-
-                // 時間差異提醒
-                if (filemtime($Con_DB_Location) > filemtime($Das_DB_Location)) {
-                    $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($Con_DB_Location));
-                    $this->logMessage($notice);
-                }
-
-                // DB欄位差異判斷
-                $this->Database_Column_Diff($src1, $dst1);
-
-                // SHA1 驗證檔案一致性
-                if (sha1_file($src1) !== sha1_file($dst1)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', '.Lin 檔案 SHA1 不一致');
-                }
-
-                // 建立 /mnt/ramdisk/ftp/11.Lin 檔案
-                if (!copy($dst1, $tmp1)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', '建立 11.Lin 失敗');
-                }
-
-                // 使用 Modbus 通知 .Lin 同步完成
-                $data1 = [1, 12593];
-                $dataTypes1 = array_fill(0, count($data1), 'INT');
-                $modbus->writeMultipleRegister(0, 506, $data1, $dataTypes1);
-                $this->logMessage('Modbus 寫入 (.Lin)：' . implode(',', $data1));
-
-                // 刪除 11.Lin 檔案
-                if (file_exists($tmp1)) {
-                    unlink($tmp1);
-                }
-
-                // 延遲 1 秒
-                usleep(1000000);
-
-                // 第二步：複製 ntcs_barcode.db 到 ntcs_barcode_IDAS.db
-                if (!copy($src2, $dst2)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', '複製 ntcs_barcode.db 失敗');
-                }
-
-                // 時間差異提醒
-                if (filemtime($src2) > filemtime($dst2)) {
-                    $notice = $text['system_sync_notice'] . date("Y-m-d H:i:s.", filemtime($src2));
-                    $this->logMessage($notice);
-                }
-
-                // DB欄位差異判斷
-                $this->Database_Column_Diff($src2, $dst2);
-
-                // SHA1 驗證檔案一致性
-                if (sha1_file($src2) !== sha1_file($dst2)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', '.db 檔案 SHA1 不一致');
-                }
-
-                // 建立 /mnt/ramdisk/ftp/11_tmp.db 檔案
-                if (!copy($dst2, $tmp2)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', '建立 11_tmp.db 失敗');
-                }
-
-                // 使用 Modbus 通知 .db 同步完成
-                $data2 = [1, 12593, 24436, 28016];
-                $dataTypes2 = array_fill(0, count($data2), 'INT');
-                $modbus->writeMultipleRegister(0, 506, $data2, $dataTypes2);
-                $this->logMessage('Modbus 寫入 (.db)：' . implode(',', $data2));
-
-                // 刪除 11_tmp.db 檔案
-                if (file_exists($tmp2)) {
-                    unlink($tmp2);
-                }
-
-                return $this->MiscellaneousModel->generateErrorResponse('Success', '' . ($text['success'] ?? 'success'));
-
-            } catch (Exception $e) {
-                $errorMessage = 'Modbus 錯誤：' . $e->getMessage();
-                $trace = $e->getTraceAsString();
-
-                $this->logMessage($errorMessage);
-                $this->logMessage("Stack trace:\n" . $trace);
-
-                file_put_contents('/tmp/modbus_error.log',
-                    date('Y-m-d H:i:s') . " - " . $errorMessage . "\n" . $trace . "\n\n",
-                    FILE_APPEND
-                );
-
-                return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
             }
+
+            // 預留其他參數使用（例如 D2C）
+            return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
         }
 
-        return $this->MiscellaneousModel->generateErrorResponse('Error', '非法的參數或非支援的作業系統');
+        // 非法參數或非 Linux 環境
+         return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
     }
 
 
-
-
-
-
-
-    
     /**
      * 安全複製檔案，若 copy 失敗會寫 log
      */
