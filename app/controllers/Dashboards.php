@@ -253,14 +253,15 @@ class Dashboards extends Controller
         $rpm = [];
 
         if ($chat_mode === 5) {
-
             // ➤ 雙軸：Torque + RPM
             $torque = $csvdata_arr['torque'] ?? [];
             $rpm    = $csvdata_arr['rpm'] ?? [];
 
-            // ➤ 一次轉換 torque 陣列
-            $converted = $this->MiscellaneousModel->brian_test($torque, 1, $device_torque_unit);
-            $torque_converted = is_array($converted) ? ($converted[$unit_name] ?? []) : [];
+            // ➤ 轉換 torque 單位
+            $torque_converted = array_map(function($val) use ($device_torque_unit, $unit_name) {
+                $converted = $this->MiscellaneousModel->convert_single_torque_unit($val, 1, $device_torque_unit);
+                return is_array($converted) ? ($converted[$unit_name] ?? 0) : (is_numeric($converted) ? $converted : 0);
+            }, $torque);
 
             $chart_info['y_val_torque'] = $torque_converted;
             $chart_info['max_torque']   = !empty($torque_converted) ? max($torque_converted) : 0;
@@ -275,34 +276,31 @@ class Dashboards extends Controller
             $chart_info['max']   = !empty($torque_converted) ? max($torque_converted) : 0;
             $chart_info['min']   = !empty($torque_converted) ? min($torque_converted) : 0;
 
-
         } else if (in_array($chat_mode, [1, 2, 3, 4])) {
+            // ➤ 單軸圖
 
-                // ➤ 單軸圖
-                if (in_array($chat_mode, [1, 4])) {
-                    // ➤ Torque 需要轉換（批次轉換）
+            if (in_array($chat_mode, [1, 4])) {
+                // ➤ Torque 需要轉換
+                $torque_converted = array_map(function($val) use ($device_torque_unit, $unit_name) {
 
-                  
-                    $converted = $this->MiscellaneousModel->brian_test($csvdata_arr, 1, $device_torque_unit);
+                    $converted = $this->MiscellaneousModel->convert_single_torque_unit($val, 1, $device_torque_unit);
+                    return is_array($converted) ? ($converted[$unit_name] ?? 0) : (is_numeric($converted) ? $converted : 0);
+                }, $csvdata_arr);
 
-            
 
-                    $torque_converted = is_array($converted) ? ($converted[$unit_name] ?? []) : [];
+                $chart_info['y_val'] = $torque_converted;
+                $chart_info['max']   = !empty($torque_converted) ? max($torque_converted) : 0;
+                $chart_info['min']   = !empty($torque_converted) ? min($torque_converted) : 0;
 
-                    $chart_info['y_val'] = $torque_converted;
-                    $chart_info['max']   = !empty($torque_converted) ? max($torque_converted) : 0;
-                    $chart_info['min']   = !empty($torque_converted) ? min($torque_converted) : 0;
-
-                    $chart_info['y_val_torque'] = $torque_converted;
-                    $chart_info['max_torque']   = !empty($torque_converted) ? max($torque_converted) : 0;
-                    $chart_info['min_torque']   = !empty($torque_converted) ? min($torque_converted) : 0;
-                } else {
-                    // ➤ 非 torque 類，不需轉換
-                    $chart_info['y_val'] = $csvdata_arr;
-                    $chart_info['max']   = !empty($csvdata_arr) ? max($csvdata_arr) : 0;
-                    $chart_info['min']   = !empty($csvdata_arr) ? min($csvdata_arr) : 0;
-                }
-
+                $chart_info['y_val_torque'] = $torque_converted;
+                $chart_info['max_torque']   = !empty($torque_converted) ? max($torque_converted) : 0;
+                $chart_info['min_torque']   = !empty($torque_converted) ? min($torque_converted) : 0;
+            } else {
+                // ➤ 非 torque 類，不需轉換
+                $chart_info['y_val'] = $csvdata_arr;
+                $chart_info['max']   = !empty($csvdata_arr) ? max($csvdata_arr) : 0;
+                $chart_info['min']   = !empty($csvdata_arr) ? min($csvdata_arr) : 0;
+            }
         } else {
             $chart_info['y_val'] = [];
             $chart_info['max']   = 0;

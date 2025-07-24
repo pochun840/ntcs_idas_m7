@@ -191,7 +191,6 @@ class Step extends Controller
                 $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $StepSelect);
             }
         }
-
         $step_data = [
                 'JOBID' => $JOBID,
                 'SEQID' => $SEQID,
@@ -208,7 +207,7 @@ class Step extends Controller
                 'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
                 'StepDirection' => intval($_POST['StepDirection'] ?? 0),
                 'StepDelay' => intval($_POST['StepDelay'] ?? 0),
-                'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? -1),
+                'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
                 'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
                 'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
                 'StepHiAngle' => intval($_POST['StepHiAngle'] ?? 0),

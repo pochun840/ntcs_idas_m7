@@ -165,8 +165,7 @@
                             <div class="row"  id='show_tor' >
                                 <div class="col">
                                     <div class="form-check form-check-inline zoom">
-                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="0" onchange="getCheckboxValue()"
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "-1") ? 'checked' : ''; ?>>
+                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="1" <?php echo ($data['step']['StepMoniByWin'] == "1" && $data['step']['StepOption'] == "2") ? 'checked' : ''; ?> >
                                         <label class="form-check-label" for="monitoring_torque_window"><?php echo $text['Monitor torque by window']; ?>:</label>
                                     </div>
                                     <div class="ps-0" style="display:inline-block;">
@@ -202,8 +201,7 @@
                             <div class="row" id='show_ang'>
                                 <div class="col">
                                     <div class="form-check form-check-inline "  >
-                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1" onchange="getCheckboxValue()" 
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "1") ? 'checked' : ''; ?>>
+                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1" <?php echo ($data['step']['StepMoniByWin'] == "1" && $data['step']['StepOption'] == "1") ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="monitoring_angle_window"><?php echo $text['Monitor angle by window']; ?></label>
                                     </div>
                                     <div class="ps-0" style="display:inline-block;">

@@ -414,10 +414,6 @@ class Jobs extends Controller
                 $temp['min_torque'] = "1";
             }
 
-            echo "<pre>";
-            print_r($temp);
-            echo "</pre>";
-            //die();
         }
 
         return $temp;

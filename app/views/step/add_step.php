@@ -122,7 +122,7 @@
                                         <div class="col-9" id="StepTorque_item" style="display: none;" >
                                             <input id="StepTorque" class="form-control form-control-sm"
                                                 value="<?php echo ($type === 'edit') ? htmlspecialchars($data['step']['StepTorque']) : ''; ?>">
-                                            <div class="invalid-feedback"></div><?php?>
+                                            <div class="invalid-feedback"></div>
                                         </div>
 
                                         <div class="col-9" id="StepAngle_item" style="display: <?php echo $angleDisplay; ?>;">
@@ -150,10 +150,12 @@
                                     </div>
                                 </div>
                                 <div class="col-12 row t2 mt-3" id='show_tor' >
+                                      
+
                                     <div class="col-12">
                                         <div class="form-check form-check-inline" >
-                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="0" onchange="getCheckboxValue('StepMoniByWin_0')"
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == "-1") ? 'checked' : ''; ?>>
+                                      
+                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_0" value="1"> 
                                         <label class="form-check-label" for="monitoring_torque_window"><?php echo $text['Monitor torque by window']; ?>:</label>
                                         </div>
                                         <div class="ps-5" style="display:inline-block;">
@@ -186,8 +188,7 @@
                                 <div class="col-12 row t2 mt-3" id='show_ang' >
                                     <div class="col-12" >
                                         <div class="form-check form-check-inline" >
-                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1" onchange="getCheckboxValue('StepMoniByWin_1')" 
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['StepMoniByWin'] == 1) ? 'checked' : ''; ?>>
+                                        <input class="form-check-input" type="checkbox" name="StepMoniByWin" id="StepMoniByWin_1" value="1">
                                         <label class="form-check-label" for="monitoring_angle_window"><?php echo $text['Monitor angle by window']; ?></label>
                                         </div>
                                         <div class="ps-5" style="display:inline-block;">
