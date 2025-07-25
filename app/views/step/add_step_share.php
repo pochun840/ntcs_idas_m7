@@ -536,53 +536,43 @@
     }
 
 
-
     function input_check() {
 
         const decimals = {
-            0: 2,
-            1: 3,
-            2: 2,
-            3: 4,
-            4: 1
+            0: 2, 1: 3, 2: 2, 3: 4, 4: 1
         };
 
         const torque_unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
         const precision = decimals[torque_unit] ?? 3;
         const increment = parseFloat((1 / Math.pow(10, precision)).toFixed(precision));
 
+        const Tool_Max_Torque = document.getElementById('check_target_tor_hi').value;
+        const Tool_Min_Torque = document.getElementById('check_target_tor_lo').value;
 
-        const Tool_Max_Torque = document.getElementById('check_target_tor_hi').value; //target_tor
-        const Tool_Min_Torque = document.getElementById('check_target_tor_lo').value; //target_tor
-
-        const check_hi_tor_before = document.getElementById('check_hi_tor_before').value; //check_hi_tor_before
-        const check_hi_tor_after  = document.getElementById('check_hi_tor_after').value; //check_hi_tor_after
-
-
-        const check_lo_tor_before = document.getElementById('check_lo_tor_before').value; //check_lo_tor_before
-        const check_lo_tor_after  = document.getElementById('check_lo_tor_after').value; //check_lo_tor_after
+        const check_hi_tor_before = document.getElementById('check_hi_tor_before').value;
+        const check_hi_tor_after  = document.getElementById('check_hi_tor_after').value;
+        const check_lo_tor_before = document.getElementById('check_lo_tor_before').value;
+        const check_lo_tor_after  = document.getElementById('check_lo_tor_after').value;
 
         const check_target_torque = document.getElementById('StepTorque').value;
 
         const Tool_Max_RPM = document.getElementById('check_hi_rpm').value;
         const Tool_Min_RPM = document.getElementById('check_lo_rpm').value;
-
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
 
-
-        const minStepHiTorque = parseFloat((parseFloat(check_target_torque) + (1 / Math.pow(10, precision))).toFixed(precision));
-        const minStepLoTorque = parseFloat((parseFloat(check_target_torque) - (1 / Math.pow(10, precision))).toFixed(precision));
+        const minStepHiTorque = parseFloat((parseFloat(check_target_torque) + increment).toFixed(precision));
+        const minStepLoTorque = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
 
         const idsToCheck = ['tool_max_torque', 'tool_min_torque', 'tool_max_rpm', 'tool_min_rpm', 'tool_max_torque_diff'];
-
         let toolError = false;
+
         idsToCheck.forEach(id => {
             const el = document.getElementById(id);
             const value = parseFloat(el.value);
             const feedback = el.nextElementSibling;
             if (isNaN(value)) {
                 el.classList.add("is-invalid");
-                if (feedback && feedback.classList.contains("invalid-feedback")) {
+                if (feedback?.classList.contains("invalid-feedback")) {
                     feedback.innerText = "Invalid number";
                     feedback.classList.add("d-block");
                     feedback.style.display = "block";
@@ -598,27 +588,16 @@
             }
         });
 
-        if (toolError) {
-            return { valid: false, errors: ["Tool config invalid"] };
-        }
+        if (toolError) return { valid: false, errors: ["Tool config invalid"] };
 
         const StepOption = parseInt(document.getElementById("StepOption").value);
-        
-        const checkbox0 = document.getElementById("StepMoniByWin_0");
-        const checkbox1 = document.getElementById("StepMoniByWin_1");
-
-        let StepMoniByWin = 0;  //  代表都沒勾選
-        if (checkbox0 && checkbox0.checked) {
-            StepMoniByWin = 1;
-        } else if (checkbox1 && checkbox1.checked) {
-            StepMoniByWin = 1;
-        }
-
-        const StepTorqueVal = parseFloat(document.getElementById("StepTorque").value);
-        const delta = Tool_Min_Torque * 0.05;
-
         const StepEnableThreshold = document.querySelector('input[name="StepEnableThreshold"]:checked')?.value ?? "0";
         const StepEnableDownShift = document.querySelector('input[name="StepEnableDownShift"]:checked')?.value ?? "0";
+        const threshold_mode_torque = parseInt(document.getElementById('threshold_mode_torque')?.value ?? 0);
+
+        const checkbox0 = document.getElementById("StepMoniByWin_0");
+        const checkbox1 = document.getElementById("StepMoniByWin_1");
+        let StepMoniByWin = (checkbox0?.checked || checkbox1?.checked) ? 1 : 0;
 
         const limits = {
             torque: {
@@ -633,13 +612,12 @@
                 angle: { min: 1, max: 30600 },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
                 limitHi: { min: parseFloat(document.getElementById("StepAngle")?.value || 0), max: 30600 },
-                limitLo: { min: 0,  max: Math.max(0, parseFloat(document.getElementById("StepAngle")?.value || 1) - 1) }
+                limitLo: { min: 0, max: Math.max(0, parseFloat(document.getElementById("StepAngle")?.value || 1) - 1) }
             }
         };
 
         let conditions = [
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            //{ id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.5 },
             { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift },
             { id: 'StepTorqueDownShift', pattern: /^\d{1,5}(\.\d{1})?$/, ...limits.torque.torqueDownshift },
             { id: 'StepTorqueTS', pattern: /^\d{1,5}(\.\d{1})?$/, ...limits.torque.torqueTS }
@@ -653,11 +631,6 @@
             conditions = conditions.filter(c => !['StepTorqueDownShift', 'StepRPMDownShift'].includes(c.id));
         }
 
-        if (StepEnableThreshold === "1") {
-            const ts = conditions.find(c => c.id === 'StepTorqueTS');
-            if (ts) ts.min = 0, ts.max = 99999;
-        }
-
         if (StepEnableDownShift === "1") {
             const td = conditions.find(c => c.id === 'StepTorqueDownShift');
             if (td) td.min = 0, td.max = 99999;
@@ -668,6 +641,20 @@
             if (td) td.min = check_lo_tor_before, td.max = minStepLoTorque;
         }
 
+        if (StepEnableThreshold === "1") {
+            const ts = conditions.find(c => c.id === 'StepTorqueTS');
+            if (ts) {
+                if (threshold_mode_torque === 1) {
+                    ts.min = 0;
+                    ts.max = 99999;
+                } else {
+                    ts.min = parseFloat(check_lo_tor_before);
+                    ts.max = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
+                }
+            }
+        }
+
+
         if (StepOption === 2) {
             conditions.push(
                 { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
@@ -675,21 +662,19 @@
                 { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
-                { id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                { id: StepMoniByWin ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                { id: StepMoniByWin ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         } else if (StepOption === 1) {
             conditions.push(
                 { id: 'StepAngle', pattern: /^\d{1,5}$/, ...limits.angle.angle },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
-                { id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                { id: StepMoniByWin ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                { id: StepMoniByWin ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         }
 
-
-        //新增 StepDelay 驗證 (共用在兩種 StepOption)
         conditions.push({
             id: 'StepDelay',
             pattern: /^(?:[0-9](?:\.\d{1,4})?|9\.9)$/,
@@ -698,31 +683,20 @@
             precision: 4
         });
 
-
-        //validateInput 子函數
         function validateInput(el, pattern, min, max) {
             if (!el) return false;
             const val = el.value.trim();
             const parsed = parseFloat(val);
             const feedback = el.nextElementSibling;
 
-            // 需要使用整數比較的欄位
-            const isRPMField = ['StepRPM', 'StepRPMDownShift','StepAngle','StepHiAngle'].includes(el.id);
+            const isRPMField = ['StepRPM', 'StepRPMDownShift', 'StepAngle', 'StepHiAngle'].includes(el.id);
             const isLimitPercentField = ['step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id);
 
-            // 小數點四捨五入函數
-            const roundTo = (num, digits) => {
-                const parsed = parseFloat(num);
-                if (isNaN(parsed)) return NaN;
-                return parsed.toFixed(digits);
-            };
-
-            // 決定用整數 or 精度四捨五入
+            const roundTo = (num, digits) => isNaN(num) ? NaN : parseFloat(num).toFixed(digits);
             const parsedRounded = (isRPMField || isLimitPercentField) ? Math.floor(parsed) : roundTo(parsed, precision);
-            const minRounded = (min !== null && !isNaN(min)) ? ((isRPMField || isLimitPercentField) ? Math.floor(min) : roundTo(min, precision)) : null;
-            const maxRounded = (max !== null && !isNaN(max)) ? ((isRPMField || isLimitPercentField) ? Math.floor(max) : roundTo(max, precision)) : null;
+            const minRounded = min != null ? (isRPMField || isLimitPercentField ? Math.floor(min) : roundTo(min, precision)) : null;
+            const maxRounded = max != null ? (isRPMField || isLimitPercentField ? Math.floor(max) : roundTo(max, precision)) : null;
 
-            // 是否無效
             let invalid = (
                 val === "" ||
                 isNaN(parsed) ||
@@ -731,25 +705,20 @@
                 !pattern.test(val)
             );
 
-            // 額外檢查：百分比欄位必須是整數
-            if (isLimitPercentField && !Number.isInteger(parsed)) {
-                invalid = true;
-            }
+            if (isLimitPercentField && !Number.isInteger(parsed)) invalid = true;
 
-            // UI 顯示錯誤
             if (invalid) {
                 el.classList.add("is-invalid");
-                if (feedback && feedback.classList.contains("invalid-feedback")) {
-                    feedback.innerText =
-                        (minRounded !== null && maxRounded !== null)
-                            ? `Range: ${minRounded} ~ ${maxRounded}`
-                            : `Invalid input`;
+                if (feedback?.classList.contains("invalid-feedback")) {
+                    feedback.innerText = (minRounded !== null && maxRounded !== null)
+                        ? `Range: ${minRounded} ~ ${maxRounded}`
+                        : `Invalid input`;
                     feedback.classList.add("d-block");
                     feedback.style.display = "block";
                 }
             } else {
                 el.classList.remove("is-invalid");
-                if (feedback && feedback.classList.contains("invalid-feedback")) {
+                if (feedback?.classList.contains("invalid-feedback")) {
                     feedback.innerText = '';
                     feedback.classList.remove("d-block");
                     feedback.style.display = "none";
@@ -759,8 +728,6 @@
             return !invalid;
         }
 
-
-        // 執行驗證
         let isValid = true;
         let errorList = [];
 
@@ -778,6 +745,8 @@
             errors: errorList
         };
     }
+
+
 
 
     function checkAndDisableDownshiftIfNotLastStep() {
