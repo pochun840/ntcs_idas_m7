@@ -49,7 +49,7 @@
                 <div class="column">
                     <div class="item-targer-angle w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_angle'];?></div>
-                        <div id="Target_Angle" class="w3-display-middle" style="font-size: 6vmin; margin: 5px 0"><?php echo $data['data_info']['final_fasten_angle'] ?? '-'; ?></div>                        
+                        <div id="Target_Angle" class="w3-display-middle" style="font-size: 6vmin; margin: 5px 0"><?php echo $data['data_info']['total_fasten_angle'] ?? '-'; ?></div>                        
                     </div>
                     <div class="item-message w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_message'];?></div>
@@ -262,7 +262,7 @@ function fetchChartAndRender() {
             document.getElementById("Seq_Name").value = info.sequence_id + "/" + info.sequence_name ?? '***';
             document.getElementById("Screws").value = info.	last_screw_count + "/" + info.total_screw_count  ?? '***';
             document.getElementById("Target_Torque").innerText = info.final_fasten_torque ?? '-';
-            document.getElementById("Target_Angle").innerText = info.final_fasten_angle ?? '-';
+            document.getElementById("Target_Angle").innerText = info.total_fasten_angle ?? '-';
             document.getElementById("Torque_Result").innerText = textMap[statusKey] ?? statusKey;
             document.getElementById("Message").innerText = info.error_message ?? '';
             document.getElementById("fasten_status_color").style.backgroundColor  = info.result_status_color_text;

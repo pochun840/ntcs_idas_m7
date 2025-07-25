@@ -16,6 +16,9 @@
                 // 非 edit 模式 → 由 JS 自動控制勾選、欄位初始化
                 getCheckboxValue();  
                 updateLabel();
+                document.getElementById("StepMoniByWin_0").checked = false;
+                document.getElementById("StepMoniByWin_1").checked = false;
+                
             } else {
 
                 getCheckboxValue();  // 最後處理欄位 disabled 狀態
@@ -352,7 +355,7 @@
 
 
         console.log(StepMoniByWin);
-        let StepTime = 0;
+        let StepTime = 1000;
 
         let StepLimiHi, StepLimiLo;
         if (StepMoniByWin == 0) {

@@ -391,6 +391,13 @@ class Job{
             $deleteStatement = $this->db_iDas->prepare($deleteSql);
             $deleteStatement->execute([$new_jobid]);
 
+            //然後將 JOBID = 0 的 act 改為 1
+            $updateSql = "UPDATE JOB_lst SET act = 1 WHERE JOBID = 0";
+            $updateStatement = $this->db_iDas->prepare($updateSql);
+            $updateStatement->execute();
+
+
+
             return true;
         } else {
             return false;

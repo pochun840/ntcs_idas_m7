@@ -117,8 +117,12 @@ class Steptcc{
             echo "SQL 错误: " . implode(", ", $this->db_iDas->errorInfo());
             return false;
         }
-     
         
+        $step_data['StepAccelerateOffset'] =  0.2;
+        $step_data['InterruptAlarm']= 1;
+        $step_data['OverAngleStop']=1;
+
+
         $statement->bindValue(':jobid', $step_data['JOBID']);
         $statement->bindValue(':seqid', $step_data['SEQID']);
         $statement->bindValue(':step_select', $step_data['StepSelect']);
@@ -176,7 +180,9 @@ class Steptcc{
         if (empty($step_data['JOBID']) || empty($step_data['SEQID']) || empty($step_data['StepSelect'])) {
             return false; 
         }
-
+        $step_data['StepAccelerateOffset'] =  0.2;
+        $step_data['InterruptAlarm']= 1;
+        $step_data['OverAngleStop']=1;
 
         $sql = "UPDATE `STEP_lst` SET 
                     STEPname = :stepname,
@@ -462,10 +468,10 @@ class Steptcc{
             'type' => 0,
             'time' => date('Y-m-d H:i:s'),
             'act' => 0,
-            'StepSwitch' => 0,
+            'StepSwitch' => 1,
             'StepRPM' => 500,
             'StepOption' => 2,
-            'StepTime' => 0,
+            'StepTime' => 1000,
             'StepAngle' => 3000,
             'StepTorque' =>  number_format((float)$torque, $precision, '.', ''),
             'StepDirection' => 1,   // cw
@@ -477,25 +483,25 @@ class Steptcc{
             'StepLoAngle' => 0,
             'StepHiTorque'   => number_format((float)$tool_high_torque, $precision, '.', ''),
             'StepLoTorque'   => number_format((float)$tool_low_torque, $precision, '.', ''),
-            'StepAccelerateOffset' => 0,
-            'StepAccelerateOffsetSign' => 0,
+            'StepAccelerateOffset' => 0.2,
+            'StepAccelerateOffsetSign' => 43,
             'StepEnableTorqueOffset' => 0,
-            'StepTorqueOffset' => 0.0,
-            'StepTorqueOffsetSign' => 0,
+            'StepTorqueOffset' => 0,
+            'StepTorqueOffsetSign' => 43,
             'StepEnableDownShift' => 0,
             'StepTorqueDownShift' => 0,
             'StepRPMDownShift' => 0,
             'StepEnableThreshold' => 0,
             'StepTorqueTS' => 0,
             'StepReTry' => 0,
-            'StepUnScrew' => 0,
+            'StepUnScrew' => 1,
             'StepReTryTorq' => 0,
             'StepReTryAngl' => 0,
             'StepAngleRecord' => 0,
             'StepAutoDetectAngle' => 0,
-            'InterruptAlarm' => 0,
-            'OverAngleStop' => 0,
-            'KValue' => 0,
+            'InterruptAlarm' => 1,
+            'OverAngleStop' => 1,
+            'KValue' => 100,
             'step_unit' => $device_torque_unit,
         ];
 

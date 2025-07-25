@@ -11,7 +11,7 @@
             document.getElementById("ok_seq_on").checked = true;
             document.getElementById("seq_stop_off").checked = true;
             document.getElementById("unscrew_count_switch_off").checked = true;
-            document.getElementById("ng_unscrew_on").checked = true;
+            document.getElementById("ng_unscrew_off").checked = true;
             document.getElementById("accu_angle_on").checked = true;
             document.getElementById("unscrew_mode_auto").checked = true;
             document.getElementById("unscrew_rpm").value = 300;
@@ -62,15 +62,14 @@
         const time = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
         const seq_unit = "<?php echo $data['torque_unit_code'];?>";
-
-        
+     
 
         data.append("job_id", document.getElementById("job_id").value);
         data.append("SEQID", document.getElementById("seq_id").value);
         data.append("SEQname", document.getElementById("SEQname").value);
         data.append("time", time);
         data.append("type", 0);
-        data.append("act", 0);
+        data.append("act", 1);
         data.append("skip", 0);
         data.append("seq_repeat", document.getElementById("seq_repeat").value);
         data.append("timeout", document.getElementById("timeout").value);
@@ -97,7 +96,7 @@
         data.append("message",'');
         data.append("delay", 0);
         data.append("input", 0);
-        data.append("input_signal", 0);
+        data.append("input_signal", 1);
         data.append("output", 0);
         data.append("output_signal", 1);
         data.append("output_durat", 100);
