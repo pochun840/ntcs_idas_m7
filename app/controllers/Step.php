@@ -207,7 +207,7 @@ class Step extends Controller
                 'StepAngle' => intval($_POST['StepAngle'] ?? 0),
                 'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
                 'StepDirection' => intval($_POST['StepDirection'] ?? 0),
-                'StepDelay' => intval($_POST['StepDelay'] ?? 0),
+                'StepDelay' => floatval($_POST['StepDelay'] ?? 0),
                 'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
                 'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
                 'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
@@ -236,7 +236,6 @@ class Step extends Controller
                 'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
                 'step_unit' => intval($_POST['step_unit'] ?? 0)
             ];
-
 
         $res = $this->stepModel->update_step_by_id($step_data);
 

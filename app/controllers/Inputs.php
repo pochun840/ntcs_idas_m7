@@ -204,11 +204,7 @@ class Inputs extends Controller
             $input_check = false; 
         }
 
-        if( !empty($_POST['input_wave']) && isset($_POST['input_wave'])  ){
-            $input_data['signal'] = $_POST['input_wave'];
-        }else{ 
-            $input_check = false; 
-        }
+        $input_data['signal'] = $_POST['input_wave'];
 
         if( isset($_POST['gateconfirm'])  ){
             $input_data['Wp_Ready_Confirm'] = $_POST['gateconfirm'];
@@ -285,11 +281,8 @@ class Inputs extends Controller
             $input_check = false; 
         }
 
-        if( !empty($_POST['input_wave']) && isset($_POST['input_wave'])  ){
-            $input_data['signal'] = $_POST['input_wave'];
-        }else{ 
-            $input_check = false; 
-        }
+ 
+        $input_data['signal'] = $_POST['input_wave'];
 
 
         if($input_data['EvenID'] != 109){

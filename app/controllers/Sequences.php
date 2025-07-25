@@ -7,12 +7,14 @@ class Sequences extends Controller
     private $MiscellaneousModel;
     private $SettingModel;
     private $ToolModel;
+    private $stepModel;
     public function __construct(){
 
         $this->sequenceModel = $this->model('Sequence');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->SettingModel = $this->model('Setting');
         $this->ToolModel = $this->model('Tool');
+        $this->stepModel = $this->model('Steptcc');
     }
 
     // 取得所有Sequences
@@ -130,6 +132,19 @@ class Sequences extends Controller
 
             $mode = "create";
             $res = $this->sequenceModel->create_seq($mode,$seq_data);
+
+
+            $res_device = $this->SettingModel->GetControllerInfo();
+            $device_torque_unit = (int)$res_device['torque_unit'];
+            $seq_result = $this->sequenceModel->createDefaultSeq($seq_data['job_id'],$device_torque_unit);  
+
+            $tools_temp = $this->getConvertedToolInfo();
+            
+            if(!empty($tools_temp )){
+                $step_res = $this->stepModel->createDefaultStep($seq_data['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$tools_temp['torque'],$device_torque_unit);
+            }
+
+
             $result = array();
             if($res){
                 $res_type = 'Success';
@@ -150,7 +165,59 @@ class Sequences extends Controller
 
     }
 
-   
+    
+
+        public function getConvertedToolInfo() {
+
+        $Tool_Info = $this->ToolModel->GetToolInfo();
+        $Tool_Info = end($Tool_Info); // 只取最後一筆
+
+        $temp = [];
+
+        if (!empty($Tool_Info)) {
+            // 取得 Controller 設定的 torque unit
+            $res_device = $this->ToolModel->GetControllerInfo();
+            $device_torque_unit = (int)$res_device['torque_unit'];
+
+            // 對應 torque 單位名稱
+            $unit_arr = $this->MiscellaneousModel->details('torque_unit');
+            $unit_name = $unit_arr[$device_torque_unit];
+
+            // 對應每個 torque 單位的小數位
+            $decimals_arr = $this->MiscellaneousModel->details('decimals');
+            $torque_decimals = $decimals_arr[$device_torque_unit] ?? 3;
+
+            // 從 DB 取出的 torque 值要先 /1000 (假設 DB 單位是 N.m)
+            $minTorqueNm = (float)$Tool_Info['min_torque'] / 1000;
+            $maxTorqueNm = ((float)$Tool_Info['max_torque'] / 1000) * 1.1;
+
+            // 轉換所有 torque 單位
+            $low_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($minTorqueNm, 1, false);
+            $high_torque_arr = $this->MiscellaneousModel->convert_all_torque_units($maxTorqueNm, 1, false);
+
+            // 強制小數格式（不補值，只格式化）
+            $Tool_Info['min_torque'] = number_format((float)$low_torque_arr[$unit_name], $torque_decimals, '.', '');
+            $Tool_Info['max_torque'] = number_format((float)$high_torque_arr[$unit_name], $torque_decimals, '.', '');
+            $Tool_Info['torque_unit_name'] = $unit_name;
+
+            // 產生 temp array（給 JS 使用）
+            $temp['torque'] = $Tool_Info['min_torque'];
+            $temp['max_torque'] = $Tool_Info['max_torque'];
+
+            // 計算 min torque 對應的小數位 → 最小有效單位
+            if ($torque_decimals > 0) {
+                $temp['min_torque'] = "0." . str_repeat("0", $torque_decimals - 1) . "0";
+            } else {
+                $temp['min_torque'] = "1";
+            }
+
+        }
+
+        return $temp;
+    }
+
+
+
 
     public function delete_seq(){
 

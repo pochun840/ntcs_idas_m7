@@ -9,150 +9,65 @@
         if (typeof toggleDownShift === 'function') toggleDownShift();
     });
 
-        document.addEventListener("DOMContentLoaded", function () {
-            const isEditMode = '<?php echo $data["type"]; ?>' === 'edit';
+    
 
-            if (!isEditMode) {
-                // 非 edit 模式 → 由 JS 自動控制勾選、欄位初始化
-                getCheckboxValue();  
-                updateLabel();
-                document.getElementById("StepMoniByWin_0").checked = false;
-                document.getElementById("StepMoniByWin_1").checked = false;
-
-            } else {
-
-                getCheckboxValue();  // 最後處理欄位 disabled 狀態
-                document.getElementById("StepMoniByWin_0").checked = false;
-                document.getElementById("StepMoniByWin_1").checked = false;
-
-
-                if (isEditMode) {
-                    const forceUncheck0 = <?php echo ($moniByWin === "1" && $stepOption === "2") ? 'true' : 'false'; ?>;
-                    if (forceUncheck0) {
-                        document.getElementById("StepMoniByWin_0").checked = true;
-                    }
-
-                    const forceUncheck1 = <?php echo ($moniByWin === "1" && $stepOption === "1") ? 'true' : 'false'; ?>;
-                    if (forceUncheck1) {
-                        document.getElementById("StepMoniByWin_1").checked = true;
-                    }
-                }
-            }
-        });
-
-
-
-    function updateLabel() {
-
-        const rawUnit = '<?php echo $data['torque_unit']; ?>';
-        const language = getCookie('language') || 'default';
-        const selectVal = parseInt(document.getElementById('StepOption').value);
-        const label = document.getElementById('targetLabel');
+    document.addEventListener("DOMContentLoaded", function () {
         const isEditMode = '<?php echo $data["type"]; ?>' === 'edit';
 
-        const unitLabels = {
-            'kgf.cm': { 'zh-cn': '公斤公分', 'zh-tw': '公斤公分', 'default': 'kgf.cm' },
-            'lbf.in': { 'zh-cn': '英磅英吋', 'zh-tw': '英磅英吋', 'default': 'lbf.in' },
-            'N.m': { 'zh-cn': '牛顿米', 'zh-tw': '牛頓米', 'default': 'N.m' },
-            'kgf.m': { 'zh-cn': '公斤米', 'zh-tw': '公斤公尺', 'default': 'kgf.m' },
-            'cN.m':  { 'zh-cn': '厘牛米',  'zh-tw': '厘牛頓米', 'default': 'cN.m' }
-        };
-        const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
+        const cb0 = document.getElementById("StepMoniByWin_0");
+        const cb1 = document.getElementById("StepMoniByWin_1");
+        const hiTorqueInput = document.getElementById("StepHiTorque");
+        const loTorqueInput = document.getElementById("StepLoTorque");
+        const hiAngleInput = document.getElementById("StepHiAngle");
+        const loAngleInput = document.getElementById("StepLoAngle");
 
-        const labelTexts = {
-            'zh-cn': { 2: '目标扭矩', 1: '目标角度' },
-            'zh-tw': { 2: '目標扭力', 1: '目標角度' },
-            'default': { 2: 'Target Torque', 1: 'Target Angle' }
-        };
-        const textSet = labelTexts[language] || labelTexts['default'];
-        const labelPrefix = textSet[selectVal] || 'Target';
+        function toggleInputsByCheckbox() {
+            // 只讓 cb0 控制 Torque 欄位
+            if (cb0?.checked) {
+                hiTorqueInput.disabled = true;
+                loTorqueInput.disabled = true;
+            } else {
+                hiTorqueInput.disabled = false;
+                loTorqueInput.disabled = false;
+            }
 
-        label.textContent = selectVal === 2
-            ? `${labelPrefix} (${translatedUnit}):`
-            : `${labelPrefix}:`;
+            // 只讓 cb1 控制 Angle 欄位
+            if (cb1?.checked) {
+                hiAngleInput.disabled = true;
+                loAngleInput.disabled = true;
+                hiTorqueInput.disabled = false;
+                loTorqueInput.disabled = false;
 
-        ['StepTorque_item', 'StepAngle_item'].forEach(id => {
-            document.getElementById(id)?.style.setProperty('display', 'none');
-        });
-        if (selectVal === 2) {
-            document.getElementById('StepTorque_item')?.style.setProperty('display', 'block');
-        } else if (selectVal === 1) {
-            document.getElementById('StepAngle_item')?.style.setProperty('display', 'block');
+            } else {
+                hiAngleInput.disabled = false;
+                loAngleInput.disabled = false;
+            }
         }
 
-        const showTor = document.getElementById('show_tor');
-        const showAng = document.getElementById('show_ang');
-        if (showTor && showAng) {
-            showTor.style.display = selectVal === 2 ? 'block' : 'none';
-            showAng.style.display = selectVal === 1 ? 'block' : 'none';
-        }
-
-        const enableMap = {
-            2: ['StepMoniByWin_0', 'step_limit_hi_tor', 'step_limit_lo_tor'],
-            1: ['StepMoniByWin_1', 'step_limit_hi_ang', 'step_limit_lo_ang']
-        };
-        const allFields = [
-            'StepMoniByWin_0', 'StepMoniByWin_1',
-            'step_limit_hi_tor', 'step_limit_lo_tor',
-            'step_limit_hi_ang', 'step_limit_lo_ang'
-        ];
-        allFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.disabled = true;
-        });
-        if (enableMap[selectVal]) {
-            enableMap[selectVal].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.disabled = false;
-            });
-        }
-
-        const extraFieldMap = {
-            2: ['StepHiTorque', 'StepLoTorque'],
-            1: ['StepHiAngle', 'StepLoAngle']
-        };
-        const allExtraFields = [
-            'StepHiTorque', 'StepLoTorque',
-            'StepHiAngle', 'StepLoAngle'
-        ];
-        allExtraFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.disabled = true;
-        });
-        if (extraFieldMap[selectVal]) {
-            extraFieldMap[selectVal].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.disabled = false;
-            });
-        }
-
-        // ✅ 僅在非編輯模式下，自動打勾並初始化欄位
         if (!isEditMode) {
-            if (selectVal === 1) {
-                const checkbox = document.getElementById('StepMoniByWin_1');
-                if (checkbox && !checkbox.checked) {
-                    checkbox.checked = true;
-                    getCheckboxValue('StepMoniByWin_1');
-                }
-                ['step_limit_hi_ang', 'step_limit_lo_ang'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el && el.value.trim() === '') {
-                        el.value = '30';
-                    }
-                });
-            }
-            if (selectVal === 2) {
-                const checkbox = document.getElementById('StepMoniByWin_0');
-                if (checkbox && !checkbox.checked) {
-                    checkbox.checked = true;
-                    getCheckboxValue('StepMoniByWin_0');
-                }
-            }
+            getCheckboxValue();
+            updateLabel();
+            cb0.checked = false;
+            cb1.checked = false;
+        } else {
+            getCheckboxValue();
+            
+            const forceCheck0 = <?php echo ($moniByWin === "1" && $stepOption === "2") ? 'true' : 'false'; ?>;
+            const forceCheck1 = <?php echo ($moniByWin === "1" && $stepOption === "1") ? 'true' : 'false'; ?>;
+
+            cb0.checked = forceCheck0;
+            cb1.checked = forceCheck1;
         }
-    }
 
+        // ⚠️ 要在設定完 checkbox 後再呼叫
+        toggleInputsByCheckbox();
 
+        const isDisabled = document.getElementById("StepHiTorque").disabled;
+        console.log("StepHiTorque 是否 disabled：", isDisabled);
 
+        cb0?.addEventListener("change", toggleInputsByCheckbox);
+        cb1?.addEventListener("change", toggleInputsByCheckbox);
+    });
 
     function toggleStepTorqueTS() {
         const dataType = "<?php echo $data['type']; ?>";
@@ -347,9 +262,6 @@
             StepMoniByWin = 1;
         }
 
-
-
-        console.log(StepMoniByWin);
         let StepTime = 1000;
 
         let StepLimiHi, StepLimiLo;
@@ -504,7 +416,6 @@
 
 
     function getCheckboxValue(clickedId = null) {
-
         const checkbox0 = document.getElementById("StepMoniByWin_0");
         const checkbox1 = document.getElementById("StepMoniByWin_1");
 
@@ -525,8 +436,8 @@
                 checkbox1.checked = false;
                 check_val = 0;
             } else {
-                // ✅ 兩者都沒勾時，預設為扭力模式
-                checkbox0.checked = true;
+                // ✅ 預設扭力模式
+                checkbox0.checked = false;
                 check_val = 0;
             }
         }
@@ -536,13 +447,17 @@
         const stepHiAngle  = document.getElementById("StepHiAngle");
         const stepLoAngle  = document.getElementById("StepLoAngle");
 
-        const disableTorque = (check_val === 1);
-        const disableAngle  = (check_val === 0);
+        // ✅ Torque 欄位永遠可填
+        [stepHiTorque, stepLoTorque].forEach(el => el && (el.disabled = false));
 
-        [stepHiTorque, stepLoTorque].forEach(el => el && (el.disabled = disableTorque));
+        // ✅ 只有當 check_val === 0（扭力模式）時 disable Angle
+        const disableAngle = (check_val === 0);
         [stepHiAngle, stepLoAngle].forEach(el => el && (el.disabled = disableAngle));
 
-        console.log("check_val:", check_val);
+        document.getElementById("StepHiTorque").disabled = false;
+
+
+
     }
 
 
@@ -577,14 +492,13 @@
         ['StepTorque_item', 'StepAngle_item'].forEach(id =>
             document.getElementById(id)?.style.setProperty('display', 'none')
         );
-
         if (selectVal === 2) {
             document.getElementById('StepTorque_item')?.style.setProperty('display', 'block');
         } else if (selectVal === 1) {
             document.getElementById('StepAngle_item')?.style.setProperty('display', 'block');
         }
 
-        // 顯示額外欄位
+        // 額外欄位顯示切換
         const showTor = document.getElementById('show_tor');
         const showAng = document.getElementById('show_ang');
         if (showTor && showAng) {
@@ -592,47 +506,38 @@
             showAng.style.display = selectVal === 1 ? 'block' : 'none';
         }
 
-        // 先全部 disable，再根據選項開啟
+        // 全部 disable，再依選項啟用
         const allFields = [
             'StepMoniByWin_0', 'StepMoniByWin_1',
             'step_limit_hi_tor', 'step_limit_lo_tor',
             'step_limit_hi_ang', 'step_limit_lo_ang'
         ];
-        allFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.disabled = true;
-        });
+        allFields.forEach(id => document.getElementById(id)?.setAttribute('disabled', true));
 
         const enableMap = {
             2: ['StepMoniByWin_0', 'step_limit_hi_tor', 'step_limit_lo_tor'],
             1: ['StepMoniByWin_1', 'step_limit_hi_ang', 'step_limit_lo_ang']
         };
-        enableMap[selectVal]?.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.disabled = false;
-        });
+        enableMap[selectVal]?.forEach(id => document.getElementById(id)?.removeAttribute('disabled'));
 
-        // 依選項強制勾選其中一個監控 checkbox
+        // ✅ 強制取消勾選兩個監控 checkbox
         const checkbox0 = document.getElementById('StepMoniByWin_0');
         const checkbox1 = document.getElementById('StepMoniByWin_1');
-        if (selectVal === 1 && checkbox1 && !checkbox1.checked) {
-            checkbox1.checked = true;
-            checkbox0.checked = false;
-            getCheckboxValue("StepMoniByWin_1");
-        }
-        if (selectVal === 2 && checkbox0 && !checkbox0.checked) {
-            checkbox0.checked = true;
-            checkbox1.checked = false;
-            getCheckboxValue("StepMoniByWin_0");
-        }
+        if (checkbox0) checkbox0.checked = false;
+        if (checkbox1) checkbox1.checked = false;
+        getCheckboxValue();  // ✅ 確保 UI 狀態與 disabled 同步
+
+        // 上下限欄位全部啟用
+        ['StepHiTorque', 'StepLoTorque', 'StepHiAngle', 'StepLoAngle'].forEach(id =>
+            document.getElementById(id)?.removeAttribute('disabled')
+        );
+
+        document.getElementById("StepHiTorque").disabled = false;
     }
 
 
 
-    
-
     function input_check() {
-
 
         const decimals = {
             0: 2,
@@ -657,11 +562,16 @@
         const check_lo_tor_before = document.getElementById('check_lo_tor_before').value; //check_lo_tor_before
         const check_lo_tor_after  = document.getElementById('check_lo_tor_after').value; //check_lo_tor_after
 
+        const check_target_torque = document.getElementById('StepTorque').value;
+
         const Tool_Max_RPM = document.getElementById('check_hi_rpm').value;
         const Tool_Min_RPM = document.getElementById('check_lo_rpm').value;
 
         const Tool_Max_Torque_Diff = parseFloat(document.getElementById('tool_max_torque_diff').value);
 
+
+        const minStepHiTorque = parseFloat((parseFloat(check_target_torque) + (1 / Math.pow(10, precision))).toFixed(precision));
+        const minStepLoTorque = parseFloat((parseFloat(check_target_torque) - (1 / Math.pow(10, precision))).toFixed(precision));
 
         const idsToCheck = ['tool_max_torque', 'tool_min_torque', 'tool_max_rpm', 'tool_min_rpm', 'tool_max_torque_diff'];
 
@@ -712,18 +622,18 @@
 
         const limits = {
             torque: {
-                torque: { min: Tool_Min_Torque, max: Tool_Max_Torque },
-                torqueTS: { min: check_lo_tor_before, max: Tool_Min_Torque },
-                torqueDownshift: { min: check_lo_tor_before, max: Tool_Min_Torque },
+                torque: { min: check_target_torque, max: Tool_Max_Torque },
+                torqueTS: { min: check_lo_tor_before, max: minStepLoTorque },
+                torqueDownshift: { min: check_lo_tor_before, max: minStepLoTorque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
-                limitHi: { min: check_hi_tor_before, max: check_hi_tor_after },
-                limitLo: { min: check_lo_tor_before, max: check_lo_tor_after }
+                limitHi: { min: minStepHiTorque, max: check_hi_tor_after },
+                limitLo: { min: check_lo_tor_before, max: minStepLoTorque }
             },
             angle: {
                 angle: { min: 1, max: 30600 },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
                 limitHi: { min: parseFloat(document.getElementById("StepAngle")?.value || 0), max: 30600 },
-                limitLo: { min: 0, max: parseFloat(document.getElementById("StepHiAngle")?.value || 0) }
+                limitLo: { min: 0,  max: Math.max(0, parseFloat(document.getElementById("StepAngle")?.value || 1) - 1) }
             }
         };
 
@@ -731,8 +641,8 @@
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             //{ id: 'k_value', pattern: /^(0(\.\d{1,2})?|1(\.\d{2})?|2(\.([0-4]{1}[0-9]{1}|50)))$/, min: 0, max: 2.5 },
             { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift },
-            { id: 'StepTorqueDownShift', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueDownshift },
-            { id: 'StepTorqueTS', pattern: /^\d{1,4}(\.\d{1})?$/, ...limits.torque.torqueTS }
+            { id: 'StepTorqueDownShift', pattern: /^\d{1,5}(\.\d{1})?$/, ...limits.torque.torqueDownshift },
+            { id: 'StepTorqueTS', pattern: /^\d{1,5}(\.\d{1})?$/, ...limits.torque.torqueTS }
         ];
 
         if (StepEnableThreshold === "0") {
@@ -755,7 +665,7 @@
 
         if (StepEnableDownShift === "2") {
             const td = conditions.find(c => c.id === 'StepTorqueDownShift');
-            if (td) td.min = Tool_Min_Torque, td.max = Tool_Max_Torque;
+            if (td) td.min = check_lo_tor_before, td.max = minStepLoTorque;
         }
 
         if (StepOption === 2) {
@@ -763,16 +673,18 @@
                 { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
                 { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitHi },
                 { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
-                //{ id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                //{ id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
+                { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
+                { id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                { id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         } else if (StepOption === 1) {
             conditions.push(
                 { id: 'StepAngle', pattern: /^\d{1,5}$/, ...limits.angle.angle },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
-                //{ id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                //{ id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                { id: StepMoniByWin == 1 ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                { id: StepMoniByWin == 1 ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
         }
 
@@ -780,9 +692,10 @@
         //新增 StepDelay 驗證 (共用在兩種 StepOption)
         conditions.push({
             id: 'StepDelay',
-            pattern: /^(?:[0-9](?:\.\d)?|9\.9)$/, 
+            pattern: /^(?:[0-9](?:\.\d{1,4})?|9\.9)$/,
             min: 0,
-            max: 9.9
+            max: 9.9,
+            precision: 4
         });
 
 
@@ -865,10 +778,6 @@
             errors: errorList
         };
     }
-
-
-
-
 
 
     function checkAndDisableDownshiftIfNotLastStep() {

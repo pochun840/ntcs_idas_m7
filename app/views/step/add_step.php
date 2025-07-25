@@ -138,14 +138,14 @@
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['High_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-9">
-                                        <input id="StepHiTorque"  type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : ''; ?>" >
+                                        <input id="StepHiTorque"  type="text" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : ''; ?>" >
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['Low_Torque']?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-9">
-                                        <input id="StepLoTorque" type="number" step="0.0001" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : ''; ?>">
+                                        <input id="StepLoTorque" type="text"  class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : ''; ?>">
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>

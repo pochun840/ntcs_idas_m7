@@ -164,6 +164,10 @@ class Dashboards extends Controller
                 $temp_chart = $this->ChartData($chart_mode, $csvdata_arr, $chat_mode_arr, $x_val);
             }
 
+
+
+            
+
             // 如果成功取得圖表資料才套用 min/max
             if (!empty($temp_chart)) {
                 if (in_array($chart_mode, [1, 4, 5])) {
@@ -244,79 +248,85 @@ class Dashboards extends Controller
         $chart_info = [];
         $chat_mode = (int)$chat_mode;
 
-        // 取得控制器的扭力單位
+        // 取得控制器的扭力單位與相關資訊
         $res_device = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)$res_device['torque_unit'];
-
-        //$unit_name = $this->MiscellaneousModel->get_unit_name_by_index($device_torque_unit);
-        $unit_arr  = $this->MiscellaneousModel->details('torque_unit');
-        $unit_name = $unit_arr[$device_torque_unit];
-        
+        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+        $unit_name  = $unit_arr[$device_torque_unit] ?? 'N.m';
+        $decimals_arr = $this->MiscellaneousModel->details('decimals');
+        $precision = $decimals_arr[$device_torque_unit] ?? 3;
 
         $torque = [];
         $rpm = [];
 
+        // ➤ 雙軸圖（Torque + RPM）
         if ($chat_mode === 5) {
-            // ➤ 雙軸：Torque + RPM
             $torque = $csvdata_arr['torque'] ?? [];
             $rpm    = $csvdata_arr['rpm'] ?? [];
 
-            // ➤ 轉換 torque 單位
-            $torque_converted = array_map(function($val) use ($device_torque_unit, $unit_name) {
+            // ➤ 扭力單位轉換 + 小數格式化
+            $torque_converted = array_map(function($val) use ($device_torque_unit, $unit_name, $precision) {
                 $converted = $this->MiscellaneousModel->convert_single_torque_unit($val, 1, $device_torque_unit);
-                return is_array($converted) ? ($converted[$unit_name] ?? 0) : (is_numeric($converted) ? $converted : 0);
+                $num = is_array($converted)
+                    ? (float)($converted[$unit_name] ?? 0)
+                    : (is_numeric($converted) ? (float)$converted : 0);
+                return round($num, $precision);
             }, $torque);
 
             $chart_info['y_val_torque'] = $torque_converted;
             $chart_info['max_torque']   = !empty($torque_converted) ? max($torque_converted) : 0;
             $chart_info['min_torque']   = !empty($torque_converted) ? min($torque_converted) : 0;
 
-            $chart_info['y_val_rpm']    = $rpm;
+            $chart_info['y_val_rpm']    = array_map('floatval', $rpm);
             $chart_info['max_rpm']      = !empty($rpm) ? max($rpm) : 0;
             $chart_info['min_rpm']      = !empty($rpm) ? min($rpm) : 0;
 
-            // ➤ 主軸用 torque
+            // 主軸為扭力
             $chart_info['y_val'] = $torque_converted;
-            $chart_info['max']   = !empty($torque_converted) ? max($torque_converted) : 0;
-            $chart_info['min']   = !empty($torque_converted) ? min($torque_converted) : 0;
+            $chart_info['max']   = $chart_info['max_torque'];
+            $chart_info['min']   = $chart_info['min_torque'];
 
         } else if (in_array($chat_mode, [1, 2, 3, 4])) {
             // ➤ 單軸圖
 
             if (in_array($chat_mode, [1, 4])) {
                 // ➤ Torque 需要轉換
-                $torque_converted = array_map(function($val) use ($device_torque_unit, $unit_name) {
-
+                $torque_converted = array_map(function($val) use ($device_torque_unit, $unit_name, $precision) {
                     $converted = $this->MiscellaneousModel->convert_single_torque_unit($val, 1, $device_torque_unit);
-                    return is_array($converted) ? ($converted[$unit_name] ?? 0) : (is_numeric($converted) ? $converted : 0);
+                    $num = is_array($converted)
+                        ? (float)($converted[$unit_name] ?? 0)
+                        : (is_numeric($converted) ? (float)$converted : 0);
+                    return round($num, $precision);
                 }, $csvdata_arr);
-
 
                 $chart_info['y_val'] = $torque_converted;
                 $chart_info['max']   = !empty($torque_converted) ? max($torque_converted) : 0;
                 $chart_info['min']   = !empty($torque_converted) ? min($torque_converted) : 0;
 
                 $chart_info['y_val_torque'] = $torque_converted;
-                $chart_info['max_torque']   = !empty($torque_converted) ? max($torque_converted) : 0;
-                $chart_info['min_torque']   = !empty($torque_converted) ? min($torque_converted) : 0;
+                $chart_info['max_torque']   = $chart_info['max'];
+                $chart_info['min_torque']   = $chart_info['min'];
             } else {
-                // ➤ 非 torque 類，不需轉換
-                $chart_info['y_val'] = $csvdata_arr;
-                $chart_info['max']   = !empty($csvdata_arr) ? max($csvdata_arr) : 0;
-                $chart_info['min']   = !empty($csvdata_arr) ? min($csvdata_arr) : 0;
+                // ➤ 其他模式（ex: RPM），不需轉換
+                $chart_info['y_val'] = array_map('floatval', $csvdata_arr);
+                $chart_info['max']   = !empty($chart_info['y_val']) ? max($chart_info['y_val']) : 0;
+                $chart_info['min']   = !empty($chart_info['y_val']) ? min($chart_info['y_val']) : 0;
             }
         } else {
+            // ➤ 不支援的模式
             $chart_info['y_val'] = [];
             $chart_info['max']   = 0;
             $chart_info['min']   = 0;
         }
 
+        // ➤ 處理 X 軸資料
         $chart_info['x_val'] = array_map(function($value) {
-            return ($value == (int)$value) ? (int)$value : $value;
+            return ($value == (int)$value) ? (int)$value : floatval($value);
         }, $x_val);
 
         return $chart_info;
     }
+
 
 
 

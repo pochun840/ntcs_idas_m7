@@ -151,14 +151,14 @@
                             <div class="row">
                                 <div class="col-6 t1"><?php echo $text['High_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                 <div class="col-5 t2">
-                                    <input id="StepHiTorque" type="number" step="0.0001" class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : ''; ?>" >
+                                    <input id="StepHiTorque" type="text"  class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepHiTorque'] : ''; ?>" >
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-6 t1"><?php echo $text['Low_Torque']?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                 <div class="col-5 t2">
-                                    <input id="StepLoTorque"  type="number" step="0.0001"  class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : ''; ?>">
+                                    <input id="StepLoTorque"  type="text"  class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepLoTorque'] : ''; ?>">
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
