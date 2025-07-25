@@ -32,7 +32,7 @@ class Miscellaneous{
              $array = array(
                 0 => 'kgf.cm',
                 1 => 'N.m',
-                2 => 'kgf.cmLbf.in',
+                2 => 'Lbf.in',
                 3 => 'kgf.m',
                 4 => 'cN.m'
                 
