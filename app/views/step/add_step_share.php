@@ -643,16 +643,17 @@
 
         if (StepEnableThreshold === "1") {
             const ts = conditions.find(c => c.id === 'StepTorqueTS');
-            if (ts) {
-                if (threshold_mode_torque === 1) {
-                    ts.min = 0;
-                    ts.max = 99999;
-                } else {
-                    ts.min = parseFloat(check_lo_tor_before);
-                    ts.max = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
-                }
-            }
+            if (ts) ts.min = 0, ts.max = 99999;
+           
         }
+
+        if (StepEnableThreshold === "2") {
+            const ts = conditions.find(c => c.id === 'StepTorqueTS');
+            if (ts) ts.min = parseFloat(check_lo_tor_before), ts.max = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
+            
+        }
+        
+        
 
 
         if (StepOption === 2) {
