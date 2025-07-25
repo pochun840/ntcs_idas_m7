@@ -265,17 +265,13 @@
         let StepTime = 1000;
 
         let StepLimiHi, StepLimiLo;
-        if (StepMoniByWin == 0) {
+        if (StepOption  == 2 ) { 
             StepLimiHi = document.getElementById("step_limit_hi_tor")?.value || "30";
             StepLimiLo = document.getElementById("step_limit_lo_tor")?.value || "30";
-        } else if (StepMoniByWin == 1) {
+        } else if ( StepOption  == 1) {
             StepLimiHi = document.getElementById("step_limit_hi_ang")?.value || "30";
             StepLimiLo = document.getElementById("step_limit_lo_ang")?.value || "30";
-        } else {
-            StepLimiHi = "30";
-            StepLimiLo = "30";
         }
-
 
         let interrupt_alarm = document.querySelector('input[name="interrupt_alarm"]:checked');
         let over_angle_stop = document.querySelector('input[name="over_angle_stop"]:checked');
@@ -663,17 +659,28 @@
                 { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
-                { id: StepMoniByWin ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
+
+            if (StepMoniByWin === 2) {
+                conditions.push(
+                    { id: 'step_limit_hi_tor', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                    { id: 'step_limit_lo_tor', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                );
+            }
+
         } else if (StepOption === 1) {
             conditions.push(
                 { id: 'StepAngle', pattern: /^\d{1,5}$/, ...limits.angle.angle },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
-                { id: StepMoniByWin ? 'step_limit_hi_tor' : 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
-                { id: StepMoniByWin ? 'step_limit_lo_tor' : 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
             );
+
+             if (StepMoniByWin === 1) {
+                conditions.push(
+                    { id: 'step_limit_hi_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 },
+                    { id: 'step_limit_lo_ang', pattern: /^\d{1,3}$/, min: 0, max: 100 }
+                );
+            }
         }
 
         conditions.push({
