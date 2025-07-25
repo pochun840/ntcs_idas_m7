@@ -633,7 +633,7 @@
 
         if (StepEnableDownShift === "1") {
             const td = conditions.find(c => c.id === 'StepTorqueDownShift');
-            if (td) td.min = 0, td.max = 99999;
+            if (td) td.min = 0, td.max = parseFloat(document.getElementById("StepAngle")?.value || 0);
         }
 
         if (StepEnableDownShift === "2") {
