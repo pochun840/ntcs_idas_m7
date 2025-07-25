@@ -26,7 +26,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <td>{$row['sequence_name']}</td>
                 <td>{$row['final_fasten_torque']}</td>
                 <td>{$text[$unit_arr[$row['torque_unit']]]}</td>
-                <td>{$row['final_fasten_angle']}</td>
+                <td>{$row['total_fasten_angle']}</td>
                 <td>{$row['total_screw_count']}</td>
                 <td>{$row['last_screw_count']}</td>
                 <td class='{$class}'>{$status_arr[$status]}</td>
@@ -279,7 +279,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.sequence_name}</td>
                     <td>${row.final_fasten_torque}</td>
                     <td>${unit_arr[row.torque_unit]}</td>
-                    <td>${row.final_fasten_angle}</td>
+                    <td>${row.total_fasten_angle}</td>
                     <td>${row.total_screw_count}</td>
                     <td>${row.last_screw_count}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>

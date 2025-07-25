@@ -30,7 +30,7 @@ class Datas{
                 FROM (
                     SELECT * 
                     FROM ntcs_data
-                    WHERE fasten_status in ('4')
+                    WHERE fasten_status in ('4','5','6')
                     ORDER BY data_time DESC
                     LIMIT 100
                 ) AS recent_data

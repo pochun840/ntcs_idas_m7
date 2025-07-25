@@ -19,6 +19,8 @@ class Data extends Controller
         $type = 'ALL';
         $this->ntcs_data_db_sysnc();
         $isMobile = $this->isMobileCheck();
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
+
         // 取得當前年份
         if (PHP_OS_FAMILY === 'Linux') {
             $db_path = "/var/www/html/database/data".date('Y').".db";
@@ -43,7 +45,7 @@ class Data extends Controller
             $db_exists = '';
             $db_path = '';
         }
-      
+
 
         $unit_arr    = $this->MiscellaneousModel->details('torque_unit');
         $status_arr  = $this->MiscellaneousModel->details('status');
@@ -63,6 +65,12 @@ class Data extends Controller
             }else{
                 $row['row_color'] = 'status-ng';
             } 
+
+            $torque_value = $row['final_fasten_torque'] ?? 0;
+            $torque_unit  = $row['torque_unit'] ?? 1; // 預設為 N.m
+            $precision = $decimals_arr[$torque_unit] ?? 3; // 預設顯示三位小數
+            $row['final_fasten_torque'] = number_format((float)$torque_value, $precision);
+
         }
 
         $data = array(
@@ -184,14 +192,18 @@ class Data extends Controller
             return;
         }
 
-        $res_data   = $this->DataModel->getData($mode);
-        $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-        $status_arr = $this->MiscellaneousModel->details('status');
+        $res_data     = $this->DataModel->getData($mode);
+        $unit_arr     = $this->MiscellaneousModel->details('torque_unit');
+        $status_arr   = $this->MiscellaneousModel->details('status');
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
+
         $color_arr  = $this->get_color_type();
 
         // 加入對應的顏色到每筆資料
         foreach ($res_data as &$row) {
             $status = $row['fasten_status'];
+
+            //
 
             if($status == 5) {
                 $row['row_color'] = $color_arr['okseqcolor_text'];
@@ -202,6 +214,12 @@ class Data extends Controller
             }else{
                 $row['row_color'] = 'status-ng';
             }
+
+            $torque_value = $row['final_fasten_torque'] ?? 0;
+            $torque_unit  = $row['torque_unit'] ?? 1; // 預設為 N.m
+            $precision = $decimals_arr[$torque_unit] ?? 3; // 預設顯示三位小數
+            $row['final_fasten_torque'] = number_format((float)$torque_value, $precision);
+
    
         }
 
