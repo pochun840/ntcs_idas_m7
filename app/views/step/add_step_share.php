@@ -18,7 +18,7 @@
                 updateLabel();
                 document.getElementById("StepMoniByWin_0").checked = false;
                 document.getElementById("StepMoniByWin_1").checked = false;
-                
+
             } else {
 
                 getCheckboxValue();  // 最後處理欄位 disabled 狀態
@@ -37,11 +37,6 @@
                         document.getElementById("StepMoniByWin_1").checked = true;
                     }
                 }
-
-               
-                
-
-            
             }
         });
 
