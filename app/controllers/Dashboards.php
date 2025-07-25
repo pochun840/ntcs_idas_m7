@@ -52,6 +52,7 @@ class Dashboards extends Controller
         $controller_info = $this->SettingModel->GetControllerInfo();
         $status_arr = $this->MiscellaneousModel->details('status');
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
 
         //取得控制器的扭力單位 
         $res_device = $this->SettingModel->GetControllerInfo();
@@ -94,6 +95,9 @@ class Dashboards extends Controller
     
         }
 
+        //torque 需要補上 對應的小數點
+        $decimal_places = $decimals_arr[$device_torque_unit] ?? 3;
+        $data_info['final_fasten_torque'] = number_format($data_info['final_fasten_torque'], $decimal_places);
 
         //取得控制器的扭力單位 
         $res_device = $this->SettingModel->GetControllerInfo();
