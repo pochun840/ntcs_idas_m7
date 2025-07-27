@@ -595,6 +595,7 @@
         const checkbox1 = document.getElementById("StepMoniByWin_1");
         let StepMoniByWin = (checkbox0?.checked || checkbox1?.checked) ? 1 : 0;
 
+
         const limits = {
             torque: {
                 torque: { min: check_target_torque, max: Tool_Max_Torque },
@@ -608,15 +609,15 @@
                 angle: { min: 1, max: 30600 },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
                 limitHi: { min: parseFloat(document.getElementById("StepAngle")?.value || 0), max: 30600 },
-                limitLo: { min: 0, max: Math.max(0, parseFloat(document.getElementById("StepAngle")?.value || 1) - 1) }
+                limitLo: { min: 0, max: Math.max(0, parseFloat(document.getElementById("StepAngle")?.value || 1)) }
             }
         };
 
         let conditions = [
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift },
-            { id: 'StepTorqueDownShift', pattern: /^\d{1,5}(\.\d{1})?$/, ...limits.torque.torqueDownshift },
-            { id: 'StepTorqueTS', pattern: /^\d{1,5}(\.\d{1})?$/, ...limits.torque.torqueTS }
+            { id: 'StepTorqueDownShift', pattern: /^\d{1,5}(\.\d{1,9})?$/, ...limits.torque.torqueDownshift },
+            { id: 'StepTorqueTS', pattern: /^\d{1,5}(\.\d{1,9})?$/, ...limits.torque.torqueTS }
         ];
 
         if (StepEnableThreshold === "0") {
@@ -629,7 +630,7 @@
 
         if (StepEnableDownShift === "1") {
             const td = conditions.find(c => c.id === 'StepTorqueDownShift');
-            if (td) td.min = 0, td.max = parseFloat(document.getElementById("StepAngle")?.value || 0);
+            if (td) td.min = 0, td.max = parseFloat(document.getElementById("StepAngle")?.value || 0), td.integerOnly = true;
         }
 
         if (StepEnableDownShift === "2") {
@@ -637,20 +638,24 @@
             if (td) td.min = check_lo_tor_before, td.max = minStepLoTorque;
         }
 
+        
         if (StepEnableThreshold === "1") {
             const ts = conditions.find(c => c.id === 'StepTorqueTS');
-            if (ts) ts.min = 0, ts.max = 99999;
-           
+            if (ts) {
+                ts.min = 0;
+                ts.max = 99999;
+                ts.integerOnly = true;
+            }
         }
 
         if (StepEnableThreshold === "2") {
             const ts = conditions.find(c => c.id === 'StepTorqueTS');
-            if (ts) ts.min = parseFloat(check_lo_tor_before), ts.max = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
-            
+            if (ts) {
+                ts.min = parseFloat(check_lo_tor_before);
+                ts.max = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
+                ts.integerOnly = false;
+            }
         }
-        
-        
-
 
         if (StepOption === 2) {
             conditions.push(
@@ -691,19 +696,21 @@
             precision: 4
         });
 
-        function validateInput(el, pattern, min, max) {
+        
+        function validateInput(el, pattern, min, max, cond = {}) {
             if (!el) return false;
             const val = el.value.trim();
             const parsed = parseFloat(val);
             const feedback = el.nextElementSibling;
 
-            const isRPMField = ['StepRPM', 'StepRPMDownShift', 'StepAngle', 'StepHiAngle'].includes(el.id);
-            const isLimitPercentField = ['step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id);
+            const integerOnly = cond.integerOnly === true ||
+                ['StepRPM', 'StepRPMDownShift', 'StepAngle', 'StepHiAngle', 'StepLoAngle',
+                'step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id);
 
             const roundTo = (num, digits) => isNaN(num) ? NaN : parseFloat(num).toFixed(digits);
-            const parsedRounded = (isRPMField || isLimitPercentField) ? Math.floor(parsed) : roundTo(parsed, precision);
-            const minRounded = min != null ? (isRPMField || isLimitPercentField ? Math.floor(min) : roundTo(min, precision)) : null;
-            const maxRounded = max != null ? (isRPMField || isLimitPercentField ? Math.floor(max) : roundTo(max, precision)) : null;
+            const parsedRounded = integerOnly ? Math.floor(parsed) : roundTo(parsed, precision);
+            const minRounded = min != null ? (integerOnly ? Math.floor(min) : roundTo(min, precision)) : null;
+            const maxRounded = max != null ? (integerOnly ? Math.floor(max) : roundTo(max, precision)) : null;
 
             let invalid = (
                 val === "" ||
@@ -713,13 +720,21 @@
                 !pattern.test(val)
             );
 
-            if (isLimitPercentField && !Number.isInteger(parsed)) invalid = true;
+            if (
+                ['step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id)
+                && !Number.isInteger(parsed)
+            ) {
+                invalid = true;
+            }
 
             if (invalid) {
                 el.classList.add("is-invalid");
                 if (feedback?.classList.contains("invalid-feedback")) {
+                    const displayMin = integerOnly ? parseInt(minRounded) : minRounded;
+                    const displayMax = integerOnly ? parseInt(maxRounded) : maxRounded;
+
                     feedback.innerText = (minRounded !== null && maxRounded !== null)
-                        ? `Range: ${minRounded} ~ ${maxRounded}`
+                        ? `Range: ${displayMin} ~ ${displayMax}`
                         : `Invalid input`;
                     feedback.classList.add("d-block");
                     feedback.style.display = "block";
@@ -741,12 +756,13 @@
 
         conditions.forEach(cond => {
             const el = document.getElementById(cond.id);
-            const valid = validateInput(el, cond.pattern, cond.min, cond.max);
+            const valid = validateInput(el, cond.pattern, cond.min, cond.max, cond); 
             if (!valid) {
                 isValid = false;
                 errorList.push(cond.id);
             }
         });
+
 
         return {
             valid: isValid,
