@@ -520,6 +520,7 @@ function create_output_id() {
     if (pinval.length > 0) {
         var pin_old = pinval[0]['id']; 
         var wave = pinval[0]['value'];
+
         
         var match = pin_old.match(/\d+/); 
         var output_pin = match ? parseInt(match[0]) : null;
@@ -542,13 +543,13 @@ function create_output_id() {
             language = 'en-us';
         }
 
-        if (wave == 3 && !skipEvents.includes(Number(output_event))) {
+        if (wave == 1 && !skipEvents.includes(Number(output_event))) {
             if (wave_on < 100 || wave_on > 10000) {
                 alertify.alert(messages[language]);
                 setTimeout(function () {
                     alertify.closeAll();
                 }, 3000);
-                return;
+                return false; // 🔁 更語意化：中止且表示驗證失敗
             }
         }
 

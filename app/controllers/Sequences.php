@@ -136,12 +136,11 @@ class Sequences extends Controller
 
             $res_device = $this->SettingModel->GetControllerInfo();
             $device_torque_unit = (int)$res_device['torque_unit'];
-            $seq_result = $this->sequenceModel->createDefaultSeq($seq_data['job_id'],$device_torque_unit);  
-
+    
             $tools_temp = $this->getConvertedToolInfo();
             
             if(!empty($tools_temp )){
-                $step_res = $this->stepModel->createDefaultStep($seq_data['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$tools_temp['torque'],$device_torque_unit);
+                $step_res = $this->stepModel->createDefaultStep($seq_data['job_id'],$seq_data['SEQID'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$tools_temp['torque'],$device_torque_unit);
             }
 
 
