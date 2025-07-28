@@ -434,6 +434,8 @@ function crud_job_event(action) {
 
     switch (action) {
         case 'new':
+
+            
             handleNewJobEvent();
             break;
 

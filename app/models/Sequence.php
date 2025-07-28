@@ -404,14 +404,15 @@ class Sequence{
     }
 
     public function update_seq_type($seq_data) {
-        $sql = "UPDATE `SEQ_lst` SET act = :act WHERE JOBID = :JOBID AND SEQID = :SEQID ";
+
+        $sql = "UPDATE `SEQ_lst` SET skip = :skip  WHERE JOBID = :JOBID AND SEQID = :SEQID ";
         $statement = $this->db_iDas->prepare($sql);
     
-        $statement->bindValue(':act', $seq_data['type_value']);
+        $statement->bindValue(':skip', $seq_data['skip']);
         $statement->bindValue(':JOBID', $seq_data['jobid']);
         $statement->bindValue(':SEQID', $seq_data['seqid']);
         
-        $success = $statement->execute();     
+        $success = $statement->execute();    
         return $success;
     }
 
@@ -609,7 +610,7 @@ class Sequence{
             'SEQname'   => 'SEQ-' .$new_seq_id,
             'type'      => 0,
             'time'      => date('Y-m-d H:i:s'),
-            'act'       => 1,
+            'act'       => 0,
             'skip'      => 0,
             'seq_repeat' => 1,
             'timeout'    => 20,

@@ -87,8 +87,8 @@ class Sequences extends Controller
                 'SEQname' => $_POST['SEQname'] ?? null,
                 'time' => $_POST['time'] ?? null,
                 'type' => $_POST['type'] ?? null,
-                'act' => $_POST['act'] ?? 1,
-                'skip' => $_POST['skip'] ?? null,
+                'act' => $_POST['act'] ?? 0,
+                'skip' => $_POST['skip'] ?? 0,
                 'seq_repeat' => $_POST['seq_repeat'] ?? null,
                 'timeout' => $_POST['timeout'] ?? null,
                 'dt_time' => $_POST['dt_time'] ?? 0,
@@ -288,6 +288,7 @@ class Sequences extends Controller
         $res_device = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)$res_device['torque_unit'];
 
+      
 
 
         if(isset($_POST['job_id'])){
@@ -379,14 +380,12 @@ class Sequences extends Controller
     public function check_seq_enable(){
 
         $input_check = true;
-
         if(!empty($_POST)){
             $seq_data = array();
             $seq_data = $_POST;
         }else{
             $input_check = false; 
         }
-
         if($input_check){
             $this->sequenceModel->update_seq_type($seq_data);
         }

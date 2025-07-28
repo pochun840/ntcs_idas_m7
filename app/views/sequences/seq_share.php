@@ -230,7 +230,7 @@ function getSelectedValue(name, defaultValue = 0) {
 
 function updateValue(element){
     var jobid = '<?php echo $data['job_id']?>';
-    var type_value = element.checked ? 1 : 0 ;
+    var type_value = element.checked ? 0 : 1 ;
     var seqid = element.getAttribute('data-sequence-id');
 
     if(seqid){
@@ -240,7 +240,7 @@ function updateValue(element){
             data: { 
                 jobid: jobid,
                 seqid: seqid,
-                type_value: type_value
+                skip: type_value
             },
             success: function(response) {
                 //console.log(response);

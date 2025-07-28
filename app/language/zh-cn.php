@@ -295,7 +295,7 @@ $text['column_count'] = '颗数';
 $text['column_status'] = '状态';
 
 $text['kgf.m'] = '公斤米';
-$text['N.m'] = '牛頓米';
+$text['N.m'] = '牛頓公尺';
 $text['kgf.cm'] = '公斤公分';
 $text['Lbf.in'] = '英磅英吋';
 $text['cN.m'] = '厘牛米';

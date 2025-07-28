@@ -166,87 +166,101 @@ class Step extends Controller
 
     public function edit_step(){
 
-    $file = $this->MiscellaneousModel->lang_load();
-    if(!empty($file)){
-        include $file;
-    }
-
-    if(isset($_POST['JOBID'])){
-
-        $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
-        $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
-        $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
-
-        $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
-        $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
-
-
-        // 當前 step 有設定 Threshold
-        if ($StepEnableThreshold > 0 && $StepTorqueTS > 0) {
-            // 查詢之前有啟用 threshold 的 step（排除自己）
-            $prev_steps = $this->stepModel->getPreviousStepsWithThreshold($JOBID, $SEQID, $StepSelect);
-
-            if (!empty($prev_steps)) {
-                // 將之前的步驟全部清除 threshold 設定
-                $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $StepSelect);
-            }
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
         }
 
-        $step_data = [
-                'JOBID' => $JOBID,
-                'SEQID' => $SEQID,
-                'StepSelect' => intval($_POST['StepSelect'] ?? 0),
-                'STEPname' => $_POST['STEPname'] ?? '',
-                'type' => 0,
-                'time' => $_POST['time'] ?? '',
-                'act' => 0,
-                'StepSwitch' => 1,
-                'StepRPM' => intval($_POST['StepRPM'] ?? 0),
-                'StepOption' => intval($_POST['StepOption'] ?? -1),
-                'StepTime' => intval($_POST['StepTime'] ?? 1000),
-                'StepAngle' => intval($_POST['StepAngle'] ?? 0),
-                'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
-                'StepDirection' => intval($_POST['StepDirection'] ?? 0),
-                'StepDelay' => floatval($_POST['StepDelay'] ?? 0),
-                'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
-                'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
-                'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
-                'StepHiAngle' => intval($_POST['StepHiAngle'] ?? 0),
-                'StepLoAngle' => intval($_POST['StepLoAngle'] ?? 0),
-                'StepHiTorque' => floatval($_POST['StepHiTorque'] ?? 0),
-                'StepLoTorque' => floatval($_POST['StepLoTorque'] ?? 0),
-                'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 43),
-                'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 0),
-                'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
-                'StepTorqueOffset' => floatval($_POST['StepTorqueOffset'] ?? 0),
-                'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
-                'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
-                'StepTorqueDownShift' => floatval($_POST['StepTorqueDownShift'] ?? 0),
-                'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
-                'StepTorqueTS' => round(floatval($_POST['StepTorqueTS'] ?? 0), 1),
-                'StepEnableThreshold' => $StepEnableThreshold,
-                'StepReTry' => 1,
-                'StepUnScrew' => 1,
-                'StepReTryTorq' => 0,
-                'StepReTryAngl' => 0,
-                'StepAngleRecord' => 0,
-                'StepAutoDetectAngle' => 0,
-                'InterruptAlarm' => intval($_POST['InterruptAlarm'] ?? 1),
-                'OverAngleStop' => intval($_POST['OverAngleStop'] ?? 1),
-                'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
-                'step_unit' => intval($_POST['step_unit'] ?? 0)
-            ];
+      
 
-        $res = $this->stepModel->update_step_by_id($step_data);
+        if(isset($_POST['JOBID'])){
 
-        $result = array(
-            'res_type' => $res ? 'Success' : 'Error',
-            'res_msg'  => $text['edit_step'] . ':' . $_POST['StepSelect'] . ($res ? "  " . $text['success'] : "  " . $text['fail'])
-        );
+            $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
+            $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
+            $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
 
-        echo json_encode($result);
+            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
+            $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
+
+
+            // 當前 step 有設定 Threshold
+            if ($StepEnableThreshold > 0 && $StepTorqueTS > 0) {
+                // 查詢之前有啟用 threshold 的 step（排除自己）
+                $prev_steps = $this->stepModel->getPreviousStepsWithThreshold($JOBID, $SEQID, $StepSelect);
+
+                if (!empty($prev_steps)) {
+                    // 將之前的步驟全部清除 threshold 設定
+                    $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $StepSelect);
+                }
+            }
+
+            $step_data = [
+                    'JOBID' => $JOBID,
+                    'SEQID' => $SEQID,
+                    'StepSelect' => intval($_POST['StepSelect'] ?? 0),
+                    'STEPname' => $_POST['STEPname'] ?? '',
+                    'type' => 0,
+                    'time' => $_POST['time'] ?? '',
+                    'act' => 0,
+                    'StepSwitch' => 1,
+                    'StepRPM' => intval($_POST['StepRPM'] ?? 0),
+                    'StepOption' => intval($_POST['StepOption'] ?? -1),
+                    'StepTime' => intval($_POST['StepTime'] ?? 1000),
+                    'StepAngle' => intval($_POST['StepAngle'] ?? 0),
+                    'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
+                    'StepDirection' => intval($_POST['StepDirection'] ?? 0),
+                    'StepDelay' => floatval($_POST['StepDelay'] ?? 0),
+                    'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
+                    'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
+                    'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
+                    'StepHiAngle' => intval($_POST['StepHiAngle'] ?? 0),
+                    'StepLoAngle' => intval($_POST['StepLoAngle'] ?? 0),
+                    'StepHiTorque' => floatval($_POST['StepHiTorque'] ?? 0),
+                    'StepLoTorque' => floatval($_POST['StepLoTorque'] ?? 0),
+                    'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 43),
+                    'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 0),
+                    'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
+                    'StepTorqueOffset' => floatval($_POST['StepTorqueOffset'] ?? 0),
+                    'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
+                    'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
+                    'StepTorqueDownShift' => round(floatval($_POST['StepTorqueDownShift'] ?? 0), 5),
+                    'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
+                    'StepTorqueTS' => round(floatval($_POST['StepTorqueTS'] ?? 0), 5),
+                    'StepEnableThreshold' => $StepEnableThreshold,
+                    'StepReTry' => 1,
+                    'StepUnScrew' => 1,
+                    'StepReTryTorq' => 0,
+                    'StepReTryAngl' => 0,
+                    'StepAngleRecord' => 0,
+                    'StepAutoDetectAngle' => 0,
+                    'InterruptAlarm' => intval($_POST['InterruptAlarm'] ?? 1),
+                    'OverAngleStop' => intval($_POST['OverAngleStop'] ?? 1),
+                    'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
+                    'step_unit' => intval($_POST['step_unit'] ?? 0)
+                ];
+
+
+                /*echo "<pre>";
+                print_r($_POST);
+                echo "</pre>";
+
+                 echo "<pre>";
+                print_r($step_data);
+                echo "</pre>";
+                die();*/
+                    
+
+
+            $res = $this->stepModel->update_step_by_id($step_data);
+
+            $result = array(
+                'res_type' => $res ? 'Success' : 'Error',
+                'res_msg'  => $text['edit_step'] . ':' . $_POST['StepSelect'] . ($res ? "  " . $text['success'] : "  " . $text['fail'])
+            );
+
+            echo json_encode($result);
+        }
     }
-}
 
 
 

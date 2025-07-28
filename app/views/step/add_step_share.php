@@ -276,7 +276,12 @@
         let interrupt_alarm = document.querySelector('input[name="interrupt_alarm"]:checked');
         let over_angle_stop = document.querySelector('input[name="over_angle_stop"]:checked');
         let StepDirection = document.querySelector('input[name="StepDirection"]:checked');
-        let StepDelay = document.getElementById("StepDelay").value;
+
+        let StepDelayInput = document.getElementById("StepDelay");
+        let StepDelay = parseFloat(Number(StepDelayInput.value).toFixed(3));
+        StepDelayInput.value = StepDelay.toFixed(3); // ✅ 修正欄位值
+
+
         let StepRPM = document.getElementById("StepRPM").value;
         let KValue = document.getElementById("k_value").value;
         let StepTorqueOffsetSign = document.querySelector('input[name="StepTorqueOffsetSign"]:checked');
@@ -466,9 +471,9 @@
         const unitLabels = {
             'kgf.cm': { 'zh-cn': '公斤公分', 'zh-tw': '公斤公分', 'default': 'kgf.cm' },
             'lbf.in': { 'zh-cn': '英磅英吋', 'zh-tw': '英磅英吋', 'default': 'lbf.in' },
-            'N.m':    { 'zh-cn': '牛顿米',   'zh-tw': '牛頓米',   'default': 'N.m' },
+            'N.m':    { 'zh-cn': '牛顿米',   'zh-tw': '牛頓公尺',   'default': 'N.m' },
             'kgf.m':  { 'zh-cn': '公斤米',   'zh-tw': '公斤公尺', 'default': 'kgf.m' },
-            'cN.m':   { 'zh-cn': '厘牛米',   'zh-tw': '厘牛頓米', 'default': 'cN.m' },
+            'cN.m':   { 'zh-cn': '厘牛米',   'zh-tw': '厘牛頓公尺', 'default': 'cN.m' },
         };
         const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
 
@@ -534,6 +539,13 @@
 
     function input_check() {
 
+
+
+        //let offset_max = parseFloat(Target_Torque_value * 0.3).toFixed(4);
+        //let aa = parseFloat(Tool_Min_Torque * 0.7 - Target_Torque_value).toFixed(4);
+        //let bb = parseFloat(Target_Torque_value * 0.3).toFixed(4);
+        //let offset_min = (aa >= -bb) ? aa : -bb;
+
         const decimals = {
             0: 2, 1: 3, 2: 2, 3: 4, 4: 1
         };
@@ -558,6 +570,7 @@
 
         const minStepHiTorque = parseFloat((parseFloat(check_target_torque) + increment).toFixed(precision));
         const minStepLoTorque = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
+        const rpm_check =document.getElementById('StepRPM').value;
 
         const idsToCheck = ['tool_max_torque', 'tool_min_torque', 'tool_max_rpm', 'tool_min_rpm', 'tool_max_torque_diff'];
         let toolError = false;
@@ -598,24 +611,26 @@
 
         const limits = {
             torque: {
-                torque: { min: check_target_torque, max: Tool_Max_Torque },
+                torque: { min:  Tool_Min_Torque , max: Tool_Max_Torque },
                 torqueTS: { min: check_lo_tor_before, max: minStepLoTorque },
                 torqueDownshift: { min: check_lo_tor_before, max: minStepLoTorque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
-                limitHi: { min: minStepHiTorque, max: check_hi_tor_after },
+                rpmDownshift_1: { min: Tool_Min_RPM, max: rpm_check },
+                limitHi: { min:  Tool_Min_Torque, max: check_hi_tor_after },
                 limitLo: { min: check_lo_tor_before, max: minStepLoTorque }
             },
             angle: {
                 angle: { min: 1, max: 30600 },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
-                limitHi: { min: parseFloat(document.getElementById("StepAngle")?.value || 0), max: 30600 },
+                rpmDownshift_1: { min: Tool_Min_RPM, max: rpm_check },
+                limitHi: { min: 1, max: 30600 },
                 limitLo: { min: 0, max: Math.max(0, parseFloat(document.getElementById("StepAngle")?.value || 1)) }
             }
         };
 
         let conditions = [
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift },
+            { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift_1 },
             { id: 'StepTorqueDownShift', pattern: /^\d{1,5}(\.\d{1,9})?$/, ...limits.torque.torqueDownshift },
             { id: 'StepTorqueTS', pattern: /^\d{1,5}(\.\d{1,9})?$/, ...limits.torque.torqueTS }
         ];
@@ -693,24 +708,41 @@
             pattern: /^(?:[0-9](?:\.\d{1,4})?|9\.9)$/,
             min: 0,
             max: 9.9,
-            precision: 4
+            precision: 3,          // ✅ 保留 3 位小數
+            roundBeforeCompare: true // ✅ 自定義參數：啟用四捨五入驗證
         });
 
         
         function validateInput(el, pattern, min, max, cond = {}) {
             if (!el) return false;
+
             const val = el.value.trim();
-            const parsed = parseFloat(val);
+            const parsed = Number(val);
             const feedback = el.nextElementSibling;
 
             const integerOnly = cond.integerOnly === true ||
                 ['StepRPM', 'StepRPMDownShift', 'StepAngle', 'StepHiAngle', 'StepLoAngle',
                 'step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id);
 
-            const roundTo = (num, digits) => isNaN(num) ? NaN : parseFloat(num).toFixed(digits);
-            const parsedRounded = integerOnly ? Math.floor(parsed) : roundTo(parsed, precision);
-            const minRounded = min != null ? (integerOnly ? Math.floor(min) : roundTo(min, precision)) : null;
-            const maxRounded = max != null ? (integerOnly ? Math.floor(max) : roundTo(max, precision)) : null;
+            const roundTo = (num, digits) => {
+                const n = Number(num);
+                return isNaN(n) ? NaN : parseFloat(n.toFixed(digits));
+            };
+
+            const precision = cond.precision ?? 3;
+            const shouldRound = cond.roundBeforeCompare === true;
+
+            const parsedRounded = integerOnly
+                ? Math.floor(parsed)
+                : (shouldRound ? roundTo(parsed, precision) : parsed);
+
+            const minRounded = (min != null)
+                ? (integerOnly ? Math.floor(min) : roundTo(min, precision))
+                : null;
+
+            const maxRounded = (max != null)
+                ? (integerOnly ? Math.floor(max) : roundTo(max, precision))
+                : null;
 
             let invalid = (
                 val === "" ||
@@ -720,6 +752,7 @@
                 !pattern.test(val)
             );
 
+            // 必須整數的例外處理
             if (
                 ['step_limit_hi_tor', 'step_limit_lo_tor', 'step_limit_hi_ang', 'step_limit_lo_ang'].includes(el.id)
                 && !Number.isInteger(parsed)
@@ -736,6 +769,7 @@
                     feedback.innerText = (minRounded !== null && maxRounded !== null)
                         ? `Range: ${displayMin} ~ ${displayMax}`
                         : `Invalid input`;
+
                     feedback.classList.add("d-block");
                     feedback.style.display = "block";
                 }
@@ -751,6 +785,10 @@
             return !invalid;
         }
 
+
+
+
+
         let isValid = true;
         let errorList = [];
 
@@ -762,6 +800,28 @@
                 errorList.push(cond.id);
             }
         });
+
+        // ✅ 額外條件檢查：StepLoAngle < StepHiAngle
+        const loAngleEl = document.getElementById('StepLoAngle');
+        const hiAngleEl = document.getElementById('StepHiAngle');
+
+        if (loAngleEl && hiAngleEl) {
+            const lo = parseFloat(loAngleEl.value);
+            const hi = parseFloat(hiAngleEl.value);
+            const feedback = loAngleEl.nextElementSibling;
+
+            if (!isNaN(lo) && !isNaN(hi) && lo >= hi) {
+                loAngleEl.classList.add("is-invalid");
+                if (feedback?.classList.contains("invalid-feedback")) {
+                    feedback.innerText = "Lower limit must be less than upper limit";
+                    feedback.classList.add("d-block");
+                    feedback.style.display = "block";
+                }
+                isValid = false;
+                errorList.push("StepLoAngle");
+            }
+}
+
 
 
         return {

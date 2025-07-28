@@ -61,7 +61,7 @@
                 <label style="font-size:20px;color: #000; padding-left: 2%" for="step_id"><?php echo $text['step_id'];?> :</label>&nbsp;
                 <input type="text" id="StepSelect" name="StepSelect" size="8" maxlength="20" value="<?php echo $data['StepSelect'];?>" disabled
                 style="height:28px; font-size:20px;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
-
+                
                 <button id="back_btn" type="button" onclick="history.go(-1);"><?php echo $text['return']; ?></button>
 
                 <?php if($data['type'] == 'edit'){ ?>

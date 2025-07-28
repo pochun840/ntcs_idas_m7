@@ -43,18 +43,36 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 }
+// 提前宣告供事件處理用（避免多次綁定）
+let filteredPins = [];
+
+// 抽出事件處理函式，供 'new' 模式綁定使用
+function handleEventChange(e) {
+    const selectedOptionId = e.target.value;
+    const groupA = ['7', '8', '9'];
+    const groupB = ['12', '13', '14', '15', '16'];
+    const isSpecial = groupA.includes(selectedOptionId);
+    const isGroupB = groupB.includes(selectedOptionId);
+
+    toggleElementsInRange(1, 11, 2, isSpecial);
+    if (!isSpecial) disableElements(filteredPins);
+    if (isGroupB) disableAllPinsAndTimes(1, 11);
+}
 
 function crud_job_event(argument) {
     const table = document.getElementById('output_table');
+    const jobSelect = document.getElementById('JobNameSelect');
+    const eventOption = document.getElementById('Event_Option');
     const selectedRow = table.querySelector('tr.selected');
+    const job_id = jobSelect?.value ?? null;
+
+    if (!job_id) return;
 
     if (selectedRow) {
         output_event = selectedRow.getAttribute('data-event');
         output_pinval = selectedRow.querySelector('[data-outputpin]')?.getAttribute('data-outputpin') || null;
         del_output_val = output_event;
     }
-
-    if (!job_id) return;
 
     const showModal = (id) => document.getElementById(id).style.display = 'block';
 
@@ -64,95 +82,76 @@ function crud_job_event(argument) {
                 showOverlay();
                 delete_output_id(job_id, del_output_val);
             }
-            break;
+        break;
 
         case 'new':
-            // 1. 清空全域變數
             output_event = null;
             output_pinval = null;
             del_output_val = null;
+            temp = [];
+            tempA = [];
+            temp_event = [];
 
-            // 2. 移除選取列
             table.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
 
-            // ✅ 3. AJAX 載入最新的 temp、tempA、temp_event
             $.ajax({
                 url: "?url=Outputs/get_output_by_job_id",
                 method: "POST",
                 data: { job_id },
-                async: false,  // 同步保證變數更新
+                async: false,
                 success: function (response) {
                     let data = JSON.parse(response);
-                    temp        = Array.isArray(data.temp)        ? data.temp        : [];
-                    tempA       = Array.isArray(data.tempA)       ? data.tempA       : [];
-                    temp_event  = Array.isArray(data.temp_event)  ? data.temp_event  : [];
+                    temp = Array.isArray(data.temp) ? data.temp : [];
+                    tempA = Array.isArray(data.tempA) ? data.tempA : [];
+                    temp_event = Array.isArray(data.temp_event) ? data.temp_event : [];
                 },
                 error: function (xhr, status, error) {
                     console.error("取得 job output 設定失敗:", status, error);
-                    temp = tempA = temp_event = []; // fallback 避免後續錯誤
+                    temp = tempA = temp_event = [];
                 }
             });
 
-            // 4. 重置事件選單
-            const eventOption = document.getElementById('Event_Option');
             if (eventOption) eventOption.selectedIndex = 0;
 
-            // 5. 清除並禁用所有 radio
-            clearAndDisableRadios(temp);
+            //清除 radio 的勾選狀態
+            temp.forEach(id => {
+                const radio = document.getElementById(id);
+                if (radio?.type === 'radio') {
+                    radio.checked = false;
+                }
+            });
 
-            // 6. 清空並啟用 time 欄位
+
+            clearAndDisableRadios(temp);
             resetTimeFields(1, 11);
 
-            // 7. 禁用非 edit 的 pin
-            const filteredPins = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
+            filteredPins = temp.filter(id => id.includes('pin') && !id.includes('edit_pin'));
             disableElements(filteredPins);
 
-            // 8. 顯示表單與遮罩
             showOverlay();
             showModal('new_output');
 
-            // 9. 綁定下拉變更邏輯
-            eventOption.addEventListener('change', () => {
-                const selectedOptionId = eventOption.value;
-                const groupA = ['7', '8', '9'];
-                const groupB = ['12', '13', '14', '15', '16'];
-                const isSpecial = groupA.includes(selectedOptionId);
-                const isGroupB = groupB.includes(selectedOptionId);
+            // ✅ 避免重複綁定 change 事件
+            eventOption.removeEventListener('change', handleEventChange);
+            eventOption.addEventListener('change', handleEventChange);
 
-                toggleElementsInRange(1, 11, 2, isSpecial);
-                if (!isSpecial) disableElements(filteredPins);
-
-                if (isGroupB) disableAllPinsAndTimes(1, 11);
-            });
-
-            // 10. 禁用 tempA 對應事件選項
             disableOptions('#Event_Option', tempA, false, true);
             disableOptions('#Event_Option', temp_event, true, false);
-
         break;
-
-
-
-
-
 
         case 'edit':
             if (!output_event) return;
             showOverlay();
-            const selectedEditRows = document.querySelectorAll('#output_jobid_select tr.selected');
-            if (!selectedEditRows.length) {
-                //getLanguageMessage('language');
-                return;
-            }
 
-            // 禁用所有 pin radio
+            const selectedEditRows = document.querySelectorAll('#output_jobid_select tr.selected');
+            if (!selectedEditRows.length) return;
+
             if (Array.isArray(temp)) {
                 temp.forEach(id => {
                     const radio = document.getElementById(id);
                     if (radio?.type === 'radio') radio.disabled = true;
                 });
 
-                // 處理 edit_pin 組
                 temp.filter(id => id.includes("edit_pin")).forEach(id => {
                     const match = id.match(/(edit_pin\d+)_(\d+)/);
                     if (match) {
@@ -170,7 +169,6 @@ function crud_job_event(argument) {
                 });
             }
 
-            // 啟用該事件的指定 pin 控制
             if (output_pinval) {
                 ['0', '1', '2'].forEach(suffix => {
                     const el = document.getElementById(`edit_pin${output_pinval}_${suffix}`);
@@ -181,19 +179,19 @@ function crud_job_event(argument) {
                 if (timeEl) timeEl.disabled = false;
             }
 
-            
             get_output_info(job_id, output_event);
-            break;
+        break;
 
         case 'copy':
             if (!output_event) return;
             showOverlay();
+
             const jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
             document.getElementById("from_job_id").value = job_id;
-            document.getElementById("from_job_name").value = jobinfo[job_id]['JOBname'];
+            document.getElementById("from_job_name").value = jobinfo[job_id]?.JOBname ?? "";
 
-            const jobSelect = document.getElementById('JobSelect1');
-            Array.from(jobSelect.options).forEach(opt => {
+            const jobSelect1 = document.getElementById('JobSelect1');
+            Array.from(jobSelect1.options).forEach(opt => {
                 if (opt.value === job_id) {
                     opt.disabled = true;
                     opt.classList.add('disabled_input');
@@ -206,7 +204,7 @@ function crud_job_event(argument) {
             } else {
                 getLanguageMessage('language');
             }
-            break;
+        break;
 
         case 'unified':
             enableButton();
@@ -216,13 +214,14 @@ function crud_job_event(argument) {
             } else {
                 resetalignsubmit(job_id);
             }
-            break;
+        break;
 
         default:
             console.warn(`Unknown action: ${argument}`);
-            break;
+        break;
     }
 }
+
 
 
 function collectPinValues(selector) {

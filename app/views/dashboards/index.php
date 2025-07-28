@@ -74,7 +74,7 @@ function language_change(language){
 
             },
             success: function(response) {
-                history.go(0);
+                window.location.reload();
             },
             error: function(xhr, status, error) {
                 
@@ -192,7 +192,7 @@ function DB_sync_idas(argument) {
                             showAlertAutoClose(res.res_type, res.res_msg);
                             setTimeout(() => {
                                 removeOverlay();
-                                if (res.res_type === "Success") history.go(0);
+                                if (res.res_type === "Success")  window.location.reload(); 
                             }, 3000);
                         } catch (e) {
                             console.error("Response parse error:", e, response);

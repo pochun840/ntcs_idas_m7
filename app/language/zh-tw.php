@@ -299,7 +299,7 @@ $text['kgf.m'] = '公斤公尺';
 $text['N.m'] = '牛頓公尺';
 $text['kgf.cm'] = '公斤公分';
 $text['Lbf.in'] = '英磅英吋';
-$text['cN.m'] = '厘牛頓米';
+$text['cN.m'] = '厘牛頓公尺';
 
 
 //fasten_status

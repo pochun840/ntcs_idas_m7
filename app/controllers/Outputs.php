@@ -249,15 +249,14 @@ class Outputs extends Controller
                         $res_msg = $text['copy_output']."  ".$text['fail'];
                     }
         
-                    $result = array(
-                        'res_type' => $res_type,
-                        'res_msg'  => $res_msg 
-                    );
-        
-                    echo json_encode($result);
-
-
                 }
+
+                $result = array(
+                    'res_type' => $res_type,
+                    'res_msg'  => $res_msg 
+                );
+        
+                echo json_encode($result);
             }
         }
     }

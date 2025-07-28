@@ -72,66 +72,72 @@ class Jobs extends Controller
 
 
     #create 
-    public function create_job(){
-
+    public function create_job() {
         $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
+        if (!empty($file)) {
             include $file;
         }
 
-        if(isset($_POST['jobidnew'])){
+        if (isset($_POST['jobidnew'])) {
             $jobName = $_POST['jobname_val'];
             $validationResult = $this->MiscellaneousModel->validateName($jobName); 
-            if ($validationResult === true) {
-                $jobdata = array(
-                    'job_id' => $_POST['jobidnew'],
-                    'job_name' => $jobName,
-                    'type' => 1,
-                    'time' =>  date('Y-m-d H:i:s'),
-                    'act' => 0,
-                    'ok_job' => $_POST['job_ok_val'],
-                    'ok_job_stop' => $_POST['stop_job_ok_val'],
-                    'output_unified' => 0,
-                    'input_unified'  => 0,
-                    'job_unit' => 0
-          
-                );
+
+            if ($validationResult !== true) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', $validationResult);
+                exit();
             }
-      
+
+            $jobdata = array(
+                'job_id' => $_POST['jobidnew'],
+                'job_name' => $jobName,
+                'type' => 1,
+                'time' =>  date('Y-m-d H:i:s'),
+                'act' => 0,
+                'ok_job' => $_POST['job_ok_val'],
+                'ok_job_stop' => $_POST['stop_job_ok_val'],
+                'output_unified' => 0,
+                'input_unified'  => 0,
+                'job_unit' => 0
+            );
+
             $job_count = $this->jobModel->countjob();
-            if($job_count >= 100) {
+            if ($job_count >= 100) {
                 $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['job_id']);
                 exit();
             }
-    
-            $res = $this->jobModel->create_job($jobdata);
-            //利用 jobid  去新增seq  && step 
 
-            
+            $res = $this->jobModel->create_job($jobdata);
+
+            // 建立預設 SEQ & STEP
             $res_device = $this->SettingModel->GetControllerInfo();
             $device_torque_unit = (int)$res_device['torque_unit'];
 
-            
-            $seq_result = $this->sequenceModel->createDefaultSeq($jobdata['job_id'],$device_torque_unit);  
-
+            $seq_result = $this->sequenceModel->createDefaultSeq($jobdata['job_id'], $device_torque_unit);  
             $tools_temp = $this->getConvertedToolInfo();
-            
-            if(!empty($tools_temp )){
-                $step_res = $this->stepModel->createDefaultStep($jobdata['job_id'],$seq_result['seq_id'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$tools_temp['torque'],$device_torque_unit);
+
+            if (!empty($tools_temp)) {
+                $this->stepModel->createDefaultStep(
+                    $jobdata['job_id'],
+                    $seq_result['seq_id'],
+                    $tools_temp['torque'],
+                    $tools_temp['max_torque'],
+                    $tools_temp['min_torque'],
+                    $tools_temp['torque'],
+                    $device_torque_unit
+                );
             }
 
-            $result = array();
-            if($res){
-                $res_msg  = $text['New']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
+            if ($res) {
+                $res_msg = $text['New'] . " " . $text['job_id'] . ': ' . $jobdata['job_id'] . " " . $text['success'];
                 $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
-            }else{
-                $res_msg  = $text['New']."  ".$text['job_id'].':'.$jobdata['job_id']."  ".$text['fail'];
+            } else {
+                $res_msg = $text['New'] . " " . $text['job_id'] . ': ' . $jobdata['job_id'] . " " . $text['fail'];
                 $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
             }
-            
-                      
         }
     }
+
+
 
     public function update_job(){
 

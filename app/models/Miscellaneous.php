@@ -192,7 +192,7 @@ class Miscellaneous{
     public function validateName($jobName){
         if (!empty($jobName)) {
             if (preg_match('/^[a-zA-Z0-9-]+$/', $jobName)) {
-                if (strlen($jobName) > 12) {
+                if (strlen($jobName) > 255) {
                     return  false;
                 } else {
                     return true;
