@@ -181,8 +181,7 @@ class Steptcc{
             return false; 
         }
         $step_data['StepAccelerateOffset'] =  0.2;
-        //$step_data['InterruptAlarm']= 1;
-        //$step_data['OverAngleStop']=1;
+
 
         $sql = "UPDATE `STEP_lst` SET 
                     STEPname = :stepname,

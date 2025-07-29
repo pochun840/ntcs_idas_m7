@@ -20,8 +20,8 @@
                 <label style="font-size:20px;color: #000; padding-left: 2%" for="seq_id"><?php echo $text['seq_id'];?> :</label>&nbsp;
                 <input type="text" id="seq_id" name="seq_id" size="8" maxlength="20" value="<?php echo $data['seq_id'];?>" disabled
                 style="height:28px; font-size:20px;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
-
-                <button id="back_btn" type="button" onclick="window.history.back()"><?php echo $text['return'];?></button>
+                <?php $url ='?url=Sequences/index/'.$data['job_id'];?>
+                <button id="back_btn" type="button" onclick="window.location.href='<?php echo $url; ?>';"><?php echo $text['return'];?></button>
             </div>
 
             <div class="table-container">

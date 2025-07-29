@@ -302,6 +302,7 @@
                                     </div>
                                     <div class="col-3 t2">
                                         <input id="StepTorqueOffset" class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueOffset'] : ''; ?>">
+                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
                             </div>
@@ -334,7 +335,7 @@
                                 </div>
                                 <div class="col-6 t1" id="show_angle"  style="display:none;" ><?php echo $text['Threshold_Angle'];?> :</div>
                                 <div class="col-5 t2" id="StepTorqueTS_block" >
-                                    <input id="StepTorqueTS" name="StepTorqueTS" class="t2 form-control small-input"  style="display: none;"   value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepTorqueTS'])) ? number_format((float)$data['step']['StepTorqueTS'], 4) : ''; ?>" >
+                                    <input id="StepTorqueTS" name="StepTorqueTS" class="t2 form-control small-input"  style="display: none;" value="<?= ($data['type'] === 'edit') ? ((is_numeric($data['step']['StepTorqueTS']) && floor($data['step']['StepTorqueTS']) != $data['step']['StepTorqueTS']) ? number_format((float)$data['step']['StepTorqueTS'], 3, '.', '') : $data['step']['StepTorqueTS']) : '' ?>" >
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
@@ -365,7 +366,7 @@
                                 <div class="col-6 t1" id="show_downshift_torque" style="display:block;" ><?php echo $text['Downshift_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                 <div class="col-6 t1" id="show_downshift_angle" style="display:none;" ><?php echo $text['Downshift_Angle'];?> </div>
                                 <div class="col-5 t2" id="StepTorqueDownShift_block" >
-                                    <input id="StepTorqueDownShift" class="t2 form-control small-input"  value="<?php echo ($data['type'] == 'edit') ? $StepTorqueDownShift : ''; ?>" >
+                                    <input id="StepTorqueDownShift" class="t2 form-control small-input"   value="<?= ($data['type'] === 'edit') ? ((is_numeric($data['step']['StepTorqueDownShift']) && floor($data['step']['StepTorqueDownShift']) != $data['step']['StepTorqueDownShift']) ? number_format((float)$data['step']['StepTorqueDownShift'], 3, '.', '') : $data['step']['StepTorqueDownShift']) : '' ?>">
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>

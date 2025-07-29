@@ -175,10 +175,10 @@ class Miscellaneous{
 
         if($mode =="decimals"){
             $array = array(
-                0 => 2, // KGF-m
+                0 => 2, // KGF-cm
                 1 => 3, // N.m
-                2 => 2, // KGF-cm
-                3 => 4, // Lbf.in
+                2 => 2, // Lbf.in
+                3 => 4, // KGF-m
                 4 => 1  // cN.m
             );
 
@@ -192,7 +192,7 @@ class Miscellaneous{
     public function validateName($jobName){
         if (!empty($jobName)) {
             if (preg_match('/^[a-zA-Z0-9-]+$/', $jobName)) {
-                if (strlen($jobName) > 255) {
+                if (strlen($jobName) > 250) {
                     return  false;
                 } else {
                     return true;
@@ -235,11 +235,8 @@ class Miscellaneous{
     }
 
     public function convert_all_torque_units($value, $inputType, $useExcelMode = true) {
-
-
         $unit_names = $this->details('torque_unit');
-        $decimals = $this->details('decimals');
- 
+        $decimals   = $this->details('decimals');
 
         if (!is_numeric($value) || !isset($unit_names[$inputType])) {
             return "Invalid input.";
@@ -247,7 +244,7 @@ class Miscellaneous{
 
         $value = floatval($value);
 
-        //Step 1: 轉換為 N.m
+        // Step 1: 轉換為 N.m
         switch ($inputType) {
             case 0: $Nm = $value * 0.0980665; break;               // kgf.cm → N.m
             case 1: $Nm = $value; break;                           // N.m → N.m
@@ -259,7 +256,7 @@ class Miscellaneous{
 
         $result = [];
 
-        //Step 2: 將 N.m 轉為所有單位
+        // Step 2: 將 N.m 轉為所有單位
         foreach ($unit_names as $targetType => $unitName) {
             if ($useExcelMode) {
                 switch ($targetType) {
@@ -281,11 +278,11 @@ class Miscellaneous{
                 }
             }
 
-            //四捨五入與格式化顯示
-            $rounded = $this->roundToNDecimals($converted, $decimals[$targetType]);
-            $result[$unitName] = number_format($rounded, $decimals[$targetType], '.', '');
+            // ✅ 四捨五入到 N+1 位，再顯示 N 位（確保精確顯示）
+            $precision = $decimals[$targetType] ?? 3;
+            $rounded = round($converted, $precision + 1);
+            $result[$unitName] = number_format($rounded, $precision, '.', '');
         }
-
 
         return $result;
     }

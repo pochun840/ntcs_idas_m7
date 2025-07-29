@@ -29,8 +29,8 @@
                 <label style="font-size:20px;color: #000; padding-left: 2%" for="seq_id"><?php echo $text['seq_id'];?> :</label>&nbsp;
                 <input type="text" id="seq_id" name="seq_id" size="8" maxlength="20" value="<?php echo $data['seq_id'];?>" disabled
                 style="height:28px; font-size:20px;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
-
-                <button id="back_btn" type="button" onclick="history.go(-1);"><?php echo $text['return']; ?></button>
+                <?php $url ='?url=Sequences/index/'.$data['job_id'];?>
+                <button id="back_btn" type="button" onclick="location.href='<?php echo $url;?>'"><?php echo $text['return']; ?></button>
             </div>
 
 
@@ -259,8 +259,6 @@
                                         <?php  echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? 'checked' : ''; ?> >
                                         <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
                                         <input  id="unscrew_force"  class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
-                                        <br>
-                                        <div class="invalid-feedback"></div>
                                         </div>
                                         <div class="form-check form-check-inline col-md-3">
                                         <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_unlimit" value="1" 
@@ -272,6 +270,7 @@
                                         <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] == 0) ? 'checked' : ''; ?>  >
                                         <label class="form-check-label" for="force_off"><?php echo $text['switch_off']; ?></label>
                                         </div>
+                                        <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
                             </div>

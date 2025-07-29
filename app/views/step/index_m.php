@@ -19,7 +19,7 @@
                 <input type="text" id="seq_id" name="seq_id" size="5" maxlength="20" value="1" disabled
                 style="height:28px; font-size:3.2vmin;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
 
-                  <?php $url = '?url=Step/index/' . $data['job_id']."/".$data['seq_id']; ?>
+                <?php $url ='?url=Sequences/index/'.$data['job_id'];?>
                 <button id="back_btn" type="button" onclick="window.location.href='<?php echo $url; ?>';"><?php echo $text['return'];?></button>
             </div>
 

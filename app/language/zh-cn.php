@@ -294,11 +294,11 @@ $text['column_total'] = '总数';
 $text['column_count'] = '颗数';
 $text['column_status'] = '状态';
 
-$text['kgf.m'] = '公斤米';
-$text['N.m'] = '牛頓公尺';
-$text['kgf.cm'] = '公斤公分';
-$text['Lbf.in'] = '英磅英吋';
-$text['cN.m'] = '厘牛米';
+$text['kgf.m'] = '公斤.米';
+$text['N.m'] = '牛頓.米';
+$text['kgf.cm'] = '公斤.公分';
+$text['Lbf.in'] = '磅.英吋';
+$text['cN.m'] = '牛頓.厘米';
 
 
 

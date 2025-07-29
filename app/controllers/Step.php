@@ -133,14 +133,14 @@ class Step extends Controller
                 'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 0.2),
                 'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 43),
                 'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
-                'StepTorqueOffset' => floatval($_POST['StepTorqueOffset'] ?? 0),
+                'StepTorqueOffset' =>  round(floatval($_POST['StepTorqueOffset'] ?? 0),3),
                 'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
                 'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
-                'StepTorqueDownShift' => floatval($_POST['StepTorqueDownShift'] ?? 0),
+                'StepTorqueDownShift' => number_format(round(floatval($_POST['StepTorqueDownShift'] ?? 0), 3), 3, '.', ''),
                 'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
-                'StepTorqueTS' => round(floatval($_POST['StepTorqueTS'] ?? 0), 1),
+                'StepTorqueTS' => number_format(round(floatval($_POST['StepTorqueTS'] ?? 0), 3), 3, '.', ''),
                 'StepEnableThreshold' => $StepEnableThreshold,
-                'StepReTry' => 0,
+                'StepReTry' => 1,
                 'StepUnScrew' => 1,
                 'StepReTryTorq' => 0,
                 'StepReTryAngl' => 0,
@@ -194,6 +194,8 @@ class Step extends Controller
                 }
             }
 
+            
+
             $step_data = [
                     'JOBID' => $JOBID,
                     'SEQID' => $SEQID,
@@ -220,14 +222,14 @@ class Step extends Controller
                     'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 43),
                     'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 0),
                     'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
-                    'StepTorqueOffset' => floatval($_POST['StepTorqueOffset'] ?? 0),
+                    'StepTorqueOffset' =>  round(floatval($_POST['StepTorqueOffset'] ?? 0),3),
                     'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
                     'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
-                    'StepTorqueDownShift' => round(floatval($_POST['StepTorqueDownShift'] ?? 0), 5),
+                    'StepTorqueDownShift' => number_format(round(floatval($_POST['StepTorqueDownShift'] ?? 0), 3), 3, '.', ''),
                     'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
-                    'StepTorqueTS' => round(floatval($_POST['StepTorqueTS'] ?? 0), 5),
+                    'StepTorqueTS' => number_format(round(floatval($_POST['StepTorqueTS'] ?? 0), 3), 3, '.', ''),
                     'StepEnableThreshold' => $StepEnableThreshold,
-                    'StepReTry' => 1,
+                    'StepReTry' => 0,
                     'StepUnScrew' => 1,
                     'StepReTryTorq' => 0,
                     'StepReTryAngl' => 0,
@@ -238,18 +240,6 @@ class Step extends Controller
                     'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
                     'step_unit' => intval($_POST['step_unit'] ?? 0)
                 ];
-
-
-                /*echo "<pre>";
-                print_r($_POST);
-                echo "</pre>";
-
-                 echo "<pre>";
-                print_r($step_data);
-                echo "</pre>";
-                die();*/
-                    
-
 
             $res = $this->stepModel->update_step_by_id($step_data);
 
@@ -494,8 +484,8 @@ class Step extends Controller
             if ($step_torque_unit !== $device_torque_unit) {
 
 
-                $StepTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepTorque'], $step_torque_unit); 
-                $StepHiTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepHiTorque'], $step_torque_unit); 
+                $StepTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepTorque'], $device_torque_unit); 
+                $StepHiTorque_temp = $this->MiscellaneousModel->convert_all_torque_units( $step['StepHiTorque'], $device_torque_unit); 
 
 
                 $decimals = $decimals_arr[$device_torque_unit] ?? 3;
@@ -549,14 +539,15 @@ class Step extends Controller
 
         if (!empty($tools_check) && $type === "edit") {
 
-            $use_unit = ($step_torque_unit === $device_torque_unit) ? $device_torque_unit : $step_torque_unit;
-
+            $use_unit = ($step_torque_unit === $device_torque_unit) ? $step_torque_unit : $device_torque_unit;
             //轉換函式
             $convert_torque = function ($raw_value) use ($use_unit, $torque_arr) {
                 $nm_value = floatval($raw_value) / 1000;
                 $converted = $this->MiscellaneousModel->convert_all_torque_units($nm_value, 1); // 1 => N.m
                 return $converted[$torque_arr[$use_unit]] ?? 0;
             };
+
+        
 
             // 執行轉換與檢查
             $check_target_tor_lo = $convert_torque($tools_check['min_torque']);
@@ -577,6 +568,7 @@ class Step extends Controller
             $tools_check['check_lo_rpm'] = (int)$tools_check['min_rpm'];
             $tools_check['check_hi_rpm'] = (int)$tools_check['max_rpm'];
 
+    
 
             $tools = array_merge($tools,$tools_check);
         }else if(!empty($tools_check) && $type === "new"){

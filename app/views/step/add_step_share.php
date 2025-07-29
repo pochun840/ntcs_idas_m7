@@ -126,6 +126,9 @@
         if (thresholdBlock) {
             thresholdBlock.style.display = isModeOff ? 'none' : 'flex';
         }
+
+        setTimeout(() => bindRoundedWhenVisible('StepTorqueTS', 3), 100);
+
     }
 
 
@@ -197,6 +200,9 @@
         //控制外層區塊
         if (downshiftBlock) downshiftBlock.style.display = isModeOff ? 'none' : 'flex';
         if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
+
+
+        setTimeout(() => bindRoundedWhenVisible('StepTorqueDownShift', 3), 100);
     }
 
 
@@ -469,11 +475,11 @@
         const label = document.getElementById('targetLabel');
 
         const unitLabels = {
-            'kgf.cm': { 'zh-cn': '公斤公分', 'zh-tw': '公斤公分', 'default': 'kgf.cm' },
-            'lbf.in': { 'zh-cn': '英磅英吋', 'zh-tw': '英磅英吋', 'default': 'lbf.in' },
-            'N.m':    { 'zh-cn': '牛顿米',   'zh-tw': '牛頓公尺',   'default': 'N.m' },
-            'kgf.m':  { 'zh-cn': '公斤米',   'zh-tw': '公斤公尺', 'default': 'kgf.m' },
-            'cN.m':   { 'zh-cn': '厘牛米',   'zh-tw': '厘牛頓公尺', 'default': 'cN.m' },
+            'kgf.cm': { 'zh-cn': '公斤.公分', 'zh-tw': '公斤.公分', 'default': 'kgf.cm' },
+            'lbf.in': { 'zh-cn': '磅.英吋', 'zh-tw': '磅.英吋', 'default': 'lbf.in' },
+            'N.m':    { 'zh-cn': '牛顿.米',  'zh-tw': '牛頓.米',   'default': 'N.m' },
+            'kgf.m':  { 'zh-cn': '公斤.米',   'zh-tw': '公斤.米', 'default': 'kgf.m' },
+            'cN.m':   { 'zh-cn': '牛頓.厘米','zh-tw': '牛頓.厘米', 'default': 'cN.m' },
         };
         const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
 
@@ -539,16 +545,11 @@
 
     function input_check() {
 
-
-
-        //let offset_max = parseFloat(Target_Torque_value * 0.3).toFixed(4);
-        //let aa = parseFloat(Tool_Min_Torque * 0.7 - Target_Torque_value).toFixed(4);
-        //let bb = parseFloat(Target_Torque_value * 0.3).toFixed(4);
-        //let offset_min = (aa >= -bb) ? aa : -bb;
-
         const decimals = {
             0: 2, 1: 3, 2: 2, 3: 4, 4: 1
         };
+
+        
 
         const torque_unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
         const precision = decimals[torque_unit] ?? 3;
@@ -561,6 +562,9 @@
         const check_hi_tor_after  = document.getElementById('check_hi_tor_after').value;
         const check_lo_tor_before = document.getElementById('check_lo_tor_before').value;
         const check_lo_tor_after  = document.getElementById('check_lo_tor_after').value;
+      
+        const check_target_tor_lo_raw = parseFloat(document.getElementById('check_target_tor_lo').value || 0);
+        const check_target_tor_hi_raw = parseFloat(document.getElementById('check_target_tor_hi').value || 0);
 
         const check_target_torque = document.getElementById('StepTorque').value;
 
@@ -571,6 +575,7 @@
         const minStepHiTorque = parseFloat((parseFloat(check_target_torque) + increment).toFixed(precision));
         const minStepLoTorque = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
         const rpm_check =document.getElementById('StepRPM').value;
+        
 
         const idsToCheck = ['tool_max_torque', 'tool_min_torque', 'tool_max_rpm', 'tool_min_rpm', 'tool_max_torque_diff'];
         let toolError = false;
@@ -611,7 +616,7 @@
 
         const limits = {
             torque: {
-                torque: { min:  Tool_Min_Torque , max: Tool_Max_Torque },
+                torque: { min: check_target_tor_lo_raw , max: check_target_tor_hi_raw },
                 torqueTS: { min: check_lo_tor_before, max: minStepLoTorque },
                 torqueDownshift: { min: check_lo_tor_before, max: minStepLoTorque },
                 rpmDownshift: { min: Tool_Min_RPM, max: Tool_Max_RPM },
@@ -632,7 +637,7 @@
             { id: 'StepRPM', pattern: /^\d{1,4}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'StepRPMDownShift', pattern: /^\d{1,4}$/, ...limits.torque.rpmDownshift_1 },
             { id: 'StepTorqueDownShift', pattern: /^\d{1,5}(\.\d{1,9})?$/, ...limits.torque.torqueDownshift },
-            { id: 'StepTorqueTS', pattern: /^\d{1,5}(\.\d{1,9})?$/, ...limits.torque.torqueTS }
+            { id: 'StepTorqueTS', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torqueTS }
         ];
 
         if (StepEnableThreshold === "0") {
@@ -651,6 +656,8 @@
         if (StepEnableDownShift === "2") {
             const td = conditions.find(c => c.id === 'StepTorqueDownShift');
             if (td) td.min = check_lo_tor_before, td.max = minStepLoTorque;
+
+            bindRoundedWhenVisible('StepTorqueDownShift', 3);
         }
 
         
@@ -669,14 +676,21 @@
                 ts.min = parseFloat(check_lo_tor_before);
                 ts.max = parseFloat((parseFloat(check_target_torque) - increment).toFixed(precision));
                 ts.integerOnly = false;
+                ts.roundBeforeCompare = true;
+                ts.precision = precision;
             }
+
+            bindRoundedWhenVisible('StepTorqueTS', 3);
+    
         }
+
+
 
         if (StepOption === 2) {
             conditions.push(
                 { id: 'StepTorque', pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
                 { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitHi },
-                { id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
+                //{ id: 'StepLoTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitLo },
                 { id: 'StepHiAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, ...limits.angle.limitLo },
             );
@@ -763,8 +777,9 @@
             if (invalid) {
                 el.classList.add("is-invalid");
                 if (feedback?.classList.contains("invalid-feedback")) {
-                    const displayMin = integerOnly ? parseInt(minRounded) : minRounded;
-                    const displayMax = integerOnly ? parseInt(maxRounded) : maxRounded;
+                    const displayMin = integerOnly ? parseInt(minRounded) : minRounded.toFixed(precision);
+                    const displayMax = integerOnly ? parseInt(maxRounded) : maxRounded.toFixed(precision);
+
 
                     feedback.innerText = (minRounded !== null && maxRounded !== null)
                         ? `Range: ${displayMin} ~ ${displayMax}`
@@ -820,7 +835,143 @@
                 isValid = false;
                 errorList.push("StepLoAngle");
             }
-}
+        }
+
+        // ✅ 額外條件檢查：扭力補償值 StepTorqueOffset 驗證
+        const offsetEl = document.getElementById('StepTorqueOffset');
+        if (offsetEl && StepOption === 2) {
+            const offset = parseFloat(offsetEl.value);
+            const target = parseFloat(check_target_torque);
+            const specMin = parseFloat(Tool_Min_Torque);
+            const specMax = parseFloat(Tool_Max_Torque);
+            const feedback = offsetEl.nextElementSibling;
+
+            if (target === 0) {
+                offsetEl.classList.remove("is-invalid");
+                if (feedback?.classList.contains("invalid-feedback")) {
+                    feedback.innerText = '';
+                    feedback.classList.remove("d-block");
+                    feedback.style.display = "none";
+                }
+                return; //不再往下驗證
+            }
+
+            if (!isNaN(offset) && !isNaN(target) && !isNaN(specMin) && !isNaN(specMax)) {
+                const offsetMaxBy30 = target * 0.3;
+                const offsetMaxBySpec = (specMax * 1.08) - target;
+                const offsetMinBySpec = (specMin * 0.7) - target;
+
+                const offsetMax = Math.min(offsetMaxBy30, offsetMaxBySpec);
+                const offsetMin = Math.max(-offsetMaxBy30, offsetMinBySpec);
+                const total = target + offset;
+
+                if (offset < offsetMin || offset > offsetMax) {
+                    offsetEl.classList.add("is-invalid");
+                    if (feedback?.classList.contains("invalid-feedback")) {
+                        const precision = decimals[torque_unit] ?? 3;
+                        const low = (target - offsetMaxBy30).toFixed(precision);
+                        const high = (target + offsetMaxBy30).toFixed(precision);
+                        feedback.innerText = `Offset RangeQQ: ${low} ~ ${high}`;
+                        feedback.classList.add("d-block");
+                        feedback.style.display = "block";
+                    }
+                    isValid = false;
+                    errorList.push('StepTorqueOffset');
+                } else {
+                    offsetEl.classList.remove("is-invalid");
+                    if (feedback?.classList.contains("invalid-feedback")) {
+                        feedback.innerText = '';
+                        feedback.classList.remove("d-block");
+                        feedback.style.display = "none";
+                    }
+                }
+            }
+        }
+
+        if (offsetEl && StepOption === 1) {
+
+            const StepHiTorque = parseFloat(document.getElementById("StepHiTorque")?.value ?? 0);
+            const check_target_tor_hi = parseFloat(document.getElementById("check_target_tor_hi")?.value ?? 0);
+            const check_range_before = StepHiTorque * 0.7;
+            const check_range_after =  check_target_tor_hi +check_target_tor_hi  * 0.1;
+            const torque_unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
+            const precision = decimals[torque_unit] ?? 3;
+
+            const check_range_before_bb = check_range_before.toFixed(precision);
+            const check_range_after_bb = check_range_after.toFixed(precision);
+            
+
+            const offset = parseFloat(offsetEl.value);
+            const specMin = parseFloat(Tool_Min_Torque); // 起子規格下限
+            const specMax = parseFloat(Tool_Max_Torque); // 起子規格上限
+            const feedback = offsetEl.nextElementSibling;
+
+            if (!isNaN(offset) && !isNaN(specMin) && !isNaN(specMax)) {
+                const offsetMax = specMax * 0.3;
+                const validMin = specMin * 0.7;
+                const validTotal = offset + specMax;
+
+                // Condition 1: Offset must not exceed 30% of tool spec upper limit
+                if (Math.abs(offset) > offsetMax) {
+                    offsetEl.classList.add("is-invalid");
+                    if (feedback?.classList.contains("invalid-feedback")) {
+                        feedback.innerText = `Offset Range: ${check_range_before_bb} ~ ${check_range_after_bb}`;
+                        feedback.classList.add("d-block");
+                        feedback.style.display = "block";
+                    }
+                    isValid = false;
+                    errorList.push('StepTorqueOffset');
+                }
+
+                // Condition 2: Offset + specMax must be ≥ specMin * 70%
+                else if (validTotal < validMin) {
+                    offsetEl.classList.add("is-invalid");
+                    if (feedback?.classList.contains("invalid-feedback")) {
+                        feedback.innerText = `Offset Range: ${check_range_before_bb} ~ ${check_range_after_bb}`;
+                        feedback.classList.add("d-block");
+                        feedback.style.display = "block";
+                    }
+                    isValid = false;
+                    errorList.push('StepTorqueOffset');
+                }
+
+                // ✅ Valid
+                else {
+                    offsetEl.classList.remove("is-invalid");
+                    if (feedback?.classList.contains("invalid-feedback")) {
+                        feedback.innerText = '';
+                        feedback.classList.remove("d-block");
+                        feedback.style.display = "none";
+                    }
+                }
+            }
+        }
+
+        // 額外條件檢查：StepLoTorque < StepHiTorque
+        const loTorqueEl = document.getElementById('StepLoTorque');
+        const hiTorqueEl = document.getElementById('StepHiTorque');
+
+        if (loTorqueEl && hiTorqueEl) {
+            const lo = parseFloat(loTorqueEl.value);
+            const hi = parseFloat(hiTorqueEl.value);
+            const feedback = loTorqueEl.nextElementSibling;
+
+            if (!isNaN(lo) && !isNaN(hi) && lo >= hi) {
+                loTorqueEl.classList.add("is-invalid");
+                if (feedback?.classList.contains("invalid-feedback")) {
+                    feedback.innerText = "Must be less than StepHiTorque";
+                    feedback.classList.add("d-block");
+                    feedback.style.display = "block";
+                }
+                isValid = false;
+                errorList.push("StepLoTorque");
+            }
+        }
+
+
+
+
+
 
 
 
@@ -851,7 +1002,7 @@
             });
         }
 
-        function disableDownshiftFields() {
+    function disableDownshiftFields() {
             const fields = [
                 "downshift_mode_off",
                 "downshift_mode_torque",
@@ -865,6 +1016,47 @@
             });
         }
     }
+
+
+
+
+
+    function bindRoundedWhenVisible(id, digits = 3) {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.blurFixed) return;
+
+        // ➤ 不管是否可見，都先綁一次（確保 blur 有綁定）
+        bindRoundedBlur(id, digits);
+
+        // ➤ 若還不可見，再用 observer 監聽顯示變化
+        const observer = new MutationObserver(() => {
+            if (el.offsetParent !== null && !el.dataset.blurFixed) {
+                bindRoundedBlur(id, digits);
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
+    }
+
+
+    function bindRoundedBlur(id, digits = 3) {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.blurFixed) return;
+
+        el.addEventListener('blur', function () {
+            const raw = this.value;
+            const val = parseFloat(raw);
+            if (!isNaN(val)) {
+                const rounded = val.toFixed(digits);
+                this.value = rounded;
+                if (typeof input_check === 'function') input_check();
+            }
+        });
+
+        el.dataset.blurFixed = "1";
+    }
+
 
 
 

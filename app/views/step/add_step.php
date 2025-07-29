@@ -61,8 +61,8 @@
                 <label style="font-size:20px;color: #000; padding-left: 2%" for="step_id"><?php echo $text['step_id'];?> :</label>&nbsp;
                 <input type="text" id="StepSelect" name="StepSelect" size="8" maxlength="20" value="<?php echo $data['StepSelect'];?>" disabled
                 style="height:28px; font-size:20px;text-align: center; background-color: #DDDDDD; border:0; margin: 3px;">
-                
-                <button id="back_btn" type="button" onclick="history.go(-1);"><?php echo $text['return']; ?></button>
+                <?php $url ='?url=Step/index/'.$data['JOBID']."/".$data['SEQID'];?>
+                <button id="back_btn" type="button" onclick="window.location.href='<?php echo $url; ?>';"><?php echo $text['return']; ?></button>
 
                 <?php if($data['type'] == 'edit'){ ?>
                 <div style="display: none;">
@@ -288,7 +288,8 @@
                                         <?php echo ($data['type'] == 'edit' && $data['step']['StepTorqueOffsetSign'] == 45) ? 'checked' : ''; ?> >
                                         <label class="form-check-label" for="join_offset_minus"><?php echo $text['Minus_text']; ?></label>
                                         <input id="StepTorqueOffset" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueOffset'] : ''; ?>">
-                                        </div>
+                                         <div class="invalid-feedback"></div>    
+                                    </div>
                                     </div>
                                 </div>
                                 <hr class="hr" />
@@ -316,7 +317,7 @@
                                     <div class="col-4" id="show_torque" style="display: none;"><?php echo $text['Threshold_Torque'];?>:</div>
                                     <div class="col-4" id="show_angle" style="display: none;"><?php echo $text['Threshold_Angle'];?>:</div>
                                     <div class="col-8" id="StepTorqueTS_block" >
-                                        <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueTS'] : ''; ?>">
+                                        <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?= ($data['type'] === 'edit') ? ((is_numeric($data['step']['StepTorqueTS']) && floor($data['step']['StepTorqueTS']) != $data['step']['StepTorqueTS']) ? number_format((float)$data['step']['StepTorqueTS'], 3, '.', '') : $data['step']['StepTorqueTS']) : '' ?>">
                                          <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
@@ -348,7 +349,7 @@
                                     <div class="col-4" id="show_downshift_angle" style="display:none;" ><?php echo $text['Downshift_Angle'];?> </div>
                                     <div class="col-8" id="StepTorqueDownShift_block"  >
                                    
-                                        <input id="StepTorqueDownShift" class="form-control form-control-sm"  value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepTorqueDownShift'] : ''; ?>" >
+                                        <input id="StepTorqueDownShift" class="form-control form-control-sm"  value="<?= ($data['type'] === 'edit') ? ((is_numeric($data['step']['StepTorqueDownShift']) && floor($data['step']['StepTorqueDownShift']) != $data['step']['StepTorqueDownShift']) ? number_format((float)$data['step']['StepTorqueDownShift'], 3, '.', '') : $data['step']['StepTorqueDownShift']) : '' ?>">
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
