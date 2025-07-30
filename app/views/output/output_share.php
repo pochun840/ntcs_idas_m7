@@ -273,6 +273,25 @@ function job_confirm(){
     all_job = jobid;
 
     if(jobid){
+        
+        // 清空表格
+        document.getElementById("output_jobid_select").innerHTML = "";
+
+        // 重置 output_event / old_output_event
+        output_event = null;
+        old_output_event = null;
+
+        // 清空所有 radio 的勾選
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.checked = false;
+            radio.disabled = false; // 同時解除 disable 狀態 (如果需要)
+        });
+
+        // 重置時間欄位 (如有)
+        if (typeof resetTimeFields === 'function') {
+            resetTimeFields(1, 11);
+        }
+
         $.ajax({
             url: "?url=Outputs/get_output_by_job_id",
             method: "POST",

@@ -179,19 +179,22 @@ class Step extends Controller
             $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
             $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
 
-            $StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
+            //$StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
             $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
 
 
             // 當前 step 有設定 Threshold
-            if ($StepEnableThreshold > 0 && $StepTorqueTS > 0) {
+            if ($StepEnableThreshold > 0) {
                 // 查詢之前有啟用 threshold 的 step（排除自己）
                 $prev_steps = $this->stepModel->getPreviousStepsWithThreshold($JOBID, $SEQID, $StepSelect);
 
+              
                 if (!empty($prev_steps)) {
                     // 將之前的步驟全部清除 threshold 設定
-                    $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $StepSelect);
+                    $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $prev_steps[0]['StepSelect']);
                 }
+
+                //
             }
 
             

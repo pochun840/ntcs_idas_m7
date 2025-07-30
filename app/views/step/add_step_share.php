@@ -837,112 +837,112 @@
             }
         }
 
-        // ✅ 額外條件檢查：扭力補償值 StepTorqueOffset 驗證
+        // StepTorqueOffset 驗證 (包含跳過邏輯)
         const offsetEl = document.getElementById('StepTorqueOffset');
-        if (offsetEl && StepOption === 2) {
-            const offset = parseFloat(offsetEl.value);
-            const target = parseFloat(check_target_torque);
-            const specMin = parseFloat(Tool_Min_Torque);
-            const specMax = parseFloat(Tool_Max_Torque);
-            const feedback = offsetEl.nextElementSibling;
+        const torqueEl = document.getElementById('StepTorque');
+        const torqueVal = parseFloat(torqueEl?.value ?? 0);
+        const torqueMin = check_target_tor_lo_raw;
+        const torqueMax = check_target_tor_hi_raw;
 
-            if (target === 0) {
+        if (!(torqueVal < torqueMin || torqueVal > torqueMax)) {
+            
+            //在範圍內才驗證
+            if (offsetEl && StepOption === 2) {
+                // 原 StepOption=2 的驗證邏輯
+                const offset = parseFloat(offsetEl.value);
+                const target = parseFloat(check_target_torque);
+                const specMin = parseFloat(Tool_Min_Torque);
+                const specMax = parseFloat(Tool_Max_Torque);
+                const feedback = offsetEl.nextElementSibling;
+
+                if (target === 0) {
+                    offsetEl.classList.remove("is-invalid");
+                    if (feedback?.classList.contains("invalid-feedback")) {
+                        feedback.innerText = '';
+                        feedback.classList.remove("d-block");
+                        feedback.style.display = "none";
+                    }
+                    return;
+                }
+
+                if (!isNaN(offset) && !isNaN(target) && !isNaN(specMin) && !isNaN(specMax)) {
+                    const offsetMaxBy30 = target * 0.3;
+                    const offsetMaxBySpec = (specMax * 1.08) - target;
+                    const offsetMinBySpec = (specMin * 0.7) - target;
+
+                    const offsetMax = Math.min(offsetMaxBy30, offsetMaxBySpec);
+                    const offsetMin = Math.max(-offsetMaxBy30, offsetMinBySpec);
+                    const total = target + offset;
+
+                    if (offset < offsetMin || offset > offsetMax) {
+                        offsetEl.classList.add("is-invalid");
+                        if (feedback?.classList.contains("invalid-feedback")) {
+                            const low = (target - offsetMaxBy30).toFixed(precision);
+                            const high = (target + offsetMaxBy30).toFixed(precision);
+                            feedback.innerText = `Offset Range: ${low} ~ ${high}`;
+                            feedback.classList.add("d-block");
+                            feedback.style.display = "block";
+                        }
+                        isValid = false;
+                        errorList.push('StepTorqueOffset');
+                    } else {
+                        offsetEl.classList.remove("is-invalid");
+                        if (feedback?.classList.contains("invalid-feedback")) {
+                            feedback.innerText = '';
+                            feedback.classList.remove("d-block");
+                            feedback.style.display = "none";
+                        }
+                    }
+                }
+            }
+
+            if (offsetEl && StepOption === 1) {
+                // 原 StepOption=1 的驗證邏輯
+                const StepHiTorque = parseFloat(document.getElementById("StepHiTorque")?.value ?? 0);
+                const check_target_tor_hi = parseFloat(document.getElementById("check_target_tor_hi")?.value ?? 0);
+                const check_range_before = StepHiTorque * 0.7;
+                const check_range_after = check_target_tor_hi + check_target_tor_hi * 0.1;
+                const check_range_before_bb = check_range_before.toFixed(precision);
+                const check_range_after_bb = check_range_after.toFixed(precision);
+
+                const offset = parseFloat(offsetEl.value);
+                const specMin = parseFloat(Tool_Min_Torque);
+                const specMax = parseFloat(Tool_Max_Torque);
+                const feedback = offsetEl.nextElementSibling;
+
+                if (!isNaN(offset) && !isNaN(specMin) && !isNaN(specMax)) {
+                    const offsetMax = specMax * 0.3;
+                    const validMin = specMin * 0.7;
+                    const validTotal = offset + specMax;
+
+                    if (Math.abs(offset) > offsetMax || validTotal < validMin) {
+                        offsetEl.classList.add("is-invalid");
+                        if (feedback?.classList.contains("invalid-feedback")) {
+                            feedback.innerText = `Offset Range: ${check_range_before_bb} ~ ${check_range_after_bb}`;
+                            feedback.classList.add("d-block");
+                            feedback.style.display = "block";
+                        }
+                        isValid = false;
+                        errorList.push('StepTorqueOffset');
+                    } else {
+                        offsetEl.classList.remove("is-invalid");
+                        if (feedback?.classList.contains("invalid-feedback")) {
+                            feedback.innerText = '';
+                            feedback.classList.remove("d-block");
+                            feedback.style.display = "none";
+                        }
+                    }
+                }
+            }
+        } else {
+            // 超出範圍 → 直接清除 Offset 驗證錯誤狀態
+            if (offsetEl) {
                 offsetEl.classList.remove("is-invalid");
+                const feedback = offsetEl.nextElementSibling;
                 if (feedback?.classList.contains("invalid-feedback")) {
                     feedback.innerText = '';
                     feedback.classList.remove("d-block");
                     feedback.style.display = "none";
-                }
-                return; //不再往下驗證
-            }
-
-            if (!isNaN(offset) && !isNaN(target) && !isNaN(specMin) && !isNaN(specMax)) {
-                const offsetMaxBy30 = target * 0.3;
-                const offsetMaxBySpec = (specMax * 1.08) - target;
-                const offsetMinBySpec = (specMin * 0.7) - target;
-
-                const offsetMax = Math.min(offsetMaxBy30, offsetMaxBySpec);
-                const offsetMin = Math.max(-offsetMaxBy30, offsetMinBySpec);
-                const total = target + offset;
-
-                if (offset < offsetMin || offset > offsetMax) {
-                    offsetEl.classList.add("is-invalid");
-                    if (feedback?.classList.contains("invalid-feedback")) {
-                        const precision = decimals[torque_unit] ?? 3;
-                        const low = (target - offsetMaxBy30).toFixed(precision);
-                        const high = (target + offsetMaxBy30).toFixed(precision);
-                        feedback.innerText = `Offset RangeQQ: ${low} ~ ${high}`;
-                        feedback.classList.add("d-block");
-                        feedback.style.display = "block";
-                    }
-                    isValid = false;
-                    errorList.push('StepTorqueOffset');
-                } else {
-                    offsetEl.classList.remove("is-invalid");
-                    if (feedback?.classList.contains("invalid-feedback")) {
-                        feedback.innerText = '';
-                        feedback.classList.remove("d-block");
-                        feedback.style.display = "none";
-                    }
-                }
-            }
-        }
-
-        if (offsetEl && StepOption === 1) {
-
-            const StepHiTorque = parseFloat(document.getElementById("StepHiTorque")?.value ?? 0);
-            const check_target_tor_hi = parseFloat(document.getElementById("check_target_tor_hi")?.value ?? 0);
-            const check_range_before = StepHiTorque * 0.7;
-            const check_range_after =  check_target_tor_hi +check_target_tor_hi  * 0.1;
-            const torque_unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
-            const precision = decimals[torque_unit] ?? 3;
-
-            const check_range_before_bb = check_range_before.toFixed(precision);
-            const check_range_after_bb = check_range_after.toFixed(precision);
-            
-
-            const offset = parseFloat(offsetEl.value);
-            const specMin = parseFloat(Tool_Min_Torque); // 起子規格下限
-            const specMax = parseFloat(Tool_Max_Torque); // 起子規格上限
-            const feedback = offsetEl.nextElementSibling;
-
-            if (!isNaN(offset) && !isNaN(specMin) && !isNaN(specMax)) {
-                const offsetMax = specMax * 0.3;
-                const validMin = specMin * 0.7;
-                const validTotal = offset + specMax;
-
-                // Condition 1: Offset must not exceed 30% of tool spec upper limit
-                if (Math.abs(offset) > offsetMax) {
-                    offsetEl.classList.add("is-invalid");
-                    if (feedback?.classList.contains("invalid-feedback")) {
-                        feedback.innerText = `Offset Range: ${check_range_before_bb} ~ ${check_range_after_bb}`;
-                        feedback.classList.add("d-block");
-                        feedback.style.display = "block";
-                    }
-                    isValid = false;
-                    errorList.push('StepTorqueOffset');
-                }
-
-                // Condition 2: Offset + specMax must be ≥ specMin * 70%
-                else if (validTotal < validMin) {
-                    offsetEl.classList.add("is-invalid");
-                    if (feedback?.classList.contains("invalid-feedback")) {
-                        feedback.innerText = `Offset Range: ${check_range_before_bb} ~ ${check_range_after_bb}`;
-                        feedback.classList.add("d-block");
-                        feedback.style.display = "block";
-                    }
-                    isValid = false;
-                    errorList.push('StepTorqueOffset');
-                }
-
-                // ✅ Valid
-                else {
-                    offsetEl.classList.remove("is-invalid");
-                    if (feedback?.classList.contains("invalid-feedback")) {
-                        feedback.innerText = '';
-                        feedback.classList.remove("d-block");
-                        feedback.style.display = "none";
-                    }
                 }
             }
         }

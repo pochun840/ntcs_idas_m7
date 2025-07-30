@@ -416,8 +416,8 @@ class Steptcc{
     public function resetPreviousStepsThreshold($jobid, $seqid, $current_step_id) {
         $sql = "UPDATE STEP_lst 
                 SET StepEnableThreshold = 0, StepTorqueTS = 0
-                WHERE JOBID = ? AND SEQID = ? AND StepSelect <> ?
-                AND StepEnableThreshold > 0 AND StepTorqueTS > 0";
+                WHERE JOBID = ? AND SEQID = ? AND StepSelect =  ?
+                AND StepEnableThreshold > 0";
         $stmt = $this->db_iDas->prepare($sql);
         return $stmt->execute([$jobid, $seqid, $current_step_id]);
     }

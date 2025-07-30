@@ -11,6 +11,7 @@ var buttonDisabled = false;
 var backgroundColorYellow = false;
 var input_job;
 var temp_event;
+let jobTempData = {}; 
 
 $(document).ready(function () {
     highlight_row_input('input_table');
@@ -477,20 +478,26 @@ function crud_job_event(action) {
             break;
     }
 }
+
+
 function handleNewJobEvent() {
+    // 讀取該 job_id 的資料
+    const data = jobTempData[job_id] || { temp: [], tempA: [], temp_event: [] };
 
-    //清除之前的 disabled 狀態
-    resetElementsByPrefix(); // 對 pin/edit_pin/類 input 做 reset
-    disableOptions('#Event_Option', [], false, true); //reset select 所有 option
+    // 清空之前狀態
+    resetElementsByPrefix(); // 重置 input 類元素
+    disableOptions('#Event_Option', [], false, true); // reset select 所有 option 狀態
 
-    //重新禁用這些欄位
-    disableElementsByIdList(temp);
-    disableOptions('#Event_Option', tempA, false, false);  // 禁用 + 隱藏
-    disableOptions('#Event_Option', temp_event, true, false); // 禁用 + 灰色
+    // 重新套用 disabled 狀態
+    disableElementsByIdList(data.temp);                          // radio/input disable
+    disableOptions('#Event_Option', data.tempA, false, false);   // 隱藏已被選過的 option
+    disableOptions('#Event_Option', data.temp_event, true, false); // 灰色處理
 
+    // 顯示 modal
     showOverlay();
     document.getElementById('newinput').style.display = 'block';
 }
+
 
 
 function resetElementsByPrefix() {
@@ -565,26 +572,34 @@ function disableElementsByIdList(ids) {
 
 
 function disableOptions(selector, values = [], gray = false, reset = false) {
+    if (!Array.isArray(values)) return; // 不是陣列直接跳出
 
-    if (!Array.isArray(values)) return;  //不是陣列就跳過
-    const valueSet = values.map(String);
+    const valueSet = values.map(String); // 全轉字串，避免型別不一致
     const options = document.querySelectorAll(`${selector} option`);
     if (!options.length) return;
 
     options.forEach(opt => {
+        // 如果 reset=true，先重置所有選項
         if (reset) {
             opt.disabled = false;
             opt.style.color = '';
             opt.classList.remove('disabled_input');
+            opt.style.display = ''; // 確保顯示
         }
 
+        // 根據 values 設定 disabled 狀態
         if (valueSet.includes(opt.value)) {
             opt.disabled = true;
             opt.classList.add('disabled_input');
-            if (gray) opt.style.color = 'gray';
+            if (gray) {
+                opt.style.color = 'gray'; // 灰色標示
+            } else {
+                opt.style.display = 'none'; // 如果沒灰色，用隱藏
+            }
         }
     });
 }
+
 
 
 
@@ -903,6 +918,14 @@ function job_confirm(){
                 
                 temp  = Array.isArray(data.temp) ? data.temp : [];
                 tempA = Array.isArray(data.tempA) ? data.tempA : [];
+
+
+                jobTempData[job_id] = {
+                    temp: Array.isArray(data.temp) ? data.temp : [],
+                    tempA: Array.isArray(data.tempA) ? data.tempA : [],
+                    temp_event: Array.isArray(data.temp_event) ? data.temp_event : []
+                };
+
 
                 document.getElementById("input_jobid_select").innerHTML = job_inputlist;
                 document.getElementById("JobSelect").style.display = 'none';
