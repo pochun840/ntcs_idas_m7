@@ -502,12 +502,85 @@ class Miscellaneous{
         $decimals = $this->details('decimals');
         $precision = isset($decimals[$to_unit_id]) ? $decimals[$to_unit_id] : 3;
 
+
+
         return [
             'converted_value' => number_format($converted_value, $precision),
             'high_torque'     => number_format($converted_value * 1.10, $precision),
             'raw_converted'   => $converted_value
         ];
     }
+
+    
+    
+    public function convert_step_torque($raw_value, $from_unit_id, $to_unit_id){
+
+        // 執行單位轉換，回傳 float 原始值
+        $converted_value = (float)$this->convert_single_torque_unit_temp($raw_value, $from_unit_id, $to_unit_id);
+
+        // 小數位設定條件（decimals）
+        $decimals = [
+            0 => 2, // kgf.cm
+            1 => 3, // N.m
+            2 => 2, // Lbf.in
+            3 => 4, // kgf.m
+            4 => 1  // cN.m
+        ];
+
+        // 先用 DB 設定覆蓋
+        $db_decimals = $this->details('decimals');
+        $precision = $db_decimals[$to_unit_id] ?? ($decimals[$to_unit_id] ?? 3);
+
+        // 四捨五入
+        $converted_value = round($converted_value, $precision);
+
+        return [
+            'converted_value' => number_format($converted_value, $precision, '.', ''),
+            'raw_converted'   => $converted_value
+        ];
+    }
+
+
+    public function convert_single_torque_unit_temp($value, $from_unit, $to_unit, $useExcelMode = true){
+        // 檢查數值
+        if (!is_numeric($value)) return 0;
+
+        $value = floatval($value);
+
+        // Step 1：轉成 N.m（中介單位）
+        switch ($from_unit) {
+            case 0: $Nm = $value * 9.80665; break;        // kgf.cm → N.m
+            case 1: $Nm = $value; break;                   // N.m → N.m
+            case 2: $Nm = $value * 0.0980665; break;       // Lbf.in → N.m
+            case 3: $Nm = $value * 0.112984829333; break;  // kgf.m → N.m
+            case 4: $Nm = $value * 0.01; break;            // cN.m → N.m
+            default: return 0;
+        }
+
+        // Step 2：從 N.m 轉成目標單位 (直接回傳 float)
+        if ($useExcelMode) {
+            switch ($to_unit) {
+                case 0: return $Nm * 0.10197;        // kgf.cm
+                case 1: return $Nm;                  // N.m
+                case 2: return $Nm * 10.2;           // Lbf.in
+                case 3: return $Nm * 8.85411;        // kgf.m
+                case 4: return $Nm * 100;            // cN.m
+                default: return 0;
+            }
+        } else {
+            switch ($to_unit) {
+                case 0: return $Nm / 9.80665;        // kgf.cm
+                case 1: return $Nm;                  // N.m
+                case 2: return $Nm / 0.0980665;      // Lbf.in
+                case 3: return $Nm / 0.112984829333; // kgf.m
+                case 4: return $Nm * 100;            // cN.m
+                default: return 0;
+            }
+        }
+    }
+
+
+
 
 
 

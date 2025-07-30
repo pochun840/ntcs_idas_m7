@@ -122,7 +122,7 @@ class Step extends Controller
                 'StepAngle' => intval($_POST['StepAngle'] ?? 0),
                 'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
                 'StepDirection' => intval($_POST['StepDirection'] ?? 0),
-                'StepDelay' => intval($_POST['StepDelay'] ?? 0),
+                'StepDelay' => ($_POST['StepDelay'] ?? 0) > 0 ? intval($_POST['StepDelay'] * 1000) : 0,
                 'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? -1),
                 'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
                 'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
@@ -214,7 +214,7 @@ class Step extends Controller
                     'StepAngle' => intval($_POST['StepAngle'] ?? 0),
                     'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
                     'StepDirection' => intval($_POST['StepDirection'] ?? 0),
-                    'StepDelay' => floatval($_POST['StepDelay'] ?? 0),
+                    'StepDelay' => ($_POST['StepDelay'] ?? 0) > 0 ? intval($_POST['StepDelay'] * 1000) : 0,
                     'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
                     'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
                     'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
@@ -439,10 +439,16 @@ class Step extends Controller
         $torque_arr = $this->MiscellaneousModel->details("torque_unit");
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
 
+        $res_device = $this->SettingModel->GetControllerInfo();
+        $device_torque_unit = (int)$res_device['torque_unit'];
+
+
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
         if (!empty($seq_id)) $paramsCount++;
         if (!empty($stepid)) $paramsCount++;
+
+
 
         $type = ($paramsCount === 2) ? 'new' : 'edit';
 
@@ -456,14 +462,29 @@ class Step extends Controller
             $res = $this->stepModel->getStepNo($job_id, $seq_id, $stepid);
             $step = $res[0];
 
-            //$step['StepTorque'] = number_format($StepTorque[$torque_arr[$device_torque_unit]], $decimals, '.', '');
+            if($step['StepEnableThreshold'] == 2){
+                $result = $this->MiscellaneousModel->convert_step_torque($step['StepTorqueTS'], $step['step_unit'], $device_torque_unit);
+                if(!empty($result)){
+                    $step['StepTorqueTS'] = $result['converted_value'];
+                    
+                }
+            }
+            if($step['StepEnableDownShift'] == 2){
+                $res = $this->MiscellaneousModel->convert_step_torque($step['StepTorqueDownShift'], $step['step_unit'], $device_torque_unit);
+                if(!empty($res)){
+                    $step['StepTorqueDownShift'] = $res['converted_value'];
+                }
+            }
 
+            if ($step['StepDelay'] > 0) {
+                $step['StepDelay'] = $step['StepDelay'] / 1000;
+            }
+                    
         } else {
             $step = [];
         }
 
-        $res_device = $this->SettingModel->GetControllerInfo();
-        $device_torque_unit = (int)$res_device['torque_unit'];
+
 
         $tools = $this->ToolModel->GetToolInfo()[0] ?? [];
         if (!empty($tools)) {

@@ -39,7 +39,7 @@
                         <?php foreach($data['torque_unit'] as $k_unit =>$v_unit){?>
                             <option value="<?php echo $k_unit; ?>" 
                                 <?php echo ($k_unit == $data['controller_info']['torque_unit']) ? 'selected' : ''; ?>>
-                            <?php echo $v_unit; ?>
+                            <?php echo $text[$v_unit];?>
                             </option>
                         <?php } ?>
                     </select>

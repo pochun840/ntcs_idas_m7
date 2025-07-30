@@ -960,116 +960,117 @@ class Settings extends Controller
 
 
     #IDAS上傳 20250624 修改
-    public function iDas_Update() {
+    public function iDas_Update($debug = false) {
 
-        // 1. 紀錄目前 PHP 的上傳限制，方便除錯
+        // 1. 紀錄上傳限制
         $maxUpload = ini_get('upload_max_filesize');
         $postMax = ini_get('post_max_size');
-        error_log("目前 upload_max_filesize: $maxUpload");
-        error_log("目前 post_max_size: $postMax");
+        error_log("[iDAS UPDATE] upload_max_filesize: $maxUpload");
+        error_log("[iDAS UPDATE] post_max_size: $postMax");
 
-        // 2. 載入語系檔，供 $text 語系變數使用
+        // 2. 載入語系檔
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
-        // 3. 取得目前 iDAS 版本
+        // 3. 當前版本
         $iDas_Version = $this->AdminModel->Get_Das_Config('idas_version');
 
-        // 4. 根據系統平台（Linux 或 Windows）設定根目錄與解壓縮路徑
+        // 4. 設定路徑
         $file_location = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/' : $_SERVER['DOCUMENT_ROOT'] . '/';
         $extract_path = $file_location . 'extracted/';
-        $main_folder = ''; // 後面會指定為解壓出來的主資料夾路徑
+        $main_folder = '';
 
         try {
-            // 5. 驗證上傳檔案是否存在且無錯誤
+            // 5. 驗證上傳
             if (empty($_FILES['file']) || $_FILES['file']['error'] !== 0) {
                 $msg = empty($_FILES['file']) ? 'No file uploaded.' : 'File upload error: ' . $_FILES['file']['error'];
                 return $this->sendResponse('Error', $msg);
             }
 
-            // 6. 檢查檔案大小（限制為 30MB 以內）
+            // 6. 大小限制
             if ($_FILES['file']['size'] > 30 * 1024 * 1024) {
                 return $this->sendResponse('Error', '檔案大小超過限制：30MB');
             }
 
-            // 7. 驗證副檔名必須為 .pack
+            // 7. 副檔名檢查
             $uploaded_filename = $_FILES['file']['name'];
             if (strtolower(pathinfo($uploaded_filename, PATHINFO_EXTENSION)) !== 'pack') {
-                return $this->sendResponse('Error', '上傳檔案必須為 .pack 格式，目前為：' . $uploaded_filename);
+                return $this->sendResponse('Error', '上傳檔案必須為 .pack，目前為：' . $uploaded_filename);
             }
 
-            // 8. 使用 ZipArchive 解壓縮 .pack 檔案
+            // 8. 解壓縮
             $zip = new ZipArchive();
             if ($zip->open($_FILES['file']['tmp_name']) !== TRUE) {
                 return $this->sendResponse('Error', '無法開啟 .pack 更新檔案');
             }
 
-            // 9. 若解壓縮目錄不存在就先建立
             if (!is_dir($extract_path)) mkdir($extract_path, 0777, true);
-
-            // 10. 解壓縮至指定目錄
             if (!$zip->extractTo($extract_path)) {
                 $zip->close();
                 return $this->sendResponse('Error', '解壓縮失敗');
             }
             $zip->close();
 
-            // 11. 找出解壓縮後的主資料夾
+            // 9. 找資料夾
             $folders = array_filter(scandir($extract_path), fn($f) => is_dir($extract_path . $f) && !in_array($f, ['.', '..']));
             if (empty($folders)) {
                 return $this->sendResponse('Error', '未找到解壓縮資料夾');
             }
 
-            // 12. 指定主資料夾與 info.json 路徑
             $main_folder = $extract_path . reset($folders);
-            $info_json_url = $main_folder . "/info.json";
 
-            // 13. 檢查 info.json 是否存在
+            // **Debug: 列出所有檔案結構**
+            if ($debug) {
+                error_log("[iDAS UPDATE] 解壓縮目錄結構：");
+                $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($main_folder));
+                foreach ($rii as $file) {
+                    if (!$file->isDir()) error_log($file->getPathname());
+                }
+            }
+
+            // 10. 解析 info.json
+            $info_json_url = $main_folder . "/info.json";
             if (!file_exists($info_json_url)) {
                 return $this->sendResponse('Error', '缺少 info.json，無法驗證更新檔');
             }
 
-            // 14. 解析 info.json，取得更新檔版本資訊
             $verify_data = json_decode(@file_get_contents($info_json_url), true);
             if (!$verify_data || !isset($verify_data['idas_version'])) {
                 return $this->sendResponse('Error', 'info.json 格式錯誤或缺少 idas_version');
             }
 
-            // 15. 比對版本：如果更新檔比目前版本還舊，就不更新
+            // 11. 比對版本
             $match_tcc_version = $verify_data['idas_version'];
             if (version_compare($match_tcc_version, $iDas_Version, '<')) {
-                return $this->sendResponse(
-                    'Error',
-                    "更新檔版本低於目前版本，無法更新（目前版本：$iDas_Version，更新版本：$match_tcc_version）"
-                );
+                return $this->sendResponse('Error', "更新檔版本低於目前版本，無法更新（目前：$iDas_Version，更新：$match_tcc_version）");
             }
 
-            // 16. 將新版本寫入 config 表
+            // 12. 寫入 config 表
             $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);
 
-            // 17. 指定最終目標目錄（部署到 /ntcs_idas/ 下）
+            // 13. 部署
             $target_directory = $_SERVER['DOCUMENT_ROOT'] . '/ntcs_idas/';
             if (!is_dir($target_directory)) mkdir($target_directory, 0777, true);
-
-            // 18. 複製解壓出來的檔案到正式目錄
             $this->copyDirectory($main_folder, $target_directory);
 
-            // 19. 強制登出控制器使用者（安全性與更新重啟）
+            // 14. 登出使用者
             $this->setting_logout();
 
-            // 20. 成功更新回應
-            return $this->sendResponse('Success', '更新成功，已將檔案移動至 ntcs_idas 目錄');
-
-        } finally {
-            // 21. 無論成功或失敗，清除主資料夾與解壓縮目錄
-            if (!empty($main_folder) && is_dir($main_folder)) {
-                $this->deleteDirectory($main_folder);
+            // **Debug Mode: 保留 extracted 資料夾**
+            if ($debug) {
+                return $this->sendResponse('Success', '更新成功（Debug模式：保留 extracted 資料夾）');
             }
-            if (is_dir($extract_path)) {
-                $this->deleteDirectory($extract_path);
+
+            return $this->sendResponse('Success', '更新成功，已將檔案移動至 ntcs_idas 目錄');
+        } finally {
+            // **非 Debug 才刪除暫存檔**
+            if (!$debug) {
+                if (!empty($main_folder) && is_dir($main_folder)) $this->deleteDirectory($main_folder);
+                if (is_dir($extract_path)) $this->deleteDirectory($extract_path);
             }
         }
     }
+
 
 
 
