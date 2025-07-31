@@ -258,7 +258,7 @@
                                         <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_on" value="0"
                                         <?php  echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] >= 1 && $data['sequences']['unscrew_force'] <= 100) ? 'checked' : ''; ?> >
                                         <label class="form-check-label" for="force_on"><?php echo $text['switch_on']; ?></label>
-                                        <input  id="unscrew_force"  class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 50%!important;min-width: 50%!important;display: inline-block!important;">
+                                        <input  id="unscrew_force"  class="form-control" value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['unscrew_force'] : ''; ?>" style="width: 70%!important;min-width: 70%!important;display: inline-block!important;">
                                         </div>
                                         <div class="form-check form-check-inline col-md-3">
                                         <input class="form-check-input" type="radio" name="unscrew_forcemode" id="unscrew_forcemode_unlimit" value="1" 

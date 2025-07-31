@@ -7,6 +7,7 @@ class Settings extends Controller
     private $ToolModel;
     private $MiscellaneousModel;
     private $DataModel;
+    private $stepModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -15,6 +16,7 @@ class Settings extends Controller
         $this->ToolModel = $this->model('Tool');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
+        $this->stepModel = $this->model('Steptcc');
     }
 
     // 取得所有info
@@ -589,6 +591,11 @@ class Settings extends Controller
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
+
+        //
+
+
+
         $argument = $_POST['argument'] ?? '';
 
         $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
@@ -603,6 +610,10 @@ class Settings extends Controller
         $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
 
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
+
+            //將 STEP_lst 中 StepDelay >0 且含小數點(排除 JOBID=0,221) 的值乘 1000 後更新，回傳筆數 
+            $this->stepModel->get_success_data_by_step();
+
 
             // Check if source files exist
             if (!file_exists($src1) || !file_exists($src2)) {
@@ -703,7 +714,10 @@ class Settings extends Controller
                 // Controller → iDAS 同步檔案
                 if (file_exists($Con_DB_Location)) {
                     if (copy($Con_DB_Location, $Das_DB_Location)) {
+                        //將 STEP_lst 中 StepDelay >0 且含小數點(排除 JOBID=0,221) 的值乘 1000 後更新，回傳筆數 
+                        $this->stepModel->get_success_data_by_step();
                         return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+
                     } else {
                         return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
                     }
@@ -717,7 +731,9 @@ class Settings extends Controller
         }
 
         // 非法參數或非 Linux 環境
-         return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+
+    
     }
 
 

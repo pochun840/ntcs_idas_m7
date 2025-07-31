@@ -148,7 +148,7 @@ function renderChart(chart_mode, chart_info) {
     echarts.dispose(chartDom);  // ✅ 清除舊圖
     myChart = echarts.init(chartDom);
     const language = getCookie('language');
-
+    const unit_name = chart_info.chart_unit_name;
     const x_data_val = chart_info.x_val;
     const y_data_val = chart_info.y_val;
     const y_data_val_torque = chart_info.y_val_torque || [];
@@ -197,7 +197,7 @@ function renderChart(chart_mode, chart_info) {
                 trigger: 'axis',
                 formatter: function (params) {
                     return params.map(p => {
-                        const unit = p.seriesName === 'Torque' ? 'Nm' : 'RPM';
+                        const unit = p.seriesName === 'Torque' ? unit_name : 'RPM';
                         return `<span style="color:${p.color}">${p.seriesName}:</span> ${p.value} ${unit}<br>`;
                     }).join('');
                 }
@@ -218,7 +218,7 @@ function renderChart(chart_mode, chart_info) {
             yAxis: [
                 {
                     type: 'value',
-                    name: `${labels.Torque} (Nm)`,
+                    name: `${labels.Torque} (${unit_name})`,
                     position: 'left',
                     min: safeMinTorque,
                     max: safeMaxTorque,
@@ -346,19 +346,7 @@ function fetchChartAndRender() {
             };
             const language = getCookie('language') || 'en';
 
-            // ✅ 顯示無資料提示
-            /*if (!data.chart_info || data.chart_info === null) {
-                chartArea.innerHTML = `
-                    <div style="text-align:center; padding:2em; font-size:16px; color:gray;">
-                        ${messages[language] || messages['en']}
-                        <br><button onclick="fetchChartAndRender()" style="margin-top:10px;padding:6px 12px;">
-                            🔄 ${language === 'zh-tw' ? '重新整理' : language === 'zh-cn' ? '重新加载' : 'Refresh'}
-                        </button>
-                    </div>`;
-                previousChartInfo = null;
-                return;
-            }*/
-
+           
             // ✅ 更新畫面上資料區塊（data_info）
             const info = data.data_info || {};
             const textMap = data.text || {};

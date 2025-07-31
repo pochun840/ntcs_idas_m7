@@ -136,7 +136,7 @@ function renderChart(chart_mode, chart_info) {
     const y_data_val = chart_info.y_val;
     const y_data_val_torque = chart_info.y_val_torque || [];
     const y_data_val_rpm = chart_info.y_val_rpm || [];
-
+    const unit_name = chart_info.chart_unit_name;
     const labels = translations[language] || { "Time": "Time", "Torque": "Torque", "Angle": "Angle", "RPM": "RPM" };
 
     let xTitle = '', yTitle = '';
@@ -181,7 +181,7 @@ function renderChart(chart_mode, chart_info) {
         },
         yAxis: chart_mode === "5" ? [
             {
-                type: 'value', name: `${labels.Torque} (Nm)`, position: 'left',
+                type: 'value', name: `${labels.Torque} (${unit_name})`, position: 'left',
                 min: torqueTicks[0], max: torqueTicks[tickCount - 1], interval: torqueStep,
                 axisLabel: { color: '#000', fontSize: 12 },
                 splitLine: { show: true }, alignTicks: true
@@ -257,6 +257,7 @@ function fetchChartAndRender() {
             const info = data.data_info || {};
             const textMap = data.text || {};
             const statusKey = info.fasten_status_text ?? '-';
+            
 
             document.getElementById("Job_Name").value = info.job_id + "/" +info.job_name ?? '***';
             document.getElementById("Seq_Name").value = info.sequence_id + "/" + info.sequence_name ?? '***';

@@ -441,6 +441,55 @@ class Steptcc{
         return !empty($row['max_step']) ? intval($row['max_step']) : 0;
     }
 
+    public function get_success_data_by_step() {
+        
+        // 查詢所有符合條件的 StepDelay
+        $sql = "SELECT JOBID, SEQID, StepSelect, StepDelay 
+                FROM STEP_lst 
+                WHERE StepDelay > 0 AND StepDelay LIKE '%.%' 
+                AND JOBID NOT IN (0, 221)";
+        $statement = $this->db_iDas->prepare($sql);
+        $statement->execute();
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($rows)) {
+            foreach ($rows as $row) {
+                $original = (string)$row['StepDelay'];
+
+                // 無條件捨去到小數第 2 位
+                if (strpos($original, '.') !== false) {
+                    $parts = explode('.', $original);
+                    $intPart = $parts[0];
+                    $decPart = substr($parts[1], 0, 2); // 保留前兩位，不足補0
+                    $decPart = str_pad($decPart, 2, '0');
+                    $truncated = (float)($intPart . '.' . $decPart);
+                } else {
+                    $truncated = (float)$original;
+                }
+
+                // 乘以 1000 並無條件捨去（floor），確保為整數
+                $newDelay = (int)floor($truncated * 1000);
+
+                // 更新資料庫
+                $update_sql = "UPDATE STEP_lst 
+                            SET StepDelay = ? 
+                            WHERE JOBID = ? AND SEQID = ? AND StepSelect = ?";
+                $update_stmt = $this->db_iDas->prepare($update_sql);
+                $update_stmt->execute([
+                    $newDelay,
+                    $row['JOBID'],
+                    $row['SEQID'],
+                    $row['StepSelect']
+                ]);
+            }
+        }
+
+        return count($rows); // 回傳處理筆數
+    }
+
+
+
+
     /**
      * 建立預設 STEP，對應 JS 預設值
      */

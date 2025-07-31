@@ -28,7 +28,7 @@ class Step extends Controller
             $seq_id = 1;
         }
 
-     
+
         $isMobile = $this->isMobileCheck();
         $step = $this->stepModel->getStep($job_id, $seq_id);
         $target_option = $this->MiscellaneousModel->details("target_option");
@@ -463,10 +463,10 @@ class Step extends Controller
             $step = $res[0];
 
             if($step['StepEnableThreshold'] == 2){
-                $result = $this->MiscellaneousModel->convert_step_torque($step['StepTorqueTS'], $step['step_unit'], $device_torque_unit);
-                if(!empty($result)){
-                    $step['StepTorqueTS'] = $result['converted_value'];
-                    
+
+                $res1= $this->MiscellaneousModel->convert_step_torque( $step['StepTorqueTS'],$step['step_unit'],$device_torque_unit); 
+                if(!empty($res1)){
+                    $step['StepTorqueTS'] = $res1['converted_value'];
                 }
             }
             if($step['StepEnableDownShift'] == 2){

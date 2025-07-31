@@ -317,112 +317,63 @@ class Miscellaneous{
 
 
 
-    public function convert_single_torque_unit($value, $from_unit, $to_unit, $useExcelMode = true) {
+    public function convert_single_torque_unit($value, $from_unit, $to_unit, $useExcelMode = true){
+
         if (!is_numeric($value)) return 0;
 
         $value = floatval($value);
 
+        // 預設小數位
         $decimals = $this->details('decimals');
+        $default_decimals = [
+            0 => 2, // kgf.cm
+            1 => 3, // N.m
+            2 => 2, // Lbf.in
+            3 => 4, // kgf.m
+            4 => 1  // cN.m
+        ];
 
-        // Step 1：先轉成 N.m（中介單位）
+        // Step 1: 轉換為中介單位 N.m
         switch ($from_unit) {
-            case 0: $Nm = $value * 9.80665; break;
-            case 1: $Nm = $value; break;
-            case 2: $Nm = $value * 0.0980665; break;
-            case 3: $Nm = $value * 0.112984829333; break;
-            case 4: $Nm = $value * 0.01; break;
+            case 0: $Nm = $value * 0.0980665; break; // kgf.cm → N.m
+            case 1: $Nm = $value; break;             // N.m → N.m
+            case 2: $Nm = $value * 0.113; break;     // Lbf.in → N.m
+            case 3: $Nm = $value * 9.80665; break;   // kgf.m → N.m
+            case 4: $Nm = $value * 0.01; break;      // cN.m → N.m
             default: return 0;
         }
 
-        // Step 2：再轉成目標單位
+        // Step 2: 轉換為目標單位
         if ($useExcelMode) {
             switch ($to_unit) {
-                case 0: $converted = $Nm * 0.10197; break;
-                case 1: $converted = $Nm; break;
-                case 2: $converted = $Nm * 10.2; break;
-                case 3: $converted = $Nm * 8.85411; break;
-                case 4: $converted = $Nm * 100; break;
+                case 0: $converted = $Nm / 0.0980665; break; // N.m → kgf.cm
+                case 1: $converted = $Nm; break;              // N.m → N.m
+                case 2: $converted = $Nm / 0.113; break;      // N.m → Lbf.in
+                case 3: $converted = $Nm / 9.80665; break;    // N.m → kgf.m
+                case 4: $converted = $Nm / 0.01; break;       // N.m → cN.m
                 default: return 0;
             }
         } else {
+            // 精確模式 (同邏輯)
             switch ($to_unit) {
-                case 0: $converted = $Nm / 9.80665; break;
+                case 0: $converted = $Nm / 0.0980665; break;
                 case 1: $converted = $Nm; break;
-                case 2: $converted = $Nm / 0.0980665; break;
-                case 3: $converted = $Nm / 0.112984829333; break;
-                case 4: $converted = $Nm * 100; break;
+                case 2: $converted = $Nm / 0.113; break;
+                case 3: $converted = $Nm / 9.80665; break;
+                case 4: $converted = $Nm / 0.01; break;
                 default: return 0;
             }
         }
 
-        // 回傳固定格式的小數點字串
-        $dec = $decimals[$to_unit] ?? 3;
-        return number_format(round($converted, $dec), $dec, '.', '');
+        // 取小數位數
+        $dec = $decimals[$to_unit] ?? $default_decimals[$to_unit];
+
+        // 正確四捨五入：直接用 round，讓它依第 dec+1 位處理
+        $final = round($converted, $dec, PHP_ROUND_HALF_UP);
+
+        // 固定小數位 (不去掉尾數 0)
+        return number_format($final, $dec, '.', '');
     }
-
-
-    public function brian_test($value, $from_unit, $to_unit, $useExcelMode = true) {
-        $decimals = $this->details('decimals');
-
-        // 包裝成陣列統一處理
-        $isArray = is_array($value);
-        $values = $isArray ? $value : [$value];
-
-        $results = [];
-
-        foreach ($values as $v) {
-            if (!is_numeric($v)) {
-                $results[] = 0;
-                continue;
-            }
-
-            $v = floatval($v);
-
-            // Step 1：先轉成 N.m（中介單位）
-            switch ($from_unit) {
-                case 0: $Nm = $v * 9.80665; break;
-                case 1: $Nm = $v; break;
-                case 2: $Nm = $v * 0.0980665; break;
-                case 3: $Nm = $v * 0.112984829333; break;
-                case 4: $Nm = $v * 0.01; break;
-                default: $results[] = 0; continue 2;
-            }
-
-            // Step 2：轉成目標單位
-            if ($useExcelMode) {
-                switch ($to_unit) {
-                    case 0: $converted = $Nm * 0.10197; break;
-                    case 1: $converted = $Nm; break;
-                    case 2: $converted = $Nm * 10.2; break;
-                    case 3: $converted = $Nm * 8.85411; break;
-                    case 4: $converted = $Nm * 100; break;
-                    default: $results[] = 0; continue 2;
-                }
-            } else {
-                switch ($to_unit) {
-                    case 0: $converted = $Nm / 9.80665; break;
-                    case 1: $converted = $Nm; break;
-                    case 2: $converted = $Nm / 0.0980665; break;
-                    case 3: $converted = $Nm / 0.112984829333; break;
-                    case 4: $converted = $Nm * 100; break;
-                    default: $results[] = 0; continue 2;
-                }
-            }
-
-            $dec = $decimals[$to_unit] ?? 3;
-            $results[] = (float)number_format(round($converted, $dec), $dec, '.', '');
-        }
-
-        return $isArray ? $results : $results[0];
-    }
-
- 
-
-   
-
-
-
-   
 
     /*public function get_unit_name_by_index($index) {
         $unit_map = [
@@ -454,35 +405,6 @@ class Miscellaneous{
 
 
 
-    /*public function convert_and_format_torque_full($raw_value, $to_unit_id, $unit_name){
-
-            // 原始為 N.mm → 換算成 N.m
-            $base_value = $raw_value / 1000;
-
-            // 執行轉換
-            $converted = $this->convert_single_torque_unit($base_value, 1, $to_unit_id);
-
-            // 抓出實際數值
-            $converted_value = is_array($converted)
-                ? ($converted[$unit_name] ?? 0)
-                : (is_numeric($converted) ? $converted : 0);
-
-            // 小數位設定
-            $decimals = [
-                0 => 2, // kgf.cm
-                1 => 3, // N.m
-                2 => 2, // Lbf.in
-                3 => 4, // kgf.m
-                4 => 1  // cN.m
-            ];
-            $precision = isset($decimals[$to_unit_id]) ? $decimals[$to_unit_id] : 3;
-
-            return [
-                'converted_value' => number_format($converted_value, $precision),
-                'high_torque'     => number_format($converted_value * 1.10, $precision),
-                'raw_converted'   => $converted_value
-            ];
-    }*/
 
     
     public function convert_seq_torque($raw_value, $to_unit_id, $unit_name){
@@ -513,12 +435,12 @@ class Miscellaneous{
 
     
     
-    public function convert_step_torque($raw_value, $from_unit_id, $to_unit_id){
+    public function convert_step_torque($raw_value, $from_unit_id, $to_unit_id)
+    {
+        // 單位換算
+        $converted_value = (float) $this->convert_single_torque_unit($raw_value, $from_unit_id, $to_unit_id);
 
-        // 執行單位轉換，回傳 float 原始值
-        $converted_value = (float)$this->convert_single_torque_unit_temp($raw_value, $from_unit_id, $to_unit_id);
-
-        // 小數位設定條件（decimals）
+        // 小數位設定
         $decimals = [
             0 => 2, // kgf.cm
             1 => 3, // N.m
@@ -526,62 +448,18 @@ class Miscellaneous{
             3 => 4, // kgf.m
             4 => 1  // cN.m
         ];
-
-        // 先用 DB 設定覆蓋
         $db_decimals = $this->details('decimals');
-        $precision = $db_decimals[$to_unit_id] ?? ($decimals[$to_unit_id] ?? 3);
+        $precision   = $db_decimals[$to_unit_id] ?? ($decimals[$to_unit_id] ?? 3);
 
         // 四捨五入
         $converted_value = round($converted_value, $precision);
 
+        // 去掉多餘 0
         return [
-            'converted_value' => number_format($converted_value, $precision, '.', ''),
+            'converted_value' => rtrim(rtrim((string)$converted_value, '0'), '.'),
             'raw_converted'   => $converted_value
         ];
     }
-
-
-    public function convert_single_torque_unit_temp($value, $from_unit, $to_unit, $useExcelMode = true){
-        // 檢查數值
-        if (!is_numeric($value)) return 0;
-
-        $value = floatval($value);
-
-        // Step 1：轉成 N.m（中介單位）
-        switch ($from_unit) {
-            case 0: $Nm = $value * 9.80665; break;        // kgf.cm → N.m
-            case 1: $Nm = $value; break;                   // N.m → N.m
-            case 2: $Nm = $value * 0.0980665; break;       // Lbf.in → N.m
-            case 3: $Nm = $value * 0.112984829333; break;  // kgf.m → N.m
-            case 4: $Nm = $value * 0.01; break;            // cN.m → N.m
-            default: return 0;
-        }
-
-        // Step 2：從 N.m 轉成目標單位 (直接回傳 float)
-        if ($useExcelMode) {
-            switch ($to_unit) {
-                case 0: return $Nm * 0.10197;        // kgf.cm
-                case 1: return $Nm;                  // N.m
-                case 2: return $Nm * 10.2;           // Lbf.in
-                case 3: return $Nm * 8.85411;        // kgf.m
-                case 4: return $Nm * 100;            // cN.m
-                default: return 0;
-            }
-        } else {
-            switch ($to_unit) {
-                case 0: return $Nm / 9.80665;        // kgf.cm
-                case 1: return $Nm;                  // N.m
-                case 2: return $Nm / 0.0980665;      // Lbf.in
-                case 3: return $Nm / 0.112984829333; // kgf.m
-                case 4: return $Nm * 100;            // cN.m
-                default: return 0;
-            }
-        }
-    }
-
-
-
-
 
 
     public function lang_load(){
