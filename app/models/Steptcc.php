@@ -442,8 +442,7 @@ class Steptcc{
     }
 
     public function get_success_data_by_step() {
-        
-        // 查詢所有符合條件的 StepDelay
+
         $sql = "SELECT JOBID, SEQID, StepSelect, StepDelay 
                 FROM STEP_lst 
                 WHERE StepDelay > 0 AND StepDelay LIKE '%.%' 
@@ -452,40 +451,61 @@ class Steptcc{
         $statement->execute();
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-        if (!empty($rows)) {
-            foreach ($rows as $row) {
-                $original = (string)$row['StepDelay'];
+        if (empty($rows)) return 0;
 
-                // 無條件捨去到小數第 2 位
-                if (strpos($original, '.') !== false) {
-                    $parts = explode('.', $original);
-                    $intPart = $parts[0];
-                    $decPart = substr($parts[1], 0, 2); // 保留前兩位，不足補0
-                    $decPart = str_pad($decPart, 2, '0');
-                    $truncated = (float)($intPart . '.' . $decPart);
-                } else {
-                    $truncated = (float)$original;
+        // 使用交易處理所有更新
+        $this->db_iDas->beginTransaction();
+
+        $update_sql = "UPDATE STEP_lst 
+                    SET StepDelay = ? 
+                    WHERE JOBID = ? AND SEQID = ? AND StepSelect = ?";
+        $update_stmt = $this->db_iDas->prepare($update_sql);
+
+        
+
+        foreach ($rows as $row) {
+            $original = (string)$row['StepDelay'];
+
+            // 無條件捨去到小數第 2 位
+            if (strpos($original, '.') !== false) {
+                $parts = explode('.', $original);
+                $intPart = $parts[0];
+                $decPart = substr($parts[1], 0, 2);
+                $decPart = str_pad($decPart, 2, '0');
+                $truncated = (float)($intPart . '.' . $decPart);
+            } else {
+                $truncated = (float)$original;
+            }
+
+            $newDelay = (int)floor($truncated * 1000);
+
+            // 加入 retry 機制
+            $retry = 0;
+            $maxRetry = 3;
+            while (true) {
+                try {
+                    $update_stmt->execute([
+                        $newDelay,
+                        $row['JOBID'],
+                        $row['SEQID'],
+                        $row['StepSelect']
+                    ]);
+                    break;
+                } catch (PDOException $e) {
+                    if ($retry++ >= $maxRetry || stripos($e->getMessage(), 'locked') === false) {
+                        // 超過次數或不是 lock 問題，拋出錯誤
+                        $this->db_iDas->rollBack();
+                        throw $e;
+                    }
+                    usleep(100000); // 100ms 延遲後重試
                 }
-
-                // 乘以 1000 並無條件捨去（floor），確保為整數
-                $newDelay = (int)floor($truncated * 1000);
-
-                // 更新資料庫
-                $update_sql = "UPDATE STEP_lst 
-                            SET StepDelay = ? 
-                            WHERE JOBID = ? AND SEQID = ? AND StepSelect = ?";
-                $update_stmt = $this->db_iDas->prepare($update_sql);
-                $update_stmt->execute([
-                    $newDelay,
-                    $row['JOBID'],
-                    $row['SEQID'],
-                    $row['StepSelect']
-                ]);
             }
         }
 
+        $this->db_iDas->commit();
         return count($rows); // 回傳處理筆數
     }
+
 
 
 

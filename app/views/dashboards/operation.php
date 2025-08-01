@@ -143,197 +143,114 @@ function updateChartUrl(currentUrl, chart) {
 
 const chartMode = "<?php echo $data['chart_mode']; ?>";
 
+
 function renderChart(chart_mode, chart_info) {
     const chartDom = document.getElementById('chart');
-    echarts.dispose(chartDom);  // ✅ 清除舊圖
-    myChart = echarts.init(chartDom);
-    const language = getCookie('language');
-    const unit_name = chart_info.chart_unit_name;
+    echarts.dispose(chartDom);
+    const myChart = echarts.init(chartDom);
+
     const x_data_val = chart_info.x_val;
-    const y_data_val = chart_info.y_val;
-    const y_data_val_torque = chart_info.y_val_torque || [];
-    const y_data_val_rpm = chart_info.y_val_rpm || [];
+    const y_data_val = chart_info.y_val.map(Number);
+    const y_data_val_torque = chart_info.y_val_torque?.map(Number) || [];
+    const y_data_val_rpm = chart_info.y_val_rpm?.map(Number) || [];
+    const steps = (chart_info.steps || []).map(s => Number(s));
 
-    const translations = {
-        "zh-tw": { "Time": "時間", "Torque": "扭力", "Angle": "角度", "RPM": "轉速" },
-        "zh-cn": { "Time": "时间", "Torque": "扭力", "Angle": "角度", "RPM": "转速" }
+    const stepColors = {
+        1: '#0066ff', // 藍
+        2: '#cc0000', // 紅
+        3: '#009933', // 綠
+        4: '#ff9900', // 橘
+        5: '#6600cc'  // 紫
     };
-    const labels = translations[language] || { "Time": "Time", "Torque": "Torque", "Angle": "Angle", "RPM": "RPM" };
 
-    let xTitle = '', yTitle = '';
-    switch (chart_mode) {
-        case "1": xTitle = labels.Time; yTitle = labels.Torque; break;
-        case "2": xTitle = labels.Time; yTitle = labels.Angle; break;
-        case "3": xTitle = labels.Time; yTitle = labels.RPM; break;
-        case "4": xTitle = labels.Angle; yTitle = labels.Torque; break;
-        case "5": xTitle = labels.Time; break;
-        default: xTitle = 'X'; yTitle = 'Y';
-    }
+    const uniqueSteps = Array.from(new Set(steps)).filter(s => s >= 1 && s <= 5);
 
-    const tickCount = 6;
-    const safeMinTorque = Number(chart_info.min_torque ?? 0);
-    const safeMaxTorque = Number(chart_info.max_torque ?? 100);
-    const torqueStep = (safeMaxTorque - safeMinTorque) / (tickCount - 1);
-    const torqueTicks = Array.from({ length: tickCount }, (_, i) =>
-        parseFloat((safeMinTorque + i * torqueStep).toFixed(2))
-    );
+    // 建立多色折線圖，每個 Step 一條線
+    const generateStepSeries = (dataArr, stepArr, yAxisIndex = 0) => {
+        return uniqueSteps.map(stepNum => {
+            const seriesData = dataArr.map((v, i) => stepArr[i] === stepNum ? v : null);
+            const hasData = seriesData.some(v => v !== null && v !== undefined);
+
+            if (!hasData) return null;
+
+            return {
+                name: `Step${stepNum}`,
+                type: 'line',
+                symbol: 'none',
+                connectNulls: true,
+                yAxisIndex,
+                lineStyle: { width: 2, color: stepColors[stepNum] },
+                data: seriesData
+            };
+        }).filter(Boolean);
+    };
+
+    const plainTextTooltip = {
+        trigger: 'axis',
+        axisPointer: { type: 'none' },
+        formatter: function (params) {
+            let text = '';
+            params.forEach(p => {
+                const name = (p.seriesName || '').padEnd(10, ' ');
+                const val = (Array.isArray(p.value) ? p.value[1] : p.value ?? '').toString().padStart(8, ' ');
+                text += `${name}: ${val}\n`;
+            });
+            return text.trim();
+        }
+    };
 
     if (chart_mode === "5") {
-        const torqueRaw = y_data_val_torque.map(Number);
-        const rpmRaw = y_data_val_rpm.map(Number);
+        const rpmMin = chart_info.min_rpm ?? Math.floor(Math.min(...y_data_val_rpm) / 100) * 100;
+        const rpmMax = chart_info.max_rpm ?? Math.ceil(Math.max(...y_data_val_rpm) / 100) * 100;
 
-        let rpmMin = Math.min(...rpmRaw);
-        let rpmMax = Math.max(...rpmRaw);
-        if (rpmMin === rpmMax) {
-            rpmMin = Math.floor(rpmMin * 0.9);
-            rpmMax = Math.ceil(rpmMax * 1.1);
-        } else {
-            rpmMin = Math.floor(rpmMin / 100) * 100;
-            rpmMax = Math.ceil(rpmMax / 100) * 100;
-        }
+        const torqueSeries = generateStepSeries(y_data_val_torque, steps, 0);
+        const rpmSeries = {
+            name: 'RPM',
+            type: 'line',
+            symbol: 'none',
+            yAxisIndex: 1,
+            lineStyle: { width: 1.5, color: 'orange' },
+            data: y_data_val_rpm
+        };
 
         const option = {
-            tooltip: {
-                trigger: 'axis',
-                formatter: function (params) {
-                    return params.map(p => {
-                        const unit = p.seriesName === 'Torque' ? unit_name : 'RPM';
-                        return `<span style="color:${p.color}">${p.seriesName}:</span> ${p.value} ${unit}<br>`;
-                    }).join('');
-                }
-            },
-            grid: {
-                left: '10%',
-                right: '10%',
-                top: '10%',
-                bottom: '15%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                boundaryGap: false,
-                name: xTitle,
-                data: x_data_val
-            },
+            tooltip: plainTextTooltip,
+            xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true  } },
             yAxis: [
-                {
-                    type: 'value',
-                    name: `${labels.Torque} (${unit_name})`,
-                    position: 'left',
-                    min: safeMinTorque,
-                    max: safeMaxTorque,
-                    interval: torqueStep,
-                    splitNumber: tickCount - 1,
-                    axisLabel: {
-                        color: '#000',
-                        fontSize: 12,
-                        formatter: val => parseFloat(val.toFixed(5)).toString()
-                    },
-                    splitLine: { show: true }
-                },
-                {
-                    type: 'value',
-                    name: `${labels.RPM} (RPM)`,
-                    position: 'right',
-                    min: rpmMin,
-                    max: rpmMax,
-                    interval: 100,
-                    splitNumber: 7,
-                    axisLabel: { color: '#000', fontSize: 12 },
-                    splitLine: { show: false }
-                }
+                { type: 'value', name: 'Torque', splitLine: { show: true } },
+                { type: 'value', name: 'RPM', min: rpmMin, max: rpmMax, splitLine: { show: false } }
             ],
-            dataZoom: [
-                { type: 'inside', start: 0, end: 100 },
-                { type: 'slider', show: false, start: 0, end: 100 }
-            ],
-            series: [
-                {
-                    name: 'Torque',
-                    type: 'line',
-                    symbol: 'none',
-                    yAxisIndex: 0,
-                    itemStyle: { color: 'red' },
-                    lineStyle: { width: 0.75 },
-                    data: torqueRaw
-                },
-                {
-                    name: 'RPM',
-                    type: 'line',
-                    symbol: 'none',
-                    yAxisIndex: 1,
-                    itemStyle: { color: 'blue' },
-                    lineStyle: { width: 0.75 },
-                    data: rpmRaw
-                }
-            ]
+            series: [...torqueSeries, rpmSeries]
         };
 
         myChart.setOption(option);
         return;
     }
 
-    // 非 chart_mode 5 的處理
+    // chart_mode 1~4
     const option = {
-        tooltip: {
-            trigger: 'axis',
-            formatter: function (params) {
-                return params.map(p => `<span style="color:red;">${yTitle}:</span> ${p.value}<br>`).join('');
-            }
-        },
-        grid: {
-            left: '10%',
-            right: '10%',
-            top: '10%',
-            bottom: '15%',
-            containLabel: true
-        },
-        xAxis: {
-            type: 'category',
-            boundaryGap: false,
-            name: xTitle,
-            data: x_data_val
-        },
-        yAxis: (
-            ["1", "4"].includes(chart_mode) ? [{
-                type: 'value',
-                name: yTitle,
-                min: torqueTicks[0],
-                max: torqueTicks[tickCount - 1],
-                interval: torqueStep,
-                splitNumber: tickCount - 1,
-                axisLabel: { color: '#000', fontSize: 12 , formatter: val => parseFloat(val).toFixed(3) },
-                splitLine: { show: true }
-            }] : [ {
-                type: 'value',
-                name: yTitle,
-                axisLabel: { color: '#000', fontSize: 12 },
-                splitLine: { show: true }
-            }]
-        ),
-        dataZoom: [
-            { type: 'inside', start: 0, end: 100 },
-            { type: 'slider', show: false, start: 0, end: 100 }
-        ],
-        series: [{
-            name: '',
-            type: 'line',
-            symbol: 'none',
-            itemStyle: { color: 'red' },
-            lineStyle: { width: 0.75 },
-            data: y_data_val
-        }]
+        tooltip: plainTextTooltip,
+        xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true  } },
+        yAxis: { type: 'value', name: 'Torque', splitLine: { show: true } },
+        series: generateStepSeries(y_data_val, steps, 0)
     };
 
     myChart.setOption(option);
 }
 
 
+
+
+
+
+
+
+
+
 let previousChartInfo = null;
 
 function fetchChartAndRender() {
-    console.log("Fetching chart at", new Date().toLocaleTimeString());
-
+   
     fetch(`?url=Dashboards/operation&chart=${chartMode}&ajax=1`)
         .then(res => res.json())
         .then(data => {

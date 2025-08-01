@@ -587,14 +587,8 @@ class Settings extends Controller
     }
 
     public function Sync_check_db() {
-
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
-
-
-        //
-
-
 
         $argument = $_POST['argument'] ?? '';
 
@@ -611,11 +605,32 @@ class Settings extends Controller
 
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
 
-            //將 STEP_lst 中 StepDelay >0 且含小數點(排除 JOBID=0,221) 的值乘 1000 後更新，回傳筆數 
-            $this->stepModel->get_success_data_by_step();
+            // 1️⃣ 確保 StepDelay 更新成功
+            $maxAttempts = 5;
+            $attempt = 0;
+            $updatedRows = 0;
 
+            while ($attempt < $maxAttempts) {
+                $updatedRows = $this->stepModel->get_success_data_by_step();
+                if ($updatedRows >= 0) { 
+                    // 即使沒有符合條件的資料，也算成功
+                    $this->logMessage("StepDelay updated, rows: {$updatedRows}");
+                    break;
+                }
 
-            // Check if source files exist
+                $attempt++;
+                $this->logMessage("StepDelay update failed, retry {$attempt}...");
+                usleep(300_000); // 0.3 秒後再試
+            }
+
+            if ($attempt >= $maxAttempts) {
+                return $this->MiscellaneousModel->generateErrorResponse(
+                    'Error',
+                    'StepDelay update failed after multiple retries'
+                );
+            }
+
+            // 2️⃣ 檢查原始檔案是否存在
             if (!file_exists($src1) || !file_exists($src2)) {
                 $missingFiles = [];
                 if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
@@ -627,6 +642,7 @@ class Settings extends Controller
                 );
             }
 
+            // 3️⃣ 初始化 Modbus
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
             $modbus->port = 502;
@@ -687,6 +703,8 @@ class Settings extends Controller
 
         return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
     }
+
+
 
 
     public function Sync_check_db_load(){

@@ -36,7 +36,7 @@
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['total_fastening_times'];?></div>
                         </div>
                         <div class="row border-bottom">
-                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['torque'];?>(<?php echo $data['unit_name']?>):</div>
+                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['torque'];?>(<?php echo $text[$data['unit_name']];?>):</div>
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['min_torque']."/".$data['Tool_Info']['max_torque']; ?></div>
                         </div>
                         <div class="row border-bottom">

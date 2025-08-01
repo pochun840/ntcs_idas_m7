@@ -151,6 +151,34 @@ class Dashboard{
     }
 
 
+    public function get_step_only($id) {
+        $csv_folder = "/mnt/ramdisk/ftp/";
+        $csv_files = glob($csv_folder . $id . "__*.csv");
+        if (empty($csv_files)) return [];
+
+        // 取最新檔案
+        usort($csv_files, fn($a, $b) => filectime($b) - filectime($a));
+        $latest_file = $csv_files[0];
+
+        $csv_content = file_get_contents($latest_file);
+        if (empty($csv_content)) return [];
+
+        $lines = explode("\n", $csv_content);
+        $csv_array = array_filter(array_map('str_getcsv', $lines)); // 過濾空行
+
+        $step = [];
+        foreach ($csv_array as $index => $row) {
+            if ($index === 0) continue; // 跳過表頭
+            if (isset($row[4])) {
+                $step[] = $row[4]; // Step = E欄
+            }
+        }
+
+        return $step;
+    }
+
+
+
 
 
     public function get_csv_first_column($id) {

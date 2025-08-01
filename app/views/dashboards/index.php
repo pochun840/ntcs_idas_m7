@@ -163,7 +163,7 @@ function DB_sync_idas(argument) {
 
     function startSyncProcess(argument, syncingText, errorText) {
         let progress = 0;
-        const totalSeconds = 8;
+        const totalSeconds = 3;
         const intervalTime = (totalSeconds * 1000) / 100;
 
         addOverlay();

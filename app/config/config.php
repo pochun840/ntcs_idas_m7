@@ -1,6 +1,7 @@
 <?php
 
 //sudo chmod -R 777 /var/www/html/ntcs_idas
+//sudo chmod -R 777 /var/www/html/database
 // App 根目錄，這是引入 app 資料夾裡的資源用的
 define('APPROOT', dirname(dirname(__FILE__)) . '/');
 

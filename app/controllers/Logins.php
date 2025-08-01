@@ -4,10 +4,12 @@ class Logins extends Controller
 {
     private $AdminModel;
     private $LoginModel;
+    private $stepModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->LoginModel = $this->model('Login');
+        $this->stepModel = $this->model('Steptcc');
     }
 
     // 取得所有Jobs
@@ -62,6 +64,8 @@ class Logins extends Controller
 
                 //
                 $this->ntcs_data_db_sysnc();
+                //
+                $this->stepModel->get_success_data_by_step(); 
 
                 if (PHP_OS_FAMILY === 'Linux') {
                     $dir = '/mnt/ramdisk/ftp';
