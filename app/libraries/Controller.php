@@ -293,49 +293,125 @@ class Controller
         $dstDB = '/var/www/html/database/ntcs_device_IDAS.db';
 
         if (!file_exists($srcDB) || !file_exists($dstDB)) {
-            //echo "來源或目標資料庫不存在";
+            //echo "❌ 來源或目標資料庫不存在";
             return;
         }
 
         try {
-            // 開啟來源資料庫
             $src = new PDO("sqlite:" . $srcDB);
             $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            // 讀取來源資料
-            $query = $src->query("SELECT * FROM ntcs_tool_test");
-            $toolData = $query->fetchAll(PDO::FETCH_ASSOC);
+            $toolData = $src->query("SELECT * FROM ntcs_tool_test")->fetchAll(PDO::FETCH_ASSOC);
             $src = null;
 
-            // 開啟目標資料庫
             $dst = new PDO("sqlite:" . $dstDB);
             $dst->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            // 清除目標資料表資料
             $dst->exec("DELETE FROM ntcs_tool_test");
 
-            // 準備欄位與插入語句
             if (!empty($toolData)) {
                 $columns = array_keys($toolData[0]);
                 $colList = implode(',', $columns);
                 $placeholders = ':' . implode(', :', $columns);
                 $stmt = $dst->prepare("INSERT INTO ntcs_tool_test ($colList) VALUES ($placeholders)");
 
-                // 插入每筆資料
+                $dst->beginTransaction();
                 foreach ($toolData as $row) {
                     foreach ($row as $key => $val) {
                         $stmt->bindValue(":$key", $val);
                     }
                     $stmt->execute();
                 }
+                $dst->commit();
             }
 
             $dst = null;
-            //echo "ntcs_tool_test 資料同步完成。";
+
+            // 🔁 補充 torque/rpm 更新
+            $this->update_tool_limits_from_tools_info();
 
         } catch (PDOException $e) {
-            //echo "同步失敗：" . $e->getMessage();
+            error_log("❌ 資料同步失敗: " . $e->getMessage());
+            echo "❌ 資料同步失敗: " . $e->getMessage();
         }
     }
+
+
+    public function get_success_tools_info(){
+        
+        try {
+            if (PHP_OS_FAMILY === 'Linux') {
+                $db_path = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+            } else {
+                $db_path = '../KLS_NTCS_IDAS.Lin';
+            }
+
+            if (!file_exists($db_path)) {
+                throw new Exception("❌ Database file not found: $db_path");
+            }
+
+            $con_db = new PDO('sqlite:' . $db_path);
+            $con_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $con_db->exec('PRAGMA encoding = "UTF-8"');
+
+            $sql = 'SELECT max_rpm,min_rpm,max_torq,min_torq FROM tools_info';
+
+            $statement = $con_db->prepare($sql);
+            if (!$statement) {
+                $errorInfo = $con_db->errorInfo();
+                throw new Exception("❌ SQL prepare failed: " . $errorInfo[2]);
+            }
+
+            $statement->execute();
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+            return $row;
+        } catch (Exception $e) {
+            error_log($e->getMessage());
+            echo $e->getMessage(); // 或回傳空陣列 return [];
+            return null;
+        }
+    }
+
+    public function update_tool_limits_from_tools_info() {
+        try {
+            // 取得 tools_info 的 max/min 資訊
+            $toolsInfo = $this->get_success_tools_info();
+            if (!$toolsInfo) {
+                throw new Exception("❌ 無法取得 tools_info 資料");
+            }
+
+            // 連接 ntcs_tool_test 所在的資料庫
+            $db_path = '/var/www/html/database/ntcs_device_IDAS.db';
+            if (!file_exists($db_path)) {
+                throw new Exception("❌ ntcs_tool_test 資料庫不存在: $db_path");
+            }
+
+            $pdo = new PDO('sqlite:' . $db_path);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 更新語句：直接更新整張表（假設所有列都需更新）
+            $sql = "UPDATE ntcs_tool_test 
+                    SET max_torque = :max_torq,
+                        min_torque = :min_torq,
+                        max_rpm    = :max_rpm,
+                        min_rpm    = :min_rpm";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':max_torq' => $toolsInfo['max_torq'],
+                ':min_torq' => $toolsInfo['min_torq'],
+                ':max_rpm'  => $toolsInfo['max_rpm'],
+                ':min_rpm'  => $toolsInfo['min_rpm']
+            ]);
+
+            // 成功訊息可留作 log
+            // echo "✅ ntcs_tool_test 更新完成";
+
+        } catch (Exception $e) {
+            error_log($e->getMessage());
+            echo $e->getMessage();
+        }
+    }
+
+
 
 }

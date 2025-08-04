@@ -441,19 +441,18 @@ class Steptcc{
         return !empty($row['max_step']) ? intval($row['max_step']) : 0;
     }
 
+
     public function get_success_data_by_step() {
 
         $sql = "SELECT JOBID, SEQID, StepSelect, StepDelay 
                 FROM STEP_lst 
-                WHERE StepDelay > 0 AND StepDelay LIKE '%.%' 
-                AND JOBID NOT IN (0, 221)";
+                WHERE StepDelay > 0 AND JOBID NOT IN (0, 221)";
         $statement = $this->db_iDas->prepare($sql);
         $statement->execute();
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($rows)) return 0;
 
-        // 使用交易處理所有更新
         $this->db_iDas->beginTransaction();
 
         $update_sql = "UPDATE STEP_lst 
@@ -461,28 +460,21 @@ class Steptcc{
                     WHERE JOBID = ? AND SEQID = ? AND StepSelect = ?";
         $update_stmt = $this->db_iDas->prepare($update_sql);
 
-        
-
         foreach ($rows as $row) {
-            $original = (string)$row['StepDelay'];
+            $original = $row['StepDelay'];
+            $floatVal = floatval($original);
 
-            // 無條件捨去到小數第 2 位
-            if (strpos($original, '.') !== false) {
-                $parts = explode('.', $original);
-                $intPart = $parts[0];
-                $decPart = substr($parts[1], 0, 2);
-                $decPart = str_pad($decPart, 2, '0');
-                $truncated = (float)($intPart . '.' . $decPart);
+            // 判斷是否為整數（ex: 3.0、5.0）且數值 < 10，視為「秒」
+            if (fmod($floatVal, 1.0) === 0.0 && $floatVal < 10) {
+                $newDelay = (int)($floatVal * 1000);  // 例如 3 → 3000
             } else {
-                $truncated = (float)$original;
+                // 小數截斷至第 2 位（無條件捨去） → 毫秒
+                $truncated = floor($floatVal * 100) / 100;
+                $newDelay = (int)floor($truncated * 1000);
             }
 
-            $newDelay = (int)floor($truncated * 1000);
-
-            // 加入 retry 機制
-            $retry = 0;
-            $maxRetry = 3;
-            while (true) {
+            // Retry 機制（最多 3 次）
+            for ($retry = 0; $retry < 3; $retry++) {
                 try {
                     $update_stmt->execute([
                         $newDelay,
@@ -492,21 +484,18 @@ class Steptcc{
                     ]);
                     break;
                 } catch (PDOException $e) {
-                    if ($retry++ >= $maxRetry || stripos($e->getMessage(), 'locked') === false) {
-                        // 超過次數或不是 lock 問題，拋出錯誤
+                    if (stripos($e->getMessage(), 'locked') === false || $retry == 2) {
                         $this->db_iDas->rollBack();
                         throw $e;
                     }
-                    usleep(100000); // 100ms 延遲後重試
+                    usleep(100000); // wait 100ms
                 }
             }
         }
 
         $this->db_iDas->commit();
-        return count($rows); // 回傳處理筆數
+        return count($rows);
     }
-
-
 
 
 
