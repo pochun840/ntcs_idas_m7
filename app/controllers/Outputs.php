@@ -336,40 +336,37 @@ class Outputs extends Controller
        
     }  
     
-    public function check_job_event(){
-
+    public function check_job_event() {
         $input_check = true;
-        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $output_job_id  = $_POST['job_id'];
-        }else{ 
-            $input_check = false; 
-        }
-        if( !empty($_POST['output_event']) && isset($_POST['output_event'])  ){
-           $output_event = $_POST['output_event'];
-        }else{ 
-            $input_check = false; 
+
+        if (!empty($_POST['job_id']) && isset($_POST['job_id'])) {
+            $output_job_id = $_POST['job_id'];
+        } else {
+            $input_check = false;
         }
 
+        if (!empty($_POST['output_event']) && isset($_POST['output_event'])) {
+            $output_event = $_POST['output_event'];
+        } else {
+            $input_check = false;
+        }
 
-        //var_dump($_POST);die();
-
-        if($input_check){
+        if ($input_check) {
             $job_outputs = $this->OutputModel->check_job_event_conflict($output_job_id, $output_event);
-           
-            
+
             if (empty($job_outputs)) {
-                $job_outputs = 'no_data'; 
-            }else{
-                //若 signal 不是 1，durate 要清空
-                if (isset($job_outputs['signal']) && $job_outputs['signal'] != '1') {
-                    $job_outputs['durate'] = '';
-                }
+                echo json_encode(['status' => 'no_data']);
+                return;
             }
 
-            print_r($job_outputs);  
-        }
-     
+            // 若 signal 不是 1，durate 要清空
+            if (isset($job_outputs['signal']) && $job_outputs['signal'] != '1') {
+                $job_outputs['durate'] = '';
+            }
 
+            header('Content-Type: application/json');
+            echo json_encode($job_outputs);
+        }
     }
 
 
