@@ -30,7 +30,6 @@
                             <thead id="header-table">
                                 <tr class="w3-dark-grey"  style="font-size: 2.6vmin">
                                     <th><?php echo $text['step_id'];?></th>
-                                    <th><?php echo$text['step_name'];?></th>
                                     <th><?php echo $text['step_target_type'];?></th>
                                     <th><?php echo $text['direction'];?></th>
                                     <th><?php echo $text['rpm'];?></th>
@@ -43,7 +42,6 @@
                                 <?php foreach($data['step'] as $key =>$val){?>
                                     <tr>
                                         <td><?php echo $val['StepSelect'];?></td>
-                                        <td><?php echo $val['STEPname'];?></td>
                                         <td><?php echo $text[$data['target_option'][$val['StepOption']]];?></td>
                                         <td><?php echo $text[$data['direction'][$val['StepDirection']]];?></td>
                                         <td><?php echo $val['StepRPM'];?></td>

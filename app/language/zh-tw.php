@@ -262,13 +262,13 @@ $text['OK-Sequence'] = '工序完成信號';
 $text['OK-JOB'] = '完工信號';
 $text['Tool Runing'] = '馬達信號';
 $text['Tool Trigger'] = '啟動信號';
-$text['Reverse'] = '反向';
+$text['Reverse'] = '拆螺絲';
 $text['Reverse_mode'] = '拆螺絲模式';
 $text['UDEFINE1'] = '自定義1';
 $text['UDEFINE2'] = '自定義2';
 $text['SYS_READY'] = '系統就緒';
 $text['BS'] = 'BS';
-$text['Barcode'] = '條碼';
+$text['Barcode'] = '條碼停止';
 
 $text['output_replace_notice'] = '若設定已存在，將會取代原有設定';
 $text['input_replace_notice'] = '若設定已存在，將會取代原有設定';

@@ -26,6 +26,7 @@ class Tools extends Controller
         $gateway = $this->get_gateway_ip();
 
 
+
         if(!empty($controllers_info)){
             $step_torque_unit = (int)$controllers_info['torque_unit'];
             $unit_name  = $this->MiscellaneousModel->details('torque_unit');
@@ -49,7 +50,7 @@ class Tools extends Controller
             'Tool_Info' => $Tool_Info,
             'Controllers_Info' => $controllers_info,
             'IP' => $ip_addr,
-            'netmask ' => $netmask,
+            'netmask' => $netmask,
             'gateway' => $gateway,
             'unit_name' => $unit_name,
             'MAC' => $MAC,

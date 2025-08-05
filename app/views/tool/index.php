@@ -51,7 +51,7 @@
                      
 
                         <hr>
-
+                    
                         <h3 style="margin: 5px 3px 10px"><b><?php echo $text['controller_info'];?></b></h3>
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['controller_sn'];?>:</div>

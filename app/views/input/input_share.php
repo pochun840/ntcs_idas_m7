@@ -781,7 +781,7 @@ function get_input_by_job_id(jobid){
                     document.getElementById('103') && (document.getElementById('103').textContent = '清除');
                     document.getElementById('104') && (document.getElementById('104').textContent = '確認');
                     document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
+                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺絲');
                     document.getElementById('107') && (document.getElementById('107').textContent = '序列清除');
                     document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
                     document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
