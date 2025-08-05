@@ -222,6 +222,9 @@ function get_input_by_job_id(jobid) {
 
             // 語系切換顯示
             updateInputButtonLabels(getCookie('language'));
+
+            // 畫面同步禁用該 job 的項目
+            handleNewJobEvent();
         },
         error: function(xhr, status, error) {
             console.error("AJAX request failed:", status, error);
@@ -447,10 +450,20 @@ function crud_job_event(action) {
 
     switch (action) {
         case 'new':
-
             
+            // ✅ 重設畫面項目狀態
+            resetElementsByPrefix();
+
+            // ✅ 根據目前 job_id 快取資料，禁用已使用的項目
             handleNewJobEvent();
-            break;
+
+            // ✅ 開啟 modal
+            const newInputModal = document.getElementById('newinput');
+            if (getComputedStyle(newInputModal).display === 'none') {
+                showOverlay();
+                newInputModal.style.display = 'block';
+            }
+        break;
 
         case 'del':
             document.querySelector(".main-content").classList.add("overlay-active");
@@ -492,25 +505,34 @@ function crud_job_event(action) {
 }
 
 let allowCloseNewInput = true;
+
 function handleNewJobEvent() {
     const data = jobTempData[job_id] || { temp: [], tempA: [], temp_event: [] };
 
+    // ✅ 重設按鈕狀態
     resetElementsByPrefix();
+
+    // ✅ 清除所有禁用狀態並重新套用
     disableOptions('#Event_Option', [], false, true);
-
     disableElementsByIdList(data.temp);
-    disableOptions('#Event_Option', data.tempA, false, false);
-    disableOptions('#Event_Option', data.temp_event, true, false);
+    disableOptions('#Event_Option', data.tempA, false, false);  // 隱藏
+    disableOptions('#Event_Option', data.temp_event, true, false); // 灰色禁用
 
+    // ✅ 如果目前選中的 <option> 是已禁用的，就清空選擇
+    const selectEl = document.getElementById('Event_Option');
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    if (selectedOption && selectedOption.disabled) {
+        selectEl.value = "-1"; // 切回預設提示選項
+        selectEl.dispatchEvent(new Event('change')); // 若有需要觸發 onchange
+    }
+
+    // ✅ 顯示 Modal（如果尚未開啟）
     const newInputModal = document.getElementById('newinput');
     const isCurrentlyVisible = getComputedStyle(newInputModal).display !== 'none';
-
     if (!isCurrentlyVisible) {
-        // Modal 尚未打開才打開遮罩與 modal
         showOverlay();
         newInputModal.style.display = 'block';
     }
-    // 否則什麼都不做，避免被蓋掉或重新初始化
 }
 
 
@@ -667,7 +689,8 @@ function create_input_id(){
                 input_seqid: input_seqid
             },
             success: function (response) {
-               input_success_res(response, job_id, get_input_by_job_id, 'newinput');
+                input_success_res(response, job_id, get_input_by_job_id, 'newinput');
+                get_input_by_job_id(job_id);
                 hideOverlay();
 
             },
@@ -679,6 +702,20 @@ function create_input_id(){
     }
 }
 
+function clearNewInputForm() {
+    // 清空下拉選單
+    const eventOption = document.getElementById("Event_Option");
+    if (eventOption) eventOption.selectedIndex = 0;
+
+    // 清除 pin 選擇
+    document.querySelectorAll('input[name="pin_option"]').forEach(el => el.checked = false);
+
+    // 清除 gateconfirm（如有）
+    document.querySelectorAll('input[name="gateconfirm"]').forEach(el => el.checked = false);
+
+    // 其他欄位如有可自行加上清空
+    // document.getElementById("some_field")?.value = '';
+}
 
 function copy_input_id() {
    var language = getCookie('language') || 'en-us';
@@ -729,7 +766,7 @@ function copy_input_id() {
    }, 3000);
 }
 
-function get_input_by_job_id(jobid){
+function get_input_by_job_id(jobid, callback){
     $.ajax({
         url: "?url=Inputs/get_input_by_job_id",
         method: "POST",
@@ -740,9 +777,18 @@ function get_input_by_job_id(jobid){
 
             var data = JSON.parse(response);
             var job_inputlist = data.job_inputlist;
-                temp = Array.isArray(data.temp) ? data.temp : [];
+
+            temp = Array.isArray(data.temp) ? data.temp : [];
             tempA = Array.isArray(data.tempA) ? data.tempA : [];
             temp_event = Array.isArray(data.temp_event) ? data.temp_event : [];
+
+
+            // ✅ 更新快取
+            jobTempData[jobid] = {
+                temp: temp,
+                tempA: tempA,
+                temp_event: temp_event
+            };
 
 
             document.getElementById("input_jobid_select").innerHTML = job_inputlist;
@@ -781,7 +827,7 @@ function get_input_by_job_id(jobid){
                     document.getElementById('103') && (document.getElementById('103').textContent = '清除');
                     document.getElementById('104') && (document.getElementById('104').textContent = '確認');
                     document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺絲');
+                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
                     document.getElementById('107') && (document.getElementById('107').textContent = '序列清除');
                     document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
                     document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
@@ -1004,21 +1050,31 @@ function job_confirm(){
 
 
 function input_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
-    var responseData = JSON.parse(response);
+    const responseData = JSON.parse(response);
     alertify.alert(responseData.res_type, responseData.res_msg);
 
-    setTimeout(function () {
+    setTimeout(() => {
         alertify.closeAll();
         document.querySelector(".main-content").classList.remove("overlay-active");
         document.getElementById('spinner').style.display = 'none';
 
-        if (typeof callbackFn === 'function') {
-            callbackFn(job_id);
-        }
-    }, 2000);
+        // ✅ 清空 select
+        const selectEl = document.getElementById('Event_Option');
+        if (selectEl) selectEl.value = '-1';
 
-    const hideEl = document.getElementById(hideElementId);
-    if (hideEl) hideEl.style.display = 'none';
+        // ✅ 清空 radio
+        document.querySelectorAll('input[name="pin_option"]').forEach(r => r.checked = false);
+        document.querySelectorAll('input[name="gateconfirm"]').forEach(r => r.checked = false);
+
+        // ✅ 先更新 jobTempData，再觸發畫面更新
+        get_input_by_job_id(job_id, function () {
+            //crud_job_event('new');
+        });
+
+        const hideEl = document.getElementById(hideElementId);
+        if (hideEl) hideEl.style.display = 'none';
+
+    }, 2000);
 }
 
 

@@ -265,8 +265,8 @@ $text['Reverse_mode'] = '拆螺丝模式';
 $text['UDEFINE1'] = '自定义1';
 $text['UDEFINE2'] = '自定义2';
 $text['SYS_READY'] = '系統就緒';
-$text['BS'] = 'BS';
-$text['system_barcode'] = '条码';
+$text['BS'] = '条码';
+$text['system_barcode'] = '条码停止';
 
 
 $text['output_replace_notice'] = '若设定已存在，将会取代原有设定';

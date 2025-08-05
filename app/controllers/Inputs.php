@@ -48,35 +48,32 @@ class Inputs extends Controller
     }
 
     // get_input_by_job_id
-    public function get_input_by_job_id($job_id){
-
+    public function get_input_by_job_id($job_id) {
         $input_check = true;
+        $mode = $_POST['mode'] ?? 'edit'; // 預設 edit 模式
 
-        $mode = $_POST['mode'] ?? 'edit';  // 預設為 edit 模式
-
-        if (!empty($_POST['jobid']) && isset($_POST['jobid'])) {
+        if (!empty($_POST['jobid'])) {
             $job_id = $_POST['jobid'];
         } else {
-            $input_check = false; 
+            $input_check = false;
         }
 
-        $temp  = array(); 
-        $tempA = array();
-        $temp_event = array();
-        $job_inputlist = ''; 
+        $temp = [];        // radio 禁用 ID 清單
+        $tempA = [];       // select 隱藏
+        $temp_event = [];  // select 灰色
+        $job_inputlist = '';
 
         if ($input_check) {
 
-            // ✅ 若是從 job_id = 1 做 copy，則清空所有事件資料
+            // ✅ 若是從 job_id = 1 複製，則不帶入任何事件
             if ($mode === 'copy' && $job_id == 1) {
-                $response = array(
+                echo json_encode([
                     'job_inputlist' => '',
                     'temp' => [],
                     'tempA' => [],
                     'temp_event' => [],
                     'isTemplate' => true
-                );
-                echo json_encode($response);
+                ]);
                 return;
             }
 
@@ -84,23 +81,32 @@ class Inputs extends Controller
             $job_inputs = $this->InputModel->get_input_by_job_id($job_id);
 
             if (!empty($job_inputs)) {
-                foreach ($job_inputs as $kk => $vv) {
+                foreach ($job_inputs as $vv) {
 
+                    // radio 禁用用 ID
                     if (!empty($vv['Pin'])) {
-                        $pin_number = $vv['Pin'];
-                        $gateconfirm = $vv['Wp_Ready_Confirm'];
-                        $temp[] = "pin{$pin_number}_high";
-                        $temp[] = "pin{$pin_number}_low";
-                        $temp[] = "edit_pin{$pin_number}_high";
-                        $temp[] = "edit_pin{$pin_number}_low";
-                        //$temp[] = "check_{$gateconfirm}";
-
-                        $temp_event[] = $vv['EvenID'];
-                        $tempA[] = $pin_number;
+                        $pin = $vv['Pin'];
+                        $temp[] = "pin{$pin}_high";
+                        $temp[] = "pin{$pin}_low";
+                        $temp[] = "edit_pin{$pin}_high";
+                        $temp[] = "edit_pin{$pin}_low";
+                        $tempA[] = $pin;
                     }
 
-                    $isMobile = $this->isMobileCheck();
+                    // 被使用的事件 ID
+                    if (!empty($vv['EvenID'])) {
+                        $temp_event[] = $vv['EvenID'];
+                    }
 
+                    // 額外邏輯補齊
+                    if (in_array("101", $temp_event) && !in_array("102", $temp_event)) {
+                        $temp_event[] = "102";
+                    } elseif (in_array("102", $temp_event) && !in_array("101", $temp_event)) {
+                        $temp_event[] = "101";
+                    }
+
+                    // 表格輸出
+                    $isMobile = $this->isMobileCheck();
                     if ($isMobile) {
                         $img = ($vv['signal'] == 1)
                             ? '<img src="./img/high.png" style="max-width: 50px;">'
@@ -121,33 +127,23 @@ class Inputs extends Controller
                         $job_inputlist .= "<td>EVENT</td>";
                         $job_inputlist .= "</tr>";
                     }
-
-                    // 補齊 101 與 102 事件對應
-                    if (!empty($temp_event)) {
-                        if (in_array("101", $temp_event) && !in_array("102", $temp_event)) {
-                            $temp_event[] = "102";
-                        } elseif (in_array("102", $temp_event) && !in_array("101", $temp_event)) {
-                            $temp_event[] = "101";
-                        }
-                    }
                 }
             }
         }
 
+        // 確保 temp_event 是 array
         if (empty($temp_event)) {
-            $temp_event = '';
+            $temp_event = [];
         }
 
-        $response = array(
+        // 輸出 JSON
+        echo json_encode([
             'job_inputlist' => $job_inputlist,
             'temp' => $temp,
             'tempA' => $tempA,
             'temp_event' => $temp_event
-        );
-
-        echo json_encode($response);
+        ]);
     }
-
 
 
     public function check_job_event_conflict($value='')
