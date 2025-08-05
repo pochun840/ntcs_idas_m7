@@ -21,14 +21,14 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
 
         echo "<tr>
                 <td>{$row['id']}</td>
-                <td>{$row['data_time']}</td>
+                <td style='white-space: nowrap;'>{$row['data_time']}</td>
                 <td>{$row['job_name']}</td>
                 <td>{$row['sequence_name']}</td>
                 <td>{$row['final_fasten_torque']}</td>
                 <td>{$text[$unit_arr[$row['torque_unit']]]}</td>
                 <td>{$row['total_fasten_angle']}</td>
-                <td>{$row['total_screw_count']}</td>
                 <td>{$row['last_screw_count']}</td>
+                <td>{$row['total_screw_count']}</td>
                 <td class='{$class}'>{$status_arr[$status]}</td>
               </tr>";
     }
@@ -79,14 +79,14 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                     <thead>
                                         <tr style="font-size: 16px; color: white;">
                                             <th><?php echo $text['column_no']; ?></th>
-                                            <th><?php echo $text['column_datetime']; ?></th>
+                                            <th style="white-space: nowrap;"><?php echo $text['column_datetime']; ?></th>
                                             <th><?php echo $text['job_name']; ?></th>
                                             <th><?php echo $text['seq_name']; ?></th>
                                             <th><?php echo $text['torque']; ?></th>
                                             <th><?php echo $text['column_unit']; ?></th>
                                             <th><?php echo $text['angle']; ?></th>
-                                            <th><?php echo $text['column_total']; ?></th>
                                             <th><?php echo $text['column_count']; ?></th>
+                                            <th><?php echo $text['column_total']; ?></th>
                                             <th><?php echo $text['column_status']; ?></th>
                                         </tr>
                                     </thead>
@@ -274,14 +274,14 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
             const html = `
                 <tr>
                     <td>${row.id}</td>
-                    <td>${row.data_time}</td>
+                    <td style="white-space: nowrap;" >${row.data_time}</td>
                     <td>${row.job_name}</td>
                     <td>${row.sequence_name}</td>
                     <td>${row.final_fasten_torque}</td>
                     <td>${unit_arr[row.torque_unit]}</td>
                     <td>${row.total_fasten_angle}</td>
-                    <td>${row.total_screw_count}</td>
                     <td>${row.last_screw_count}</td>
+                    <td>${row.total_screw_count}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);

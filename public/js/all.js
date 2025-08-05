@@ -218,24 +218,28 @@ function deleteCookie(name) {
 }
 
 function closebutton(elementId) {
-    // 關閉指定 modal
     const modal = document.getElementById(elementId);
-    if (modal) {
-        modal.style.display = 'none';
+    if (!modal) return;
+
+    // 只允許 newinput 在顯示時被關閉（避免誤關閉）
+    if (elementId === 'newinput') {
+        const isVisible = getComputedStyle(modal).display !== 'none';
+        if (!isVisible) return; // 已關閉就不重複處理
     }
 
-    // 移除 main-content 的效果（若有）
+    modal.style.display = 'none';
+
     const mainContent = document.querySelector(".main-content");
     if (mainContent) {
         mainContent.classList.remove("overlay-active");
     }
 
-    // 關閉遮罩（若存在）
     const overlay = document.getElementById("modal-overlay");
     if (overlay) {
         overlay.style.display = "none";
     }
 }
+
 
 
 

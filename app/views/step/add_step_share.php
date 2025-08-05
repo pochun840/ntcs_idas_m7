@@ -501,8 +501,10 @@
         );
         if (selectVal === 2) {
             document.getElementById('StepTorque_item')?.style.setProperty('display', 'block');
+            document.getElementById('over_angle_stop_item')?.style.setProperty('display', 'block');
         } else if (selectVal === 1) {
             document.getElementById('StepAngle_item')?.style.setProperty('display', 'block');
+            document.getElementById('over_angle_stop_item')?.style.setProperty('display', 'none');
         }
 
         // 額外欄位顯示切換

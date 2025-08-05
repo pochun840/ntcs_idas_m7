@@ -221,6 +221,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div id='over_angle_stop_item'>
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['Over_Angle_Stop'];?>:</div>
                                     <div class="col-9">
@@ -235,6 +236,7 @@
                                         <label class="form-check-label" for="over_angle_stop_on"><?php echo $text['switch_on']; ?></label>
                                         </div>
                                     </div>
+                                </div>
                                 </div>
                                 <div class="col-12 row t2 mt-3">
                                     <div class="col-3"><?php echo $text['direction'];?>:</div>

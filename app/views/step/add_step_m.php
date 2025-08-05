@@ -235,18 +235,20 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-6 t1"><?php echo $text['Over_Angle_Stop'];?>:</div>
-                                <div class="col t2">
-                                    <div class="form-check form-check-inline zoom">
-                                        <input class="form-check-input" type="radio" name="over_angle_stop" id="over_angle_stop_off" value="0"
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['OverAngleStop'] == 0) ? 'checked' : ''; ?>>
-                                        <label class="form-check-label" for="over_angle_stop_off"><?php echo $text['switch_off']; ?></label>
-                                    </div>
+                            <div  id='over_angle_stop_item'>
+                                <div class="row">
+                                    <div class="col-6 t1"><?php echo $text['Over_Angle_Stop'];?>:</div>
+                                    <div class="col t2">
                                         <div class="form-check form-check-inline zoom">
-                                        <input class="form-check-input" type="radio" name="over_angle_stop" id="over_angle_stop_on" value="1"
-                                        <?php echo ($data['type'] == 'edit' && $data['step']['OverAngleStop'] == 1) ? 'checked' : ''; ?>>
-                                        <label class="form-check-label" for="over_angle_stop_on"><?php echo $text['switch_on']; ?></label>
+                                            <input class="form-check-input" type="radio" name="over_angle_stop" id="over_angle_stop_off" value="0"
+                                            <?php echo ($data['type'] == 'edit' && $data['step']['OverAngleStop'] == 0) ? 'checked' : ''; ?>>
+                                            <label class="form-check-label" for="over_angle_stop_off"><?php echo $text['switch_off']; ?></label>
+                                        </div>
+                                            <div class="form-check form-check-inline zoom">
+                                            <input class="form-check-input" type="radio" name="over_angle_stop" id="over_angle_stop_on" value="1"
+                                            <?php echo ($data['type'] == 'edit' && $data['step']['OverAngleStop'] == 1) ? 'checked' : ''; ?>>
+                                            <label class="form-check-label" for="over_angle_stop_on"><?php echo $text['switch_on']; ?></label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

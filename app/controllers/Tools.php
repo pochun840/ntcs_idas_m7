@@ -22,6 +22,8 @@ class Tools extends Controller
         $controllers_info = $this->ToolModel->GetControllerInfo();
         $MAC = $this->getMacAddress();
         $ip_addr = $this->getIp();
+        $netmask = $this->get_netmask('eth0');
+        $gateway = $this->get_gateway_ip();
 
 
         if(!empty($controllers_info)){
@@ -47,6 +49,8 @@ class Tools extends Controller
             'Tool_Info' => $Tool_Info,
             'Controllers_Info' => $controllers_info,
             'IP' => $ip_addr,
+            'netmask ' => $netmask,
+            'gateway' => $gateway,
             'unit_name' => $unit_name,
             'MAC' => $MAC,
         ];
@@ -88,5 +92,31 @@ class Tools extends Controller
             return strtoupper($ip_addr);
         }
     }
+
+    public function get_subnet($ip, $netmask = '255.255.255.0') {
+        $ip_long = ip2long($ip);
+        $mask_long = ip2long($netmask);
+        $subnet_long = $ip_long & $mask_long;
+        return long2ip($subnet_long);
+    }
+
+    public  function get_netmask($interface = 'eth0') {
+        $output = shell_exec("ip -o -f inet addr show $interface | awk '{print $4}'");
+        if (preg_match('/\d+\.\d+\.\d+\.\d+\/(\d+)/', $output, $matches)) {
+            $cidr = (int)$matches[1];
+            return long2ip(-1 << (32 - $cidr));
+        }
+    return null;
+    }
+
+    public function get_gateway_ip() {
+        $output = shell_exec("ip route | grep default");
+        if (preg_match('/default via ([0-9.]+)/', $output, $matches)) {
+            return $matches[1];  // e.g. 192.168.0.1
+        }
+        return null;
+
+}
+
 }
 ?>

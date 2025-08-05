@@ -342,6 +342,9 @@ $text['controller_version'] = '控制器版本';
 $text['mcb_version'] = 'MCB 版本';
 $text['image_version'] = 'Image 版本';
 $text['network_ip'] = '网路 IP';
+$text['mask'] = '子网掩码';
+$text['mask'] = '网路 IP';
+$text['gateway'] = '网关';
 $text['Mac'] = 'MAC地址';
 $text['refresh'] = '刷新';
 
@@ -610,19 +613,21 @@ $error_message['target_torque_empty'] = '目标扭力为必填栏位';
 
 
 $error_message['ERR_0'] = '';
-$error_message['ERR_1'] = 'ERR-CONT-TEMP';
-$error_message['ERR_2'] = 'ERR_MOT_TEMP';
-$error_message['ERR_3'] = '马达电流过高';
-$error_message['ERR_4'] = '马达峰值电流过高';
-$error_message['ERR_5'] = '扭力超出上限';
-$error_message['ERR_6'] = '马达运转异常';
-$error_message['ERR_7'] = '锁附时间低于下限';
-$error_message['ERR_8'] = '超时锁附';
-$error_message['ERR_9'] = '编码器无脉波';
-$error_message['ERR_10'] = '霍尔传感器无脉波';
-$error_message['ERR_11'] = '母线电压过高';
-$error_message['ERR_12'] = '母线电压过低';
-$error_message['ERR_13'] = '设定工序异常';
+$error_message['ERR_1'] =  'NO-ERR';
+$error_message['ERR_2'] =  '温度异常';
+$error_message['ERR_3'] =  '堵转保护';
+$error_message['ERR_4'] =  '电流保护';
+$error_message['ERR_5'] =  '与TMD通讯异常';
+$error_message['ERR_6'] =  '传感器异常';
+$error_message['ERR_7'] =  '接错起子';
+$error_message['ERR_8'] =  '超时失败';
+$error_message['ERR_9'] =  '中断警报';
+$error_message['ERR_10'] = '总步骤角度上限错误';
+$error_message['ERR_11'] = '总步骤角度下限错误';
+$error_message['ERR_12'] = '扭力上限错误';
+$error_message['ERR_13'] = '扭力下限错误';
+
+
 $error_message['ERR_14'] = '设定步骤异常';
 $error_message['ERR_15'] = '起子控制器通讯异常';
 $error_message['ERR_16'] = '控制器Flash验证码错误';

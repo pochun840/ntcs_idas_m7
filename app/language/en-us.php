@@ -356,7 +356,9 @@ $text['controller_version'] = 'Controller Version';
 $text['mcb_version'] = 'MCB Version';
 $text['image_version'] = 'Image Version';
 $text['network_ip'] = 'Netword IP';
+$text['mask'] = 'Mask';
 $text['Mac'] = 'Mac';
+$text['gateway'] = 'Gateway';
 $text['refresh'] = 'Refresh';
 
 //Setting
@@ -611,20 +613,22 @@ $error_message['JOB_COMPLETED'] = 'JOB-COMPLETED';
 $error_message['WORKPIECE_RECOVERY'] = 'WORKPIECE-RECOVERY';
 $error_message['target_torque_empty'] = 'target_torque is a required field';
 
-$error_message['ERR_0'] = '';
-$error_message['ERR_1'] = 'ERR-CONT-TEMP';
-$error_message['ERR_2'] = 'ERR-MOT-TEMP';
-$error_message['ERR_3'] = 'ERR-MOT-CURR';
-$error_message['ERR_4'] = 'ERR-MOT-PEAK-CURR';
-$error_message['ERR_5'] = 'ERR-HIGH-TORQUE';
-$error_message['ERR_6'] = 'ERR-DEADLOCK';
-$error_message['ERR_7'] = 'ERR-PROC-MINTIME';
-$error_message['ERR_8'] = 'ERR-PROC-MAXTIME';
-$error_message['ERR_9'] = 'ERR-ENCODER';
-$error_message['ERR_10'] = 'ERR-HALL';
-$error_message['ERR_11'] = 'ERR-BUSVOLT-HIGH';
-$error_message['ERR_12'] = 'ERR-BUSVOLT-LOW';
-$error_message['ERR_13'] = 'ERR-PROC-NA';
+$error_message['ERR_0'] =  '';
+$error_message['ERR_1'] =  'NO-ERR';
+$error_message['ERR_2'] =  'Temperature Abnormal';
+$error_message['ERR_3'] =  'Stall Protection';
+$error_message['ERR_4'] =  'Overcurrent Protection';
+$error_message['ERR_5'] =  'Communication Error with TMD';
+$error_message['ERR_6'] =  'Sensor Error';
+$error_message['ERR_7'] =  'Incorrect Driver Connected';
+$error_message['ERR_8'] =  'Timeout Failure';
+$error_message['ERR_9'] =  'Interrupt Alarm';
+$error_message['ERR_10'] = 'Total Step Angle Upper Limit Error';
+$error_message['ERR_11'] = 'Total Step Angle Lower Limit Error';
+$error_message['ERR_12'] = 'Torque Upper Limit Error';
+$error_message['ERR_13'] = 'Torque Lower Limit Error';
+
+
 $error_message['ERR_14'] = 'ERR-STEP-NA';
 $error_message['ERR_15'] = 'ERR-DMS-COMM';
 $error_message['ERR_16'] = 'ERR-FLASH';

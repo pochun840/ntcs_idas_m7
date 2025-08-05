@@ -5,22 +5,25 @@ class Data extends Controller
     private $DataModel;
     private $MiscellaneousModel;
     private $ToolModel;
+    private $SettingModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->DataModel = $this->model('Datas');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->ToolModel = $this->model('Tool');
+        $this->SettingModel = $this->model('Setting');
     }
 
     // 取得所有Jobs
      public function index(){
+
+        
         
         $type = 'ALL';
         $this->ntcs_data_db_sysnc();
         $isMobile = $this->isMobileCheck();
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
-
         // 取得當前年份
         if (PHP_OS_FAMILY === 'Linux') {
             $db_path = "/var/www/html/database/data".date('Y').".db";
@@ -94,6 +97,10 @@ class Data extends Controller
         
         $input_check = true;
 
+        //取得控制器的編號 
+        
+        $controller_info = $this->SettingModel->GetControllerInfo();
+
         // 檢查開始日期
         if (!empty($_POST['start_date']) && isset($_POST['start_date'])) {
             $start_date = $_POST['start_date'] . ":00";
@@ -121,9 +128,12 @@ class Data extends Controller
 
             $dataset = array_slice($dataset, 0, 10000);
             $csv_headers = array_keys($dataset[0]);
-            $timestamp = date("Ymd");
-            $csv_filename = "NTCS_data_{$timestamp}.csv";
-            $zip_filename = "NTCS_data_{$timestamp}.zip";
+
+            date_default_timezone_set('Asia/Taipei'); 
+            $timestamp = date("Y-m-d_Hi");
+
+            $csv_filename = $controller_info['device_id']."_data_{$timestamp}.csv";
+            $zip_filename = $controller_info['device_id']."_data_{$timestamp}.zip";
 
             if ($expert_val === "0") {
                 // 匯出 CSV

@@ -46,18 +46,33 @@ window.onclick = function(event) {
 // 提前宣告供事件處理用（避免多次綁定）
 let filteredPins = [];
 
-// 抽出事件處理函式，供 'new' 模式綁定使用
 function handleEventChange(e) {
-    const selectedOptionId = e.target.value;
-    const groupA = ['7', '8', '9'];
-    const groupB = ['12', '13', '14', '15', '16'];
-    const isSpecial = groupA.includes(selectedOptionId);
-    const isGroupB = groupB.includes(selectedOptionId);
+    const selectedId = e.target.value;
+    const isGroupA = ['7', '8', '9'].includes(selectedId);
+    const isGroupB = ['12', '13', '14', '15', '16'].includes(selectedId);
 
-    toggleElementsInRange(1, 11, 2, isSpecial);
-    if (!isSpecial) disableElements(filteredPins);
-    if (isGroupB) disableAllPinsAndTimes(1, 11);
+    toggleElementsInRange(1, 11, 2, isGroupA);
+
+    if (!isGroupA) {
+        disableElements(filteredPins);
+    }
+
+    if (isGroupB) {
+        // Disable pin1~11
+        for (let i = 1; i <= 11; i++) {
+            const pin = document.getElementById(`pin${i}_1`);
+            if (pin) pin.disabled = true;
+        }
+
+        // Enable time1~11
+        for (let i = 1; i <= 11; i++) {
+            const time = document.getElementById(`time${i}`);
+            if (time) time.disabled = false;
+        }
+    }
 }
+
+
 
 function crud_job_event(argument) {
     const table = document.getElementById('output_table');
@@ -137,6 +152,16 @@ function crud_job_event(argument) {
 
             disableOptions('#Event_Option', tempA, false, true);
             disableOptions('#Event_Option', temp_event, true, false);
+
+            // ✅ Event_Option == 12 時，禁用 pin*_1
+            if (eventOption?.value === "12") {
+                for (let i = 1; i <= 11; i++) {
+                    const pinEl = document.getElementById(`pin${i}_1`);
+                    if (pinEl) pinEl.disabled = true;
+                }
+            }
+            
+            console.log(eventOption.value);
         break;
 
         case 'edit':
@@ -179,8 +204,18 @@ function crud_job_event(argument) {
                 if (timeEl) timeEl.disabled = false;
             }
 
+            // ✅ 在這裡判斷是否有 edit_pinX_1 被選，若有則解除對應 edit_timeX disabled
+            for (let i = 1; i <= 11; i++) {
+                const pin = document.getElementById(`edit_pin${i}_1`);
+                const time = document.getElementById(`edit_time${i}`);
+                if (pin?.checked && time) {
+                    time.disabled = false;
+                }
+            }
+
             get_output_info(job_id, output_event);
         break;
+
 
         case 'copy':
             if (!output_event) return;
@@ -254,7 +289,7 @@ function toggleElementsInRange(start, end, suffix, disable) {
         }
 
         var timeId = 'time' + i;
-        console.log(timeId);
+        //console.log(timeId);
         var timeElement = document.getElementById(timeId);
         if (timeElement) {
             timeElement.disabled = disable;
@@ -740,17 +775,16 @@ function updateInputsBasedOnRadioSelection() {
     }
 }
 
-function get_output_info(job_id,output_event){
-    
-    if(job_id && output_event){
-     $.ajax({
-             url: "?url=Outputs/check_job_event",
-             method: "POST",
-             data: { 
-                 job_id: job_id,
-                 output_event: output_event
-             },
-             success: function(response) {
+function get_output_info(job_id, output_event) {
+    if (job_id && output_event) {
+        $.ajax({
+            url: "?url=Outputs/check_job_event",
+            method: "POST",
+            data: { 
+                job_id: job_id,
+                output_event: output_event
+            },
+            success: function(response) {
                 if (response === 'no_data') {
                     getLanguageMessage('language');
                     return;
@@ -758,107 +792,81 @@ function get_output_info(job_id,output_event){
 
                 document.getElementById('edit_output').style.display = 'block';
 
-
                 var responseJSON = JSON.stringify(response);
-
                 console.log(responseJSON);
                 
                 var cleanString = responseJSON.replace(/Array|\\n/g, '');
-                var cleanString = cleanString.substring(2, cleanString.length - 2);
+                cleanString = cleanString.substring(2, cleanString.length - 2);
                 var [, job_id] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, output_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, output_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, ''];
                 var [, wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, 0];
                 var [, wave_on] = cleanString.match(/\[durate]\s*=>\s*([^ ]+)/) || [, 0];
 
-
-                var edit_output_pin = "edit_pin" + output_pin + "_"+ wave;
+                // 取得並勾選對應的 radio button
+                var edit_output_pin = "edit_pin" + output_pin + "_" + wave;
                 var radioButton = document.getElementById(edit_output_pin);
-
                 if (radioButton) {
-                    radioButton.removeAttribute('disabled');  
+                    radioButton.removeAttribute('disabled');
+                    radioButton.checked = true;
                 } else {
                     console.warn('Radio button not found:', edit_output_pin); 
                 }
 
-                var time_ms = 'edit_time'+ output_pin;
-                if(wave != 2){
-                    var time_id = 'edit_time' + output_pin;
-                    var element = document.getElementById(time_id);
-                    
-                    if(element){
-                        element.disabled = true
-                    }
+                // ✅ 控制對應時間欄位的啟用與值
+                const timeInput = document.getElementById(`edit_time${output_pin}`);
+                if (timeInput) {
+                    timeInput.disabled = (wave == 2); // wave=2 禁用時間欄位
+                    timeInput.value = (wave_on === 0) ? '' : wave_on;
                 }
-                    
-                //完工信號 && 馬達信號 && 啟動信號
-                if (output_event == 8  || output_event == 6 || output_event == 7 ) {
-                  
-                    for(let i = 1; i <= 11; i++) {
-                        let element1 = document.getElementById(`edit_pin${i}_0`);
-                        if (element1) {
-                            element1.disabled = true;
-                        }
-                
-                        let element2 = document.getElementById(`edit_pin${i}_1`);
-                        if (element2) {
-                            element2.disabled = true;
-                        }
+
+                // ✅ 完工信號(6)、馬達信號(7)、啟動信號(8) → 禁用 pin0, pin1，並強制選 pin3
+                if (output_event == 6 || output_event == 7 || output_event == 8) {
+                    for (let i = 1; i <= 11; i++) {
+                        const pin0 = document.getElementById(`edit_pin${i}_0`);
+                        const pin1 = document.getElementById(`edit_pin${i}_1`);
+                        if (pin0) pin0.disabled = true;
+                        if (pin1) pin1.disabled = true;
                     }
 
                     if (Array.isArray(temp)) {
-                        //過濾出包含 "edit_pin" 的字串
                         const filteredArray = temp.filter(item => item.includes("edit_pin"));
                         const updatedArray = filteredArray.map(item => {
-                            // 如果字串為空，直接返回
-                            if (item.length === 0) {
-                                return item;
-                            }
-                            //強制字串的最後一個字元更換為 '3'
-                            return item.slice(0, -1) + '3';
+                            if (item.length === 0) return item;
+                            return item.slice(0, -1) + '3'; // 強制轉為 pinX_3
                         });
-                        
+
                         updatedArray.forEach(item => {
                             const radio = document.getElementById(item);
-                            if (radio && radio.type === 'radio') {
+                            if (radio?.type === 'radio') {
                                 radio.disabled = true;
                             }
                         });
-
                     }
-                    
                 }
 
-                let result = edit_output_pin.replace(/^edit_pin/, "");
-                result = result.replace(/(_[0-9]{1,2})$/, ""); 
+                // 安全再 disable 一次（前面處理過就會被覆蓋）
+                const timeIdFinal = 'edit_time' + output_pin;
+                const timeElementFinal = document.getElementById(timeIdFinal);
+                if (timeElementFinal && wave == 2) {
+                    timeElementFinal.disabled = true;
+                }
 
-                //檢查id = new_variable是否存在,存在做disabled
-                var new_variable = 'edit_time'+ result;
-                var element = document.getElementById(new_variable);
-                if (element) {
-                    element.disabled = true;  
-                }
-          
-                document.getElementById(time_ms).value = (wave_on === 0) ? '' : wave_on;
-                old_output_even = output_event;
-                if(radioButton){
-                    radioButton.checked = true;
-                }
-                 
+                // 選擇框同步
                 document.querySelector("select[name='edit_event_option']").value = output_event;
                 document.getElementById("edit_event_option").onchange = function() {
                     var selectedValue = this.value; 
                 };
 
-
-             },
-             error: function(xhr, status, error) {
-                 console.error("AJAX request failed:", status, error);
-             }
-     });      
+                old_output_even = output_event;
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+            }
+        });
     }
-  
 }
+
 
 
 function toggleOnputTime(inputId, checked, option) {

@@ -45,6 +45,18 @@ document.getElementById("Event_Option").onchange = function() {
     handleEventChange(selectedValue); 
 };
 
+// 點擊 modal 外部自動關閉（但用 closebutton 做完整收尾）
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('newinput');
+
+    if (!modal) return;
+
+    // 如果 modal 顯示中且點擊目標是 modal 本身（不是裡面內容）
+    if (modal.style.display === 'block' && event.target === modal) {
+        closebutton('newinput');
+    }
+});
+
 // Div Mode
 function toggleDivs() {
     var tableInputSetting = document.getElementById('TableInputSetting');
@@ -479,23 +491,26 @@ function crud_job_event(action) {
     }
 }
 
-
+let allowCloseNewInput = true;
 function handleNewJobEvent() {
-    // 讀取該 job_id 的資料
     const data = jobTempData[job_id] || { temp: [], tempA: [], temp_event: [] };
 
-    // 清空之前狀態
-    resetElementsByPrefix(); // 重置 input 類元素
-    disableOptions('#Event_Option', [], false, true); // reset select 所有 option 狀態
+    resetElementsByPrefix();
+    disableOptions('#Event_Option', [], false, true);
 
-    // 重新套用 disabled 狀態
-    disableElementsByIdList(data.temp);                          // radio/input disable
-    disableOptions('#Event_Option', data.tempA, false, false);   // 隱藏已被選過的 option
-    disableOptions('#Event_Option', data.temp_event, true, false); // 灰色處理
+    disableElementsByIdList(data.temp);
+    disableOptions('#Event_Option', data.tempA, false, false);
+    disableOptions('#Event_Option', data.temp_event, true, false);
 
-    // 顯示 modal
-    showOverlay();
-    document.getElementById('newinput').style.display = 'block';
+    const newInputModal = document.getElementById('newinput');
+    const isCurrentlyVisible = getComputedStyle(newInputModal).display !== 'none';
+
+    if (!isCurrentlyVisible) {
+        // Modal 尚未打開才打開遮罩與 modal
+        showOverlay();
+        newInputModal.style.display = 'block';
+    }
+    // 否則什麼都不做，避免被蓋掉或重新初始化
 }
 
 
