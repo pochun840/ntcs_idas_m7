@@ -195,7 +195,21 @@
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Background_Color_text'];?></div>
 
-
+    
+     <div class="row t2">
+        <div class="col-3 t1"><?php echo $text['OK_Sequence'];?>:</div>
+        <div class="col t2" >
+            <div class="col-1 form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_green" value="0"  <?php echo $data['controller_info']['okseqcolor'] == 0 ? 'checked="checked"' : ''; ?>>
+                <label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_yellow" value="1"  <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?> >
+                <label class="form-check-label" for="`"><?php echo $text['yellow_text'];?></label>
+            </div>
+        </div>
+    </div>
+    
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['job_ok'];?>:</div>
         <div class="col t2" >
@@ -211,19 +225,7 @@
     </div>
 
 
-    <div class="row t2">
-        <div class="col-3 t1"><?php echo $text['OK_Sequence'];?>:</div>
-        <div class="col t2" >
-            <div class="col-1 form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_green" value="0"  <?php echo $data['controller_info']['okseqcolor'] == 0 ? 'checked="checked"' : ''; ?>>
-                <label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_yellow" value="1"  <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?> >
-                <label class="form-check-label" for="`"><?php echo $text['yellow_text'];?></label>
-            </div>
-        </div>
-    </div>
+   
 
 
     <div style="text-align: center;margin-top: 30px; margin-bottom:10px">
