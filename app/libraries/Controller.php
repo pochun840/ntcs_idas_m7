@@ -333,7 +333,7 @@ class Controller
             $dst = null;
 
             // 🔁 補充 torque/rpm 更新
-            $this->update_tool_limits_from_tools_info();
+            //$this->update_tool_limits_from_tools_info();
 
         } catch (PDOException $e) {
             error_log("❌ 資料同步失敗: " . $e->getMessage());

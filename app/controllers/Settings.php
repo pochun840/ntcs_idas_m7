@@ -595,28 +595,26 @@ class Settings extends Controller
         $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
         $midPath1     = '/mnt/ramdisk/11.Lin';
         $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
+        $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
 
         $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
         $midPath2     = '/mnt/ramdisk/11.db';
         $finalPath2   = '/mnt/ramdisk/ftp/11.db';
-
-        $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
         $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
 
-
-        $src3 = '/var/www/html/database/ntcs_device_IDAS.db';
-        $dst3 = '/home/kls/NTCS7/ntcs_device.db';
+        $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
+        $dst3         = '/home/kls/NTCS7/ntcs_device.db';
 
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
 
-
+            // ✅ 先同步 device.db (src3 → dst3)
             if (file_exists($src3)) {
                 if (!copy($src3, $dst3)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
                 }
                 @chmod($dst3, 0777);
             }
-            
+
             // 1️⃣ 確保 StepDelay 更新成功
             $maxAttempts = 5;
             $attempt = 0;
@@ -624,8 +622,7 @@ class Settings extends Controller
 
             while ($attempt < $maxAttempts) {
                 $updatedRows = $this->stepModel->get_success_data_by_step();
-                if ($updatedRows >= 0) { 
-                    // 即使沒有符合條件的資料，也算成功
+                if ($updatedRows >= 0) {
                     $this->logMessage("StepDelay updated, rows: {$updatedRows}");
                     break;
                 }
@@ -636,7 +633,7 @@ class Settings extends Controller
             }
 
             if ($attempt >= $maxAttempts) {
-                return $this->MiscellaneousModel->generateErrorResponse(
+                $this->MiscellaneousModel->generateErrorResponse(
                     'Error',
                     'StepDelay update failed after multiple retries'
                 );
@@ -648,7 +645,7 @@ class Settings extends Controller
                 if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
                 if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
 
-                return $this->MiscellaneousModel->generateErrorResponse(
+                $this->MiscellaneousModel->generateErrorResponse(
                     'Error',
                     'Source file(s) missing: ' . implode(', ', $missingFiles)
                 );
@@ -663,60 +660,59 @@ class Settings extends Controller
             try {
                 // ----------- Sync LIN File -----------
                 if (!$this->safeCopy($src1, $midPath1)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1");
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1");
                 }
                 @chmod($midPath1, 0777);
 
                 if (!$this->safeCopy($midPath1, $finalPath1)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath1");
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath1");
                 }
                 unlink($midPath1);
                 $this->logMessage("$src1 copied to FTP");
 
                 $this->notifyModbus($modbus, [1, 12593], "LIN");
 
-                // Rename LIN file
                 if (!$this->safeCopy($finalPath1, $renamedPath1)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
                 }
                 unlink($finalPath1);
                 $this->logMessage("$finalPath1 renamed to $renamedPath1");
 
                 usleep(1_000_000); // sleep 1 sec
 
-                // ----------- Sync DB File -----------
+                // ----------- Sync DB File (barcode) -----------
                 if (!$this->safeCopy($src2, $midPath2)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2");
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2");
                 }
                 @chmod($midPath2, 0777);
 
                 if (!$this->safeCopy($midPath2, $finalPath2)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath2");
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath2");
                 }
                 unlink($midPath2);
                 $this->logMessage("$src2 copied to FTP");
 
                 $this->notifyModbus($modbus, [1, 12593], "DB");
 
-                // Rename DB file
                 if (!$this->safeCopy($finalPath2, $renamedPath2)) {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
                 }
                 unlink($finalPath2);
                 $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
-                
-
-                return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+                // ✅ 最後回傳成功訊息（純 JSON）
+                $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
 
             } catch (Exception $e) {
                 $this->logMessage('Modbus write fail: ' . $e->getMessage());
-                return $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
+                $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
             }
         }
 
-        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+        // ❌ 非 Linux 或參數錯誤
+        $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
     }
+
 
 
 
