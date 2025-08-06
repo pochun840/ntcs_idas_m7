@@ -254,13 +254,13 @@ class Data extends Controller
             $color_arr['okjobcolor'] = $Controller_Info['okjobcolor'];
 
             if(!empty($color_arr)){
-                if( $color_arr['okseqcolor']  == 1){
+                if( $color_arr['okseqcolor']  == 0){
                     $color_arr['okseqcolor_text'] = 'status-ok';
                 }else{
                     $color_arr['okseqcolor_text'] = 'status-warn';
                 }
 
-                if( $color_arr['okjobcolor']  == 1){
+                if( $color_arr['okjobcolor']  == 0){
                     $color_arr['okjobcolor_text'] = 'status-ok';
                 }else{
                     $color_arr['okjobcolor_text'] = 'status-warn';

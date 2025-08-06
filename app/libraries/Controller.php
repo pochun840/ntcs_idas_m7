@@ -271,6 +271,13 @@ class Controller
         $this->sync_ntcs_tool_data();
     }
 
+    public function ntcs_device_db_load() {
+        $this->sync_db(
+            '/home/kls/NTCS7/ntcs_device.db',
+            '/var/www/html/database/ntcs_device_IDAS.db'
+        );
+    }
+
     private function sync_db($src, $dst) {
         if (!file_exists($src)) {
             return;

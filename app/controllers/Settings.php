@@ -603,8 +603,20 @@ class Settings extends Controller
         $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
         $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
 
+
+        $src3 = '/var/www/html/database/ntcs_device_IDAS.db';
+        $dst3 = '/home/kls/NTCS7/ntcs_device.db';
+
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
 
+
+            if (file_exists($src3)) {
+                if (!copy($src3, $dst3)) {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
+                }
+                @chmod($dst3, 0777);
+            }
+            
             // 1️⃣ 確保 StepDelay 更新成功
             $maxAttempts = 5;
             $attempt = 0;
@@ -693,6 +705,8 @@ class Settings extends Controller
                 unlink($finalPath2);
                 $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
+                
+
                 return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
 
             } catch (Exception $e) {
@@ -706,53 +720,53 @@ class Settings extends Controller
 
 
 
-
-    public function Sync_check_db_load(){
-
+    public function Sync_check_db_load() {
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
 
-        // 設定來源與目的地檔案路徑
-        $src1 = '/home/kls/NTCS7/KLS_NTCS.Lin';
-        $dst1 = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-
-        $src2 = '/home/kls/NTCS7/ntcs_barcode.db';
-        $dst2 = '/var/www/html/database/ntcs_barcode_IDAS.db';
-
-        // 預設來源與目的地為 Controller → iDAS
-        $Con_DB_Location = $src1;
-        $Das_DB_Location = $dst1;
-
-        if (!empty($argument) && PHP_OS_FAMILY === 'Linux') {
-            
-
-            if ($argument === 'C2D') {
-                // Controller → iDAS 同步檔案
-                if (file_exists($Con_DB_Location)) {
-                    if (copy($Con_DB_Location, $Das_DB_Location)) {
-                        //將 STEP_lst 中 StepDelay >0 且含小數點(排除 JOBID=0,221) 的值乘 1000 後更新，回傳筆數 
-                        $this->stepModel->get_success_data_by_step();
-                        return $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
-
-                    } else {
-                        return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
-                    }
-                } else {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
-                }
-            }
-
-            // 預留其他參數使用（例如 D2C）
+        if (empty($argument) || PHP_OS_FAMILY !== 'Linux') {
             return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
         }
 
-        // 非法參數或非 Linux 環境
-        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+        // 定義來源與目的地檔案清單（Controller → iDAS）
+        $fileList = [
+            '/home/kls/NTCS7/KLS_NTCS.Lin'      => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
+            '/home/kls/NTCS7/ntcs_barcode.db'   => '/var/www/html/database/ntcs_barcode_IDAS.db',
+            '/home/kls/NTCS7/ntcs_device.db'    => '/var/www/html/database/ntcs_device_IDAS.db',
+            '/home/kls/NTCS7/ntcs_data.db'      => '/var/www/html/database/ntcs_data.db',
+        ];
 
-    
+        if ($argument === 'C2D') {
+            $copiedCount = 0;
+            foreach ($fileList as $src => $dst) {
+                if (file_exists($src)) {
+                    if (copy($src, $dst)) {
+                        $copiedCount++;
+
+                        // 如果是特定檔案可額外執行後處理
+                        if (basename($src) === 'KLS_NTCS.Lin') {
+                            $this->stepModel->get_success_data_by_step();
+                        }
+                    } else {
+                        return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy: $src → $dst");
+                    }
+                } else {
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Source file not found: $src");
+                }
+            }
+
+            return $this->MiscellaneousModel->generateErrorResponse(
+                'Success',
+                "SYNC  files " . ($text['success'] ?? 'success')
+            );
+        }
+
+        // 預留其他參數（例如 D2C）
+        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument');
     }
+
 
 
     /**
