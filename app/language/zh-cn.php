@@ -138,8 +138,10 @@ $text['Run_Down_Speed'] = '转速(圈/分钟)';
 
 $text['Downshift_Enable'] = '降速启动';
 $text['Downshift_Torque'] = '降速点扭力';
+$text['Downshift_Torque_temp'] = '降檔扭力';
 $text['Downshift_Angle'] = '降速点角度(度)';
 $text['Downshift_Speed'] = '降速点转速';
+$text['Downshift_Speed_temp'] = '降檔转速';
 $text['Monitor_Angle'] = '监控角度';
 $text['Over_Angle_Stop'] = '超过角度停止';
 $text['High_Angle'] = '角度上限(度)'; //High Angle( &#870 )
@@ -347,6 +349,7 @@ $text['mask'] = '网路 IP';
 $text['gateway'] = '网关';
 $text['Mac'] = 'MAC地址';
 $text['refresh'] = '刷新';
+$text['db_version'] = '数据库版本';
 
 //Setting
 $text['controller_setting'] = '控制器设定';

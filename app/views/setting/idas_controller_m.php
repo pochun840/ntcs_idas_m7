@@ -75,18 +75,13 @@
                 <div class="col-6 t1"><?php echo $text['system_batch'];?>:</div>
                 <div class="col t2" >
                     <div class="col-4 form-check form-check-inline">
-                        <!--
-                        <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1" <//?php echo $data['controller_info']['batch'] == 1 ? 'checked="checked"' : ''; ?>>
-                        --> 
-                        <input class="form-check-input" type="radio" name="batch-mode-option" id="dec" value="1">
-                        <label class="form-check-label" for="dec"><?php echo $text['system_dec'];?></label>
+                        <input class="form-check-input" type="radio" name="counting_method" id="dec" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?>>
+                        <label class="form-check-label" for="dec"><?php echo $text['system_inc'];?></label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <!--
-                        <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2" <//?php echo $data['controller_info']['batch'] == 2 ? 'checked="checked"' : ''; ?>>
-                        -->
-                        <input class="form-check-input" type="radio" name="batch-mode-option" id="inc" value="2">
-                        <label class="form-check-label" for="inc"><?php echo $text['system_inc'];?></label>
+                        
+                        <input class="form-check-input" type="radio" name="counting_method" id="inc" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?> >
+                        <label class="form-check-label" for="inc"><?php echo $text['system_dec'];?></label>
                     </div>
                 </div>
             </div>
@@ -122,14 +117,14 @@
             <div class="col t1" style="font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
 
             <div class="row t2">
-                <div class="col-6 t1"><?php echo $text['Downshift_Torque'];?>:</div>
+                <div class="col-6 t1"><?php echo $text['Downshift_Torque_temp'];?>(%):</div>
                 <div class="col-3 t2">
                     <input id="global_downshift_torque" name="global_downshift_torque" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_torque']) ? $data['controller_info']['global_downshift_torque'] : ''; ?>" class="t3 form-control"  required>
                     <div class="invalid-feedback"></div>
                 </div>
             </div>
             <div class="row t2">
-                <div class="col-6 t1"><?php echo $text['Downshift_Speed'];?>:</div>
+                <div class="col-6 t1"><?php echo $text['Downshift_Speed_temp'];?>(%):</div>
                 <div class="col-3 t2">
                     <input id="global_downshift_speed" name="global_downshift_speed" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_speed']) ? $data['controller_info']['global_downshift_speed'] : ''; ?>" class="t3 form-control"  required>
                     <div class="invalid-feedback"></div>

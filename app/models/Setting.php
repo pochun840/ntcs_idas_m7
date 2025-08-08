@@ -380,7 +380,7 @@ class Setting{
     //get all job seq
     public function get_seq_list($job_id)
     {
-        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst  WHERE  JOBID = :JOBID AND act = 1 order by SEQID  ASC ";
+        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst  WHERE  JOBID = :JOBID AND skip = 0 order by SEQID  ASC ";
         $statement = $this->db_iDas ->prepare($sql);
         $statement->bindValue(':JOBID', $job_id);
         $results = $statement->execute();
@@ -609,7 +609,7 @@ class Setting{
 
     public function get_seq_list_for_modbus($job_id){
 
-        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst WHERE JOBID = :JOBID AND act = 1 order by SEQID ASC ";
+        $sql = "SELECT JOBID,SEQID,SEQname FROM SEQ_lst WHERE JOBID = :JOBID AND skip = 0 order by SEQID ASC ";
         $statement = $this->db_iDas->prepare($sql);
         $statement->bindValue(':JOBID', $job_id);
         $results = $statement->execute();

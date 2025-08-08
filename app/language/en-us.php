@@ -137,8 +137,10 @@ $text['Run_Down_Speed'] = 'Run Down Speed';
 
 $text['Downshift_Enable'] = 'Downshift Enable';
 $text['Downshift_Torque'] = 'Downshift Torque';
+$text['Downshift_Torque_temp'] = 'Downshift Torque';
 $text['Downshift_Angle'] = 'Downshift Angle ( &#870 )';
 $text['Downshift_Speed'] = 'Downshift Speed';
+$text['Downshift_Speed_temp'] = 'Downshift Speed';
 $text['Monitor_Angle'] = 'Monitor Angle';
 $text['Over_Angle_Stop'] = 'Over Angle Stop';
 $text['High_Angle'] = 'High Angle ( &#870 )'; //High Angle( &#870 )
@@ -360,6 +362,7 @@ $text['mask'] = 'Mask';
 $text['Mac'] = 'Mac';
 $text['gateway'] = 'Gateway';
 $text['refresh'] = 'Refresh';
+$text['db_version'] = 'Database Version';
 
 //Setting
 $text['controller_setting'] = 'Controller Setting';

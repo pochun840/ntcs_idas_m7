@@ -135,8 +135,10 @@ $text['Run_Down_Speed'] = '轉速(圈/分鐘)';
 
 $text['Downshift_Enable'] = '降速啟動';
 $text['Downshift_Torque'] = '降速點扭力';
+$text['Downshift_Torque_temp'] = '降檔扭力';
 $text['Downshift_Angle'] = '降速點角度';
 $text['Downshift_Speed'] = '降速點轉速';
+$text['Downshift_Speed_temp'] = '降檔轉速';
 $text['Monitor_Angle'] = '監控角度';
 $text['Over_Angle_Stop'] = '超過角度停止';
 $text['High_Angle'] = '角度上限(度)'; //High Angle( &#870 )

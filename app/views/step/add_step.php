@@ -160,11 +160,11 @@
                                         </div>
                                         <div class="ps-5" style="display:inline-block;">
                                             <label class="form-check-label" for="monitor_torque_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
-                                            <input id="step_limit_hi_tor"  name= '' class="form-control form-control-sm" style=" width: 40px !important;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 2) ? htmlspecialchars($data['step']['StepLimiHi']) : ''; ?>">
+                                            <input id="step_limit_hi_tor"  min="0" max="99" name= '' class="form-control form-control-sm" style=" width: 40px !important;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 2) ? htmlspecialchars($data['step']['StepLimiHi']) : ''; ?>">
 
                                             <div class="invalid-feedback"></div>
                                             <label class="form-check-label ps-3" for="monitor_torque_lower"><?php echo $text['Lower_text'].'(%)'; ?></label>
-                                            <input id="step_limit_lo_tor" name= '' class="form-control form-control-sm" style=" width: 40px !important;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 2) ? htmlspecialchars($data['step']['StepLimiLo']) : ''; ?>">
+                                            <input id="step_limit_lo_tor" class="form-control form-control-sm" style=" width: 40px !important;" value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 2) ? htmlspecialchars($data['step']['StepLimiLo']) : ''; ?>">
 
                                             <div class="invalid-feedback"></div>
                                         </div>
@@ -195,10 +195,10 @@
                                         </div>
                                         <div class="ps-5" style="display:inline-block;">
                                             <label class="form-check-label" for="monitor_angle_upper"><?php echo $text['Upper_text'].'(%)'; ?></label>
-                                            <input id="step_limit_hi_ang"  class="form-control form-control-sm" style=" width: 40px !important; " value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 1) ? htmlspecialchars($data['step']['StepLimiHi']) : ''; ?>">
+                                            <input id="step_limit_hi_ang"  min="0" max="99"  class="form-control form-control-sm" style=" width: 40px !important; " value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 1) ? htmlspecialchars($data['step']['StepLimiHi']) : ''; ?>">
                                             <div class="invalid-feedback"></div>
                                             <label class="form-check-label ps-3" for="monitor_angle_upper"><?php echo $text['Lower_text'].'(%)'; ?></label>
-                                            <input id="step_limit_lo_ang"  class="form-control form-control-sm" style=" width: 40px !important; " value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 1) ? htmlspecialchars($data['step']['StepLimiHi']) : ''; ?>">
+                                            <input id="step_limit_lo_ang" min="0" max="99"  class="form-control form-control-sm" style=" width: 40px !important; " value="<?php echo ($data['type'] === 'edit' && isset($data['step']['StepOption'], $data['step']['StepLimiHi']) && $data['step']['StepOption'] == 1) ? htmlspecialchars($data['step']['StepLimiHi']) : ''; ?>">
                                             <div class="invalid-feedback"></div>
                                         </div>
                                     </div>

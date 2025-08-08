@@ -5,12 +5,14 @@ class Inputs extends Controller
 
     private $InputModel;
     private $MiscellaneousModel;
+    private $jobModel;
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->InputModel = $this->model('Input');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->jobModel = $this->model('Job');
     }
 
     // 取得所有Inputs
@@ -444,7 +446,7 @@ class Inputs extends Controller
             }
             echo $res_msg;   
         }
-    }   
+    } 
     
     
 }

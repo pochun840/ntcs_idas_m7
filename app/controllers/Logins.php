@@ -10,6 +10,7 @@ class Logins extends Controller
     {
         $this->LoginModel = $this->model('Login');
         $this->stepModel = $this->model('Steptcc');
+        $this->AdminModel = $this->model('Admin');
     }
 
     // 取得所有Jobs
@@ -64,8 +65,7 @@ class Logins extends Controller
 
                 //
                 $this->ntcs_data_db_sysnc();
-                //
-                $this->stepModel->get_success_data_by_step(); 
+                $this->set_ver();
 
                 if (PHP_OS_FAMILY === 'Linux') {
                     $dir = '/mnt/ramdisk/ftp';
@@ -297,5 +297,16 @@ class Logins extends Controller
 
         return rmdir($dir);
     }
+
+    // #IDAS上傳 20250624 修改：僅保留步驟 10 與 12
+    public function set_ver($debug = false) {
+
+        $info_json_url ='/var/www/html/ntcs_idas/info.json';
+        $verify_data = json_decode(@file_get_contents($info_json_url), true);
+
+        $iDas_Version = $this->AdminModel->Get_Das_Config('idas_version');
+        $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);  
+    }
+
 
 }

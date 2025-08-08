@@ -81,11 +81,11 @@
         <div class="col t2" >
             <div class="col-1 form-check form-check-inline">
                 <input class="form-check-input" type="radio" name="counting_method" id="dec" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?>>
-                <label class="form-check-label" for="dec"><?php echo $text['system_dec'];?></label>
+                <label class="form-check-label" for="dec"><?php echo $text['system_inc'];?></label>
             </div>
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="radio" name="counting_method" id="inc" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?> >
-                <label class="form-check-label" for="inc"><?php echo $text['system_inc'];?></label>
+                <label class="form-check-label" for="inc"><?php echo $text['system_dec'];?></label>
             </div>
         </div>
     </div>
@@ -124,14 +124,14 @@
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
 
     <div class="row t2">
-        <div class="col-3 t1"><?php echo $text['Downshift_Torque'];?>:</div>
+        <div class="col-3 t1"><?php echo $text['Downshift_Torque_temp'];?>(%):</div>
         <div class="col-3 t2">
             <input id="global_downshift_torque" name="global_downshift_torque" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_torque']) ? $data['controller_info']['global_downshift_torque'] : ''; ?>" class="t3 form-control"  required>
             <div class="invalid-feedback"></div>
         </div>
     </div>
     <div class="row t2">
-        <div class="col-3 t1"><?php echo $text['Downshift_Speed'];?>:</div>
+        <div class="col-3 t1"><?php echo $text['Downshift_Speed_temp'];?>(%):</div>
         <div class="col-3 t2">
             <input id="global_downshift_speed" name="global_downshift_speed" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_speed']) ? $data['controller_info']['global_downshift_speed'] : ''; ?>" class="t3 form-control"  required>
             <div class="invalid-feedback"></div>
@@ -242,7 +242,7 @@
             { id: 'control_name', pattern: /^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'storage_warning', pattern: /^\d{0,4}$/, min: 50, max: 95 },
             { id: 'torque_filter', pattern: /^\d{1,3}(\.\d{1,6})?$/, min: 0.0, max: 200 },
-            { id: 'global_downshift_torque', pattern: /^\d{0,5}?$/, min: 0, max: 1000 },
+            { id: 'global_downshift_torque', pattern: /^\d{0,5}?$/, min: 0, max: 100 },
             { id: 'global_downshift_speed', pattern: /^\d{0,5}?$/, min: 0, max: 100 },
         ];
 

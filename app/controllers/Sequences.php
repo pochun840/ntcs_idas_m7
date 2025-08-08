@@ -645,10 +645,6 @@ class Sequences extends Controller
                         $precision
                     ); 
                 }
-
-
-                //$seq_unit = (int)$sequences['seq_unit'];
-              
             }
 
 
@@ -664,7 +660,6 @@ class Sequences extends Controller
             'torque_unit_code' => $torque_unit_code
         ];
         
-
         $this->view($isMobile ? 'sequences/add_seq_m' : 'sequences/add_seq', $data);
     }
 

@@ -156,8 +156,7 @@
         });
     }
 
-
-
+    
     function getCheckboxValue_seq() {
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         let total = 0;

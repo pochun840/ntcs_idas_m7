@@ -615,31 +615,7 @@ class Settings extends Controller
                 @chmod($dst3, 0777);
             }
 
-            // 1️⃣ 確保 StepDelay 更新成功
-            $maxAttempts = 5;
-            $attempt = 0;
-            $updatedRows = 0;
-
-            while ($attempt < $maxAttempts) {
-                $updatedRows = $this->stepModel->get_success_data_by_step();
-                if ($updatedRows >= 0) {
-                    $this->logMessage("StepDelay updated, rows: {$updatedRows}");
-                    break;
-                }
-
-                $attempt++;
-                $this->logMessage("StepDelay update failed, retry {$attempt}...");
-                usleep(300_000); // 0.3 秒後再試
-            }
-
-            if ($attempt >= $maxAttempts) {
-                $this->MiscellaneousModel->generateErrorResponse(
-                    'Error',
-                    'StepDelay update failed after multiple retries'
-                );
-            }
-
-            // 2️⃣ 檢查原始檔案是否存在
+            //  檢查原始檔案是否存在
             if (!file_exists($src1) || !file_exists($src2)) {
                 $missingFiles = [];
                 if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
@@ -651,7 +627,7 @@ class Settings extends Controller
                 );
             }
 
-            // 3️⃣ 初始化 Modbus
+            //初始化 Modbus
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
             $modbus->port = 502;
@@ -743,7 +719,7 @@ class Settings extends Controller
 
                         // 如果是特定檔案可額外執行後處理
                         if (basename($src) === 'KLS_NTCS.Lin') {
-                            $this->stepModel->get_success_data_by_step();
+                            //$this->stepModel->get_success_data_by_step();
                         }
                     } else {
                         return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy: $src → $dst");

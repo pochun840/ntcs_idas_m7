@@ -236,9 +236,4 @@ function copy_job_by_id(jobid) {
         }
     });
 }
-
-
-
-
-
 </script>

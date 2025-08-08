@@ -45,17 +45,6 @@ document.getElementById("Event_Option").onchange = function() {
     handleEventChange(selectedValue); 
 };
 
-// 點擊 modal 外部自動關閉（但用 closebutton 做完整收尾）
-window.addEventListener('click', function(event) {
-    const modal = document.getElementById('newinput');
-
-    if (!modal) return;
-
-    // 如果 modal 顯示中且點擊目標是 modal 本身（不是裡面內容）
-    if (modal.style.display === 'block' && event.target === modal) {
-        closebutton('newinput');
-    }
-});
 
 // Div Mode
 function toggleDivs() {
@@ -153,13 +142,8 @@ function handleCopyEvent() {
             opt.classList.add('disabled_input');
         }
     });
-
+    document.getElementById('copyinput').style.display = 'block';
     const selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
-    if (selectedRows.length > 0) {
-        document.getElementById('copyinput').style.display = 'block';
-    } else {
-        getLanguageMessage('language');
-    }
 }
 
 function handleUnifiedEvent() {
@@ -463,6 +447,10 @@ function crud_job_event(action) {
                 showOverlay();
                 newInputModal.style.display = 'block';
             }
+
+            // ✅ 綁定：禁止點視窗外關閉（只綁一次）
+            bindPreventOutsideCloseNewInput();
+
         break;
 
         case 'del':
@@ -486,11 +474,8 @@ function crud_job_event(action) {
             break;
 
         case 'copy':
-            document.querySelector(".main-content").classList.add("overlay-active");
-              showOverlay();
-            if (!input_event) return;
-
             handleCopyJobEvent();
+            showOverlay();
             break;
 
         case 'unified':
@@ -503,6 +488,32 @@ function crud_job_event(action) {
             break;
     }
 }
+
+
+function bindPreventOutsideCloseNewInput() {
+    if (window._bindPreventOutsideCloseNewInput) return; // 已綁過就不重綁
+    window._bindPreventOutsideCloseNewInput = true;
+
+    const modal   = document.getElementById('newinput');
+    const overlay = document.getElementById('modal-overlay');
+
+    if (!modal) return;
+
+    // 內部點擊不往外冒泡（防止被全域 click handler 關閉）
+    modal.addEventListener('click', e => e.stopPropagation());
+
+    // 若有 overlay，也避免 overlay 的 click 關掉視窗
+    overlay?.addEventListener('click', e => e.stopPropagation());
+
+    // 捕獲階段攔截外部點擊，確保任何全域 click 不會關掉它
+    document.addEventListener('click', function (e) {
+        if (modal.style.display === 'block' && !modal.contains(e.target)) {
+            // 什麼都不做，只是阻止往下傳
+            e.stopPropagation();
+        }
+    }, true); // ← 用捕獲階段
+}
+
 
 let allowCloseNewInput = true;
 
@@ -560,26 +571,93 @@ function handleEditJobEvent() {
     handleEventChange(input_event);
 }
 
-function handleCopyJobEvent() {
-    const from_job_name = window.jobinfo?.[job_id]?.JOBname || '';
-    document.getElementById("from_job_id").value = job_id;
-    document.getElementById("from_job_name").value = from_job_name;
-
-    const options = document.querySelectorAll('#JobSelect1 option');
-    options.forEach(opt => {
-        if (opt.value === job_id) {
-            opt.disabled = true;
-            opt.classList.add('disabled_input');
-        }
-    });
-
-    const selectedRows = document.querySelectorAll('#input_jobid_select tr.selected');
-    if (selectedRows.length > 0) {
-        document.getElementById('copyinput').style.display = 'block';
-    } else {
-        getLanguageMessage('language');
+function parsePhpArrayDumpToObject(txt) {
+  // 解析單層 print_r：Array ( [JOBID] => 1 [JOBname] => XXX )
+  const obj = {};
+  if (typeof txt !== 'string') return obj;
+  const oneLine = txt.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  const re = /\[\s*([^\]]+?)\s*\]\s*=>\s*([^[]+?)(?=\s*\[\s*|$)/g;
+  let m;
+  while ((m = re.exec(oneLine)) !== null) {
+    const key = m[1].trim();
+    let val = m[2].trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
     }
+    obj[key] = val;
+  }
+  return obj;
 }
+
+function handleCopyJobEvent() {
+  // 清空舊資料
+  const fromIdEl = document.getElementById("from_job_id");
+  const fromNameEl = document.getElementById("from_job_name");
+  if (fromIdEl) fromIdEl.value = '';
+  if (fromNameEl) fromNameEl.value = '';
+
+  // 先放 job_id
+  if (fromIdEl) fromIdEl.value = job_id;
+
+  // 顯示 modal + overlay（先開，避免等待期間卡流程）
+  showOverlay();
+  const modal = document.getElementById('copyinput');
+  if (modal) modal.style.display = 'block';
+
+  // 重置 select：全部啟用 → 再禁用同 job_id
+  const select = document.getElementById('JobSelect1');
+  if (select) {
+    Array.from(select.options).forEach(opt => {
+      opt.disabled = false;
+      opt.classList.remove('disabled_input');
+    });
+    Array.from(select.options).forEach(opt => {
+      if (opt.value === String(job_id)) {
+        opt.disabled = true;
+        opt.classList.add('disabled_input');
+      }
+    });
+  }
+
+  // 後端實際回傳不一定是 JSON（常見是 print_r），用 text + 雙路解析
+  $.ajax({
+    url: "?url=Jobs/search_job",
+    type: "POST",
+    data: { jobid: job_id },
+    dataType: "text"
+  })
+  .done(function (txt) {
+    let jobName = '';
+
+    // 路 1：嘗試 JSON
+    try {
+      const res = JSON.parse(txt);
+      if (res && res.res_type === "success") {
+        const jobs = Array.isArray(res.jobs) ? res.jobs : (res.jobs ? [res.jobs] : []);
+        const hit = jobs.find(j => String(j.JOBID) === String(job_id));
+        if (hit) jobName = hit.JOBname || hit.JOBNAME || hit.job_name || '';
+      }
+    } catch (e) {
+      // 路 2：print_r 解析
+      const obj = parsePhpArrayDumpToObject(txt);
+      if (String(obj.JOBID) === String(job_id)) {
+        jobName = obj.JOBname || obj.JOBNAME || obj.job_name || '';
+      }
+    }
+
+    if (fromNameEl) fromNameEl.value = jobName;
+  })
+  .fail(function (xhr, status, error) {
+    console.error("AJAX 取得 Job 名稱錯誤:", error, xhr && xhr.responseText);
+    if (fromNameEl) fromNameEl.value = '';
+    // 視需要決定要不要自動關 overlay；這裡先不關，讓使用者自行關閉
+    // hideOverlay();
+  });
+}
+
+
+
+
 
 
 function handleUnifiedJobEvent() {

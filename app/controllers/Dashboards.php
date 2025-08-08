@@ -60,12 +60,16 @@ class Dashboards extends Controller
             $fastenStatus = (string)$data_info['fasten_status'];
             $color = 'green';
 
-            if (in_array($fastenStatus, ['5', '6'])) {
+            if (in_array($fastenStatus, ['5'])) {
                 $controller_info = $this->SettingModel->GetControllerInfo();
-                $color = ($controller_info['okseqcolor'] ?? 0) == 1 ? 'green' : 'yellow';
-            } elseif (in_array($fastenStatus, ['7', '8'])) {
+                $color = ($controller_info['okseqcolor'] ?? 0) == 0 ? 'green' : 'yellow';
+            } else if(in_array($fastenStatus, ['6'])){
+                $controller_info = $this->SettingModel->GetControllerInfo();
+                $color = ($controller_info['okjobcolor'] ?? 0) == 0 ? 'green' : 'yellow';
+            }elseif (in_array($fastenStatus, ['7', '8'])) {
                 $color = 'red';
             }
+
 
             $data_info['fasten_status_text'] = $status_arr[$fastenStatus];
             $data_info['result_status_color_text'] = $color;

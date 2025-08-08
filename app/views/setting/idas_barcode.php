@@ -43,7 +43,7 @@
             <div class="row t2">
                 <div class="col-3 t1"><?php echo $text['system_barcode'];?>:</div>
                 <div class="col-6 t2">
-                    <input id="barcode_name" name="barcode_name"  type="text" value="" maxlength="54" class="t3 form-control" required>
+                    <input id="barcode_name" name="barcode_name"  type="text" value="" maxlength="100" class="t3 form-control" required>
                 </div>
             </div>
             <div class="row t2">
@@ -106,6 +106,33 @@
 </div>
 
 <script>
+
+$(document).on('change', 'input[name="barcode_check"]', function () {
+    const isChecked = $(this).is(':checked');
+    const $row = $(this).closest('tr');
+
+    // 切換背景顏色
+    if (isChecked) {
+        $row.find('td').css('background-color', '#9AC0CD');
+    } else {
+        $row.find('td').css('background-color', ''); // 清空回到預設
+    }
+
+    // 欄位啟用/禁用
+    $row.find('input, select, textarea')
+        .not(this) // 排除自己
+        .prop('disabled', !isChecked);
+
+    // 勾選時自動 focus 第一個可輸入欄位
+    if (isChecked) {
+        $row.find('input, select, textarea')
+            .not(this)
+            .first()
+            .focus();
+    }
+});
+
+
 //透過JOBID 取得對應的SEQ
 function fetchSeqList() {
     const jobId = document.getElementById('barcode_job').value;

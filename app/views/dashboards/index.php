@@ -212,7 +212,6 @@ function DB_sync_idas(argument) {
 
     function getSyncUrl(argument) {
 
-        
         switch (argument) {
             case 'D2C': return '?url=Settings/Sync_check_db';
             case 'C2D': return '?url=Settings/Sync_check_db_load';

@@ -135,10 +135,6 @@ function copy_seq_by_id(){
 
 }
 
-
-
-
-
 function create_seq() {
     const job_id = '<?php echo $data['job_id']; ?>';
     if (!job_id) {
@@ -208,10 +204,8 @@ function delete_seqid(seqid) {
 }
 
 
-
 function edit_seq(seqid) {
     const jobid = '<?php echo $data['job_id']; ?>';
-    
     if (!jobid || !seqid) {
         return;
     }
@@ -219,7 +213,6 @@ function edit_seq(seqid) {
     const targetUrl = `../public/?url=Sequences/variation/${jobid}/${seqid}`;
     window.location.href = targetUrl;
 }
-
 
 
 function getSelectedValue(name, defaultValue = 0) {
@@ -243,7 +236,6 @@ function updateValue(element){
                 skip: type_value
             },
             success: function(response) {
-                //console.log(response);
                 history.go(0);
             },
             error: function(xhr, status, error) {

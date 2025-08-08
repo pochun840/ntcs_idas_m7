@@ -24,6 +24,7 @@ class Tools extends Controller
         $ip_addr = $this->getIp();
         $netmask = $this->get_netmask('eth0');
         $gateway = $this->get_gateway_ip();
+        $version = $this->getFirmwareVersion();
 
 
 
@@ -54,6 +55,7 @@ class Tools extends Controller
             'gateway' => $gateway,
             'unit_name' => $unit_name,
             'MAC' => $MAC,
+            'image_version' => $version['version_info']
         ];
 
         $this->view('tool/index', $data);
@@ -117,7 +119,53 @@ class Tools extends Controller
         }
         return null;
 
-}
+    }
+
+
+    public function getFirmwareVersion($file = '/boot/firmware/version') {
+        // 讀檔案
+        if (is_readable($file)) {
+            $raw = trim(file_get_contents($file));
+        } else {
+            // sudo 讀
+            $cmd = sprintf('sudo cat %s 2>/dev/null', escapeshellarg($file));
+            $raw = trim(shell_exec($cmd));
+        }
+
+        if ($raw === '') {
+            return null;
+        }
+
+        // 解析結果
+        $result = [];
+
+        // 版本號
+        if (preg_match('/^Ver:\s*(.+?)\s+Date:/', $raw, $m)) {
+            $result['version_info'] = trim($m[1]);
+        }
+
+        // 以 Date: 拆分
+        $parts = preg_split('/\s*Date:\s*/', $raw, -1, PREG_SPLIT_NO_EMPTY);
+
+        foreach ($parts as $part) {
+            if (preg_match('/^(\d{4}\/\d{1,2}\/\d{1,2})\s*(.+)$/s', trim($part), $m)) {
+                $date = $m[1];
+                $content = trim($m[2]);
+
+                // 把多行切成陣列（用數字或字母開頭的項目拆）
+                $items = preg_split('/(?=\d+\.\s|[a-z]\.\s)/i', $content, -1, PREG_SPLIT_NO_EMPTY);
+                $items = array_map('trim', $items);
+
+                $result['logs'][] = [
+                    'date' => $date,
+                    'changes' => $items
+                ];
+            }
+        }
+
+        return $result;
+    }
+
 
 }
 ?>

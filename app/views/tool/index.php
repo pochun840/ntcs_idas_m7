@@ -27,19 +27,7 @@
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['tool_sn'];?></div>
                         </div>
                         
-                        <div class="row border-bottom" style="display:none;">
-                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['sw_version'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px">---------</div>
-                        </div>
-                        <div class="row border-bottom"  style="display:none;" >
-                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['maintain_counts'];?>:</div>
-                            <div class="col-2" style="font-size: 18px; margin: 5px 5px 5px">---------</div>&nbsp;
-                           
-                        </div>
-                        <div class="row border-bottom">
-                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['total_counts'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['total_fastening_times'];?></div>
-                        </div>
+                  
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['torque'];?>(<?php echo $text[$data['unit_name']];?>):</div>
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['min_torque']."/".$data['Tool_Info']['max_torque']; ?></div>
@@ -63,6 +51,20 @@
                         </div>
 
                         <div class="row border-bottom">
+                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['db_version'];?>:</div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Controllers_Info']['device_version'];?></div>
+                        </div>
+
+
+
+                        <div class="row border-bottom">
+                            <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['image_version'] ;?>:</div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['image_version'];?></div>
+                        </div>
+
+
+
+                        <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['network_ip'];?>:</div>
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['IP']; ?></div>
                         </div>
@@ -82,6 +84,18 @@
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['Mac'];?>:</div>
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['MAC']; ?></div>
                         </div>
+
+                        <hr>
+
+                        <div class="row border-bottom" style="display: flex; justify-content: center; align-items: center; height: 150px;">
+                            <img 
+                                    src="img/qr_code.jpeg" 
+                                    alt="QR Code" 
+                                    style="width: 150px; height: 150px; cursor: pointer;" 
+                                    onclick="window.open('https://www.kilews.com.tw/tc/', '_blank');"
+                            >
+                        </div>
+
                 </div>
             </div>
         </div>

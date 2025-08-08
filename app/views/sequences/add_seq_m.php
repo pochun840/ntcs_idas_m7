@@ -80,8 +80,6 @@ if ($data['type'] == 'edit') {
                 <?php $url ='?url=Sequences/index/'.$data['job_id'];?>
                 <button id="back_btn" type="button" onclick="window.location.href='<?php echo $url; ?>';"><?php echo $text['return']; ?></button>
 
-    
-
             </div>
 
             <div class="new-container">
@@ -343,13 +341,10 @@ if ($data['type'] == 'edit') {
         </div>
     </div>
 
-       <!-- 加载動畫 OP -->
+    <!-- 加载動畫 OP -->
        <?php require_once '../app/views/inc/include_spinner.php';?>
-    <!-- 加载動畫 ED -->
-
-    
+    <!-- 加载動畫 ED -->    
 </div>
-
 
 <?php require_once '../app/views/sequences/add_seq_share.php';?>
 <script>

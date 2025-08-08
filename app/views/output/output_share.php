@@ -164,51 +164,121 @@ function crud_job_event(argument) {
             console.log(eventOption.value);
         break;
 
-        case 'edit':
-            if (!output_event) return;
-            showOverlay();
+    
+        case 'edit': {
+                if (!output_event) return;
+                showOverlay();
 
-            const selectedEditRows = document.querySelectorAll('#output_jobid_select tr.selected');
-            if (!selectedEditRows.length) return;
+                const selectedEditRows = document.querySelectorAll('#output_jobid_select tr.selected');
+                if (!selectedEditRows.length) return;
 
-            if (Array.isArray(temp)) {
-                temp.forEach(id => {
-                    const radio = document.getElementById(id);
-                    if (radio?.type === 'radio') radio.disabled = true;
-                });
+                if (!output_pinval) return; // 需要先有被選到的 pin (從列表 data-outputpin 來)
 
-                temp.filter(id => id.includes("edit_pin")).forEach(id => {
-                    const match = id.match(/(edit_pin\d+)_(\d+)/);
-                    if (match) {
-                        const basePinId = match[1];
-                        for (let i = 0; i <= 2; i++) {
-                            const pinId = `${basePinId}_${i}`;
-                            const pin = document.getElementById(pinId);
-                            if (pin?.type === 'radio') pin.disabled = true;
+                // 先向後端拿資料並渲染 DOM
+                get_output_info(job_id, output_event);
+
+                // 等待 DOM 更新完成後再處理互動邏輯
+                setTimeout(() => {
+                    const currentPinNo = String(output_pinval);
+                    const basePin  = `edit_pin${currentPinNo}`;
+                    const baseTime = `edit_time${currentPinNo}`;
+
+                    const p0     = document.getElementById(`${basePin}_0`);
+                    const p1     = document.getElementById(`${basePin}_1`);
+                    const p2     = document.getElementById(`${basePin}_2`);
+                    const timeEl = document.getElementById(baseTime);
+
+                    // ---- 由列表 DOM 收集「已有事件」的 pins（有 data-outputpin 的列表示該 pin 已被佔用）
+                    const usedPins = Array.from(document.querySelectorAll('#output_jobid_select [data-outputpin]'))
+                        .map(el => parseInt(el.getAttribute('data-outputpin'), 10))
+                        .filter(n => Number.isFinite(n));
+
+                    // ---- 先把所有 edit_pin* 依規則鎖/開
+                    const allPinRadios = document.querySelectorAll('input[type="radio"][id^="edit_pin"]');
+                    allPinRadios.forEach(r => {
+                        const m = r.id.match(/^edit_pin(\d+)_\d$/);
+                        if (!m) return;
+                        const pinNum = m[1];
+                        if (pinNum === currentPinNo) {
+                            // 正在編輯的這一組 → 一律可操作
+                            r.disabled = false;
+                        } else {
+                            // 非當前組：若該 pin 已有事件 → 鎖；若沒有事件 → 放行（可選）
+                            const alreadyUsed = usedPins.includes(parseInt(pinNum, 10));
+                            r.disabled = alreadyUsed;
                         }
+                    });
 
-                        const timeId = `edit_time${basePinId.replace('edit_pin', '')}`;
-                        const timeElement = document.getElementById(timeId);
-                        if (timeElement) timeElement.disabled = true;
+                    // ---- 所有 edit_timeX：非當前組一律禁用（避免在編輯畫面硬改別組的時間）
+                    const allTimeInputs = document.querySelectorAll('input[id^="edit_time"]');
+                    allTimeInputs.forEach(t => {
+                        const m = t.id.match(/^edit_time(\d+)$/);
+                        if (!m) return;
+                        const pinNum = m[1];
+                        if (pinNum !== currentPinNo) {
+                            t.disabled = true;
+                            // 不清空，避免資料丟失；想清 UI 可自行加：t.value = '';
+                        }
+                    });
+
+                    // ---- Helpers：禁用時暫存值、啟用時還原值（避免切換 radio 時把原值弄丟）
+                    const saveAndDisable = (el) => {
+                        if (!el) return;
+                        if (el.value !== '') el.dataset.prev = el.value; // 暫存
+                        el.disabled = true;
+                    };
+                    const enableAndRestore = (el) => {
+                        if (!el) return;
+                        el.disabled = false;
+                        if (el.value === '' && el.dataset.prev != null) el.value = el.dataset.prev; // 還原
+                    };
+
+                    // 使用者輸入時更新暫存，避免還原到舊值
+                    if (timeEl) {
+                        timeEl.addEventListener('input', () => { timeEl.dataset.prev = timeEl.value; });
                     }
-                });
+
+                    // ---- 確保當前組三顆 radio + time 先可操作
+                    [p0, p1, p2, timeEl].forEach(el => el && (el.disabled = false));
+
+                    // ---- 依勾選狀態，同步時間欄位啟用與值保存/還原
+                    const sync = () => {
+                        if (p0?.checked) {
+                            // _0：time 禁用（保存值）
+                            saveAndDisable(timeEl);
+                            if (p1) p1.disabled = false;
+                            if (p2) p2.disabled = false;
+                        } else if (p1?.checked) {
+                            // _1：time 啟用（還原值）
+                            enableAndRestore(timeEl);
+                            if (p0) p0.disabled = false;
+                            if (p2) p2.disabled = false;
+                        } else if (p2?.checked) {
+                            // _2：time 禁用（保存值）
+                            saveAndDisable(timeEl);
+                            if (p0) p0.disabled = false;
+                            if (p1) p1.disabled = false;
+                        } else {
+                            // 沒選：預設禁用 time（保存值），三顆可選
+                            saveAndDisable(timeEl);
+                            if (p0) p0.disabled = false;
+                            if (p1) p1.disabled = false;
+                            if (p2) p2.disabled = false;
+                        }
+                    };
+
+                    // ---- 綁定三顆 radio 的切換事件
+                    [p0, p1, p2].forEach(el => el && el.addEventListener('change', sync));
+
+                    // ---- 進場先同步一次（若一開始是 _1 且 time 有值，會保留下來）
+                    sync();
+
+                }, 100);
+
+                break;
             }
-
-            if (output_pinval) {
-                ['0', '1', '2'].forEach(suffix => {
-                    const el = document.getElementById(`edit_pin${output_pinval}_${suffix}`);
-                    if (el) el.disabled = false;
-                });
-
-                const timeEl = document.getElementById(`edit_time${output_pinval}`);
-                if (timeEl) timeEl.disabled = false;
-            }
-
-            get_output_info(job_id, output_event);
-        break;
-
         case 'copy':
-            if (!output_event) return;
+            //if (!output_event) return;
             showOverlay();
 
             const jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
@@ -224,11 +294,8 @@ function crud_job_event(argument) {
             });
 
             const selectedRows = document.querySelectorAll('#output_jobid_select tr.selected');
-            if (selectedRows.length > 0) {
-                showModal('copy_output');
-            } else {
-                getLanguageMessage('language');
-            }
+            showModal('copy_output');
+          
         break;
 
         case 'unified':
@@ -780,8 +847,7 @@ function get_output_info(job_id, output_event) {
                 getLanguageMessage('language');
                 return;
             }
-
-
+            
             for (let i = 1; i <= 11; i++) {
                 for (let j = 0; j <= 2; j++) {
                     const radio = document.getElementById(`edit_pin${i}_${j}`);
