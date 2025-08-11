@@ -88,6 +88,9 @@ class Step extends Controller
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
+
+
         if (isset($_POST['JOBID'])) {
             $JOBID = intval($_POST['JOBID'] ?? 0);
             $SEQID = intval($_POST['SEQID'] ?? 0);
@@ -152,6 +155,25 @@ class Step extends Controller
                 'step_unit' => intval($_POST['step_unit'] ?? 0)
             ];
 
+
+            if(!empty($step_data)){
+                $decimals_arr = $this->MiscellaneousModel->details("decimals");
+                $places = $decimals_arr[$_POST['step_unit'] ?? 2] ?? 2;
+
+                $step_data['StepTorque']   = number_format(round((float)($_POST['StepTorque'] ?? 0),   $places), $places, '.', '');
+                $step_data['StepHiTorque'] = number_format(round((float)($_POST['StepHiTorque'] ?? 0), $places), $places, '.', '');
+                $step_data['StepLoTorque'] = number_format(round((float)($_POST['StepLoTorque'] ?? 0), $places), $places, '.', '');
+
+                if($StepEnableThreshold == 2){
+                    $step_data['StepTorqueTS']   = number_format(round((float)($_POST['StepTorqueTS'] ?? 0),   $places), $places, '.', '');
+                }
+
+                if($step_data['StepEnableDownShift'] == 2){
+                    $step_data['StepTorqueDownShift']   = number_format(round((float)($_POST['StepTorqueDownShift'] ?? 0),   $places), $places, '.', '');
+                }
+
+            }
+
             $res = $this->stepModel->create_step($step_data);
             $text = $text ?? [];
             $res_type = $res ? 'Success' : 'Error';
@@ -171,7 +193,8 @@ class Step extends Controller
             include $file;
         }
 
-      
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
+
 
         if(isset($_POST['JOBID'])){
 
@@ -188,13 +211,10 @@ class Step extends Controller
                 // 查詢之前有啟用 threshold 的 step（排除自己）
                 $prev_steps = $this->stepModel->getPreviousStepsWithThreshold($JOBID, $SEQID, $StepSelect);
 
-              
                 if (!empty($prev_steps)) {
                     // 將之前的步驟全部清除 threshold 設定
                     $this->stepModel->resetPreviousStepsThreshold($JOBID, $SEQID, $prev_steps[0]['StepSelect']);
                 }
-
-                //
             }
 
             
@@ -243,6 +263,26 @@ class Step extends Controller
                     'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
                     'step_unit' => intval($_POST['step_unit'] ?? 0)
                 ];
+
+           
+            if(!empty($step_data)){
+                $decimals_arr = $this->MiscellaneousModel->details("decimals");
+                $places = $decimals_arr[$_POST['step_unit'] ?? 2] ?? 2;
+
+                $step_data['StepTorque']   = number_format(round((float)($_POST['StepTorque'] ?? 0),   $places), $places, '.', '');
+                $step_data['StepHiTorque'] = number_format(round((float)($_POST['StepHiTorque'] ?? 0), $places), $places, '.', '');
+                $step_data['StepLoTorque'] = number_format(round((float)($_POST['StepLoTorque'] ?? 0), $places), $places, '.', '');
+
+                if($StepEnableThreshold == 2){
+                    $step_data['StepTorqueTS']   = number_format(round((float)($_POST['StepTorqueTS'] ?? 0),   $places), $places, '.', '');
+                }
+
+                if($step_data['StepEnableDownShift'] == 2){
+                    $step_data['StepTorqueDownShift']   = number_format(round((float)($_POST['StepTorqueDownShift'] ?? 0),   $places), $places, '.', '');
+                }
+
+            }
+      
 
             $res = $this->stepModel->update_step_by_id($step_data);
 
@@ -356,9 +396,7 @@ class Step extends Controller
 
                 );
 
-        
-
-
+    
                 $res = $this->stepModel->create_step($step_data);
                 if($res){
                     $res_type = 'Success';
@@ -380,7 +418,7 @@ class Step extends Controller
     #查詢step data
     public function search_stepinfo(){
 
-        
+
         $input_check = true;
         if(!empty($_POST['jobid']) && isset($_POST['jobid'])){
             $jobid = $_POST['jobid'];
@@ -516,7 +554,6 @@ class Step extends Controller
                 $converted_torque      = $this->MiscellaneousModel->convert_all_torque_units($step['StepTorque'], $step_torque_unit);
                 $converted_hi_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepHiTorque'], $step_torque_unit);
                 $converted_lo_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepLoTorque'], $step_torque_unit);
-
                 $unit_key = $torque_arr[$device_torque_unit] ?? 'N.m';
 
                 $step['StepTorque']    = number_format($converted_torque[$unit_key]    ?? 0, $decimals, '.', '');
@@ -540,7 +577,6 @@ class Step extends Controller
                 $converted_torque      = $this->MiscellaneousModel->convert_all_torque_units($step['StepTorque'], $step_torque_unit);
                 $converted_hi_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepHiTorque'], $step_torque_unit);
                 $converted_lo_torque   = $this->MiscellaneousModel->convert_all_torque_units($step['StepLoTorque'], $step_torque_unit);
-
                 $unit_key = $torque_arr[$step_torque_unit] ?? 'N.m';
 
                 $step['StepTorque']    = number_format($converted_torque[$unit_key]    ?? 0, $decimals, '.', '');
@@ -579,8 +615,21 @@ class Step extends Controller
 
             $check_hi_tor_after  = $check_target_tor_hi * 1.10;
             $decimals = $decimals_arr[$use_unit] ?? 1;
+
             $check_hi_tor_after = $this->MiscellaneousModel->roundToNDecimals($check_hi_tor_after, $decimals);
             $check_hi_tor_after = number_format($check_hi_tor_after, $decimals, '.', '');
+
+            if($use_unit == 3){
+                $check_hi_tor_after = $check_hi_tor_after + 0.0001;
+            }
+            
+            if($use_unit == 2){
+                $check_hi_tor_after = $check_hi_tor_after + 0.01;
+            }
+            if($use_unit == 0){
+                $check_hi_tor_after = $check_hi_tor_after + 0.01;
+            }
+
 
             $tools_check['check_target_tor_lo']   = $check_target_tor_lo;
             $tools_check['check_target_tor_hi']   = $check_target_tor_hi;
@@ -613,6 +662,19 @@ class Step extends Controller
                 $decimals = $decimals_arr[$use_unit] ?? 1;
                 $check_hi_tor_after = $this->MiscellaneousModel->roundToNDecimals($check_hi_tor_after, $decimals);
                 $check_hi_tor_after = number_format($check_hi_tor_after, $decimals, '.', '');
+
+                if($use_unit == 3){
+                    $check_hi_tor_after = $check_hi_tor_after + 0.0001;
+                }
+                
+                if($use_unit == 2){
+                    $check_hi_tor_after = $check_hi_tor_after + 0.01;
+                }
+                if($use_unit == 0){
+                    $check_hi_tor_after = $check_hi_tor_after + 0.01;
+                }
+
+
 
                 $tools_check['check_target_tor_lo']   = $check_target_tor_lo;
                 $tools_check['check_target_tor_hi']   = $check_target_tor_hi;
@@ -696,5 +758,17 @@ class Step extends Controller
             'count' => $info['count']
         ]);
     }
+
+
+    public function roundConservative(float $value, int $decimals = 2): float {
+    $eps = 1 / pow(10, $decimals + 3);
+    $rounded = round($value + $eps, $decimals);
+    $mult = pow(10, $decimals);
+
+    if ($value > $rounded + $eps) {
+        $rounded = ($rounded * $mult + 1) / $mult;
+    }
+    return $rounded;
+}
 
 }

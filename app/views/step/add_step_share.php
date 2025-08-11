@@ -5,23 +5,30 @@
 ?>
 <script>
 
-    document.addEventListener('DOMContentLoaded', function () {
-    const showTorque = document.getElementById('show_torque');
-    const showAngle  = document.getElementById('show_angle');
+    document.addEventListener('DOMContentLoaded', () => {
+    const isVisible = (el) => !!el && getComputedStyle(el).display !== 'none';
+
+    // StepTorqueTS（門檻點扭力）
     const ts = document.getElementById('StepTorqueTS');
-
-    // 只有空值才補預設
     if (ts && (ts.value === '' || ts.value == null)) {
-        const torqueVisible = showTorque && getComputedStyle(showTorque).display !== 'none';
-        const angleVisible  = showAngle  && getComputedStyle(showAngle).display  !== 'none';
-
-        if (angleVisible) {
-        ts.value = '0';
-        } else if (torqueVisible) {
+        const showTorque = document.getElementById('show_torque');
+        const showAngle  = document.getElementById('show_angle');
+        if (isVisible(showTorque) || isVisible(showAngle)) {
         ts.value = '0';
         }
     }
+
+    // StepTorqueDownShift（降速點扭力）
+    const tsd = document.getElementById('StepTorqueDownShift');
+    if (tsd && (tsd.value === '' || tsd.value == null)) {
+        const showDownTorque = document.getElementById('show_downshift_torque');
+        const showDownAngle  = document.getElementById('show_downshift_angle');
+        if (isVisible(showDownTorque) || isVisible(showDownAngle)) {
+        tsd.value = '0';
+        }
+    }
     });
+
 
     window.addEventListener('DOMContentLoaded', () => {
         if (typeof toggleStepTorqueTS === 'function') toggleStepTorqueTS();
@@ -146,83 +153,77 @@
             thresholdBlock.style.display = isModeOff ? 'none' : 'flex';
         }
 
-        setTimeout(() => bindRoundedWhenVisible('StepTorqueTS', 3), 100);
+        //setTimeout(() => bindRoundedWhenVisible('StepTorqueTS', 3), 100);
 
     }
 
 
-    function toggleDownShift() {
+   function toggleDownShift() {
+    const dataType = "<?php echo $data['type']; ?>";
 
-        const dataType = "<?php echo $data['type']; ?>";
+    const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
+    const StepRPMDownShift = document.getElementById('StepRPMDownShift');
+    const StepTorqueDownShift_block = document.getElementById('StepTorqueDownShift_block');
+    const showDownshiftTorque = document.getElementById('show_downshift_torque');
+    const showDownshiftAngle = document.getElementById('show_downshift_angle');
+    const downshiftBlock = document.getElementById('downshift_block');
+    const downshiftSpeedBlock = document.getElementById('downshift_speed_block');
 
-        const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
-        const StepRPMDownShift = document.getElementById('StepRPMDownShift');
-        const StepTorqueDownShift_block = document.getElementById('StepTorqueDownShift_block');
-        const showDownshiftTorque = document.getElementById('show_downshift_torque');
-        const showDownshiftAngle = document.getElementById('show_downshift_angle');
-        const downshiftBlock = document.getElementById('downshift_block');
-        const downshiftSpeedBlock = document.getElementById('downshift_speed_block');
+    const isModeOff    = document.getElementById('downshift_mode_off')?.checked;
+    const isModeTorque = document.getElementById('downshift_mode_torque')?.checked;
+    const isModeAngle  = document.getElementById('downshift_mode_angle')?.checked;
 
-        const isModeOff = document.getElementById('downshift_mode_off')?.checked;
-        const isModeTorque = document.getElementById('downshift_mode_torque')?.checked;
-        const isModeAngle = document.getElementById('downshift_mode_angle')?.checked;
+    // 預設全部隱藏與 disabled
+    if (showDownshiftTorque) showDownshiftTorque.style.display = 'none';
+    if (showDownshiftAngle)  showDownshiftAngle.style.display  = 'none';
+    if (StepTorqueDownShift) {
+        StepTorqueDownShift.disabled = true;
+        StepTorqueDownShift.style.display = 'none';
+    }
+    if (StepRPMDownShift) StepRPMDownShift.disabled = true;
+    if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none';
 
-        //預設全部隱藏與 disabled
-        if (showDownshiftTorque) showDownshiftTorque.style.display = 'none';
-        if (showDownshiftAngle) showDownshiftAngle.style.display = 'none';
+    // 取得 torque unit 對應的小數位數
+    const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
+    const decimals = { 0:2, 1:3, 2:2, 3:4, 4:1 };
+    const places = decimals[stepUnit] ?? 3;
+
+    // TORQUE 模式
+    if (isModeTorque) {
+        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
         if (StepTorqueDownShift) {
-            StepTorqueDownShift.disabled = true;
-            StepTorqueDownShift.style.display = 'none';
+        StepTorqueDownShift.style.display = 'block';
+        StepTorqueDownShift.disabled = false;
+        if (dataType === 'new') {
+            StepTorqueDownShift.value = (0).toFixed(places);
         }
-        if (StepRPMDownShift) StepRPMDownShift.disabled = true;
-        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none';
-
-        //取得 torque unit 對應的小數位數
-        const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
-        const decimals = {
-            0: 2,
-            1: 3,
-            2: 2,
-            3: 4,
-            4: 1
-        };
-        const places = decimals[stepUnit] ?? 3;
-
-        //TORQUE 模式
-        if (isModeTorque) {
-            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
-            if (StepTorqueDownShift) {
-                StepTorqueDownShift.style.display = 'block';
-                StepTorqueDownShift.disabled = false;
-                if (dataType === 'new') {
-                    StepTorqueDownShift.value = (0).toFixed(places);
-                }
-            }
-            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
-            if (showDownshiftTorque) showDownshiftTorque.style.display = 'block';
         }
-
-        //ANGLE 模式
-        else if (isModeAngle) {
-            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
-            if (StepTorqueDownShift) {
-                StepTorqueDownShift.style.display = 'block';
-                StepTorqueDownShift.disabled = false;
-                if (dataType === 'new') {
-                    StepTorqueDownShift.value = (0).toFixed(places);
-                }
-            }
-            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
-            if (showDownshiftAngle) showDownshiftAngle.style.display = 'block';
-        }
-
-        //控制外層區塊
-        if (downshiftBlock) downshiftBlock.style.display = isModeOff ? 'none' : 'flex';
-        if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
-
-
-        setTimeout(() => bindRoundedWhenVisible('StepTorqueDownShift', 3), 100);
+        if (StepRPMDownShift) StepRPMDownShift.disabled = false;
+        if (showDownshiftTorque) showDownshiftTorque.style.display = 'block';
     }
+
+    // ANGLE 模式（方案 A：只有空值才補 0）
+    else if (isModeAngle) {
+        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
+        if (StepTorqueDownShift) {
+        StepTorqueDownShift.style.display = 'block';
+        StepTorqueDownShift.disabled = false;
+        if (dataType === 'new' || StepTorqueDownShift.value === '' || StepTorqueDownShift.value == null) {
+            StepTorqueDownShift.value = 0;
+        }
+        }
+        if (StepRPMDownShift) StepRPMDownShift.disabled = false;
+        if (showDownshiftAngle) showDownshiftAngle.style.display = 'block';
+    }
+
+    // 外層區塊開關
+    if (downshiftBlock)      downshiftBlock.style.display      = isModeOff ? 'none' : 'flex';
+    if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
+
+    // 綁定四捨五入事件，位數用 places
+    setTimeout(() => bindRoundedWhenVisible('StepTorqueDownShift', places), 100);
+    }
+
 
 
     var dataType ='<?php echo $data['type'];?>'

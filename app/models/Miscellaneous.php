@@ -150,9 +150,9 @@ class Miscellaneous{
 
         if($mode =="lang"){
             $array = array(
-                1 => 'English',
-                2 => '繁體中文',
-                3 => '簡體中文',
+                0 => 'English',
+                1 => '繁體中文',
+                2 => '簡體中文',
             );    
         }
 

@@ -79,11 +79,11 @@
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_batch'];?>:</div>
         <div class="col t2" >
-            <div class="col-1 form-check form-check-inline">
+            <div class="col-1 form-check form-check-inline" style='white-space: nowrap;' >
                 <input class="form-check-input" type="radio" name="counting_method" id="dec" value="1"  <?php echo $data['controller_info']['counting_method'] == 1 ? 'checked="checked"' : ''; ?>>
                 <label class="form-check-label" for="dec"><?php echo $text['system_inc'];?></label>
             </div>
-            <div class="form-check form-check-inline">
+            <div class="form-check form-check-inline" style='white-space: nowrap;' >
                 <input class="form-check-input" type="radio" name="counting_method" id="inc" value="0"  <?php echo $data['controller_info']['counting_method'] == 0 ? 'checked="checked"' : ''; ?> >
                 <label class="form-check-label" for="inc"><?php echo $text['system_dec'];?></label>
             </div>
@@ -117,9 +117,6 @@
         </div>
     </div>
  
-    <!--<div style="text-align: center;margin-top: 50px;">
-        <button class="all-btn w3-button w3-border w3-round-large" id="cc_save" onclick="cc_save()"><?php //echo $text['save'];?></button>
-    </div>-->
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
 
