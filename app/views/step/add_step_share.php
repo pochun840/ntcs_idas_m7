@@ -221,7 +221,7 @@
     if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
 
     // 綁定四捨五入事件，位數用 places
-    setTimeout(() => bindRoundedWhenVisible('StepTorqueDownShift', places), 100);
+    //setTimeout(() => bindRoundedWhenVisible('StepTorqueDownShift', places), 100);
     }
 
 
