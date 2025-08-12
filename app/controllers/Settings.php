@@ -349,8 +349,7 @@ class Settings extends Controller
 
     
 
-     public function FirmwareUpdate()
-    {
+    public function FirmwareUpdate(){
         $file_location = '';
         $result = '';
 
@@ -363,18 +362,17 @@ class Settings extends Controller
             $this->logMessage('firmware update start');
 
             // $destination = "/mnt/ramdisk/FTP/iDas.cfg";
-            $destination = "/mnt/ramdisk/ftp/".$_FILES['file']['name'];
-            //var_dump($destination);die();
-            
-            $filenameWithoutExtension = pathinfo($_FILES['file']['name'], PATHINFO_FILENAME);
+            // 固定檔名（副檔名從上傳檔案抓取）
+            $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+            $fixedName = "iDAS." . $extension;
+
+            $destination = "/mnt/ramdisk/ftp/" . $fixedName;
+
+            // 固定給 Modbus 的檔名字串
+            $filenameWithoutExtension = "iDAS";
             //將檔案移到指定位置
             $result =  move_uploaded_file($_FILES['file']['tmp_name'], $destination);
-
             $name_int16 = $this->asciiToHexToInt($filenameWithoutExtension);
-
-            
-            //array(2) { [0]=> int(26980) [1]=> int(24947) }
-
 
             if ($result) {
                 require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
@@ -391,13 +389,15 @@ class Settings extends Controller
                     $this->logMessage('modbus status:'.$modbus->status);
                     $this->logMessage('firmware update end');
                     //自動重新啟動控制器
-                    //$modbus->writeMultipleRegister(0, 462, array(1), $dataTypes);
+                    $modbus->writeMultipleRegister(0, 462, array(1), $dataTypes);
 
                     echo json_encode(array('error' => ''));
                     exit();
 
                 } catch (Exception $e) {
-                
+                    // Print error information if any
+                    // echo $modbus;
+                    // echo $e;
                     $this->logMessage('modbus write 480 fail');
                     $this->logMessage('modbus status:'.$modbus->status);
                     $this->logMessage('firmware update end');

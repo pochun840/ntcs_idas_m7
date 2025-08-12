@@ -234,7 +234,7 @@ class Step extends Controller
                     'StepAngle' => intval($_POST['StepAngle'] ?? 0),
                     'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
                     'StepDirection' => intval($_POST['StepDirection'] ?? 0),
-                    'StepDelay' => ($_POST['StepDelay'] ?? 0) > 0 ? intval($_POST['StepDelay'] * 1000) : 0,
+                    'StepDelay' => (int) round(((float)($_POST['StepDelay'] ?? 0)) * 1000, 0, PHP_ROUND_HALF_UP),
                     'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
                     'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
                     'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
@@ -280,6 +280,9 @@ class Step extends Controller
                 if($step_data['StepEnableDownShift'] == 2){
                     $step_data['StepTorqueDownShift']   = number_format(round((float)($_POST['StepTorqueDownShift'] ?? 0),   $places), $places, '.', '');
                 }
+
+
+                //$step['StepDelay']// 4捨5入 取到小數點地
 
             }
       

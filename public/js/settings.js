@@ -450,10 +450,10 @@ function Firmware_Update() {
         dataType: "json",
         url: url,
         beforeSend: function() {
-            $('#overlay').removeClass('hidden');
+            //$('#overlay').removeClass('hidden');
         },
     }).done(function(result) {
-        $('#overlay').addClass('hidden');
+        //$('#overlay').addClass('hidden');
         document.getElementById("firmware-file-uploader").value = '';
     });
 }
