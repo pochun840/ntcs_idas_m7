@@ -26,6 +26,11 @@ class Tools extends Controller
         $gateway = $this->get_gateway_ip();
         $version = $this->getFirmwareVersion();
 
+        //起子的版本
+        $tools_version = $this->get_tools_version() / 100; 
+
+        //韌體的版本
+        $firmware_version = $this->get_firmware_version()/ 100; 
 
 
         if(!empty($controllers_info)){
@@ -55,7 +60,10 @@ class Tools extends Controller
             'gateway' => $gateway,
             'unit_name' => $unit_name,
             'MAC' => $MAC,
-            'image_version' => $version['version_info']
+            'image_version' => $version['version_info'],
+            'tools_version' => $tools_version,
+            'firmware_version' => $firmware_version
+
         ];
 
         $this->view('tool/index', $data);

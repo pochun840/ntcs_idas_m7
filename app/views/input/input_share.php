@@ -435,6 +435,12 @@ function crud_job_event(action) {
     switch (action) {
         case 'new':
             
+            // 如果 work_goc 顯示中，先隱藏它
+            const workGocEl = document.getElementById('work_goc');
+            if (workGocEl && getComputedStyle(workGocEl).display === 'block') {
+                workGocEl.style.display = 'none';
+            }
+            
             // ✅ 重設畫面項目狀態
             resetElementsByPrefix();
 

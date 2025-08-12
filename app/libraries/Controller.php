@@ -231,6 +231,67 @@ class Controller
     }
 
 
+
+    public function get_tools_version(){
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 29003;
+        $quantity = 1;
+
+        $response = ['result' => null, 'error' => ''];
+
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
+
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            $response['result'] = $data[1] ?? null;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+
+        return  $response['result'];
+    }
+
+
+    public function get_firmware_version(){
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 29004;
+        $quantity = 1;
+
+        $response = ['result' => null, 'error' => ''];
+
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
+
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            $response['result'] = $data[1] ?? null;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+
+        return  $response['result'];
+    }
+
+
     public function get_data_info(){
         
         require_once '../app/config/config.php';  // 載入常數
@@ -300,18 +361,28 @@ class Controller
         $dstDB = '/var/www/html/database/ntcs_device_IDAS.db';
 
         if (!file_exists($srcDB) || !file_exists($dstDB)) {
-            //echo "❌ 來源或目標資料庫不存在";
             return;
         }
 
         try {
+            // 1) 連到來源 DB
             $src = new PDO("sqlite:" . $srcDB);
             $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 1a) 取 device_id 和 device_version
+            $deviceInfo = $src->query("SELECT device_id, device_version FROM ntcs_device_test")->fetchAll(PDO::FETCH_ASSOC);
+
+            // 1b) 取 ntcs_tool_test 全表資料
             $toolData = $src->query("SELECT * FROM ntcs_tool_test")->fetchAll(PDO::FETCH_ASSOC);
+
+            // 關閉來源 DB
             $src = null;
 
+            // 2) 連到目標 DB
             $dst = new PDO("sqlite:" . $dstDB);
             $dst->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 2a) 覆蓋 ntcs_tool_test
             $dst->exec("DELETE FROM ntcs_tool_test");
 
             if (!empty($toolData)) {
@@ -330,10 +401,18 @@ class Controller
                 $dst->commit();
             }
 
-            $dst = null;
+            // 2b) 逐筆更新 ntcs_device_test 的 device_version（依 device_id）
+            if (!empty($deviceInfo)) {
+                $upd = $dst->prepare("UPDATE ntcs_device_test SET device_version = :ver WHERE device_id = :id");
+                foreach ($deviceInfo as $row) {
+                    $upd->bindValue(':ver', $row['device_version']);
+                    $upd->bindValue(':id', $row['device_id']);
+                    $upd->execute();
+                }
+            }
 
-            // 🔁 補充 torque/rpm 更新
-            //$this->update_tool_limits_from_tools_info();
+            // 關閉目標 DB
+            $dst = null;
 
         } catch (PDOException $e) {
             error_log("❌ 資料同步失敗: " . $e->getMessage());

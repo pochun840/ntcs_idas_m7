@@ -351,11 +351,12 @@ $text['total_counts'] = 'Total Counts';
 $text['tool_max_torque2'] = 'Max Torque';
 $text['tool_max_speed'] = 'Max Speed';
 $text['calibration_value'] = 'Calibration Value';
+$text['tools_version'] = 'Version';
 
 $text['controller_info'] = 'Controller Information';
 $text['controller_sn'] = 'Controller SN';
 $text['controller_version'] = 'Controller Version';
-$text['mcb_version'] = 'MCB Version';
+$text['cpb_version'] = 'CPB Version';
 $text['image_version'] = 'Image Version';
 $text['network_ip'] = 'Netword IP';
 $text['mask'] = 'Mask';

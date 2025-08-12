@@ -337,11 +337,13 @@ $text['total_counts'] = '本周期拧紧次数';
 $text['tool_max_torque2'] = '最大扭力';
 $text['tool_max_speed'] = '最大转速';
 $text['calibration_value'] = '校准值';
+$text['tools_version'] = '软件版本';
+
 
 $text['controller_info'] = '控制器信息';
 $text['controller_sn'] = '控制器序号';
 $text['controller_version'] = '控制器版本';
-$text['mcb_version'] = 'MCB 版本';
+$text['cpb_version'] = '电源板韌体版本';
 $text['image_version'] = 'Image 版本';
 $text['network_ip'] = '网路 IP';
 $text['mask'] = '子网掩码';
