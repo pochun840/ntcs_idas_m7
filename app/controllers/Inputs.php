@@ -290,8 +290,6 @@ class Inputs extends Controller
         }
  
 
-        
-
         if($input_check){
             $count = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
             $ans  = $this->InputModel->delete_input_event_by_id($input_data['JOBID'],$input_data['EvenID']);

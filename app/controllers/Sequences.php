@@ -233,7 +233,6 @@ class Sequences extends Controller
             $result = array();
 
             $res = $this->sequenceModel->delete_seq_by_id($jobid,$seqid);
-            $res11 = $this->sequenceModel->delete_step_by_job_id($jobid,$seqid);
             if($res){
                 $res_type = 'Success';
                 $res_msg  = $text['del_seq'].':'. $seqid."  ".$text['success'];
@@ -243,8 +242,6 @@ class Sequences extends Controller
                 $res_msg  = $text['del_seq'].':'. $seqid."  ".$text['fail'];
                 $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg );
             }
-
-         
 
         }
     }

@@ -267,18 +267,46 @@ class Sequence{
 
     #刪除sequences
     public function delete_seq_by_id($jobid,$seqid){
+        try {
+            // 開始交易
+            $this->db_iDas->beginTransaction();
 
-        
-        $sql= " DELETE FROM SEQ_lst WHERE JOBID = ? AND SEQID = ? ";
-        $statement = $this->db_iDas->prepare($sql);
-        $results = $statement->execute([$jobid, $seqid]);
+            // 1) 先刪該序列的所有步驟
+            $sqlStep = "DELETE FROM STEP_lst WHERE JOBID = ? AND SEQID = ?";
+            $stmtStep = $this->db_iDas->prepare($sqlStep);
+            $stmtStep->execute([$jobid, $seqid]);
 
-        if ($seqid != 100 ) {
-            $sql_update = "UPDATE SEQ_lst  SET SEQID = SEQID - 1 WHERE JOBID = ? AND SEQID > ?";
-            $statement_update = $this->db_iDas->prepare($sql_update);
-            $statement_update->execute([$jobid, $seqid]);
-        }   
-        return $results;
+            // 2) 再刪該序列本身
+            $sqlSeq = "DELETE FROM SEQ_lst WHERE JOBID = ? AND SEQID = ?";
+            $stmtSeq = $this->db_iDas->prepare($sqlSeq);
+            $stmtSeq->execute([$jobid, $seqid]);
+
+            // 3) 若不是保留的 100，就把後面的 SEQID 整體往前補位
+            if ((int)$seqid !== 100) {
+                // 3a) 重新編號序列
+                $sqlUpdateSeq = "UPDATE SEQ_lst SET SEQID = SEQID - 1 WHERE JOBID = ? AND SEQID > ?";
+                $stmtUpdateSeq = $this->db_iDas->prepare($sqlUpdateSeq);
+                $stmtUpdateSeq->execute([$jobid, $seqid]);
+
+                // 3b) 重新編號步驟（若未使用外鍵 ON UPDATE CASCADE，這步很重要）
+                $sqlUpdateStep = "UPDATE STEP_lst SET SEQID = SEQID - 1 WHERE JOBID = ? AND SEQID > ?";
+                $stmtUpdateStep = $this->db_iDas->prepare($sqlUpdateStep);
+                $stmtUpdateStep->execute([$jobid, $seqid]);
+            }
+
+            // 送交
+            $this->db_iDas->commit();
+            return true;
+
+        } catch (Exception $e) {
+            // 回滾
+            if ($this->db_iDas->inTransaction()) {
+                $this->db_iDas->rollBack();
+            }
+            // 你可視需求記錄 log
+            // error_log("delete_sequence failed: " . $e->getMessage());
+            return false;
+        }
 
     }
 
