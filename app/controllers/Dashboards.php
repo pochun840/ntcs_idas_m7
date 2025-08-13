@@ -88,7 +88,10 @@ class Dashboards extends Controller
         }
 
         $decimal_places = $decimals_arr[$device_torque_unit] ?? 3;
-        $data_info['final_fasten_torque'] = number_format($data_info['final_fasten_torque'], $decimal_places);
+        if(!empty($data_info)){
+              $data_info['final_fasten_torque'] = number_format($data_info['final_fasten_torque'], $decimal_places);
+        }
+      
 
         $id             = null;
         $first_data     = $this->get_current_data();

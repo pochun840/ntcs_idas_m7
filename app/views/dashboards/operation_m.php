@@ -31,7 +31,10 @@
             <div class="operation-setting">
                 <div class="column">
                     <div class="item-target-torque w3-display-container">
-                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_torque'] ;?>(<?php echo  $data['text']['N.m'];?>)</div>
+                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red">
+                             <?php echo $data['text']['final_torque']; ?>
+                            (<?php echo $data['text'][$data['data_info']['final_torque_unit'] ?? ''] ?? ''; ?>)
+                        </div>
                         <div id="Target_Torque" class="w3-display-middle" style="font-size: 6vmin; margin: 5px 0;"><?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?></div>
                     </div>
 
