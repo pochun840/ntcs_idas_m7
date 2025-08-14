@@ -129,11 +129,33 @@ class Data extends Controller
             $dataset = array_slice($dataset, 0, 10000);
             $csv_headers = array_keys($dataset[0]);
 
-            date_default_timezone_set('Asia/Taipei'); 
-            $timestamp = date("Y-m-d_Hi");
+            // 嘗試抓系統完整時區名稱
+            $system_timezone = trim(@exec('timedatectl show -p Timezone --value 2>/dev/null'));
 
-            $csv_filename = $controller_info['device_id']."_data_{$timestamp}.csv";
-            $zip_filename = $controller_info['device_id']."_data_{$timestamp}.zip";
+            // 如果抓不到完整名稱，用縮寫
+            if (empty($system_timezone)) {
+                $system_timezone = trim(@exec('date +%Z'));
+            }
+
+            // 如果 PHP 沒有設定時區，才設定
+            if (empty(ini_get('date.timezone'))) {
+                if (!empty($system_timezone)) {
+                    @date_default_timezone_set($system_timezone);
+                } else {
+                    @date_default_timezone_set('Asia/Taipei');
+                }
+            }
+
+            // 直接從 Linux 系統時間取得到分鐘（不加 8 小時、無秒數）
+            $timestamp_str = trim(shell_exec("date '+%Y%m%d%H%M'"));
+
+            // 安全處理 device_sn
+            $device_sn_safe = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn']);
+
+            // 檔名
+            $csv_filename = "data_{$device_sn_safe}_{$timestamp_str}.csv";
+            $zip_filename = "data_{$device_sn_safe}_{$timestamp_str}.zip";
+
 
             if ($expert_val === "0") {
                 // 匯出 CSV
