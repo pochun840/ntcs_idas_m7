@@ -178,9 +178,6 @@ class Dashboard{
     }
 
 
-
-
-
     public function get_csv_first_column($id) {
         $first_column = array();
         $folder = "/mnt/ramdisk/ftp/";
@@ -216,7 +213,6 @@ class Dashboard{
     }
 
 
-
     public function get_Data(){
         $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 1";
         $statement = $this->db_data->prepare($sql);
@@ -232,7 +228,4 @@ class Dashboard{
     }
 
 
-    
-    
-    
 }

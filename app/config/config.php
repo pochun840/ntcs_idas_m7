@@ -41,9 +41,6 @@ define('TABLE_NTCS_TOOLS', 'ntcs_tool_test');
 //table - device
 define('TABLE_NTCS_DEVICE', 'ntcs_device_test');
 
-//define('BASE_PATH_LINUX', '/var/www/html/database/');
-//define('BASE_PATH_OTHER', '../');
-
 
 // 抓取APP的檔案名稱，判斷是哪一個品牌
 //$brand_code = get_brand_code();
@@ -66,10 +63,6 @@ $brand = '0';//預設值帶kilews
 // iDAS出貨版本 0:Kilews 2:上海 shanhai 4:MyTorque 5:晶元SUMAKE 6:DELTA 7:白牌 6:
 define('ICONMODE', $brand);
 
-/*define('TITLE_INDEX',       'KILEWS');
-define('SUBTITLE_INDEX',    'iDAS for NTCS-M7');
-define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');
-define('ICON_AGENT',        URLROOT.'img/192.png');*/
 
 switch ( ICONMODE ) {
 	case '0': // Kilews

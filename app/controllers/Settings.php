@@ -438,53 +438,96 @@ class Settings extends Controller
     }
 
 
-
-
     public function export_sysytem_config() {
-        
-        if (PHP_OS_FAMILY == 'Linux') {
-            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        if (PHP_OS_FAMILY !== 'Linux') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Only supported on Linux']);
+            return;
+        }
+
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        // 1) 觸發控制器產檔
+        try {
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
-            try {
-                $modbus->port = 502;
-                $data = [1];
-                $dataTypes = array_fill(0, 16, "INT");
-                $modbus->writeMultipleRegister(0, 505, $data, $dataTypes);
-                $this->logMessage('modbus write 505 ,array = ' . implode("','", $data));
+            $modbus->port = 502;
+            $data = [1];
+            $dataTypes = ["INT"]; // 長度與 data 一致
+            $modbus->writeMultipleRegister(0, 505, $data, $dataTypes);
+            $this->logMessage('modbus write 505 ok');
+        } catch (Exception $e) {
+            $this->logMessage('modbus write 505 fail: ' . $e->getMessage());
+            echo json_encode(['error' => 'modbus error']);
+            return;
+        }
 
-                // 要打包的檔案與對應名稱
-                $files = [
-                    "/mnt/ramdisk/ftp/KLS_NTCS.Lin"      => "KLS_NTCS.Lin",
-                    "/mnt/ramdisk/ftp/ntcs_barcode.db"   => "ntcs_barcode.cfg"
-                ];
+        // 2) 基本資訊
+        $controller_info = $this->SettingModel->GetControllerInfo();
+        $sn = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
+        $system_date = trim(shell_exec("date '+%Y%m%d%H%M%S'")) ?: date('YmdHis');
+        $linNameInZip = "KLS_NTCS_{$sn}_{$system_date}.Lin";
 
-                $zipPath = "/mnt/ramdisk/ftp/NTCS_Config_Pack.zip";
-                $zip = new ZipArchive();
-                if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
-                    throw new Exception("無法建立 zip 檔案");
-                }
-
-                foreach ($files as $filePath => $nameInZip) {
-                    if (file_exists($filePath)) {
-                        $zip->addFile($filePath, $nameInZip);
+        // 3) 等候檔案出現（並確認大小穩定）
+        $candidates = [
+            "/mnt/ramdisk/ftp/KLS_NTCS.Lin",
+            "/home/kls/NTCS7/KLS_NTCS.Lin",
+            "/var/www/html/database/KLS_NTCS_IDAS.Lin",
+        ];
+        $srcLin = null;
+        $deadline = microtime(true) + 8.0; // 最多 8 秒
+        while (microtime(true) < $deadline && !$srcLin) {
+            foreach ($candidates as $p) {
+                if (is_file($p)) {
+                    clearstatcache(true, $p);
+                    $s1 = filesize($p);
+                    usleep(200000); // 200ms
+                    clearstatcache(true, $p);
+                    $s2 = filesize($p);
+                    if ($s1 > 0 && $s1 === $s2) { // 大小穩定才使用
+                        $srcLin = $p;
+                        break;
                     }
                 }
-                $zip->close();
-
-                // 設定下載 header
-                header("Content-Type: application/zip");
-                header("Content-Disposition: attachment; filename=NTCS_Config_Pack.zip");
-                header("Content-Length: " . filesize($zipPath));
-                readfile($zipPath);
-                exit();
-
-            } catch (Exception $e) {
-                $this->logMessage('modbus write 505 fail');
-                echo json_encode(['error' => 'modbus error']);
-                exit();
             }
+            if (!$srcLin) usleep(200000);
         }
+
+        // 4) 打包
+        $zipPath = "/mnt/ramdisk/ftp/NTCS_Config_Pack.zip";
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+            $this->logMessage("Cannot create zip: {$zipPath}");
+            echo json_encode(['error' => 'cannot create zip']);
+            return;
+        }
+
+        if ($srcLin) {
+            $zip->addFile($srcLin, $linNameInZip);
+        } else {
+            $this->logMessage('KLS_NTCS.Lin not found or not stable — skipped');
+            // 想要更明顯也可加提示檔：
+            // $zip->addFromString("README.txt", "KLS_NTCS.Lin not ready at packaging time.\n");
+        }
+
+        $barcode = "/mnt/ramdisk/ftp/ntcs_barcode.db";
+        if (is_file($barcode)) {
+            $zip->addFile($barcode, "ntcs_barcode.cfg");
+        } else {
+            $this->logMessage("file not found: {$barcode}");
+        }
+
+        $zip->close();
+
+        // 5) 送下載
+        header("Content-Type: application/zip");
+        header('Content-Disposition: attachment; filename=NTCS_Config_Pack.zip');
+        header("Content-Length: " . filesize($zipPath));
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        readfile($zipPath);
+        exit;
     }
+
 
 
     public function get_file_list($value='')
