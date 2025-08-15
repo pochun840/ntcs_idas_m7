@@ -204,7 +204,6 @@ class Dashboards extends Controller
     }
 
 
-
     public function change_language(){
 
         $error_message = '';
@@ -228,7 +227,6 @@ class Dashboards extends Controller
     
 
     }
-
 
     private function ChartData($chat_mode, $csvdata_arr, $chat_mode_arr, $x_val, $angle_as_x = []) {
         $chart_info = [];
@@ -295,12 +293,6 @@ class Dashboards extends Controller
     }
 
 
-
-
-
-
-
-    
     public function get_current_data(){
 
         $status_arr = $this->MiscellaneousModel->details('status');

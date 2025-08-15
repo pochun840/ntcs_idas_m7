@@ -467,6 +467,4 @@ class Outputs extends Controller
     }
 }
 
-
-
 ?>

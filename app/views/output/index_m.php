@@ -31,7 +31,7 @@
                             <div class="modal-body">
                                 <div class="row">
                                     <div class="col-12 t2 px-3"> <!-- col-12 cho toàn dòng, px-3 để có khoảng cách ngang -->
-                                        <select id="JobNameSelect" name="JobNameSelect">
+                                        <select id="JobNameSelect" name="JobNameSelect" disabled>
                                             <?php foreach($data['job_list'] as $key => $val) { ?>
                                                 <option value="<?php echo $val['JOBID']; ?>"><?php echo $val['JOBname']; ?></option>
                                             <?php } ?>
@@ -154,7 +154,7 @@
                                 <div class="row">
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?> :</div>
                                     <div class="col-2 t2">
-                                        <select id="edit_event_option" name='edit_event_option' class="col custom-file">
+                                        <select id="edit_event_option" name='edit_event_option' class="col custom-file grey-disabled" >
                                         <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
                                            <?php foreach($data['event_output'] as $key =>$val){?>
                                                 <option value ='<?php echo $key;?>'><?php echo $text[$val];?></option>
@@ -271,6 +271,15 @@
   background-color: rgba(0, 0, 0, 0.5); /* 灰色半透明 */
   z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
 }
+
+.grey-disabled[disabled] {
+    background-color: #d6d6d6; /* 整個背景灰 */
+    color: #8a8a8a;            /* 文字灰 */
+    border: 1px solid #b5b5b5; /* 灰色邊框 */
+    cursor: not-allowed;       /* 滑鼠變禁止符號 */
+    opacity: 1;                /* 取消部分瀏覽器預設透明 */
+}
+
 </style>
 
 <style>

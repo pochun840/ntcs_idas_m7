@@ -90,8 +90,8 @@ class Tools extends Controller
         
     }
 
-    public function getIp()
-    {
+    public function getIp(){
+        
         if( PHP_OS_FAMILY == 'Linux'){
             $Ips = trim(shell_exec("/sbin/ip -o -4 addr list  | awk '{print $4}' | cut -d/ -f1"));
             $Ip = explode(PHP_EOL, $Ips);
