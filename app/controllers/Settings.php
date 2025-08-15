@@ -493,7 +493,7 @@ class Settings extends Controller
         }
 
         // 4) 打包
-        $zipPath = "/mnt/ramdisk/ftp/NTCS_Config_Pack.zip";
+        $zipPath = "/mnt/ramdisk/ftp/NTCS_Config.zip";
         $zip = new ZipArchive();
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
             $this->logMessage("Cannot create zip: {$zipPath}");

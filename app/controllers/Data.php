@@ -93,112 +93,156 @@ class Data extends Controller
     }
 
 
+
     public function exportData() {
-        
         $input_check = true;
 
-        //取得控制器的編號 
-        
+        // 取得控制器資訊（含序號）
         $controller_info = $this->SettingModel->GetControllerInfo();
 
-        // 檢查開始日期
+        // 檢查開始/結束日期（補上秒）
         if (!empty($_POST['start_date']) && isset($_POST['start_date'])) {
             $start_date = $_POST['start_date'] . ":00";
         } else {
             $input_check = false;
         }
 
-        // 檢查結束日期
         if (!empty($_POST['end_date']) && isset($_POST['end_date'])) {
             $end_date = $_POST['end_date'] . ":00";
         } else {
             $input_check = false;
         }
 
-        // 匯出格式
+        // 匯出格式：0=CSV, 1=ZIP(內含CSV)
         $expert_val = $_POST['expert_val'] ?? "0";
 
-        if ($input_check) {
-            $dataset = $this->DataModel->get_range_data($start_date, $end_date);
-
-            if (count($dataset) === 0) {
-                echo json_encode(["error" => "無法找到符合條件的資料"]);
-                exit();
-            }
-
-            $dataset = array_slice($dataset, 0, 10000);
-            $csv_headers = array_keys($dataset[0]);
-
-            // 嘗試抓系統完整時區名稱
-            $system_timezone = trim(@exec('timedatectl show -p Timezone --value 2>/dev/null'));
-
-            // 如果抓不到完整名稱，用縮寫
-            if (empty($system_timezone)) {
-                $system_timezone = trim(@exec('date +%Z'));
-            }
-
-            // 如果 PHP 沒有設定時區，才設定
-            if (empty(ini_get('date.timezone'))) {
-                if (!empty($system_timezone)) {
-                    @date_default_timezone_set($system_timezone);
-                } else {
-                    @date_default_timezone_set('Asia/Taipei');
-                }
-            }
-
-            // 直接從 Linux 系統時間取得到分鐘（不加 8 小時、無秒數）
-            $timestamp_str = trim(shell_exec("date '+%Y%m%d%H%M'"));
-
-            // 安全處理 device_sn
-            $device_sn_safe = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn']);
-
-            // 檔名
-            $csv_filename = "data_{$device_sn_safe}_{$timestamp_str}.csv";
-            $zip_filename = "data_{$device_sn_safe}_{$timestamp_str}.zip";
-
-
-            if ($expert_val === "0") {
-                // 匯出 CSV
-                header('Content-Type: text/csv; charset=utf-8');
-                header("Content-Disposition: attachment; filename={$csv_filename}");
-
-                $output = fopen('php://output', 'w');
-                fputcsv($output, $csv_headers);
-                foreach ($dataset as $row) {
-                    fputcsv($output, $row);
-                }
-                fclose($output);
-                exit();
-
-            } elseif ($expert_val === "1") {
-                // 匯出 ZIP + CSV
-                $csv_content = implode(',', $csv_headers) . "\n";
-                foreach ($dataset as $row) {
-                    $csv_content .= implode(',', $row) . "\n";
-                }
-
-                $zip = new ZipArchive();
-                $temp_zip_path = tempnam(sys_get_temp_dir(), 'ntcs_zip');
-                $temp_zip_final = $temp_zip_path . '.zip';
-
-                if ($zip->open($temp_zip_final, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-                    $zip->addFromString($csv_filename, $csv_content); // zip 中的檔案名稱
-                    $zip->close();
-
-                    header('Content-Type: application/zip');
-                    header("Content-Disposition: attachment; filename={$zip_filename}");
-                    header('Content-Length: ' . filesize($temp_zip_final));
-                    readfile($temp_zip_final);
-                    unlink($temp_zip_final);
-                    exit();
-                } else {
-                    echo json_encode(["error" => "無法建立 ZIP 檔案"]);
-                    exit();
-                }
-            }
-
-        } else {
+        if (!$input_check) {
             echo json_encode(["error" => "輸入參數不正確"]);
+            exit();
+        }
+
+        // 撈資料
+        $dataset = $this->DataModel->get_range_data($start_date, $end_date);
+        if (count($dataset) === 0) {
+            echo json_encode(["error" => "無法找到符合條件的資料"]);
+            exit();
+        }
+
+        // 限制最多 10,000 筆
+        $dataset = array_slice($dataset, 0, 10000);
+        $csv_headers = array_keys($dataset[0]);
+
+        // ---- 取得系統時區並設定 PHP 時區（只有在未設定時才設定）----
+        $system_timezone = trim(@exec('timedatectl show -p Timezone --value 2>/dev/null'));
+        if (empty($system_timezone)) {
+            // 抓不到完整名稱，用縮寫（可能像 CST）
+            $system_timezone = trim(@exec('date +%Z'));
+        }
+        if (empty(ini_get('date.timezone'))) {
+            @date_default_timezone_set(!empty($system_timezone) ? $system_timezone : 'Asia/Taipei');
+        }
+
+        // ---- 取得時間字串（到秒）。先嘗試使用系統 date；失敗就用 PHP 時間 ----
+        $timestamp_str = null;
+        if (function_exists('shell_exec')) {
+            $timestamp_str = trim(@shell_exec("date '+%Y%m%d%H%M%S'"));
+        }
+        if (empty($timestamp_str)) {
+            // Fallback：用 PHP 的時間（已設時區）
+            $timestamp_str = date('YmdHis');
+        }
+
+        // ---- 安全處理 device_sn（避免非法字元進入檔名）----
+        $device_sn_safe = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
+
+        // ---- 組檔名 ----
+        $csv_filename = "data_{$device_sn_safe}_{$timestamp_str}.csv";
+        $zip_filename = "data_{$device_sn_safe}_{$timestamp_str}.zip";
+
+        // 清掉可能的既有輸出緩衝，避免 header 被吃掉
+        if (function_exists('ob_get_length') && ob_get_length()) {
+            @ob_end_clean();
+        }
+
+        if ($expert_val === "0") {
+            // ---------------- CSV 直接下載 ----------------
+            header('Content-Type: text/csv; charset=utf-8');
+            header("Content-Disposition: attachment; filename={$csv_filename}");
+
+            $output = fopen('php://output', 'w');
+
+            // 需要 Excel 友善可視需求加入 BOM：
+            // fwrite($output, "\xEF\xBB\xBF");
+
+            // 表頭
+            fputcsv($output, $csv_headers);
+
+            // 資料列
+            foreach ($dataset as $row) {
+                // 確保輸出陣列的欄位順序與表頭一致
+                $ordered = [];
+                foreach ($csv_headers as $h) {
+                    $ordered[] = $row[$h] ?? '';
+                }
+                fputcsv($output, $ordered);
+            }
+            fclose($output);
+            exit();
+
+        } elseif ($expert_val === "1") {
+            // ---------------- 產 CSV 字串 -> 打包成 ZIP 再下載 ----------------
+            // 用 fputcsv 正確產生 CSV 內容（避免逗號/引號/換行破壞）
+            $fh = fopen('php://temp', 'w+');
+
+            // 需要 Excel 友善可選擇寫入 BOM：
+            // fwrite($fh, "\xEF\xBB\xBF");
+
+            fputcsv($fh, $csv_headers);
+            foreach ($dataset as $row) {
+                $ordered = [];
+                foreach ($csv_headers as $h) {
+                    $ordered[] = $row[$h] ?? '';
+                }
+                fputcsv($fh, $ordered);
+            }
+            rewind($fh);
+            $csv_content = stream_get_contents($fh);
+            fclose($fh);
+
+            // 準備 ZIP 暫存檔
+            if (!class_exists('ZipArchive')) {
+                echo json_encode(["error" => "伺服器未啟用 ZipArchive 模組"]);
+                exit();
+            }
+
+            $zip = new ZipArchive();
+            $temp_zip_path = tempnam(sys_get_temp_dir(), 'ntcs_zip');
+            // Windows 上 tempnam 已含副檔名，另建 .zip 檔避免某些系統無副檔名問題
+            $temp_zip_final = $temp_zip_path . '.zip';
+
+            if ($zip->open($temp_zip_final, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                // 將 CSV 內容加到 ZIP，內部檔名使用 $csv_filename
+                $zip->addFromString($csv_filename, $csv_content);
+                $zip->close();
+
+                header('Content-Type: application/zip');
+                header("Content-Disposition: attachment; filename={$zip_filename}");
+                header('Content-Length: ' . filesize($temp_zip_final));
+                readfile($temp_zip_final);
+
+                @unlink($temp_zip_final);
+                // 某些系統也需要刪除 tempnam 原檔
+                @unlink($temp_zip_path);
+                exit();
+            } else {
+                echo json_encode(["error" => "無法建立 ZIP 檔案"]);
+                // 清理殘留
+                @unlink($temp_zip_final);
+                @unlink($temp_zip_path);
+                exit();
+            }
+        } else {
+            echo json_encode(["error" => "未知的匯出格式參數"]);
             exit();
         }
     }
