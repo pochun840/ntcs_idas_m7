@@ -572,17 +572,17 @@ class Settings extends Controller
             include $file;
         }
 
-
-        if (!empty($_POST['del_year_id']) && isset($_POST['del_year_id'])) {
-            $del_year_id = $_POST['del_year_id'];
-        } else {
+        $del_year_id = $_POST['del_year_id'][0];
+        if(empty($del_year_id )){
             echo json_encode([
                 'result' => false,
                 'res_type' => 'Error',
-                'res_msg' => 'Invalid input'
+                'res_msg' => 'Tool not disabled'
             ]);
             return;
         }
+
+
 
         $temp_del_year = $del_year_id[0]; // 只處理第一筆
 
@@ -1386,44 +1386,72 @@ class Settings extends Controller
     }
 
 
-    
-    public function edit_feature_pwd(){
-
+    public function edit_feature_pwd() {
+        
         // 載入語系檔
         $file = $this->MiscellaneousModel->lang_load();
-        if (!empty($file)) {
-            include $file;
-        }
+        if (!empty($file)) include $file;
 
-        // 欲接收的欄位對應鍵名
+        // POST鍵名 => 寫入鍵名
         $fields = [
             'clear_seq' => 'clearseq_button_pwd',
             'clear'     => 'clear_button_pwd',
             'confirm'   => 'confirm_button_pwd',
             'enable'    => 'enable_button_pwd',
             'disable'   => 'disable_button_pwd',
-            'skip'      => 'skip_button_pwd'
+            'skip'      => 'skip_button_pwd',
         ];
 
-        $pwd_arr = [];
-        $input_check = true;
+        $pwd_arr   = [];   // 只收「有傳且合法」的欄位
+        $errors    = [];   // 收集每欄錯誤訊息
+        $provided  = 0;    // 有提供的欄位數
+        $re4digits = '/^\d{4}$/'; // 密碼必須為 4 位數字
 
-        // 統一檢查每個欄位是否存在並賦值
         foreach ($fields as $post_key => $pwd_key) {
-            if (!empty($_POST[$post_key])) {
-                $pwd_arr[$pwd_key] = $_POST[$post_key];
-            } else {
-                $input_check = false;
+            if (!array_key_exists($post_key, $_POST)) {
+                continue; // 沒傳就略過（不修改）
             }
+            $val = trim((string)$_POST[$post_key]);
+
+            // 空字串視為「未提供」，不寫入也不報錯
+            if ($val === '') {
+                continue;
+            }
+
+            $provided++;
+
+            if (!preg_match($re4digits, $val)) {
+                $errors[] = "{$post_key} must be 4 digits";
+                continue;
+            }
+
+            $pwd_arr[$pwd_key] = $val;
         }
 
-        // 有錯就不送出
-        if (!$input_check) {
-            $this->MiscellaneousModel->generateErrorResponse('Error', $text['input_error'] ?? 'Input missing.');
+        // 至少要有一個欄位要修改
+        if ($provided === 0) {
+            $this->MiscellaneousModel->generateErrorResponse(
+                'Error',
+                $text['input_error'] ?? 'At least one field is required.'
+            );
             return;
         }
 
-        // 寫入設定
+        // 有欄位不合法
+        if (!empty($errors)) {
+            $this->MiscellaneousModel->generateErrorResponse(
+                'Error',
+                implode('; ', $errors)
+            );
+            return;
+        }
+
+        // 若你的 Model 需要「全部鍵」才能寫入，請先查舊值再合併：
+        // $current = $this->SettingModel->get_feature_pwd(); // 回傳同鍵名陣列
+        // $to_save = array_merge($current ?? [], $pwd_arr);
+        // $result  = $this->SettingModel->edit_feature_pwd($to_save);
+
+        // 若只更新有給的鍵即可，直接傳 $pwd_arr
         $result = $this->SettingModel->edit_feature_pwd($pwd_arr);
 
         if ($result) {

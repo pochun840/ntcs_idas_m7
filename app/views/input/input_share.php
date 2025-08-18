@@ -461,8 +461,8 @@ function crud_job_event(action) {
 
         case 'del':
             document.querySelector(".main-content").classList.add("overlay-active");
-              showOverlay();
             if (input_event) {
+                showOverlay();
                 delete_input_id(job_id, input_event);
             }
             break;
@@ -480,6 +480,11 @@ function crud_job_event(action) {
             break;
 
         case 'copy':
+
+            document.querySelector(".main-content").classList.add("overlay-active");
+            if (!input_event) return;
+
+            
             handleCopyJobEvent();
             showOverlay();
             break;
@@ -903,6 +908,10 @@ function get_input_by_job_id(jobid, callback){
                     document.getElementById('112') && (document.getElementById('112').textContent = '自定义3');
                     document.getElementById('113') && (document.getElementById('113').textContent = '自定义4');
                     document.getElementById('114') && (document.getElementById('114').textContent = '自定义5');
+                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋转');
+                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
+
+
 
                 
                 }else if(language =="zh-tw"){
@@ -920,6 +929,8 @@ function get_input_by_job_id(jobid, callback){
                     document.getElementById('112') && (document.getElementById('112').textContent = '自定義3');
                     document.getElementById('113') && (document.getElementById('113').textContent = '自定義4');
                     document.getElementById('114') && (document.getElementById('114').textContent = '自定義5');
+                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋轉');
+                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
                 }
 
         },

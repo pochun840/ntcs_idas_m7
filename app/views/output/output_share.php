@@ -278,7 +278,7 @@ function crud_job_event(argument) {
                 break;
             }
         case 'copy':
-            //if (!output_event) return;
+            if (!output_event) return;
             showOverlay();
 
             const jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
@@ -532,77 +532,101 @@ function input_success_res(response, job_id, callbackFn, hideElementId = 'newinp
 }
 
 
-function get_output_by_job_id(job_id){
-    $.ajax({
-        url: "?url=Outputs/get_output_by_job_id",
-        method: "POST",
-        data: { 
-            job_id: job_id,
-        },
-        success: function(response) {
-            var data = JSON.parse(response);
-            var job_outputlist = data.job_outputlist;
-            temp = data.temp;
-            tempA = data.tempA;
 
-            document.getElementById("output_jobid_select").innerHTML = job_outputlist;
-            document.getElementById("JobSelect").style.display = 'none';
-            document.getElementById("job_id").value = job_id;
-        
-            var rows = document.querySelectorAll('#output_jobid_select tr');
-            rows.forEach(function(row) {
-                row.addEventListener('click', function() { 
-                    output_event = this.className; 
-                });
-            });
 
-            
-            var language = getCookie('language');
-            if(language == "zh-cn"){
-                document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
-                document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
-                document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
-                document.getElementById('4') && (document.getElementById('4').textContent = '低于下限');
-                document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信号');
-                document.getElementById('6') && (document.getElementById('6').textContent = '工作任务完成信号');
-                document.getElementById('7') && (document.getElementById('7').textContent = '马达信号');
-                document.getElementById('8') && (document.getElementById('8').textContent = '启动信号');
-                document.getElementById('9') && (document.getElementById('9').textContent = '拆螺丝');
-                document.getElementById('10') && (document.getElementById('10').textContent = '条码');
-                document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
-                document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
-                document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
-                document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
-                document.getElementById('15') && (document.getElementById('15').textContent = '自定义4');
-                document.getElementById('16') && (document.getElementById('16').textContent = '自定义5');
+function get_output_by_job_id(job_id) {
+  $.ajax({
+    url: "?url=Outputs/get_output_by_job_id",
+    method: "POST",
+    data: { job_id: job_id },
+    dataType: "json", // 讓 jQuery 幫你 parse JSON
+    success: function (data) {
+      var job_outputlist = data.job_outputlist || '';
+      // 兼容：後端固定 key 為 'languange'（拼字），但也容忍 'language'
+      var language = getCookie('language') || data.language || data.languange;
 
-            } 
-            else if(language == "zh-tw"){
-                document.getElementById('1') && (document.getElementById('1').textContent = 'OK');
-                document.getElementById('2') && (document.getElementById('2').textContent = 'NG');
-                document.getElementById('3') && (document.getElementById('3').textContent = '超出上限');
-                document.getElementById('4') && (document.getElementById('4').textContent = '低於下限');
-                document.getElementById('5') && (document.getElementById('5').textContent = '工序完成信號');
-                document.getElementById('6') && (document.getElementById('6').textContent = '完工信號');
-                document.getElementById('7') && (document.getElementById('7').textContent = '馬達信號');
-                document.getElementById('8') && (document.getElementById('8').textContent = '啟動信號');
-                document.getElementById('9') && (document.getElementById('9').textContent = '拆螺絲');
-                document.getElementById('10') && (document.getElementById('10').textContent = '條碼');
-                document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
-                document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
-                document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
-                document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
-                document.getElementById('15') && (document.getElementById('15').textContent = '自定義4');
-                document.getElementById('16') && (document.getElementById('16').textContent = '自定義5');
-            }
-            
-        },
-        error: function(xhr, status, error) {
-            console.error("AJAX request failed:", status, error);
+      // 安全拿陣列
+      temp  = Array.isArray(data.temp)  ? data.temp  : [];
+      tempA = Array.isArray(data.tempA) ? data.tempA : [];
+
+      // 渲染表格
+      document.getElementById("output_jobid_select").innerHTML = job_outputlist;
+      document.getElementById("JobSelect").style.display = 'none';
+
+      var jobIdEl = document.getElementById("job_id");
+      if (jobIdEl) jobIdEl.value = job_id;
+
+      // 綁列點擊事件（維持原邏輯）
+      document.querySelectorAll('#output_jobid_select tr').forEach(function (row) {
+        row.addEventListener('click', function () {
+          output_event = this.className;
+        });
+      });
+
+      // ★ 前端自行判斷「三者皆空」
+      var listEmpty = job_outputlist.trim() === '';
+      var noTemp    = temp.length === 0;
+      var noTempA   = tempA.length === 0;
+      if (listEmpty && noTemp && noTempA) {
+        var btn = document.getElementById('Button_Select');
+        if (btn && btn.disabled) {
+          btn.disabled = false;
+          btn.classList.remove('disabled', 'disabled_input');
+          btn.setAttribute('aria-disabled', 'false');
         }
-    }); 
+        if (jobIdEl) jobIdEl.style.backgroundColor = ''; // 清掉背景色
 
+        document.getElementById('job_id').value = '';
+
+
+      }
+
+      // 語系文字
+      if (language === "zh-cn") {
+        document.getElementById('1')  && (document.getElementById('1').textContent  = 'OK');
+        document.getElementById('2')  && (document.getElementById('2').textContent  = 'NG');
+        document.getElementById('3')  && (document.getElementById('3').textContent  = '超出上限');
+        document.getElementById('4')  && (document.getElementById('4').textContent  = '低于下限');
+        document.getElementById('5')  && (document.getElementById('5').textContent  = '工序完成信号');
+        document.getElementById('6')  && (document.getElementById('6').textContent  = '工作任务完成信号');
+        document.getElementById('7')  && (document.getElementById('7').textContent  = '马达信号');
+        document.getElementById('8')  && (document.getElementById('8').textContent  = '启动信号');
+        document.getElementById('9')  && (document.getElementById('9').textContent  = '拆螺丝');
+        document.getElementById('10') && (document.getElementById('10').textContent = '条码');
+        document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
+        document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
+        document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
+        document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
+        document.getElementById('15') && (document.getElementById('15').textContent = '自定义4');
+        document.getElementById('16') && (document.getElementById('16').textContent = '自定义5');
+      } else if (language === "zh-tw") {
+        document.getElementById('1')  && (document.getElementById('1').textContent  = 'OK');
+        document.getElementById('2')  && (document.getElementById('2').textContent  = 'NG');
+        document.getElementById('3')  && (document.getElementById('3').textContent  = '超出上限');
+        document.getElementById('4')  && (document.getElementById('4').textContent  = '低於下限');
+        document.getElementById('5')  && (document.getElementById('5').textContent  = '工序完成信號');
+        document.getElementById('6')  && (document.getElementById('6').textContent  = '完工信號');
+        document.getElementById('7')  && (document.getElementById('7').textContent  = '馬達信號');
+        document.getElementById('8')  && (document.getElementById('8').textContent  = '啟動信號');
+        document.getElementById('9')  && (document.getElementById('9').textContent  = '拆螺絲');
+        document.getElementById('10') && (document.getElementById('10').textContent = '條碼');
+        document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
+        document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
+        document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
+        document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
+        document.getElementById('15') && (document.getElementById('15').textContent = '自定義4');
+        document.getElementById('16') && (document.getElementById('16').textContent = '自定義5');
+      }
+    },
+    error: function (xhr, status, error) {
+      console.error("AJAX request failed:", status, error, xhr?.responseText);
+    }
+  });
 }
+
+
+
+
 
 function collectPinValues(selector) {
     var pinOptions = document.querySelectorAll(selector);
@@ -1120,6 +1144,44 @@ function disableOptions(selector, values = [], gray = false, reset = false) {
         }
     });
 }
+
+
+// ✅ 抽成共用復原函式
+function restoreUnifiedState(options = {}) {
+    const {
+        // 允許自訂 selector 以符合你的頁面
+        buttonsSelector = '.unified-btn, .apply-btn',   // 被 enableButton() 放開的按鈕
+        rowsSelector    = '#output_jobid_select tr, #output_table tr', // 被 resetBackgroundColor() 影響的列
+        highlightClasses = ['highlight', 'selected'],   // 需要移除的樣式 class
+    } = options;
+
+    // 1) 還原按鈕狀態（若專案有 disableButton()，優先用）
+    if (typeof disableButton === 'function') {
+        disableButton();
+    } else {
+        document.querySelectorAll(buttonsSelector).forEach(btn => {
+            btn.disabled = true;
+        });
+    }
+
+    // 2) 還原背景/選取（若專案有 restoreBackgroundColor()，優先用）
+    if (typeof restoreBackgroundColor === 'function') {
+        restoreBackgroundColor();
+    } else {
+        document.querySelectorAll(rowsSelector).forEach(tr => {
+            // 清除可能的 inline 樣式
+            tr.style.backgroundColor = '';
+            // 清除可能加上的 class
+            highlightClasses.forEach(cls => tr.classList.remove(cls));
+        });
+    }
+
+    // 3) 關閉 overlay（若有）
+    if (typeof hideOverlay === 'function') {
+        hideOverlay();
+    }
+}
+
 
 </script>
 

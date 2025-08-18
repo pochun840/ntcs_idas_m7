@@ -213,7 +213,7 @@
             { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
             { id: 'unscrew_rpm', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
             { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}(\.\d{1,3})?$/, min: 0, max: Tool_Max_Torque },
-            { id: 'unscrew_angle_threshold', pattern: /^\d{1,5}(\.\d{1})?$/ , min: 0, max: 99999},
+            { id: 'unscrew_angle_threshold', pattern: /^\d{1,5}(\.\d{1})?$/ , min: 0, max: 30600},
             { id: 'unscrew_force', pattern: /^([0-9][0-9]?|100)$/, min: 0, max: 100 },
         ];
 

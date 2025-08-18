@@ -54,32 +54,6 @@
 
 
 
-function time_save(){
-    var newTime = document.getElementById('newTime').value;
-    var device_id = <?php echo $data['controller_info']['device_id'];?>;
-
-    //console.log(newTime);
-    if(newTime){
-        $.ajax({
-            url: "?url=Settings/edit_system_date",
-            method: "POST",
-            data:{ 
-                device_id: device_id,
-                newTime: newTime
-
-            },
-            success: function(response){
-                alert(response);
-                //history.go(0);
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });       
-    }
-
-}
-
 
 function button_save_password_gust(){
 

@@ -56,28 +56,7 @@
 
 <script>
 
-function time_save(){
-    var newTime = document.getElementById('newTime').value;
-    var device_id = <?php echo $data['controller_info']['device_id'];?>;
-    if(newTime){
-        $.ajax({
-            url: "?url=Settings/edit_system_date",
-            method: "POST",
-            data:{ 
-                device_id: device_id,
-                newTime: newTime
 
-            },
-            success: function(response) {
-                alert(response);
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });       
-    }
-
-}
 
 function edit_password(){
     var new_password = document.getElementById('new_password').value;
@@ -108,37 +87,42 @@ function edit_password(){
     }
 }
 
-function button_save_password_gust(){
+function button_save_password_gust() {
+  var device_id = <?php echo (int)$data['controller_info']['device_id'];?>;
 
-    var device_id = <?php echo $data['controller_info']['device_id'];?>;
+  var pass_guest1 = document.getElementById('new_password_guest').value.trim();
+  var pass_guest2 = document.getElementById('comfirm_password_guest').value.trim();
 
-    var pass_guest1 = document.getElementById('new_password_guest').value;
-    var pass_guest2 = document.getElementById('comfirm_password_guest').value;
+  // 必須為 4 個數字（可含前導 0）
+  var pattern = /^\d{4}$/;
 
-    //正規化 密碼格式(1個英文+1個數字,長度:4)
-    var pattern = /^(?=.*[A-Za-z])(?=.*\d).{4,}$/;
-    if(pass_guest1 == pass_guest2 && pattern.test(pass_guest1)){
-        $.ajax({
-            url: "?url=Admins/EditGuestPwd",
-            method: "POST",
-            data:{ 
-                device_id: device_id,
-                new_password: pass_guest1
+  if (pass_guest1 !== pass_guest2) {
+    alert('兩次輸入的密碼不一致');
+    return;
+  }
+  if (!pattern.test(pass_guest1)) {
+    alert('密碼必須為 4 位數字（0-9）');
+    return;
+  }
 
-            },
-            success: function(response) {
-                alert(response);
-                history.go(0);
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });   
-    }else{
-        alert('密碼格式不符合要求');
+  $.ajax({
+    url: "?url=Admins/EditGuestPwd",
+    method: "POST",
+    data: {
+      device_id: device_id,
+      new_password: pass_guest1
+    },
+    success: function (response) {
+      alert(response);
+      history.go(0);
+    },
+    error: function (xhr, status, error) {
+      alert('更新失敗：' + (error || status));
     }
-
+  });
 }
+
+
 function OpenButton(ButtonMode){
 
     if (ButtonMode == "Controller")

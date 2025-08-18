@@ -228,7 +228,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         })
         .then(res => res.text()) // 改成 text() 先看原始回傳內容
         .then(text => {
-            console.log('伺服器回傳內容：', text);
+            //console.log('伺服器回傳內容：', text);
 
             try {
                 const result = JSON.parse(text);

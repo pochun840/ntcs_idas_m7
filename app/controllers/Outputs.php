@@ -107,8 +107,9 @@ class Outputs extends Controller
             'job_outputlist' => $job_outputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'languange' => $_SESSION['language'] ?? 'en'
+            'languange' => $_SESSION['language'] ?? 'en',
         ]);
+        
     }
 
 

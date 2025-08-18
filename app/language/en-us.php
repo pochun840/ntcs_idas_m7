@@ -219,7 +219,7 @@ $text['event'] = 'Event'; //Select
 $text['job_select'] = 'Job Select'; //Job Select
 $text['confirm'] = 'Confirm';
 $text['Table'] = 'Table';
-$text['Align'] = 'Binding';
+$text['Align'] = 'Unified';
 $text['new_event'] = 'Create Event';
 $text['edit_event'] = 'Edit Event';
 $text['del_event'] = 'Delete Event';
@@ -246,6 +246,8 @@ $text['UserDefine2'] = 'UserDefine2';
 $text['UserDefine3'] = 'UserDefine3';
 $text['UserDefine4'] = 'UserDefine4';
 $text['UserDefine5'] = 'UserDefine5';
+$text['FreeRotate'] = 'FreeRotate';
+$text['Skip'] = 'Skip';
 
 $text['OK'] = 'OK';
 $text['NG'] = 'NG';

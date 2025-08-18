@@ -219,7 +219,7 @@ $text['event'] = '事件'; //Select
 $text['job_select'] = '工作选择'; //Job Select
 $text['confirm'] = '确认';
 $text['Table'] = '表格';
-$text['Align'] = 'Binding';
+$text['Align'] = '套用';
 $text['new_event'] = '建立事件';
 $text['edit_event'] = '编辑事件';
 $text['del_event'] = '刪除事件';
@@ -252,6 +252,9 @@ $text['UserDefine2'] = '自定义2';
 $text['UserDefine3'] = '自定义3';
 $text['UserDefine4'] = '自定义4';
 $text['UserDefine5'] = '自定义5';
+$text['FreeRotate'] = '自由旋转';
+$text['Skip'] = '跳工序';
+
 
 
 $text['OK'] = 'OK';

@@ -225,7 +225,7 @@ $text['event'] = '事件'; //Select
 $text['job_select'] = '工作選擇'; //Job Select
 $text['confirm'] = '確認';
 $text['Table'] = '表格';
-$text['Align'] = 'Binding';
+$text['Align'] = '套用';
 $text['new_event'] = '建立事件';
 $text['edit_event'] = '編輯事件';
 $text['del_event'] = '刪除事件';
@@ -255,6 +255,8 @@ $text['UserDefine2'] = '自定義2';
 $text['UserDefine3'] = '自定義3';
 $text['UserDefine4'] = '自定義4';
 $text['UserDefine5'] = '自定義5';
+$text['FreeRotate'] = '自由旋轉';
+$text['Skip'] = '跳工序';
 
 $text['OK'] = 'OK';
 $text['NG'] = 'NG';
@@ -349,6 +351,7 @@ $text['mask'] = '子網路遮罩';
 $text['gateway'] = '閘道器';
 $text['Mac'] = 'MAC位址';
 $text['refresh'] = '刷新';
+$text['db_version'] = '資料庫版本';
 
 //Setting
 $text['controller_setting'] = '控制器設定';

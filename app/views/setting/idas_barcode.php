@@ -20,9 +20,24 @@
                                 
                                 <?php foreach ($data['barcodes'] as $k_b =>$v_b){?>
                                     <tr>
-                                        <td style="text-align: center; vertical-align: middle;" >
-                                            <input class="form-check-input" type="checkbox" name="barcode_check" id="barcode_check" value="<?php echo $v_b['job_id'];?>" style="zoom:1.2">
-                                        </td> 
+                                            <td style="text-align: center; vertical-align: middle;">
+                                                <input
+                                                class="form-check-input barcode-check"
+                                                type="checkbox"
+                                                name="barcode_check[]"
+                                                id="barcode_check_<?php echo (int)$v_b['job_id'].'_'.$k_b; ?>"
+                                                value="1"
+                                                data-job-id="<?php echo (int)$v_b['job_id']; ?>"
+                                                data-job-name="<?php echo htmlspecialchars($v_b['JOBname'], ENT_QUOTES); ?>"
+                                                data-barcode="<?php echo htmlspecialchars($v_b['barcode'], ENT_QUOTES); ?>"
+                                                data-range-from="<?php echo (int)$v_b['range_from']; ?>"
+                                                data-range-count="<?php echo (int)$v_b['range_count']; ?>"
+                                                data-barcode-mode="<?php echo (int)$v_b['barcode_mode']; ?>"
+                                                <?php /* 若有 seq_id 就帶上，沒有就 -1 */ ?>
+                                                data-seq-id="<?php echo isset($v_b['seq_id']) ? (int)$v_b['seq_id'] : -1; ?>"
+                                                style="zoom:1.2">
+                                            </td>
+
                                         <td><?php echo $v_b['job_id'];?></td>
                                         <td><?php echo $v_b['JOBname'];?></td>
                                         <td><?php echo $v_b['barcode'];?></td>
@@ -106,44 +121,45 @@
 </div>
 
 <script>
-
-$(document).on('change', 'input[name="barcode_check"]', function () {
-    const isChecked = $(this).is(':checked');
-    const $row = $(this).closest('tr');
-
-    // 切換背景顏色
-    if (isChecked) {
-        $row.find('td').css('background-color', '#9AC0CD');
-    } else {
-        $row.find('td').css('background-color', ''); // 清空回到預設
+    // —— 規則：哪些 barcode_mode 需要 SEQ（依實際調整）——
+    function modeRequiresSeq(modeVal) {
+    return String(modeVal) === '2'; // 範例：mode=2 需要 SEQ
     }
 
-    // 欄位啟用/禁用
-    $row.find('input, select, textarea')
-        .not(this) // 排除自己
-        .prop('disabled', !isChecked);
-
-    // 勾選時自動 focus 第一個可輸入欄位
-    if (isChecked) {
-        $row.find('input, select, textarea')
-            .not(this)
-            .first()
-            .focus();
+    // 清空/預設表單
+    function resetBarcodeForm() {
+    $('#barcode_name').val('');
+    $('#barcode_from').val('1');
+    $('#barcode_count').val('');
+    $('#barcode_mode').val('-1');
+    $('#barcode_job').val('-1');
+    $('#barcode_seq').html('<option value="-1"><?php echo $text['system_barcode_select_seq_m'];?></option>');
+    $('#barcode_select_seq').hide();
     }
-});
 
+    // 顯示/隱藏 SEQ 區塊
+    function toggleBarcodeSeq() {
+    const need = modeRequiresSeq($('#barcode_mode').val());
+    $('#barcode_select_seq').toggle(need);
+    if (need) {
+        const jobId = $('#barcode_job').val();
+        if (jobId && jobId !== '-1') {
+        fetchSeqList(jobId, null); // 無預選
+        }
+    }
+    }
 
-//透過JOBID 取得對應的SEQ
-function fetchSeqList() {
-    const jobId = document.getElementById('barcode_job').value;
+    // 升級版：透過 JOBID 載入 SEQ，支援「預選 seqId」
+    function fetchSeqList(jobId = null, selectedSeqId = null) {
+    const jobSelect  = document.getElementById('barcode_job');
     const barcodeSeq = document.getElementById('barcode_seq');
+
+    if (!jobId) jobId = jobSelect.value;
 
     // Reset list
     barcodeSeq.innerHTML = '';
-
-    // 預設項目
     const defaultOption = document.createElement('option');
-    defaultOption.value = "-1";
+    defaultOption.value = '-1';
     defaultOption.textContent = "<?php echo $text['system_barcode_select_seq_m'];?>";
     barcodeSeq.appendChild(defaultOption);
 
@@ -154,19 +170,82 @@ function fetchSeqList() {
         type: 'POST',
         data: { job_id: jobId },
         success: function(response) {
-            const seqList = JSON.parse(response);
+        let seqList = [];
+        try { seqList = JSON.parse(response); } catch(e) {
+            console.error('Invalid JSON:', response);
+            return;
+        }
 
-            seqList.forEach(seq => {
-                const option = document.createElement('option');
-                option.value = seq.SEQID;
-                option.textContent = `${seq.SEQID} ${seq.SEQname}`;
-                barcodeSeq.appendChild(option);
-            });
+        seqList.forEach(seq => {
+            const option = document.createElement('option');
+            option.value = seq.SEQID;
+            option.textContent = `${seq.SEQID} ${seq.SEQname}`;
+            barcodeSeq.appendChild(option);
+        });
+
+        // 預選（若有）
+        if (selectedSeqId != null && selectedSeqId !== '-1') {
+            barcodeSeq.value = String(selectedSeqId);
+            if (barcodeSeq.value !== String(selectedSeqId)) {
+            barcodeSeq.value = '-1';
+            }
+        }
         },
         error: function(xhr, status, error) {
-            console.error('Error occurred:', error);
+        console.error('Error occurred:', error);
         }
     });
-}
-    
+    }
+
+    // 勾選列 → 單選 + 高亮 + 帶入表單（最後點選的為準）
+    $(document).on('change', '.barcode-check', function () {
+    const isChecked = this.checked;
+    const $row = $(this).closest('tr');
+
+    // 單選：勾到自己時，取消其他
+    if (isChecked) {
+        $('.barcode-check').not(this).each(function () {
+        this.checked = false;
+        $(this).closest('tr').find('td').css('background-color', '');
+        });
+    }
+
+    // 高亮/還原
+    $row.find('td').css('background-color', isChecked ? '#9AC0CD' : '');
+
+    if (isChecked) {
+        const jobId      = String($(this).data('job-id'));
+        const barcode    = String($(this).data('barcode'));
+        const rangeFrom  = String($(this).data('range-from'));
+        const rangeCount = String($(this).data('range-count'));
+        const modeVal    = String($(this).data('barcode-mode'));
+        const seqId      = String($(this).data('seq-id'));
+
+        // 帶入基本欄位
+        $('#barcode_name').val(barcode);
+        $('#barcode_from').val(rangeFrom);
+        $('#barcode_count').val(rangeCount);
+        $('#barcode_mode').val(modeVal);
+        $('#barcode_job').val(jobId);
+
+        // 依模式顯示/隱藏 SEQ，下拉選單載入與預選
+        toggleBarcodeSeq();
+        if (modeRequiresSeq(modeVal)) {
+        fetchSeqList(jobId, seqId);
+        }
+    } else if ($('.barcode-check:checked').length === 0) {
+        resetBarcodeForm();
+    }
+    });
+
+    // 手動改 Job / Mode 也連動
+    $('#barcode_job').on('change', function() {
+    if (modeRequiresSeq($('#barcode_mode').val())) {
+        fetchSeqList(this.value, null);
+    }
+    });
+    $('#barcode_mode').on('change', toggleBarcodeSeq);
+
+    // 初次載入：對齊顯示狀態
+    $(function(){ toggleBarcodeSeq(); });
 </script>
