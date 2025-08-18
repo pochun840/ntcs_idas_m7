@@ -245,11 +245,6 @@ function updateValue(element){
     }
 }
 
-</script>
-<script>
-    
-
-
 function sendRowInfoArray() {
     var jobid = '<?php echo $data['job_id']?>';
     var dataToSend = {
