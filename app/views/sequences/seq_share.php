@@ -248,22 +248,6 @@ function updateValue(element){
 </script>
 <script>
     
-<?php foreach($data['sequences'] as $key =>$val) {?>
-    var sequenceId = "<?php echo $val['SEQID'];?>";
-    var sequenceName = "<?php echo $val['SEQname'];?>";
-
-    var exists = rowInfoArray.some(function(item) {
-        return item.sequence_id === sequenceId || item.sequence_name === sequenceName;
-    });
-
-    if (!exists) {
-        var rowInfo = {
-            sequence_id: sequenceId,
-            sequence_name: sequenceName
-        };
-        rowInfoArray.push(rowInfo);
-    }
-<?php } ?>
 
 
 function sendRowInfoArray() {

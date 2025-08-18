@@ -458,86 +458,88 @@ class Sequence{
 
 
     
-    public function swapupdate($jobid, $rowInfoArray, $new_info) {
-        // 開啟事務
-        $this->db_iDas->beginTransaction();
+    public function swapupdate(int $jobid, array $rowInfoArray, array $new_info = []): bool{
         
-    
-        try {
-            // 遍歷 $rowInfoArray，更新 SEQ_lst 表和 STEP_lst表
-            foreach ($rowInfoArray as $k_s => $v_s) {
-                // 檢查是否存在該 SEQ_lst
-                $sql = "SELECT SEQID FROM SEQ_lst WHERE JOBID = ? AND SEQname = ?";
-                $statement = $this->db_iDas->prepare($sql);
-                $statement->execute([$jobid, $v_s['SEQname']]);
-                $result = $statement->fetch(PDO::FETCH_ASSOC);
-    
-                if ($result) {
-                    $old_seq_id = $result['SEQID']; // 取得舊的 seq_id
-    
-                    // 生成新的 seq_id
-                    $new_val = 'New_Value' . ($k_s + 1);
-                    $updated_seq_id = preg_replace('/[^0-9]/', '', $new_val); // 移除 "New_Value" 部分，保留純數字
-    
-                    // 檢查 $updated_seq_id 是否為 1，如果是，則改為 777
-                    if ($updated_seq_id == 1) {
-                        $temp_seq_id = 777;
-                    } else {
-                        $temp_seq_id = $updated_seq_id;
-                    }
-    
-                    // 更新 sequence 表中的 seq_id
-                    $update_sql = "UPDATE SEQ_lst SET SEQID = ? WHERE JOBID = ? AND SEQname = ?";
-                    $update_statement = $this->db_iDas->prepare($update_sql);
-                    $update_statement->execute([$temp_seq_id, $jobid, $v_s['SEQname']]);
-    
-                    // 更新 step 表中的 seq_id (使用 CASE 語句)
-                    $update_step_sql = "UPDATE STEP_lst SET SEQID = CASE
-                        WHEN SEQID = :old_seq_id THEN :temp_seq_id
-                        ELSE SEQID  -- 保留其他 seq_id 不變
-                    END
-                    WHERE JOBID = :jobid AND SEQID = :old_seq_id";
+        // 1) 整理映射表：old_seqid => new_seqid
+        $mapping = [];           // [old => new]
+        $seenNew = [];
+        foreach ($rowInfoArray as $idx => $row) {
+            // 盡量用 SEQID；若只有 SEQname，就查一次
+            if (isset($row['SEQID'])) {
+                $old = (int)$row['SEQID'];
+            } elseif (!empty($row['SEQname'])) {
+                $stmt = $this->db_iDas->prepare("SELECT SEQID FROM SEQ_lst WHERE JOBID = ? AND SEQname = ? LIMIT 1");
+                $stmt->execute([$jobid, $row['SEQname']]);
+                $old = (int)($stmt->fetchColumn() ?: 0);
+                if ($old === 0) {
+                    throw new RuntimeException("SEQname '{$row['SEQname']}' 不存在於 JOBID={$jobid}");
+                }
+            } else {
+                throw new InvalidArgumentException('rowInfoArray 每筆需要 SEQID 或 SEQname');
+            }
 
-    
-                    $update_step_statement = $this->db_iDas->prepare($update_step_sql);
-                    $update_step_statement->bindValue(':temp_seq_id', $temp_seq_id); // 使用 $temp_seq_id
-                    $update_step_statement->bindValue(':jobid', $jobid);
-                    $update_step_statement->bindValue(':old_seq_id', $old_seq_id);
-                    $update_step_statement->execute();
-                }
+            // 目標新序：優先用 new_seq_id；否則用陣列位置 + 1
+            $new = isset($row['new_seq_id']) ? (int)$row['new_seq_id'] : ((int)$idx + 1);
+
+            if ($new <= 0) {
+                throw new InvalidArgumentException("新序號需為正整數，收到：{$new}");
             }
-    
-            // 遍歷 $rowInfoArray，將 seq_id 為 777 的改回 1
-            foreach ($rowInfoArray as $k_s => $v_s) {
-                $sql = "SELECT SEQID FROM SEQ_lst WHERE JOBID = ? AND SEQname = ?";
-                $statement = $this->db_iDas->prepare($sql);
-                $statement->execute([$jobid, $v_s['SEQname']]);
-                $result = $statement->fetch(PDO::FETCH_ASSOC);
-    
-                if ($result && $result['SEQID'] == 777) {
-                    $update_sql = "UPDATE SEQ_lst SET SEQID = 1 WHERE JOBID = ? AND SEQname = ?";
-                    $update_statement = $this->db_iDas->prepare($update_sql);
-                    $update_statement->execute([$jobid, $v_s['SEQname']]);
-    
-                    $update_step_sql = "UPDATE STEP_lst SET SEQID = 1 WHERE JOBID = ? AND SEQID = 777";
-                    $update_step_statement = $this->db_iDas->prepare($update_step_sql);
-                    $update_step_statement->execute([$jobid]);
-                }
+
+            $mapping[$old] = $new;
+            $seenNew[$new] = true;
+        }
+
+        if (empty($mapping)) return true;
+
+        // 2) 快速健檢：新序號不可重複
+        if (count($seenNew) !== count($mapping)) {
+            throw new RuntimeException('新 SEQID 目標有重複，請檢查 rowInfoArray/new_seq_id');
+        }
+
+        // 3) 若有 old==new 的就略過（不用動）
+        foreach ($mapping as $old => $new) {
+            if ($old === $new) unset($mapping[$old]);
+        }
+        if (empty($mapping)) return true;
+
+        // 4) 選一個安全的 SHIFT，確保不會撞現有號
+        //    取當前最大 SEQID，SHIFT 設為 max+1000（或直接固定大數）
+        $maxStmt = $this->db_iDas->prepare("SELECT COALESCE(MAX(SEQID), 0) FROM SEQ_lst WHERE JOBID = ?");
+        $maxStmt->execute([$jobid]);
+        $maxSeq = (int)$maxStmt->fetchColumn();
+        $SHIFT  = max(1000, $maxSeq + 1000);
+
+        try {
+            $this->db_iDas->beginTransaction();
+
+            // PHASE 1: 把所有 old -> old+SHIFT（避免與任何 new 撞）
+            $u1_seq = $this->db_iDas->prepare("UPDATE SEQ_lst  SET SEQID = SEQID + :shift WHERE JOBID = :job AND SEQID = :old");
+            $u1_stp = $this->db_iDas->prepare("UPDATE STEP_lst SET SEQID = SEQID + :shift WHERE JOBID = :job AND SEQID = :old");
+
+            foreach ($mapping as $old => $new) {
+                $u1_seq->execute([':shift' => $SHIFT, ':job' => $jobid, ':old' => $old]);
+                $u1_stp->execute([':shift' => $SHIFT, ':job' => $jobid, ':old' => $old]);
             }
-    
-            // 提交事務
+
+            // PHASE 2: 把 old+SHIFT -> new
+            $u2_seq = $this->db_iDas->prepare("UPDATE SEQ_lst  SET SEQID = :new WHERE JOBID = :job AND SEQID = :tmp");
+            $u2_stp = $this->db_iDas->prepare("UPDATE STEP_lst SET SEQID = :new WHERE JOBID = :job AND SEQID = :tmp");
+
+            foreach ($mapping as $old => $new) {
+                $tmp = $old + $SHIFT;
+                $u2_seq->execute([':new' => $new, ':job' => $jobid, ':tmp' => $tmp]);
+                $u2_stp->execute([':new' => $new, ':job' => $jobid, ':tmp' => $tmp]);
+            }
+
             $this->db_iDas->commit();
-    
-        } catch (Exception $e) {
-            // 發生錯誤時回滾事務
+            return true;
+        } catch (Throwable $e) {
             $this->db_iDas->rollBack();
-            // 重新拋出異常
             throw $e;
         }
-    
-        return true;
     }
-    
+
+
 
     #驗證seq id是否重複
     public function sequence_id_repeat($jobid,$seqid)

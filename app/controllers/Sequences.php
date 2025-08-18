@@ -548,7 +548,7 @@ class Sequences extends Controller
                     $res_msg = 'fail';
                 }
                 echo $res_msg;
-                die();
+                //die();
             }
             
 

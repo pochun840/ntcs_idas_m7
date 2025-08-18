@@ -17,7 +17,6 @@ class Agents extends Controller
         $isMobile = $this->isMobileCheck();
         $device_info = $this->SettingModel->GetControllerInfo();
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
-        // $Controller_Info = $this->ToolModel->GetControllerInfo();        
 
         $data = [
             'isMobile' => $isMobile,

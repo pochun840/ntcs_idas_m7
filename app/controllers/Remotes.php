@@ -62,10 +62,6 @@ class Remotes extends Controller
 
                 // FC 16
                 $modbus->writeMultipleRegister(0, 463, $data, $dataTypes);
-                // $this->logMessage('modbus write 506 ,array = '.implode("','", $data));
-                // $this->logMessage('modbus status:'.$modbus->status);
-                // $this->logMessage('Import config end');
-                // echo json_encode(array('error' => ''))
 
                 echo json_encode(array('error' => '','modbus_status' => $modbus->status));
                 exit();
@@ -94,8 +90,6 @@ class Remotes extends Controller
 
                 // FC 3
                 $recData = $modbus->readMultipleRegisters(1, 4305, 3);
-                //$recData[0] = ;$recData[1] = ;$recData[2] = ;$recData[3] = ;
-
 
                 $data['jod_id']  = $recData[0]*16 + $recData[1];
                 $data['seq_id']  = $recData[2]*16 + $recData[3];

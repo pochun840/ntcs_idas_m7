@@ -282,8 +282,6 @@ class Step extends Controller
                 }
 
 
-                //$step['StepDelay']// 4捨5入 取到小數點地
-
             }
       
 
