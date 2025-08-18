@@ -88,6 +88,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                             <th><?php echo $text['column_count']; ?></th>
                                             <th><?php echo $text['column_total']; ?></th>
                                             <th><?php echo $text['column_status']; ?></th>
+                                            <th><?php echo $text['system_barcode']; ?></th>
                                         </tr>
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">
@@ -283,6 +284,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.last_screw_count}</td>
                     <td>${row.total_screw_count}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>
+                    <td >${row.barcode}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
         });
@@ -302,13 +304,6 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         currentMode = this.value;
         fetchRealTimeData(currentMode);
     });
-
-
-    // 頁面載入就先執行一次
-    //syncNtcsDataDb();
-
-    // 每 2 秒呼叫一次
-    //setInterval(syncNtcsDataDb, 2000);
 
 </script>
 </body>

@@ -158,71 +158,150 @@
     }
 
 
-   function toggleDownShift() {
-    const dataType = "<?php echo $data['type']; ?>";
 
-    const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
-    const StepRPMDownShift = document.getElementById('StepRPMDownShift');
-    const StepTorqueDownShift_block = document.getElementById('StepTorqueDownShift_block');
-    const showDownshiftTorque = document.getElementById('show_downshift_torque');
-    const showDownshiftAngle = document.getElementById('show_downshift_angle');
-    const downshiftBlock = document.getElementById('downshift_block');
-    const downshiftSpeedBlock = document.getElementById('downshift_speed_block');
+    function toggleDownShift() {
+        const dataType = "<?php echo $data['type']; ?>";
 
-    const isModeOff    = document.getElementById('downshift_mode_off')?.checked;
-    const isModeTorque = document.getElementById('downshift_mode_torque')?.checked;
-    const isModeAngle  = document.getElementById('downshift_mode_angle')?.checked;
+        const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
+        const StepRPMDownShift = document.getElementById('StepRPMDownShift');
+        const StepTorqueDownShift_block = document.getElementById('StepTorqueDownShift_block');
+        const showDownshiftTorque = document.getElementById('show_downshift_torque');
+        const showDownshiftAngle  = document.getElementById('show_downshift_angle');
+        const downshiftBlock      = document.getElementById('downshift_block');
+        const downshiftSpeedBlock = document.getElementById('downshift_speed_block');
 
-    // 預設全部隱藏與 disabled
-    if (showDownshiftTorque) showDownshiftTorque.style.display = 'none';
-    if (showDownshiftAngle)  showDownshiftAngle.style.display  = 'none';
-    if (StepTorqueDownShift) {
-        StepTorqueDownShift.disabled = true;
-        StepTorqueDownShift.style.display = 'none';
-    }
-    if (StepRPMDownShift) StepRPMDownShift.disabled = true;
-    if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none';
+        const isModeOff    = document.getElementById('downshift_mode_off')?.checked;
+        const isModeTorque = document.getElementById('downshift_mode_torque')?.checked;
+        const isModeAngle  = document.getElementById('downshift_mode_angle')?.checked;
 
-    // 取得 torque unit 對應的小數位數
-    const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
-    const decimals = { 0:2, 1:3, 2:2, 3:4, 4:1 };
-    const places = decimals[stepUnit] ?? 3;
-
-    // TORQUE 模式
-    if (isModeTorque) {
-        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
+        // 先全部隱藏/disabled
+        if (showDownshiftTorque) showDownshiftTorque.style.display = 'none';
+        if (showDownshiftAngle)  showDownshiftAngle.style.display  = 'none';
         if (StepTorqueDownShift) {
-        StepTorqueDownShift.style.display = 'block';
-        StepTorqueDownShift.disabled = false;
-        if (dataType === 'new') {
-            StepTorqueDownShift.value = (0).toFixed(places);
+            StepTorqueDownShift.disabled = true;
+            StepTorqueDownShift.style.display = 'none';
         }
-        }
-        if (StepRPMDownShift) StepRPMDownShift.disabled = false;
-        if (showDownshiftTorque) showDownshiftTorque.style.display = 'block';
-    }
+        if (StepRPMDownShift) StepRPMDownShift.disabled = true;
+        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none';
 
-    // ANGLE 模式（方案 A：只有空值才補 0）
-    else if (isModeAngle) {
-        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
-        if (StepTorqueDownShift) {
-        StepTorqueDownShift.style.display = 'block';
-        StepTorqueDownShift.disabled = false;
-        if (dataType === 'new' || StepTorqueDownShift.value === '' || StepTorqueDownShift.value == null) {
-            StepTorqueDownShift.value = 0;
-        }
-        }
-        if (StepRPMDownShift) StepRPMDownShift.disabled = false;
-        if (showDownshiftAngle) showDownshiftAngle.style.display = 'block';
-    }
+        // 依扭力單位決定小數位數（供 TORQUE 模式用）
+        const decimalsMap = { 0:2, 1:3, 2:2, 3:4, 4:1 };
+        const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1, 10);
+        const places = decimalsMap[stepUnit] ?? 3;
+        const stepVal = (1 / Math.pow(10, places)).toFixed(places);
 
-    // 外層區塊開關
-    if (downshiftBlock)      downshiftBlock.style.display      = isModeOff ? 'none' : 'flex';
-    if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
+        // 工具：移除先前綁的處理器
+        const removeHandler = (el, key) => {
+            if (!el) return;
+            if (el[key]) {
+            el.removeEventListener('input', el[key]);
+            el.removeEventListener('blur',  el[key]);
+            el[key] = null;
+            }
+        };
 
-    // 綁定四捨五入事件，位數用 places
-    //setTimeout(() => bindRoundedWhenVisible('StepTorqueDownShift', places), 100);
-    }
+        // 工具：整數-only
+        const applyIntegerOnly = (el) => {
+            if (!el) return;
+
+            // 先移除可能存在的 decimal handler
+            removeHandler(el, '_decimalHandler');
+
+            // 屬性切到整數模式
+            el.setAttribute('inputmode', 'numeric');
+            el.setAttribute('pattern', '^\\d+$');
+            el.setAttribute('step', '1');
+            el.setAttribute('data-allow-decimals', '0');
+
+            // 立刻把現值轉成整數
+            const n = Math.floor(Number(el.value));
+            el.value = Number.isFinite(n) ? String(n) : '0';
+
+            // 綁 input/blur，過濾成純數字並去小數
+            const h = (e) => {
+            const raw = e.target.value;
+            // 只留 0-9
+            let cleaned = raw.replace(/\D+/g, '');
+            // 去掉前導 0（保留單個 0）
+            if (cleaned.length > 1) cleaned = cleaned.replace(/^0+/, '') || '0';
+            e.target.value = cleaned;
+            };
+            el.addEventListener('input', h);
+            el.addEventListener('blur',  h);
+            el._integerHandler = h;
+        };
+
+        // 工具：可小數（TORQUE 模式），限制到 places 位
+        const applyDecimalMode = (el, maxPlaces) => {
+            if (!el) return;
+
+            // 先移除可能存在的 integer handler
+            removeHandler(el, '_integerHandler');
+
+            el.setAttribute('inputmode', 'decimal');
+            el.setAttribute('pattern', `^\\d+(?:\\.\\d{0,${maxPlaces}})?$`);
+            el.setAttribute('step', (1 / Math.pow(10, maxPlaces)).toFixed(maxPlaces));
+            el.setAttribute('data-allow-decimals', String(maxPlaces));
+
+            // 修剪目前值的小數位
+            const fix = (v) => {
+            v = String(v || '').replace(/[^\d.]/g, '');
+            // 僅保留第一個小數點
+            const parts = v.split('.');
+            if (parts.length > 1) {
+                const intPart = parts.shift();
+                const frac    = parts.join('').slice(0, maxPlaces);
+                return frac.length ? `${intPart}.${frac}` : intPart;
+            }
+            return parts[0] || '';
+            };
+            el.value = fix(el.value);
+
+            const h = (e) => { e.target.value = fix(e.target.value); };
+            el.addEventListener('input', h);
+            el.addEventListener('blur',  h);
+            el._decimalHandler = h;
+        };
+
+        // === TORQUE 模式 ===
+        if (isModeTorque) {
+            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
+            if (StepTorqueDownShift) {
+            StepTorqueDownShift.style.display = 'block';
+            StepTorqueDownShift.disabled = false;
+            if (dataType === 'new') StepTorqueDownShift.value = (0).toFixed(places);
+            applyDecimalMode(StepTorqueDownShift, places);
+            }
+            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
+            if (showDownshiftTorque) showDownshiftTorque.style.display = 'block';
+        }
+        // === ANGLE 模式（一定是整數）===
+        else if (isModeAngle) {
+            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
+            if (StepTorqueDownShift) {
+            StepTorqueDownShift.style.display = 'block';
+            StepTorqueDownShift.disabled = false;
+
+            // 新增或原本空值 → 0；否則取整數（floor）
+            if (dataType === 'new' || StepTorqueDownShift.value === '' || StepTorqueDownShift.value == null) {
+                StepTorqueDownShift.value = '0';
+            } else {
+                const n = Math.floor(Number(StepTorqueDownShift.value));
+                StepTorqueDownShift.value = Number.isFinite(n) ? String(n) : '0';
+            }
+
+            // 套用整數-only 規則（屬性 + 輸入過濾）
+            applyIntegerOnly(StepTorqueDownShift);
+            }
+            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
+            if (showDownshiftAngle) showDownshiftAngle.style.display = 'block';
+        }
+
+        // 外層區塊開關
+        if (downshiftBlock)      downshiftBlock.style.display      = isModeOff ? 'none' : 'flex';
+        if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
+        }
+
 
 
 

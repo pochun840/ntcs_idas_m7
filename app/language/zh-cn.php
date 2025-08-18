@@ -332,8 +332,8 @@ $text['fasten_status_19'] = 'BS';
 //Tool
 $text['tool_info'] = '工具信息';
 $text['tool'] = '工具';
-$text['tool_type'] = '型號';
-$text['tool_sn'] = '序號';
+$text['tool_type'] = '工具型号';
+$text['tool_sn']   = '工具序号';
 $text['sw_version'] = '軟體版本';
 $text['maintain_counts'] = '总拧紧次数';
 $text['total_counts'] = '本周期拧紧次数';
