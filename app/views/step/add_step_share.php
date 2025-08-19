@@ -89,7 +89,7 @@
         toggleInputsByCheckbox();
 
         const isDisabled = document.getElementById("StepHiTorque").disabled;
-        console.log("StepHiTorque 是否 disabled：", isDisabled);
+        //console.log("StepHiTorque 是否 disabled：", isDisabled);
 
         cb0?.addEventListener("change", toggleInputsByCheckbox);
         cb1?.addEventListener("change", toggleInputsByCheckbox);
@@ -867,12 +867,36 @@
         // StepOption 分支
         const pattern0to99 = /^(?:[0-9]|[1-9][0-9])$/; // 0~99
         if (StepOption === 2) {
+
+            const hiAngEl = document.getElementById('StepHiAngle');
+            const loAngEl = document.getElementById('StepLoAngle');
+
+            const hiAngVal = Number(hiAngEl?.value);
+            const loAngMax = (Number.isFinite(hiAngVal) && hiAngVal > 0) ? (hiAngVal - 1) : 30600;
+            
             conditions.push(
                 { id: 'StepTorque',   pattern: /^\d{1,5}(\.\d{1,4})?$/, ...limits.torque.torque },
                 { id: 'StepHiTorque', pattern: /^\d{1,6}(\.\d{1,4})?$/, ...limits.torque.limitHi },
                 { id: 'StepHiAngle',  pattern: /^\d{1,5}$/, ...limits.angle.limitHi },
-                { id: 'StepLoAngle',  pattern: /^\d{1,5}$/, ...limits.angle.limitLo, noRangeMessage: true }
+                { id: 'StepLoAngle',  pattern: /^\d{1,5}$/, min: 0, max: loAngMax, integerOnly: true, noRangeMessage: true }
             );
+
+            // 同步：HiAngle 改變時即時更新 LoAngle 的 max（只綁一次）
+            if (hiAngEl && loAngEl && !hiAngEl.dataset.syncLoMaxBound) {
+                const syncLoMax = () => {
+                    const h  = Number(hiAngEl.value);
+                    const mx = (Number.isFinite(h) && h > 0) ? (h - 1) : 30600;
+                    loAngEl.setAttribute('max', mx);
+
+                    // 如目前 lo 超過新上限，夾回上限（可選）
+                    const v = Number(loAngEl.value);
+                    if (Number.isFinite(v) && v > mx) loAngEl.value = String(mx);
+                };
+                syncLoMax();
+                hiAngEl.addEventListener('input', syncLoMax);
+                hiAngEl.dataset.syncLoMaxBound = '1'; // 打標記避免重複綁定
+            }
+
             if (StepMoniByWin === 2) {
                 conditions.push(
                     { id: 'step_limit_hi_tor', pattern: pattern0to99, min: 0, max: 99, integerOnly: true },
@@ -1368,7 +1392,7 @@
                 if (!(dsVal < hiAngVal)) {
                     dsEl.classList.add("is-invalid");
                     if (fb?.classList.contains("invalid-feedback")) {
-                        fb.innerText = "Must be less than StepHiAngle";
+                        fb.innerText = "Must be less than StepAngle";
                         fb.classList.add("d-block");
                         fb.style.display = "block";
                     }
@@ -1434,6 +1458,337 @@
                 }
             });
         })();
+
+        // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepTorque ----
+        (function enforceLoTorqueLessThanTargetForOption2() {
+            if (StepOption !== 2) return;
+
+            const loEl = document.getElementById('StepLoTorque');
+            const tqEl = document.getElementById('StepTorque');
+            if (!loEl || !tqEl) return;
+
+            const loVal = Number(loEl.value);
+            const tqVal = Number(tqEl.value);
+            if (!Number.isFinite(loVal) || !Number.isFinite(tqVal)) return;
+
+            // 取語言（與你上面用法一致）
+            const getCookieSafe = (name) => {
+                try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                } catch { return null; }
+            };
+            const lang = (typeof getCookie === 'function' && getCookie('language')) || getCookieSafe('language') || 'zh-tw';
+            const i18n = {
+                'zh-tw': { lessThanTq: '必須小於目標扭力' },
+                'zh-cn': { lessThanTq: '必须小于目标扭矩' },
+                'en-us': { lessThanTq: 'Must be less than StepTorque' },
+            };
+            const T = i18n[lang] || i18n['en-us'];
+
+            // 依 precision 四捨五入後再比較
+            const loRounded = roundTo(loVal, precision);
+            const tqRounded = roundTo(tqVal, precision);
+
+            const fb = loEl.nextElementSibling;
+            if (!(loRounded < tqRounded)) {
+                loEl.classList.add('is-invalid');
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = T.lessThanTq;
+                    fb.classList.add('d-block');
+                    fb.style.display = 'block';
+                }
+                isValid = false;
+                errorList.push('StepLoTorque');
+            } else {
+                loEl.classList.remove('is-invalid');
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
+                }
+            }
+        })();
+
+
+        // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepHiTorque ----
+        (function enforceLoTorqueLessThanHiTorqueForOption2() {
+            if (StepOption !== 2) return;
+
+            const loEl = document.getElementById('StepLoTorque');
+            const hiEl = document.getElementById('StepHiTorque');
+            if (!loEl || !hiEl) return;
+
+            const lo = Number(loEl.value);
+            const hi = Number(hiEl.value);
+            if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
+
+            // 取語言（cookie: language），預設 zh-tw
+            const getCookieSafe = (name) => {
+                try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                } catch { return null; }
+            };
+            let lang =
+                (typeof getCookie === 'function' && getCookie('language')) ||
+                getCookieSafe('language') ||
+                'zh-tw';
+            lang = String(lang).toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
+
+            const i18n = {
+                'zh-tw': { lessThanHiTq: '必須小於 StepHiTorque' },
+                'zh-cn': { lessThanHiTq: '必须小于 StepHiTorque' },
+                'en-us': { lessThanHiTq: 'Must be less than StepHiTorque' },
+            };
+            const T = i18n[lang] || i18n['en-us'];
+
+            // 依 precision 四捨五入後比較
+            const loRounded = roundTo(lo, precision);
+            const hiRounded = roundTo(hi, precision);
+
+            const fb = loEl.nextElementSibling;
+            if (!(loRounded < hiRounded)) {
+                loEl.classList.add('is-invalid');
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = T.lessThanHiTq;
+                    fb.classList.add('d-block');
+                    fb.style.display = 'block';
+                }
+                isValid = false;
+                if (!errorList.includes('StepLoTorque')) errorList.push('StepLoTorque');
+            } else {
+                loEl.classList.remove('is-invalid');
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
+                }
+            }
+        })();
+
+
+        // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepTorque；且 StepTorque 不可等於 StepLoTorque ----
+        (function enforceLoTorqueVsTargetForOption2() {
+            if (StepOption !== 2) return;
+
+            const loEl = document.getElementById('StepLoTorque');
+            const tqEl = document.getElementById('StepTorque');
+            if (!loEl || !tqEl) return;
+
+            const loVal = Number(loEl.value);
+            const tqVal = Number(tqEl.value);
+            if (!Number.isFinite(loVal) || !Number.isFinite(tqVal)) return;
+
+            // 取語言（cookie: language），預設 zh-tw
+            const getCookieSafe = (name) => {
+                try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                } catch { return null; }
+            };
+            let lang =
+                (typeof getCookie === 'function' && getCookie('language')) ||
+                getCookieSafe('language') ||
+                'zh-tw';
+            lang = String(lang).toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
+
+            const i18n = {
+                'zh-tw': {
+                    lessThanTq: '必須小於 StepTorque',
+                    notEqualLo: '不可等於 StepLoTorque',
+                },
+                'zh-cn': {
+                    lessThanTq: '必须小于 StepTorque',
+                    notEqualLo: '不可等于 StepLoTorque',
+                },
+                'en-us': {
+                    lessThanTq: 'Must be less than StepTorque',
+                    notEqualLo: 'Must not equal StepLoTorque',
+                },
+            };
+            const T = i18n[lang] || i18n['en-us'];
+
+            // 依 precision 四捨五入後比較（避免浮點誤差）
+            const loRounded = roundTo(loVal, precision);
+            const tqRounded = roundTo(tqVal, precision);
+
+            const fbLo = loEl.nextElementSibling;
+            const fbTq = tqEl.nextElementSibling;
+
+            // 先清乾淨
+            const clearInvalid = (el, fb) => {
+                el.classList.remove('is-invalid');
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
+                }
+            };
+            clearInvalid(loEl, fbLo);
+            clearInvalid(tqEl, fbTq);
+
+            if (loRounded > tqRounded) {
+                // lo > tq -> 標記 StepLoTorque 錯
+                loEl.classList.add('is-invalid');
+                if (fbLo?.classList.contains('invalid-feedback')) {
+                    fbLo.innerText = T.lessThanTq;
+                    fbLo.classList.add('d-block');
+                    fbLo.style.display = 'block';
+                }
+                isValid = false;
+                if (!errorList.includes('StepLoTorque')) errorList.push('StepLoTorque');
+            } else if (loRounded === tqRounded) {
+                // lo == tq -> 針對需求：標記 StepTorque 錯，顯示「不可等於 StepLoTorque」
+                tqEl.classList.add('is-invalid');
+                if (fbTq?.classList.contains('invalid-feedback')) {
+                    fbTq.innerText = T.notEqualLo;
+                    fbTq.classList.add('d-block');
+                    fbTq.style.display = 'block';
+                }
+                isValid = false;
+                if (!errorList.includes('StepTorque')) errorList.push('StepTorque');
+            }
+        })();
+
+
+        // ---- 交叉驗證：StepOption==2 時，若 StepLoTorque 與 StepHiTorque 或 StepTorque 相等，顯示「扭力下限要小於扭力上限」 ----
+        (function enforceEqualitiesForOption2() {
+            if (StepOption !== 2) return;
+
+            const loEl = document.getElementById('StepLoTorque');
+            const hiEl = document.getElementById('StepHiTorque');
+            const tqEl = document.getElementById('StepTorque');
+            if (!loEl || !hiEl || !tqEl) return;
+
+            const loVal = Number(loEl.value);
+            const hiVal = Number(hiEl.value);
+            const tqVal = Number(tqEl.value);
+            if (!Number.isFinite(loVal) || !Number.isFinite(hiVal) || !Number.isFinite(tqVal)) return;
+
+            // 語系
+            const getCookieSafe = (name) => {
+                try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                } catch { return null; }
+            };
+            let lang =
+                (typeof getCookie === 'function' && getCookie('language')) ||
+                getCookieSafe('language') ||
+                'zh-tw';
+            lang = String(lang).toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
+
+            const i18n = {
+                'zh-tw': { loLtHi: '扭力下限要小於扭力上限' },
+                'zh-cn': { loLtHi: '扭矩下限要小于扭矩上限' },
+                'en-us': { loLtHi: 'Torque lower limit must be less than upper limit' },
+            };
+            const T = i18n[lang] || i18n['en-us'];
+
+            // 以 precision 四捨五入後再比較，避免浮點誤差
+            const loR = roundTo(loVal, precision);
+            const hiR = roundTo(hiVal, precision);
+            const tqR = roundTo(tqVal, precision);
+
+            const equalLoHi = loR === hiR;
+            const equalLoTq = loR === tqR;
+
+            if (equalLoHi || equalLoTq) {
+                const fbLo = loEl.nextElementSibling;
+
+                // 標記下限錯誤，顯示「下限 < 上限」
+                loEl.classList.add('is-invalid');
+                if (fbLo?.classList.contains('invalid-feedback')) {
+                    fbLo.innerText = T.loLtHi;
+                    fbLo.classList.add('d-block');
+                    fbLo.style.display = 'block';
+                }
+
+                // 清除可能由其它等號驗證留下在 hi/tq 的錯誤，避免重複訊息
+                [hiEl, tqEl].forEach(el => {
+                    const fb = el?.nextElementSibling;
+                    el?.classList.remove('is-invalid');
+                    if (fb?.classList.contains('invalid-feedback')) {
+                        fb.innerText = '';
+                        fb.classList.remove('d-block');
+                        fb.style.display = 'none';
+                    }
+                });
+
+                isValid = false;
+                if (!errorList.includes('StepLoTorque')) errorList.push('StepLoTorque');
+            }
+        })();
+
+
+        // ---- 交叉驗證：StepOption==1 && StepEnableThreshold==2 時，StepTorqueTS 必須小於 StepHiTorque ----
+        (function enforceTSLessThanHiTorqueForOption1() {
+            if (StepOption !== 1 || StepEnableThreshold !== "2") return;
+
+            const tsEl   = document.getElementById('StepTorqueTS');   // Threshold
+            const hiTqEl = document.getElementById('StepHiTorque');   // Hi torque
+            if (!tsEl || !hiTqEl) return;
+
+            const tsVal   = Number(tsEl.value);
+            const hiTqVal = Number(hiTqEl.value);
+            if (!Number.isFinite(tsVal) || !Number.isFinite(hiTqVal)) return;
+
+            // 語系
+            const getCookieSafe = (name) => {
+                try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                } catch { return null; }
+            };
+            let lang =
+                (typeof getCookie === 'function' && getCookie('language')) ||
+                getCookieSafe('language') ||
+                'zh-tw';
+            lang = String(lang).toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
+
+            const i18n = {
+                'zh-tw': { lessThanHiTq: '必須小於 StepHiTorque' },
+                'zh-cn': { lessThanHiTq: '必须小于 StepHiTorque' },
+                'en-us': { lessThanHiTq: 'Must be less than StepHiTorque' },
+            };
+            const T = i18n[lang] || i18n['en-us'];
+
+            // 依 precision 四捨五入後比較，避免浮點誤差
+            const tsR   = roundTo(tsVal,   precision);
+            const hiTqR = roundTo(hiTqVal, precision);
+
+            const fb = tsEl.nextElementSibling;
+            if (!(tsR < hiTqR)) {
+                tsEl.classList.add('is-invalid');
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = T.lessThanHiTq;
+                    fb.classList.add('d-block');
+                    fb.style.display = 'block';
+                }
+                isValid = false;
+                if (!errorList.includes('StepTorqueTS')) errorList.push('StepTorqueTS');
+            } else {
+                tsEl.classList.remove('is-invalid');
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
+                }
+            }
+        })();
+
+
+
+
 
 
 

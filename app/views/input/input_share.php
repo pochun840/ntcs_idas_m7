@@ -481,8 +481,36 @@ function crud_job_event(action) {
 
         case 'copy':
 
+            const messages = {
+                'en-us': "No event available to copy",
+                'zh-tw': "沒有可複製的事件",
+                'zh-cn': "没有可复制的事件"
+            };
+
+            // 假設語言來源 (可改成你系統裡的語言判斷方式)
+            var language = getCookie('language');
+            const msg = messages[language] || messages['en-us'];
+
+
             document.querySelector(".main-content").classList.add("overlay-active");
-            if (!input_event) return;
+            if (!input_event) {
+                if (typeof alertify !== 'undefined') {
+                    alertify.alert(msg, function() {
+                        // callback：使用者按下 OK 時
+                    });
+
+                    // 3 秒後自動關閉 alert 視窗
+                    setTimeout(function() {
+                        alertify.closeAll(); 
+                    }, 3000);
+                }
+
+                document.querySelector(".main-content")?.classList.remove("overlay-active");
+                if (typeof hideOverlay === 'function') hideOverlay();
+
+                return;
+            }
+
 
             
             handleCopyJobEvent();

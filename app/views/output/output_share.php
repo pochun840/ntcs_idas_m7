@@ -19,7 +19,7 @@ $(document).ready(function () {
     if(job_id){
         get_output_by_job_id(job_id);
         document.getElementById('Button_Select').disabled = true;
-        document.getElementById('job_id').style.backgroundColor = 'yellow';
+        setJobIdHighlight(true);
     }
 });
 
@@ -278,7 +278,37 @@ function crud_job_event(argument) {
                 break;
             }
         case 'copy':
-            if (!output_event) return;
+
+            
+            const messages = {
+                'en-us': "No event available to copy",
+                'zh-tw': "沒有可複製的事件",
+                'zh-cn': "没有可复制的事件"
+            };
+
+            // 假設語言來源 (可改成你系統裡的語言判斷方式)
+            var language = getCookie('language');
+            const msg = messages[language] || messages['en-us'];
+
+
+            if (!output_event) {
+                 if (typeof alertify !== 'undefined') {
+                    alertify.alert(msg, function() {
+                        // callback：使用者按下 OK 時
+                    });
+
+                    // 3 秒後自動關閉 alert 視窗
+                    setTimeout(function() {
+                        alertify.closeAll(); 
+                    }, 3000);
+                }
+
+                document.querySelector(".main-content")?.classList.remove("overlay-active");
+                if (typeof hideOverlay === 'function') hideOverlay();
+
+                return;
+
+            }
             showOverlay();
 
             const jobinfo = <?php echo json_encode($data['job_list_new']); ?>;
@@ -532,97 +562,162 @@ function input_success_res(response, job_id, callbackFn, hideElementId = 'newinp
 }
 
 
+function setJobIdHighlight(active) {
+  const el = document.getElementById('job_id');
+  if (!el) return;
+  el.classList.toggle('bg-yellow', !!active);
+  // 永遠清掉 inline，避免和 class 打架
+  el.style.backgroundColor = '';
+}
 
+// 放在檔案頂部（全域一次）
+// 用來避免多次連續 AJAX 時，舊回應覆蓋新狀態
+let _getOutputReqId = 0;
 
 function get_output_by_job_id(job_id) {
+  const reqId = ++_getOutputReqId;
+
+ // 進函式就先清掉黃底（避免等待期間閃黃）
+  setJobIdHighlight(false);
+
+  const jobIdEl = document.getElementById("job_id");
+  if (jobIdEl) jobIdEl.value = job_id || '';
+
+
   $.ajax({
     url: "?url=Outputs/get_output_by_job_id",
     method: "POST",
     data: { job_id: job_id },
-    dataType: "json", // 讓 jQuery 幫你 parse JSON
+    dataType: "json",
     success: function (data) {
-      var job_outputlist = data.job_outputlist || '';
-      // 兼容：後端固定 key 為 'languange'（拼字），但也容忍 'language'
-      var language = getCookie('language') || data.language || data.languange;
+      // 若不是最新那次請求的回覆，直接忽略（避免舊回覆覆蓋 UI）
+      if (reqId !== _getOutputReqId) return;
 
-      // 安全拿陣列
-      temp  = Array.isArray(data.temp)  ? data.temp  : [];
-      tempA = Array.isArray(data.tempA) ? data.tempA : [];
+      const job_outputlist = data?.job_outputlist ?? '';
+      // 兼容後端 language/languange 與 cookie
+      let language = (getCookie('language') || data?.language || data?.languange || 'en-us').toLowerCase();
+
+      // 正規化語言代碼
+      // 允許 'en' / 'en-us'；'zh-tw' / 'zh-cn'；其餘一律 fallback 到 'en-us'
+      if (language === 'en') language = 'en-us';
+      if (!['en-us', 'zh-tw', 'zh-cn'].includes(language)) language = 'en-us';
+
+      // 安全取得陣列
+      const temp  = Array.isArray(data?.temp)  ? data.temp  : [];
+      const tempA = Array.isArray(data?.tempA) ? data.tempA : [];
 
       // 渲染表格
-      document.getElementById("output_jobid_select").innerHTML = job_outputlist;
-      document.getElementById("JobSelect").style.display = 'none';
+      const listEl = document.getElementById("output_jobid_select");
+      if (listEl) listEl.innerHTML = job_outputlist;
+      const jobSelectWrap = document.getElementById("JobSelect");
+      if (jobSelectWrap) jobSelectWrap.style.display = 'none';
 
-      var jobIdEl = document.getElementById("job_id");
-      if (jobIdEl) jobIdEl.value = job_id;
-
-      // 綁列點擊事件（維持原邏輯）
-      document.querySelectorAll('#output_jobid_select tr').forEach(function (row) {
-        row.addEventListener('click', function () {
-          output_event = this.className;
+      // 綁列點擊事件（維持你原本用 row.className 保存 event 的方式）
+      if (listEl) {
+        listEl.querySelectorAll('tr').forEach(function (row) {
+          row.addEventListener('click', function () {
+            // 你的原邏輯：用 row.className 當 output_event
+            // 若未來可改，建議改用 data-* 屬性更安全
+            window.output_event = this.className;
+          });
         });
-      });
+      }
 
-      // ★ 前端自行判斷「三者皆空」
-      var listEmpty = job_outputlist.trim() === '';
-      var noTemp    = temp.length === 0;
-      var noTempA   = tempA.length === 0;
+      // 前端自行判斷「三者皆空」
+      const listEmpty = (job_outputlist.trim() === '');
+      const noTemp    = (temp.length === 0);
+      const noTempA   = (tempA.length === 0);
+
       if (listEmpty && noTemp && noTempA) {
-        var btn = document.getElementById('Button_Select');
+        // 沒有任何資料 → 允許選擇、清掉黃底與值
+        const btn = document.getElementById('Button_Select');
         if (btn && btn.disabled) {
           btn.disabled = false;
           btn.classList.remove('disabled', 'disabled_input');
           btn.setAttribute('aria-disabled', 'false');
         }
-        if (jobIdEl) jobIdEl.style.backgroundColor = ''; // 清掉背景色
-
-        document.getElementById('job_id').value = '';
-
-
+        if (jobIdEl) {
+          jobIdEl.classList.remove('bg-yellow');
+          jobIdEl.style.backgroundColor = '';
+          jobIdEl.value = '';
+        }
+      } else {
+        // 有資料 → 加上黃底（用 class 管，不用 inline）
+        if (jobIdEl) jobIdEl.classList.add('bg-yellow');
       }
 
-      // 語系文字
-      if (language === "zh-cn") {
-        document.getElementById('1')  && (document.getElementById('1').textContent  = 'OK');
-        document.getElementById('2')  && (document.getElementById('2').textContent  = 'NG');
-        document.getElementById('3')  && (document.getElementById('3').textContent  = '超出上限');
-        document.getElementById('4')  && (document.getElementById('4').textContent  = '低于下限');
-        document.getElementById('5')  && (document.getElementById('5').textContent  = '工序完成信号');
-        document.getElementById('6')  && (document.getElementById('6').textContent  = '工作任务完成信号');
-        document.getElementById('7')  && (document.getElementById('7').textContent  = '马达信号');
-        document.getElementById('8')  && (document.getElementById('8').textContent  = '启动信号');
-        document.getElementById('9')  && (document.getElementById('9').textContent  = '拆螺丝');
-        document.getElementById('10') && (document.getElementById('10').textContent = '条码');
-        document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
-        document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
-        document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
-        document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
-        document.getElementById('15') && (document.getElementById('15').textContent = '自定义4');
-        document.getElementById('16') && (document.getElementById('16').textContent = '自定义5');
-      } else if (language === "zh-tw") {
-        document.getElementById('1')  && (document.getElementById('1').textContent  = 'OK');
-        document.getElementById('2')  && (document.getElementById('2').textContent  = 'NG');
-        document.getElementById('3')  && (document.getElementById('3').textContent  = '超出上限');
-        document.getElementById('4')  && (document.getElementById('4').textContent  = '低於下限');
-        document.getElementById('5')  && (document.getElementById('5').textContent  = '工序完成信號');
-        document.getElementById('6')  && (document.getElementById('6').textContent  = '完工信號');
-        document.getElementById('7')  && (document.getElementById('7').textContent  = '馬達信號');
-        document.getElementById('8')  && (document.getElementById('8').textContent  = '啟動信號');
-        document.getElementById('9')  && (document.getElementById('9').textContent  = '拆螺絲');
-        document.getElementById('10') && (document.getElementById('10').textContent = '條碼');
-        document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
-        document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
-        document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
-        document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
-        document.getElementById('15') && (document.getElementById('15').textContent = '自定義4');
-        document.getElementById('16') && (document.getElementById('16').textContent = '自定義5');
+      // ===== 語系文字（1~16）=====
+      const labels = {
+        'en-us': {
+          1: 'OK',
+          2: 'NG',
+          3: 'Over Upper',
+          4: 'Below Lower',
+          5: 'Step Done Signal',
+          6: 'Job Done Signal',
+          7: 'Motor Signal',
+          8: 'Start Signal',
+          9: 'Unscrew',
+          10: 'Barcode',
+          11: 'BS',
+          12: 'Custom 1',
+          13: 'Custom 2',
+          14: 'Custom 3',
+          15: 'Custom 4',
+          16: 'Custom 5'
+        },
+        'zh-tw': {
+          1: 'OK',
+          2: 'NG',
+          3: '超出上限',
+          4: '低於下限',
+          5: '工序完成信號',
+          6: '完工信號',
+          7: '馬達信號',
+          8: '啟動信號',
+          9: '拆螺絲',
+          10: '條碼',
+          11: 'BS',
+          12: '自定義1',
+          13: '自定義2',
+          14: '自定義3',
+          15: '自定義4',
+          16: '自定義5'
+        },
+        'zh-cn': {
+          1: 'OK',
+          2: 'NG',
+          3: '超出上限',
+          4: '低于下限',
+          5: '工序完成信号',
+          6: '工作任务完成信号',
+          7: '马达信号',
+          8: '启动信号',
+          9: '拆螺丝',
+          10: '条码',
+          11: 'BS',
+          12: '自定义1',
+          13: '自定义2',
+          14: '自定义3',
+          15: '自定义4',
+          16: '自定义5'
+        }
+      };
+      const L = labels[language] || labels['en-us'];
+
+      for (let i = 1; i <= 16; i++) {
+        const el = document.getElementById(String(i));
+        if (el && L[i]) el.textContent = L[i];
       }
+      // ===== 語系文字結束 =====
     },
     error: function (xhr, status, error) {
+      // 若失敗，保持已清除的黃底狀態即可，避免閃爍
       console.error("AJAX request failed:", status, error, xhr?.responseText);
     }
   });
 }
+
 
 
 
@@ -788,7 +883,7 @@ function alignsubmit(job_id) {
      
                 backgroundColorYellow = !backgroundColorYellow;
                 if (backgroundColorYellow) {
-                    document.getElementById('job_id').style.backgroundColor = 'yellow';
+                    setJobIdHighlight(true);
                 } else {
                     document.getElementById('job_id').style.backgroundColor = '';
                 }

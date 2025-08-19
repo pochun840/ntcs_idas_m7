@@ -285,4 +285,15 @@
     cursor: not-allowed;       /* 滑鼠變禁止符號 */
     opacity: 1;                /* 取消部分瀏覽器預設透明 */
 }
+
+#job_id.bg-yellow { background-color: yellow !important; }
+/* 避免任何顏色過渡造成的閃動 */
+#job_id { transition: none !important; }
+/* 若是 Chrome 的自動填寫黃底在作祟，這段可蓋掉 */
+#job_id:-webkit-autofill,
+#job_id:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+  box-shadow: inset 0 0 0 1000px white !important;
+}
+
 </style>
