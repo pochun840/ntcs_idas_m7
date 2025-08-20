@@ -32,6 +32,21 @@ class Tools extends Controller
         //韌體的版本
         $firmware_version = $this->get_firmware_version()/ 100; 
 
+        //起子的型號
+        $tools_type_temp =$this->get_tools_type();
+        if(!empty($tools_type_temp)){
+           $this->ToolModel->update_tools($tools_type_temp);
+           $Tool_Info['tool_type'] = $tools_type_temp['model'];
+        }
+
+
+        //起子的序號
+        $tools_type_tmp =$this->get_tools_sn(); 
+        if(!empty($tools_type_tmp)){
+            $this->ToolModel->update_tools_sn($tools_type_tmp);
+            $Tool_Info['tool_sn'] = $tools_type_tmp['model'];
+        }
+       
 
         if(!empty($controllers_info)){
             $step_torque_unit = (int)$controllers_info['torque_unit'];
@@ -120,13 +135,84 @@ class Tools extends Controller
     return null;
     }
 
-    public function get_gateway_ip() {
-        $output = shell_exec("ip route | grep default");
-        if (preg_match('/default via ([0-9.]+)/', $output, $matches)) {
-            return $matches[1];  // e.g. 192.168.0.1
-        }
-        return null;
+    public function get_gateway_ip(): ?string{
 
+        // 1) 先試 /proc/net/route（Linux 通用，無需 shell）
+        $gw = $this->gatewayFromProc();
+        if ($gw) return $gw;
+
+        // 2) 再試多個系統指令（不同發行版路徑不同）
+        $cmds = [
+            '/sbin/ip -4 route show default',
+            '/usr/sbin/ip -4 route show default',
+            'ip -4 route show default',
+            'ip route show default',
+            '/sbin/route -n',
+            '/usr/sbin/route -n',
+            'route -n',
+            '/bin/netstat -rn',
+            '/usr/bin/netstat -rn',
+            'netstat -rn',
+        ];
+
+        foreach ($cmds as $cmd) {
+            $out = @shell_exec($cmd . ' 2>/dev/null');
+            if (!is_string($out) || $out === '') continue;
+
+            // ip route: "default via 192.168.1.1 dev eth0 proto dhcp metric 100"
+            if (preg_match('/\bdefault\s+via\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\b/i', $out, $m)) {
+                if (filter_var($m[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) return $m[1];
+            }
+            // route -n / netstat -rn:
+            // "0.0.0.0  192.168.1.1  0.0.0.0  UG 100 0 0 eth0"
+            if (preg_match('/^0\.0\.0\.0\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\s+/m', $out, $m)) {
+                if (filter_var($m[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) return $m[1];
+            }
+        }
+
+        // 都失敗就回 null
+        return null;
+    }
+
+    /**
+     * 從 /proc/net/route 解析預設閘道
+     *  - 找到 Destination 為 00000000 的列
+     *  - Gateway 為小端序 16 進位，要翻轉成 IPv4
+     */
+    private function gatewayFromProc(): ?string{
+        
+        $path = '/proc/net/route';
+        if (!is_readable($path)) return null;
+
+        $fh = @fopen($path, 'r');
+        if (!$fh) return null;
+
+        // 解析表頭以取得欄位索引（避免不同核心版本欄位順序差異）
+        $header = fgets($fh);
+        if ($header === false) { fclose($fh); return null; }
+        $cols = preg_split('/\s+/', trim($header));
+        $map  = array_flip($cols); // e.g. ['Iface'=>0,'Destination'=>1,'Gateway'=>2,'Flags'=>3,...]
+
+        $gw = null;
+        while (($line = fgets($fh)) !== false) {
+            $parts = preg_split('/\s+/', trim($line));
+            if (!isset($parts[$map['Destination']], $parts[$map['Gateway']], $parts[$map['Flags']])) continue;
+
+            $destHex = strtoupper($parts[$map['Destination']]);
+            $flags   = intval($parts[$map['Flags']]); // bitmask: 0x1=UP, 0x2=GATEWAY
+            if ($destHex !== '00000000') continue;
+            if (($flags & 0x2) === 0) continue; // 必須是 GATEWAY
+
+            $gwHex = strtoupper($parts[$map['Gateway']]); // 小端序 hex，例如 "0101A8C0" = 192.168.1.1
+            if (!preg_match('/^[0-9A-F]{8}$/', $gwHex)) continue;
+
+            // 轉成 IPv4：每兩位一組，反轉順序，再轉十進位
+            $bytes = array_reverse(str_split($gwHex, 2)); // ['C0','A8','01','01'] -> 192.168.1.1
+            $ip = implode('.', array_map(fn($b) => hexdec($b), $bytes));
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) { $gw = $ip; break; }
+        }
+        fclose($fh);
+        return $gw;
     }
 
 

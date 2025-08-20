@@ -64,6 +64,7 @@ if ($data['type'] == 'edit') {
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">
         <input id="tool_max_rpm" value="<?php echo $data['tools_info']['max_rpm']; ?>">
         <input id="tool_min_rpm" value="<?php echo $data['tools_info']['min_rpm']; ?>">
+        <input id="seq_unit_code" value="<?php echo $data['torque_unit_code']; ?>">
         
     </div>
 

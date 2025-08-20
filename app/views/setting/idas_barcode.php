@@ -24,7 +24,7 @@
                                                 <input
                                                 class="form-check-input barcode-check"
                                                 type="checkbox"
-                                                name="barcode_check[]"
+                                                name="barcode_check"
                                                 id="barcode_check_<?php echo (int)$v_b['job_id'].'_'.$k_b; ?>"
                                                 value="1"
                                                 data-job-id="<?php echo (int)$v_b['job_id']; ?>"
@@ -78,7 +78,7 @@
                 <div class="col-3 t1"><?php echo $text['system_barcode_mode'];?>:</div>
                 <div class="col-3 t2">
                     <select id="barcode_mode" name="barcode_mode" onchange="toggleBarcodeSeq()">
-                        <option value="-1"><?php echo $text['system_barcode_setting'];?></option>
+                        <option value="-1" disabled selected ><?php echo $text['system_barcode_setting'];?></option>
                             <?php
                             foreach ($data['barcode_mode'] as $key_b => $value_b) {?>
                                 <option value='<?php echo $key_b ;?>'><?php echo $text['system_barcode_mode_' . $key_b] ;?></option>
@@ -116,14 +116,14 @@
 
             <div style="text-align: center;margin-top: 30px; margin-bottom:10px">
                 <button class="all-btn w3-button w3-border w3-round-large" onclick="update_barcode()" ><?php echo $text['save'];?></button>&nbsp;&nbsp;
-                <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode()" ><?php echo $text['delete_text'];?></button>
+                <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode_item()" ><?php echo $text['delete_text'];?></button>
             </div>               
 </div>
 
 <script>
     // —— 規則：哪些 barcode_mode 需要 SEQ（依實際調整）——
     function modeRequiresSeq(modeVal) {
-    return String(modeVal) === '2'; // 範例：mode=2 需要 SEQ
+    return String(modeVal) === '3'; // 範例：mode=2 需要 SEQ
     }
 
     // 清空/預設表單
@@ -248,4 +248,82 @@
 
     // 初次載入：對齊顯示狀態
     $(function(){ toggleBarcodeSeq(); });
+
+
+
+    function delete_barcode_item() {
+        const checked = document.querySelectorAll('input[name="barcode_check"]:checked');
+        const ids = Array.from(checked).map(cb => cb.value);
+
+        console.log(ids);
+
+        if (ids.length === 0) {
+            alertify.alert('提示', '請先勾選要刪除的條碼。');
+            return;
+        }
+
+        // 確認刪除
+        alertify.confirm(
+            '確認',
+            `確定要刪除 ${ids.length} 筆條碼嗎？`,
+            function onOk() {
+            // 顯示 loading
+            const spinner = document.getElementById('spinner');
+            if (spinner) spinner.style.display = 'block';
+
+            // ⚠️ 常見做法 1：用 'del_barcode_id[]'
+            $.ajax({
+                url: "?url=Settings/delete_barcodes",
+                method: "POST",
+                data: { 'del_barcode_id[]': ids },
+                dataType: 'json',
+                // 若你後端期待 del_barcode_id(無 [] ) 也可改成：
+                // data: { del_barcode_id: ids }, traditional: true,
+                success: function (response) {
+                const res_type = response?.res_type ?? 'Info';
+                const res_msg  = response?.res_msg  ?? '已處理完成。';
+
+                alertify.alert(res_type, res_msg, function () {
+                    // 設定頁籤狀態
+                    sessionStorage.setItem('Barcode_Setting', 'block');
+                    sessionStorage.setItem('Controller_Setting', 'none');
+
+                    // 直接刷新條碼清單（無需 setTimeout）
+                    $.ajax({
+                    url: "?url=Settings/show_Barcodes",
+                    method: "GET",
+                    success: function (html) {
+                        $('#total_barcodes').html(html);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("刷新條碼失敗:", error);
+                        alertify.error('刷新條碼列表失敗');
+                    }
+                    });
+                });
+                },
+                error: function (xhr, status, error) {
+                console.error("刪除時發生錯誤:", error, xhr?.responseText);
+                // 若後端偶爾不是 JSON，可降級處理
+                try {
+                    const fallback = JSON.parse(xhr.responseText || '{}');
+                    alertify.alert(fallback.res_type || 'Error', fallback.res_msg || '無法刪除條碼，請稍後再試。');
+                } catch {
+                    alertify.alert('Error', '無法刪除條碼，請稍後再試。');
+                }
+                },
+                complete: function () {
+                // 無論成功或失敗都關 spinner
+                const spinner = document.getElementById('spinner');
+                if (spinner) spinner.style.display = 'none';
+                }
+            });
+            },
+            function onCancel() {
+            // 使用者取消
+            }
+        );
+    }
+
+
 </script>

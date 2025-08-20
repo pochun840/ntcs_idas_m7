@@ -101,12 +101,26 @@ class Inputs extends Controller
                     }
 
                     // 額外邏輯補齊
-                    if (in_array("101", $temp_event) && !in_array("102", $temp_event)) {
-                        $temp_event[] = "102";
-                    } elseif (in_array("102", $temp_event) && !in_array("101", $temp_event)) {
-                        $temp_event[] = "101";
+                    $pair = ['101', '102'];
+                    if (!empty(array_intersect($pair, $temp_event))) {
+                        foreach ($pair as $id) {
+                            if (!in_array($id, $temp_event, true)) {
+                                $temp_event[] = $id;
+                            }
+                        }
                     }
 
+                    $group = ['105', '106', '115'];
+                    if (!empty(array_intersect($group, $temp_event))) {
+                        foreach ($group as $id) {
+                            if (!in_array($id, $temp_event, true)) {
+                                $temp_event[] = $id;
+                            }
+                        }
+                    }
+               
+
+                
                     // 表格輸出
                     $isMobile = $this->isMobileCheck();
                     if ($isMobile) {

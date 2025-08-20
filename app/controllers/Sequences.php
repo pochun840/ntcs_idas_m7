@@ -81,6 +81,37 @@ class Sequences extends Controller
                 $_POST['unscrew_force'] = 0;
             }
 
+            
+            // ---- 扭力單位 -> 小數位數對照（與前端一致）----
+            $decimalsByUnit = [ 0=>2, 1=>3, 2=>2, 3=>4, 4=>1 ];
+            $seqUnit = (int)($_POST['seq_unit'] ?? 1);
+
+            // 原本允許的位數
+            $basePrecision = $decimalsByUnit[$seqUnit] ?? 3;
+
+            // 四捨五入時看多一位
+            $roundPrecision = $basePrecision + 1;
+
+            // 最後輸出的位數（回存）
+            $outputPrecision = $basePrecision;
+
+            // 四捨五入處理函式
+            $roundTorque = function($val) use ($roundPrecision, $outputPrecision) {
+                if ($val === '' || $val === null) return $val;
+                $n = (float)str_replace(',', '.', $val);
+
+                // 先四捨五入到 roundPrecision
+                $rounded = round($n, $roundPrecision, PHP_ROUND_HALF_UP);
+
+                // 再格式化到 outputPrecision（補齊尾端 0）
+                return number_format($rounded, $outputPrecision, '.', '');
+            };
+
+            // --- 套用到 $_POST['unscrew_torque_threshold'] ---
+            if (isset($_POST['unscrew_torque_threshold'])) {
+                $_POST['unscrew_torque_threshold'] = $roundTorque($_POST['unscrew_torque_threshold']);
+            }
+
             $seq_data = array(
                 'job_id' => $_POST['job_id'] ?? null,
                 'SEQID'  => $_POST['SEQID'] ?? null,
@@ -277,6 +308,38 @@ class Sequences extends Controller
             $_POST['unscrew_force'] = 101;
         }else{
             $_POST['unscrew_force'] = 0;
+        }
+
+
+              
+        // ---- 扭力單位 -> 小數位數對照（與前端一致）----
+        $decimalsByUnit = [ 0=>2, 1=>3, 2=>2, 3=>4, 4=>1 ];
+        $seqUnit = (int)($_POST['seq_unit'] ?? 1);
+
+        // 原本允許的位數
+        $basePrecision = $decimalsByUnit[$seqUnit] ?? 3;
+
+        // 四捨五入時看多一位
+        $roundPrecision = $basePrecision + 1;
+
+        // 最後輸出的位數（回存）
+        $outputPrecision = $basePrecision;
+
+        // 四捨五入處理函式
+        $roundTorque = function($val) use ($roundPrecision, $outputPrecision) {
+            if ($val === '' || $val === null) return $val;
+            $n = (float)str_replace(',', '.', $val);
+
+            // 先四捨五入到 roundPrecision
+            $rounded = round($n, $roundPrecision, PHP_ROUND_HALF_UP);
+
+            // 再格式化到 outputPrecision（補齊尾端 0）
+            return number_format($rounded, $outputPrecision, '.', '');
+        };
+
+        // --- 套用到 $_POST['unscrew_torque_threshold'] ---
+        if (isset($_POST['unscrew_torque_threshold'])) {
+            $_POST['unscrew_torque_threshold'] = $roundTorque($_POST['unscrew_torque_threshold']);
         }
 
 
@@ -628,20 +691,24 @@ class Sequences extends Controller
                 $device_torque_unit = (int)$res_device['torque_unit'];
                 $torque_arr = $this->MiscellaneousModel->details("torque_unit");
                 $unit_name = $torque_arr[$device_torque_unit];
-                if($sequences['unscrew_mode'] == 0 ){
+
+                $seq_torque_unit = (int)$sequences['seq_unit'];
+
+
+
+                if($sequences['unscrew_mode'] != "0" ){
                     $temp = $this->MiscellaneousModel->convert_seq_torque($sequences['unscrew_torque_threshold'],$device_torque_unit, $unit_name);
                     $sequences['unscrew_torque_threshold'] = $temp['converted_value'];
                 }else{
-                    
-                    $precision = isset( $decimals_arr[$device_torque_unit])
-                        ?  $decimals_arr[$device_torque_unit]
-                        : 3;
-
-                    $sequences['unscrew_torque_threshold'] = number_format(
-                        (float)$sequences['unscrew_torque_threshold'],
-                        $precision
-                    ); 
+                
+                    if($device_torque_unit  != $seq_torque_unit){
+                        //控制器的扭力單位 與 SEQ的扭力單位 不同,才需要做單位的換算
+                        $res1= $this->MiscellaneousModel->convert_step_torque($sequences['unscrew_torque_threshold'],$sequences['seq_unit'],$device_torque_unit); 
+                        $sequences['unscrew_torque_threshold'] = $res1['converted_value'];   
+                    }
                 }
+
+                
             }
 
 

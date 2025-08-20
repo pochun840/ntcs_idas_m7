@@ -110,6 +110,8 @@
 
     // 新增 sequence
     function save_sequence() {
+
+
         const check = input_check_seq();
         if (!check) return;
 
@@ -192,75 +194,139 @@
         });
     }
 
-    function input_check_seq(argument) {
-        let Tool_Max_Torque = document.getElementById('tool_max_torque').value;
-        let Tool_Min_Torque = document.getElementById('tool_min_torque').value;
-        let Tool_Max_RPM = document.getElementById('tool_max_rpm').value;
-        let Tool_Min_RPM = document.getElementById('tool_min_rpm').value;
+    
+    function input_check_seq() {
+        // --- 讀系統上限/下限 ---
+        const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque')?.value ?? '');
+        const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque')?.value ?? '');
+        const Tool_Max_RPM    = parseFloat(document.getElementById('tool_max_rpm')?.value ?? '');
+        const Tool_Min_RPM    = parseFloat(document.getElementById('tool_min_rpm')?.value ?? '');
 
-        //判斷 name="unscrew_forcemode" 選取的value
-        var selectedValue = document.querySelector('input[name="unscrew_forcemode"]:checked')?.value;
+        // --- forcemode 與 auto mode ---
+        const selectedForceMode = document.querySelector('input[name="unscrew_forcemode"]:checked')?.value ?? null;
+        const isAutoMode        = !!document.getElementById('unscrew_mode_auto')?.checked;
 
-        // 檢查 unscrew_mode_auto 是否被選中
-        var isAutoMode = document.getElementById('unscrew_mode_auto')?.checked;
-      
+        // --- unscrew_mode（0 才需要對 threshold 做四捨五入）---
+        const unscrewModeVal = document.querySelector('input[name="unscrew_mode"]:checked')?.value ?? null;
+
+        // --- 讀扭力單位並決定小數位 ---
+        // 0: kgf.cm→2, 1: N·m→3, 2: lbf·in→2, 3: kgf·m→4, 4: cN·m→1
+        const UNIT_DECIMALS = { 0: 2, 1: 3, 2: 2, 3: 4, 4: 1 };
+        const unitEl =
+            document.getElementById('seq_unit_code') ||
+            document.getElementById('seq_unit_code') ||
+            document.getElementById('seq_unit_code');
+
+        const torque_unit   = parseInt(unitEl?.value ?? 1, 10);
+        const baseDecimals  = UNIT_DECIMALS.hasOwnProperty(torque_unit) ? UNIT_DECIMALS[torque_unit] : 3;
+        const roundDecimals = baseDecimals + 1; // ★ 需求：多一位做四捨五入
+
+        // 針對 unscrew_torque_threshold 動態產出允許小數位的正則（最多 roundDecimals 位）
+        const torqueThreshPattern = new RegExp(`^\\d{1,6}(?:\\.\\d{1,${roundDecimals}})?$`);
+
+        // --- 欄位規則 ---
         let conditions = [
-            { id: 'SEQname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
-            { id: 'seq_repeat', pattern: /^\d{0,4}$/, min: 1, max: 99 },
-            { id: 'timeout', pattern: /^\d{0,5}?$/, min: 0, max: 60 },
-            { id: 'dt_time', pattern: /^\d{0,5}?$/, min: 0, max: 99 },
-            { id: 'tt_time', pattern: /^\d{0,5}?$/, min: 0, max: 6000 },
-            { id: 'ng_stop', pattern: /^\d{0,5}?$/, min: 0, max: 9 },
-            { id: 'unscrew_rpm', pattern: /^\d{1,3}$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'unscrew_torque_threshold', pattern: /^\d{1,3}(\.\d{1,3})?$/, min: 0, max: Tool_Max_Torque },
-            { id: 'unscrew_angle_threshold', pattern: /^\d{1,5}(\.\d{1})?$/ , min: 0, max: 30600},
-            { id: 'unscrew_force', pattern: /^([0-9][0-9]?|100)$/, min: 0, max: 100 },
+            { id: 'SEQname',                  pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null,            max: null },
+            { id: 'seq_repeat',               pattern: /^\d{0,4}$/,                    min: 1,               max: 99 },
+            { id: 'timeout',                  pattern: /^\d{0,5}?$/,                   min: 0,               max: 60 },
+            { id: 'dt_time',                  pattern: /^\d{0,5}?$/,                   min: 0,               max: 99 },
+            { id: 'tt_time',                  pattern: /^\d{0,5}?$/,                   min: 0,               max: 6000 },
+            { id: 'ng_stop',                  pattern: /^\d{0,5}?$/,                   min: 0,               max: 9 },
+            { id: 'unscrew_rpm',              pattern: /^\d{1,3}$/,                    min: Tool_Min_RPM,    max: Tool_Max_RPM },
+            { id: 'unscrew_torque_threshold', pattern: torqueThreshPattern,            min: 0,               max: Tool_Max_Torque },
+            { id: 'unscrew_angle_threshold',  pattern: /^\d{1,5}(?:\.\d{1})?$/,        min: 0,               max: 30600 },
+            { id: 'unscrew_force',            pattern: /^([0-9][0-9]?|100)$/,          min: 0,               max: 100 },
         ];
 
         let isFormValid = true;
-        conditions.forEach(function(input) {
-            var element = document.getElementById(input.id);
-            var value = element.value.trim();
 
-            // 如果 unscrew_mode_auto 被選中, 跳過 unscrew_torque_threshold 和 unscrew_force  和 unscrew_angle_threshold  和 unscrew_rpm 的驗證 
-            if (isAutoMode && (input.id === 'unscrew_torque_threshold' || input.id === 'unscrew_force' || input.id === 'unscrew_angle_threshold' || input.id === 'unscrew_rpm' ) ) {
+        conditions.forEach((input) => {
+            const element = document.getElementById(input.id);
+            if (!element) return;
+
+            let value = (element.value ?? '').trim();
+
+            // Auto 模式：跳過這幾個欄位驗證
+            if (isAutoMode && (input.id === 'unscrew_torque_threshold' || input.id === 'unscrew_force' || input.id === 'unscrew_angle_threshold' || input.id === 'unscrew_rpm')) {
                 return;
             }
-            
 
-            if(input.id != 'SEQname'){
-                var nextSibling = element.nextElementSibling;
+            // 顯示 min~max 提示（SEQname 不顯示）
+            if (input.id !== 'SEQname') {
+                const nextSibling = element.nextElementSibling;
                 if (nextSibling) {
-                    nextSibling.innerHTML = input.min + ' ~ ' + input.max;
+                    const hasMin = Number.isFinite(input.min);
+                    const hasMax = Number.isFinite(input.max);
+                    nextSibling.innerHTML = (hasMin ? input.min : '') + ' ~ ' + (hasMax ? input.max : '');
                 }
             }
 
-
-            if (selectedValue != 0 && input.id === 'unscrew_force') {
-                toggleDisableAndError(input.id, true);  
-                return; 
+            // forcemode != 0 時，unscrew_force 停用並跳過
+            if (selectedForceMode !== '0' && input.id === 'unscrew_force') {
+                if (typeof toggleDisableAndError === 'function') {
+                    toggleDisableAndError(input.id, true);
+                } else {
+                    element.disabled = true;
+                    element.classList.remove('is-invalid');
+                    const fb = element.nextElementSibling;
+                    if (fb?.classList.contains('invalid-feedback')) {
+                        fb.innerText = '';
+                        fb.classList.remove('d-block');
+                        fb.style.display = 'none';
+                    }
+                }
+                return;
+            } else if (selectedForceMode === '0' && input.id === 'unscrew_force') {
+                // 若回到 0，確保可輸入
+                element.disabled = false;
             }
 
-            if (value === "") {
-                element.classList.add("is-invalid");
-                isFormValid = false;
-            } else if (!input.pattern.test(value)) {
-                element.classList.add("is-invalid");
-                isFormValid = false;
-            } else if (input.min !== null && parseFloat(value) < input.min) {
-                element.classList.add("is-invalid");
-                isFormValid = false;
-            } else if (input.max !== null && parseFloat(value) > input.max) {
-                element.classList.add("is-invalid");
-                isFormValid = false;
-            } else {
-                element.classList.remove("is-invalid");
+            // ★ 只有在 unscrew_mode == 0 時：對扭力門檻依單位「多一位」做四捨五入並回填
+            if (input.id === 'unscrew_torque_threshold' && unscrewModeVal === '0' && value !== '') {
+                const n = Number(value);
+                if (Number.isFinite(n)) {
+                    const rounded = Number(n.toFixed(roundDecimals));
+                    element.value = rounded.toFixed(roundDecimals); // 固定小數位顯示
+                    value = element.value;
+                }
             }
 
+            // --- 驗證 ---
+            // 空值
+            if (value === '') {
+                element.classList.add('is-invalid');
+                isFormValid = false;
+                return;
+            }
+
+            // 格式
+            if (!input.pattern.test(value)) {
+                element.classList.add('is-invalid');
+                isFormValid = false;
+                return;
+            }
+
+            // 範圍
+            const numVal = parseFloat(value);
+            if (Number.isFinite(input.min) && numVal < input.min) {
+                element.classList.add('is-invalid');
+                isFormValid = false;
+                return;
+            }
+            if (Number.isFinite(input.max) && numVal > input.max) {
+                element.classList.add('is-invalid');
+                isFormValid = false;
+                return;
+            }
+
+            // OK
+            element.classList.remove('is-invalid');
         });
-        return isFormValid;
 
+        return isFormValid;
     }
+
+
 
 
     function toggleDisableAndError(elementId, disable) {

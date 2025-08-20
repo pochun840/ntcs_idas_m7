@@ -224,7 +224,7 @@ const inputLabelMap = {
         112: "自定义3", 113: "自定义4", 114: "自定义5"
     },
     "zh-tw": {
-        101: "禁用", 102: "Enable", 103: "清除顆數", 104: "確認", 105: "啟動", 106: "拆螺絲",
+        101: "禁用", 102: "Enable", 103: "清除顆數", 104: "確認", 105: "啟動", 106: "反向",
         107: "工序清除", 108: "重啟", 109: "一次感應", 110: "自定義1", 111: "自定義2",
         112: "自定義3", 113: "自定義4", 114: "自定義5"
     },
@@ -1135,7 +1135,7 @@ function job_confirm(){
                     document.getElementById('103') && (document.getElementById('103').textContent = '颗数清除');
                     document.getElementById('104') && (document.getElementById('104').textContent = '确认');
                     document.getElementById('105') && (document.getElementById('105').textContent = '启动');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺丝');
+                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
                     document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
                     document.getElementById('108') && (document.getElementById('108').textContent = '重启');
                     document.getElementById('109') && (document.getElementById('109').textContent = '一次感应');
@@ -1144,6 +1144,9 @@ function job_confirm(){
                     document.getElementById('112') && (document.getElementById('112').textContent = '自定义3');
                     document.getElementById('113') && (document.getElementById('113').textContent = '自定义4');
                     document.getElementById('114') && (document.getElementById('114').textContent = '自定义5');
+                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋转');
+                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
+
                 
                 }else if(language =="zh-tw"){
                     document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
@@ -1151,7 +1154,7 @@ function job_confirm(){
                     document.getElementById('103') && (document.getElementById('103').textContent = '清除顆數');
                     document.getElementById('104') && (document.getElementById('104').textContent = '確認');
                     document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '拆螺絲');
+                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
                     document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
                     document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
                     document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
@@ -1160,6 +1163,8 @@ function job_confirm(){
                     document.getElementById('112') && (document.getElementById('112').textContent = '自定義3');
                     document.getElementById('113') && (document.getElementById('113').textContent = '自定義4');
                     document.getElementById('114') && (document.getElementById('114').textContent = '自定義5');
+                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋转');
+                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
                 }
 
 

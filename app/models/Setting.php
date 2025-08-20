@@ -390,20 +390,47 @@ class Setting{
     }
 
     //delete job barcdoe
-    public function delete_job_barcode($barcode){
+    public function delete_job_barcode(array $ids){
 
-        foreach($barcode['job_id'] as $key =>$val){
+        
+        // 清洗：只留正整數，去重
+        $ids = array_values(array_unique(array_filter(array_map(function ($v) {
+            return (is_numeric($v) && (int)$v > 0) ? (int)$v : null;
+        }, $ids))));
 
-            $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id = :job_id ";
-            $statement = $this->db_barcode->prepare($sql);
-            $statement->bindValue(':job_id', $val[0]);
-            $results = $statement->execute();
-    
-            
+        if (empty($ids)) {
+            return 0; // 沒有可刪的
         }
 
-        return $results;
+        // 動態 placeholders: ?, ?, ?, ...
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id IN ($placeholders)";
+
+        try {
+            //（可選）交易，避免半刪
+            $this->db_barcode->beginTransaction();
+
+            $stmt = $this->db_barcode->prepare($sql);
+            // 依序綁定
+            foreach ($ids as $i => $id) {
+                // PDO 參數索引從 1 開始
+                $stmt->bindValue($i + 1, $id, PDO::PARAM_INT);
+            }
+
+            $stmt->execute();
+            $affected = $stmt->rowCount();
+
+            $this->db_barcode->commit();
+            return $affected; // 回傳受影響筆數
+        } catch (Exception $e) {
+            if ($this->db_barcode->inTransaction()) {
+                $this->db_barcode->rollBack();
+            }
+            // 你可以改成丟出或記錄錯誤
+            return 0;
+        }
     }
+
 
 
     public function edit_feature_pwd($pwd_arr){
@@ -416,12 +443,12 @@ class Setting{
                 disable_button_pwd = :disable_button_pwd,
                 skip_button_pwd = :skip_button_pwd ";
         $statement = $this->db_iDas_tools->prepare($sql);
-        $statement->bindValue(':clearseq_button_pwd', $pwd_arr['clearseq_button_pwd']);
-        $statement->bindValue(':clear_button_pwd', $pwd_arr['clear_button_pwd']);
-        $statement->bindValue(':confirm_button_pwd', $pwd_arr['confirm_button_pwd']);
-        $statement->bindValue(':enable_button_pwd', $pwd_arr['enable_button_pwd']);
-        $statement->bindValue(':disable_button_pwd', $pwd_arr['disable_button_pwd']);
-        $statement->bindValue(':skip_button_pwd', $pwd_arr['skip_button_pwd']);
+        $statement->bindValue(':clearseq_button_pwd', $pwd_arr['clear_seq']);
+        $statement->bindValue(':clear_button_pwd', $pwd_arr['clear']);
+        $statement->bindValue(':confirm_button_pwd', $pwd_arr['confirm']);
+        $statement->bindValue(':enable_button_pwd', $pwd_arr['enable']);
+        $statement->bindValue(':disable_button_pwd', $pwd_arr['disable']);
+        $statement->bindValue(':skip_button_pwd', $pwd_arr['skip']);
         $results = $statement->execute();
 
         return $results;

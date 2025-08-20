@@ -73,7 +73,7 @@ function handleEventChange(e) {
 }
 
 
-
+let unifiedFlag = 0;
 function crud_job_event(argument) {
     const table = document.getElementById('output_table');
     const jobSelect = document.getElementById('JobNameSelect');
@@ -161,7 +161,12 @@ function crud_job_event(argument) {
                 }
             }
             
+            
+            // ✅ 更新按鈕狀態
+            syncButtonSelectState();
+            
             console.log(eventOption.value);
+            console.log(unifiedFlag);
         break;
 
     
@@ -329,13 +334,22 @@ function crud_job_event(argument) {
         break;
 
         case 'unified':
-            enableButton();
-            resetBackgroundColor();
-            if (output_job !== job_id) {
+            if (unifiedFlag === 0) {
+                // ✅ 第一次點擊 → 設成 1
+                unifiedFlag = 1;
+                enableButton();
+                resetBackgroundColor();
                 alignsubmit(job_id);
             } else {
+                // ✅ 第二次點擊 → 設回 0
+                unifiedFlag = 0;
                 resetalignsubmit(job_id);
             }
+
+            console.log(unifiedFlag);
+
+            // ✅ 每次點擊後都更新按鈕狀態
+            syncButtonSelectState();
         break;
 
         default:
@@ -577,12 +591,11 @@ let _getOutputReqId = 0;
 function get_output_by_job_id(job_id) {
   const reqId = ++_getOutputReqId;
 
- // 進函式就先清掉黃底（避免等待期間閃黃）
+  // 進函式就先清掉黃底（避免等待期間閃黃）
   setJobIdHighlight(false);
 
   const jobIdEl = document.getElementById("job_id");
   if (jobIdEl) jobIdEl.value = job_id || '';
-
 
   $.ajax({
     url: "?url=Outputs/get_output_by_job_id",
@@ -590,19 +603,13 @@ function get_output_by_job_id(job_id) {
     data: { job_id: job_id },
     dataType: "json",
     success: function (data) {
-      // 若不是最新那次請求的回覆，直接忽略（避免舊回覆覆蓋 UI）
       if (reqId !== _getOutputReqId) return;
 
       const job_outputlist = data?.job_outputlist ?? '';
-      // 兼容後端 language/languange 與 cookie
       let language = (getCookie('language') || data?.language || data?.languange || 'en-us').toLowerCase();
-
-      // 正規化語言代碼
-      // 允許 'en' / 'en-us'；'zh-tw' / 'zh-cn'；其餘一律 fallback 到 'en-us'
       if (language === 'en') language = 'en-us';
       if (!['en-us', 'zh-tw', 'zh-cn'].includes(language)) language = 'en-us';
 
-      // 安全取得陣列
       const temp  = Array.isArray(data?.temp)  ? data.temp  : [];
       const tempA = Array.isArray(data?.tempA) ? data.tempA : [];
 
@@ -612,111 +619,78 @@ function get_output_by_job_id(job_id) {
       const jobSelectWrap = document.getElementById("JobSelect");
       if (jobSelectWrap) jobSelectWrap.style.display = 'none';
 
-      // 綁列點擊事件（維持你原本用 row.className 保存 event 的方式）
+      // 綁列點擊事件
       if (listEl) {
         listEl.querySelectorAll('tr').forEach(function (row) {
           row.addEventListener('click', function () {
-            // 你的原邏輯：用 row.className 當 output_event
-            // 若未來可改，建議改用 data-* 屬性更安全
             window.output_event = this.className;
           });
         });
       }
 
-      // 前端自行判斷「三者皆空」
+      // 依 unifiedFlag 及資料量控制黃底
       const listEmpty = (job_outputlist.trim() === '');
       const noTemp    = (temp.length === 0);
       const noTempA   = (tempA.length === 0);
+      const hasAnyData = !(listEmpty && noTemp && noTempA);
 
-      if (listEmpty && noTemp && noTempA) {
-        // 沒有任何資料 → 允許選擇、清掉黃底與值
-        const btn = document.getElementById('Button_Select');
-        if (btn && btn.disabled) {
-          btn.disabled = false;
-          btn.classList.remove('disabled', 'disabled_input');
-          btn.setAttribute('aria-disabled', 'false');
+      if (jobIdEl) {
+        jobIdEl.classList.remove('bg-yellow');       // 先清掉
+        jobIdEl.style.backgroundColor = '';          // 清 inline
+        if (unifiedFlag !== 0 && hasAnyData) {
+          jobIdEl.classList.add('bg-yellow');        // 只有 unified 模式 + 有資料 才黃
         }
-        if (jobIdEl) {
-          jobIdEl.classList.remove('bg-yellow');
-          jobIdEl.style.backgroundColor = '';
-          jobIdEl.value = '';
+        if (!hasAnyData) {
+          jobIdEl.value = '';                        // 沒資料時清空顯示
         }
-      } else {
-        // 有資料 → 加上黃底（用 class 管，不用 inline）
-        if (jobIdEl) jobIdEl.classList.add('bg-yellow');
+      }
+
+      // 依 unifiedFlag 決定 Button_Select 是否可用
+      const btn = document.getElementById('Button_Select');
+      if (btn) {
+        const enable = (unifiedFlag === 0);
+        btn.disabled = !enable;
+        btn.classList.toggle('disabled', !enable);
+        btn.classList.toggle('disabled_input', !enable);
+        btn.setAttribute('aria-disabled', String(!enable));
       }
 
       // ===== 語系文字（1~16）=====
       const labels = {
         'en-us': {
-          1: 'OK',
-          2: 'NG',
-          3: 'Over Upper',
-          4: 'Below Lower',
-          5: 'Step Done Signal',
-          6: 'Job Done Signal',
-          7: 'Motor Signal',
-          8: 'Start Signal',
-          9: 'Unscrew',
-          10: 'Barcode',
-          11: 'BS',
-          12: 'Custom 1',
-          13: 'Custom 2',
-          14: 'Custom 3',
-          15: 'Custom 4',
-          16: 'Custom 5'
+          1:'OK',2:'NG',3:'NG -High',4:'NG - Low',
+          5:'OK - Sequence',6:'OK - Job ',7:'Tool Running',8:'Tool Trigger',
+          9:'Reverse',10:'BS',11:'Barcode',12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'
         },
         'zh-tw': {
-          1: 'OK',
-          2: 'NG',
-          3: '超出上限',
-          4: '低於下限',
-          5: '工序完成信號',
-          6: '完工信號',
-          7: '馬達信號',
-          8: '啟動信號',
-          9: '拆螺絲',
-          10: '條碼',
-          11: 'BS',
-          12: '自定義1',
-          13: '自定義2',
-          14: '自定義3',
-          15: '自定義4',
-          16: '自定義5'
+          1:'OK',2:'NG',3:'超出上限',4:'低於下限',
+          5:'工序完成信號',6:'工作完成信號',7:'馬達信號',8:'啟動信號',
+          9:'拆螺絲',10:'條碼停止',11:'條碼',12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'
         },
         'zh-cn': {
-          1: 'OK',
-          2: 'NG',
-          3: '超出上限',
-          4: '低于下限',
-          5: '工序完成信号',
-          6: '工作任务完成信号',
-          7: '马达信号',
-          8: '启动信号',
-          9: '拆螺丝',
-          10: '条码',
-          11: 'BS',
-          12: '自定义1',
-          13: '自定义2',
-          14: '自定义3',
-          15: '自定义4',
-          16: '自定义5'
+          1:'OK',2:'NG',3:'超出上限',4:'低于下限',
+          5:'工序完成信号',6:'工作完成信号',7:'马达信号',8:'启动信号',
+          9:'拆螺丝',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'
         }
       };
       const L = labels[language] || labels['en-us'];
-
       for (let i = 1; i <= 16; i++) {
         const el = document.getElementById(String(i));
         if (el && L[i]) el.textContent = L[i];
       }
       // ===== 語系文字結束 =====
+
+      // 最後再同步一次（若外面還有其它 UI 規則）
+      if (typeof syncButtonSelectState === 'function') {
+        syncButtonSelectState();
+      }
     },
     error: function (xhr, status, error) {
-      // 若失敗，保持已清除的黃底狀態即可，避免閃爍
       console.error("AJAX request failed:", status, error, xhr?.responseText);
     }
   });
 }
+
 
 
 
@@ -798,6 +772,7 @@ function create_output_id() {
                 success: function(response) {
                     output_success_res(response, job_id, get_output_by_job_id, 'new_output');
                     hideOverlay();
+                    resetBackgroundColor();
                 },
                 error: function(xhr, status, error) {
                     console.error("AJAX request failed:", status, error);
@@ -847,6 +822,7 @@ function edit_output_id(){
     }
 }
 function resetalignsubmit(job_id) {
+    unifiedFlag = 0;   // ✅ 執行 resetalignsubmit 時設回 0
 
     var job_id_new = 0;
     if(job_id_new == 0){
@@ -1277,6 +1253,32 @@ function restoreUnifiedState(options = {}) {
     }
 }
 
+
+function syncButtonSelectState() {
+    const btnSelect = document.getElementById('Button_Select');
+    if (btnSelect) {
+        if (unifiedFlag === 0) {
+            btnSelect.disabled = false;  // 可點
+        } else {
+            btnSelect.disabled = true;   // 鎖住
+        }
+    }
+
+    // ✅ unifiedFlag 為 0 時，檢查 job_id 是否黃底 → 清除
+    if (unifiedFlag === 0) {
+        const jobIdEl = document.getElementById('job_id');
+        if (jobIdEl) {
+            const hasYellowClass   = jobIdEl.classList?.contains('bg-yellow');
+            const inlineIsYellow   = (jobIdEl.style.backgroundColor || '').toLowerCase() === 'yellow';
+            const computedIsYellow = window.getComputedStyle(jobIdEl).backgroundColor === 'rgb(255, 255, 0)';
+
+            if (hasYellowClass || inlineIsYellow || computedIsYellow) {
+                jobIdEl.classList.remove('bg-yellow');
+                jobIdEl.style.backgroundColor = ''; // 清除 inline 設定
+            }
+        }
+    }
+}
 
 </script>
 

@@ -879,58 +879,6 @@ function update_barcode(){
     }
 }
 
-function delete_barcode() {
-    const del_barcode_id = [];
-    const checkboxes = document.querySelectorAll('input[name="barcode_check"]:checked');
-
-    checkboxes.forEach(checkbox => del_barcode_id.push(checkbox.value));
-
-    if (del_barcode_id.length === 0) return;
-
-    document.getElementById('spinner').style.display = 'block';
-
-    $.ajax({
-        url: "?url=Settings/delete_barcodes",
-        method: "POST",
-        data: { del_barcode_id: del_barcode_id },
-        dataType: 'json', // ✅ 強制回傳格式為 JSON，避免 JSON.parse 錯誤
-        success: function(response) {
-            const { res_type, res_msg } = response;
-
-            setTimeout(function () {
-                document.getElementById('spinner').style.display = 'none';
-
-                alertify.alert(res_type, res_msg, function () {
-                    sessionStorage.setItem('Barcode_Setting', 'block');
-                    sessionStorage.setItem('Controller_Setting', 'none');
-                    //history.go(0); // 頁面重載
-                });
-
-                setTimeout(function () {
-                    alertify.closeAll();
-
-                    // ✅ 刷新條碼列表區塊
-                    $.ajax({
-                        url: "?url=Settings/show_Barcodes",
-                        method: "GET",
-                        success: function (html) {
-                            $('#total_barcodes').html(html);
-                        },
-                        error: function (xhr, status, error) {
-                            console.error("刷新條碼失敗:", error);
-                        }
-                    });
-                }, 3000);
-            }, 1000);
-        },
-        error: function(xhr, status, error) {
-            document.getElementById('spinner').style.display = 'none';
-            console.error("刪除時發生錯誤:", error);
-            alertify.alert("Error", "無法刪除條碼，請稍後再試。");
-        }
-    });
-}
-
 
 
 function agent_ip_save() {

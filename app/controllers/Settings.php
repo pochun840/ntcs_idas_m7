@@ -465,7 +465,7 @@ class Settings extends Controller
         $controller_info = $this->SettingModel->GetControllerInfo();
         $sn = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
         $system_date = trim(shell_exec("date '+%Y%m%d%H%M%S'")) ?: date('YmdHis');
-        $linNameInZip = "KLS_NTCS_{$sn}_{$system_date}.Lin";
+        $linNameInZip = "con_{$sn}_{$system_date}.Lin";
 
         // 3) 等候檔案出現（並確認大小穩定）
         $candidates = [
@@ -1083,28 +1083,43 @@ class Settings extends Controller
 
     public function delete_barcodes(){
 
-        $input_check = true;
-        $barcode = array();
-        if(!empty($_POST['del_barcode_id']) && isset($_POST['del_barcode_id'])){
-            $barcode['job_id'] = $_POST['del_barcode_id'];
-        }else{ 
-            $input_check = false;
+        
+        // 1) 取參數：允許 array 或 comma-separated string
+        $raw = $_POST['del_barcode_id'] ?? null;
+
+        if ($raw === null) {
+            return $this->MiscellaneousModel->generateErrorResponse('Error', 'No barcode id provided.');
         }
 
-
-        if($input_check){
-            $res = $this->SettingModel->delete_job_barcode($barcode);
-
-            if($res){
-                $res_msg = 'del barcode :'. $barcode['job_id'][0].'success';
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
-
-           }else{
-                $res_msg = 'del barcode :'. $barcode['job_id'][0].'fail';
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
-           }
+        // 2) 正規化為陣列
+        if (!is_array($raw)) {
+            // 可能是 "1,2,3" 或 "1"
+            $raw = array_map('trim', explode(',', (string)$raw));
         }
-      
+
+        // 3) 過濾：只留正整數，去重，去空
+        $ids = array_values(array_unique(array_filter(array_map(function ($v) {
+            // 嚴格限制為正整數（必要時可改成 ctype_digit 檢查）
+            return is_numeric($v) && (int)$v > 0 ? (int)$v : null;
+        }, $raw))));
+
+        if (empty($ids)) {
+            return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid barcode id list.');
+        }
+
+        // 4) 呼叫 Model 批次刪除（建議 Model 支援陣列）
+        //    例如：delete_job_barcode(array $ids): bool 或回傳受影響筆數
+        $result = $this->SettingModel->delete_job_barcode($ids);
+
+        // 5) 根據回傳建構訊息
+        if ($result === true || (is_numeric($result) && (int)$result > 0)) {
+            $count = is_numeric($result) ? (int)$result : count($ids);
+            $msg = 'Deleted barcodes: [' . implode(',', $ids) . '], affected: ' . $count;
+            return $this->MiscellaneousModel->generateErrorResponse('Success', $msg);
+        } else {
+            $msg = 'Delete failed for barcodes: [' . implode(',', $ids) . ']';
+            return $this->MiscellaneousModel->generateErrorResponse('Error', $msg);
+        }
     }
 
 
@@ -1392,66 +1407,20 @@ class Settings extends Controller
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
-        // POST鍵名 => 寫入鍵名
-        $fields = [
-            'clear_seq' => 'clearseq_button_pwd',
-            'clear'     => 'clear_button_pwd',
-            'confirm'   => 'confirm_button_pwd',
-            'enable'    => 'enable_button_pwd',
-            'disable'   => 'disable_button_pwd',
-            'skip'      => 'skip_button_pwd',
+        $pwd_arr = array();
+
+
+        $pwd_arr = [
+            'clear_seq' => $_POST['clear_seq'],
+            'clear'     => $_POST['clear'],
+            'confirm'   => $_POST['confirm'],
+            'enable'    => $_POST['enable'],
+            'disable'   => $_POST['disable'],
+            'skip'      => $_POST['skip'],
         ];
 
-        $pwd_arr   = [];   // 只收「有傳且合法」的欄位
-        $errors    = [];   // 收集每欄錯誤訊息
-        $provided  = 0;    // 有提供的欄位數
-        $re4digits = '/^\d{4}$/'; // 密碼必須為 4 位數字
-
-        foreach ($fields as $post_key => $pwd_key) {
-            if (!array_key_exists($post_key, $_POST)) {
-                continue; // 沒傳就略過（不修改）
-            }
-            $val = trim((string)$_POST[$post_key]);
-
-            // 空字串視為「未提供」，不寫入也不報錯
-            if ($val === '') {
-                continue;
-            }
-
-            $provided++;
-
-            if (!preg_match($re4digits, $val)) {
-                $errors[] = "{$post_key} must be 4 digits";
-                continue;
-            }
-
-            $pwd_arr[$pwd_key] = $val;
-        }
-
-        // 至少要有一個欄位要修改
-        if ($provided === 0) {
-            $this->MiscellaneousModel->generateErrorResponse(
-                'Error',
-                $text['input_error'] ?? 'At least one field is required.'
-            );
-            return;
-        }
-
-        // 有欄位不合法
-        if (!empty($errors)) {
-            $this->MiscellaneousModel->generateErrorResponse(
-                'Error',
-                implode('; ', $errors)
-            );
-            return;
-        }
-
-        // 若你的 Model 需要「全部鍵」才能寫入，請先查舊值再合併：
-        // $current = $this->SettingModel->get_feature_pwd(); // 回傳同鍵名陣列
-        // $to_save = array_merge($current ?? [], $pwd_arr);
-        // $result  = $this->SettingModel->edit_feature_pwd($to_save);
-
-        // 若只更新有給的鍵即可，直接傳 $pwd_arr
+    
+       
         $result = $this->SettingModel->edit_feature_pwd($pwd_arr);
 
         if ($result) {

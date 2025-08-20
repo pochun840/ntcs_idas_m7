@@ -66,7 +66,7 @@
                     <div class="col-5 t1"><?php echo $text['select_job'];?>:</div>
                     <div class="col t2">
                     <select id="barcode_job" name="barcode_job" onchange="fetchSeqList()" >
-                        <option value="-1"><?php echo $text['system_barcode_select_job_m'];?></option>
+                        <option value="-1" disabled selected ><?php echo $text['system_barcode_select_job_m'];?></option>
                             <?php
                             foreach ($data['job_list'] as $key => $value) {?>
                                 <option value='<?php echo $value['job_id'];?>'><?php echo $value['job_id']." ".$value['job_name'];?></option>
@@ -158,5 +158,80 @@ function fetchSeqList() {
         }
     });
 }
+
+
+    function delete_barcode_item() {
+        const checked = document.querySelectorAll('input[name="barcode_check"]:checked');
+        const ids = Array.from(checked).map(cb => cb.value);
+
+        console.log(ids);
+
+        if (ids.length === 0) {
+            alertify.alert('提示', '請先勾選要刪除的條碼。');
+            return;
+        }
+
+        // 確認刪除
+        alertify.confirm(
+            '確認',
+            `確定要刪除 ${ids.length} 筆條碼嗎？`,
+            function onOk() {
+            // 顯示 loading
+            const spinner = document.getElementById('spinner');
+            if (spinner) spinner.style.display = 'block';
+
+            // ⚠️ 常見做法 1：用 'del_barcode_id[]'
+            $.ajax({
+                url: "?url=Settings/delete_barcodes",
+                method: "POST",
+                data: { 'del_barcode_id[]': ids },
+                dataType: 'json',
+                // 若你後端期待 del_barcode_id(無 [] ) 也可改成：
+                // data: { del_barcode_id: ids }, traditional: true,
+                success: function (response) {
+                const res_type = response?.res_type ?? 'Info';
+                const res_msg  = response?.res_msg  ?? '已處理完成。';
+
+                alertify.alert(res_type, res_msg, function () {
+                    // 設定頁籤狀態
+                    sessionStorage.setItem('Barcode_Setting', 'block');
+                    sessionStorage.setItem('Controller_Setting', 'none');
+
+                    // 直接刷新條碼清單（無需 setTimeout）
+                    $.ajax({
+                    url: "?url=Settings/show_Barcodes",
+                    method: "GET",
+                    success: function (html) {
+                        $('#total_barcodes').html(html);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("刷新條碼失敗:", error);
+                        alertify.error('刷新條碼列表失敗');
+                    }
+                    });
+                });
+                },
+                error: function (xhr, status, error) {
+                console.error("刪除時發生錯誤:", error, xhr?.responseText);
+                // 若後端偶爾不是 JSON，可降級處理
+                try {
+                    const fallback = JSON.parse(xhr.responseText || '{}');
+                    alertify.alert(fallback.res_type || 'Error', fallback.res_msg || '無法刪除條碼，請稍後再試。');
+                } catch {
+                    alertify.alert('Error', '無法刪除條碼，請稍後再試。');
+                }
+                },
+                complete: function () {
+                // 無論成功或失敗都關 spinner
+                const spinner = document.getElementById('spinner');
+                if (spinner) spinner.style.display = 'none';
+                }
+            });
+            },
+            function onCancel() {
+            // 使用者取消
+            }
+        );
+    }
     
 </script>
