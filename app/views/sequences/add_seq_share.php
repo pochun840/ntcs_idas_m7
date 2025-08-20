@@ -1,4 +1,29 @@
 <script>
+
+    window.roundHalfUp = function (val, digits) {
+        const n = Number(val);
+        if (!Number.isFinite(n)) return NaN;
+        const f = Math.pow(10, digits);
+        const eps = 1 / (f * 1000);       // 比 1/f 小很多，推開二進位誤差
+        return Math.round((n + eps) * f) / f;
+    };
+
+    // === rounding helpers (global, hoisted) ===
+    (function (w) {
+    function _roundHalfUp(val, digits) {
+        const n = Number(val);
+        if (!Number.isFinite(n)) return NaN;
+        const d = digits ?? 0;
+        const f = Math.pow(10, d);
+        const eps = 1 / (f * 1000);     // 修正 0.2404999… 的二進位誤差
+        return Math.round((n + eps) * f) / f;
+    }
+    if (typeof w.roundHalfUp !== 'function') w.roundHalfUp = _roundHalfUp;
+    if (typeof w.roundTo     !== 'function') w.roundTo     = (num, digits) => _roundHalfUp(num, digits);
+    })(window);
+
+
+
     var dataType = "<?php echo $data['type']; ?>";
     var seq_unit = "<?php echo $data['torque_unit_code'];?>";
     window.onload = function() {
@@ -281,15 +306,22 @@
                 element.disabled = false;
             }
 
-            // ★ 只有在 unscrew_mode == 0 時：對扭力門檻依單位「多一位」做四捨五入並回填
+            // ★ unscrew_mode == 0：依單位「多一位判斷」，但回填為 base 位顯示（與即時行為一致）
             if (input.id === 'unscrew_torque_threshold' && unscrewModeVal === '0' && value !== '') {
-                const n = Number(value);
-                if (Number.isFinite(n)) {
-                    const rounded = Number(n.toFixed(roundDecimals));
-                    element.value = rounded.toFixed(roundDecimals); // 固定小數位顯示
-                    value = element.value;
-                }
+            const n = Number(value);
+            if (Number.isFinite(n)) {
+                const rounded = (typeof roundHalfUp === 'function')
+                ? roundHalfUp(n, baseDecimals)     // baseDecimals 由你的程式計算：UNIT_DECIMALS[torque_unit]
+                : Number(n.toFixed(baseDecimals));
+                element.value = rounded.toFixed(baseDecimals); // 固定 base 位
+                value = element.value;
             }
+            // 允許輸入 base+1 位（提交前已被回填為 base 位）
+            element.setAttribute('pattern', `^\\d{1,6}(?:\\.\\d{1,${roundDecimals}})?$`);
+            element.setAttribute('inputmode', 'decimal');
+            element.setAttribute('step', String(1 / Math.pow(10, baseDecimals)));
+            }
+
 
             // --- 驗證 ---
             // 空值
@@ -362,4 +394,5 @@
         document.getElementById('unscrew_mode_auto')?.addEventListener('change', toggleInputsBasedOnMode);
         document.getElementById('unscrew_mode_custom')?.addEventListener('change', toggleInputsBasedOnMode);
     });
+    
 </script>
