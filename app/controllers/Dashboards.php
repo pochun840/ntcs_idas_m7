@@ -386,5 +386,14 @@ class Dashboards extends Controller
         return $current_data;
     
     } 
+
+
+    public function download_file(){
+        
+
+    }
+
+
+
 }
 ?>

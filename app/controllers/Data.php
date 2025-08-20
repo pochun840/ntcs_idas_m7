@@ -360,5 +360,148 @@ class Data extends Controller
         }
     }
 
+    
+    public function download_file(){
+
+        // 僅支援 Linux
+        if (PHP_OS_FAMILY !== 'Linux') {
+            return $this->respondError('Error', '只支援在 Linux 環境下下載 CSV 壓縮包。');
+        }
+
+        $dir = '/mnt/ramdisk/ftp';
+        if (!is_dir($dir) || !is_readable($dir)) {
+            return $this->respondError('Error', "資料夾無法讀取：{$dir}");
+        }
+
+        // 收集 CSV：解析開頭流水號與時間戳（作為排序依據）
+        $entries = [];
+        try {
+            $it = new DirectoryIterator($dir);
+            foreach ($it as $f) {
+                if (!$f->isFile() || !$f->isReadable()) continue;
+                $name = $f->getFilename();
+                $ext  = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                if ($ext !== 'csv') continue;
+
+                $full   = $f->getPathname();
+                $serial = -1; // 找不到就設為 -1（排最後）
+                if (preg_match('/^(\d+)__/', $name, $m)) {
+                    $serial = (int)$m[1];
+                }
+
+                // 解析檔名中的 14 碼時間戳；沒有就用 mtime
+                $ts = 0;
+                if (preg_match('/_(\d{14})(?:_|\.csv$)/i', $name, $m)) {
+                    $dt = DateTime::createFromFormat('YmdHis', $m[1]);
+                    if ($dt) $ts = $dt->getTimestamp();
+                }
+                if ($ts <= 0) {
+                    $mtime = @filemtime($full);
+                    if ($mtime !== false) $ts = (int)$mtime;
+                }
+
+                $entries[] = [
+                    'path'   => $full,
+                    'name'   => $name,
+                    'serial' => $serial,
+                    'ts'     => $ts,
+                ];
+            }
+        } catch (Throwable $e) {
+            return $this->respondError('Error', '掃描資料夾失敗：' . $e->getMessage());
+        }
+
+        if (empty($entries)) {
+            return $this->respondError('Error', '沒有可供下載的 CSV 檔案。');
+        }
+
+        // 排序：先流水號(大→小)，再時間(新→舊)，再檔名
+        usort($entries, function ($a, $b) {
+            $as = $a['serial']; $bs = $b['serial'];
+            // 沒有流水號者（-1）排最後
+            if ($as < 0 && $bs >= 0) return 1;
+            if ($bs < 0 && $as >= 0) return -1;
+
+            if ($as !== $bs) return $bs <=> $as;          // 流水號大→前面
+            if ($a['ts'] !== $b['ts']) return $b['ts'] <=> $a['ts']; // 新→前面
+            return strcmp($a['name'], $b['name']);
+        });
+
+        if (!class_exists('ZipArchive')) {
+            return $this->respondError('Error', '伺服器未安裝 ZipArchive 擴充，無法建立 ZIP。');
+        }
+
+        // ZIP 檔名用 Linux 系統時間（fallback: PHP date）
+        $ts          = $this->linuxNowOrPhp();
+        $zipBasename = "csv_bundle_{$ts}.zip";
+        $tmpZip      = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $zipBasename;
+
+        $zip = new ZipArchive();
+        if ($zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return $this->respondError('Error', '無法建立 ZIP 壓縮檔。');
+        }
+
+        foreach ($entries as $e) {
+            $zip->addFile($e['path'], $e['name']); // 保留原檔名
+        }
+        $zip->close();
+
+        if (!is_file($tmpZip) || !is_readable($tmpZip)) {
+            return $this->respondError('Error', 'ZIP 產生失敗或不可讀取。');
+        }
+
+        // 串流下載
+        @set_time_limit(0);
+        if (function_exists('ob_get_level')) { while (ob_get_level() > 0) { @ob_end_clean(); } }
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $zipBasename . '"');
+        header('Content-Transfer-Encoding: binary');
+        header('Content-Length: ' . filesize($tmpZip));
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $fp = fopen($tmpZip, 'rb');
+        if ($fp) {
+            while (!feof($fp)) { echo fread($fp, 8192); flush(); }
+            fclose($fp);
+        } else {
+            @unlink($tmpZip);
+            return $this->respondError('Error', '無法讀取 ZIP 檔案。');
+        }
+        @unlink($tmpZip);
+        exit;
+    }
+
+    /** 取 Linux 系統時間（失敗退回 PHP date） */
+    protected function linuxNowOrPhp(): string{
+
+        $ts = date('YmdHis');
+        if (PHP_OS_FAMILY === 'Linux') {
+            $out = @shell_exec("date '+%Y%m%d%H%M%S' 2>/dev/null");
+            $out = is_string($out) ? trim($out) : '';
+            if (preg_match('/^\d{14}$/', $out)) $ts = $out;
+        }
+        return $ts;
+    }
+
+    /** 統一錯誤回應（沿用你的 MiscellaneousModel；沒有就回 JSON） */
+    protected function respondError(string $type, string $msg){
+        
+        if (isset($this->MiscellaneousModel) && method_exists($this->MiscellaneousModel, 'generateErrorResponse')) {
+            return $this->MiscellaneousModel->generateErrorResponse($type, $msg);
+        }
+        if (!headers_sent()) header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['res_type'=>$type, 'res_msg'=>$msg], JSON_UNESCAPED_UNICODE);
+        return null;
+    }
+
+
+
+
+
+
+
 }
 ?>
