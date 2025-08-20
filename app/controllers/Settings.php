@@ -1081,44 +1081,39 @@ class Settings extends Controller
         }
     }
 
+  
     public function delete_barcodes(){
 
-        
-        // 1) 取參數：允許 array 或 comma-separated string
-        $raw = $_POST['del_barcode_id'] ?? null;
+        //header('Content-Type: application/json; charset=utf-8');
 
-        if ($raw === null) {
-            return $this->MiscellaneousModel->generateErrorResponse('Error', 'No barcode id provided.');
+        // 只支援 job_id
+        $jobId = isset($_POST['job_id']) ? (int)$_POST['job_id'] : 0;
+        if ($jobId <= 0) {
+            echo  $this->MiscellaneousModel->generateErrorResponse('Error', 'No job_id provided.');
         }
 
-        // 2) 正規化為陣列
-        if (!is_array($raw)) {
-            // 可能是 "1,2,3" 或 "1"
-            $raw = array_map('trim', explode(',', (string)$raw));
-        }
+        try {
+            // Model 實作：delete_barcodes_by_job(int $jobId): int
+            // 回傳受影響筆數 (affected rows)
+            $affected = (int)($this->SettingModel->delete_barcodes_by_job($jobId) ?? 0);
 
-        // 3) 過濾：只留正整數，去重，去空
-        $ids = array_values(array_unique(array_filter(array_map(function ($v) {
-            // 嚴格限制為正整數（必要時可改成 ctype_digit 檢查）
-            return is_numeric($v) && (int)$v > 0 ? (int)$v : null;
-        }, $raw))));
+            if ($affected > 0) {
+                echo  $this->MiscellaneousModel->generateErrorResponse(
+                    'Success',
+                    "Job #{$jobId} barcodes deleted, affected: {$affected}"
+                );
+            }
 
-        if (empty($ids)) {
-            return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid barcode id list.');
-        }
+            echo  $this->MiscellaneousModel->generateErrorResponse(
+                'Error',
+                "No barcodes found for job #{$jobId}."
+            );
 
-        // 4) 呼叫 Model 批次刪除（建議 Model 支援陣列）
-        //    例如：delete_job_barcode(array $ids): bool 或回傳受影響筆數
-        $result = $this->SettingModel->delete_job_barcode($ids);
-
-        // 5) 根據回傳建構訊息
-        if ($result === true || (is_numeric($result) && (int)$result > 0)) {
-            $count = is_numeric($result) ? (int)$result : count($ids);
-            $msg = 'Deleted barcodes: [' . implode(',', $ids) . '], affected: ' . $count;
-            return $this->MiscellaneousModel->generateErrorResponse('Success', $msg);
-        } else {
-            $msg = 'Delete failed for barcodes: [' . implode(',', $ids) . ']';
-            return $this->MiscellaneousModel->generateErrorResponse('Error', $msg);
+        } catch (Throwable $e) {
+            echo  $this->MiscellaneousModel->generateErrorResponse(
+                'Error',
+                'Delete by job failed: ' . $e->getMessage()
+            );
         }
     }
 

@@ -389,44 +389,54 @@ class Setting{
         return $rows;
     }
 
-    //delete job barcdoe
-    public function delete_job_barcode(array $ids){
+    // 單一 job_id
+    public function delete_barcodes_by_job(int $jobId): int
+    {
+        if ($jobId <= 0) return 0;
+        return $this->delete_barcodes_by_jobs([$jobId]);
+    }
 
-        
-        // 清洗：只留正整數，去重
-        $ids = array_values(array_unique(array_filter(array_map(function ($v) {
-            return (is_numeric($v) && (int)$v > 0) ? (int)$v : null;
-        }, $ids))));
+    // 多個 job_id
+    public function delete_barcodes_by_jobs(array $jobIds): int
+    {
+        // 正規化：正整數、去重
+        $jobIds = array_values(array_unique(array_filter(array_map(
+            fn($v) => (is_numeric($v) && (int)$v > 0) ? (int)$v : null,
+            $jobIds
+        ))));
 
-        if (empty($ids)) {
-            return 0; // 沒有可刪的
-        }
+        if (empty($jobIds)) return 0;
 
-        // 動態 placeholders: ?, ?, ?, ...
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id IN ($placeholders)";
+        // ⚠️ SQLite 參數上限（預設 999），保守抓 900
+        $CHUNK = 900;
 
+        $totalAffected = 0;
         try {
-            //（可選）交易，避免半刪
             $this->db_barcode->beginTransaction();
 
-            $stmt = $this->db_barcode->prepare($sql);
-            // 依序綁定
-            foreach ($ids as $i => $id) {
-                // PDO 參數索引從 1 開始
-                $stmt->bindValue($i + 1, $id, PDO::PARAM_INT);
+            for ($i = 0; $i < count($jobIds); $i += $CHUNK) {
+                $chunk = array_slice($jobIds, $i, $CHUNK);
+                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                // 調整成你的實際表與欄位
+                $sql = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id IN ($placeholders)";
+                $stmt = $this->db_barcode->prepare($sql);
+
+                foreach ($chunk as $idx => $id) {
+                    $stmt->bindValue($idx + 1, $id, PDO::PARAM_INT);
+                }
+
+                $stmt->execute();
+                $totalAffected += $stmt->rowCount();
             }
 
-            $stmt->execute();
-            $affected = $stmt->rowCount();
-
             $this->db_barcode->commit();
-            return $affected; // 回傳受影響筆數
-        } catch (Exception $e) {
+            return $totalAffected;
+
+        } catch (Throwable $e) { // 用 Throwable 比 Exception 更保險
             if ($this->db_barcode->inTransaction()) {
                 $this->db_barcode->rollBack();
             }
-            // 你可以改成丟出或記錄錯誤
+            // 這裡可改為 log 再回 0
             return 0;
         }
     }

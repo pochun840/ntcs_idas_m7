@@ -123,6 +123,9 @@ $(document).on('change', 'input[name="barcode_check"]', function () {
     }
 });
 
+
+
+
 //透過JOBID 取得對應的SEQ
 function fetchSeqList() {
     const jobId = document.getElementById('barcode_job').value;
@@ -160,78 +163,85 @@ function fetchSeqList() {
 }
 
 
-    function delete_barcode_item() {
-        const checked = document.querySelectorAll('input[name="barcode_check"]:checked');
-        const ids = Array.from(checked).map(cb => cb.value);
+function delete_barcode_item() {
+    const spinner = document.getElementById('spinner');
+    const checked = document.querySelectorAll('.barcode-check:checked');
 
-        console.log(ids);
+    // 取 data-job-id，正規化為正整數陣列
+    const jobIds = Array.from(checked)
+        .map(cb => Number(cb.dataset.jobId))
+        .filter(n => Number.isInteger(n) && n > 0);
 
-        if (ids.length === 0) {
-            alertify.alert('提示', '請先勾選要刪除的條碼。');
-            return;
-        }
+    if (jobIds.length === 0) {
+        alertify.alert('提示', '請先勾選要刪除的條碼。');
+        setTimeout(() => alertify.closeAll(), 3000);
+        return;
+    }
 
-        // 確認刪除
-        alertify.confirm(
-            '確認',
-            `確定要刪除 ${ids.length} 筆條碼嗎？`,
-            function onOk() {
-            // 顯示 loading
-            const spinner = document.getElementById('spinner');
+    alertify.confirm(
+        '確認',
+        `確定要刪除 ${jobIds.length} 筆條碼嗎？`,
+        function onOk() {
             if (spinner) spinner.style.display = 'block';
 
-            // ⚠️ 常見做法 1：用 'del_barcode_id[]'
             $.ajax({
                 url: "?url=Settings/delete_barcodes",
                 method: "POST",
-                data: { 'del_barcode_id[]': ids },
+                data: { job_id: jobIds },       // 後端需支援 job_id 為陣列
+                traditional: true,              // job_id[]=1&job_id[]=2...
                 dataType: 'json',
-                // 若你後端期待 del_barcode_id(無 [] ) 也可改成：
-                // data: { del_barcode_id: ids }, traditional: true,
-                success: function (response) {
-                const res_type = response?.res_type ?? 'Info';
-                const res_msg  = response?.res_msg  ?? '已處理完成。';
+                success: function(response) {
+                    if (spinner) spinner.style.display = 'none';
 
-                alertify.alert(res_type, res_msg, function () {
-                    // 設定頁籤狀態
-                    sessionStorage.setItem('Barcode_Setting', 'block');
-                    sessionStorage.setItem('Controller_Setting', 'none');
+                    const res_type = response?.res_type || 'Success';
+                    const res_msg  = response?.res_msg  || '已處理完成。';
 
-                    // 直接刷新條碼清單（無需 setTimeout）
-                    $.ajax({
-                    url: "?url=Settings/show_Barcodes",
-                    method: "GET",
-                    success: function (html) {
-                        $('#total_barcodes').html(html);
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("刷新條碼失敗:", error);
-                        alertify.error('刷新條碼列表失敗');
-                    }
+                    // 顯示完成訊息
+                    alertify.alert(res_type, res_msg, function () {
+                        // 可選：立即做前置狀態設定
+                        sessionStorage.setItem('Barcode_Setting', 'block');
+                        sessionStorage.setItem('Controller_Setting', 'none');
                     });
-                });
+
+                    // ✅ 需求：成功後延遲 3 秒關閉 alert 並刷新列表
+                    setTimeout(function () {
+                        alertify.closeAll();  // 關閉所有 alertify 視窗
+
+                        // 刷新條碼列表
+                        $.ajax({
+                            url: "?url=Settings/show_Barcodes",
+                            method: "GET",
+                            success: function (html) {
+                                $('#total_barcodes').html(html);
+
+                                // ✅ 刷新完成後再重整頁面
+                                location.reload();
+                                
+                            },
+                            error: function (xhr, status, error) {
+                                console.error("刷新條碼失敗:", error);
+                                alertify.error('刷新條碼列表失敗');
+                                setTimeout(() => alertify.closeAll(), 3000);
+
+                                // ✅ 刷新完成後再重整頁面
+                                location.reload();
+
+                            }
+                        });
+                    }, 3000);
                 },
-                error: function (xhr, status, error) {
-                console.error("刪除時發生錯誤:", error, xhr?.responseText);
-                // 若後端偶爾不是 JSON，可降級處理
-                try {
-                    const fallback = JSON.parse(xhr.responseText || '{}');
-                    alertify.alert(fallback.res_type || 'Error', fallback.res_msg || '無法刪除條碼，請稍後再試。');
-                } catch {
+                error: function(xhr, status, error) {
+                    if (spinner) spinner.style.display = 'none';
+                    console.error("刪除時發生錯誤:", error, xhr?.responseText);
                     alertify.alert('Error', '無法刪除條碼，請稍後再試。');
-                }
-                },
-                complete: function () {
-                // 無論成功或失敗都關 spinner
-                const spinner = document.getElementById('spinner');
-                if (spinner) spinner.style.display = 'none';
+                    setTimeout(() => alertify.closeAll(), 3000);
                 }
             });
-            },
-            function onCancel() {
-            // 使用者取消
-            }
-        );
-    }
+        },
+        function onCancel() { /* 使用者取消 */ }
+    );
+}
+
+
     
 </script>

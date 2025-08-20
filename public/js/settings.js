@@ -863,6 +863,10 @@ function update_barcode(){
                             method: "GET",
                             success: function(html) {
                                 $('#total_barcodes').html(html);  
+
+                                // ✅ 刷新完成後再重整頁面
+                                OpenButton('Barcode');
+
                             },
                             error: function(xhr, status, error) {
                                 console.error("獲取條形碼時出錯:", error);
