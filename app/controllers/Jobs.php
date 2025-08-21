@@ -26,6 +26,7 @@ class Jobs extends Controller
     public function index(){
 
         $this->ntcs_data_db_sysnc();
+        $this->ntcs_device_db_load();
 
         $data = array();
 

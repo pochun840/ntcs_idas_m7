@@ -1120,14 +1120,14 @@ class Settings extends Controller
 
     #IDAS上傳 20250624 修改
     public function iDas_Update($debug = false) {
-
+        
         // 1. 紀錄上傳限制
         $maxUpload = ini_get('upload_max_filesize');
-        $postMax = ini_get('post_max_size');
+        $postMax   = ini_get('post_max_size');
         error_log("[iDAS UPDATE] upload_max_filesize: $maxUpload");
         error_log("[iDAS UPDATE] post_max_size: $postMax");
 
-        // 2. 載入語系檔
+        // 2. 載入語系檔（保留你原本機制）
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
@@ -1136,49 +1136,55 @@ class Settings extends Controller
 
         // 4. 設定路徑
         $file_location = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/' : $_SERVER['DOCUMENT_ROOT'] . '/';
-        $extract_path = $file_location . 'extracted/';
-        $main_folder = '';
+        $extract_path  = $file_location . 'extracted/';
+        $main_folder   = '';
+
+        // 上傳大小上限（訊息顯示用）
+        $MAX_SIZE     = 30 * 1024 * 1024;
+        $limitText    = '30MB';
 
         try {
             // 5. 驗證上傳
-            if (empty($_FILES['file']) || $_FILES['file']['error'] !== 0) {
-                $msg = empty($_FILES['file']) ? 'No file uploaded.' : 'File upload error: ' . $_FILES['file']['error'];
-                return $this->sendResponse('Error', $msg);
+            if (empty($_FILES['file'])) {
+                return $this->sendResponse('Error', $this->t('ERR_NO_FILE'));
+            }
+            if ($_FILES['file']['error'] !== 0) {
+                return $this->sendResponse('Error', $this->t('ERR_UPLOAD_ERROR', ['code' => (string)$_FILES['file']['error']]));
             }
 
             // 6. 大小限制
-            if ($_FILES['file']['size'] > 30 * 1024 * 1024) {
-                return $this->sendResponse('Error', '檔案大小超過限制：30MB');
+            if ($_FILES['file']['size'] > $MAX_SIZE) {
+                return $this->sendResponse('Error', $this->t('ERR_SIZE_LIMIT', ['limit' => $limitText]));
             }
 
             // 7. 副檔名檢查
             $uploaded_filename = $_FILES['file']['name'];
             if (strtolower(pathinfo($uploaded_filename, PATHINFO_EXTENSION)) !== 'pack') {
-                return $this->sendResponse('Error', '上傳檔案必須為 .pack，目前為：' . $uploaded_filename);
+                return $this->sendResponse('Error', $this->t('ERR_EXT', ['filename' => $uploaded_filename]));
             }
 
             // 8. 解壓縮
             $zip = new ZipArchive();
             if ($zip->open($_FILES['file']['tmp_name']) !== TRUE) {
-                return $this->sendResponse('Error', '無法開啟 .pack 更新檔案');
+                return $this->sendResponse('Error', $this->t('ERR_OPEN_PACK'));
             }
 
             if (!is_dir($extract_path)) mkdir($extract_path, 0777, true);
             if (!$zip->extractTo($extract_path)) {
                 $zip->close();
-                return $this->sendResponse('Error', '解壓縮失敗');
+                return $this->sendResponse('Error', $this->t('ERR_EXTRACT'));
             }
             $zip->close();
 
             // 9. 找資料夾
             $folders = array_filter(scandir($extract_path), fn($f) => is_dir($extract_path . $f) && !in_array($f, ['.', '..']));
             if (empty($folders)) {
-                return $this->sendResponse('Error', '未找到解壓縮資料夾');
+                return $this->sendResponse('Error', $this->t('ERR_NO_FOLDER'));
             }
 
             $main_folder = $extract_path . reset($folders);
 
-            // **Debug: 列出所有檔案結構**
+            // Debug：列出結構
             if ($debug) {
                 error_log("[iDAS UPDATE] 解壓縮目錄結構：");
                 $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($main_folder));
@@ -1190,18 +1196,21 @@ class Settings extends Controller
             // 10. 解析 info.json
             $info_json_url = $main_folder . "/info.json";
             if (!file_exists($info_json_url)) {
-                return $this->sendResponse('Error', '缺少 info.json，無法驗證更新檔');
+                return $this->sendResponse('Error', $this->t('ERR_MISSING_INFO'));
             }
 
             $verify_data = json_decode(@file_get_contents($info_json_url), true);
             if (!$verify_data || !isset($verify_data['idas_version'])) {
-                return $this->sendResponse('Error', 'info.json 格式錯誤或缺少 idas_version');
+                return $this->sendResponse('Error', $this->t('ERR_BAD_INFO'));
             }
 
             // 11. 比對版本
             $match_tcc_version = $verify_data['idas_version'];
             if (version_compare($match_tcc_version, $iDas_Version, '<')) {
-                return $this->sendResponse('Error', "更新檔版本低於目前版本，無法更新（目前：$iDas_Version，更新：$match_tcc_version）");
+                return $this->sendResponse('Error', $this->t('ERR_VERSION_LOW', [
+                    'current' => (string)$iDas_Version,
+                    'update'  => (string)$match_tcc_version,
+                ]));
             }
 
             // 12. 寫入 config 表
@@ -1215,14 +1224,15 @@ class Settings extends Controller
             // 14. 登出使用者
             $this->setting_logout();
 
-            // **Debug Mode: 保留 extracted 資料夾**
+            // Debug：保留 extracted
             if ($debug) {
-                return $this->sendResponse('Success', '更新成功（Debug模式：保留 extracted 資料夾）');
+                return $this->sendResponse('Success', $this->t('SUC_DEBUG'));
             }
 
-            return $this->sendResponse('Success', '更新成功，已將檔案移動至 ntcs_idas 目錄');
+            return $this->sendResponse('Success', $this->t('SUC_OK'));
+
         } finally {
-            // **非 Debug 才刪除暫存檔**
+            // 非 Debug 才刪暫存
             if (!$debug) {
                 if (!empty($main_folder) && is_dir($main_folder)) $this->deleteDirectory($main_folder);
                 if (is_dir($extract_path)) $this->deleteDirectory($extract_path);
@@ -1232,6 +1242,99 @@ class Settings extends Controller
 
 
 
+
+
+    // === 語系工具（改用 en-us） ===
+    private function currentLang(): string {
+        // 先看 cookie，再看 Accept-Language，最後預設 en-us
+        $raw = strtolower($_COOKIE['language'] ?? ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''));
+
+        // 繁中
+        if (strpos($raw, 'zh-tw') === 0 || strpos($raw, 'zh-hant') === 0) return 'zh-tw';
+
+        // 簡中
+        if (strpos($raw, 'zh-cn') === 0 || strpos($raw, 'zh-hans') === 0 || strpos($raw, 'zh') === 0) return 'zh-cn';
+
+        // 英文（含 en-us / en → 一律正規化成 en-us）
+        if (strpos($raw, 'en-us') === 0 || strpos($raw, 'en') === 0) return 'en-us';
+
+        return 'en-us';
+    }
+
+    private function t(string $key, array $vars = []): string {
+        static $DICT = [
+            'ERR_NO_FILE'       => [
+                'en-us' => 'No file uploaded.',
+                'zh-tw' => '未上傳檔案。',
+                'zh-cn' => '未上传文件。',
+            ],
+            'ERR_UPLOAD_ERROR'  => [
+                'en-us' => 'File upload error (code: {code}).',
+                'zh-tw' => '檔案上傳錯誤（代碼：{code}）。',
+                'zh-cn' => '文件上传错误（代码：{code}）。',
+            ],
+            'ERR_SIZE_LIMIT'    => [
+                'en-us' => 'File exceeds the size limit: {limit}.',
+                'zh-tw' => '檔案大小超過限制：{limit}。',
+                'zh-cn' => '文件大小超过限制：{limit}。',
+            ],
+            'ERR_EXT'           => [
+                'en-us' => 'Uploaded file must be .pack (got: {filename}).',
+                'zh-tw' => '上傳檔案必須為 .pack（目前為：{filename}）。',
+                'zh-cn' => '上传文件必须为 .pack（当前为：{filename}）。',
+            ],
+            'ERR_OPEN_PACK'     => [
+                'en-us' => 'Unable to open the .pack update file.',
+                'zh-tw' => '無法開啟 .pack 更新檔案。',
+                'zh-cn' => '无法打开 .pack 更新文件。',
+            ],
+            'ERR_EXTRACT'       => [
+                'en-us' => 'Failed to extract the update package.',
+                'zh-tw' => '解壓縮失敗。',
+                'zh-cn' => '解压缩失败。',
+            ],
+            'ERR_NO_FOLDER'     => [
+                'en-us' => 'No extracted folder found.',
+                'zh-tw' => '未找到解壓縮資料夾。',
+                'zh-cn' => '未找到解压缩文件夹。',
+            ],
+            'ERR_MISSING_INFO'  => [
+                'en-us' => 'Missing info.json; cannot verify the update package.',
+                'zh-tw' => '缺少 info.json，無法驗證更新檔。',
+                'zh-cn' => '缺少 info.json，无法验证更新包。',
+            ],
+            'ERR_BAD_INFO'      => [
+                'en-us' => 'Invalid info.json or missing "idas_version".',
+                'zh-tw' => 'info.json 格式錯誤或缺少 idas_version。',
+                'zh-cn' => 'info.json 格式错误或缺少 idas_version。',
+            ],
+            'ERR_VERSION_LOW'   => [
+                'en-us' => 'Update version is lower than current (current: {current}, update: {update}).',
+                'zh-tw' => '更新檔版本低於目前版本，無法更新（目前：{current}，更新：{update}）。',
+                'zh-cn' => '更新包版本低于当前版本，无法更新（当前：{current}，更新：{update}）。',
+            ],
+            'SUC_DEBUG'         => [
+                'en-us' => 'Update successful (Debug mode: extracted folder retained).',
+                'zh-tw' => '更新成功（Debug模式：保留 extracted 資料夾）。',
+                'zh-cn' => '更新成功（调试模式：保留 extracted 文件夹）。',
+            ],
+            'SUC_OK'            => [
+                'en-us' => 'Update successful. Files have been moved to the "ntcs_idas" directory.',
+                'zh-tw' => '更新成功，已將檔案移動至 ntcs_idas 目錄。',
+                'zh-cn' => '更新成功，已将文件移动至 ntcs_idas 目录。',
+            ],
+        ];
+
+        $lang = $this->currentLang();
+        $msg  = $DICT[$key][$lang] ?? ($DICT[$key]['en-us'] ?? $key);
+
+        if ($vars) {
+            $repl = [];
+            foreach ($vars as $k => $v) $repl['{'.$k.'}'] = $v;
+            $msg = strtr($msg, $repl);
+        }
+        return $msg;
+    }
 
     
     private function sendResponse($type, $msg) {

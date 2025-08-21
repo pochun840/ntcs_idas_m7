@@ -27,7 +27,7 @@
     </div>
 
    
-    <div style="display:none;">
+    <div style="display:block;">
         <input id="tool_max_torque" value="<?php echo $data['tools_info']['max_torque']; ?>">
         <input id="tool_max_torque_diff" value="<?php echo $data['tools_info']['tool_high_torque']; ?>">
         <input id="tool_min_torque" value="<?php echo $data['tools_info']['min_torque']; ?>">

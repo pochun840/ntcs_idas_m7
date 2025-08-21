@@ -244,7 +244,7 @@ $text['Reboot'] = '重启';
 $text['UDEFINE1'] = '自定义1';
 $text['UDEFINE2'] = '自定义2';
 $text['UDEFINE'] = '自定义';
-$text['Barcode'] = '条码';
+$text['Barcode'] = '条码停止';
 
 
 $text['UserDefine1'] = '自定义1';

@@ -41,6 +41,7 @@ class Sequences extends Controller
         }
 
         $this->ntcs_data_db_sysnc();
+        $this->ntcs_device_db_load();
         $isMobile = $this->isMobileCheck();
      
         $data =array();

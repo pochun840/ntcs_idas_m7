@@ -41,6 +41,7 @@ class Step extends Controller
 
         $total_step = count($step);
         $this->ntcs_data_db_sysnc();
+        $this->ntcs_device_db_load();
 
         
         if(empty($step)){

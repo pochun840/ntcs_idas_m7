@@ -60,7 +60,7 @@ function savejob() {
     var stopjobokElement = document.querySelector('input[name="stop_job_ok"]:checked');
     var stop_job_ok_val = stopjobokElement ? stopjobokElement.value : null;
 
-    let check = input_check_job();
+    let check = validateJobForm();
     if(check){
         document.getElementById('spinner').style.display = 'block';
         $.ajax({

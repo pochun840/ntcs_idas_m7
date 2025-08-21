@@ -468,8 +468,8 @@ function job_confirm(){
                     document.getElementById('7') && (document.getElementById('7').textContent = '马达信号');
                     document.getElementById('8') && (document.getElementById('8').textContent = '启动信号');
                     document.getElementById('9') && (document.getElementById('9').textContent = '拆螺丝');
-                    document.getElementById('10') && (document.getElementById('10').textContent = '条码');
-                    document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
+                    document.getElementById('10') && (document.getElementById('10').textContent = '条码停止');
+                    document.getElementById('11') && (document.getElementById('11').textContent = '条码');
                     document.getElementById('12') && (document.getElementById('12').textContent = '自定义1');
                     document.getElementById('13') && (document.getElementById('13').textContent = '自定义2');
                     document.getElementById('14') && (document.getElementById('14').textContent = '自定义3');
@@ -487,8 +487,8 @@ function job_confirm(){
                     document.getElementById('7') && (document.getElementById('7').textContent = '馬達信號');
                     document.getElementById('8') && (document.getElementById('8').textContent = '啟動信號');
                     document.getElementById('9') && (document.getElementById('9').textContent = '拆螺絲');
-                    document.getElementById('10') && (document.getElementById('10').textContent = '條碼');
-                    document.getElementById('11') && (document.getElementById('11').textContent = 'BS');
+                    document.getElementById('10') && (document.getElementById('10').textContent = '條碼停止');
+                    document.getElementById('11') && (document.getElementById('11').textContent = '條碼');
                     document.getElementById('12') && (document.getElementById('12').textContent = '自定義1');
                     document.getElementById('13') && (document.getElementById('13').textContent = '自定義2');
                     document.getElementById('14') && (document.getElementById('14').textContent = '自定義3');
