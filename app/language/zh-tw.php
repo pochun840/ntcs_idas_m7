@@ -160,7 +160,7 @@ $text['NG_Reverse'] = 'NG 退螺絲';
 $text['Accumulate_Angle'] = '累計角度';
 $text['Angle_Calculation'] = '角度計算';
 
-$text['Nm'] = '牛頓.米';
+$text['Nm'] = '牛頓.公尺';
 $text['Threshold_Type'] = '門檻選項';
 $text['Threshold_Angle'] = '門檻點角度';
 $text['torque_unit'] = '扭力單位';
@@ -206,7 +206,7 @@ $text['operation_result'] = '鎖附結果';
 $text['job'] = '工作';
 $text['sequence'] = '工序';
 $text['screws'] = '顆數';
-$text['final_torque'] = '扭力(牛頓.米)';
+$text['final_torque'] = '扭力(牛頓.公尺)';
 $text['final_torque'] = '扭力';
 $text['final_angle'] = '角度(度)';
 $text['final_result'] = '結果';
@@ -300,7 +300,7 @@ $text['column_count'] = '顆數';
 $text['column_status'] = '狀態';
 
 $text['kgf.m'] = '公斤.米';
-$text['N.m'] = '牛頓.米';
+$text['N.m'] = '牛頓.尺';
 $text['kgf.cm'] = '公斤.公分';
 $text['Lbf.in'] = '磅.英吋';
 $text['cN.m'] = '牛頓.厘米';

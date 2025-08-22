@@ -5,14 +5,6 @@
 ?>
 <script>
 
-    window.roundHalfUp = function (val, digits) {
-        const n = Number(val);
-        if (!Number.isFinite(n)) return NaN;
-        const f = Math.pow(10, digits);
-        const eps = 1 / (f * 1000);       // 比 1/f 小很多，推開二進位誤差
-        return Math.round((n + eps) * f) / f;
-    };
-
     // === rounding helpers (global, hoisted) ===
     (function (w) {
     function _roundHalfUp(val, digits) {
@@ -58,7 +50,35 @@
         if (typeof toggleDownShift === 'function') toggleDownShift();
     });
 
-    
+
+    // === 統一的精度與輔助 ===
+    const DECIMALS_BY_UNIT = { 0:2, 1:3, 2:2, 3:4, 4:1 };
+
+    function getTorquePrecision() {
+        const unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1, 10);
+        return DECIMALS_BY_UNIT[unit] ?? 3;
+    }
+
+    function getMoniWinValue() {
+        const tq  = document.getElementById("StepMoniByWin_0")?.checked; // 扭力窗
+        const ang = document.getElementById("StepMoniByWin_1")?.checked; // 角度窗
+        return tq ? 2 : (ang ? 1 : 0);
+    }
+
+    function bindRoundedWhenVisible(id, digits) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('blur', () => {
+            const n = Number(el.value);
+            if (!Number.isFinite(n)) return;
+            const f = Math.pow(10, digits);
+            const eps = 1 / (f * 1000); // 推開二進位誤差
+            el.value = (Math.round((n + eps) * f) / f).toFixed(digits);
+        });
+    }
+
+
+        
 
     document.addEventListener("DOMContentLoaded", function () {
         const isEditMode = '<?php echo $data["type"]; ?>' === 'edit';
@@ -118,141 +138,159 @@
         cb1?.addEventListener("change", toggleInputsByCheckbox);
     });
 
+
     function toggleStepTorqueTS() {
         const dataType = "<?php echo $data['type']; ?>";
-        const stepTorqueTS = document.getElementById('StepTorqueTS');
-        const stepTorqueTSBlock = document.getElementById('StepTorqueTS_block');
-        const showTorque = document.getElementById('show_torque');
-        const showAngle = document.getElementById('show_angle');
-        const thresholdBlock = document.getElementById('threshold_block');
+        const stepTorqueTS       = document.getElementById('StepTorqueTS');
+        const stepTorqueTSBlock  = document.getElementById('StepTorqueTS_block');
+        const showTorque         = document.getElementById('show_torque');
+        const showAngle          = document.getElementById('show_angle');
+        const thresholdBlock     = document.getElementById('threshold_block');
 
-        const isModeOff = document.getElementById('threshold_mode_off')?.checked;
+        const isModeOff    = document.getElementById('threshold_mode_off')?.checked;
         const isModeTorque = document.getElementById('threshold_mode_torque')?.checked;
-        const isModeAngle = document.getElementById('threshold_mode_angle')?.checked;
+        const isModeAngle  = document.getElementById('threshold_mode_angle')?.checked;
 
-        //初始全部隱藏 + 停用
-        [showTorque, showAngle, stepTorqueTSBlock].forEach(el => {
-            if (el) el.style.display = 'none';
-        });
-        if (stepTorqueTS) stepTorqueTS.disabled = true;
+        // 初始：全部隱藏 + 停用
+        [showTorque, showAngle, stepTorqueTSBlock].forEach(el => { if (el) el.style.display = 'none'; });
+        if (stepTorqueTS) {
+            stepTorqueTS.disabled = true;
+            // 先清掉上次模式留下的限制
+            stepTorqueTS.removeAttribute('pattern');
+            stepTorqueTS.removeAttribute('inputmode');
+            stepTorqueTS.removeAttribute('step');
+        }
 
-        //取小數設定一次
-        const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
-        const decimals = {
-            0: 2,
-            1: 3,
-            2: 2,
-            3: 4,
-            4: 1
-        };
-        const places = decimals[stepUnit] ?? 3;
+        // 取小數位數（扭力單位）
+        const places = getTorquePrecision();
 
-        //Torque 模式
+        // TORQUE 模式
         if (isModeTorque) {
             if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
             if (stepTorqueTS) {
-                stepTorqueTS.disabled = false;
-                if (dataType === 'new') {
-                    stepTorqueTS.value = (0).toFixed(places);
-                }
+            stepTorqueTS.disabled = false;
+            // 新增時給預設 0（帶小數位）
+            if (dataType === 'new') stepTorqueTS.value = (0).toFixed(places);
+            // 讓瀏覽器原生上下鍵符合精度
+            stepTorqueTS.step = (1 / Math.pow(10, places)).toFixed(places);
+            stepTorqueTS.inputMode = 'decimal';
+
+            // 綁一次離焦四捨五入（避免重複綁定）
+            if (!stepTorqueTS.dataset.blurFixed) {
+                stepTorqueTS.addEventListener('blur', () => {
+                const n = Number(stepTorqueTS.value);
+                if (!Number.isFinite(n)) return;
+                stepTorqueTS.value = roundHalfUp(n, places).toFixed(places);
+                });
+                stepTorqueTS.dataset.blurFixed = '1';
+            }
             }
             if (showTorque) showTorque.style.display = 'block';
         }
 
-        //Angle 模式
+        // ANGLE 模式（純整數度數）
         else if (isModeAngle) {
             if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
             if (stepTorqueTS) {
-                stepTorqueTS.disabled = false;
-                if (dataType === 'new') {
-                    stepTorqueTS.value = 0;
-                }
+            stepTorqueTS.disabled = false;
+            if (dataType === 'new') stepTorqueTS.value = 0;
+            stepTorqueTS.step = '1';
+            stepTorqueTS.pattern = '\\d+';     // 只允許整數
+            stepTorqueTS.inputMode = 'numeric';
             }
             if (showAngle) showAngle.style.display = 'block';
         }
 
-        //整塊顯示控制
-        if (thresholdBlock) {
-            thresholdBlock.style.display = isModeOff ? 'none' : 'flex';
+        // 整塊顯示
+        if (thresholdBlock) thresholdBlock.style.display = isModeOff ? 'none' : 'flex';
         }
 
-        //setTimeout(() => bindRoundedWhenVisible('StepTorqueTS', 3), 100);
-
-    }
 
     
     function toggleDownShift() {
-
         const dataType = "<?php echo $data['type']; ?>";
 
-        const StepTorqueDownShift = document.getElementById('StepTorqueDownShift');
-        const StepRPMDownShift = document.getElementById('StepRPMDownShift');
-        const StepTorqueDownShift_block = document.getElementById('StepTorqueDownShift_block');
-        const showDownshiftTorque = document.getElementById('show_downshift_torque');
-        const showDownshiftAngle = document.getElementById('show_downshift_angle');
-        const downshiftBlock = document.getElementById('downshift_block');
-        const downshiftSpeedBlock = document.getElementById('downshift_speed_block');
+        const ds      = document.getElementById('StepTorqueDownShift');
+        const dsRpm   = document.getElementById('StepRPMDownShift');
+        const dsBlock = document.getElementById('StepTorqueDownShift_block');
+        const showTor = document.getElementById('show_downshift_torque');
+        const showAng = document.getElementById('show_downshift_angle');
+        const wrap    = document.getElementById('downshift_block');
+        const wrapSpd = document.getElementById('downshift_speed_block');
 
-        const isModeOff = document.getElementById('downshift_mode_off')?.checked;
+        const isModeOff    = document.getElementById('downshift_mode_off')?.checked;
         const isModeTorque = document.getElementById('downshift_mode_torque')?.checked;
-        const isModeAngle = document.getElementById('downshift_mode_angle')?.checked;
+        const isModeAngle  = document.getElementById('downshift_mode_angle')?.checked;
 
-        //預設全部隱藏與 disabled
-        if (showDownshiftTorque) showDownshiftTorque.style.display = 'none';
-        if (showDownshiftAngle) showDownshiftAngle.style.display = 'none';
-        if (StepTorqueDownShift) {
-            StepTorqueDownShift.disabled = true;
-            StepTorqueDownShift.style.display = 'none';
+        // 預設全部隱藏/停用
+        if (showTor) showTor.style.display = 'none';
+        if (showAng) showAng.style.display = 'none';
+        if (dsBlock) dsBlock.style.display = 'none';
+        if (ds) {
+            ds.disabled = true;
+            ds.style.display = 'none';
+            // 先清掉屬性與舊的事件綁定
+            ds.removeAttribute('pattern');
+            ds.removeAttribute('inputmode');
+            ds.removeAttribute('step');
+            if (ds._roundHandler) { ds.removeEventListener('blur', ds._roundHandler); ds._roundHandler = null; }
+            if (ds._intHandler)   { ds.removeEventListener('blur', ds._intHandler);   ds._intHandler   = null; }
         }
-        if (StepRPMDownShift) StepRPMDownShift.disabled = true;
-        if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'none';
+        if (dsRpm) dsRpm.disabled = true;
 
-        //取得 torque unit 對應的小數位數
-        const stepUnit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1);
-        const decimals = {
-            0: 2,
-            1: 3,
-            2: 2,
-            3: 4,
-            4: 1
-        };
-        const places = decimals[stepUnit] ?? 3;
+        const places = getTorquePrecision(); // 用統一精度
 
-        //TORQUE 模式
+        // TORQUE 模式
         if (isModeTorque) {
-            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
-            if (StepTorqueDownShift) {
-                StepTorqueDownShift.style.display = 'block';
-                StepTorqueDownShift.disabled = false;
-                if (dataType === 'new') {
-                    StepTorqueDownShift.value = (0).toFixed(places);
-                }
-            }
-            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
-            if (showDownshiftTorque) showDownshiftTorque.style.display = 'block';
-        }
+            if (dsBlock) dsBlock.style.display = 'flex';
+            if (ds) {
+            ds.style.display = 'block';
+            ds.disabled = false;
+            if (dataType === 'new') ds.value = (0).toFixed(places);
+            ds.step = (1 / Math.pow(10, places)).toFixed(places);
+            ds.inputMode = 'decimal';
 
-        //ANGLE 模式
+            ds._roundHandler = function () {
+                const n = Number(ds.value);
+                if (!Number.isFinite(n)) return;
+                ds.value = roundHalfUp(n, places).toFixed(places);
+            };
+            ds.addEventListener('blur', ds._roundHandler);
+            }
+            if (dsRpm) dsRpm.disabled = false;
+            if (showTor) showTor.style.display = 'block';
+        }
+        // ANGLE 模式（整數）
         else if (isModeAngle) {
-            if (StepTorqueDownShift_block) StepTorqueDownShift_block.style.display = 'flex';
-            if (StepTorqueDownShift) {
-                StepTorqueDownShift.style.display = 'block';
-                StepTorqueDownShift.disabled = false;
-                if (dataType === 'new') {
-                    StepTorqueDownShift.value = (0).toFixed(places);
-                }
+            if (dsBlock) dsBlock.style.display = 'flex';
+            if (ds) {
+            ds.style.display = 'block';
+            ds.disabled = false;
+            if (dataType === 'new') ds.value = '0';
+            ds.step = '1';
+            ds.pattern = '\\d+';      // 只允許整數
+            ds.inputMode = 'numeric';
+
+            ds._intHandler = function () {
+                const v = ds.value.trim();
+                if (v === '') return;
+                const n = Math.floor(Number(v));
+                if (Number.isFinite(n)) ds.value = String(n);
+            };
+            ds.addEventListener('blur', ds._intHandler);
             }
-            if (StepRPMDownShift) StepRPMDownShift.disabled = false;
-            if (showDownshiftAngle) showDownshiftAngle.style.display = 'block';
+            if (dsRpm) dsRpm.disabled = false;
+            if (showAng) showAng.style.display = 'block';
         }
 
-        //控制外層區塊
-        if (downshiftBlock) downshiftBlock.style.display = isModeOff ? 'none' : 'flex';
-        if (downshiftSpeedBlock) downshiftSpeedBlock.style.display = isModeOff ? 'none' : 'flex';
+        // 外層顯示
+        if (wrap)   wrap.style.display   = isModeOff ? 'none' : 'flex';
+        if (wrapSpd) wrapSpd.style.display = isModeOff ? 'none' : 'flex';
 
+        // ⚠️ 刪除原本無條件的 round 綁定
+        // bindRoundedBlur('StepTorqueDownShift');
+        }
 
-        setTimeout(() => bindRoundedWhenVisible('StepTorqueDownShift', 3), 100);
-    }
 
 
 
@@ -541,14 +579,14 @@
         const unitLabels = {
             'kgf.cm': { 'zh-cn': '公斤.公分', 'zh-tw': '公斤.公分', 'default': 'kgf.cm' },
             'lbf.in': { 'zh-cn': '磅.英吋', 'zh-tw': '磅.英吋', 'default': 'lbf.in' },
-            'N.m':    { 'zh-cn': '牛顿.米',  'zh-tw': '牛頓.米',   'default': 'N.m' },
+            'N.m':    { 'zh-cn': '牛顿.米',  'zh-tw': '牛頓.尺',   'default': 'N.m' },
             'kgf.m':  { 'zh-cn': '公斤.米',   'zh-tw': '公斤.米', 'default': 'kgf.m' },
             'cN.m':   { 'zh-cn': '牛頓.厘米','zh-tw': '牛頓.厘米', 'default': 'cN.m' },
         };
         const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
 
         const labelTexts = {
-            'zh-cn': { 2: '目标扭矩', 1: '目标角度' },
+            'zh-cn': { 2: '目标扭力', 1: '目标角度' },
             'zh-tw': { 2: '目標扭力', 1: '目標角度' },
             'default': { 2: 'Target Torque', 1: 'Target Angle' }
         };
@@ -682,44 +720,35 @@
     }
 
 
-    // 依單位決定顯示的小數位數（N·m=3 位）
-    const displayPrecision = decimals[torque_unit] ?? 3;
 
     /** 正規四捨五入 (half-up)，避開 0.2405 這類二進位誤差 */
     function normalizeStepTorque() {
         const el = document.getElementById('StepTorque');
-        if (!el) return { num: NaN, text: '', precision: displayPrecision };
+        const digits = getTorquePrecision();   // 用統一的精度函式
+        if (!el) return { num: NaN, text: '', precision: digits };
 
         const raw = el.value.trim();
         const n = Number(raw);
-        if (!Number.isFinite(n)) return { num: NaN, text: raw, precision: displayPrecision };
+        if (!Number.isFinite(n)) return { num: NaN, text: raw, precision: digits };
 
-        // 在局部定義 half-up，避免與外部重複宣告衝突
-        const halfUp = (val, digits) => {
-            const f   = Math.pow(10, digits);
-            const eps = 1 / (f * 1000);         // 比 1/f 小很多，避免 0.2404999...
-            return Math.round((val + eps) * f) / f;
-        };
+        const f = Math.pow(10, digits);
+        const eps = 1 / (f * 1000);            // 推開二進位誤差
+        const rounded = Math.round((n + eps) * f) / f;
 
-        // 用「顯示位數」做四捨五入；第 displayPrecision+1 位決定進位
-        const rounded = halfUp(n, displayPrecision);
-
-        // 回寫欄位並保留尾端 0
-        el.value = rounded.toFixed(displayPrecision);
-
-        return { num: rounded, text: el.value, precision: displayPrecision };
+        el.value = rounded.toFixed(digits);     // 回寫並保留尾端 0
+        return { num: rounded, text: el.value, precision: digits };
     }
+
 
 
 
     function input_check() {
 
- 
-        //check_target_tor_hi
-        
-        const decimals = { 0: 2, 1: 3, 2: 2, 3: 4, 4: 1 };
+
+        const precision = getTorquePrecision();
+
         const torque_unit = parseInt(document.getElementById('step_torque_unit')?.value ?? 1, 10);
-        const precision = decimals[torque_unit] ?? 3;
+
         const increment = parseFloat((1 / Math.pow(10, precision)).toFixed(precision));
 
         const Tool_Max_Torque = document.getElementById('check_target_tor_hi').value;
@@ -734,9 +763,7 @@
         const check_target_tor_lo_raw = parseFloat(Tool_Min_Torque || 0);
         const check_target_tor_hi_raw = parseFloat(Tool_Max_Torque || 0);
         
-        // 多一位小數的精度（只針對 StepTorque）
-        //const torquePrecision = (decimals[torque_unit] ?? 3) + 0;
-        const torquePrecision = (decimals[torque_unit] ?? 3);   
+        const torquePrecision = precision;
 
         // 讀 StepTorque，並做「多一位小數」四捨五入，順便回寫到欄位
         const stepTorqueEl = document.getElementById('StepTorque');
@@ -755,26 +782,48 @@
         const stepLoTorqueEl = document.getElementById('StepLoTorque');
 
         if (stepHiTorqueEl && stepHiTorqueEl.value !== '') {
-        const n = Number(stepHiTorqueEl.value);
-        if (Number.isFinite(n)) stepHiTorqueEl.value = n.toFixed(torquePrecision);
+            const n = Number(stepHiTorqueEl.value);
+            if (Number.isFinite(n)) stepHiTorqueEl.value = n.toFixed(torquePrecision);
         }
 
         if (stepLoTorqueEl && stepLoTorqueEl.value !== '') {
-        const n = Number(stepLoTorqueEl.value);
-        if (Number.isFinite(n)) stepLoTorqueEl.value = n.toFixed(torquePrecision);
+            const n = Number(stepLoTorqueEl.value);
+            if (Number.isFinite(n)) stepLoTorqueEl.value = n.toFixed(torquePrecision);
         }
 
+       
+        (function maybeValidateEqLo() {
+            const stepOpt = parseInt(document.getElementById("StepOption")?.value ?? 0, 10);
 
-        
-        if (!enforceLoAngleLessThanHiAngleForOption2()) {
-            isValid = false;
-            errorList.push('StepLoAngle');
-        }
+            // 只在 StepOption==2 時檢查是否三者皆相等；若皆相等，直接略過 validateTorqueEqualLo
+            if (stepOpt === 2) {
+                const tqEl = document.getElementById('StepTorque');
+                const hiEl = document.getElementById('StepHiTorque');
+                const loEl = document.getElementById('StepLoTorque');
 
-        if (!validateTorqueEqualLo()) {
-            isValid = false;
-            if (!errorList.includes('StepTorque')) errorList.push('StepTorque');
-        }
+                const tq = Number(tqEl?.value), hi = Number(hiEl?.value), lo = Number(loEl?.value);
+
+                const _round = (typeof roundTo === 'function')
+                ? roundTo
+                : (n, d = 3) => { const v = Number(n); return isNaN(v) ? NaN : parseFloat(v.toFixed(d)); };
+                const p = (typeof precision === 'number') ? precision : 3;
+
+                const tqR = _round(tq, p), hiR = _round(hi, p), loR = _round(lo, p);
+
+                if (Number.isFinite(tqR) && Number.isFinite(hiR) && Number.isFinite(loR) &&
+                    tqR === hiR && tqR === loR) {
+                // 三者（四捨五入到當前精度）相等 → 不執行 validateTorqueEqualLo
+                return;
+                }
+            }
+
+            // 其餘情況才執行原本檢核
+            if (!validateTorqueEqualLo()) {
+                isValid = false;
+                if (!errorList.includes('StepTorque')) errorList.push('StepTorque');
+            }
+        })();
+
 
 
         enforceDownShiftInteger();
@@ -969,12 +1018,12 @@
                 hiAngEl.dataset.syncLoMaxBound = '1'; // 打標記避免重複綁定
             }
 
-            if (StepMoniByWin === 2) {
-                conditions.push(
-                    { id: 'step_limit_hi_tor', pattern: pattern0to99, min: 0, max: 99, integerOnly: true },
-                    { id: 'step_limit_lo_tor', pattern: pattern0to99, min: 0, max: 99, integerOnly: true }
-                );
-            }
+                if (StepMoniByWin === 2) {
+                    const stepOpt = parseInt(document.getElementById("StepOption")?.value ?? 0, 10);
+                    const quiet = (stepOpt === 2); // StepOption==2 → 只顯示提示，不彈窗
+                    checkStepLimit('step_limit_hi_tor', '上限', quiet);
+                    checkStepLimit('step_limit_lo_tor', '下限', quiet);
+                }
         } else if (StepOption === 1) {
             const stepAngleVal = parseFloat(document.getElementById('StepAngle')?.value || 0);
             conditions.push(
@@ -983,12 +1032,18 @@
                 { id: 'StepLoAngle', pattern: /^\d{1,5}$/, min: limits.angle.limitLo.min, max: stepAngleVal > 0 ? stepAngleVal - 1 : limits.angle.limitLo.max, noRangeMessage: true },
                 { id: 'StepHiTorque',  pattern: new RegExp('^\\d{1,5}(?:\\.\\d{1,' + torquePrecision + '})?$'), min: check_target_tor_lo_raw, max: check_hi_tor_after_temp, precision, roundBeforeCompare: true }
             );
-            if (StepMoniByWin === 1) {
-                conditions.push(
-                    { id: 'step_limit_hi_ang', pattern: pattern0to99, min: 0, max: 99, integerOnly: true,allowBlank: true },
-                    { id: 'step_limit_lo_ang', pattern: pattern0to99, min: 0, max: 99, integerOnly: true,allowBlank: true }
-                );
-            }
+
+            (function addAngPercentCondsIfEditable() {
+                if (StepOption !== 1) return;
+                const hi = document.getElementById('step_limit_hi_ang');
+                const lo = document.getElementById('step_limit_lo_ang');
+                const editable = (el) => el && !el.disabled && getComputedStyle(el).display !== 'none';
+                if (editable(hi)) conditions.push({ id: 'step_limit_hi_ang', pattern: /^(?:[0-9]|[1-9][0-9])$/, min: 0, max: 99, integerOnly: true });
+                if (editable(lo)) conditions.push({ id: 'step_limit_lo_ang', pattern: /^(?:[0-9]|[1-9][0-9])$/, min: 0, max: 99, integerOnly: true });
+            })();
+
+
+
             const stepAngleEl = document.getElementById('StepAngle');
             const stepLoAngleEl = document.getElementById('StepLoAngle');
             if (stepAngleEl && stepLoAngleEl) {
@@ -1091,36 +1146,111 @@
             if (!valid) { isValid = false; errorList.push(cond.id); }
         });
 
+
         // StepTorqueOffset（僅 StepOption=2）
         const offsetEl = document.getElementById('StepTorqueOffset');
         const torqueVal = parseFloat(check_target_torque_raw ?? 0);
+
+        // 只有在「目標扭力在工具規格內」才檢查 Offset（沿用你的原判斷）
         if (!(torqueVal < check_target_tor_lo_raw || torqueVal > check_target_tor_hi_raw)) {
-            if (offsetEl && StepOption === 2) {
-                const offset = parseFloat(offsetEl.value);
-                const target = parseFloat(check_target_torque_raw);
-                const specMin = parseFloat(Tool_Min_Torque);
-                const specMax = parseFloat(Tool_Max_Torque);
-                const feedback = offsetEl.nextElementSibling;
-                if (!isNaN(offset) && !isNaN(target) && !isNaN(specMin) && !isNaN(specMax)) {
-                    const offsetMaxBy30 = target * 0.3;
-                    const offsetMaxBySpec = (specMax * 1.08) - target;
-                    const offsetMinBySpec = (specMin * 0.7) - target;
-                    const offsetMax = Math.min(offsetMaxBy30, offsetMaxBySpec);
-                    const offsetMin = Math.max(-offsetMaxBy30, offsetMinBySpec);
-                    if (offset < offsetMin || offset > offsetMax) {
-                        offsetEl.classList.add("is-invalid");
-                        if (feedback?.classList.contains("invalid-feedback")) {
-                            feedback.innerText = `Offset Range: ${(target - offsetMaxBy30).toFixed(precision)} ~ ${(target + offsetMaxBy30).toFixed(precision)}`;
-                            feedback.classList.add("d-block"); feedback.style.display = "block";
-                        }
-                        isValid = false; errorList.push('StepTorqueOffset');
-                    } else {
-                        offsetEl.classList.remove("is-invalid");
-                        if (feedback?.classList.contains("invalid-feedback")) { feedback.innerText = ''; feedback.classList.remove("d-block"); feedback.style.display = "none"; }
-                    }
+        if (offsetEl && StepOption === 2) {
+            const offset   = parseFloat(offsetEl.value);
+            const target   = parseFloat(check_target_torque_raw);
+            const specMin  = parseFloat(Tool_Min_Torque);
+            const specMax  = parseFloat(Tool_Max_Torque);
+            const feedback = offsetEl.nextElementSibling;
+
+            if (!isNaN(offset) && !isNaN(target) && !isNaN(specMin) && !isNaN(specMax)) {
+            const offsetMaxBy30   = target * 0.3;
+            const offsetMaxBySpec = (specMax * 1.08) - target;
+            const offsetMinBySpec = (specMin * 0.7)  - target;
+            const offsetMax = Math.min(offsetMaxBy30, offsetMaxBySpec);
+            const offsetMin = Math.max(-offsetMaxBy30, offsetMinBySpec);
+
+            if (offset < offsetMin || offset > offsetMax) {
+                // 標紅
+                offsetEl.classList.add("is-invalid");
+
+                // 關掉欄位旁的 inline 提示（改用彈窗）
+                if (feedback?.classList.contains("invalid-feedback")) {
+                feedback.innerText = '';
+                feedback.classList.remove("d-block");
+                feedback.style.display = "none";
+                }
+
+                // ====== 多語與單位處理 ======
+                const prec = Number.isInteger(precision) ? precision : 3;
+                const rangeStr = `${(target - offsetMaxBy30).toFixed(prec)} ~ ${(target + offsetMaxBy30).toFixed(prec)}`;
+
+                // 語系
+                const getCookieSafe = (name) => {
+                try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                } catch { return null; }
+                };
+                let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : (getCookieSafe('language') || 'zh-tw')) || 'zh-tw';
+                lang = String(lang).toLowerCase();
+                if (lang === 'en') lang = 'en-us';
+                if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
+
+                // 單位（優先用你專案內的 getLangAndUnit().unit）
+                let unitText;
+                if (typeof getLangAndUnit === 'function') {
+                const gu = getLangAndUnit();
+                unitText = gu?.unit || 'N·m';
+                } else {
+                // fallback 依下拉選單取得單位並做簡單在地化
+                const unitSelect = document.getElementById('step_torque_unit');
+                const unitCode = parseInt(unitSelect?.value ?? 1, 10); // 預設 N·m
+                const UNIT_TEXT = {
+                    0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
+                    1: { 'en-us':'N·m',    'zh-tw':'牛頓·米',    'zh-cn':'牛顿·米'    },
+                    2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英寸'   },
+                    3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
+                    4: { 'en-us':'kgf·m',  'zh-tw':'公斤·米',    'zh-cn':'公斤·米'   }
+                };
+                unitText = (UNIT_TEXT[unitCode]?.[lang]) ?? 'N·m';
+                }
+
+                // 訊息模板（標題與按鈕做語系；內文依你的需求）
+                const I18N = {
+                'en-us': { title: 'Warning',  ok: 'OK',
+                            msg: (u, r) => `Joint O(${u}) is out of range (${r})` },
+                'zh-tw': { title: '警告',    ok: '確定',
+                            msg: (u, r) => `扭力補償值（${u}）超出範圍（${r}）` },
+                'zh-cn': { title: '警告',    ok: '确定',
+                            msg: (u, r) => `扭力补偿值（${u}）超出范围（${r}）` }
+                };
+                const T = I18N[lang] || I18N['en-us'];
+                const finalMsg = T.msg(unitText, rangeStr);
+
+                // 節流避免重複彈窗
+                if (!window._alertingStepTorqueOffset) {
+                window._alertingStepTorqueOffset = true;
+                alertify
+                    .alert(T.title, finalMsg, function () {
+                    try { offsetEl.focus(); offsetEl.select?.(); } catch {}
+                    window._alertingStepTorqueOffset = false;
+                    })
+                    .set('labels', { ok: T.ok });
+                }
+
+                isValid = false;
+                if (!errorList.includes('StepTorqueOffset')) errorList.push('StepTorqueOffset');
+            } else {
+                // 合法：收掉紅框與殘留 inline
+                offsetEl.classList.remove("is-invalid");
+                if (feedback?.classList.contains("invalid-feedback")) {
+                feedback.innerText = '';
+                feedback.classList.remove("d-block");
+                feedback.style.display = "none";
                 }
             }
+            }
         }
+        }
+
 
         
         
@@ -1195,58 +1325,115 @@
             }
         }
 
+        (function enforceStepOption1PercentRequiredWithDialog() {
+            const stepOpt = parseInt(document.getElementById('StepOption')?.value ?? 0, 10);
+            if (stepOpt !== 1) return;
 
-        // ---- 針對百分比欄位的硬性檢查 ----
-        (function enforcePercentFields() {
-            let percentIds = [];
+            const fields = [
+                { id: 'step_limit_hi_ang', key: 'hi' },
+                { id: 'step_limit_lo_ang', key: 'lo' }
+            ];
 
-            if (StepOption === 2) {
-                percentIds = ['step_limit_hi_tor', 'step_limit_lo_tor'];
-            } else if (StepOption === 1) {
-                percentIds = ['step_limit_hi_ang', 'step_limit_lo_ang'];
-            } else {
-                return;
+            const isEditable = (el) => el && !el.disabled && getComputedStyle(el).display !== 'none';
+
+            // === 新增：語系偵測 + I18N + 取 T（修正 T 未定義） ===
+            function getLangSafe() {
+                try {
+                if (typeof getLangAndUnit === 'function') {
+                    let l = (getLangAndUnit().lang || '').toLowerCase();
+                    if (l === 'en') l = 'en-us';
+                    return ['en-us','zh-tw','zh-cn'].includes(l) ? l : 'en-us';
+                }
+                } catch {}
+                try {
+                const m = document.cookie.match(/(?:^|; )language=([^;]+)/);
+                let l = (m ? decodeURIComponent(m[1]) : 'en-us').toLowerCase();
+                if (l === 'en') l = 'en-us';
+                return ['en-us','zh-tw','zh-cn'].includes(l) ? l : 'en-us';
+                } catch {}
+                return 'en-us';
             }
 
-            percentIds.forEach(id => {
+            const I18N = {
+                'en-us': {
+                title: 'Warning',
+                ok: 'OK',
+                msg: {
+                    hi: 'Please enter (Upper limit) % — required, integer 0–99',
+                    lo: 'Please enter (Lower limit) % — required, integer 0–99'
+                }
+                },
+                'zh-tw': {
+                title: '警告',
+                ok: '確定',
+                msg: {
+                    hi: '請輸入：(上限)％ — 必填，0~99 的整數',
+                    lo: '請輸入：(下限)％ — 必填，0~99 的整數'
+                }
+                },
+                'zh-cn': {
+                title: '警告',
+                ok: '确定',
+                msg: {
+                    hi: '请输入：(上限)％ — 必填，0~99 的整数',
+                    lo: '请输入：(下限)％ — 必填，0~99 的整数'
+                }
+                }
+            };
+
+            const lang = getLangSafe();
+            const T = I18N[lang] || I18N['en-us'];
+            // === 以上三塊缺一不可 ===
+
+            fields.forEach(({ id, key }) => {
                 const el = document.getElementById(id);
-                if (!el) return;
+                if (!isEditable(el)) return; // 不可編輯就不驗
 
                 el.setAttribute('min', '0');
                 el.setAttribute('max', '99');
                 el.setAttribute('inputmode', 'numeric');
 
-                const val = el.value.trim();
-                const n = Number(val);
-                const fb = el.nextElementSibling;
-
-                const bad = (
-                    val === "" ||
-                    !Number.isFinite(n) ||
-                    !Number.isInteger(n) ||
-                    n < 0 || n > 99 ||
-                    !/^(?:[0-9]|[1-9][0-9])$/.test(val)
-                );
+                const raw = (el.value || '').trim();
+                const n = Number(raw);
+                const isInt0to99 = Number.isInteger(n) && n >= 0 && n <= 99 && /^(?:[0-9]|[1-9][0-9])$/.test(raw);
+                const bad = (raw === '' || !isInt0to99);
 
                 if (bad) {
-                    el.classList.add("is-invalid");
-                    if (fb?.classList.contains("invalid-feedback")) {
-                        fb.innerText = "Range: 0 ~ 99";
-                        fb.classList.add("d-block");
-                        fb.style.display = "block";
-                    }
-                    isValid = false;
-                    errorList.push(id);
+                el.classList.add('is-invalid');
+                const fb = el.nextElementSibling;
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
+                }
+
+                // （可選）改用每欄位去重，避免兩個欄位同時錯只彈一次
+                if (!window.__alertOnce) window.__alertOnce = {};
+                const keyOnce = 'opt1_percent_' + id;
+                if (!window.__alertOnce[keyOnce]) {
+                    window.__alertOnce[keyOnce] = true;
+                    alertify
+                    .alert(T.title, T.msg[key], function () {
+                        try { el.focus(); el.select?.(); } catch {}
+                        window.__alertOnce[keyOnce] = false;
+                    })
+                    .set('labels', { ok: T.ok });
+                }
+
+                isValid = false;
+                if (!errorList.includes(id)) errorList.push(id);
                 } else {
-                    el.classList.remove("is-invalid");
-                    if (fb?.classList.contains("invalid-feedback")) {
-                        fb.innerText = '';
-                        fb.classList.remove("d-block");
-                        fb.style.display = "none";
-                    }
+                el.classList.remove('is-invalid');
+                const fb = el.nextElementSibling;
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
+                }
                 }
             });
         })();
+
 
 
         // ---- 交叉驗證：Threshold=2 & DownShift=1 時，StepTorqueDownShift(整數) < StepTorqueTS(整數)
@@ -1360,8 +1547,8 @@
             // 多語系訊息
             const msgMap = {
                 'en-us': "StepTorqueDownShift must be less than Target Torque",
-                'zh-tw': "降速扭力必須小於目標扭力",
-                'zh-cn': "降速扭矩必须小于目标扭矩"
+                'zh-tw': "降速扭力 必須小於 目標扭力",
+                'zh-cn': "降速扭力 必须小于 目标扭力"
             };
             const msg = msgMap[lang] ?? msgMap.en;
 
@@ -1665,206 +1852,112 @@
         })();
 
 
-        // ---- 交叉驗證：StepOption==1 時 step_limit_hi_ang/lo_ang 可以為空，但若有值必須是 0~99 的整數（彈跳視窗 + 語系）----
-        (function enforceStepOption1PercentOptional() {
-            if (StepOption !== 1) return;
+       
+        // ---- StepOption==2：扭力百分比欄位為「必填」，錯誤用彈窗 + 語系 ----
+        (function enforceStepOption2PercentRequired() {
+        const stepOpt = parseInt(document.getElementById("StepOption")?.value ?? 0, 10);
+        if (stepOpt !== 2) return;
 
-            const ids = [
-                { id: 'step_limit_hi_ang', key: 'hi' },
-                { id: 'step_limit_lo_ang', key: 'lo' }
-            ];
+        const fields = [
+            { id: 'step_limit_hi_tor', key: 'hi' }, // 上限 %
+            { id: 'step_limit_lo_tor', key: 'lo' }  // 下限 %
+        ];
 
-            // 語系
-            const { lang: _lang } = (typeof getLangAndUnit === 'function')
-                ? getLangAndUnit()
-                : { lang: 'zh-tw' };
+        // 取語系（優先用共用函式，否則 cookie fallback）
+        let lang = 'zh-tw';
+        if (typeof getLangAndUnit === 'function') {
+            lang = (getLangAndUnit()?.lang || 'zh-tw').toLowerCase();
+        } else {
+            try {
+            const m = document.cookie.match(/(?:^|; )language=([^;]+)/);
+            lang = (m ? decodeURIComponent(m[1]) : 'zh-tw').toLowerCase();
+            } catch {}
+        }
+        if (lang === 'en') lang = 'en-us';
+        if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
 
-            const I18N = {
-                'en-us': {
-                    title: 'Warning',
-                    msg: {
-                        hi: 'Please enter: (Upper limit) %',
-                        lo: 'Please enter: (Lower limit) %'
-                    },
-                    ok: 'OK'
-                },
-                'zh-tw': {
-                    title: '警告',
-                    msg: {
-                        hi: '請輸入: (上限) %數 ',
-                        lo: '請輸入: (下限) %數'
-                    },
-                    ok: '確定'
-                },
-                'zh-cn': {
-                    title: '警告',
-                    msg: {
-                        hi: '请输入" (上限) %数',
-                        lo: '请输入: (下限) %数'
-                    },
-                    ok: '确定'
-                }
-            };
-            const T = I18N[_lang] || I18N['en-us'];
+        const I18N = {
+            'en-us': {
+            title: 'Warning',
+            ok: 'OK',
+            msg: {
+                hi: 'Please enter (Upper limit) % — integer 0–99',
+                lo: 'Please enter (Lower limit) % — integer 0–99'
+            }
+            },
+            'zh-tw': {
+            title: '警告',
+            ok: '確定',
+            msg: {
+                hi: '請輸入：(上限)％ — 必須為 0~99 的整數',
+                lo: '請輸入：(下限)％ — 必須為 0~99 的整數'
+            }
+            },
+            'zh-cn': {
+            title: '警告',
+            ok: '确定',
+            msg: {
+                hi: '请输入：(上限)％ — 必须为 0~99 的整数',
+                lo: '请输入：(下限)％ — 必须为 0~99 的整数'
+            }
+            }
+        };
+        const T = I18N[lang];
 
-            ids.forEach(({ id, key }) => {
-                const el = document.getElementById(id);
-                if (!el) return;
+        fields.forEach(({ id, key }) => {
+            const el = document.getElementById(id);
+            if (!el) return;
 
-                const val = el.value.trim();
-                const fb  = el.nextElementSibling;
+            // 基本屬性
+            el.setAttribute('min', '0');
+            el.setAttribute('max', '99');
+            el.setAttribute('inputmode', 'numeric');
 
-                // 留白直接通過
-                if (val === '') {
-                    el.classList.remove('is-invalid');
-                    if (fb?.classList.contains('invalid-feedback')) {
-                        fb.innerText = '';
-                        fb.classList.remove('d-block');
-                        fb.style.display = 'none';
-                    }
-                    return;
-                }
+            const raw = (el.value || '').trim();
+            const n = Number(raw);
+            const isInt = Number.isInteger(n);
+            const inRange = isInt && n >= 0 && n <= 99 && /^(?:[0-9]|[1-9][0-9])$/.test(raw);
 
-                const n = Number(val);
-                const bad = (
-                    !Number.isFinite(n) ||
-                    !Number.isInteger(n) ||
-                    n < 0 || n > 99
-                );
+            const bad = (raw === '' || !inRange);
 
-                if (bad) {
-                    // 標紅並關閉 inline 訊息
-                    el.classList.add('is-invalid');
-                    if (fb?.classList.contains('invalid-feedback')) {
-                        fb.innerText = '';
-                        fb.classList.remove('d-block');
-                        fb.style.display = 'none';
-                    }
+            if (bad) {
+            // 標紅但關掉 inline（改用彈窗）
+            el.classList.add('is-invalid');
+            const fb = el.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) {
+                fb.innerText = '';
+                fb.classList.remove('d-block');
+                fb.style.display = 'none';
+            }
 
-                    // 彈窗（針對 hi/lo 顯示不同訊息）
-                    if (!window._alertingPercentOpt1) {
-                        window._alertingPercentOpt1 = true;
-                        alertify
-                            .alert(T.title, T.msg[key], function () {
-                                try { el.focus(); el.select?.(); } catch {}
-                                window._alertingPercentOpt1 = false;
-                            })
-                            .set('labels', { ok: T.ok });
-                    }
+            // 避免同輪多次彈窗
+            if (!window._alertingPercentOpt2Req) {
+                window._alertingPercentOpt2Req = true;
+                alertify
+                .alert(T.title, T.msg[key], function () {
+                    try { el.focus(); el.select?.(); } catch {}
+                    window._alertingPercentOpt2Req = false;
+                })
+                .set('labels', { ok: T.ok });
+            }
 
-                    isValid = false;
-                    if (!errorList.includes(id)) errorList.push(id);
-                } else {
-                    el.classList.remove('is-invalid');
-                    if (fb?.classList.contains('invalid-feedback')) {
-                        fb.innerText = '';
-                        fb.classList.remove('d-block');
-                        fb.style.display = 'none';
-                    }
-                }
-            });
+            isValid = false;
+            if (!errorList.includes(id)) errorList.push(id);
+            } else {
+            // 合法 → 清錯
+            el.classList.remove('is-invalid');
+            const fb = el.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) {
+                fb.innerText = '';
+                fb.classList.remove('d-block');
+                fb.style.display = 'none';
+            }
+            }
+        });
         })();
 
 
-        // ---- 交叉驗證：StepOption==2 時 step_limit_hi_tor/lo_tor 可以為空，但若有值必須是 0~99 的整數（彈跳視窗 + 語系）----
-        (function enforceStepOption1PercentOptional() {
-            if (StepOption !== 1) return;
-
-            const ids = [
-                { id: 'step_limit_hi_tor', key: 'hi' },
-                { id: 'step_limit_lo_tor', key: 'lo' }
-            ];
-
-            // 語系
-            const { lang: _lang } = (typeof getLangAndUnit === 'function')
-                ? getLangAndUnit()
-                : { lang: 'zh-tw' };
-
-            const I18N = {
-                'en-us': {
-                    title: 'Warning',
-                    msg: {
-                        hi: 'Please enter: (Upper limit) %',
-                        lo: 'Please enter: (Lower limit) %'
-                    },
-                    ok: 'OK'
-                },
-                'zh-tw': {
-                    title: '警告',
-                    msg: {
-                        hi: '請輸入: (上限) %數 ',
-                        lo: '請輸入: (下限) %數'
-                    },
-                    ok: '確定'
-                },
-                'zh-cn': {
-                    title: '警告',
-                    msg: {
-                        hi: '请输入" (上限) %数',
-                        lo: '请输入: (下限) %数'
-                    },
-                    ok: '确定'
-                }
-            };
-            const T = I18N[_lang] || I18N['en-us'];
-
-            ids.forEach(({ id, key }) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-
-                const val = el.value.trim();
-                const fb  = el.nextElementSibling;
-
-                // 留白直接通過
-                if (val === '') {
-                    el.classList.remove('is-invalid');
-                    if (fb?.classList.contains('invalid-feedback')) {
-                        fb.innerText = '';
-                        fb.classList.remove('d-block');
-                        fb.style.display = 'none';
-                    }
-                    return;
-                }
-
-                const n = Number(val);
-                const bad = (
-                    !Number.isFinite(n) ||
-                    !Number.isInteger(n) ||
-                    n < 0 || n > 99
-                );
-
-                if (bad) {
-                    // 標紅並關閉 inline 訊息
-                    el.classList.add('is-invalid');
-                    if (fb?.classList.contains('invalid-feedback')) {
-                        fb.innerText = '';
-                        fb.classList.remove('d-block');
-                        fb.style.display = 'none';
-                    }
-
-                    // 彈窗（針對 hi/lo 顯示不同訊息）
-                    if (!window._alertingPercentOpt1) {
-                        window._alertingPercentOpt1 = true;
-                        alertify
-                            .alert(T.title, T.msg[key], function () {
-                                try { el.focus(); el.select?.(); } catch {}
-                                window._alertingPercentOpt1 = false;
-                            })
-                            .set('labels', { ok: T.ok });
-                    }
-
-                    isValid = false;
-                    if (!errorList.includes(id)) errorList.push(id);
-                } else {
-                    el.classList.remove('is-invalid');
-                    if (fb?.classList.contains('invalid-feedback')) {
-                        fb.innerText = '';
-                        fb.classList.remove('d-block');
-                        fb.style.display = 'none';
-                    }
-                }
-            });
-        })();
+     
 
 
 
@@ -1890,7 +1983,7 @@
             const lang = (typeof getCookie === 'function' && getCookie('language')) || getCookieSafe('language') || 'zh-tw';
             const i18n = {
                 'zh-tw': { lessThanTq: '必須小於目標扭力' },
-                'zh-cn': { lessThanTq: '必须小于目标扭矩' },
+                'zh-cn': { lessThanTq: '必须小于目标扭力' },
                 'en-us': { lessThanTq: 'Must be less than StepTorque' },
             };
             const T = i18n[lang] || i18n['en-us'];
@@ -1967,8 +2060,8 @@
 
         const I18N = {
             'en-us': { title: 'Warning', msg: 'Torque lower limit must be less than upper limit' },
-            'zh-tw': { title: '警告',   msg: '扭力下限要小於扭力上限' },
-            'zh-cn': { title: '警告',   msg: '扭矩下限要小于扭矩上限' }
+            'zh-tw': { title: '警告',   msg: '扭力下限 要小於 扭力上限' },
+            'zh-cn': { title: '警告',   msg: '扭力下限 要小于 扭力上限' }
         };
         const T = I18N[lang] || I18N['en-us'];
 
@@ -2120,8 +2213,8 @@
             if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
 
             const i18n = {
-                'zh-tw': { loLtHi: '扭力下限要小於扭力上限' },
-                'zh-cn': { loLtHi: '扭矩下限要小于扭矩上限' },
+                'zh-tw': { loLtHi: '扭力 下限要 小於扭力上限' },
+                'zh-cn': { loLtHi: '扭力 下限要 小于扭力 上限' },
                 'en-us': { loLtHi: 'Torque lower limit must be less than upper limit' },
             };
             const T = i18n[lang] || i18n['en-us'];
@@ -2207,8 +2300,8 @@
 
         const I18N = {
             'en-us': { title: 'Warning', msg: 'Torque lower limit must be less than upper limit (StepLoTorque < StepHiTorque)' },
-            'zh-tw': { title: '警告',   msg: '扭力下限要小於扭力上限（StepLoTorque < StepHiTorque）' },
-            'zh-cn': { title: '警告',   msg: '扭矩下限要小于扭矩上限（StepLoTorque < StepHiTorque）' }
+            'zh-tw': { title: '警告',   msg: '扭力下限 要小於 扭力上限（StepLoTorque < StepHiTorque）' },
+            'zh-cn': { title: '警告',   msg: '扭力下限 要小于 扭力上限（StepLoTorque < StepHiTorque）' }
         };
         const T = I18N[lang] || I18N['en-us'];
 
@@ -2373,7 +2466,7 @@
         const i18N = {
             'en-us': { title: 'Warning', msg: `Torque lower limit (${unit}) must be less than upper limit` },
             'zh-tw': { title: '警告',   msg: `扭力下限（${unit}）必須小於扭力上限` },
-            'zh-cn': { title: '警告',   msg: `扭矩下限（${unit}）必须小于扭矩上限` }
+            'zh-cn': { title: '警告',   msg: `扭力下限（${unit}）必须小于扭力上限` }
         };
         const T = i18N[clang] || i18N['en-us'];
 
@@ -2476,7 +2569,7 @@
         // 扭力單位顯示
         const UNIT_TEXT = {
             0: { 'en-us':'kgf·cm', 'zh-tw':'公斤.公分', 'zh-cn':'公斤.公分' },
-            1: { 'en-us':'N·m',    'zh-tw':'牛頓.米',    'zh-cn':'牛頓.米'    },
+            1: { 'en-us':'N·m',    'zh-tw':'牛頓.尺',    'zh-cn':'牛頓.米'    },
             2: { 'en-us':'lbf·in', 'zh-tw':'磅.英吋', 'zh-cn':'磅.英吋' },
             3: { 'en-us':'kgf·m',  'zh-tw':'公斤.米',  'zh-cn':'公斤.米'  },
             4: { 'en-us':'cN·m',   'zh-tw':'牛頓.厘米',   'zh-cn':'牛頓.厘米'   },
@@ -2497,7 +2590,7 @@
         // 多語系訊息（依需求調整文案）
         const I18N = {
             'zh-tw': { title: '警告',   msg: '目標扭力（{unit}）超出範圍，允許：{range}', ok: '確定' },
-            'zh-cn': { title: '警告',   msg: '目标扭矩（{unit}）超出范围，允许：{range}', ok: '确定' },
+            'zh-cn': { title: '警告',   msg: '目标扭力（{unit}）超出范围，允许：{range}', ok: '确定' },
             'en-us': { title: 'Warning', msg: 'Target torque ({unit}) is out of range. Allowed: {range}', ok: 'OK' },
         };
         const T = I18N[lang];
@@ -2570,7 +2663,7 @@
         const I18N = {
             'en-us': { title: 'Warning', msg: 'Downshift torque must be less than Target torque' },
             'zh-tw': { title: '警告',   msg: '降速扭力 必須小於 目標扭力' },
-            'zh-cn': { title: '警告',   msg: '降速扭矩 必须小于 目标扭矩' }
+            'zh-cn': { title: '警告',   msg: '降速扭力 必须小于 目标扭力' }
         };
         const OK = (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定'));
         const T = I18N[lang] || I18N['en-us'];
@@ -3083,7 +3176,7 @@
             const I18N = {
             'en-us': { title: 'Warning', msg: 'StepHiTorque out of range ({UNIT}). Allowed range: {RANGE}', ok: 'OK' },
             'zh-tw': { title: '警告',   msg: '扭力上限（{UNIT}）超出範圍，允許範圍：{RANGE}',      ok: '確定' },
-            'zh-cn': { title: '警告',   msg: '扭矩上限（{UNIT}）超出范围，允许范围：{RANGE}',      ok: '确定' }
+            'zh-cn': { title: '警告',   msg: '扭力上限（{UNIT}）超出范围，允许范围：{RANGE}',      ok: '确定' }
             };
             const T = I18N[lang] || I18N['en-us'];
 
@@ -3161,7 +3254,7 @@
                 const I18N = {
                     'en-us': { title: 'Warning', msg: 'StepHiTorque is out of range. ', ok: 'OK' },
                     'zh-tw': { title: '警告',   msg: '扭力上限超出範圍',         ok: '確定' },
-                    'zh-cn': { title: '警告',   msg: '扭矩上限超出范围',         ok: '确定' }
+                    'zh-cn': { title: '警告',   msg: '扭力上限超出范围',         ok: '确定' }
                 };
                 const T = I18N[lang] || I18N['en-us'];
 
@@ -3343,9 +3436,247 @@
         }
         })();
 
+        // ---- 交叉驗證：StepOption==2；StepTorque 超出「工具規格」範圍，但未超過 StepHiTorque → 彈窗 + 語系 ----
+        (function enforceTargetTorqueWithinToolSpecButBelowHi() {
+        if (StepOption !== 2) return;
+
+        const tqEl = document.getElementById('StepTorque');
+        const hiEl = document.getElementById('StepHiTorque');
+        if (!tqEl || !hiEl) return;
+
+        const tqRaw = Number(tqEl.value);
+        const hiRaw = Number(hiEl.value);
+        const specMinRaw = Number(Tool_Min_Torque);
+        const specMaxRaw = Number(Tool_Max_Torque);
+        if (!Number.isFinite(tqRaw) || !Number.isFinite(hiRaw) ||
+            !Number.isFinite(specMinRaw) || !Number.isFinite(specMaxRaw)) return;
+
+        // 依目前單位精度四捨五入
+        const tq   = roundTo(tqRaw,       precision);
+        const hi   = roundTo(hiRaw,       precision);
+        const sMin = roundTo(specMinRaw,  precision);
+        const sMax = roundTo(specMaxRaw,  precision);
+
+        // 觸發條件：
+        // 1) 目標扭力沒有超過 StepHiTorque（tq <= hi）
+        // 2) 但目標扭力落在工具規格之外（tq < specMin 或 tq > specMax）
+        if (tq <= hi && (tq < sMin || tq > sMax)) {
+            // 標紅並關掉 inline 訊息（改用彈窗）
+            tqEl.classList.add('is-invalid');
+            const fb = tqEl.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) {
+            fb.innerText = '';
+            fb.classList.remove('d-block');
+            fb.style.display = 'none';
+            }
+
+            // 取得語系與單位（沿用你的共用函式，若不存在就做 fallback）
+            let lang = 'en-us', unit = 'N·m';
+            if (typeof getLangAndUnit === 'function') {
+            const lu = getLangAndUnit();
+            lang = (lu?.lang) || 'en-us';
+            unit = (lu?.unit) || 'N·m';
+            } else {
+            // 簡單 fallback
+            const getCookieSafe = (name) => {
+                try { const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+                catch { return null; }
+            };
+            lang = (getCookieSafe('language') || 'en-us').toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
+            const UNIT_TEXT = {
+                0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
+                1: { 'en-us':'N·m',    'zh-tw':'牛頓·米',   'zh-cn':'牛顿·米'   },
+                2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英吋'   },
+                3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
+                4: { 'en-us':'kgf·m',  'zh-tw':'公斤·米',   'zh-cn':'公斤·米'   },
+            };
+            unit = (UNIT_TEXT?.[torque_unit]?.[lang]) || 'N·m';
+            }
+
+            // 多語
+            const fmt = (n) => Number(n).toFixed(precision);
+            const rangeStr = `${fmt(sMin)} ~ ${fmt(sMax)}`;
+            const I18N = {
+            'en-us': { title: 'Warning', msg: `Target torque (${unit}) is out of range. Allowed: ${rangeStr}`, ok: 'OK' },
+            'zh-tw': { title: '警告',   msg: `目標扭力（${unit}）超出範圍，允許：${rangeStr}`,        ok: '確定' },
+            'zh-cn': { title: '警告',   msg: `目标扭力（${unit}）超出范围，允许：${rangeStr}`,        ok: '确定' }
+            };
+            const T = I18N[lang] || I18N['en-us'];
+
+            // 節流避免重複彈窗
+            if (window._alertingTQvsSpec) {
+            isValid = false;
+            if (!errorList.includes('StepTorque')) errorList.push('StepTorque');
+            return;
+            }
+            window._alertingTQvsSpec = true;
+
+            alertify
+            .alert(T.title, T.msg, function () {
+                try { tqEl.focus(); tqEl.select?.(); } catch {}
+                window._alertingTQvsSpec = false;
+            })
+            .set('labels', { ok: T.ok });
+
+            isValid = false;
+            if (!errorList.includes('StepTorque')) errorList.push('StepTorque');
+        }
+        })();
 
 
+
+        // ---- StepOption==2 且 StepTorque == StepHiTorque == StepLoTorque → 彈窗 + 語系 ----
+        (function enforceAllEqualTorquesOption2() {
+        const stepOptEl = document.getElementById("StepOption");
+        const stepOpt = parseInt(stepOptEl?.value ?? 0, 10);
+        if (stepOpt !== 2) return;
+
+        const tqEl = document.getElementById('StepTorque');
+        const hiEl = document.getElementById('StepHiTorque');
+        const loEl = document.getElementById('StepLoTorque');
+        if (!tqEl || !hiEl || !loEl) return;
+
+        const tq = Number(tqEl.value);
+        const hi = Number(hiEl.value);
+        const lo = Number(loEl.value);
+        if (!Number.isFinite(tq) || !Number.isFinite(hi) || !Number.isFinite(lo)) return;
+
+        // 四捨五入避免浮點誤差
+        const _round = (typeof roundTo === 'function')
+            ? roundTo
+            : (n, d = 3) => { const v = Number(n); return isNaN(v) ? NaN : parseFloat(v.toFixed(d)); };
+        const p = (typeof precision === 'number') ? precision : 3;
+
+        const tqR = _round(tq, p);
+        const hiR = _round(hi, p);
+        const loR = _round(lo, p);
+
+        if (!(tqR === hiR && hiR === loR)) return; // 只有三者都相等才提示
+
+        // 取得語系與單位字樣
+        let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : null);
+        if (!lang) {
+            try {
+            const m = document.cookie.match(/(?:^|; )language=([^;]+)/);
+            lang = m ? decodeURIComponent(m[1]) : 'zh-tw';
+            } catch { lang = 'zh-tw'; }
+        }
+        lang = String(lang).toLowerCase();
+        if (lang === 'en') lang = 'en-us';
+        if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
+
+        let unitText = (typeof getLangAndUnit === 'function' ? (getLangAndUnit().unit || 'N·m') : 'N·m');
+        if (unitText === 'N.m') unitText = 'N·m'; // 小修正常見寫法
+
+        const I18N = {
+            'zh-tw': { title: '警告',   ok: '確定', msg: (u) => `扭力下限（${u}）需要小於扭力上限` },
+            'zh-cn': { title: '警告',   ok: '确定', msg: (u) => `扭力下限（${u}）需要小于扭力上限` },
+            'en-us': { title: 'Warning', ok: 'OK',  msg: (u) => `Torque lower limit (${u}) must be less than upper limit` }
+        }[lang];
+
+        // 收掉 inline（避免同時出現兩種提示）
+        [loEl, hiEl].forEach(el => {
+            const fb = el?.nextElementSibling;
+            el?.classList.remove('is-invalid');
+            if (fb?.classList.contains('invalid-feedback')) {
+            fb.innerText = '';
+            fb.classList.remove('d-block');
+            fb.style.display = 'none';
+            }
+        });
+
+        // 標記下限為錯誤
+        loEl.classList.add('is-invalid');
+
+        // 避免重複彈窗
+        if (window._alertingAllTqEqual) {
+            isValid = false;
+            if (!errorList.includes('StepLoTorque')) errorList.push('StepLoTorque');
+            return;
+        }
+        window._alertingAllTqEqual = true;
+
+        alertify
+            .alert(I18N.title, I18N.msg(unitText), function () {
+            try { loEl.focus(); loEl.select?.(); } catch {}
+            window._alertingAllTqEqual = false;
+            })
+            .set('labels', { ok: I18N.ok });
+
+        isValid = false;
+        if (!errorList.includes('StepLoTorque')) errorList.push('StepLoTorque');
+        })();
+
+
+
+      
         
+        // ---- StepOption==2 且 StepTorque == StepHiTorque == StepLoTorque → 只標記下限；StepTorque 不要紅框 ----
+        (function enforceAllEqualTorquesOption2_NoRedOnTarget() {
+        const stepOpt = parseInt(document.getElementById("StepOption")?.value ?? 0, 10);
+        if (stepOpt !== 2) return;
+
+        const tqEl = document.getElementById('StepTorque');
+        const hiEl = document.getElementById('StepHiTorque');
+        const loEl = document.getElementById('StepLoTorque');
+        if (!tqEl || !hiEl || !loEl) return;
+
+        const p = (typeof precision === 'number') ? precision : 3;
+        const _round = (typeof roundTo === 'function')
+            ? roundTo
+            : (n, d = p) => { const v = Number(n); return isNaN(v) ? NaN : parseFloat(v.toFixed(d)); };
+
+        const tqR = _round(Number(tqEl.value), p);
+        const hiR = _round(Number(hiEl.value), p);
+        const loR = _round(Number(loEl.value), p);
+        if (!(Number.isFinite(tqR) && Number.isFinite(hiR) && Number.isFinite(loR))) return;
+
+        if (!(tqR === hiR && hiR === loR)) return; // 只有三者相等時才處理
+
+        // 取得語系與單位
+        let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : 'zh-tw') || 'zh-tw';
+        lang = String(lang).toLowerCase(); if (lang === 'en') lang = 'en-us';
+        if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
+        const unit = (typeof getLangAndUnit === 'function' ? (getLangAndUnit().unit || 'N·m') : 'N·m');
+
+        const I18N = {
+            'zh-tw': { title: '警告', ok: '確定', msg: (u) => `扭力下限（${u}）需要小於扭力上限` },
+            'zh-cn': { title: '警告', ok: '确定', msg: (u) => `扭力下限（${u}）需要小于扭力上限` },
+            'en-us': { title: 'Warning', ok: 'OK', msg: (u) => `Torque lower limit (${u}) must be less than upper limit` }
+        }[lang];
+
+        // ✨ 確保 StepTorque 不要紅框、也不記在錯誤清單
+        tqEl.classList.remove('is-invalid');
+        const tqFb = tqEl.nextElementSibling;
+        if (tqFb?.classList.contains('invalid-feedback')) {
+            tqFb.innerText = ''; tqFb.classList.remove('d-block'); tqFb.style.display = 'none';
+        }
+        const idx = errorList.indexOf('StepTorque');
+        if (idx !== -1) errorList.splice(idx, 1);
+
+        // 只標記下限為錯誤（並清掉其 inline 提示，改用彈窗）
+        loEl.classList.add('is-invalid');
+        const loFb = loEl.nextElementSibling;
+        if (loFb?.classList.contains('invalid-feedback')) {
+            loFb.innerText = ''; loFb.classList.remove('d-block'); loFb.style.display = 'none';
+        }
+
+        // 彈跳視窗 + 語系
+        if (!window._alertingAllTqEqual) {
+            window._alertingAllTqEqual = true;
+            alertify
+            .alert(I18N.title, I18N.msg(unit), function () {
+                try { loEl.focus(); loEl.select?.(); } catch {}
+                window._alertingAllTqEqual = false;
+            })
+            .set('labels', { ok: I18N.ok });
+        }
+
+        isValid = false;
+        if (!errorList.includes('StepLoTorque')) errorList.push('StepLoTorque');
+        })();
 
 
 
@@ -3416,20 +3747,23 @@
     }
 
 
-    // ---- 驗證 StepOption==2 且 StepTorque == StepLoTorque ----
+    // ---- 驗證 StepOption==2 且 StepTorque == StepLoTorque（訊息含單位與範圍）----
     function validateTorqueEqualLo() {
         const stepOpt = parseInt(document.getElementById("StepOption")?.value ?? 0, 10);
         if (stepOpt !== 2) return true; // 不需要驗證
 
         const tqEl = document.getElementById('StepTorque');
         const loEl = document.getElementById('StepLoTorque');
+        const hiEl = document.getElementById('StepHiTorque');
+        
         if (!tqEl || !loEl) return true;
 
         const tq = Number(tqEl.value);
         const lo = Number(loEl.value);
+        const hi = Number(hiEl?.value);
         if (!Number.isFinite(tq) || !Number.isFinite(lo)) return true;
 
-        // ---- 保留小數處理（避免浮點誤差）----
+        // 四捨五入（避免浮點誤差）
         const _round = (typeof roundTo === 'function')
             ? roundTo
             : (n, d = 3) => { const v = Number(n); return isNaN(v) ? NaN : parseFloat(v.toFixed(d)); };
@@ -3437,13 +3771,62 @@
 
         const tqR = _round(tq, p);
         const loR = _round(lo, p);
+        const hiR = Number.isFinite(hi) ? _round(hi, p) : NaN;
 
-        // ---- 語系 ----
-        const getCookieSafe = (name) => {
+        // 取得當下扭力單位（優先用你的共用函式）
+        let unitText = 'N·m';
+        if (typeof getLangAndUnit === 'function') {
+            unitText = getLangAndUnit()?.unit || 'N·m';
+        } else {
+            const unitCode = parseInt(document.getElementById('step_torque_unit')?.value ?? 1, 10);
+            const LANG = (() => {
             try {
-            const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-            return m ? decodeURIComponent(m[1]) : null;
-            } catch { return null; }
+                let l = (typeof getCookie === 'function' && getCookie('language')) ||
+                        document.cookie.match(/(?:^|; )language=([^;]+)/)?.[1] || 'zh-tw';
+                l = String(decodeURIComponent(l)).toLowerCase();
+                if (l === 'en') l = 'en-us';
+                return ['en-us','zh-tw','zh-cn'].includes(l) ? l : 'en-us';
+            } catch { return 'en-us'; }
+            })();
+            const UNIT_TEXT = {
+            0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
+            1: { 'en-us':'N·m',    'zh-tw':'牛頓·米',   'zh-cn':'牛顿·米'    },
+            2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',  'zh-cn':'磅·英寸'   },
+            3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米','zh-cn':'牛顿·厘米' },
+            4: { 'en-us':'kgf·m',  'zh-tw':'公斤·米',   'zh-cn':'公斤·米'   }
+            };
+            unitText = (UNIT_TEXT[unitCode]?.[LANG]) ?? 'N·m';
+        }
+
+        // 計算「允許範圍」需要的單位最小增量 bump（確保严格小於/大於）
+        const localIncrement = parseFloat((1 / Math.pow(10, p)).toFixed(p));
+        const unitCodeNow = parseInt(document.getElementById('step_torque_unit')?.value ?? 1, 10);
+        const unitBumpMap = {
+            0: 0.001, // kgf·cm
+            1: 0.001, // N·m
+            2: 0.0001,// lbf·in
+            3: 0.1,   // cN·m
+            4: localIncrement
+        };
+        const bump = (unitCodeNow in unitBumpMap) ? unitBumpMap[unitCodeNow] : localIncrement;
+
+        // 準備範圍字串：理想是 (lo, hi) → [lo+bump, hi-bump]
+        let rangeStr;
+        if (Number.isFinite(hiR)) {
+            const minAllowed = _round(loR + bump, p);
+            let   maxAllowed = _round(hiR - bump, p);
+            if (maxAllowed < minAllowed) maxAllowed = minAllowed;
+            rangeStr = `${minAllowed.toFixed(p)} ~ ${maxAllowed.toFixed(p)}`;
+        } else {
+            // 沒有 HiTorque 可用時，至少提示需大於下限
+            const minAllowed = _round(loR + bump, p);
+            rangeStr = `> ${minAllowed.toFixed(p)}`;
+        }
+
+        // 多語（標題/內文/按鈕）
+        const getCookieSafe = (name) => {
+            try { const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+            catch { return null; }
         };
         let lang = (typeof getCookie === 'function' && getCookie('language')) || getCookieSafe('language') || 'zh-tw';
         lang = String(lang).toLowerCase();
@@ -3451,13 +3834,12 @@
         if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
 
         const I18N = {
-            'zh-tw': { title: '警告',   msg: '目標扭力超出範圍', ok: '確定' },
-            'zh-cn': { title: '警告',   msg: '目标扭矩超出范围', ok: '确定' },
-            'en-us': { title: 'Warning', msg: 'Target torque is out of range', ok: 'OK' }
-        };
-        const T = I18N[lang];
+            'zh-tw': { title: '警告',   msg: (u,r) => `目標扭力（${u}）超出範圍（${r}）`, ok: '確定' },
+            'zh-cn': { title: '警告',   msg: (u,r) => `目标扭力（${u}）超出范围（${r}）`, ok: '确定' },
+            'en-us': { title: 'Warning', msg: (u,r) => `Target torque (${u}) is out of range (${r})`, ok: 'OK' }
+        }[lang];
 
-        // ---- 清掉原本 inline ----
+        // 清掉原本 inline
         const fb = tqEl.nextElementSibling;
         tqEl.classList.remove('is-invalid');
         if (fb?.classList.contains('invalid-feedback')) {
@@ -3466,18 +3848,18 @@
             fb.style.display = 'none';
         }
 
-        // ---- 檢查相等 → 顯示 alert ----
+        // 檢查相等 → 顯示 alert（訊息含單位與範圍）
         if (tqR === loR) {
             if (!window._alertingTqEqLo) {
             window._alertingTqEqLo = true;
             tqEl.classList.add('is-invalid');
 
             alertify
-                .alert(T.title, T.msg, function () {
+                .alert(I18N.title, I18N.msg(unitText, rangeStr), function () {
                 try { tqEl.focus(); tqEl.select?.(); } catch {}
                 window._alertingTqEqLo = false;
                 })
-                .set('labels', { ok: T.ok });
+                .set('labels', { ok: I18N.ok });
             }
             return false;
         }
@@ -3486,26 +3868,6 @@
     }
 
 
-
-
-
-    function bindRoundedWhenVisible(id, digits = 3) {
-        const el = document.getElementById(id);
-        if (!el || el.dataset.blurFixed) return;
-
-        // ➤ 不管是否可見，都先綁一次（確保 blur 有綁定）
-        bindRoundedBlur(id, digits);
-
-        // ➤ 若還不可見，再用 observer 監聽顯示變化
-        const observer = new MutationObserver(() => {
-            if (el.offsetParent !== null && !el.dataset.blurFixed) {
-                bindRoundedBlur(id, digits);
-                observer.disconnect();
-            }
-        });
-
-        observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
-    }
 
 
     function bindRoundedBlur(id, digits = 3) {
@@ -3524,6 +3886,105 @@
 
         el.dataset.blurFixed = "1";
     }
+
+
+    function checkStepLimit(fieldId, label, quiet = false) {
+        const el = document.getElementById(fieldId);
+        if (!el) return;
+
+        const raw = (el.value || '').trim();
+
+        // 可留白
+        if (raw === '') {
+            el.classList.remove('is-invalid');
+            const fb = el.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) {
+            fb.innerText = '';
+            fb.classList.remove('d-block');
+            fb.style.display = 'none';
+            }
+            return;
+        }
+
+        const n = Number(raw);
+        const bad = (
+            !Number.isFinite(n) ||
+            !Number.isInteger(n) ||
+            n < 0 || n > 99 ||
+            !/^(?:[0-9]|[1-9][0-9])$/.test(raw)
+        );
+
+        // 語系
+        const getCookieSafe = (name) => {
+            try { const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+            catch { return null; }
+        };
+        let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : (getCookieSafe('language') || 'zh-tw')) || 'zh-tw';
+        lang = String(lang).toLowerCase();
+        if (lang === 'en') lang = 'en-us';
+        if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
+
+        const I18N_DIALOG = {
+            'en-us': { title: 'Warning', msg: `Please enter: (${label}) %\nAllowed: 0 ~ 99`, ok: 'OK' },
+            'zh-tw': { title: '警告',   msg: `請輸入：(${label}) %數\n允許範圍：0 ~ 99`, ok: '確定' },
+            'zh-cn': { title: '警告',   msg: `请输入：(${label}) %数\n允许范围：0 ~ 99`, ok: '确定' }
+        }[lang];
+
+        const I18N_INLINE = {
+            'en-us': 'Range: 0 ~ 99',
+            'zh-tw': '範圍：0 ~ 99',
+            'zh-cn': '范围：0 ~ 99'
+        }[lang];
+
+        if (!bad) {
+            el.classList.remove('is-invalid');
+            const fb = el.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) {
+            fb.innerText = '';
+            fb.classList.remove('d-block');
+            fb.style.display = 'none';
+            }
+            return;
+        }
+
+        // ❌ 錯誤：標紅
+        el.classList.add('is-invalid');
+
+        const fb = el.nextElementSibling;
+
+        if (quiet) {
+            // ✅ 只顯示欄位下方提示，不彈窗
+            if (fb?.classList.contains('invalid-feedback')) {
+            fb.innerText = I18N_INLINE;
+            fb.classList.add('d-block');
+            fb.style.display = 'block';
+            }
+        } else {
+            // 🔔 原行為：用彈跳視窗
+            if (fb?.classList.contains('invalid-feedback')) {
+            fb.innerText = '';
+            fb.classList.remove('d-block');
+            fb.style.display = 'none';
+            }
+
+            const flag = `_alerting_${fieldId}`;
+            if (!window[flag]) {
+            window[flag] = true;
+            alertify
+                .alert(I18N_DIALOG.title, I18N_DIALOG.msg, function () {
+                try { el.focus(); el.select?.(); } catch {}
+                window[flag] = false;
+                })
+                .set('labels', { ok: I18N_DIALOG.ok });
+            }
+        }
+
+        // 驗證狀態
+        isValid = false;
+        if (!errorList.includes(fieldId)) errorList.push(fieldId);
+    }
+
+
 
 </script>
 <script>
@@ -3673,57 +4134,131 @@ document.addEventListener('change', function (e) {
 
 // ✅ 共用：取得語系 + 依語系翻譯後的扭力單位文字
 function getLangAndUnit() {
-  // 語系
-  const getCookieSafe = (name) => {
-    try {
-      const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-      return m ? decodeURIComponent(m[1]) : null;
-    } catch { return null; }
-  };
-  let lang =
-    (typeof getCookie === 'function' && getCookie('language')) ||
-    getCookieSafe('language') || 'zh-tw';
-  lang = String(lang).toLowerCase();
-  if (lang === 'en') lang = 'en-us';
-  if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
-
-  // 單位 key 正規化（優先用 select 的 value(數字)；否則用文字再對應）
-  const unitSelect = document.getElementById('step_torque_unit');
-  const valRaw = unitSelect?.value;
-  const textRaw = unitSelect?.options?.[unitSelect.selectedIndex]?.text?.trim();
-
-  // 你的單位枚舉：0: kgf.cm, 1: N.m, 2: lbf.in, 3: cN.m, 4: kgf.m
-  const unitKeyByVal = { 0:'kgf.cm', 1:'N.m', 2:'lbf.in', 3:'cN.m', 4:'kgf.m' };
-
-  let unitKey = undefined;
-  if (valRaw != null && valRaw !== '') {
-    const v = parseInt(valRaw, 10);
-    unitKey = unitKeyByVal[v];
-  }
-  if (!unitKey && textRaw) {
-    // 把可見文字簡單正規化到 key（視你的下拉文字可能要微調）
-    const t = textRaw.replace(/\s+/g,'').replace('·','.');
-    // 允許幾種常見寫法
-    if (/kgf\.?cm/i.test(t)) unitKey = 'kgf.cm';
-    else if (/lbf\.?in/i.test(t)) unitKey = 'lbf.in';
-    else if (/^n[·.]?m$/i.test(t)) unitKey = 'N.m';
-    else if (/kgf\.?m/i.test(t)) unitKey = 'kgf.m';
-    else if (/cN\.?m/i.test(t)) unitKey = 'cN.m';
-  }
-  if (!unitKey) unitKey = 'N.m'; // fallback
-
-  // 各語系單位顯示
-  const unitLabels = {
-    'kgf.cm': { 'zh-cn': '公斤·公分', 'zh-tw': '公斤·公分', 'en-us': 'kgf·cm' },
-    'lbf.in': { 'zh-cn': '磅·英寸',   'zh-tw': '磅·英吋',   'en-us': 'lbf·in' },
-    'N.m':    { 'zh-cn': '牛顿·米',   'zh-tw': '牛頓·米',   'en-us': 'N·m' },
-    'kgf.m':  { 'zh-cn': '公斤·米',   'zh-tw': '公斤·米',   'en-us': 'kgf·m' },
-    'cN.m':   { 'zh-cn': '厘牛·米',   'zh-tw': '厘牛·米',   'en-us': 'cN·m' },
-  };
-
-  const unit = (unitLabels[unitKey] && (unitLabels[unitKey][lang] || unitLabels[unitKey]['en-us'])) || unitKey;
-
-  return { lang, unit, unitKey };
+  try {
+    if (window._getLangAndUnit) return window._getLangAndUnit(); // 你的專案版
+  } catch {}
+  // fallback
+  const cookieLang = (typeof getCookie === 'function' && getCookie('language')) || 'zh-tw';
+  const lang = String(cookieLang).toLowerCase() === 'en' ? 'en-us' : String(cookieLang).toLowerCase();
+  // 粗略用 <select> 文字當單位
+  const unit = document.getElementById('step_torque_unit')?.options?.[
+    document.getElementById('step_torque_unit')?.selectedIndex ?? 0
+  ]?.text?.trim() || 'N·m';
+  return { lang: ['en-us','zh-tw','zh-cn'].includes(lang) ? lang : 'en-us', unit };
 }
+
+
+// ===== PATCH: Percent fields popup + i18n (unified) =====
+function __getLangSafe() {
+  // 優先用你專案的 getLangAndUnit()；沒有就吃 cookie；最後預設 en-us
+  try {
+    if (typeof getLangAndUnit === 'function') {
+      let l = (getLangAndUnit().lang || '').toLowerCase();
+      if (l === 'en') l = 'en-us';
+      return ['en-us','zh-tw','zh-cn'].includes(l) ? l : 'en-us';
+    }
+  } catch {}
+  try {
+    const m = document.cookie.match(/(?:^|; )language=([^;]+)/);
+    let l = (m ? decodeURIComponent(m[1]) : 'en-us').toLowerCase();
+    if (l === 'en') l = 'en-us';
+    return ['en-us','zh-tw','zh-cn'].includes(l) ? l : 'en-us';
+  } catch {}
+  return 'en-us';
+}
+
+const __I18N_PERCENT = {
+  'en-us': {
+    title: 'Warning',
+    ok: 'OK',
+    msg: { hi: 'Please enter (Upper limit) % — required, integer 0–99',
+           lo: 'Please enter (Lower limit) % — required, integer 0–99' }
+  },
+  'zh-tw': {
+    title: '警告',
+    ok: '確定',
+    msg: { hi: '請輸入：(上限)％ — 必填，0~99 的整數',
+           lo: '請輸入：(下限)％ — 必填，0~99 的整數' }
+  },
+  'zh-cn': {
+    title: '警告',
+    ok: '确定',
+    msg: { hi: '请输入：(上限)％ — 必填，0~99 的整数',
+           lo: '请输入：(下限)％ — 必填，0~99 的整数' }
+  }
+};
+
+function __isEditable(el) {
+  return !!el && !el.disabled && getComputedStyle(el).display !== 'none';
+}
+
+// 回傳不合格的欄位 id 陣列；同時會顯示 alertify 視窗（多語系）
+function enforcePercentRequiredWithDialogForStepOption(stepOption) {
+  const lang = __getLangSafe();
+  const T = __I18N_PERCENT[lang] || __I18N_PERCENT['en-us'];
+
+  // StepOption==1 → 檢查角度％；StepOption==2 → 檢查扭力％
+  const targets = (stepOption === 1)
+    ? [{ id: 'step_limit_hi_ang', key: 'hi' }, { id: 'step_limit_lo_ang', key: 'lo' }]
+    : (stepOption === 2)
+      ? [{ id: 'step_limit_hi_tor', key: 'hi' }, { id: 'step_limit_lo_tor', key: 'lo' }]
+      : [];
+
+  if (!window.__alertOnce) window.__alertOnce = Object.create(null);
+
+  const bad = [];
+
+  targets.forEach(({ id, key }) => {
+    const el = document.getElementById(id);
+    if (!__isEditable(el)) return; // 不可編輯就不驗
+
+    // 基本 HTML 屬性保護
+    el.setAttribute('min', '0');
+    el.setAttribute('max', '99');
+    el.setAttribute('inputmode', 'numeric');
+
+    const raw = (el.value || '').trim();
+    const n = Number(raw);
+    const ok = Number.isInteger(n) && n >= 0 && n <= 99 && /^(?:[0-9]|[1-9][0-9])$/.test(raw);
+
+    if (!ok) {
+      // 標紅、收掉 inline
+      el.classList.add('is-invalid');
+      const fb = el.nextElementSibling;
+      if (fb?.classList.contains('invalid-feedback')) {
+        fb.innerText = '';
+        fb.classList.remove('d-block');
+        fb.style.display = 'none';
+      }
+
+      // 避免同欄位重複彈多次
+      const dedupeKey = `percent_${id}`;
+      if (!window.__alertOnce[dedupeKey]) {
+        window.__alertOnce[dedupeKey] = true;
+        alertify
+          .alert(T.title, T.msg[key], function () {
+            try { el.focus(); el.select?.(); } catch {}
+            window.__alertOnce[dedupeKey] = false;
+          })
+          .set('labels', { ok: T.ok });
+      }
+
+      bad.push(id);
+    } else {
+      // 合法就清錯
+      el.classList.remove('is-invalid');
+      const fb = el.nextElementSibling;
+      if (fb?.classList.contains('invalid-feedback')) {
+        fb.innerText = '';
+        fb.classList.remove('d-block');
+        fb.style.display = 'none';
+      }
+    }
+  });
+
+  return bad;
+}
+// ===== END PATCH =====
+
 
 </script>
