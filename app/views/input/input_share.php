@@ -16,7 +16,7 @@ let jobTempData = {};
 $(document).ready(function () {
     highlight_row_input('input_table');
  
-    var all_input_job = '<?php echo $data['device_data']['device_input_all_job']?>';
+    var all_input_job = '<?php echo $data['focused_jobid']?>';
     job_id = all_input_job;
     input_job = all_input_job;
     if(job_id){
@@ -45,6 +45,81 @@ document.getElementById("Event_Option").onchange = function() {
     handleEventChange(selectedValue); 
 };
 
+
+/** UI 小工具：切換按鈕樣式與文字 */
+function updateUnifiedUI(isOn) {
+  const btn = document.getElementById('btn-unified');
+  if (!btn) return;
+  btn.classList.toggle('is-on', !!isOn);
+  btn.innerText = isOn ? 'Unified：ON' : 'Unified：OFF';
+}
+
+/** 頁面載入時：讀 DB 狀態並「校正」畫面與內部變數 */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.job_id) return;
+
+  $.get('?url=Job/get_input_unified', { jobid: job_id }, function (res) {
+    try {
+      const data = typeof res === 'string' ? JSON.parse(res) : res;
+      const isOn = Number(data?.val) === 1;
+
+      // 只做「校正」，不呼叫 handleUnifiedJobEvent() 以避免誤切換
+      if (isOn) {
+        // 若 DB 是開，但目前尚未以本 job_id 對齊 → 對齊一次
+        if (window.input_job !== window.job_id) {
+          if (typeof enableButton === 'function') enableButton();
+          if (typeof resetBackgroundColor === 'function') resetBackgroundColor();
+          if (typeof alignsubmit === 'function') alignsubmit(job_id); // 對齊成 ON
+          window.input_job = window.job_id; // 明確標記目前已是本 job 的 unified
+        }
+      } else {
+        // 若 DB 是關，但目前卻還是本 job_id → 關掉一次
+        if (window.input_job === window.job_id) {
+          if (typeof enableButton === 'function') enableButton();
+          if (typeof resetBackgroundColor === 'function') resetBackgroundColor();
+          if (typeof resetalignsubmit === 'function') resetalignsubmit(job_id); // 對齊成 OFF
+          window.input_job = null;
+        }
+      }
+
+      updateUnifiedUI(isOn);
+      window._unifiedOn = isOn; // 記住目前 DB 狀態（避免每次點都先打 GET）
+    } catch (e) {
+      console.warn('get_input_unified parse error', e);
+    }
+  });
+});
+
+/** 在 crud_job_event('unified') 中調用的封裝：先更新 DB，再呼叫既有切換機制 */
+function toggleUnifiedWithDB() {
+  // 依「現在畫面狀態」預測下一個狀態：如果目前不是本 job → 這次會切到 ON，反之切到 OFF
+  const willTurnOn = (window.input_job !== window.job_id);
+
+  // 先送 DB（確保重整後能還原）
+  $.post('?url=Job/set_input_unified', { jobid: job_id, val: willTurnOn ? 1 : 0 })
+    .done(function () {
+      // DB OK → 呼叫你原本的切換函式（保留機制）
+      handleUnifiedJobEvent();
+
+      // 更新本地快取與 UI
+      window._unifiedOn = willTurnOn;
+      updateUnifiedUI(willTurnOn);
+    })
+    .fail(function (xhr) {
+      // DB 寫入失敗就不要切換前端狀態，提示一下
+      if (window.alertify) {
+        const lang = (getCookie && getCookie('language')) || 'en-us';
+        const I18N = {
+          'en-us': 'Failed to update unified state.',
+          'zh-tw': '更新整合狀態失敗。',
+          'zh-cn': '更新整合状态失败。'
+        };
+        alertify.error(I18N[lang] || I18N['en-us']);
+      } else {
+        console.error('set_input_unified error:', xhr?.responseText || xhr);
+      }
+    });
+}
 
 // Div Mode
 function toggleDivs() {
@@ -427,7 +502,31 @@ function delete_input_id(job_id,input_event){
     }
 }
 
+function setSelectDisabled(disabled) {
+    var btn = document.getElementById('Button_Select');
+    if (!btn) return;
+    btn.disabled = !!disabled;
+    btn.classList.toggle('is-disabled', !!disabled);
+  }
 
+  // 小工具：統一更新 UI（黃色 + value + 按鈕 disabled）
+  function updateUnifiedUI(isOn, value) {
+    var el = document.getElementById('job_id');
+    if (!el) return;
+
+    el.classList.toggle('unified', !!isOn);
+    if (typeof value !== 'undefined' && value !== null) {
+      el.value = String(value);
+    }
+    setSelectDisabled(!!isOn);
+  }
+
+  // 進頁面：如果後端有聚焦的 job（$focusedJobId），就顯示並上黃色，且禁用 Button_Select
+  document.addEventListener('DOMContentLoaded', function () {
+    var focusedJobId = <?php echo json_encode(isset($focusedJobId) ? $focusedJobId : null, JSON_UNESCAPED_UNICODE); ?>;
+    var hasVal = (focusedJobId !== null && String(focusedJobId).length > 0);
+    updateUnifiedUI(hasVal, hasVal ? focusedJobId : '');
+  });
 
 function crud_job_event(action) {
     if (!job_id) return;
@@ -517,14 +616,29 @@ function crud_job_event(action) {
             showOverlay();
             break;
 
+       
         case 'unified':
-            //showOverlay();
+            // 保留你既有機制
             handleUnifiedJobEvent();
-            break;
+
+            // 依目前顯示狀態做 UI 切換：
+            // 若現在是黃色→執行 unified 後視為關閉（恢復灰色 + 啟用按鈕）
+            // 若現在不是黃色→執行 unified 後視為開啟（變黃色 + 禁用按鈕）
+            (function () {
+            var el = document.getElementById('job_id');
+            if (!el) return;
+
+            var willTurnOn = !el.classList.contains('unified');
+            // 變成 ON 時，把輸入框顯示目前的 job_id（全域變數）
+            var valueToShow = willTurnOn ? (window.job_id || el.value || '') : el.value;
+
+            updateUnifiedUI(willTurnOn, valueToShow);
+            })();
+        break;
 
         default:
             console.warn(`Unknown action type: ${action}`);
-            break;
+        break;
     }
 }
 

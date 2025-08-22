@@ -1474,8 +1474,6 @@
         })();
 
         
-        
-
         // ---- 交叉驗證：StepOption==2 時，StepLoAngle 必須小於 StepHiAngle ----
         (function enforceLoAngleLessThanHiAngleForOption2() {
             if (StepOption !== 2) return;

@@ -35,7 +35,7 @@
                              <?php echo $data['text']['final_torque']; ?>
                             (<?php echo $data['text'][$data['data_info']['final_torque_unit'] ?? ''] ?? ''; ?>)
                         </div>
-                        <div id="Target_Torque" class="w3-display-middle" style="font-size: 6vmin; margin: 5px 0;"><?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?></div>
+                        <div id="Target_Torque" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0;"><?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?></div>
                     </div>
 
                     <?php
@@ -46,13 +46,13 @@
 
                     <div class="item-result w3-display-container" id='fasten_status_color'  style="<?php echo $bgStyle; ?>"  >
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-black"><?php echo  $data['text']['final_result'];?></div>
-                        <div id="Torque_Result" class="w3-display-middle" style="font-size: 6vmin; margin: 5px 0">     <?php echo $data['text'][$data['data_info']['fasten_status_text']];?></div>            
+                        <div id="Torque_Result" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0">     <?php echo $data['text'][$data['data_info']['fasten_status_text']];?></div>            
                     </div>
                 </div>
                 <div class="column">
                     <div class="item-targer-angle w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_angle'];?></div>
-                        <div id="Target_Angle" class="w3-display-middle" style="font-size: 6vmin; margin: 5px 0"><?php echo $data['data_info']['total_fasten_angle'] ?? '-'; ?></div>                        
+                        <div id="Target_Angle" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0"><?php echo $data['data_info']['total_fasten_angle'] ?? '-'; ?></div>                        
                     </div>
                     <div class="item-message w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_message'];?></div>

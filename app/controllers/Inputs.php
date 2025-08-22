@@ -25,7 +25,9 @@ class Inputs extends Controller
         $joblist  = $this->InputModel->get_job_list();
         
         $event    = $this->MiscellaneousModel->details('io_input');
-        $device_data = $this->InputModel->get_input_alljob();
+
+        $focused_jobid = $this->jobModel->getUnifiedJobId();
+        $device_data = $this->InputModel->get_input_by_job_temp($focused_jobid);
 
         if(!empty($joblist)){
             $job_list_new = array();
@@ -33,13 +35,19 @@ class Inputs extends Controller
                 $job_list_new[$vv['JOBID']] =$vv;  
             }
         }
+
+
+       // var_dump($device_data);
+
         $data = array();
         $data = array(
-            'isMobile'     => $isMobile,
-            'job_list'     => $joblist,
-            'event'        => $event,
-            'job_list_new' => $job_list_new,
-            'device_data'  => $device_data,   
+            'isMobile'      => $isMobile,
+            'job_list'      => $joblist,
+            'event'         => $event,
+            'job_list_new'  => $job_list_new,
+            'device_data'   => $device_data,  
+            'focused_jobid' => $focused_jobid 
+
         );
 
         if($isMobile){

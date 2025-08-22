@@ -1,3 +1,10 @@
+<?php
+  // 從控制器帶進來的值
+  $focusedJobId = isset($data['focused_jobid']) ? $data['focused_jobid'] : null;
+?>
+
+
+
 
 
 <div class="container-ms">
@@ -13,9 +20,9 @@
     <div class="main-content">
                 <div class="center-content">
             <div class="topnav">
+               
                 <label style="font-size:2.5vmin;color: #000; padding-left: 2%" for="job_id"><?php echo $text['job_id'];?> :</label>&nbsp;
-                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled
-                    style="height:30px; font-size:2.5vmin; text-align: center; background-color: #DDDDDD; border:0; line-height:30px;">
+                <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled>
 
                     <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"
                             style="height:30px;width:100px;font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
@@ -600,4 +607,34 @@
   background-color: rgba(0, 0, 0, 0.5); /* 灰色半透明 */
   z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
 }
+</style>
+
+<style>
+  /* 有值時加上 unified class 變黃色 */
+  #job_id.unified { background-color: yellow !important; }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 安全把 PHP 變數丟進 JS
+    var focusedJobId = <?php echo json_encode($focusedJobId, JSON_UNESCAPED_UNICODE); ?>;
+
+    var el = document.getElementById('job_id');
+    if (!el) return;
+
+    // 有值就顯示並上色（0 也會顯示）
+    if (focusedJobId !== null && String(focusedJobId).length > 0) {
+      el.value = String(focusedJobId);
+      el.classList.add('unified');
+    } else {
+      // 沒值就維持原色（如果之前被加過 class 就移除）
+      el.classList.remove('unified');
+    }
+  });
+</script>
+
+<style>
+  #job_id.unified { background-color: yellow !important; }
+  /* 可選：視覺化 disabled 狀態 */
+  #Button_Select.is-disabled { opacity: .6; pointer-events: none; }
 </style>

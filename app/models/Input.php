@@ -170,5 +170,25 @@ class Input{
     }
 
 
+    public function get_input_by_job_temp($jobid): array{
+
+        $jobid = (int)$jobid;
+        if ($jobid <= 0) return [];
+
+        $pdo = $this->db_iDas;
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // TODO: 換成你實際的 inputs 資料表與欄位
+        $stmt = $pdo->prepare("
+            SELECT * 
+            FROM JOBInput_lst
+            WHERE JOBID = :jobid
+        ");
+        $stmt->execute([':jobid' => $jobid]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+
    
 }
