@@ -1,4 +1,11 @@
 <script>
+// 🔝 放最上面，避免「初始化前被使用」的錯誤
+let unifiedFlag = 0;
+let _getOutputReqId = 0;
+
+// 從 PHP 帶入目前 unified 的 jobid（可能為 null/空字串/數字）
+const BOOT_FOCUSED_JOBID = <?php echo json_encode($data['focused_jobid'] ?? null); ?>;
+
 var job_id; 
 var output_event;
 var temp;
@@ -10,18 +17,24 @@ var all_job;
 var del_output_val;
 var output_pinval;
 var temp_event;
-$(document).ready(function () {
-    highlight_row_input('output_table');
 
-    var all_output_job = '<?php echo $data['device_data']['device_output_all_job']?>';
-    job_id = all_output_job ;
-    output_job = all_output_job;
-    if(job_id){
-        get_output_by_job_id(job_id);
-        document.getElementById('Button_Select').disabled = true;
-        setJobIdHighlight(true);
-    }
+
+$(document).ready(function () {
+  highlight_row_input('output_table');
+
+  var all_output_job = BOOT_FOCUSED_JOBID;      // 從全域帶入
+  job_id = all_output_job ? String(all_output_job) : '';
+  output_job = job_id;
+
+  // 先依 boot 狀態鎖按鈕（可選，但推薦）
+  const btn = document.getElementById('Button_Select');
+  if (btn) btn.disabled = !!(BOOT_FOCUSED_JOBID !== null && String(BOOT_FOCUSED_JOBID).length > 0);
+
+  if (job_id) {
+    get_output_by_job_id(job_id); // 內部會依 boot 狀態自動上黃、鎖按鈕
+  }
 });
+
 
 document.addEventListener('DOMContentLoaded', function() {
   var observer = new MutationObserver(function(mutations) {
@@ -73,13 +86,19 @@ function handleEventChange(e) {
 }
 
 
-let unifiedFlag = 0;
 function crud_job_event(argument) {
     const table = document.getElementById('output_table');
-    const jobSelect = document.getElementById('JobNameSelect');
     const eventOption = document.getElementById('Event_Option');
     const selectedRow = table.querySelector('tr.selected');
-    const job_id = jobSelect?.value ?? null;
+
+    const jobSelect = document.getElementById('JobNameSelect');
+    const job_id =
+        jobSelect?.value
+        || document.getElementById('job_id')?.value
+        || window.job_id
+        || null;
+
+    
 
     if (!job_id) return;
 
@@ -340,13 +359,15 @@ function crud_job_event(argument) {
                 enableButton();
                 resetBackgroundColor();
                 alignsubmit(job_id);
+                 unified_output(job_id, 1); 
             } else {
                 // ✅ 第二次點擊 → 設回 0
                 unifiedFlag = 0;
                 resetalignsubmit(job_id);
+                 unified_output(job_id, 0); 
             }
 
-            console.log(unifiedFlag);
+            console.log(job_id);
 
             // ✅ 每次點擊後都更新按鈕狀態
             syncButtonSelectState();
@@ -358,24 +379,28 @@ function crud_job_event(argument) {
     }
 }
 
+// 專責把 output_unified 寫進後端（val=1 開；val=0 關）
+let _unifiedXHR = null;
+function unified_output(job_id, unifiedFlag) {
+  if (!job_id) return;
 
+  var val = (unifiedFlag === 1) ? 1 : 0;
 
-function collectPinValues(selector) {
-    var pinOptions = document.querySelectorAll(selector);
-    var selectedValues = [];
-
-    pinOptions.forEach(function(option) {
-        if (option.checked){ 
-            var radioInfo = {
-                id: option.id,
-                value: option.value
-            };
-            selectedValues.push(radioInfo);
-        }
-    });
-
-    return selectedValues;
+  return $.ajax({
+    url: '?url=Jobs/set_output_unified',
+    method: 'POST',
+    dataType: 'json',
+    data: { jobid: job_id, val: val }
+  }).done(function(resp){
+    if (!resp || resp.ok !== true) {
+      console.warn('set_output_unified failed:', resp);
+    }
+  }).fail(function(xhr, status, err){
+    console.error('set_output_unified error:', status, err, xhr && xhr.responseText);
+  });
 }
+
+
 
 
 function toggleElementsInRange(start, end, suffix, disable) {
@@ -586,12 +611,11 @@ function setJobIdHighlight(active) {
 
 // 放在檔案頂部（全域一次）
 // 用來避免多次連續 AJAX 時，舊回應覆蓋新狀態
-let _getOutputReqId = 0;
 
 function get_output_by_job_id(job_id) {
   const reqId = ++_getOutputReqId;
 
-  // 進函式就先清掉黃底（避免等待期間閃黃）
+  // 進函式就先清掉黃底（避免閃爍）
   setJobIdHighlight(false);
 
   const jobIdEl = document.getElementById("job_id");
@@ -628,59 +652,59 @@ function get_output_by_job_id(job_id) {
         });
       }
 
-      // 依 unifiedFlag 及資料量控制黃底
-      const listEmpty = (job_outputlist.trim() === '');
-      const noTemp    = (temp.length === 0);
-      const noTempA   = (tempA.length === 0);
-      const hasAnyData = !(listEmpty && noTemp && noTempA);
+      // === 決定是否上黃底 ===
+      const listEmpty   = (job_outputlist.trim() === '');
+      const noTemp      = (temp.length === 0);
+      const noTempA     = (tempA.length === 0);
+      const hasAnyData  = !(listEmpty && noTemp && noTempA);
+
+      // ① 原本條件：unifiedFlag 開啟 + 有資料
+      const shouldYellowByUnified = (unifiedFlag !== 0 && hasAnyData);
+
+      // ② 新增條件：是首頁帶入的 focused job
+      const isBootFocused = (
+        BOOT_FOCUSED_JOBID !== null &&
+        String(BOOT_FOCUSED_JOBID).length > 0 &&
+        String(job_id) === String(BOOT_FOCUSED_JOBID)
+      );
 
       if (jobIdEl) {
-        jobIdEl.classList.remove('bg-yellow');       // 先清掉
-        jobIdEl.style.backgroundColor = '';          // 清 inline
-        if (unifiedFlag !== 0 && hasAnyData) {
-          jobIdEl.classList.add('bg-yellow');        // 只有 unified 模式 + 有資料 才黃
+        jobIdEl.classList.remove('bg-yellow');
+        jobIdEl.style.backgroundColor = '';
+
+        // 任何一個條件成立就黃
+        if (shouldYellowByUnified || isBootFocused) {
+          jobIdEl.classList.add('bg-yellow');
         }
+
         if (!hasAnyData) {
-          jobIdEl.value = '';                        // 沒資料時清空顯示
+          jobIdEl.value = ''; // 沒資料就清空
         }
       }
 
-      // 依 unifiedFlag 決定 Button_Select 是否可用
+      // === Button_Select 的可用狀態 ===
       const btn = document.getElementById('Button_Select');
       if (btn) {
-        const enable = (unifiedFlag === 0);
-        btn.disabled = !enable;
-        btn.classList.toggle('disabled', !enable);
-        btn.classList.toggle('disabled_input', !enable);
-        btn.setAttribute('aria-disabled', String(!enable));
+        // 首頁帶入時，按鈕一律鎖住；否則維持原本 unifiedFlag 規則
+        const disabled = isBootFocused ? true : (unifiedFlag !== 0);
+        btn.disabled = disabled;
+        btn.classList.toggle('disabled', disabled);
+        btn.classList.toggle('disabled_input', disabled);
+        btn.setAttribute('aria-disabled', String(disabled));
       }
 
       // ===== 語系文字（1~16）=====
       const labels = {
-        'en-us': {
-          1:'OK',2:'NG',3:'NG -High',4:'NG - Low',
-          5:'OK - Sequence',6:'OK - Job ',7:'Tool Running',8:'Tool Trigger',
-          9:'Reverse',10:'BS',11:'Barcode',12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'
-        },
-        'zh-tw': {
-          1:'OK',2:'NG',3:'超出上限',4:'低於下限',
-          5:'工序完成信號',6:'工作完成信號',7:'馬達信號',8:'啟動信號',
-          9:'拆螺絲',10:'條碼停止',11:'條碼',12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'
-        },
-        'zh-cn': {
-          1:'OK',2:'NG',3:'超出上限',4:'低于下限',
-          5:'工序完成信号',6:'工作完成信号',7:'马达信号',8:'启动信号',
-          9:'拆螺丝',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'
-        }
+        'en-us': {1:'OK',2:'NG',3:'NG -High',4:'NG - Low',5:'OK - Sequence',6:'OK - Job ',7:'Tool Running',8:'Tool Trigger',9:'Reverse',10:'BS',11:'Barcode',12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'},
+        'zh-tw': {1:'OK',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'工作完成信號',7:'馬達信號',8:'啟動信號',9:'拆螺絲',10:'條碼停止',11:'條碼',12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'},
+        'zh-cn': {1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作完成信号',7:'马达信号',8:'启动信号',9:'拆螺丝',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'}
       };
       const L = labels[language] || labels['en-us'];
       for (let i = 1; i <= 16; i++) {
         const el = document.getElementById(String(i));
         if (el && L[i]) el.textContent = L[i];
       }
-      // ===== 語系文字結束 =====
 
-      // 最後再同步一次（若外面還有其它 UI 規則）
       if (typeof syncButtonSelectState === 'function') {
         syncButtonSelectState();
       }
@@ -690,7 +714,6 @@ function get_output_by_job_id(job_id) {
     }
   });
 }
-
 
 
 
@@ -1009,7 +1032,7 @@ function get_output_info(job_id, output_event) {
                 }
             }
 
-            old_output_even = output_event;
+            old_output_event = output_event;
         },
         error: function(xhr, status, error) {
             console.error("AJAX request failed:", status, error);
@@ -1254,30 +1277,40 @@ function restoreUnifiedState(options = {}) {
 }
 
 
+function isBootFocusedCurrent(){
+    const el = document.getElementById('job_id');
+    return (BOOT_FOCUSED_JOBID !== null &&
+    String(BOOT_FOCUSED_JOBID).length > 0 &&
+    el && String(el.value) === String(BOOT_FOCUSED_JOBID));
+}
+
+function isBootFocusedCurrent(){
+  const el = document.getElementById('job_id');
+  return (BOOT_FOCUSED_JOBID !== null &&
+          String(BOOT_FOCUSED_JOBID).length > 0 &&
+          el && String(el.value) === String(BOOT_FOCUSED_JOBID));
+}
+
 function syncButtonSelectState() {
-    const btnSelect = document.getElementById('Button_Select');
-    if (btnSelect) {
-        if (unifiedFlag === 0) {
-            btnSelect.disabled = false;  // 可點
-        } else {
-            btnSelect.disabled = true;   // 鎖住
-        }
-    }
+  const btnSelect = document.getElementById('Button_Select');
+  if (btnSelect) {
+    // unifiedFlag=0 可點，反之鎖住
+    btnSelect.disabled = (unifiedFlag !== 0);
+  }
 
-    // ✅ unifiedFlag 為 0 時，檢查 job_id 是否黃底 → 清除
-    if (unifiedFlag === 0) {
-        const jobIdEl = document.getElementById('job_id');
-        if (jobIdEl) {
-            const hasYellowClass   = jobIdEl.classList?.contains('bg-yellow');
-            const inlineIsYellow   = (jobIdEl.style.backgroundColor || '').toLowerCase() === 'yellow';
-            const computedIsYellow = window.getComputedStyle(jobIdEl).backgroundColor === 'rgb(255, 255, 0)';
-
-            if (hasYellowClass || inlineIsYellow || computedIsYellow) {
-                jobIdEl.classList.remove('bg-yellow');
-                jobIdEl.style.backgroundColor = ''; // 清除 inline 設定
-            }
-        }
+  // unifiedFlag 為 0，但不是 boot 聚焦時才清黃
+  if (unifiedFlag === 0 && !isBootFocusedCurrent()) {
+    const jobIdEl = document.getElementById('job_id');
+    if (jobIdEl) {
+      const hasYellowClass   = jobIdEl.classList?.contains('bg-yellow');
+      const inlineIsYellow   = (jobIdEl.style.backgroundColor || '').toLowerCase() === 'yellow';
+      const computedIsYellow = window.getComputedStyle(jobIdEl).backgroundColor === 'rgb(255, 255, 0)';
+      if (hasYellowClass || inlineIsYellow || computedIsYellow) {
+        jobIdEl.classList.remove('bg-yellow');
+        jobIdEl.style.backgroundColor = '';
+      }
     }
+  }
 }
 
 </script>

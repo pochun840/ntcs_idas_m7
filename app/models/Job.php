@@ -515,7 +515,7 @@ class Job{
     }
 
 
-    public function updateInputUnified($jobid, $val) {
+    public function updateInputUnified_by_input($jobid, $val) {
         $jobid = (int)$jobid;
         $val   = (int)!!$val; // 0/1
 
@@ -542,6 +542,48 @@ class Job{
                 $stmt = $pdo->prepare("
                     UPDATE JOB_lst
                     SET input_unified = 0
+                    WHERE JOBID = :jobid
+                ");
+                $stmt->execute([':jobid' => $jobid]);
+            }
+
+            $pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            error_log('updateInputUnified failed: '.$e->getMessage());
+            return false;
+        }
+    }
+
+
+     public function updateInputUnified_by_output($jobid, $val) {
+        $jobid = (int)$jobid;
+        $val   = (int)!!$val; // 0/1
+
+        if ($jobid <= 0) {
+            error_log('[updateInputUnified] invalid jobid');
+            return false;
+        }
+
+        $pdo = $this->db_iDas;
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        try {
+            $pdo->beginTransaction();
+
+            if ($val === 1) {
+                // 開：整表更新—自己=1，其它=0（不加 WHERE，最穩）
+                $stmt = $pdo->prepare("
+                    UPDATE JOB_lst
+                    SET output_unified = CASE WHEN JOBID = :jobid THEN 1 ELSE 0 END
+                ");
+                $stmt->execute([':jobid' => $jobid]);
+            } else {
+                // 關：只把自己改 0（其餘維持現況）
+                $stmt = $pdo->prepare("
+                    UPDATE JOB_lst
+                    SET output_unified = 0
                     WHERE JOBID = :jobid
                 ");
                 $stmt->execute([':jobid' => $jobid]);
@@ -617,7 +659,86 @@ class Job{
     }
 
 
-    public function getUnifiedJobId(): ?int{
+
+    
+        /**
+     * 將「不在 $ids 內的 JOB」中，所有 input_unified==1 的紀錄強制改為 0，
+     * 並回傳這些「其餘 JOB」的資料列。
+     *
+     * @param int|int[] $ids  要保留的 JOBID（單一或陣列）
+     * @return array          其餘 JOB_lst 資料
+     */
+    public function check_type_by_output($ids): array{
+
+        $pdo = $this->db_iDas;
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // 正規化成陣列 + 過濾
+        if (!is_array($ids)) {
+            $ids = [$ids];
+        }
+        $ids = array_map('intval', $ids);
+        $ids = array_filter($ids, function ($v) { return $v > 0; });
+        $ids = array_values(array_unique($ids));
+
+        try {
+            $pdo->beginTransaction();
+
+            if (empty($ids)) {
+                // 沒有要保留的 ID：把全表中 output_unified==1 的都清成 0
+                $pdo->exec("UPDATE JOB_lst SET output_unified = 0 WHERE output_unified = 1");
+
+                // 取回全部
+                $stmt = $pdo->query("SELECT * FROM JOB_lst");
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            } else {
+                // 有要保留的 ID：只清「不在 ids 內」且 input_unified==1 的
+                $ph = implode(',', array_fill(0, count($ids), '?'));
+
+                $sqlUpdate = "UPDATE JOB_lst
+                            SET output_unified = 0
+                            WHERE output_unified = 1 AND JOBID NOT IN ($ph)";
+                $stmtU = $pdo->prepare($sqlUpdate);
+                $stmtU->execute($ids);
+
+                // 回傳「不在 ids 內」的資料
+                $sqlSelect = "SELECT * FROM JOB_lst WHERE JOBID NOT IN ($ph)";
+                $stmtS = $pdo->prepare($sqlSelect);
+                $stmtS->execute($ids);
+                $rows = $stmtS->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            $pdo->commit();
+            return $rows;
+
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            error_log('check_type_by_output reset failed: '.$e->getMessage());
+            return [];
+        }
+    }
+
+
+
+    public function getUnifiedJobId_by_output(): ?int{
+
+        $pdo = $this->db_iDas;
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $row = $pdo->query("
+            SELECT JOBID 
+            FROM JOB_lst 
+            WHERE output_unified = 1 
+            ORDER BY time DESC 
+            LIMIT 1
+        ")->fetch(PDO::FETCH_ASSOC);
+
+        return $row ? (int)$row['JOBID'] : null;
+    }
+    
+
+    public function getUnifiedJobId_by_input(): ?int{
 
         $pdo = $this->db_iDas;
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

@@ -1,3 +1,10 @@
+<?php
+  // 從控制器帶進來的值
+  $focusedJobId = isset($data['focused_jobid']) ? $data['focused_jobid'] : null;
+?>
+
+
+
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -341,3 +348,34 @@
   z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
 }
 </style>
+
+<style>
+  /* 有值時加上 unified class 變黃色 */
+  #job_id.unified { background-color: yellow !important; }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 安全把 PHP 變數丟進 JS
+    var focusedJobId = <?php echo json_encode($focusedJobId, JSON_UNESCAPED_UNICODE); ?>;
+
+    var el = document.getElementById('job_id');
+    if (!el) return;
+
+    // 有值就顯示並上色（0 也會顯示）
+    if (focusedJobId !== null && String(focusedJobId).length > 0) {
+      el.value = String(focusedJobId);
+      el.classList.add('unified');
+    } else {
+      // 沒值就維持原色（如果之前被加過 class 就移除）
+      el.classList.remove('unified');
+    }
+  });
+</script>
+
+<style>
+  #job_id.unified { background-color: yellow !important; }
+  /* 可選：視覺化 disabled 狀態 */
+  #Button_Select.is-disabled { opacity: .6; pointer-events: none; }
+</style>
+

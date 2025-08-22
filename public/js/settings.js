@@ -195,149 +195,149 @@ function controller_save(){
     }
 }
 
-function input_check_setting(argument) {
-  // 取得語系
-  const getCookieSafe = (name) => {
-    try {
-      const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-      return m ? decodeURIComponent(m[1]) : null;
-    } catch { return null; }
-  };
-  let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : (getCookieSafe('language') || 'zh-tw')) || 'zh-tw';
-  lang = String(lang).toLowerCase();
-  if (lang === 'en') lang = 'en-us';
-  if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
 
-  // 字串資源
-  const LABELS = {
-    'en-us': {
-      control_name: 'Control Name',
-      storage_warning: 'Storage Warning (%)',
-      torque_filter: 'Torque Filter',
-      global_downshift_torque: 'Downshift Torque',
-      global_downshift_speed: 'Downshift Speed'
-    },
-    'zh-tw': {
-      control_name: '設備名稱',
-      storage_warning: '容量警示(%)',
-      torque_filter: '扭力過濾',
-      global_downshift_torque: '降檔扭力',
-      global_downshift_speed: '降檔速'
-    },
-    'zh-cn': {
-      control_name: '设备名称',
-      storage_warning: '容量警示(%)',
-      torque_filter: '扭力过滤',
-      global_downshift_torque: '降档扭力”',
-      global_downshift_speed: '降转转速'
-    }
-  }[lang];
-
-  const I18N = {
-    'en-us': {
-      title: 'Warning',
-      ok: 'OK',
-      required: '{FIELD} is required.',
-      format: '{FIELD} has invalid format.',
-      range: '{FIELD} is out of range ({RANGE}).'
-    },
-    'zh-tw': {
-      title: '警告',
-      ok: '確定',
-      required: '{FIELD} 為必填。',
-      format: '{FIELD} 格式不正確。',
-      range: '{FIELD} 超出範圍（{RANGE}）。'
-    },
-    'zh-cn': {
-      title: '警告',
-      ok: '确定',
-      required: '{FIELD} 为必填。',
-      format: '{FIELD} 格式不正确。',
-      range: '{FIELD} 超出范围（{RANGE}）。'
-    }
-  }[lang];
-
-  // 驗證規則
-  const conditions = [
-    { id: 'control_name',              label: LABELS.control_name,              pattern: /^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min: null, max: null },
-    { id: 'storage_warning',           label: LABELS.storage_warning,           pattern: /^\d{0,4}$/,                     min: 50,   max: 95   },
-    { id: 'torque_filter',             label: LABELS.torque_filter,             pattern: /^\d{1,3}(\.\d{1,6})?$/,         min: 0.0,  max: 200  },
-    { id: 'global_downshift_torque',   label: LABELS.global_downshift_torque,   pattern: /^\d{0,5}?$/,                    min: 0,    max: 1000 },
-    { id: 'global_downshift_speed',    label: LABELS.global_downshift_speed,    pattern: /^\d{0,5}?$/,                    min: 0,    max: 100  },
-  ];
-
-  let isFormValid = true;
-  const errors = [];   // 收集錯誤訊息
-  let firstInvalidEl = null;
-
-  conditions.forEach((input) => {
-    const element = document.getElementById(input.id);
-    if (!element) return;
-
-    const value = (element.value || '').trim();
-
-    // 若你仍想顯示「允許範圍」提示（不是錯誤），可保留這段
-    if (input.id !== 'control_name') {
-      const hint = element.nextElementSibling;
-      if (hint) hint.innerHTML = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : '';
-    }
-
-    // 預設移除錯誤樣式
-    element.classList.remove('is-invalid');
-
-    const pushErr = (msg) => {
-      isFormValid = false;
-      errors.push(msg);
-      element.classList.add('is-invalid');
-      if (!firstInvalidEl) firstInvalidEl = element;
+    function input_check_setting(argument) {
+    // 取得語系
+    const getCookieSafe = (name) => {
+        try {
+        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+        } catch { return null; }
     };
+    let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : (getCookieSafe('language') || 'zh-tw')) || 'zh-tw';
+    lang = String(lang).toLowerCase();
+    if (lang === 'en') lang = 'en-us';
+    if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
 
-    // 必填
-    if (value === '') {
-      pushErr(I18N.required.replace('{FIELD}', input.label));
-      return;
+    // 字串資源
+    const LABELS = {
+        'en-us': {
+        control_name: 'Control Name',
+        storage_warning: 'Storage Warning (%)',
+        torque_filter: 'Torque Filter',
+        global_downshift_torque: 'Downshift Torque',
+        global_downshift_speed: 'Downshift Speed'
+        },
+        'zh-tw': {
+        control_name: '設備名稱',
+        storage_warning: '容量警示(%)',
+        torque_filter: '扭力過濾',
+        global_downshift_torque: '降檔扭力',
+        global_downshift_speed: '降檔速'
+        },
+        'zh-cn': {
+        control_name: '设备名称',
+        storage_warning: '容量警示(%)',
+        torque_filter: '扭力过滤',
+        global_downshift_torque: '降档扭力”',
+        global_downshift_speed: '降转转速'
+        }
+    }[lang];
+
+    const I18N = {
+        'en-us': {
+        title: 'Warning',
+        ok: 'OK',
+        required: '{FIELD} is required.',
+        format: '{FIELD} has invalid format.',
+        range: '{FIELD} is out of range ({RANGE}).'
+        },
+        'zh-tw': {
+        title: '警告',
+        ok: '確定',
+        required: '{FIELD} 為必填。',
+        format: '{FIELD} 格式不正確。',
+        range: '{FIELD} 超出範圍（{RANGE}）。'
+        },
+        'zh-cn': {
+        title: '警告',
+        ok: '确定',
+        required: '{FIELD} 为必填。',
+        format: '{FIELD} 格式不正确。',
+        range: '{FIELD} 超出范围（{RANGE}）。'
+        }
+    }[lang];
+
+    // 驗證規則
+    const conditions = [
+        { id: 'control_name',              label: LABELS.control_name,              pattern: /^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min: null, max: null },
+        { id: 'storage_warning',           label: LABELS.storage_warning,           pattern: /^\d{0,4}$/,                     min: 50,   max: 95   },
+        { id: 'torque_filter',             label: LABELS.torque_filter,             pattern: /^\d{1,3}(\.\d{1,6})?$/,         min: 0.0,  max: 200  },
+        { id: 'global_downshift_torque',   label: LABELS.global_downshift_torque,   pattern: /^\d{0,5}?$/,                    min: 0,    max: 1000 },
+        { id: 'global_downshift_speed',    label: LABELS.global_downshift_speed,    pattern: /^\d{0,5}?$/,                    min: 0,    max: 100  },
+    ];
+
+    let isFormValid = true;
+    const errors = [];   // 收集錯誤訊息
+    let firstInvalidEl = null;
+
+    conditions.forEach((input) => {
+        const element = document.getElementById(input.id);
+        if (!element) return;
+
+        const value = (element.value || '').trim();
+
+        // 若你仍想顯示「允許範圍」提示（不是錯誤），可保留這段
+        if (input.id !== 'control_name') {
+        const hint = element.nextElementSibling;
+        if (hint) hint.innerHTML = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : '';
+        }
+
+        // 預設移除錯誤樣式
+        element.classList.remove('is-invalid');
+
+        const pushErr = (msg) => {
+        isFormValid = false;
+        errors.push(msg);
+        element.classList.add('is-invalid');
+        if (!firstInvalidEl) firstInvalidEl = element;
+        };
+
+        // 必填
+        if (value === '') {
+        pushErr(I18N.required.replace('{FIELD}', input.label));
+        return;
+        }
+
+        // 格式
+        if (!input.pattern.test(value)) {
+        pushErr(I18N.format.replace('{FIELD}', input.label));
+        return;
+        }
+
+        // 範圍（若有設定）
+        const num = parseFloat(value);
+        if (input.min !== null && !Number.isNaN(num) && num < input.min) {
+        const range = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : `≥ ${input.min}`;
+        pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range));
+        return;
+        }
+        if (input.max !== null && !Number.isNaN(num) && num > input.max) {
+        const range = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : `≤ ${input.max}`;
+        pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range));
+        return;
+        }
+    });
+
+    // 有錯 → 彈窗一次性顯示（多語），並把游標帶到第一個錯誤欄位
+    if (!isFormValid && errors.length > 0) {
+        // 用 <ul> 顯示多條訊息（Alertify 支援 HTML 字串）
+        const body = errors.map(e => `<div>${e}</div>`).join('');
+
+        // 節流避免多次彈窗
+        if (!window._alertingSettingsForm) {
+        window._alertingSettingsForm = true;
+        alertify
+            .alert(I18N.title, body, function () {
+            try { firstInvalidEl?.focus(); firstInvalidEl?.select?.(); } catch {}
+            window._alertingSettingsForm = false;
+            })
+            .set('labels', { ok: I18N.ok });
+        }
     }
 
-    // 格式
-    if (!input.pattern.test(value)) {
-      pushErr(I18N.format.replace('{FIELD}', input.label));
-      return;
-    }
-
-    // 範圍（若有設定）
-    const num = parseFloat(value);
-    if (input.min !== null && !Number.isNaN(num) && num < input.min) {
-      const range = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : `≥ ${input.min}`;
-      pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range));
-      return;
-    }
-    if (input.max !== null && !Number.isNaN(num) && num > input.max) {
-      const range = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : `≤ ${input.max}`;
-      pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range));
-      return;
-    }
-  });
-
-  // 有錯 → 彈窗一次性顯示（多語），並把游標帶到第一個錯誤欄位
-  if (!isFormValid && errors.length > 0) {
-    // 用 <ul> 顯示多條訊息（Alertify 支援 HTML 字串）
-    const body = '<ul style="margin-left:1.2em;">' + errors.map(e => `<li>${e}</li>`).join('') + '</ul>';
-
-    // 節流避免多次彈窗
-    if (!window._alertingSettingsForm) {
-      window._alertingSettingsForm = true;
-      alertify
-        .alert(I18N.title, body, function () {
-          try { firstInvalidEl?.focus(); firstInvalidEl?.select?.(); } catch {}
-          window._alertingSettingsForm = false;
-        })
-        .set('labels', { ok: I18N.ok });
-    }
-  }
-
-  return isFormValid;
+    return isFormValid;
 }
-
 
 
 //新增密碼
@@ -987,62 +987,87 @@ function update_barcode(){
 
 
 function agent_ip_save() {
-    var language = getCookie('language') || 'en-us'; 
-    var agent_server_ip = document.getElementById('agent_server_ip').value;
+  const ipEl = document.getElementById('agent_server_ip');
+  const feedbackEl = (ipEl?.nextElementSibling && ipEl.nextElementSibling.classList.contains('invalid-feedback'))
+    ? ipEl.nextElementSibling
+    : null;
 
-    // 正規表達式：檢查 IPv4 位址的格式是否正確
-    var ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  // 不用欄位後方提示：清空並隱藏
+  if (feedbackEl) {
+    feedbackEl.textContent = '';
+    feedbackEl.style.display = 'none';
+  }
 
-    // 錯誤提示訊息
-    var errorMessage = {
-        'en-us': "Please enter a valid IP address.",
-        'zh-tw': "請輸入有效的 IP 地址。",
-        'zh_cn': "请输入有效的 IP 地址。"  
-    };
+  // 語系
+  let lang = (typeof getCookie === 'function' ? getCookie('language') : 'en-us') || 'en-us';
+  lang = String(lang).toLowerCase().replace('_', '-');
+  if (lang === 'en') lang = 'en-us';
+  if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
 
-    // 如果有填寫 IP，且格式符合正規表達式
-    if (agent_server_ip && ipRegex.test(agent_server_ip)) {  
-        
-        // 顯示加載動畫
-        document.getElementById('spinner').style.display = 'block';
+  const MSG = {
+    'en-us': 'Please enter a valid IP address.',
+    'zh-tw': '請輸入有效的 IP 地址。',
+    'zh-cn': '请输入有效的 IP 地址。'
+  };
+  const TITLE = { 'en-us': 'Warning', 'zh-tw': '警告', 'zh-cn': '警告' }[lang];
+  const OKLBL  = { 'en-us': 'OK', 'zh-tw': '確定', 'zh-cn': '确定' }[lang];
 
-        $.ajax({
-            url: "?url=Admins/SetAgentIp",
-            method: "POST",
-            data: { 
-                agent_server_ip: agent_server_ip
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response); 
+  const ip = (ipEl.value || '').trim();
+  const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 
+  // 先清狀態
+  ipEl.classList.remove('is-invalid');
 
-                setTimeout(function() {
-                    document.getElementById('spinner').style.display = 'none';
-                    alertify.alert(responseData.res_type, responseData.res_msg, function() {
-                        sessionStorage.setItem('Connect_Setting', 'block');
-                        sessionStorage.setItem('Controller_Setting', 'none');
-                        //history.go(0); 
-                    });
+  // ❌ 驗證失敗：紅框＋彈窗（無欄位後方提示）
+  if (!ip || !ipRegex.test(ip)) {
+    ipEl.classList.add('is-invalid');
 
-                    setTimeout(function() {
-                        alertify.closeAll(); 
-                    }, 3000);
-                }, 1000);
-
-                document.getElementById('agent_server_ip').innerText = responseData.res_number;
-            },
-
-            error: function(xhr, status, error) {
-            }
-        });
-    } else {
-        alertify.alert("Error", language === 'en-us' ? errorMessage.en : (language === 'zh-tw' ? errorMessage.zh : errorMessage.zh_cn), function() {
-            setTimeout(function() {
-                alertify.closeAll();  
-            }, 3000); 
-        });
+    if (!ipEl._bindInvalidClear) {
+      ipEl.addEventListener('input', function onIn() {
+        ipEl.classList.remove('is-invalid');
+        ipEl.removeEventListener('input', onIn);
+        ipEl._bindInvalidClear = false;
+      });
+      ipEl._bindInvalidClear = true;
     }
+
+    alertify.alert(TITLE, MSG[lang], function () {
+      ipEl.focus();
+      ipEl.select?.();
+    }).set('labels', { ok: OKLBL });
+
+    return; // 不送出
+  }
+
+  // ✅ 驗證通過 → 呼叫後端（成功/錯誤都用彈窗）
+  const spinner = document.getElementById('spinner');
+  if (spinner) spinner.style.display = 'block';
+
+  $.ajax({
+    url: "?url=Admins/SetAgentIp",
+    method: "POST",
+    data: { agent_server_ip: ip },
+    success: function (response) {
+      let res = {};
+      try { res = JSON.parse(response) || {}; } catch {}
+
+      if (spinner) spinner.style.display = 'none';
+
+      alertify.alert(res.res_type || 'Info', res.res_msg || 'Done.', function () {
+        sessionStorage.setItem('Connect_Setting', 'block');
+        sessionStorage.setItem('Controller_Setting', 'none');
+      });
+      setTimeout(() => alertify.closeAll(), 3000);
+
+      if (res.res_number != null) ipEl.value = res.res_number;
+    },
+    error: function (xhr) {
+      if (spinner) spinner.style.display = 'none';
+      alertify.alert('Error', (xhr && xhr.responseText) || 'Request failed.');
+    }
+  });
 }
+
 
 
 function agent_type_save(){

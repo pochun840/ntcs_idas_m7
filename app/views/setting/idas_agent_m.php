@@ -4,7 +4,8 @@
             <div class="row t2 border-bottom">
                 <div class="col t2">
                     <form id="agent_ip" style="margin: 3px 0px; margin-left: 10%" method="post">
-                        <input type="text" name="agent_server_ip" id="agent_server_ip" size="15" required class="t3 w3-submit w3-border w3-round"><br>
+                        <input type="text" name="agent_server_ip" id="agent_server_ip" size="15" required class="t3 w3-submit w3-border w3-round">
+                        <div class="invalid-feedback"></div><br>
                         <span>Agent IP : <?php echo $data['agent_server_ip']; ?></span> 
                         <input type="button" value="Save" onclick="set_agent_ip()" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
                     </form>

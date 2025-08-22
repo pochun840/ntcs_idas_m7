@@ -12,6 +12,7 @@
         <div class="col">
                 <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
                     value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
+                <div class="invalid-feedback"></div>
                 <span style="margin-left: 10px;"></span>
                 <input type="button"  onclick="agent_ip_save()"  value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" >
         </div>

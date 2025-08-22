@@ -1,3 +1,10 @@
+<?php
+  // 從控制器帶進來的值
+  $focusedJobId = isset($data['focused_jobid']) ? $data['focused_jobid'] : null;
+?> 
+
+
+
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -277,23 +284,48 @@
   z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
 }
 
-
 .grey-disabled[disabled] {
-    background-color: #d6d6d6; /* 整個背景灰 */
-    color: #8a8a8a;            /* 文字灰 */
-    border: 1px solid #b5b5b5; /* 灰色邊框 */
-    cursor: not-allowed;       /* 滑鼠變禁止符號 */
-    opacity: 1;                /* 取消部分瀏覽器預設透明 */
+  background-color: #d6d6d6;
+  color: #8a8a8a;
+  border: 1px solid #b5b5b5;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
-#job_id.bg-yellow { background-color: yellow !important; }
-/* 避免任何顏色過渡造成的閃動 */
+/* 避免任何顏色過渡造成閃動 */
 #job_id { transition: none !important; }
-/* 若是 Chrome 的自動填寫黃底在作祟，這段可蓋掉 */
-#job_id:-webkit-autofill,
-#job_id:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-  box-shadow: inset 0 0 0 1000px white !important;
+
+/* 統一把黃色狀態寫一次就夠了 */
+#job_id.bg-yellow { 
+  background-color: yellow !important;
 }
 
+/* disabled 時瀏覽器會套用灰文字與透明度，這裡強制還原 */
+#job_id.bg-yellow:disabled {
+  -webkit-text-fill-color: #000;
+  opacity: 1;
+}
 </style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 從 PHP 帶值
+    var focusedJobId = <?php echo json_encode($focusedJobId); ?>;
+
+    var el  = document.getElementById('job_id');
+    var btn = document.getElementById('Button_Select');
+    if (!el) return;
+
+    // 有值 → 顯示數值、套黃底、鎖住 Select
+    if (focusedJobId !== null && String(focusedJobId).length > 0) {
+      el.value = String(focusedJobId);
+      el.classList.add('bg-yellow');
+      if (btn) btn.disabled = true;   // ← 已加上
+    } else {
+      // 沒值 → 清空、恢復灰底、放開 Select
+      el.value = '';
+      el.classList.remove('bg-yellow');
+      if (btn) btn.disabled = false;  // ← 已加上
+    }
+  });
+</script>

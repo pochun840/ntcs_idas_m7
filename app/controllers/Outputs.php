@@ -26,6 +26,9 @@ class Outputs extends Controller
         $event_output = $this->MiscellaneousModel->details('io_output');
         $device_data  = $this->InputModel->get_input_alljob();
 
+        $focused_jobid = $this->jobModel->getUnifiedJobId_by_output();
+
+
         if(!empty($joblist)){
             $job_list_new = array();
             foreach($joblist as $kk =>$vv){
@@ -35,13 +38,14 @@ class Outputs extends Controller
 
         $this->ntcs_data_db_sysnc();
 
-        $data = array();
+
         $data = array(
             'isMobile'     => $isMobile,
             'job_list'     => $joblist,
             'event_output' => $event_output,
             'job_list_new' => $job_list_new,
             'device_data'  => $device_data,
+            'focused_jobid' =>  $focused_jobid 
         );
 
         if($isMobile){

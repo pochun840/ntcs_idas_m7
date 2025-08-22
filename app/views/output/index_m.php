@@ -1,5 +1,10 @@
 
+
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_output_m.css" type="text/css">
+<?php
+  // 從控制器帶進來的值
+  $focusedJobId = isset($data['focused_jobid']) ? $data['focused_jobid'] : null;
+?>
 
 <div class="container-ms">
     <div class="w3-text-white w3-center">
@@ -298,3 +303,24 @@
         padding: 10px;
     }
 </style>
+
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 從 PHP 帶入目前 unified 的 jobid（可能為 null/空字串/數字）
+    var focusedJobId = <?php echo json_encode($data['focused_jobid']); ?>;
+    var el = document.getElementById('job_id');
+    if (!el) return;
+
+    // 有值 → 顯示數值並上黃色；沒值 → 清空並還原為灰色
+    if (focusedJobId !== null && String(focusedJobId).length > 0) {
+      el.value = String(focusedJobId);
+      el.style.backgroundColor = 'yellow';
+    } else {
+      el.value = '';
+      el.style.backgroundColor = '#DDDDDD';
+    }
+  });
+</script>
+

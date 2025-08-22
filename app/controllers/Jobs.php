@@ -447,10 +447,23 @@ class Jobs extends Controller
     public function set_input_unified() {
         $jobid = $_POST['jobid'] ?? null;
         $val   = isset($_POST['val']) ? (int)$_POST['val'] : null; // 0 or 1
-        $ok = $this->jobModel->updateInputUnified($jobid, $val);
+        $ok = $this->jobModel->updateInputUnified_by_input($jobid, $val);
 
         echo json_encode(['ok' => $ok]);
     }
+
+
+    public function set_output_unified() {
+        $jobid = $_POST['jobid'] ?? null;
+        $val   = isset($_POST['val']) ? (int)$_POST['val'] : null; // 0 or 1
+        $ok = $this->jobModel->updateInputUnified_by_output($jobid, $val);
+
+        echo json_encode(['ok' => $ok]);
+    }
+
+    
+    
+
 
 
 }

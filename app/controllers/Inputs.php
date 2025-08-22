@@ -26,7 +26,7 @@ class Inputs extends Controller
         
         $event    = $this->MiscellaneousModel->details('io_input');
 
-        $focused_jobid = $this->jobModel->getUnifiedJobId();
+        $focused_jobid = $this->jobModel->getUnifiedJobId_by_input();
         $device_data = $this->InputModel->get_input_by_job_temp($focused_jobid);
 
         if(!empty($joblist)){
@@ -37,7 +37,7 @@ class Inputs extends Controller
         }
 
 
-       // var_dump($device_data);
+
 
         $data = array();
         $data = array(
