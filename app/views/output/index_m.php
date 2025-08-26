@@ -324,3 +324,21 @@
   });
 </script>
 
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const jobIdInput = document.getElementById('job_id');
+    const focusedJobId = <?php echo json_encode($focusedJobId); ?>;
+
+    if (focusedJobId) {
+        // 有值 → 背景改黃色，並填入 JOBID
+        jobIdInput.style.backgroundColor = 'yellow';
+        jobIdInput.value = focusedJobId;
+    } else {
+        // 沒值 → 恢復灰色
+        jobIdInput.style.backgroundColor = '#DDDDDD';
+        jobIdInput.value = '';
+    }
+});
+</script>
+

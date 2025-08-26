@@ -519,6 +519,7 @@ class Job{
         $jobid = (int)$jobid;
         $val   = (int)!!$val; // 0/1
 
+
         if ($jobid <= 0) {
             error_log('[updateInputUnified] invalid jobid');
             return false;
@@ -753,6 +754,50 @@ class Job{
 
         return $row ? (int)$row['JOBID'] : null;
     }
+
+
+    /**
+     * 依 JOBID 切換 JOB_lst.input_unified（1->0 / 0->1）
+     *
+     * @param int $jobId
+     * @return int|null  回傳切換後的值（0/1）。若找不到該 JOBID 回傳 null。
+     * @throws Throwable  發生例外時向上拋出
+     */
+    public function toggleInputUnified(int $jobId): ?int
+    {
+        $pdo = $this->db_iDas;
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        try {
+            $pdo->beginTransaction();
+
+            // 鎖住該筆資料，避免同時被其他請求修改
+            $stmt = $pdo->prepare('SELECT input_unified FROM JOB_lst WHERE JOBID = :jobid FOR UPDATE');
+            $stmt->execute([':jobid' => $jobId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                $pdo->rollBack();
+                return null; // 該 JOBID 不存在
+            }
+
+            $current = ((int)$row['input_unified'] === 1) ? 1 : 0;
+            $next    = ($current === 1) ? 0 : 1;
+
+            // 寫回切換後的值，順便更新時間欄位（若需要）
+            $upd = $pdo->prepare('UPDATE JOB_lst SET input_unified = :next, time = NOW() WHERE JOBID = :jobid');
+            $upd->execute([':next' => $next, ':jobid' => $jobId]);
+
+            $pdo->commit();
+            return $next;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     
     
 

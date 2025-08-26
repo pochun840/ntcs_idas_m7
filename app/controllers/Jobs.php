@@ -8,6 +8,7 @@ class Jobs extends Controller
     private $MiscellaneousModel;
     private $sequenceModel;
     private $stepModel;
+    private $OutputModel;
  
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
@@ -19,6 +20,7 @@ class Jobs extends Controller
         $this->stepModel = $this->model('Steptcc');
         $this->ToolModel = $this->model('Tool');
         $this->SettingModel = $this->model('Setting');
+        $this->OutputModel = $this->model('Output');
 
     }
 
@@ -455,10 +457,14 @@ class Jobs extends Controller
 
     public function set_output_unified() {
         $jobid = $_POST['jobid'] ?? null;
-        $val   = isset($_POST['val']) ? (int)$_POST['val'] : null; // 0 or 1
-        $ok = $this->jobModel->updateInputUnified_by_output($jobid, $val);
+        //$val   = isset($_POST['val']) ? (int)$_POST['val'] : null; // 0 or 1
+        //$ok = $this->jobModel->updateInputUnified_by_output($jobid, $val);
 
-        echo json_encode(['ok' => $ok]);
+        $this->OutputModel->set_output_alljob($jobid);
+    
+
+
+        //echo json_encode(['ok' => $ok]);
     }
 
     

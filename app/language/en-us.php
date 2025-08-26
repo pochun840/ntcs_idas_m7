@@ -210,6 +210,8 @@ $text['Angle Time'] = "Angle / Time";
 $text['RPM Time'] = "RPM / Time";
 $text['Torque Angle'] = "Torque / Angle";
 $text['Torque Speed'] = "Torque / Speed";
+$text['Total_angle'] = "Total";
+$text['Step_angle'] = "Step";
 
 // Input/Output
 $text['input'] = 'Input'; //I/O INPUT

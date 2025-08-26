@@ -99,7 +99,8 @@ class Miscellaneous{
                 2 => 'Angle/Time(MS)',
                 3 => 'RPM/Time(MS)',
                 4 => 'Torque/Angle',
-                5 => 'Torque/Speed'
+                5 => 'Torque/Speed',
+                6 => '',
             );
         }
 

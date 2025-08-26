@@ -217,6 +217,9 @@ $text['Angle Time'] = "角度 / 時間";
 $text['RPM Time'] = "轉速 / 時間";
 $text['Torque Angle'] = "扭力 / 角度";
 $text['Torque Speed'] = "扭力 / 轉速";
+$text['Total_angle'] = "總角度";
+$text['Step_angle'] = "步驟角度";
+
 // Input/Output
 $text['input'] = '輸入'; //I/O INPUT
 $text['output'] = '輸出'; //I/O OUTPUT

@@ -77,9 +77,13 @@
                         </button>
                     <?php } ?>
                 </div>
+
+
+                
                 <div id="graph" class="display-chart">
+                
                     <div id="chart" style="max-width: 100%; height: 290px;"></div>
-                </div>                         
+                </div> 
             </div>
         </div>
     </div>
@@ -320,4 +324,16 @@ window.onload = function () {
 };
 </script>
 
-
+<style>
+#graph { position: relative; }
+#chart { position: relative; z-index: 1; } /* 圖 */
+#chart-note {
+  display: block !important;   /* 防外部把 <p> 隱藏 */
+  margin: 4px 0 8px;
+  position: relative;
+  z-index: 2;                  /* 比圖還高 */
+  color: #000 !important;      /* 防父層強制白字或透明 */
+  font-size: 14px !important;  /* 防 font-size:0 */
+  line-height: 1.2;
+}
+</style>

@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } else {
         // 若 DB 是關，但目前卻還是本 job_id → 關掉一次
+        
         if (window.input_job === window.job_id) {
           if (typeof enableButton === 'function') enableButton();
           if (typeof resetBackgroundColor === 'function') resetBackgroundColor();
@@ -92,32 +93,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /** 在 crud_job_event('unified') 中調用的封裝：先更新 DB，再呼叫既有切換機制 */
 function toggleUnifiedWithDB() {
-  // 依「現在畫面狀態」預測下一個狀態：如果目前不是本 job → 這次會切到 ON，反之切到 OFF
-  const willTurnOn = (window.input_job !== window.job_id);
+    // 依「現在畫面狀態」預測下一個狀態：如果目前不是本 job → 這次會切到 ON，反之切到 OFF
+    const willTurnOn = (window.input_job !== window.job_id);
+    console.log(job_id);
+    console.log(willTurnOn);
+  
+    // 先送 DB（確保重整後能還原）
+    $.post(
+        '?url=Jobs/set_input_unified',
+        { jobid: job_id, val: willTurnOn ? 1 : 0 },
+        function (resp) {
+            // 若後端沒正確設 Content-Type: application/json，
+            // 這裡可能拿到字串，先嘗試解析
+            if (typeof resp === 'string') {
+            try { resp = JSON.parse(resp); } catch(e) {}
+            }
+            console.log('server resp:', resp);
 
-  // 先送 DB（確保重整後能還原）
-  $.post('?url=Job/set_input_unified', { jobid: job_id, val: willTurnOn ? 1 : 0 })
-    .done(function () {
-      // DB OK → 呼叫你原本的切換函式（保留機制）
-      handleUnifiedJobEvent();
-
-      // 更新本地快取與 UI
-      window._unifiedOn = willTurnOn;
-      updateUnifiedUI(willTurnOn);
-    })
-    .fail(function (xhr) {
-      // DB 寫入失敗就不要切換前端狀態，提示一下
-      if (window.alertify) {
-        const lang = (getCookie && getCookie('language')) || 'en-us';
-        const I18N = {
-          'en-us': 'Failed to update unified state.',
-          'zh-tw': '更新整合狀態失敗。',
-          'zh-cn': '更新整合状态失败。'
-        };
-        alertify.error(I18N[lang] || I18N['en-us']);
-      } else {
-        console.error('set_input_unified error:', xhr?.responseText || xhr);
-      }
+            if (resp && (resp.ok === true || resp.status === 'ok')) {
+            handleUnifiedJobEvent();
+            const on = ('unified' in resp) ? !!resp.unified : willTurnOn;
+            window._unifiedOn = on;
+            updateUnifiedUI(on);
+            if (resp.focused_jobid != null) window.BOOT_FOCUSED_JOBID = String(resp.focused_jobid);
+            } else {
+            const msg = (resp && (resp.msg || resp.message)) || 'Failed to update unified state.';
+            if (window.alertify) alertify.error(msg);
+            }
+        },
+        'json' // 告訴 jQuery 期待 JSON（需後端回傳可被當作 JSON 解析）
+        ).fail(function (xhr) {
+        if (window.alertify) alertify.error('Request failed.');
+        console.error('set_input_unified error:', xhr.responseText || xhr);
     });
 }
 
@@ -1176,23 +1183,20 @@ function resetalignsubmit(job_id) {
 
     var job_id_new = 0;
 
-    if(job_id_new == 0){
-        console.log(job_id_new);
-        console.log(job_id);
-        $.ajax({
-            url: "?url=Inputs/input_alljob_cancel",
-            method: "POST",
-            data: {
-                job_id_new: job_id_new
-            },
-            success: function (response) {
-                get_input_by_job_id(job_id);
-            },
-            error: function (xhr, status, error) {
+    $.ajax({
+        url: "?url=Inputs/input_alljob_cancel",
+        method: "POST",
+        data: {
+            job_id: job_id
+        },
+        success: function (response) {
+            get_input_by_job_id(job_id);
+        },
+        error: function (xhr, status, error) {
 
-            }
-        });
-    }
+        }
+    });
+
 }
 
 

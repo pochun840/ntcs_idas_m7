@@ -85,6 +85,43 @@ function handleEventChange(e) {
     }
 }
 
+// ---- unified 狀態工具 ----
+
+function isJobIdYellow() {
+  const el = document.getElementById('job_id');
+  return el?.classList.contains('bg-yellow');
+}
+
+
+function setJobIdBg(isYellow) {
+  const el = document.getElementById('job_id');
+  if (!el) return;
+  el.classList.toggle('bg-yellow', isYellow);
+}
+
+
+function setUnifiedState(job_id, enable) {
+  unifiedFlag = enable ? 1 : 0;
+
+  if (enable) {
+    if (typeof enableButton === 'function') enableButton();
+    if (typeof resetBackgroundColor === 'function') resetBackgroundColor();
+    if (typeof alignsubmit === 'function') alignsubmit(job_id);
+    setJobIdBg(true);
+  } else {
+    if (typeof resetalignsubmit === 'function') resetalignsubmit(job_id);
+    setJobIdBg(false);
+  }
+
+  if (typeof syncButtonSelectState === 'function') syncButtonSelectState();
+}
+
+
+// ---- 初始：依背景色決定 unifiedFlag（不呼叫 alignsubmit/resetalignsubmit）----
+document.addEventListener('DOMContentLoaded', function () {
+  unifiedFlag = isJobIdYellow() ? 1 : 0;
+});
+
 
 function crud_job_event(argument) {
     const table = document.getElementById('output_table');
@@ -183,9 +220,6 @@ function crud_job_event(argument) {
             
             // ✅ 更新按鈕狀態
             syncButtonSelectState();
-            
-            console.log(eventOption.value);
-            console.log(unifiedFlag);
         break;
 
     
@@ -352,26 +386,21 @@ function crud_job_event(argument) {
           
         break;
 
-        case 'unified':
-            if (unifiedFlag === 0) {
-                // ✅ 第一次點擊 → 設成 1
-                unifiedFlag = 1;
-                enableButton();
-                resetBackgroundColor();
-                alignsubmit(job_id);
-                 unified_output(job_id, 1); 
-            } else {
-                // ✅ 第二次點擊 → 設回 0
-                unifiedFlag = 0;
-                resetalignsubmit(job_id);
-                 unified_output(job_id, 0); 
+        case 'unified': {
+            if (!job_id) {
+                if (typeof alertify !== 'undefined') {
+                    //alertify.alert('缺少 Job', '目前沒有選定的 Job。');
+                    setTimeout(() => alertify.closeAll(), 2000);
+                }
+                break;
             }
 
-            console.log(job_id);
-
-            // ✅ 每次點擊後都更新按鈕狀態
-            syncButtonSelectState();
+            // 若目前是黃色 → 表示已啟用，按一次要「取消」
+            // 若目前不是黃色 → 按一次要「啟用」
+            const currentlyYellow = isJobIdYellow();
+            setUnifiedState(job_id, !currentlyYellow);
         break;
+}
 
         default:
             console.warn(`Unknown action: ${argument}`);
@@ -615,8 +644,10 @@ function setJobIdHighlight(active) {
 function get_output_by_job_id(job_id) {
   const reqId = ++_getOutputReqId;
 
-  // 進函式就先清掉黃底（避免閃爍）
-  setJobIdHighlight(false);
+  // ✅ 只有在 unifiedFlag==0 且不是 boot 聚焦時才清黃（避免 unified==1 時被洗掉）
+  if (unifiedFlag === 0 && !isBootFocusedCurrent()) {
+    setJobIdHighlight(false); // ← 原本一進來就清黃，已加保護條件
+  }
 
   const jobIdEl = document.getElementById("job_id");
   if (jobIdEl) jobIdEl.value = job_id || '';
@@ -658,10 +689,10 @@ function get_output_by_job_id(job_id) {
       const noTempA     = (tempA.length === 0);
       const hasAnyData  = !(listEmpty && noTemp && noTempA);
 
-      // ① 原本條件：unifiedFlag 開啟 + 有資料
-      const shouldYellowByUnified = (unifiedFlag !== 0 && hasAnyData);
+      // ✅ 調整：只要 unifiedFlag≠0 就上黃，和是否有資料無關
+      const shouldYellowByUnified = (unifiedFlag !== 0);
 
-      // ② 新增條件：是首頁帶入的 focused job
+      // 首頁帶入的 focused job
       const isBootFocused = (
         BOOT_FOCUSED_JOBID !== null &&
         String(BOOT_FOCUSED_JOBID).length > 0 &&
@@ -677,8 +708,9 @@ function get_output_by_job_id(job_id) {
           jobIdEl.classList.add('bg-yellow');
         }
 
-        if (!hasAnyData) {
-          jobIdEl.value = ''; // 沒資料就清空
+        // ✅ 僅在「沒資料 + 非 boot 聚焦 + unifiedFlag==0」時才清空值
+        if (!hasAnyData && !isBootFocused && unifiedFlag === 0) {
+          jobIdEl.value = '';
         }
       }
 
@@ -714,6 +746,7 @@ function get_output_by_job_id(job_id) {
     }
   });
 }
+
 
 
 
@@ -1316,9 +1349,24 @@ function syncButtonSelectState() {
 </script>
 
 <style>
-    #output_table td,
-    #output_table th {
-        width: 100px; 
-        padding: 10px;
-    }
+/* 表格外觀（保留原設定） */
+#output_table td,
+#output_table th {
+  width: 100px;
+  padding: 10px;
+}
+
+/* 統一：只靠 .bg-yellow 控制黃色高亮 */
+.bg-yellow {
+  background-color: #ffea00 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000; /* 修 Safari/Chromium 對 disabled 文字顏色 */
+}
+
+/* 讓 disabled 的 input 也能正常顯示黃色，不被灰度影響 */
+input#job_id.bg-yellow[disabled] {
+  opacity: 1;
+}
+
+
 </style>

@@ -24,10 +24,9 @@ class Outputs extends Controller
         $isMobile     = $this->isMobileCheck();
         $joblist      = $this->InputModel->get_job_list();
         $event_output = $this->MiscellaneousModel->details('io_output');
-        $device_data  = $this->InputModel->get_input_alljob();
+        $device_data  = $this->OutputModel->get_output_by_job_temp();
 
         $focused_jobid = $this->jobModel->getUnifiedJobId_by_output();
-
 
         if(!empty($joblist)){
             $job_list_new = array();
@@ -66,6 +65,9 @@ class Outputs extends Controller
 
         if (!empty($job_id)) {
             $job_outputs = $this->OutputModel->get_output_by_job_id($job_id);
+
+            //檢查 JOBID 有無被套用(unified)
+            $check = $this->OutputModel->check_output_unified_by_job_id($job_id);  
             $isMobile = $this->isMobileCheck();
 
             foreach ($job_outputs ?? [] as $vv) {
@@ -84,6 +86,8 @@ class Outputs extends Controller
                 if (!empty($event_id)) {
                     $tempA[] = $event_id;
                 }
+
+           
 
                 if ($isMobile) {
                     $imgSrc = './img/trigger.png';
@@ -112,6 +116,8 @@ class Outputs extends Controller
             'temp' => $temp,
             'tempA' => $tempA,
             'languange' => $_SESSION['language'] ?? 'en',
+            'focused_jobid' =>  $job_id,
+
         ]);
         
     }
@@ -466,9 +472,12 @@ class Outputs extends Controller
             echo "</pre>";
 
         }
+    }
 
 
+    public function set_output_unified(){
 
+    
     }
 }
 

@@ -148,7 +148,7 @@ class Output{
                 SELECT  ?,Pin,EvenID,signal,durate,stop_trig,cycle
                 FROM    JOBOutput_lst
                 WHERE JOBID = ? ";
-        $statement = $this->db->prepare($sql);
+        $statement = $this->db_iDas->prepare($sql);
 
         return $results = $statement->execute([$to_job_id,$from_job_id]);
     }
@@ -172,16 +172,7 @@ class Output{
         return $results;
     }
 
-    //set input_alljob
-    public function set_output_alljob($output_job_id){
 
-        $sql= "UPDATE device SET device_output_all_job = ? ";
-        $statement = $this->db_iDas_device->prepare($sql);
-        $results = $statement->execute([$output_job_id]);
-
-        return $results;
-    }
-    
     public function generateTableCell($value,$value2) {
         if($value >= 1 && $value <= 11){
             $tableCells = "";
@@ -203,7 +194,101 @@ class Output{
             }
             return $tableCells;
         }else{
-            return ""; 
+            return "";  
         }
     }
+
+
+    public function set_output_alljob($output_job_id) {
+
+        try {
+            // 1. 取得目前狀態
+            $sqlCheck = "SELECT output_unified FROM JOB_lst WHERE JOBID = ?";
+            $stmtCheck = $this->db_iDas->prepare($sqlCheck);
+            $stmtCheck->execute([$output_job_id]);
+            $currentStatus = $stmtCheck->fetchColumn();
+
+            //var_dump($currentStatus);
+
+            if ($currentStatus === false) {
+                return false; // JOBID 不存在
+            }
+
+            if ($currentStatus == '1') {
+
+                //echo "eert";die();
+
+                // 2. 如果目前是 1 → 改成 0（取消選取）
+                $sql = "UPDATE JOB_lst SET output_unified = '0' WHERE JOBID = ?";
+                $stmt = $this->db_iDas->prepare($sql);
+                return $stmt->execute([$output_job_id]);
+            } else {
+                // 3. 如果目前是 0 → 將該 JOB 設 1，其餘全部設 0
+                $this->db_iDas->beginTransaction();
+
+                // 先把所有 JOB 設 0
+                $sqlReset = "UPDATE JOB_lst SET output_unified = '0'";
+                $this->db_iDas->exec($sqlReset);
+
+                // 再把指定 JOB 設 1
+                $sqlUpdate = "UPDATE JOB_lst SET output_unified = '1' WHERE JOBID = ?";
+                $stmtUpdate = $this->db_iDas->prepare($sqlUpdate);
+                $stmtUpdate->execute([$output_job_id]);
+
+                $this->db_iDas->commit();
+                return true;
+            }
+        } catch (Exception $e) {
+            if ($this->db_iDas->inTransaction()) {
+                $this->db_iDas->rollBack();
+            }
+            error_log("Error in set_output_alljob: " . $e->getMessage());
+            return false;
+        }
+
+       
+    }
+
+    public function check_output_unified_by_job_id($job_id) {
+        try {
+            $sql = "SELECT output_unified FROM JOB_lst WHERE JOBID = ?";
+            $stmt = $this->db_iDas->prepare($sql);
+            $stmt->execute([$job_id]);
+            $result = $stmt->fetchColumn();
+
+            // 如果沒有找到該 JOBID，回傳 null 或 false
+            if ($result === false) {
+                return null; // 或 return false;
+            }
+
+            // 回傳布林值：true = 1，false = 0
+            return ($result == '1');
+        } catch (Exception $e) {
+            error_log("Error in check_output_unified_by_job_id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    
+    public function get_output_by_job_temp(): array{
+
+        $pdo = $this->db_iDas;
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // 1) 先找出 output_unified = 1 的 JOBID
+        $sqlJob = "SELECT JOBID FROM JOB_lst WHERE output_unified = 1 LIMIT 1";
+        $jobid = $pdo->query($sqlJob)->fetchColumn();
+
+        if (!$jobid) {
+            return []; // 沒有任何 JOB 被設為 unified
+        }
+
+        // 2) 查詢該 JOB 的輸出列表
+        $sql = "SELECT * FROM JOBOutput_lst WHERE JOBID = ? ORDER BY JOBID ASC";
+        $statement = $pdo->prepare($sql);
+        $statement->execute([$jobid]);
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
 }

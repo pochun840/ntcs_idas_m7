@@ -1,3 +1,9 @@
+<?php
+    // chart=6 視覺上歸到 chart=4 的按鈕
+    $effective_mode = ((string)$data['chart_mode'] === '6') ? '4' : (string)$data['chart_mode'];
+?>
+
+
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/operation.css?v=".<?php echo  date('YmdHi'); ?> type="text/css">
 <body>
 <div class="container-ms">
@@ -68,13 +74,23 @@
                             <?php foreach($data['chart_menu_arr'] as $k_menu => $v_menu) { ?>
                                 <button 
                                     type="button"
-                                    class="btn-chart <?php echo ($data['chart_mode'] == $k_menu) ? 'active' : ''; ?>"
+                                    class="btn-chart <?php echo ((string)$effective_mode === (string)$k_menu) ? 'active' : ''; ?>"
                                     id="<?php echo $v_menu['id']; ?>"
                                     onclick="chart_type('<?php echo $v_menu['id']; ?>')">
                                     <?php echo isset($data['text'][$v_menu['name']]) ? $data['text'][$v_menu['name']] : $v_menu['name']; ?>
                                 </button>
                             <?php } ?>
 
+                            <?php if ($data['chart_mode'] == "4" || $data['chart_mode'] == "6") { ?>
+                                <div style="white-space: nowrap;">
+                                    <label>
+                                        <input type="radio" name="chartType" value="4" <?php echo ($data['chart_mode'] == "4") ? 'checked' : ''; ?>> <?php echo $data['text']['Total_angle'];?>
+                                    </label>
+                                    <label style="margin-left: 10px;">
+                                        <input type="radio" name="chartType" value="6" <?php echo ($data['chart_mode'] == "6") ? 'checked' : ''; ?>> <?php echo $data['text']['Step_angle'];?>
+                                    </label>
+                                </div>
+                            <?php } ?>
                         </div>
 
                         <div id="graph" class="display-chart">
@@ -87,6 +103,20 @@
     </div>
 </div>
 
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input[name="chartType"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            if (this.checked) {
+                const url = new URL(window.location);
+                url.searchParams.set('chart', this.value); // ✅ 用 radio 的 value
+                window.location.href = url.toString();
+            }
+        });
+    });
+});
+</script>
 
 <script>
 
@@ -146,105 +176,215 @@ function updateChartUrl(currentUrl, chart) {
 
 const chartMode = "<?php echo $data['chart_mode']; ?>";
 
-
 function renderChart(chart_mode, chart_info) {
     const chartDom = document.getElementById('chart');
     echarts.dispose(chartDom);
-    const myChart = echarts.init(chartDom);
+    myChart = echarts.init(chartDom); // 全域
 
-    const x_data_val = chart_info.x_val;
-    const y_data_val = chart_info.y_val.map(Number);
-    const y_data_val_torque = chart_info.y_val_torque?.map(Number) || [];
-    const y_data_val_rpm = chart_info.y_val_rpm?.map(Number) || [];
-    const steps = (chart_info.steps || []).map(s => Number(s));
+    const x_data_val        = chart_info?.x_val || [];
+    const y_data_val        = (chart_info?.y_val || []).map(Number);
+    const y_data_val_torque = chart_info?.y_val_torque?.map(Number) || [];
+    const y_data_val_rpm    = chart_info?.y_val_rpm?.map(Number)    || [];
+    const stepsRaw          = chart_info?.steps || [];
 
-    const stepColors = {
-        1: '#0066ff', // 藍
-        2: '#cc0000', // 紅
-        3: '#009933', // 綠
-        4: '#ff9900', // 橘
-        5: '#6600cc'  // 紫
-    };
+    // === chart 6：步驟角度（Y 軸沿用 mode=4 的 y_val，X 用角度）===
+    if (String(chart_mode) === "6") {
+        // 角度 X（優先 x_val，其次 angle.1/angle）
+        const angleX = pickSeries(chart_info?.x_val, chart_info?.angle1, chart_info?.angle_1, chart_info?.angle);
 
-    const uniqueSteps = Array.from(new Set(steps)).filter(s => s >= 1 && s <= 5);
+        // ★ 關鍵：Y = mode=4 的座標值
+        const yFromMode4 = (chart_info?.y_val && chart_info.y_val.length)
+            ? chart_info.y_val.map(Number)
+            : y_data_val; // ← 這是你在上面已算好的、給 mode=4 用的 y
 
-    // 建立多色折線圖，每個 Step 一條線
-    const generateStepSeries = (dataArr, stepArr, yAxisIndex = 0) => {
-        return uniqueSteps.map(stepNum => {
-            const seriesData = dataArr.map((v, i) => stepArr[i] === stepNum ? v : null);
-            const hasData = seriesData.some(v => v !== null && v !== undefined);
+        // steps
+        const steps = chart_info?.steps || [];
 
-            if (!hasData) return null;
+        // 對齊長度後再丟給 mode6
+        const len = Math.min(angleX.length, yFromMode4.length, steps.length || Infinity);
+        renderChartMode6({
+            x_val: angleX.slice(0, len),
+            y_val: yFromMode4.slice(0, len),   // ★ 傳進去，確保 Y 與 mode=4 一致
+            steps: steps.slice(0, len),
+            // 若你有帶 mode=4 的 y 軸上下界，也一起傳；沒有就略過
+            y_min: chart_info?.y_min,
+            y_max: chart_info?.y_max
+        });
+        return; // 別讓下面覆蓋
+    }
 
-            return {
-                name: `Step${stepNum}`,
-                type: 'line',
-                symbol: 'none',
-                connectNulls: true,
-                yAxisIndex,
-                lineStyle: { width: 2, color: stepColors[stepNum] },
-                data: seriesData
-            };
-        }).filter(Boolean);
-    };
-
-    const plainTextTooltip = {
-        trigger: 'axis',
-        axisPointer: { type: 'none' },
-        formatter: function (params) {
-            let text = '';
-            params.forEach(p => {
-                const name = (p.seriesName || '').padEnd(10, ' ');
-                const val = (Array.isArray(p.value) ? p.value[1] : p.value ?? '').toString().padStart(8, ' ');
-                text += `${name}: ${val}\n`;
-            });
-            return text.trim();
-        }
-    };
-
-    if (chart_mode === "5") {
+    // === chart 5：Torque + RPM（保留你的做法）===
+    if (String(chart_mode) === "5") {
         const rpmMin = chart_info.min_rpm ?? Math.floor(Math.min(...y_data_val_rpm) / 100) * 100;
         const rpmMax = chart_info.max_rpm ?? Math.ceil(Math.max(...y_data_val_rpm) / 100) * 100;
 
-        const torqueSeries = generateStepSeries(y_data_val_torque, steps, 0);
-        const rpmSeries = {
-            name: 'RPM',
+        // 步驟正規化（僅供分組著色）
+        const stepKeys = stepsRaw.map(v => {
+        const m = String(v).match(/\d+/);
+        return m ? Number(m[0]) : String(v || 'step');
+        });
+        const uniqueKeys = Array.from(new Set(stepKeys));
+
+        const palette = ['#0066ff','#cc0000','#009933','#ff9900','#6600cc','#5b9bd5','#ed7d31','#70ad47'];
+        const colorFor = (key, idx) => (typeof key === 'number' && key >=1 && key <=5)
+        ? palette[key-1] : palette[idx % palette.length];
+
+        const torqueSeries = uniqueKeys.map((key, idx) => {
+        const seriesData = y_data_val_torque.map((v, i) => stepKeys[i] === key ? v : null);
+        if (!seriesData.some(v => v != null)) return null;
+        return {
+            name: `Step${key}`,
             type: 'line',
             symbol: 'none',
-            yAxisIndex: 1,
-            lineStyle: { width: 1.5, color: 'orange' },
-            data: y_data_val_rpm
+            connectNulls: true,
+            yAxisIndex: 0,
+            lineStyle: { width: 2, color: colorFor(key, idx) },
+            data: seriesData
+        };
+        }).filter(Boolean);
+
+        const rpmSeries = {
+        name: 'RPM',
+        type: 'line',
+        symbol: 'none',
+        yAxisIndex: 1,
+        lineStyle: { width: 1.5, color: 'orange' },
+        data: y_data_val_rpm
         };
 
-        const option = {
-            tooltip: plainTextTooltip,
-            xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true  } },
-            yAxis: [
-                { type: 'value', name: 'Torque', splitLine: { show: true } },
-                { type: 'value', name: 'RPM', min: rpmMin, max: rpmMax, splitLine: { show: false } }
-            ],
-            series: [...torqueSeries, rpmSeries]
-        };
-
-        myChart.setOption(option);
+        myChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true } },
+        yAxis: [
+            { type: 'value', name: 'Torque', splitLine: { show: true } },
+            { type: 'value', name: 'RPM', min: rpmMin, max: rpmMax, splitLine: { show: false } }
+        ],
+        series: [...torqueSeries, rpmSeries]
+        });
         return;
     }
 
-    // chart_mode 1~4
-    const option = {
-        tooltip: plainTextTooltip,
-        xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true  } },
-        yAxis: { type: 'value', name: 'Torque', splitLine: { show: true } },
-        series: generateStepSeries(y_data_val, steps, 0)
-    };
+    // === 其餘（1~4）：沿用原本 category 畫法 ===
+    const stepKeys = stepsRaw.map(v => {
+        const m = String(v).match(/\d+/);
+        return m ? Number(m[0]) : String(v || 'step');
+    });
 
-    myChart.setOption(option);
+    const uniqueKeys = Array.from(new Set(stepKeys));
+    const palette = ['#0066ff','#cc0000','#009933','#ff9900','#6600cc'];
+    const colorFor = (key, idx) => (typeof key === 'number' && key >=1 && key <=5)
+        ? palette[key-1] : palette[idx % palette.length];
+
+    const series = uniqueKeys.map((key, idx) => {
+        const seriesData = y_data_val.map((v, i) => stepKeys[i] === key ? v : null);
+        if (!seriesData.some(v => v != null)) return null;
+        return {
+        name: `Step${key}`,
+        type: 'line',
+        symbol: 'none',
+        connectNulls: true,
+        lineStyle: { width: 2, color: colorFor(key, idx) },
+        data: seriesData
+        };
+    }).filter(Boolean);
+
+    const finalSeries = series.length ? series : [{
+        name: 'Curve',
+        type: 'line',
+        symbol: 'none',
+        lineStyle: { width: 2 },
+        data: y_data_val
+    }];
+
+    myChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'none' } },
+        xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true } },
+        yAxis: { type: 'value', name: 'Torque', splitLine: { show: true } },
+        series: finalSeries
+    });
 }
 
 
+// 幫手：挑第一個「有數值且不是全 0」的序列
+function pickSeries(...cands) {
+  for (const a of cands) {
+    if (!a) continue;
+    const arr = a.map(Number).filter(v => !Number.isNaN(v));
+    if (arr.length && arr.some(v => v !== 0)) return a.map(Number);
+  }
+  for (const a of cands) { if (a && a.length) return a.map(Number); }
+  return [];
+}
 
+// === chart=6：Y 軸沿用 mode=4 的 y_val；每個 step 各自一條曲線（X 用自己的角度起點，不拼接）===
+function renderChartMode6(chart_info) {
+  const X = (chart_info?.x_val || []).map(Number);
+  const Y = (chart_info?.y_val || []).map(Number);   // ★ 已確保是 mode=4 的 y
+  const stepsRaw = chart_info?.steps || Array(X.length).fill('S1');
 
+  const len = Math.min(X.length, Y.length, stepsRaw.length);
+  const steps = stepsRaw.slice(0, len).map(v => {
+    const m = String(v).match(/\d+/); return m ? Number(m[0]) : String(v || 'step');
+  });
 
+  // 依 step 分組
+  const byStep = new Map();
+  for (let i = 0; i < len; i++) {
+    if (!Number.isFinite(X[i]) || !Number.isFinite(Y[i])) continue;
+    const k = steps[i];
+    if (!byStep.has(k)) byStep.set(k, []);
+    byStep.get(k).push([X[i], Y[i]]);
+  }
+
+  // step 出現順序（for legend / 顏色）
+  const stepOrder = [];
+  for (let i = 0; i < len; i++) if (!stepOrder.includes(steps[i])) stepOrder.push(steps[i]);
+
+  // 你的配色順序
+  const palette = ['#0066ff','#cc0000','#009933','#ff9900','#6600cc'];
+  const colorFor = (key, idx) =>
+    (typeof key === 'number' && key >= 1 && key <= 5) ? palette[key - 1] : palette[idx % palette.length];
+
+  const series = stepOrder.map((k, idx) => ({
+    name: `Step${k}`,
+    type: 'line',
+    showSymbol: false,
+    connectNulls: true,                 // 同一步內連線
+    lineStyle: { width: 2, color: colorFor(k, idx) },
+    data: byStep.get(k) || []
+  })).filter(s => s.data.length);
+
+  // Y 軸範圍：優先沿用 mode=4；否則由資料推
+  const yMin = Number.isFinite(chart_info?.y_min) ? chart_info.y_min
+             : Math.min(0, ...Y.filter(Number.isFinite));
+  const yMax = Number.isFinite(chart_info?.y_max) ? chart_info.y_max
+             : Math.max(...Y.filter(Number.isFinite), 1);
+
+  myChart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'line' },
+      formatter: (params) => {
+        const p = params.find(p => p?.value && p.value[1] != null) || params[0];
+        if (!p || !p.value) return '';
+        return `Angle: ${p.value[0]}\n${p.seriesName}: ${p.value[1]}`;
+      }
+    },
+    legend: { show: false },
+    xAxis: { type: 'value', name: 'Angle', splitLine: { show: false } },
+    yAxis: { type: 'value', name: 'Torque', min: yMin, max: yMax, splitLine: { show: true } },
+    series: series.length ? series : [{
+      name: 'Curve', type: 'line', showSymbol: false, lineStyle: { width: 2 },
+      data: X.slice(0, len).map((xi, i) => [xi, Y[i]])
+    }]
+  });
+
+  // （可選）debug：確認進來的資料不是全 0
+  console.log('mode6 check', {
+    x_10: X.slice(0,10), y_10: Y.slice(0,10),
+    steps_10: steps.slice(0,10), series_n: series.length
+  });
+}
 
 
 
@@ -330,3 +470,16 @@ window.addEventListener("resize", () => myChart?.resize?.());
 </script>
 
 
+<style>
+#graph { position: relative; }
+#chart { position: relative; z-index: 1; } /* 圖 */
+#chart-note {
+  display: block !important;   /* 防外部把 <p> 隱藏 */
+  margin: 4px 0 8px;
+  position: relative;
+  z-index: 2;                  /* 比圖還高 */
+  color: #000 !important;      /* 防父層強制白字或透明 */
+  font-size: 14px !important;  /* 防 font-size:0 */
+  line-height: 1.2;
+}
+</style>

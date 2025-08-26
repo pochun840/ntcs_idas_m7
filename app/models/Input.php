@@ -110,9 +110,6 @@ class Input{
     }
 
 
-   
-
-
     //delete input by job_id
     public function delete_input_by_id($job_id){
 
@@ -135,18 +132,46 @@ class Input{
 
     //set input_alljob
     public function set_input_alljob($input_job_id) {
-        $sql = "UPDATE JOB_lst SET input_unified = CASE 
-                    WHEN input_unified = '1' THEN '0' 
-                    WHEN input_unified = '0' THEN '1' 
-                    ELSE input_unified 
-                 END 
-                 WHERE JOBID = ?";
-        
-        $statement = $this->db_iDas->prepare($sql);
-        $results = $statement->execute([$input_job_id]);
-        return $results;
-    }
+        try {
+            // 1. 取得目前狀態
+            $sqlCheck = "SELECT input_unified FROM JOB_lst WHERE JOBID = ?";
+            $stmtCheck = $this->db_iDas->prepare($sqlCheck);
+            $stmtCheck->execute([$input_job_id]);
+            $currentStatus = $stmtCheck->fetchColumn();
 
+            if ($currentStatus === false) {
+                return false; // JOBID 不存在
+            }
+
+            if ($currentStatus == '1') {
+                // 2. 如果目前是 1 → 改成 0（取消選取）
+                $sql = "UPDATE JOB_lst SET input_unified = '0' WHERE JOBID = ?";
+                $stmt = $this->db_iDas->prepare($sql);
+                return $stmt->execute([$input_job_id]);
+            } else {
+                // 3. 如果目前是 0 → 將該 JOB 設 1，其餘全部設 0
+                $this->db_iDas->beginTransaction();
+
+                // 先把所有 JOB 設 0
+                $sqlReset = "UPDATE JOB_lst SET input_unified = '0'";
+                $this->db_iDas->exec($sqlReset);
+
+                // 再把指定 JOB 設 1
+                $sqlUpdate = "UPDATE JOB_lst SET input_unified = '1' WHERE JOBID = ?";
+                $stmtUpdate = $this->db_iDas->prepare($sqlUpdate);
+                $stmtUpdate->execute([$input_job_id]);
+
+                $this->db_iDas->commit();
+                return true;
+            }
+        } catch (Exception $e) {
+            if ($this->db_iDas->inTransaction()) {
+                $this->db_iDas->rollBack();
+            }
+            error_log("Error in set_input_alljob: " . $e->getMessage());
+            return false;
+        }
+    }
 
     public function generateTableCell($value,$value2) {
         if($value >= 2 && $value <= 12){
@@ -186,9 +211,5 @@ class Input{
         ");
         $stmt->execute([':jobid' => $jobid]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-
-
-   
+    }   
 }
