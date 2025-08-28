@@ -4,6 +4,20 @@
     $stepOption = isset($data['step']['StepOption']) ? $data['step']['StepOption'] : null;
 ?>
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const langRaw = getCookie('language') || 'en-us';
+        const language = (langRaw.toLowerCase() === 'en') ? 'en-us' : langRaw.toLowerCase();
+
+        alertify.defaults.glossary = {
+            title: (language === 'zh-tw') ? '提示' :
+                (language === 'zh-cn') ? '提示' : 'Notification',
+            ok: (language === 'zh-tw') ? '確定' :
+                (language === 'zh-cn') ? '确定' : 'OK',
+            cancel: (language === 'zh-tw') ? '取消' :
+                    (language === 'zh-cn') ? '取消' : 'Cancel'
+        };
+    });
+    
 
     // === rounding helpers (global, hoisted) ===
     (function (w) {
@@ -579,9 +593,9 @@
         const unitLabels = {
             'kgf.cm': { 'zh-cn': '公斤.公分', 'zh-tw': '公斤.公分', 'default': 'kgf.cm' },
             'lbf.in': { 'zh-cn': '磅.英吋', 'zh-tw': '磅.英吋', 'default': 'lbf.in' },
-            'N.m':    { 'zh-cn': '牛顿.米',  'zh-tw': '牛頓.尺',   'default': 'N.m' },
-            'kgf.m':  { 'zh-cn': '公斤.米',   'zh-tw': '公斤.米', 'default': 'kgf.m' },
-            'cN.m':   { 'zh-cn': '牛頓.厘米','zh-tw': '牛頓.厘米', 'default': 'cN.m' },
+            'N.m':    { 'zh-cn': '牛顿.米',  'zh-tw': '牛頓.公尺',   'default': 'N.m' },
+            'kgf.m':  { 'zh-cn': '公斤.米',   'zh-tw': '公斤.公尺', 'default': 'kgf.m' },
+            'cN.m':   { 'zh-cn': '牛頓.厘米','zh-tw': '牛頓.釐米', 'default': 'cN.m' },
         };
         const translatedUnit = unitLabels[rawUnit]?.[language] || rawUnit;
 
@@ -1205,10 +1219,10 @@
                 const unitCode = parseInt(unitSelect?.value ?? 1, 10); // 預設 N·m
                 const UNIT_TEXT = {
                     0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
-                    1: { 'en-us':'N·m',    'zh-tw':'牛頓·米',    'zh-cn':'牛顿·米'    },
+                    1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺', 'zh-cn':'牛顿·米'   },
                     2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英寸'   },
                     3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
-                    4: { 'en-us':'kgf·m',  'zh-tw':'公斤·米',    'zh-cn':'公斤·米'   }
+                    4: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺', 'zh-cn':'公斤·米'   }
                 };
                 unitText = (UNIT_TEXT[unitCode]?.[lang]) ?? 'N·m';
                 }
@@ -3485,10 +3499,10 @@
             if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
             const UNIT_TEXT = {
                 0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
-                1: { 'en-us':'N·m',    'zh-tw':'牛頓·米',   'zh-cn':'牛顿·米'   },
+                1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',   'zh-cn':'牛顿·米'   },
                 2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英吋'   },
                 3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
-                4: { 'en-us':'kgf·m',  'zh-tw':'公斤·米',   'zh-cn':'公斤·米'   },
+                4: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   },
             };
             unit = (UNIT_TEXT?.[torque_unit]?.[lang]) || 'N·m';
             }
@@ -3788,10 +3802,10 @@
             })();
             const UNIT_TEXT = {
             0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
-            1: { 'en-us':'N·m',    'zh-tw':'牛頓·米',   'zh-cn':'牛顿·米'    },
+            1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',   'zh-cn':'牛顿·米'    },
             2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',  'zh-cn':'磅·英寸'   },
-            3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米','zh-cn':'牛顿·厘米' },
-            4: { 'en-us':'kgf·m',  'zh-tw':'公斤·米',   'zh-cn':'公斤·米'   }
+            3: { 'en-us':'cN·m',   'zh-tw':'牛頓·釐米','zh-cn':'牛顿·厘米' },
+            4: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   }
             };
             unitText = (UNIT_TEXT[unitCode]?.[LANG]) ?? 'N·m';
         }
@@ -4143,6 +4157,44 @@ function getLangAndUnit() {
     document.getElementById('step_torque_unit')?.selectedIndex ?? 0
   ]?.text?.trim() || 'N·m';
   return { lang: ['en-us','zh-tw','zh-cn'].includes(lang) ? lang : 'en-us', unit };
+}
+
+
+function getLangAndUnit() {
+    
+    // 先讓專案內自訂的版本可覆蓋
+    try { if (typeof window._getLangAndUnit === 'function') return window._getLangAndUnit(); } catch {}
+
+    // 語系正規化
+    const raw = (typeof getCookie === 'function' && getCookie('language')) || 'en-us';
+    let lang = String(raw).toLowerCase();
+    if (lang === 'en') lang = 'en-us';
+    if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
+
+    // 取得扭力單位 code（優先 select，其次全域變數 torque_unit，預設 1 = N·m）
+    const sel = document.getElementById('step_torque_unit');
+    let code = parseInt(sel?.value ?? (typeof torque_unit !== 'undefined' ? torque_unit : 1), 10);
+    if (![0,1,2,3,4].includes(code)) code = 1;
+
+    // 多語對照表（依 code → 顯示字串）
+    const UNIT_LABELS = {
+        0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤力·厘米' },
+        1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',     'zh-cn':'牛顿·米'     },
+        2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅力·英寸'   },
+        3: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   },
+        4: { 'en-us':'cN·m',   'zh-tw':'牛頓·釐米',   'zh-cn':'牛顿·厘米'   },
+    };
+
+    const unit = (UNIT_LABELS[code]?.[lang]) || UNIT_LABELS[1][lang]; // fallback N·m
+
+    // 也一併回傳按鈕字（給 alertify.alert/confirm 使用）
+    const ui = {
+        title: (lang === 'en-us') ? 'Notification' : '提示',
+        ok:    (lang === 'zh-tw') ? '確定' : (lang === 'zh-cn' ? '确定' : 'OK'),
+        cancel:(lang === 'en-us') ? 'Cancel' : '取消'
+    };
+
+    return { lang, unit, code, ui };
 }
 
 

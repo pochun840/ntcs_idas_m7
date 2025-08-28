@@ -4,6 +4,7 @@ $text = array();
 
 //login page
 $text['login_text'] = 'Login';
+$text['logout_text'] = 'Logout';
 $text['password_text'] = 'password';
 
 $text['delete_confirm_text'] = 'Do you want to delete job id: ';
@@ -301,6 +302,7 @@ $text['Circular Archive_text'] = 'Circular Archive';
 $text['data'] = 'Data';
 $text['data_history'] = 'History';
 $text['data_export'] = 'Export Data';
+$text['download_chart'] = 'Download Chart';
 $text['data_history_success'] = 'Data';
 $text['data_history_fail'] = 'Error';
 $text['start_date'] = 'Start date';
@@ -429,6 +431,19 @@ $text['system_sync_notice'] = 'Controller last update time (UTC):';
 $text['system_sync_warning'] = 'The DB version of iDas is smaller than the controller';
 $text['system_sync_warning_title'] = 'iDas update time is older than the controller, do you still need to synchronize';
 $text['system_sync_warning_login'] = 'Controller has logged in';
+$text['system_idas_current_version'] = 'Current iDAS Version';
+$text['system_idas_upload_file'] = 'Upload file';
+$text['system_agent_ip'] = 'Agent Server IP';
+$text['system_agent_type'] = 'Agent Mode';
+$text['system_agent_frequency'] = 'Sending frequency';
+$text['system_agent_staus2'] = 'Agent Status';
+$text['system_agent_none'] = 'None';
+$text['system_agent_client'] = 'Client';
+$text['system_agent_server'] = 'Server';
+$text['system_agent_status'] = 'Status';
+$text['system_agent_check'] = 'Check';
+$text['system_agent_start'] = 'Start';
+$text['system_agent_stop'] = 'Stop';
 
 //barcode setting
 $text['system_barcode_setting'] = 'Barcode Setting';
@@ -465,6 +480,13 @@ $text['csv_file_path'] = 'File Path';
 $text['command'] = 'Command';
 $text['switch_job'] = 'Switch Job';
 $text['get_job'] = 'Get Job';
+
+
+//agent
+$text['device_type'] = 'Device Type';
+$text['device_name'] = 'Device Name';
+$text['open'] = 'Open';
+
 
 
 

@@ -89,57 +89,59 @@ class Sequence{
 
     }
 
-    public function copy_seq_by_seq_id($new_temp_seq) {
-        
-        $sql = "INSERT INTO `SEQ_lst` 
-                (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, 
-                ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, 
-                accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, 
-                image, message, delay, input, input_signal, output, output_signal, output_durat, 
-                addtion, unscrew_count_switch, unscrew_torque_threshold,seq_unit) 
-                VALUES 
-                (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, 
-                :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, 
-                :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, 
-                :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, 
-                :addtion, :unscrew_count_switch, :unscrew_torque_threshold,:seq_unit);";
-        
-       
+
+    public function copy_seq_by_seq_id($seq_data){
+
+        $sql = "INSERT INTO `SEQ_lst` (JOBID, SEQID, SEQname, type, time, act, skip, seq_repeat, timeout, ok_seq, ok_stop, countType, ok_screw, ng_stop, ng_unscrew, interrupt_alarm, accu_angle, Thread_Calcu, unscrew_mode, unscrew_force, unscrew_rpm, unscrew_dir, image, message, delay, input, input_signal, output, output_signal, output_durat, addtion, unscrew_count_switch, unscrew_torque_threshold,seq_unit,unscrew_angle_threshold,dt_time,tt_time)"; 
+        $sql.= "VALUES (:JOBID, :SEQID, :SEQname, :type, :time, :act, :skip, :seq_repeat, :timeout, :ok_seq, :ok_stop, :countType, :ok_screw, :ng_stop, :ng_unscrew, :interrupt_alarm, :accu_angle, :Thread_Calcu, :unscrew_mode, :unscrew_force, :unscrew_rpm, :unscrew_dir, :image, :message, :delay, :input, :input_signal, :output, :output_signal, :output_durat, :addtion, :unscrew_count_switch, :unscrew_torque_threshold,:seq_unit,:unscrew_angle_threshold,:dt_time,:tt_time);";
         $statement = $this->db_iDas->prepare($sql);
-        $insertedrecords = 0;
-    
-        foreach ($new_temp_seq as $seq) {
-            try {
-               
-                if (is_array($seq) && isset(
-                    $seq['JOBID'], $seq['SEQID'], $seq['SEQname'], $seq['type'], $seq['time'],
-                    $seq['act'], $seq['skip'], $seq['seq_repeat'], $seq['timeout'], $seq['ok_seq'], 
-                    $seq['ok_stop'], $seq['countType'], $seq['ok_screw'], $seq['ng_stop'], 
-                    $seq['ng_unscrew'], $seq['interrupt_alarm'], $seq['accu_angle'], $seq['Thread_Calcu'], 
-                    $seq['unscrew_mode'], $seq['unscrew_force'], $seq['unscrew_rpm'], $seq['unscrew_dir'], 
-                    $seq['image'], $seq['message'], $seq['delay'], $seq['input'], $seq['input_signal'], 
-                    $seq['output'], $seq['output_signal'], $seq['output_durat'], $seq['addtion'], 
-                    $seq['unscrew_count_switch'], $seq['unscrew_torque_threshold']
-                )) {
-                   
-                    if ($statement->execute($seq)) {
-                        $insertedrecords++;
-                    } else {
-                      
-                        $errorInfo = $statement->errorInfo();
-                        echo "SQL Error: " . $errorInfo[2] . "\n";
-                        $binded_sql = $this->generate_sql_with_values($sql, $seq);
-                        echo "可执行的 SQL 语句：\n" . $binded_sql . "\n";
-                    }
-                } else {
-                    echo "缺少必要字段: " . print_r($seq, true);
-                }
-            } catch (PDOException $e) {
-                echo "PDOException: " . $e->getMessage();
-            }
-        }
-        return $insertedrecords;
+
+   
+
+        $statement->bindValue(':JOBID', $seq_data[0]['JOBID']);
+        $statement->bindValue(':SEQID', $seq_data[0]['SEQID']);
+        $statement->bindValue(':SEQname', $seq_data[0]['SEQname']);
+        $statement->bindValue(':type', $seq_data[0]['type']);
+        $statement->bindValue(':time', $seq_data[0]['time']);
+        $statement->bindValue(':act', $seq_data[0]['act']);
+        $statement->bindValue(':skip', $seq_data[0]['skip']);
+        $statement->bindValue(':seq_repeat', $seq_data[0]['seq_repeat']);
+        $statement->bindValue(':timeout', $seq_data[0]['timeout']);
+        $statement->bindValue(':ok_seq', $seq_data[0]['ok_seq']);
+        $statement->bindValue(':ok_stop', $seq_data[0]['ok_stop']);
+        $statement->bindValue(':countType', $seq_data[0]['countType']);
+        $statement->bindValue(':ok_screw', $seq_data[0]['ok_screw']);
+        $statement->bindValue(':ng_stop', $seq_data[0]['ng_stop']);
+        $statement->bindValue(':ng_unscrew', $seq_data[0]['ng_unscrew']);
+        $statement->bindValue(':interrupt_alarm', $seq_data[0]['interrupt_alarm']);
+        $statement->bindValue(':accu_angle', $seq_data[0]['accu_angle']);
+        $statement->bindValue(':Thread_Calcu', $seq_data[0]['Thread_Calcu']);
+        $statement->bindValue(':unscrew_mode', $seq_data[0]['unscrew_mode']);
+        $statement->bindValue(':unscrew_force', $seq_data[0]['unscrew_force']);
+        $statement->bindValue(':unscrew_rpm', $seq_data[0]['unscrew_rpm']);
+        $statement->bindValue(':unscrew_dir', $seq_data[0]['unscrew_dir']);
+        $statement->bindValue(':image', $seq_data[0]['image']);
+        $statement->bindValue(':message', $seq_data[0]['message']);
+        $statement->bindValue(':delay', $seq_data[0]['delay']);
+        $statement->bindValue(':input', $seq_data[0]['input']);
+        $statement->bindValue(':input_signal', $seq_data[0]['input_signal']);
+        $statement->bindValue(':output', $seq_data[0]['output']);
+        $statement->bindValue(':output_signal', $seq_data[0]['output_signal']);
+        $statement->bindValue(':output_durat', $seq_data[0]['output_durat']);
+        $statement->bindValue(':addtion', $seq_data[0]['addtion']);
+        $statement->bindValue(':unscrew_count_switch', $seq_data[0]['unscrew_count_switch']);
+        $statement->bindValue(':unscrew_torque_threshold', $seq_data[0]['unscrew_torque_threshold']);
+        $statement->bindValue(':seq_unit', $seq_data[0]['seq_unit']);
+        $statement->bindValue(':unscrew_angle_threshold', $seq_data[0]['unscrew_angle_threshold']);
+        $statement->bindValue(':dt_time', $seq_data[0]['dt_time']);
+        $statement->bindValue(':tt_time', $seq_data[0]['tt_time']);
+        $results = $statement->execute();
+
+        return $results;
+
     }
+
+
     
     /**
      * 生成带有绑定值的 SQL 语句，方便调试
@@ -371,7 +373,10 @@ class Sequence{
                     addtion = :addtion, 
                     unscrew_count_switch = :unscrew_count_switch, 
                     unscrew_torque_threshold = :unscrew_torque_threshold,
-                    seq_unit =:seq_unit
+                    seq_unit =:seq_unit,
+                    unscrew_angle_threshold =:unscrew_angle_threshold,
+                    dt_time =:dt_time,
+                    tt_time =:tt_time
                 WHERE  JOBID = :JOBID  AND SEQID = :SEQID";
 
         $statement = $this->db_iDas->prepare($sql);
@@ -410,6 +415,9 @@ class Sequence{
         $statement->bindValue(':unscrew_count_switch', $seq_data['unscrew_count_switch']);
         $statement->bindValue(':unscrew_torque_threshold', $seq_data['unscrew_torque_threshold']);
         $statement->bindValue(':seq_unit', $seq_data['seq_unit']);
+        $statement->bindValue(':unscrew_angle_threshold', $seq_data['unscrew_angle_threshold']);
+        $statement->bindValue(':dt_time', $seq_data['dt_time']);
+        $statement->bindValue(':tt_time', $seq_data['tt_time']);
     
         $results = $statement->execute();
 

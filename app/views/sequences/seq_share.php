@@ -1,3 +1,5 @@
+
+
 <script>
 function cound_seq(argument) {
     const table = document.getElementById('seq_table');
@@ -69,71 +71,109 @@ for (var i = 0; i < rows.length; i++) {
     })(rows[i]);
 }
 
-function copy_seq_by_id(){
 
-    var jobid = '<?php echo $data['job_id'];?>';
-    var oldseqname = seqname;
-    var newseqid = document.getElementById('to_seq_id').value;
-    var newseqname = document.getElementById("to_seq_name").value;    
+function copy_seq_by_id() {
+    var jobid      = '<?php echo $data['job_id'];?>';
+    var oldseqname = (typeof seqname !== 'undefined') ? seqname : ''; // 來源工序名
+    var newseqid   = document.getElementById('to_seq_id')?.value?.trim();
+    var newseqname = document.getElementById('to_seq_name')?.value?.trim();
 
-    var language = getCookie('language');
-    if(language == "zh-cn"){
-        var text_info ='你确定吗？';
-    }else if(language == "zh-tw"){
-        var text_info ='你確定嗎 ?';
-    }else{
-        var text_info ='Are you sure ?';
+    // ===== 多語系字串 =====
+    var lang = getCookie('language');
+    var title = 'Copy Sequence';
+    var text  = 'Are you sure you want to copy this sequence?';
+    var okText = 'OK';
+    var cancelText = 'Cancel';
+    var needNameMsg = 'Please enter the new sequence ID and name.';
+
+    if (lang === 'zh-cn') {
+        title = '复制工序';
+        text  = '你确定要复制该工序吗？';
+        okText = '确定';
+        cancelText = '取消';
+        needNameMsg = '请输入新工序的编号与名称。';
+    } else if (lang === 'zh-tw') {
+        title = '複製工序';
+        text  = '你確定要複製該工序嗎？';
+        okText = '確定';
+        cancelText = '取消';
+        needNameMsg = '請輸入新工序的編號與名稱。';
     }
 
+    // ===== 基本檢查 =====
+    if (!newseqid || !newseqname) {
+        alertify.error(needNameMsg);
+        return;
+    }
 
-    if(newseqname){
-        $.ajax({
-            url: "?url=Sequences/check_seq_type",
-            method: "POST",
-            data:{ 
-                jobid:jobid,
-                newseqid: newseqid
+    // 先檢查目標 SEQ 是否可用
+    $.ajax({
+        url: "?url=Sequences/check_seq_type",
+        method: "POST",
+        data: { jobid: jobid, newseqid: newseqid },
+        success: function(response) {
+            alertify
+              .confirm(
+                title,
+                text,
+                function onOk() {
+                    // 顯示遮罩＋spinner
+                    document.querySelector('.main-content')?.classList.add('overlay-active');
+                    document.getElementById('spinner').style.display = 'block';
 
-            },
-            success: function(response) {
-                alertify.confirm(text_info, function (result) {
-                if(result){
+                    // 執行複製
                     $.ajax({
                         url: "?url=Sequences/copy_seq_data",
                         method: "POST",
-                        data:{ 
+                        data: {
                             jobid: jobid,
-                            seqid: seqid,
+                            seqid: typeof seqid !== 'undefined' ? seqid : '', // 來源 SEQID
                             oldseqname: oldseqname,
                             newseqid: newseqid,
                             newseqname: newseqname
                         },
-                        success: function(response) {
-                            console.log(response);
-                            var responseData = JSON.parse(response);
-                            alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                        success: function(resp) {
+                            var data;
+                            try { data = (typeof resp === 'string') ? JSON.parse(resp) : resp; }
+                            catch(e) { data = { res_type: 'Info', res_msg: resp || 'Done.' }; }
+
+                            alertify.alert(data.res_type, data.res_msg, function () {
                                 history.go(0);
                             });
-                           
                         },
                         error: function(xhr, status, error) {
-                            
+                            alertify.error((lang === 'zh-tw')
+                                ? '複製失敗：' + error
+                                : (lang === 'zh-cn') ? '复制失败：' + error
+                                : 'Copy failed: ' + error
+                            );
+                        },
+                        complete: function() {
+                            document.querySelector('.main-content')?.classList.remove('overlay-active');
+                            document.getElementById('spinner').style.display = 'none';
                         }
                     });
-                }else {
-                    alertify.error('Cancelled');
-                    // 用户点击取消按钮的处理逻辑
+                },
+                function onCancel() {
+                    /*alertify.message(
+                        (lang === 'zh-tw') ? '已取消' :
+                        (lang === 'zh-cn') ? '已取消' : 'Cancelled'
+                    );*/
                 }
-                });
-                        },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-          
-    }
-
+              )
+              .set('labels', { ok: okText, cancel: cancelText });
+        },
+        error: function(xhr, status, error) {
+            alertify.error(
+                (lang === 'zh-tw') ? ('預檢失敗：' + error) :
+                (lang === 'zh-cn') ? ('预检失败：' + error) :
+                ('Pre-check failed: ' + error)
+            );
+        }
+    });
 }
+
+
 
 function create_seq() {
     const job_id = '<?php echo $data['job_id']; ?>';
@@ -156,51 +196,52 @@ function copy_seq(seqid, seqname) {
 
 //刪除seq
 function delete_seqid(seqid) {
-
     var jobid = '<?php echo $data['job_id']?>';
-
     if (!jobid) return;
 
-    var language = getCookie('language');
-    var text_info, title;
-
-    if (language === "zh-cn") {
-        text_info = '你确定要删除这个工序吗？';
-        title = '删除作业';
-    } else if (language === "zh-tw") {
-        text_info = '你確定要刪除這個工序嗎？';
-        title = '刪除作業';
-    } else {
-        text_info = 'Are you sure you want to delete this sequences?';
-        title = 'Delete sequences';
+    // 多語系
+    var lang = getCookie('language');
+    var text_info = 'Are you sure you want to delete this sequence?';
+    var title = 'Delete Sequence';
+    if (lang === 'zh-cn') {
+        text_info = '你确定要删除该工序吗？';
+        title = '删除工序';
+    } else if (lang === 'zh-tw') {
+        text_info = '你確定要刪除該工序嗎？';
+        title = '刪除工序';
     }
 
-    alertify.confirm(title, text_info, function () {
-        // 點擊確認才會執行 AJAX
-        document.querySelector(".main-content").classList.add("overlay-active");
-        document.getElementById("spinner").style.display = 'block';
+    // OK / Cancel 文案
+    var okText     = (lang === 'zh-tw') ? '確定' : (lang === 'zh-cn') ? '确定' : 'OK';
+    var cancelText = (lang === 'zh-tw') ? '取消' : (lang === 'zh-cn') ? '取消' : 'Cancel';
 
-        $.ajax({
-            url: "?url=Sequences/delete_seq",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-                seqid: seqid
-            },
-            success: function (response) {
-                  success_response(response, 'spinner', true); // 自動關閉
-            },
-            error: function (xhr, status, error) {
-                alertify.error("Delete failed: " + error);
-                document.querySelector(".main-content").classList.remove("overlay-active");
-                document.getElementById("spinner").style.display = 'none';
-            }
-        });
+    alertify
+      .confirm(title, text_info,
+        function () {
+            // ✅ 確認後執行
+            document.querySelector('.main-content').classList.add('overlay-active');
+            document.getElementById('spinner').style.display = 'block';
 
-    }, function () {
-        // 使用者點取消時什麼都不做
-        document.querySelector(".main-content").classList.remove("overlay-active");
-    });
+            $.ajax({
+                url: "?url=Sequences/delete_seq",
+                method: "POST",
+                data: { jobid: jobid, seqid: seqid },
+                success: function (response) {
+                    success_response(response, 'spinner', true); // 自動關閉 + 刷新
+                },
+                error: function (xhr, status, error) {
+                    alertify.error("Delete failed: " + error);
+                    document.querySelector('.main-content').classList.remove('overlay-active');
+                    document.getElementById('spinner').style.display = 'none';
+                }
+            });
+        },
+        function () {
+            // 取消：移除遮罩
+            document.querySelector('.main-content').classList.remove('overlay-active');
+        }
+      )
+      .set('labels', { ok: okText, cancel: cancelText }); // ← 套用多語系按鈕
 }
 
 

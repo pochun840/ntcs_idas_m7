@@ -5,7 +5,7 @@
         <div class="center-content w3-center">
             <div style="text-shadow:3px 5px 0 #444;" class="wrapper w3-center w3-text-red">
                 <div class="buttonbox" style=" top: 2%;right: 10px;text-align: right;position: absolute;">
-                <input type="button" name="" value="Logout" onclick="logout()" >
+                <input type="button" name="" value="<?php echo $text['logout_text'];?>" onclick="logout()" >
                 <input type="button" name="" value="简中" data-language="zh-cn" onclick="language_change('zh-cn');" >
                 <input type="button" name="" value="繁中" data-language="zh-tw" onclick="language_change('zh-tw');">
                 <input type="button" name="" value="English" data-language="en-us" onclick="language_change('en-us');">
@@ -50,6 +50,19 @@
 
 </html>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const langRaw = getCookie('language') || 'en-us';
+    const language = (langRaw.toLowerCase() === 'en') ? 'en-us' : langRaw.toLowerCase();
+
+    alertify.defaults.glossary = {
+        title: (language === 'zh-tw') ? '提示' :
+            (language === 'zh-cn') ? '提示' : 'Notification',
+        ok: (language === 'zh-tw') ? '確定' :
+            (language === 'zh-cn') ? '确定' : 'OK',
+        cancel: (language === 'zh-tw') ? '取消' :
+                (language === 'zh-cn') ? '取消' : 'Cancel'
+    };
+});
 
 document.addEventListener('DOMContentLoaded', function() {
   var observer = new MutationObserver(function(mutations) {
@@ -130,6 +143,13 @@ function DB_sync_idas(argument) {
         }
     };
 
+    // ★ 新增：OK / Cancel 語系
+    const okText = (language === 'zh-cn') ? '确定' :
+                    (language === 'zh-tw') ? '確定' : 'OK';
+    const cancelText = (language === 'zh-cn') ? '取消' :
+                        (language === 'zh-tw') ? '取消' : 'Cancel';
+                        
+
     const title = titles[language]?.[argument] || titles["default"][argument];
     const message = messages[language]?.[argument] || messages["default"][argument];
     const syncingText = syncingTexts[language] || syncingTexts["default"];
@@ -159,7 +179,8 @@ function DB_sync_idas(argument) {
                 showAlertAutoClose('Error', errorText.check);
             }
         });
-    }, function () {});
+    }, function () {})
+    .set('labels', { ok: okText, cancel: cancelText }); // ← 加上這行
 
     function startSyncProcess(argument, syncingText, errorText) {
         let progress = 0;

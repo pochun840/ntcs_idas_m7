@@ -22,6 +22,10 @@ $(document).ready(function () {
     getCurrentSystemTime();
 });
 
+function suppressRangeHints(on = true) {
+  document.documentElement.classList.toggle('suppress-range-hints', !!on);
+  // 或者用 body：document.body.classList.toggle('suppress-range-hints', !!on);
+}
 
 function change_datetime() {
     var newTime = document.getElementById("newTime").value;
@@ -186,7 +190,9 @@ function controller_save(){
 
             },
             success: function(response) {
-                  handleAjaxResponse(response);
+
+                suppressRangeHints(true);
+                handleAjaxResponse(response);
             },
             error: function(xhr, status, error) {
                 
@@ -196,13 +202,33 @@ function controller_save(){
 }
 
 
-    function input_check_setting(argument) {
+
+
+function input_check_setting(argument) {
+
+    // —— 一次性注入 CSS：關掉 inline 紅字；灰字範圍提示不受 is-invalid 影響 —— //
+    (function ensureNoInlineErrorCSS(){
+        var id = 'hide-inline-invalid-feedback-style';
+        if (!document.getElementById(id)) {
+        var style = document.createElement('style');
+        style.id = id;
+        style.textContent = `
+            .is-invalid ~ .invalid-feedback,
+            .was-validated .form-control:invalid ~ .invalid-feedback,
+            .was-validated .form-select:invalid ~ .invalid-feedback {
+            display: none !important;
+            }
+            .range-hint.form-text { display: block !important; }
+            .is-invalid ~ .range-hint.form-text { display: none !important; }
+        `;
+        document.head.appendChild(style);
+        }
+    })();
+
     // 取得語系
     const getCookieSafe = (name) => {
-        try {
-        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-        return m ? decodeURIComponent(m[1]) : null;
-        } catch { return null; }
+        try { const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+        catch { return null; }
     };
     let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : (getCookieSafe('language') || 'zh-tw')) || 'zh-tw';
     lang = String(lang).toLowerCase();
@@ -211,120 +237,138 @@ function controller_save(){
 
     // 字串資源
     const LABELS = {
-        'en-us': {
-        control_name: 'Control Name',
-        storage_warning: 'Storage Warning (%)',
-        torque_filter: 'Torque Filter',
-        global_downshift_torque: 'Downshift Torque',
-        global_downshift_speed: 'Downshift Speed'
-        },
-        'zh-tw': {
-        control_name: '設備名稱',
-        storage_warning: '容量警示(%)',
-        torque_filter: '扭力過濾',
-        global_downshift_torque: '降檔扭力',
-        global_downshift_speed: '降檔速'
-        },
-        'zh-cn': {
-        control_name: '设备名称',
-        storage_warning: '容量警示(%)',
-        torque_filter: '扭力过滤',
-        global_downshift_torque: '降档扭力”',
-        global_downshift_speed: '降转转速'
-        }
+        'en-us': { control_name:'Control Name', storage_warning:'Storage Warning (%)', torque_filter:'Torque Filter', global_downshift_torque:'Downshift Torque', global_downshift_speed:'Downshift Speed' },
+        'zh-tw': { control_name:'設備名稱', storage_warning:'容量警示(%)', torque_filter:'扭力過濾', global_downshift_torque:'降檔扭力', global_downshift_speed:'降檔速' },
+        'zh-cn': { control_name:'设备名称', storage_warning:'容量警示(%)', torque_filter:'扭力过滤', global_downshift_torque:'降档扭力', global_downshift_speed:'降档速度' }
     }[lang];
 
     const I18N = {
-        'en-us': {
-        title: 'Warning',
-        ok: 'OK',
-        required: '{FIELD} is required.',
-        format: '{FIELD} has invalid format.',
-        range: '{FIELD} is out of range ({RANGE}).'
-        },
-        'zh-tw': {
-        title: '警告',
-        ok: '確定',
-        required: '{FIELD} 為必填。',
-        format: '{FIELD} 格式不正確。',
-        range: '{FIELD} 超出範圍（{RANGE}）。'
-        },
-        'zh-cn': {
-        title: '警告',
-        ok: '确定',
-        required: '{FIELD} 为必填。',
-        format: '{FIELD} 格式不正确。',
-        range: '{FIELD} 超出范围（{RANGE}）。'
-        }
+        'en-us': { title:'Warning', ok:'OK', required:'{FIELD} is required.', format:'{FIELD} has invalid format.', range:'{FIELD} is out of range ({RANGE}).' },
+        'zh-tw': { title:'警告', ok:'確定', required:'{FIELD} 為必填。', format:'{FIELD} 格式不正確。', range:'{FIELD} 超出範圍（{RANGE}）。' },
+        'zh-cn': { title:'警告', ok:'确定', required:'{FIELD} 为必填。', format:'{FIELD} 格式不正确。', range:'{FIELD} 超出范围（{RANGE}）。' }
     }[lang];
 
-    // 驗證規則
+    // 也準備 Cancel 文案（以防未來 confirm 使用）
+    const OK_TEXT = { 'en-us':'OK', 'zh-tw':'確定', 'zh-cn':'确定' }[lang];
+    const CANCEL_TEXT = { 'en-us':'Cancel', 'zh-tw':'取消', 'zh-cn':'取消' }[lang];
+
+    // 先嘗試設定全域（支援的 alertify 版本會吃到）
+    try {
+        if (window.alertify?.defaults?.glossary) {
+        alertify.defaults.glossary.ok = OK_TEXT;
+        alertify.defaults.glossary.cancel = CANCEL_TEXT;
+        }
+    } catch (_) {}
+
+    // —— Hint 工具 —— //
+    function getHintEl(el) {
+        if (!el) return null;
+        const id = el.id;
+        let hint = el.parentElement?.querySelector(`[data-hint-for="${id}"]`);
+        if (hint) return hint;
+        hint = el.parentElement?.querySelector('.range-hint');
+        if (hint) return hint;
+        let sib = el.nextElementSibling, step = 0;
+        while (sib && step < 3) {
+        if (sib.matches('.range-hint, .invalid-feedback, .form-text, .help-block, .text-danger')) return sib;
+        sib = sib.nextElementSibling; step++;
+        }
+        return null;
+    }
+    function neutralizeHint(el) {
+        const h = getHintEl(el);
+        if (!h) return null;
+        h.classList.remove('text-danger','invalid-feedback','d-block');
+        h.classList.add('form-text','range-hint');
+        h.style.display = 'none';
+        h.textContent = '';
+        return h;
+    }
+    function hideHint(el) {
+        const h = getHintEl(el) || neutralizeHint(el);
+        if (!h) return;
+        h.textContent = '';
+        h.style.display = 'none';
+        h.classList.remove('text-danger','invalid-feedback','d-block');
+        h.classList.add('form-text','range-hint');
+    }
+    function showRangeHint(el, min, max) {
+        const h = getHintEl(el) || neutralizeHint(el);
+        if (!h) return;
+        if (min == null || max == null) { hideHint(el); return; }
+        h.textContent = `${min} ~ ${max}`;
+        h.style.display = 'block';
+        h.classList.remove('text-danger','invalid-feedback','d-block');
+        h.classList.add('form-text','range-hint');
+    }
+
+    // 規則
     const conditions = [
-        { id: 'control_name',              label: LABELS.control_name,              pattern: /^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min: null, max: null },
-        { id: 'storage_warning',           label: LABELS.storage_warning,           pattern: /^\d{0,4}$/,                     min: 50,   max: 95   },
-        { id: 'torque_filter',             label: LABELS.torque_filter,             pattern: /^\d{1,3}(\.\d{1,6})?$/,         min: 0.0,  max: 200  },
-        { id: 'global_downshift_torque',   label: LABELS.global_downshift_torque,   pattern: /^\d{0,5}?$/,                    min: 0,    max: 1000 },
-        { id: 'global_downshift_speed',    label: LABELS.global_downshift_speed,    pattern: /^\d{0,5}?$/,                    min: 0,    max: 100  },
+        { id:'control_name',            label:LABELS.control_name,            pattern:/^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min:null, max:null },
+        { id:'storage_warning',         label:LABELS.storage_warning,         pattern:/^\d{0,4}$/,                      min:50,   max:95   },
+        { id:'torque_filter',           label:LABELS.torque_filter,           pattern:/^\d{1,3}(\.\d{1,6})?$/,          min:0.0,  max:200  },
+        { id:'global_downshift_torque', label:LABELS.global_downshift_torque, pattern:/^\d{0,5}?$/,                     min:0,    max:1000 },
+        { id:'global_downshift_speed',  label:LABELS.global_downshift_speed,  pattern:/^\d{0,5}?$/,                     min:0,    max:100  },
     ];
 
     let isFormValid = true;
-    const errors = [];   // 收集錯誤訊息
+    const errors = [];
     let firstInvalidEl = null;
+    const passedFields = new Set();
 
+    // 先驗證，不顯示 hint
     conditions.forEach((input) => {
-        const element = document.getElementById(input.id);
-        if (!element) return;
+        const el = document.getElementById(input.id);
+        if (!el) return;
 
-        const value = (element.value || '').trim();
+        const value = (el.value || '').trim();
 
-        // 若你仍想顯示「允許範圍」提示（不是錯誤），可保留這段
-        if (input.id !== 'control_name') {
-        const hint = element.nextElementSibling;
-        if (hint) hint.innerHTML = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : '';
-        }
-
-        // 預設移除錯誤樣式
-        element.classList.remove('is-invalid');
+        el.classList.remove('is-invalid');
+        hideHint(el);
 
         const pushErr = (msg) => {
         isFormValid = false;
         errors.push(msg);
-        element.classList.add('is-invalid');
-        if (!firstInvalidEl) firstInvalidEl = element;
+        el.classList.add('is-invalid');
+        hideHint(el);
+        if (!firstInvalidEl) firstInvalidEl = el;
         };
 
-        // 必填
-        if (value === '') {
-        pushErr(I18N.required.replace('{FIELD}', input.label));
-        return;
-        }
+        if (value === '') { pushErr(I18N.required.replace('{FIELD}', input.label)); return; }
+        if (!input.pattern.test(value)) { pushErr(I18N.format.replace('{FIELD}', input.label)); return; }
 
-        // 格式
-        if (!input.pattern.test(value)) {
-        pushErr(I18N.format.replace('{FIELD}', input.label));
-        return;
-        }
-
-        // 範圍（若有設定）
         const num = parseFloat(value);
         if (input.min !== null && !Number.isNaN(num) && num < input.min) {
         const range = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : `≥ ${input.min}`;
-        pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range));
-        return;
+        pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range)); return;
         }
         if (input.max !== null && !Number.isNaN(num) && num > input.max) {
         const range = (input.min !== null && input.max !== null) ? `${input.min} ~ ${input.max}` : `≤ ${input.max}`;
-        pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range));
-        return;
+        pushErr(I18N.range.replace('{FIELD}', input.label).replace('{RANGE}', range)); return;
         }
+
+        passedFields.add(input.id);
     });
 
-    // 有錯 → 彈窗一次性顯示（多語），並把游標帶到第一個錯誤欄位
-    if (!isFormValid && errors.length > 0) {
-        // 用 <ul> 顯示多條訊息（Alertify 支援 HTML 字串）
-        const body = errors.map(e => `<div>${e}</div>`).join('');
+    // 驗證後再決定是否顯示範圍
+    if (isFormValid) {
+        conditions.forEach((input) => {
+        if (input.id === 'control_name') return;
+        const el = document.getElementById(input.id);
+        if (!el) return;
+        if (passedFields.has(input.id)) showRangeHint(el, input.min, input.max);
+        else hideHint(el);
+        });
+    } else {
+        conditions.forEach((input) => {
+        const el = document.getElementById(input.id);
+        if (el) hideHint(el);
+        });
+    }
 
-        // 節流避免多次彈窗
+    // 彈窗顯示錯誤（OK 有語系）
+    if (!isFormValid && errors.length > 0) {
+        const body = errors.map(e => `<div>${e}</div>`).join('');
         if (!window._alertingSettingsForm) {
         window._alertingSettingsForm = true;
         alertify
@@ -332,12 +376,14 @@ function controller_save(){
             try { firstInvalidEl?.focus(); firstInvalidEl?.select?.(); } catch {}
             window._alertingSettingsForm = false;
             })
-            .set('labels', { ok: I18N.ok });
+            .set('labels', { ok: OK_TEXT }); // ★ 單次保險
         }
     }
 
     return isFormValid;
 }
+
+
 
 
 //新增密碼

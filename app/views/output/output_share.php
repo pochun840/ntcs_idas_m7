@@ -3,6 +3,12 @@
 let unifiedFlag = 0;
 let _getOutputReqId = 0;
 
+let enterPageYellowJobId = null; // 進入頁面時若 job_id 是黃底就記下
+let clickedYellowJobId   = null; // 按 unified 時若 job_id 是黃底就記下
+let _suppressYellowOnce = false;  // 下一次 get_output_by_job_id 執行時，禁用黃底
+
+
+
 // 從 PHP 帶入目前 unified 的 jobid（可能為 null/空字串/數字）
 const BOOT_FOCUSED_JOBID = <?php echo json_encode($data['focused_jobid'] ?? null); ?>;
 
@@ -118,8 +124,13 @@ function setUnifiedState(job_id, enable) {
 
 
 // ---- 初始：依背景色決定 unifiedFlag（不呼叫 alignsubmit/resetalignsubmit）----
-document.addEventListener('DOMContentLoaded', function () {
-  unifiedFlag = isJobIdYellow() ? 1 : 0;
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('job_id');
+  const isYellow = isJobIdYellow();
+  unifiedFlag = isYellow ? 1 : 0;
+  if (el && isYellow) {
+    enterPageYellowJobId = el.value || '';
+  }
 });
 
 
@@ -146,6 +157,15 @@ function crud_job_event(argument) {
     }
 
     const showModal = (id) => document.getElementById(id).style.display = 'block';
+
+    if (argument === 'unified') {
+        const el = document.getElementById('job_id');
+        if (el && isJobIdYellow()) {
+        clickedYellowJobId = el.value || '';
+        // 若要持久化也可加：localStorage.setItem('clickedYellowJobId', clickedYellowJobId);
+        }
+    }
+    
 
     switch (argument) {
         case 'del':
@@ -400,7 +420,7 @@ function crud_job_event(argument) {
             const currentlyYellow = isJobIdYellow();
             setUnifiedState(job_id, !currentlyYellow);
         break;
-}
+        }
 
         default:
             console.warn(`Unknown action: ${argument}`);
@@ -559,74 +579,137 @@ function job_confirm(){
 }
 
 //delete
-function delete_output_id(job_id,del_output_val){
+function delete_output_id(job_id, del_output_val) {
+  if (!job_id) return;
 
-   var language = getCookie('language');
-   var text_info, title;
+  // 多語系
+  var lang = getCookie('language') || 'en-us';
+  var title, text, okText, cancelText, errMsg, cancelledMsg;
 
-   if (language === "zh-cn") {
-       text_info = '你确定吗？';
-       title = '刪除任務';
-   } else if (language === "zh-tw") {
-       text_info = '你確定嗎？';
-       title = '刪除任務';
-   } else {
-       text_info = 'Are you sure?';
-       title = 'Delete Event';
-   }
-   
-   if (job_id) {
-       alertify.confirm(
-           title, // 標題
-           text_info, // 提示文字
-           function() {
-               //使用者選擇「是」後執行刪除動作
-               document.getElementById('spinner').style.display = 'block';
+  if (lang === 'zh-tw') {
+    title = '刪除事件';
+    text  = '你確定要刪除此事件嗎？';
+    okText = '確定';
+    cancelText = '取消';
+    errMsg = '刪除失敗，請稍後再試！';
+    cancelledMsg = '已取消';
+  } else if (lang === 'zh-cn') {
+    title = '删除事件';
+    text  = '你确定要删除该事件吗？';
+    okText = '确定';
+    cancelText = '取消';
+    errMsg = '删除失败，请稍后再试！';
+    cancelledMsg = '已取消';
+  } else {
+    title = 'Delete Event';
+    text  = 'Are you sure you want to delete this event?';
+    okText = 'OK';
+    cancelText = 'Cancel';
+    errMsg = 'Delete failed, please try again later.';
+    cancelledMsg = 'Cancelled';
+  }
 
-               $.ajax({
-                    url: "?url=Outputs/delete_output",
-                   method: "POST",
-                   data: { 
-                       job_id: job_id,
-                       output_event: del_output_val,
-                   },
-                   success: function(response) {
-                        input_success_res(response, job_id, get_output_by_job_id, 'edit_input');
-                        hideOverlay();
-                   },
-                   error: function(xhr, status, error) {
-                       alertify.error("刪除失敗，請稍後再試！");
-                       document.querySelector(".main-content").classList.remove("overlay-active"); 
-                       document.getElementById('spinner').style.display = 'none';
-                   }
-               });
-            },
-            function() {
-                // 取消 callback 可選寫在這裡（目前略過）
-                document.querySelector(".main-content").classList.remove("overlay-active");
-                hideOverlay();
-            }
-        ).set('labels', {ok:'YES', cancel:'NO'}); // 修改按鈕文字
+  alertify.confirm(
+    title,
+    text,
+    function onOk() {
+      // 顯示遮罩＋spinner
+      document.querySelector(".main-content")?.classList.add("overlay-active");
+      document.getElementById('spinner').style.display = 'block';
+
+      $.ajax({
+        url: "?url=Outputs/delete_output",
+        method: "POST",
+        data: {
+          job_id: job_id,
+          output_event: del_output_val
+        },
+        success: function(response) {
+          // 依你現有邏輯：用通用的成功處理器
+          input_success_res(response, job_id, get_output_by_job_id, 'edit_output');
+          hideOverlay();
+        },
+        error: function(xhr, status, error) {
+          alertify.error(errMsg);
+          document.querySelector(".main-content")?.classList.remove("overlay-active");
+          document.getElementById('spinner').style.display = 'none';
+        }
+      });
+    },
+    function onCancel() {
+      document.querySelector(".main-content")?.classList.remove("overlay-active");
+      hideOverlay();
+      alertify.message(cancelledMsg);
     }
+  ).set('labels', { ok: okText, cancel: cancelText });
 }
 
 
+
 function input_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
-    var responseData = JSON.parse(response);
-    alertify.alert(responseData.res_type, responseData.res_msg);
+    // 安全解析回傳
+    let data;
+    try {
+        data = (typeof response === 'string') ? JSON.parse(response) : response;
+    } catch (e) {
+        data = { res_type: 'Info', res_msg: String(response || 'Done') };
+    }
+    const title = data?.res_type || '';
+    const msg   = data?.res_msg  || '';
 
-    setTimeout(function () {
-        alertify.closeAll();
-        document.querySelector(".main-content").classList.remove("overlay-active");
-        document.getElementById('spinner').style.display = 'none';
+    // 依語系決定 OK 文案（含常見變體）
+    const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||
+                    document.documentElement.getAttribute('lang') || 'en-us';
+    const l = String(rawLang).toLowerCase();
+    let okLabel = 'OK';
+    if (l === 'zh-tw' || l.includes('hant') || l.includes('tw') || l.includes('hk') || l.includes('mo')) {
+        okLabel = '確定';
+    } else if (l === 'zh-cn' || l.includes('hans') || l.includes('cn') || l.includes('sg')) {
+        okLabel = '确定';
+    }
 
-        if (typeof callbackFn === 'function') {
-            callbackFn(job_id);
+    // 保險：有些版本要先設全域 glossary 才吃得到
+    if (window.alertify?.defaults?.glossary) {
+        try { alertify.defaults.glossary.ok = okLabel; } catch (e) {}
+    }
+
+    let autoTimer;
+
+    // 顯示彈窗（單次也設 labels，雙保險）
+    alertify
+        .alert(title, msg, function () {
+        clearTimeout(autoTimer);
+        finalize();
+        })
+        .set('labels', { ok: okLabel });
+
+    // 2 秒後自動關閉並收尾
+    autoTimer = setTimeout(finalize, 2000);
+
+    function finalize() {
+        try { alertify.closeAll(); } catch (e) {}
+        document.querySelector(".main-content")?.classList.remove("overlay-active");
+        const sp = document.getElementById('spinner');
+        if (sp) sp.style.display = 'none';
+
+        // 重置 UI
+        const selectEl = document.getElementById('Event_Option');
+        if (selectEl) selectEl.value = '-1';
+        document.querySelectorAll('input[name="pin_option"]').forEach(r => r.checked = false);
+        document.querySelectorAll('input[name="gateconfirm"]').forEach(r => r.checked = false);
+
+        // 更新資料後再回呼
+        if (typeof get_input_by_job_id === 'function') {
+        get_input_by_job_id(job_id, function () {
+            if (typeof callbackFn === 'function') callbackFn();
+        });
+        } else if (typeof callbackFn === 'function') {
+        callbackFn();
         }
-    }, 2000);
 
-    const hideEl = document.getElementById(hideElementId);
-    if (hideEl) hideEl.style.display = 'none';
+        const hideEl = document.getElementById(hideElementId);
+        if (hideEl) hideEl.style.display = 'none';
+    }
 }
 
 
@@ -640,13 +723,12 @@ function setJobIdHighlight(active) {
 
 // 放在檔案頂部（全域一次）
 // 用來避免多次連續 AJAX 時，舊回應覆蓋新狀態
-
 function get_output_by_job_id(job_id) {
   const reqId = ++_getOutputReqId;
 
-  // ✅ 只有在 unifiedFlag==0 且不是 boot 聚焦時才清黃（避免 unified==1 時被洗掉）
+  // ✅ 只有在 unifiedFlag==0 且不是 boot 聚焦時才清黃
   if (unifiedFlag === 0 && !isBootFocusedCurrent()) {
-    setJobIdHighlight(false); // ← 原本一進來就清黃，已加保護條件
+    setJobIdHighlight(false);
   }
 
   const jobIdEl = document.getElementById("job_id");
@@ -689,26 +771,31 @@ function get_output_by_job_id(job_id) {
       const noTempA     = (tempA.length === 0);
       const hasAnyData  = !(listEmpty && noTemp && noTempA);
 
-      // ✅ 調整：只要 unifiedFlag≠0 就上黃，和是否有資料無關
       const shouldYellowByUnified = (unifiedFlag !== 0);
 
-      // 首頁帶入的 focused job
       const isBootFocused = (
         BOOT_FOCUSED_JOBID !== null &&
         String(BOOT_FOCUSED_JOBID).length > 0 &&
         String(job_id) === String(BOOT_FOCUSED_JOBID)
       );
 
+      // ★ 這次是否允許上黃：尊重一次性抑制旗標
+      const allowYellow = !_suppressYellowOnce && (shouldYellowByUnified || isBootFocused);
+
       if (jobIdEl) {
+        // 先清
         jobIdEl.classList.remove('bg-yellow');
         jobIdEl.style.backgroundColor = '';
 
-        // 任何一個條件成立就黃
-        if (shouldYellowByUnified || isBootFocused) {
+        // 再依條件決定是否加回
+        if (allowYellow) {
           jobIdEl.classList.add('bg-yellow');
         }
 
-        // ✅ 僅在「沒資料 + 非 boot 聚焦 + unifiedFlag==0」時才清空值
+        // ★ 旗標只用一次，用完立刻清除
+        _suppressYellowOnce = false;
+
+        // 沒資料 + 非 boot 聚焦 + unifiedFlag==0 → 清空值
         if (!hasAnyData && !isBootFocused && unifiedFlag === 0) {
           jobIdEl.value = '';
         }
@@ -717,7 +804,6 @@ function get_output_by_job_id(job_id) {
       // === Button_Select 的可用狀態 ===
       const btn = document.getElementById('Button_Select');
       if (btn) {
-        // 首頁帶入時，按鈕一律鎖住；否則維持原本 unifiedFlag 規則
         const disabled = isBootFocused ? true : (unifiedFlag !== 0);
         btn.disabled = disabled;
         btn.classList.toggle('disabled', disabled);
@@ -729,7 +815,7 @@ function get_output_by_job_id(job_id) {
       const labels = {
         'en-us': {1:'OK',2:'NG',3:'NG -High',4:'NG - Low',5:'OK - Sequence',6:'OK - Job ',7:'Tool Running',8:'Tool Trigger',9:'Reverse',10:'BS',11:'Barcode',12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'},
         'zh-tw': {1:'OK',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'工作完成信號',7:'馬達信號',8:'啟動信號',9:'拆螺絲',10:'條碼停止',11:'條碼',12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'},
-        'zh-cn': {1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作完成信号',7:'马达信号',8:'启动信号',9:'拆螺丝',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'}
+        'zh-cn': {1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工作完成信号',6:'工作完成信号',7:'马达信号',8:'启动信号',9:'拆螺丝',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'}
       };
       const L = labels[language] || labels['en-us'];
       for (let i = 1; i <= 16; i++) {
@@ -772,76 +858,106 @@ function collectPinValues(selector) {
 
 
 function create_output_id() {
+  var output_event = document.getElementById("Event_Option").value;
+  var pinval = collectPinValues('input[name="pin_option"]');
 
-    var output_event = document.getElementById("Event_Option").value;
-    var pinval = collectPinValues('input[name="pin_option"]');
+  if (!pinval || !pinval[0]) {
+    console.error("No pinval found or pinval[0] is undefined.");
+    return false;
+  }
 
-    if (pinval.length > 0) {
-        var pin_old = pinval[0]['id']; 
-        var wave = pinval[0]['value'];
+  var pin_old = pinval[0]['id'];
+  var wave = pinval[0]['value'];
 
-        
-        var match = pin_old.match(/\d+/); 
-        var output_pin = match ? parseInt(match[0]) : null;
-        
-        var time_ms = 'time' + output_pin;
-        var wave_on = document.getElementById(time_ms).value;
+  var match = pin_old.match(/\d+/);
+  var output_pin = match ? parseInt(match[0], 10) : null;
 
-        //  加進來的檢查邏輯
-        const skipEvents = [7,8,9,10,11,12,13,14,15,16];
+  var time_ms = 'time' + output_pin;
+  var wave_on_raw = document.getElementById(time_ms)?.value ?? '';
+  var wave_on = Number(wave_on_raw); // 確保是數字
 
-        var language = getCookie('language');
+  // 多語言
+  var lang = (typeof getCookie === 'function' ? getCookie('language') : 'en-us') || 'en-us';
+  lang = String(lang).toLowerCase();
+  if (lang === 'en') lang = 'en-us';
+  if (!['zh-tw','zh-cn','en-us'].includes(lang)) lang = 'en-us';
 
-        var messages = {
-            'en-us': "Please enter a wave value between 100 and 10000.",
-            'zh-tw': "範圍介於100和10000之間。",
-            'zh-cn': "范围介于100和10000之间。"
-        };
+  var titles = {
+    'en-us': 'Warning',
+    'zh-tw': '警告',
+    'zh-cn': '警告'
+  };
 
-        if (!language) {
-            language = 'en-us';
-        }
+  var okTexts = {
+    'en-us': 'OK',
+    'zh-tw': '確定',
+    'zh-cn': '确定'
+  };
 
-        if (wave == 1 && !skipEvents.includes(Number(output_event))) {
-            if (wave_on < 100 || wave_on > 10000) {
-                alertify.alert(messages[language]);
-                setTimeout(function () {
-                    alertify.closeAll();
-                }, 3000);
-                return false; // 🔁 更語意化：中止且表示驗證失敗
-            }
-        }
+  var messages = {
+    'en-us': "Please enter a wave value between 100 and 10000.",
+    'zh-tw': "請輸入介於 100 到 10000 之間的脈波時間。",
+    'zh-cn': "请输入介于 100 到 10000 之间的脉波时间。"
+  };
 
-        if (job_id) {
-            document.getElementById('spinner').style.display = 'block';
-
-            $.ajax({
-                url: "?url=Outputs/create_output_event",
-                method: "POST",
-                data: { 
-                    job_id: job_id,
-                    output_pin: output_pin,
-                    output_event: output_event,
-                    wave: wave,
-                    wave_on: wave_on
-                },
-                success: function(response) {
-                    output_success_res(response, job_id, get_output_by_job_id, 'new_output');
-                    hideOverlay();
-                    resetBackgroundColor();
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX request failed:", status, error);
-                }
-            });
-        }
-    } else {
-        console.error("No pinval found or pinval[0] is undefined.");
+  // 盡量設定全域 glossary（支援的 alertify 版本會吃到）
+  try {
+    if (window.alertify?.defaults?.glossary) {
+      alertify.defaults.glossary.ok = okTexts[lang];
+      // alertify.confirm 需要 Cancel 時再設定：
+      alertify.defaults.glossary.cancel = (lang === 'zh-tw' || lang === 'zh-cn') ? '取消' : 'Cancel';
     }
+  } catch (e) {}
+
+  // 驗證：除跳過清單外，wave==1 時需檢查範圍
+  const skipEvents = [7,8,9,10,11,12,13,14,15,16];
+  if (wave == 1 && !skipEvents.includes(Number(output_event))) {
+    if (!Number.isFinite(wave_on) || wave_on < 100 || wave_on > 10000) {
+      // 本地化 alert + OK 按鈕
+      const dlg = alertify
+        .alert(titles[lang], messages[lang], function () {
+          clearTimeout(autoCloseTimer);
+        })
+        .set('labels', { ok: okTexts[lang] })
+        .set('movable', false);
+
+      const autoCloseTimer = setTimeout(function () {
+        try { alertify.closeAll(); } catch (e) {}
+      }, 3000);
+
+      return false; // 中止
+    }
+  }
+
+  if (typeof job_id !== 'undefined' && job_id) {
+    document.getElementById('spinner').style.display = 'block';
+
+    $.ajax({
+      url: "?url=Outputs/create_output_event",
+      method: "POST",
+      data: {
+        job_id: job_id,
+        output_pin: output_pin,
+        output_event: output_event,
+        wave: wave,
+        wave_on: wave_on
+      },
+      success: function(response) {
+        output_success_res(response, job_id, get_output_by_job_id, 'new_output');
+        hideOverlay();
+        resetBackgroundColor();
+      },
+      error: function(xhr, status, error) {
+        console.error("AJAX request failed:", status, error);
+      }
+    });
+  }
 }
 
 
+
 function edit_output_id(){
+
     var output_event = document.getElementById("edit_event_option").value;
     var pinval       = collectPinValues('input[name="edit_pin_option"]');
     var pin_old      = pinval[0]['id'];
@@ -877,19 +993,29 @@ function edit_output_id(){
         });         
     }
 }
+
 function resetalignsubmit(job_id) {
     unifiedFlag = 0;   // ✅ 執行 resetalignsubmit 時設回 0
 
+    // ★ 取得畫面上 id="job_id" 的值（即使 disabled 也能讀到）
+    const el = document.getElementById('job_id');
+    const domJobId = (el && typeof el.value === 'string') ? el.value.trim() : '';
+
+    // ★ 決定要用哪個 job id：DOM 優先，其次用傳入參數
+    const effectiveJobId = domJobId || job_id || '';
     var job_id_new = 0;
     if(job_id_new == 0){
         $.ajax({
             url: "?url=Outputs/output_alljob",
             method: "POST",
             data: {
-                job_id_new: job_id_new
+                job_id_new: domJobId
             },
             success: function (response) {
-                get_output_by_job_id(job_id);
+                // ★ 這次刷新不要把 job_id 上黃
+                _suppressYellowOnce = true;
+                get_output_by_job_id(effectiveJobId);
+                //get_output_by_job_id(job_id);
             },
             error: function (xhr, status, error) {
 

@@ -1753,6 +1753,29 @@ class Settings extends Controller
 
     
     public function get_controller_login() {
+
+        // 取得語系
+        $language = $_COOKIE['language'] ?? 'en-us';
+
+        // 多語系訊息設定
+        $messages = [
+            'en-us' => [
+                'already_logged_in' => 'Controller is already logged in',
+                'login_status'      => 'Login status returned'
+            ],
+            'zh-tw' => [
+                'already_logged_in' => '控制器已經登入',
+                'login_status'      => '登入狀態已返回'
+            ],
+            'zh-cn' => [
+                'already_logged_in' => '控制器已经登录',
+                'login_status'      => '登录状态已返回'
+            ]
+        ];
+
+        // 找不到對應語言時，預設 en-us
+        $msg = $messages[strtolower($language)] ?? $messages['en-us'];
+
         // ✅ 檢查是否可同步（Modbus 工具狀態）
         $idas_result = $this->idas_check();
 
@@ -1761,22 +1784,22 @@ class Settings extends Controller
                 'result'   => false,
                 'login'    => 0,
                 'res_type' => 'SuccessError',
-                'res_msg'  => 'Controller is already logged in'
+                'res_msg'  => $msg['already_logged_in']
             ]);
             return;
-        }else{
-             echo json_encode([
+        } else {
+            echo json_encode([
                 'result'   => true,
                 'login'    => 1,
                 'res_type' => 'Success',
-                'res_msg'  => 'Login status returned'
+                'res_msg'  => $msg['login_status']
             ]);
             return;
-
         }
 
+        // 這段應該永遠不會被執行到
         $this->ntcs_data_db_sysnc();
+    }
 
 
-    }    
 }

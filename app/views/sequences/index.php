@@ -141,36 +141,78 @@
 </div>
 
 <script>
-// Change the color of a row in a table
-$(document).ready(function () {
-    highlight_row('seq_table');
-});
+(function () {
+  // 避免重複初始化
+  if (window.__seqBootstrapped) return;
+  window.__seqBootstrapped = true;
 
-document.addEventListener('DOMContentLoaded', function() {
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      var headerElements = document.querySelectorAll('.ajs-header');
-      headerElements.forEach(function(headerElement) {
-        headerElement.parentNode.removeChild(headerElement);
-      });
-    });
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-});
-
-// Get the modal
-var seqid = '';
-var seq_name = '';
-var modal = document.getElementById('newseq');
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = "none";
+  // ---- 語系處理 ----
+  function normalizeLang(lang) {
+    if (!lang) return 'en-us';
+    var l = String(lang).toLowerCase();
+    if (l === 'en') return 'en-us';
+    if (l.startsWith('zh')) {
+      if (l.includes('tw') || l.includes('hk') || l.includes('mo') || l.includes('hant')) return 'zh-tw';
+      if (l.includes('cn') || l.includes('sg') || l.includes('hans')) return 'zh-cn';
+      return 'zh-tw';
     }
-}
+    return l;
+  }
+  function setAlertifyLabels(lang) {
+    var key = normalizeLang(lang);
+    var map = {
+      'zh-tw': { ok: '確定', cancel: '取消' },
+      'zh-cn': { ok: '确定', cancel: '取消' },
+      'en-us': { ok: 'OK',  cancel: 'Cancel' }
+    };
+    var labels = map[key] || map['en-us'];
+    if (typeof applyAlertifyI18n === 'function') {
+      applyAlertifyI18n(key);
+    } else if (window.alertify && alertify.defaults && alertify.defaults.glossary) {
+      try {
+        alertify.defaults.glossary.ok = labels.ok;
+        alertify.defaults.glossary.cancel = labels.cancel;
+      } catch (e) {}
+    }
+    return labels;
+  }
 
+  // 1) 套用 Alertify 多語系（全域）
+  setAlertifyLabels(typeof getCookie === 'function' ? getCookie('language') : null);
 
+  // 2) 只在標題為空時才隱藏（更安全）
+  (function injectHideAlertifyHeader() {
+    var id = 'hide-alertify-header-style';
+    if (document.getElementById(id)) return;
+    var s = document.createElement('style');
+    s.id = id;
+    s.textContent = '.ajs-header:empty{display:none!important;}';
+    document.head.appendChild(s);
+  })();
 
+  // 3) 高亮列（seq_table）
+  if (typeof highlight_row === 'function') {
+    try { highlight_row('seq_table'); } catch(e) {}
+  }
+
+  // 4) Modal 關閉（#newseq：點背景或按 ESC）
+  (function setupModalClose() {
+    var modal = document.getElementById('newseq');
+    if (!modal) return;
+    var onClick = function (e) { if (e.target === modal) modal.style.display = 'none'; };
+    var onEsc   = function (e) { if (e.key === 'Escape') modal.style.display = 'none'; };
+    document.addEventListener('click', onClick, { passive: true });
+    document.addEventListener('keydown', onEsc);
+    window.__seqModalHandlers = { onClick, onEsc }; // 需要時可移除監聽
+  })();
+
+  // 5) 語系切換時可呼叫
+  window.refreshAlertifyI18n = function (lang) {
+    var l = lang || (typeof getCookie === 'function' && getCookie('language')) || 'en-us';
+    return setAlertifyLabels(l);
+  };
+})();
 </script>
+
 
 <?php require_once '../app/views/sequences/seq_share.php';?>

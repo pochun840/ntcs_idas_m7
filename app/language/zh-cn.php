@@ -4,6 +4,7 @@ $text = array();
 
 //login page
 $text['login_text'] = '登录';
+$text['logout_text'] = '退出';
 $text['password_text'] = '密码';
 
 $text['delete_confirm_text'] = '是否要删除 工作 id: ';
@@ -289,7 +290,8 @@ $text['alert_message_1'] = '请选择要删除的事件';
 // Data
 $text['data'] = '资料';
 $text['data_history'] = '历史资料';
-$text['data_export'] = '数据导出';
+$text['data_export'] = '历史数据导出';
+$text['download_chart'] = '曲线图下载';
 $text['data_history_success'] = '全部拧紧数据';
 $text['data_history_fail'] = '拧紧失败数据';
 $text['start_date'] = '开始日期';
@@ -387,8 +389,19 @@ $text['Button_Access_With_Password_text'] = '按钮密码';
 $text['Background_Color_text'] = '背景颜色';
 $text['green_text'] = '绿色';
 $text['yellow_text'] = '黄色';
-
-
+$text['system_idas_current_version'] = '当前 iDAS 版本';
+$text['system_idas_upload_file'] = '上传文件';
+$text['system_agent_ip'] = '代理服务器IP';
+$text['system_agent_type'] = '代理模式';
+$text['system_agent_frequency'] = '发送频率';
+$text['system_agent_staus2'] = '代理状态';
+$text['system_agent_none'] = '无';
+$text['system_agent_client'] = '客户端';
+$text['system_agent_server'] = '服务器';
+$text['system_agent_status'] = '状态';
+$text['system_agent_check'] = '检查';
+$text['system_agent_start'] = '启动';
+$text['system_agent_stop'] = '停止';
 
 
 
@@ -467,6 +480,12 @@ $text['csv_file_path'] = '档案路径';
 $text['command'] = '命令';
 $text['switch_job'] = '切换工作';
 $text['get_job'] = '读取工作';
+
+//agent
+$text['device_type'] = '设备类型';
+$text['device_name'] = '设备名称';
+$text['open'] = '打开';
+
 
 
 

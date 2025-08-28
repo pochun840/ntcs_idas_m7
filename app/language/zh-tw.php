@@ -4,6 +4,7 @@ $text = array();
 
 //login page
 $text['login_text'] = '登入';
+$text['logout_text'] = '登出';
 $text['password_text'] = '密碼';
 
 $text['delete_confirm_text'] = '是否要刪除 job id: ';
@@ -288,7 +289,8 @@ $text['alert_message_1'] = '請點選要刪除的事件';
 // Data
 $text['data'] = '資料';
 $text['data_history'] = '歷史資料';
-$text['data_export'] = '資料匯出';
+$text['data_export'] = '歷史資料匯出';
+$text['download_chart'] = '曲線圖下載';
 $text['data_history_success'] = '歷史紀錄資料';
 $text['data_history_fail'] = '鎖附失敗資料';
 $text['start_date'] = '開始日期';
@@ -302,11 +304,11 @@ $text['column_total'] = '總數';
 $text['column_count'] = '顆數';
 $text['column_status'] = '狀態';
 
-$text['kgf.m'] = '公斤.米';
-$text['N.m'] = '牛頓.尺';
+$text['kgf.m'] = '公斤.公尺';
+$text['N.m'] = '牛頓.公尺';
 $text['kgf.cm'] = '公斤.公分';
 $text['Lbf.in'] = '磅.英吋';
-$text['cN.m'] = '牛頓.厘米';
+$text['cN.m'] = '牛頓.釐米';
 
 
 //fasten_status
@@ -384,7 +386,19 @@ $text['Button_Access_With_Password_text'] = '按鍵密碼';
 $text['Background_Color_text'] = '背景顏色';
 $text['green_text'] = '綠色';
 $text['yellow_text'] = '黃色';
-
+$text['system_idas_current_version'] = '當前 iDAS 版本';
+$text['system_idas_upload_file'] = '上傳檔案';
+$text['system_agent_ip'] = '代理伺服器IP';
+$text['system_agent_type'] = '代理模式';
+$text['system_agent_frequency'] = '發送頻率';
+$text['system_agent_staus2'] = '代理狀態';
+$text['system_agent_none'] = '無';
+$text['system_agent_client'] = '客戶端';
+$text['system_agent_server'] = '伺服器';
+$text['system_agent_status'] = '狀態';
+$text['system_agent_check'] = '檢查';
+$text['system_agent_start'] = '開始';
+$text['system_agent_stop'] = '停止';
 
 
 $text['system_password'] = '密碼';
@@ -458,6 +472,12 @@ $text['csv_file_path'] = '檔案路徑';
 $text['command'] = '命令';
 $text['switch_job'] = '切換工作';
 $text['get_job'] = '讀取工作';
+
+//agent
+$text['device_type'] = '裝置類型';
+$text['device_name'] = '裝置名稱';
+$text['open'] = '開啟';
+
 
 
 

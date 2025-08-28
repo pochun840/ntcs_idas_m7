@@ -391,7 +391,10 @@ class Sequences extends Controller
                 'addtion' => $_POST['addtion'] ?? null,
                 'unscrew_count_switch' => $_POST['unscrew_count_switch_val'] ?? null,
                 'unscrew_torque_threshold' => $_POST['unscrew_torque_threshold'] ?? null,
-                'seq_unit' => $_POST['seq_unit'] ?? $device_torque_unit
+                'seq_unit' => $_POST['seq_unit'] ?? $device_torque_unit,
+                'unscrew_angle_threshold' => $_POST['unscrew_angle_threshold'] ?? 0,
+                'dt_time' => $_POST['dt_time'] ?? 0,
+                'tt_time' => $_POST['tt_time'] ?? 0,
 
             );
 
@@ -467,7 +470,7 @@ class Sequences extends Controller
 
         //用jobid 及 seqid 去找出 對應的資料
         $old_res = $this->sequenceModel->search_seqinfo($jobid,$seqid);
-        
+           
         $this->sequenceModel->del_seq_type($jobid,$newseqid);
         $this->sequenceModel->del_step_type($jobid,$newseqid);
 

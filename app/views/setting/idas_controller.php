@@ -19,7 +19,6 @@
         <div class="col-3 t1"><?php echo $text['system_diskfull_warning'];?>:</div>
         <div class="col-3 t2">
             <input id="storage_warning" name="storage_warning" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['storage_warning']) ? $data['controller_info']['storage_warning'] : ''; ?>" class="t3 form-control"  required>
-            <div class="invalid-feedback"></div>
         </div>
     </div>
 
@@ -28,7 +27,7 @@
         <div class="col-3 t1"><?php echo $text['system_torque_filter'];?>:</div>
         <div class="col-3 t2">
             <input id="torque_filter" name="torque_filter" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['torque_filter']) ? $data['controller_info']['torque_filter'] : ''; ?>" class="t3 form-control"  required>
-            <div class="invalid-feedback"></div>
+            
         </div>
     </div>
    
@@ -124,14 +123,14 @@
         <div class="col-3 t1"><?php echo $text['Downshift_Torque_temp'];?>(%):</div>
         <div class="col-3 t2">
             <input id="global_downshift_torque" name="global_downshift_torque" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_torque']) ? $data['controller_info']['global_downshift_torque'] : ''; ?>" class="t3 form-control"  required>
-            <div class="invalid-feedback"></div>
+           
         </div>
     </div>
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['Downshift_Speed_temp'];?>(%):</div>
         <div class="col-3 t2">
             <input id="global_downshift_speed" name="global_downshift_speed" maxlength="12" type="text" value="<?php echo isset($data['controller_info']['global_downshift_speed']) ? $data['controller_info']['global_downshift_speed'] : ''; ?>" class="t3 form-control"  required>
-            <div class="invalid-feedback"></div>
+      
         </div>
     </div>
 

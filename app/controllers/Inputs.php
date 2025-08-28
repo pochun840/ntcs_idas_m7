@@ -117,18 +117,6 @@ class Inputs extends Controller
                             }
                         }
                     }
-
-
-
-                    $group1 = ['105', '106', '115'];
-                    if (!empty(array_intersect($group1, $temp_event))) {
-                        foreach ($group1 as $id) {
-                            if (!in_array($id, $temp_event, true)) {
-                                $temp_event[] = $id;
-                            }
-                        }
-                    }
-
                     
                     $group2 = ['105', '115'];
                     if (!empty(array_intersect($group2, $temp_event))) {

@@ -361,7 +361,7 @@ class Data extends Controller
     }
 
     
-    public function download_file(){
+    public function download_file() {
 
         // 僅支援 Linux
         if (PHP_OS_FAMILY !== 'Linux') {
@@ -411,19 +411,27 @@ class Data extends Controller
             return $this->respondError('Error', '掃描資料夾失敗：' . $e->getMessage());
         }
 
+        // ★ 沒資料：回傳 JSON，讓前端彈「沒有曲線圖可下載」的提示
         if (empty($entries)) {
-            return $this->respondError('Error', '沒有可供下載的 CSV 檔案。');
+            if (!headers_sent()) {
+                header('Content-Type: application/json; charset=utf-8');
+                header('Cache-Control: no-store, no-cache, must-revalidate');
+            }
+            echo json_encode([
+                'res_type' => 'Info',
+                'res_code' => 'NO_CURVE_DATA',
+                'res_msg'  => 'No curve data'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
 
         // 排序：先流水號(大→小)，再時間(新→舊)，再檔名
         usort($entries, function ($a, $b) {
             $as = $a['serial']; $bs = $b['serial'];
-            // 沒有流水號者（-1）排最後
-            if ($as < 0 && $bs >= 0) return 1;
+            if ($as < 0 && $bs >= 0) return 1;   // 無流水號者排後
             if ($bs < 0 && $as >= 0) return -1;
-
-            if ($as !== $bs) return $bs <=> $as;          // 流水號大→前面
-            if ($a['ts'] !== $b['ts']) return $b['ts'] <=> $a['ts']; // 新→前面
+            if ($as !== $bs) return $bs <=> $as;                 // 流水號大→前
+            if ($a['ts'] !== $b['ts']) return $b['ts'] <=> $a['ts']; // 新→前
             return strcmp($a['name'], $b['name']);
         });
 
@@ -473,6 +481,8 @@ class Data extends Controller
         @unlink($tmpZip);
         exit;
     }
+
+
 
     /** 取 Linux 系統時間（失敗退回 PHP date） */
     protected function linuxNowOrPhp(): string{

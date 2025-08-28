@@ -23,8 +23,9 @@ class Tools extends Controller
         $MAC = $this->getMacAddress();
         $ip_addr = $this->getIp();
         $netmask = $this->get_netmask('eth0');
-        $gateway = $this->get_gateway_ip();
+        $gateway = $this->getNetworkInfo(); //
         $version = $this->getFirmwareVersion();
+
 
         //起子的版本
         $tools_version = $this->get_tools_version() / 100; 
@@ -72,7 +73,7 @@ class Tools extends Controller
             'Controllers_Info' => $controllers_info,
             'IP' => $ip_addr,
             'netmask' => $netmask,
-            'gateway' => $gateway,
+            'gateway' => $gateway['broadcast'],
             'unit_name' => $unit_name,
             'MAC' => $MAC,
             'image_version' => $version['version_info'],
@@ -259,6 +260,100 @@ class Tools extends Controller
 
         return $result;
     }
+
+        /**
+     * 取得網路資訊（default gateway / 介面 / IPv4 / netmask / broadcast）
+     * - 先從 /proc/net/route 找 default route（不需外部指令）
+     * - 再用 ip 指令抓該介面的 IP/Mask/Broadcast（若可用）
+     * 回傳：
+     * [
+     *   'gateway'   => '192.168.0.1' | null,
+     *   'iface'     => 'eth0'        | null,
+     *   'ip'        => '192.168.0.97'| null,
+     *   'netmask'   => '255.255.255.0'| null,
+     *   'broadcast' => '192.168.0.255'| null,
+     * ]
+     */
+    public function getNetworkInfo(): array {
+        $res = ['gateway'=>null,'iface'=>null,'ip'=>null,'netmask'=>null,'broadcast'=>null];
+
+        // 1) 從 /proc/net/route 取 default gateway + 介面（純 PHP）
+        $file = '/proc/net/route';
+        if (is_readable($file) && ($f = @fopen($file, 'r'))) {
+            while (($line = fgets($f)) !== false) {
+                $line = trim($line);
+                if ($line === '' || stripos($line, 'Iface') === 0) continue;
+                $cols = preg_split('/\s+/', $line);
+                if (count($cols) < 4) continue;
+                [$iface, $destHex, $gwHex, $flags] = [$cols[0], $cols[1], $cols[2], $cols[3]];
+
+                // default route: Destination == 00000000，且旗標包含 U/G
+                if (strcasecmp($destHex, '00000000') === 0) {
+                    $res['iface']   = $iface;
+                    $res['gateway'] = $this->_hexLittleToIp($gwHex);
+                    break;
+                }
+            }
+            fclose($f);
+        }
+
+        // 若沒有抓到 iface，就結束（至少回 gateway/null）
+        if (empty($res['iface'])) return $res;
+
+        // 2) 用 ip 指令抓該 iface 的 ip/prefix/broadcast（若可用）
+        $ipbin = $this->_whichIp();
+        if ($ipbin) {
+            $out = @shell_exec($ipbin.' -o -f inet addr show dev ' . escapeshellarg($res['iface']) . ' 2>/dev/null');
+            // 例：2: eth0    inet 192.168.0.97/24 brd 192.168.0.255 scope global eth0
+            if ($out) {
+                if (preg_match('/\binet\s+([0-9.]+)\/(\d+)\b/', $out, $m)) {
+                    $res['ip'] = $m[1];
+                    $prefix = (int)$m[2];
+                    $res['netmask'] = $this->_prefixToMask($prefix);
+                }
+                if (preg_match('/\bbrd\s+([0-9.]+)/', $out, $m)) {
+                    $res['broadcast'] = $m[1];
+                }
+            }
+        }
+
+        // 3) 若沒拿到 broadcast，但有 ip+mask → 自行計算
+        if (!$res['broadcast'] && $res['ip'] && $res['netmask']) {
+            $res['broadcast'] = $this->_calcBroadcast($res['ip'], $res['netmask']);
+        }
+
+        return $res;
+    }
+
+    // ---------- 小工具 ----------
+
+    public function _hexLittleToIp(string $hex): ?string {
+        $hex = strtolower(trim($hex));
+        if ($hex === '' || $hex === '00000000') return null;
+        $hex = str_pad($hex, 8, '0', STR_PAD_LEFT);
+        $b = array_reverse(str_split($hex, 2)); // little-endian → big-endian
+        return implode('.', array_map(fn($x)=>hexdec($x), $b));
+    }
+
+    public function _whichIp(): ?string {
+        foreach (['/sbin/ip','/usr/sbin/ip','/bin/ip','/usr/bin/ip'] as $p) {
+            if (is_executable($p)) return $p;
+        }
+        return null;
+    }
+
+    public function _prefixToMask(int $prefix): string {
+        $mask = $prefix === 0 ? 0 : (0xFFFFFFFF << (32 - $prefix)) & 0xFFFFFFFF;
+        return long2ip($mask);
+    }
+
+    public function _calcBroadcast(string $ip, string $netmask): ?string {
+        $ipL = ip2long($ip); $mL = ip2long($netmask);
+        if ($ipL === false || $mL === false) return null;
+        $bL = ($ipL & $mL) | (~$mL & 0xFFFFFFFF);
+        return long2ip($bL);
+    }
+
 
 
 }

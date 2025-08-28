@@ -313,30 +313,60 @@ function checkAuthToken() {
 
 
 function success_response_seq(response, spinnerId = 'spinner', redirectUrl = null) {
-    const responseData = JSON.parse(response);
+  // 解析回傳
+  let data;
+  try {
+    data = (typeof response === 'string') ? JSON.parse(response) : response;
+  } catch (e) {
+    data = { res_type: 'Info', res_msg: String(response || 'Done') };
+  }
+  const title = data?.res_type || 'Info';
+  const msg   = data?.res_msg  || '';
 
-    setTimeout(() => {
-        document.getElementById(spinnerId).style.display = 'none';
+  // 取得語系 OK 文案（← 修正：用正規化後的 l 來判斷）
+  const cookieLang = (typeof getCookie === 'function' && getCookie('language')) || 'en-us';
+  const labels = (typeof getAlertifyLabels === 'function')
+    ? getAlertifyLabels(cookieLang)
+    : (function (raw) {
+        const l = String(raw).toLowerCase();
+        if (l === 'zh-tw' || l === 'zh-hk' || l.includes('hant')) return { ok: '確定', cancel: '取消' };
+        if (l === 'zh-cn' || l === 'zh-sg' || l.includes('hans')) return { ok: '确定', cancel: '取消' };
+        return { ok: 'OK', cancel: 'Cancel' };
+      })(cookieLang);
 
-        alertify.alert(responseData.res_type, responseData.res_msg, function () {
-            alertify.closeAll();
-            if (redirectUrl) {
-                window.location.href = redirectUrl;
-            } else {
-                history.go(0);
-            }
-        });
+  // 1 秒後關掉 spinner 並跳出提示
+  setTimeout(() => {
+    const sp = document.getElementById(spinnerId);
+    if (sp) sp.style.display = 'none';
 
-        setTimeout(() => {
-            alertify.closeAll();
-            if (redirectUrl) {
-                window.location.href = redirectUrl;
-            } else {
-                history.go(0);
-            }
-        }, 3000);
-    }, 1000);
+    let navigated = false;
+    const navigateOnce = function () {
+      if (navigated) return;
+      navigated = true;
+      try { alertify.closeAll(); } catch (e) {}
+      document.querySelector('.main-content')?.classList.remove('overlay-active');
+      if (redirectUrl) window.location.href = redirectUrl;
+      else history.go(0);
+    };
+
+    // 有些版本對 alert 的 labels 支援不一致：先全域保險設一下 OK
+    if (window.alertify && alertify.defaults && alertify.defaults.glossary) {
+      try { alertify.defaults.glossary.ok = labels.ok; } catch (e) {}
+    }
+
+    // 顯示 alert（OK 按鈕文字依語系）
+    const dlg = alertify
+      .alert(title, msg, function () {
+        clearTimeout(autoTimer);
+        navigateOnce();
+      })
+      .set('labels', { ok: labels.ok });
+
+    // 3 秒後自動關閉並導頁（避免雙重導頁）
+    const autoTimer = setTimeout(navigateOnce, 3000);
+  }, 1000);
 }
+
 
 
 

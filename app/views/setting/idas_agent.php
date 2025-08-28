@@ -8,7 +8,7 @@
 
     <!-- Agent IP -->
     <div class="row t2 align-items-center">
-        <div class="col-3 t1">Agent IP:</div>
+        <div class="col-3 t1"><?php echo $text['system_agent_ip'];?>:</div>
         <div class="col">
                 <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
                     value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
@@ -20,7 +20,7 @@
 
     <!-- Agent Type -->
     <div class="row t2">
-        <div class="col-3 t1">Agent Type:</div>
+        <div class="col-3 t1"><?php echo $text['system_agent_type'];?>:</div>
         <div class="col">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="agent_type" id="agent_type_0" value="0" <?php if($data['agent_type'] == 0){ echo "checked";} ?> >
@@ -28,7 +28,7 @@
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="agent_type" id="agent_type_1" value="1" <?php if($data['agent_type'] == 1){ echo "checked";} ?>>
-                    <label class="form-check-label" for="agent_type_1">Client</label>
+                    <label class="form-check-label" for="agent_type_1"><?php $text['system_agent_client'];?></label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="agent_type" id="agent_type_2" value="2" <?php if($data['agent_type'] == 2){ echo "checked";} ?>>
@@ -48,9 +48,9 @@
                 <span>Client Status: </span><span id="c_status" style="display:inline-block;"></span>&nbsp;&nbsp;
                 <span>Server Status: </span><span id="s_status" style="display:inline-block;"></span>
  
-                <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck()">Check</button>
-                <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck('start')">START</button>
-                <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck('stop')">STOP</button>
+                <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck()"><?php echo $text['system_agent_check'];?></button>
+                <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck('start')"><?php echo $text['system_agent_start'];?></button>
+                <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck('stop')"><?php echo $text['system_agent_stop'];?></button>
  
             </div>
         </div>

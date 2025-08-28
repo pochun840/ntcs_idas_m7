@@ -170,13 +170,32 @@ function validateJobForm() {
     }
   };
 
-  // 語系
-  const cookieMatch = document.cookie.match(/(?:^|;\s*)lang=([^;]+)/i);
-  const htmlLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
-  const lang = (cookieMatch ? cookieMatch[1].toLowerCase() : htmlLang) || 'en-us';
+  // === 語系 ===
+  const cookieLang = (typeof getCookie === 'function') ? (getCookie('language') || '') : '';
+  const htmlLang   = (document.documentElement.getAttribute('lang') || '');
+  const normalizeLang = (raw) => {
+    const s = String(raw || '').trim().toLowerCase().replace('_', '-');
+    if (!s) return 'en-us';
+    if (s.startsWith('en')) return 'en-us';
+    if (s.startsWith('zh')) {
+      if (/tw|hk|mo|hant|cht/.test(s)) return 'zh-tw';
+      return 'zh-cn';
+    }
+    return 'en-us';
+  };
+  const lang = normalizeLang(cookieLang || htmlLang);
   const dict = I18N[lang] || I18N['en-us'];
 
-  // 規則
+  // === job_name 的語系化標籤覆蓋 ===
+  const FIELD_LABEL_I18N = {
+    job_name: {
+      'en-us': 'job_name',
+      'zh-tw': '工作名稱',
+      'zh-cn': '工作名称'
+    }
+  };
+
+  // === 規則 ===
   const conditions = [
     {
       id: 'job_name',
@@ -187,14 +206,19 @@ function validateJobForm() {
     }
   ];
 
-  // 驗證
+  // === 驗證 ===
   for (const input of conditions) {
     const el = document.getElementById(input.id);
     if (!el) continue;
-    const label = el.getAttribute('data-label') || input.label || input.id;
-    const value = (el.value ?? '').trim();
 
-    // reset
+    // 先取預設/自訂標籤
+    let label = el.getAttribute('data-label') || input.label || input.id;
+    // 若此欄位有語系化覆蓋，使用覆蓋文字
+    if (FIELD_LABEL_I18N[input.id]?.[lang]) {
+      label = FIELD_LABEL_I18N[input.id][lang];
+    }
+
+    const value = (el.value ?? '').trim();
     el.classList.remove('is-invalid');
 
     let message = null;
@@ -218,12 +242,14 @@ function validateJobForm() {
         .set('movable', false)
         .set('labels', { ok: dict.ok });
 
-      return false; // 停在第一個錯誤
+      return false;
     }
   }
 
   return true;
 }
+
+
 
 
 
@@ -238,51 +264,46 @@ function edit_input_check_job() {
 
 // 單一共用：第一個錯誤即跳窗 + 紅框 + focus（含多語）
 function validateFormWithDialog(conditions) {
-  // === 多語詞庫 ===
   const I18N = {
-    'en-us': {
-      dialogTitle: 'Form Error',
-      empty: '“{label}” cannot be empty.',
-      minLen: '“{label}” must be at least {min} characters.',
-      maxLen: '“{label}” must be at most {max} characters.',
-      pattern: '“{label}” contains invalid characters.',
-      ok: 'OK'
-    },
-    'zh-tw': {
-      dialogTitle: '表單錯誤',
-      empty: '「{label}」不可為空白。',
-      minLen: '「{label}」至少需 {min} 個字元。',
-      maxLen: '「{label}」最多 {max} 個字元。',
-      pattern: '「{label}」含有不允許的字元。',
-      ok: '確定'
-    },
-    'zh-cn': {
-      dialogTitle: '表单错误',
-      empty: '「{label}」不能为空。',
-      minLen: '「{label}」至少需要 {min} 个字符。',
-      maxLen: '「{label}」最多 {max} 个字符。',
-      pattern: '「{label}」包含不允许的字符。',
-      ok: '确定'
-    }
+    'en-us': { dialogTitle:'Form Error', empty:'“{label}” cannot be empty.', minLen:'“{label}” must be at least {min} characters.', maxLen:'“{label}” must be at most {max} characters.', pattern:'“{label}” contains invalid characters.', ok:'OK' },
+    'zh-tw': { dialogTitle:'表單錯誤', empty:'「{label}」不可為空白。', minLen:'「{label}」至少需 {min} 個字元。', maxLen:'「{label}」最多 {max} 個字元。', pattern:'「{label}」含有不允許的字元。', ok:'確定' },
+    'zh-cn': { dialogTitle:'表单错误', empty:'「{label}」不能为空。', minLen:'「{label}」至少需要 {min} 个字符。', maxLen:'「{label}」最多 {max} 个字符。', pattern:'「{label}」包含不允许的字符。', ok:'确定' }
   };
 
-  // 取語系：cookie lang > <html lang> > en-us
-  const cookieMatch = document.cookie.match(/(?:^|;\s*)lang=([^;]+)/i);
-  const htmlLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
-  const lang = (cookieMatch ? cookieMatch[1].toLowerCase() : htmlLang) || 'en-us';
-  const dict = I18N[lang] || I18N['en-us'];
+  // === 語系 ===
+  const getCookieSafely = (name) => {
+    const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  };
+  const normalizeLang = (raw) => {
+    const s = String(raw || '').trim().toLowerCase().replace('_','-');
+    if (!s || s.startsWith('en')) return 'en-us';
+    if (s.startsWith('zh')) return /tw|hk|mo|hant|cht/.test(s) ? 'zh-tw' : 'zh-cn';
+    return 'en-us';
+  };
+  const cookieLang = getCookieSafely('language');
+  const htmlLang   = document.documentElement.getAttribute('lang') || '';
+  const lang       = normalizeLang(cookieLang || htmlLang);
+  const dict       = I18N[lang] || I18N['en-us'];
+
+  // === 欄位標籤多語覆蓋（只在驗證訊息中使用）===
+  const FIELD_LABEL_I18N = {
+    job_name:       { 'en-us':'job_name', 'zh-tw':'工作名稱', 'zh-cn':'工作名称' },
+    edit_jobname:  { 'en-us':'job_name', 'zh-tw':'工作名稱', 'zh-cn':'工作名称' }
+  };
 
   for (const rule of conditions) {
     const el = document.getElementById(rule.id);
-    if (!el) {
-      console.warn(`Element with ID '${rule.id}' not found.`);
-      continue;
+    if (!el) { console.warn(`Element with ID '${rule.id}' not found.`); continue; }
+
+    // 預設 label（可由 data-label 覆蓋）
+    let label = el.getAttribute('data-label') || rule.label || rule.id;
+    // 若在覆蓋表中，改用多語標籤
+    if (FIELD_LABEL_I18N[rule.id]?.[lang]) {
+      label = FIELD_LABEL_I18N[rule.id][lang];
     }
 
-    const label = el.getAttribute('data-label') || rule.label || rule.id;
     const value = (el.value ?? '').trim();
-
-    // reset 樣式
     el.classList.remove('is-invalid');
 
     let msg = null;
@@ -298,17 +319,16 @@ function validateFormWithDialog(conditions) {
 
     if (msg) {
       el.classList.add('is-invalid');
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => el.focus({ preventScroll: true }), 0);
+      el.scrollIntoView({ behavior:'smooth', block:'center' });
+      setTimeout(() => el.focus({ preventScroll:true }), 0);
 
       alertify
         .alert(dict.dialogTitle, msg, () => el.focus())
         .set('movable', false)
         .set('labels', { ok: dict.ok });
 
-      return false; // 第一個錯誤即返回
+      return false;
     }
   }
-
-  return true; // 全部通過
+  return true;
 }

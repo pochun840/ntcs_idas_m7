@@ -27,19 +27,19 @@
                     <table id="data-table" class="container2">
                         <thead>
                             <tr>
-                                <th width="5%">No</th>
-                                <th width="10%">Device Type</th>
-                                <th width="14%">Device Name</th>
-                                <th width="10%">IP</th>
-                                <th width="12%">Date Time</th>
-                                <th width="6%">Job ID</th>
-                                <th width="6%">Seq ID</th>
-                                <th width="6%">Toque</th>
-                                <th width="6%">Unit</th>
-                                <th width="6%">Angle</th>
-                                <th width="6%">Total</th>
-                                <th width="6%">Count</th>
-                                <th width="15%">Status</th>
+                                <th><?php echo $text['column_no']; ?></th>
+                                <th><?php echo $text['device_type'];?></th>
+                                <th><?php echo $text['device_name'];?></th>
+                                <th><?php echo $text['network_ip'];?></th>
+                                <th><?php echo $text['column_datetime']; ?></th>
+                                <th><?php echo $text['job_id'];?></th>
+                                <th><?php echo $text['seq_id'];?></th>
+                                <th><?php echo $text['Torque'];?></th>
+                                <th><?php echo $text['torque_unit'];?></th>
+                                <th><?php echo $text['angle']; ?></th>
+                                <th><?php echo $text['column_count'];?></th>
+                                <th><?php echo $text['column_total']; ?></th>
+                                <th><?php echo $text['column_status']; ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -62,9 +62,9 @@
         <div class="footer">
             <div class="w3-center">
                 <!-- <button class="custom-btn btn-12" onclick="change_page('previous')"><span style="font-size: 24px">&#60;</span><span>Prev</span></button> -->
-                <button type="button" class="custom-btn btn-13" onclick="open_das()"><span style="font-size: 24px">&#8629;</span><span>Open</span></button>
+                <button type="button" class="custom-btn btn-13" onclick="open_das()"><span style="font-size: 24px">&#8629;</span><span><?php echo $text['open'];?></span></button>
                 <!-- <button class="custom-btn btn-14" onclick="change_page('next')"><span style="font-size: 24px">&#62;</span><span>Next</span></button> -->
-                <button class="custom-btn btn-15" onclick="window.location.href='?url=Dashboards'"><span style="font-size: 24px">&#8678;</span><span>Back</span></button>
+                <button class="custom-btn btn-15" onclick="window.location.href='?url=Dashboards'"><span style="font-size: 24px">&#8678;</span><span><?php echo $text['return'];?></span></button>
             </div>
         </div>
     </div>
@@ -129,9 +129,6 @@
               const data = JSON.parse(jsonMessage);
 
               // 检查IP是否在映射中
-              console.log(data.client_ip);
-              console.log('weeee');
-              console.log(data);
 
               if (ipToTableRow.has(data.client_ip)) {
 
@@ -149,8 +146,8 @@
                   row.cells[7].textContent = data.final_fasten_torque;
                   row.cells[8].textContent = torque_unit[data.torque_unit].status;
                   row.cells[9].textContent = data.final_fasten_angle;
-                  row.cells[10].textContent = data.total_screw_count;
-                  row.cells[11].textContent = data.last_screw_count;
+                  row.cells[10].textContent = data.last_screw_count;
+                  row.cells[11].textContent = data.total_screw_count;
                   row.cells[12].textContent = fasten_status[data.fasten_status].status;
                   // row.classList.add("breathing-row");// 閃的css
 

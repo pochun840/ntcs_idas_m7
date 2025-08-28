@@ -323,17 +323,14 @@ class Outputs extends Controller
         }
     }
 
-    public function output_alljob()
-    {
+    public function output_alljob(){
         $input_check = true;
-        if( isset($_POST['job_id']) && $_POST['job_id'] >= 0 ){
+        if( isset($_POST['job_id_new']) && $_POST['job_id_new'] >= 0 ){
             $output_job_id = $_POST['job_id'];
-        }else if(isset($_POST['job_id_new']) && $_POST['job_id_new'] >= 0){
-            $output_job_id  = '';
         }else{ 
             $input_check = false; 
         }
-
+        
         if($input_check){
             $res = $this->OutputModel->set_output_alljob($output_job_id);
             if ($res) {
