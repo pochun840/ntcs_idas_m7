@@ -75,6 +75,7 @@ $text['seq_id'] = '工序ID';
 $text['seq_name'] = '工序名称';
 $text['target_type'] = '工序目标';
 $text['tightening_repeat'] = '颗数';
+$text['total_angle_limit'] = '总角度上限';
 
 $text['return'] = '返回';
 $text['up'] = '上';
@@ -402,6 +403,8 @@ $text['system_agent_status'] = '状态';
 $text['system_agent_check'] = '检查';
 $text['system_agent_start'] = '启动';
 $text['system_agent_stop'] = '停止';
+$text['system_client_status'] = '客户端 状态';
+$text['system_server_status'] = '服务器 状态';
 
 
 
@@ -482,6 +485,7 @@ $text['switch_job'] = '切换工作';
 $text['get_job'] = '读取工作';
 
 //agent
+$text['agent_title'] = '代理';
 $text['device_type'] = '设备类型';
 $text['device_name'] = '设备名称';
 $text['open'] = '打开';

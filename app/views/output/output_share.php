@@ -628,6 +628,8 @@ function delete_output_id(job_id, del_output_val) {
           // 依你現有邏輯：用通用的成功處理器
           input_success_res(response, job_id, get_output_by_job_id, 'edit_output');
           hideOverlay();
+
+          get_output_by_job_id(job_id);
         },
         error: function(xhr, status, error) {
           alertify.error(errMsg);

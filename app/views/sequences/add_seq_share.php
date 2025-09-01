@@ -44,6 +44,7 @@
             document.getElementById("unscrew_forcemode_on").checked = true;
             document.getElementById("unscrew_angle_threshold").value = 0;
             document.getElementById("unscrew_force").value = 50;
+            document.getElementById("total_angle_limit").value = 0;
 
             if(seq_unit ==0 ){
                 document.getElementById('unscrew_torque_threshold').value = "0.00";
@@ -308,6 +309,7 @@
                 unscrew_torque_threshold: 'Reverse Torque Threshold',
                 unscrew_angle_threshold: 'Reverse Angle Threshold',
                 unscrew_force: 'Reverse Force (%)',
+                total_angle_limit: 'total_angle',
             },
             },
             'zh-tw': {
@@ -328,6 +330,8 @@
                 unscrew_torque_threshold: '門檻點扭力',
                 unscrew_angle_threshold: '門檻點角度',
                 unscrew_force: '反轉力度 (%)',
+                total_angle_limit: '總角度上限',
+
             },
             },
             'zh-cn': {
@@ -348,6 +352,8 @@
                 unscrew_torque_threshold: '门槛点扭力',
                 unscrew_angle_threshold: '门槛点角度',
                 unscrew_force: '反转力度 (%)',
+                total_angle_limit: '总角度上限',
+
             },
             },
         };
@@ -452,6 +458,7 @@
             { id: 'unscrew_torque_threshold', pattern: torqueThreshPattern, min: 0, max: Tool_Max_Torque },
             { id: 'unscrew_angle_threshold', pattern: /^\d+(?:\.\d{1})?$/, min: 0, max: 30600 },
             { id: 'unscrew_force', pattern: /^\d+$/, min: 0, max: 100 },
+            { id: 'total_angle_limit', pattern: /^\d+$/, min: 0, max: 30600},
         ];
 
         // 彈窗提示的欄位
@@ -465,6 +472,7 @@
             'unscrew_torque_threshold',
             'unscrew_angle_threshold',
             'unscrew_force',
+            'total_angle_limit'
         ]);
 
         let isFormValid = true;

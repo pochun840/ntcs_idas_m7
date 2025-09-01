@@ -72,6 +72,7 @@ $text['seq_id'] = 'Seq ID';
 $text['seq_name'] = 'Seq Name';
 $text['target_type'] = 'Target Type';
 $text['tightening_repeat'] = 'TR';
+$text['total_angle_limit'] = 'TOTAL ANGLE';
 
 $text['return'] = 'Return';
 $text['up'] = 'Up';
@@ -444,6 +445,8 @@ $text['system_agent_status'] = 'Status';
 $text['system_agent_check'] = 'Check';
 $text['system_agent_start'] = 'Start';
 $text['system_agent_stop'] = 'Stop';
+$text['system_client_status'] = 'Client Status';
+$text['system_server_status'] = 'Server Status';
 
 //barcode setting
 $text['system_barcode_setting'] = 'Barcode Setting';
@@ -483,6 +486,7 @@ $text['get_job'] = 'Get Job';
 
 
 //agent
+$text['agent_title'] = 'Agent';
 $text['device_type'] = 'Device Type';
 $text['device_name'] = 'Device Name';
 $text['open'] = 'Open';

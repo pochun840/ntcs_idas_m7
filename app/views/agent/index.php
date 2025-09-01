@@ -15,7 +15,7 @@
 
     <div style="margin-top: 10px">
         <div id="menu">
-            <a id="bnt1" onclick="OpenButton('agent')">Agent</a>
+            <a id="bnt1" onclick="OpenButton('agent')"><?php echo $text['agent_title'];?></a>
             <!--<a id="bnt2" onclick="OpenButton('button1')">Button2</a>
             <a id="bnt3" onclick="OpenButton('button2')">Button3</a>-->
         </div>

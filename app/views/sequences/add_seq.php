@@ -273,6 +273,14 @@
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
+
+                                <div class="col-12 row t2 mt-3 ps-4">
+                                    <div class="col-4"><?php echo $text['total_angle_limit'];?>:</div>
+                                    <div class="col-8">
+                                        <input id="total_angle_limit" class="form-control"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['total_angle_limit'] : ''; ?>">
+                                         <div class="invalid-feedback"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

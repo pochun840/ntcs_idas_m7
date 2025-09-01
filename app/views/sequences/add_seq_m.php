@@ -330,6 +330,18 @@ if ($data['type'] == 'edit') {
                                     </div>
                                 </div>
                             </div>
+
+                             <div class="row">
+                                <div  class="col-5 t1"><?php echo $text['total_angle_limit'];?>:</div>
+                                <div class="col t2">
+                                    <div class="form-check form-check-inline zoom">
+                                        <input id="total_angle_limit" class="form-control"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['total_angle_limit'] : ''; ?>">
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+                                  
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>

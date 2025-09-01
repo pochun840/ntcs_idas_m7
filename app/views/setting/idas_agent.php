@@ -24,15 +24,15 @@
         <div class="col">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="agent_type" id="agent_type_0" value="0" <?php if($data['agent_type'] == 0){ echo "checked";} ?> >
-                    <label class="form-check-label" for="agent_type_0">None</label>
+                    <label class="form-check-label" for="agent_type_0"><?php echo $text['system_agent_none'];?></label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="agent_type" id="agent_type_1" value="1" <?php if($data['agent_type'] == 1){ echo "checked";} ?>>
-                    <label class="form-check-label" for="agent_type_1"><?php $text['system_agent_client'];?></label>
+                    <label class="form-check-label" for="agent_type_1"><?php echo $text['system_agent_client'];?></label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="agent_type" id="agent_type_2" value="2" <?php if($data['agent_type'] == 2){ echo "checked";} ?>>
-                    <label class="form-check-label" for="agent_type_2">Server</label>
+                    <label class="form-check-label" for="agent_type_2"><?php echo $text['system_agent_server'];?></label>
                 </div>
 
                 <input type="button" onclick="agent_type_save()" value="<?php echo $text['save']; ?>"
@@ -45,8 +45,8 @@
         <div class="col-3 t1"></div>
         <div class="col">
             <div style="margin-bottom: 5px;">
-                <span>Client Status: </span><span id="c_status" style="display:inline-block;"></span>&nbsp;&nbsp;
-                <span>Server Status: </span><span id="s_status" style="display:inline-block;"></span>
+                <span><?php echo $text['system_client_status'];?>: </span><span id="c_status" style="display:inline-block;"></span>&nbsp;&nbsp;
+                <span><?php echo $text['system_server_status'];?>: </span><span id="s_status" style="display:inline-block;"></span>
  
                 <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck()"><?php echo $text['system_agent_check'];?></button>
                 <button class="all-btn w3-button w3-border w3-round-large" style="margin: 5px" onclick="StatusCheck('start')"><?php echo $text['system_agent_start'];?></button>

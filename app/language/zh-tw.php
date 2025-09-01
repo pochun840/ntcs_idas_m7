@@ -106,7 +106,7 @@ $text['Copy_Sequence'] = '複製工序';
 $text['OK_All_Stop'] = 'OK All 禁止起子啟動';
 $text['ok_all_alarm_time'] = 'OK All 持續時間';
 $text['tighten_repeat'] = '鎖附顆數';
-
+$text['total_angle_limit'] = '總角度上限';
 //normalstep
 
 $text['normal_step'] = '智能工序目標';
@@ -399,6 +399,8 @@ $text['system_agent_status'] = '狀態';
 $text['system_agent_check'] = '檢查';
 $text['system_agent_start'] = '開始';
 $text['system_agent_stop'] = '停止';
+$text['system_client_status'] = '客戶端 狀態';
+$text['system_server_status'] = '伺服器 狀態';
 
 
 $text['system_password'] = '密碼';
@@ -474,6 +476,7 @@ $text['switch_job'] = '切換工作';
 $text['get_job'] = '讀取工作';
 
 //agent
+$text['agent_title'] = '代理';
 $text['device_type'] = '裝置類型';
 $text['device_name'] = '裝置名稱';
 $text['open'] = '開啟';

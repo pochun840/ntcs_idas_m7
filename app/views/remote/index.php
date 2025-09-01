@@ -61,11 +61,11 @@
             <div class="modal-content w3-animate-zoom" style="">
                 <header class="w3-container modal-header" style="background-color: #616161;color: white;">
                     <span onclick="document.getElementById('SwitchJob').style.display='none'" class="w3-display-topright" style=" margin-top: 9px; margin-right: 5px">✕</span>
-                    <h2 id="modal_head">Switch Job</h2>
+                    <h2 id="modal_head"><?php echo $text['switch_job'];?></h2>
                 </header>
                 <div class="modal-body" style="padding-left: 3%">
                     <div class="row mb-3">
-                        <div class="col-3 t1" style=" display: flex; align-items: center; ">Job ID :</div>
+                        <div class="col-3 t1" style=" display: flex; align-items: center; "><?php echo $text['job_id'];?> :</div>
                         <div class="col-8 t2">
                             <select id="switch_job_id" class="t2 form-control input-ms" onchange="seq_list_update()">
                                 <option value="-1" disabled selected><?php echo $text['system_barcode_select_job_m']; ?></option>
@@ -79,7 +79,7 @@
                         </div>
                     </div>
                     <div class="row" id="seq_id_block" style="display: none;">
-                        <div class="col-3 t1" style=" display: flex; align-items: center; ">Seq ID :</div>
+                        <div class="col-3 t1" style=" display: flex; align-items: center; "><?php echo $text['seq_id'];?>:</div>
                         <div class="col-8 t2">
                             <select id="switch_seq_id" class="t2 form-control input-ms">
                                 <option value="-1" disabled selected><?php echo  $calendar_lang; ?></option>
@@ -93,7 +93,7 @@
                     <input type="text" id="view_id" value="" style="display: none;" disabled>
                 </div>
                 <div class="w3-center modal-footer justify-content-center" style="padding: 0;background-color: #616161;color: white;">
-                    <button type="button" class="btn btn-primary" onclick="change_job()">Switch</button>
+                    <button type="button" class="btn btn-primary" onclick="change_job()"><?php echo $text['save'];?></button>
                 </div>
             </div>
         </div>

@@ -515,7 +515,7 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['unscrew_angle_threshold'] = $val['unscrew_angle_threshold'];
                 $new_temp_seq[$kk_seq]['dt_time'] = $val['dt_time'];
                 $new_temp_seq[$kk_seq]['tt_time'] = $val['tt_time'];
-
+                $new_temp_seq[$kk_seq]['total_angle_limit'] = $val['total_angle_limit'];
 
             }  
 
