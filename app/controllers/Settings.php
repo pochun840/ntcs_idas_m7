@@ -819,8 +819,6 @@ class Settings extends Controller
     }
 
 
-
-
     public function Sync_check_db_load() {
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
@@ -860,15 +858,13 @@ class Settings extends Controller
 
             return $this->MiscellaneousModel->generateErrorResponse(
                 'Success',
-                "SYNC  files " . ($text['success'] ?? 'success')
+                "SYNC" . ($text['success'] ?? 'success')
             );
         }
 
         // 預留其他參數（例如 D2C）
         return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument');
     }
-
-
 
     /**
      * 安全複製檔案，若 copy 失敗會寫 log
@@ -893,13 +889,6 @@ class Settings extends Controller
         $modbus->writeMultipleRegister(0, 506, $payload, $dataTypes);
         $this->logMessage("Modbus write ($tag): " . implode(',', $payload));
     }
-
-  
-
-    
-
-
-    
     
     //get barcode
     public function GetBarcodes(){

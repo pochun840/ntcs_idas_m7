@@ -492,8 +492,6 @@ $text['device_name'] = 'Device Name';
 $text['open'] = 'Open';
 
 
-
-
 //main 主畫面image url
 $text['img_job'] = '../public/img/home_job_en.png';
 $text['img_job_hover'] = '../public/img/home_job_m_en.png';
