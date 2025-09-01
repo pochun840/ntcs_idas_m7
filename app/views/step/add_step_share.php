@@ -3138,18 +3138,18 @@
             const unitLabels = {
             'kgf.cm': { 'zh-cn': '公斤·公分', 'zh-tw': '公斤·公分', 'default': 'kgf.cm' },
             'lbf.in': { 'zh-cn': '磅·英吋',   'zh-tw': '磅·英吋',   'default': 'lbf.in' },
-            'N.m':    { 'zh-cn': '牛顿·米',   'zh-tw': '牛頓·米',   'default': 'N·m'    },
-            'kgf.m':  { 'zh-cn': '公斤·米',   'zh-tw': '公斤·米',   'default': 'kgf.m'  },
-            'cN.m':   { 'zh-cn': '牛頓.厘米',   'zh-tw': '牛頓.厘米',   'default': 'cN·m'   },
+            'N.m':    { 'zh-cn': '牛顿·米',   'zh-tw': '牛頓·公尺',   'default': 'N·m'    },
+            'kgf.m':  { 'zh-cn': '公斤·米',   'zh-tw': '公斤·公尺',   'default': 'kgf.m'  },
+            'cN.m':   { 'zh-cn': '牛頓.厘米',   'zh-tw': '牛頓.釐米',   'default': 'cN·m'   },
             };
 
             // 2) torque_unit 數值 → 單位鍵
             const UNIT_KEY_BY_CODE = {
-            0: 'kgf.cm',
-            1: 'N.m',
-            2: 'lbf.in',
-            3: 'cN.m',
-            4: 'kgf.m',
+                0: 'kgf.cm',
+                1: 'N.m',
+                2: 'lbf.in',
+                3: 'cN.m',
+                4: 'kgf.m',
             };
 
             // 3) 若 <select id="step_torque_unit"> 有可視文字，嘗試對應到鍵；否則用數值對照
@@ -3214,8 +3214,6 @@
             if (!errorList.includes('StepHiTorque')) errorList.push('StepHiTorque');
         }
         })();
-
-
 
 
         (function enforceStepHiTorqueNotExceedMaxForOption1() {
