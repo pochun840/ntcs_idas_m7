@@ -101,6 +101,7 @@
         data.append("timeout", document.getElementById("timeout").value);
         data.append("dt_time", document.getElementById("dt_time").value);
         data.append("tt_time", document.getElementById("tt_time").value);
+         data.append("total_angle_limit", document.getElementById("total_angle_limit").value);
 
         data.append("ok_seq_val", document.querySelector('input[name="ok_seq"]:checked')?.value ?? null);
         data.append("ok_stop_val", document.querySelector('input[name="ok_stop"]:checked')?.value ?? null);

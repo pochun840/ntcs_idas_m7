@@ -395,6 +395,7 @@ class Sequences extends Controller
                 'unscrew_angle_threshold' => $_POST['unscrew_angle_threshold'] ?? 0,
                 'dt_time' => $_POST['dt_time'] ?? 0,
                 'tt_time' => $_POST['tt_time'] ?? 0,
+                'total_angle_limit' => $_POST['total_angle_limit'] ?? 0,
 
             );
 

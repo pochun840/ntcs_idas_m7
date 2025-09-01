@@ -50,11 +50,11 @@ function downloadCSVZip() {
   const l = String(rawLang).toLowerCase();
   const dict = (function(lang){
     if (lang === 'zh-tw' || lang.includes('hant') || lang.includes('tw') || lang.includes('hk') || lang.includes('mo')) {
-      return { ok:'確定', info:'提示', error:'錯誤', done:'下載完成：', noCurve:'沒有曲線圖的資料可以下載。', genericFail:'下載失敗（未知錯誤）。', httpFail:'下載發生錯誤。' };
+      return { ok:'確定', info:'提示', error:'錯誤', done:'下載完成：', noCurve:'沒有曲線圖的資料可以下載', genericFail:'沒有曲線圖的資料可以下載', httpFail:'下載發生錯誤' };
     } else if (lang === 'zh-cn' || lang.includes('hans') || lang.includes('cn') || lang.includes('sg')) {
-      return { ok:'确定', info:'提示', error:'错误', done:'下载完成：', noCurve:'没有曲线图的资料可以下载。', genericFail:'下载失败（未知错误）。', httpFail:'下载发生错误。' };
+      return { ok:'确定', info:'提示', error:'错误', done:'下载完成：', noCurve:'没有曲线图的资料可以下载', genericFail:'没有曲线图的资料可以下载', httpFail:'下载发生错误' };
     }
-    return { ok:'OK', info:'Notice', error:'Error', done:'Downloaded: ', noCurve:'No curve data available to download.', genericFail:'Download failed (unknown error).', httpFail:'An error occurred while downloading.' };
+    return { ok:'OK', info:'Notice', error:'Error', done:'Downloaded: ', noCurve:'No curve data available to download.', genericFail:'No curve data available to download', httpFail:'An error occurred while downloading.' };
   })(l);
 
   // 有些版本需要先設預設 OK（單次也會再 set，雙保險）
@@ -117,6 +117,8 @@ function downloadCSVZip() {
           const text = await readBlobAsText(data);
           let json = {};
           try { json = JSON.parse(text || '{}'); } catch {}
+          console.log(json);
+          console.log('eeeeert');
           const title = isNoCurveByJson(json) ? dict.info : dict.error;
           const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.genericFail);
           showAlert(title, msg);

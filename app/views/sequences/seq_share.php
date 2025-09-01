@@ -121,6 +121,7 @@ function copy_seq_by_id() {
                     document.querySelector('.main-content')?.classList.add('overlay-active');
                     document.getElementById('spinner').style.display = 'block';
 
+
                     // 執行複製
                     $.ajax({
                         url: "?url=Sequences/copy_seq_data",
@@ -137,9 +138,16 @@ function copy_seq_by_id() {
                             try { data = (typeof resp === 'string') ? JSON.parse(resp) : resp; }
                             catch(e) { data = { res_type: 'Info', res_msg: resp || 'Done.' }; }
 
-                            alertify.alert(data.res_type, data.res_msg, function () {
+                            // 顯示 alert
+                            var dlg = alertify.alert(data.res_type, data.res_msg, function () {
                                 history.go(0);
                             });
+
+                            // 3 秒後自動關閉並刷新
+                            setTimeout(function() {
+                                dlg.close();       // 關閉視窗
+                                history.go(0);     // 重整頁面
+                            }, 3000);
                         },
                         error: function(xhr, status, error) {
                             alertify.error((lang === 'zh-tw')
@@ -153,6 +161,7 @@ function copy_seq_by_id() {
                             document.getElementById('spinner').style.display = 'none';
                         }
                     });
+
                 },
                 function onCancel() {
                     /*alertify.message(
