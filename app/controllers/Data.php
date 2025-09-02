@@ -412,7 +412,8 @@ class Data extends Controller
         }
 
         // ★ 沒資料：回傳 JSON，讓前端彈「沒有曲線圖可下載」的提示
-        var_dump($entries);die();
+ 
+        
         if (empty($entries)) {
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=utf-8');
