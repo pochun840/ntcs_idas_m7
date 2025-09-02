@@ -296,7 +296,7 @@
                                 </div>
                                 <hr class="hr" />
                                 <div class="col-12 row t2 mt-3 ps-4">
-                                    <div class="col-4"><?php echo $text['Threshold_Type'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                                    <div class="col-4"><?php echo $text['Threshold_Type'];?>:</div>
                                     <div class="col-8">
                                         <div class="form-check form-check-inline ">
                                         <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_off"  onclick="toggleStepTorqueTS()" value="0" 
@@ -316,7 +316,7 @@
                                     </div>
                                 </div>
                                 <div id="threshold_block" class="col-12 row t2 mt-3 ps-4" style="display: flex;">
-                                    <div class="col-4" id="show_torque" style="display: none;"><?php echo $text['Threshold_Torque'];?>:</div>
+                                    <div class="col-4" id="show_torque" style="display: none;"><?php echo $text['Threshold_Torque'];?>(<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-4" id="show_angle" style="display: none;"><?php echo $text['Threshold_Angle'];?>:</div>
                                     <div class="col-8" id="StepTorqueTS_block" >
                                         <input type="text" id="StepTorqueTS" name="StepTorqueTS" class="form-control form-control-sm" style="display: none;" value="<?= ($data['type'] === 'edit' && is_numeric($data['step']['StepTorqueTS'])) ? $data['step']['StepTorqueTS'] : '' ?>">

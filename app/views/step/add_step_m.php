@@ -312,7 +312,7 @@
                             <hr style="border: 1px solid #ccc; width: 96%; margin: 5px 0px;">
 
                             <div class="row">
-                                <div class="col-6 t1"><?php echo $text['Threshold_Type'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
+                                <div class="col-6 t1"><?php echo $text['Threshold_Type'];?>:</div>
                                 <div class="col t2 radio-group">
                                     <div class="form-check form-check-inline zoom">
                                         <input class="form-check-input" type="radio" name="StepEnableThreshold" id="threshold_mode_off"  onclick="toggleStepTorqueTS()" value="0" 
