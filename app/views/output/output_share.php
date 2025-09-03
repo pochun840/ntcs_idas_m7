@@ -1006,12 +1006,13 @@ function resetalignsubmit(job_id) {
     // ★ 決定要用哪個 job id：DOM 優先，其次用傳入參數
     const effectiveJobId = domJobId || job_id || '';
     var job_id_new = 0;
+
     if(job_id_new == 0){
         $.ajax({
             url: "?url=Outputs/output_alljob",
             method: "POST",
             data: {
-                job_id_new: domJobId
+                job_id: domJobId
             },
             success: function (response) {
                 // ★ 這次刷新不要把 job_id 上黃

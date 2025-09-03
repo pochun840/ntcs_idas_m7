@@ -245,6 +245,8 @@ class Dashboards extends Controller
             }
         }
 
+
+
         // 組回傳
         $data = [
             'isMobile'       => $isMobile,

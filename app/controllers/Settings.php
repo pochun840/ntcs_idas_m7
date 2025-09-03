@@ -1011,6 +1011,8 @@ class Settings extends Controller
             ]);
         }
 
+        
+
         exit();
     }
 

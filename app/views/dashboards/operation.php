@@ -296,6 +296,18 @@ function renderChart(chart_mode, chart_info) {
         data: y_data_val
     }];
 
+    // ⭐ 修正 chart=4 的 X 軸「0 重複」標籤
+    const isMode4 = String(chart_mode) === "4";
+    const xLabels = (function dedupeEdgeZero(arr){
+        if (isMode4 && arr.length && Number(arr[arr.length - 1]) === 0) {
+        const copy = arr.slice();
+        copy[copy.length - 1] = '';   // 尾端若是 0，改成空字串避免重複顯示
+        return copy;
+        }
+        return arr;
+    })(x_data_val);
+
+
     myChart.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'none' } },
         xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true } },
@@ -305,7 +317,7 @@ function renderChart(chart_mode, chart_info) {
 }
 
 
-// 幫手：挑第一個「有數值且不是全 0」的序列
+
 function pickSeries(...cands) {
   for (const a of cands) {
     if (!a) continue;

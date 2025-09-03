@@ -330,8 +330,8 @@ class Outputs extends Controller
         }else{ 
             $input_check = false; 
         }
-        
-        if($input_check){
+         $output_job_id = $_POST['job_id'];
+        if( $output_job_id){
             $res = $this->OutputModel->set_output_alljob($output_job_id);
             if ($res) {
                 $res_msg = 'set outputall job:'.$output_job_id.' success';
