@@ -27,19 +27,19 @@
                     <table id="data-table" class="container2">
                         <thead>
                             <tr>
-                                <th><?php echo $text['column_no']; ?></th>
-                                <th><?php echo $text['device_type'];?></th>
-                                <th><?php echo $text['device_name'];?></th>
-                                <th><?php echo $text['network_ip'];?></th>
-                                <th><?php echo $text['column_datetime']; ?></th>
-                                <th><?php echo $text['job_id'];?></th>
-                                <th><?php echo $text['seq_id'];?></th>
-                                <th><?php echo $text['Torque'];?></th>
-                                <th><?php echo $text['torque_unit'];?></th>
-                                <th><?php echo $text['angle']; ?></th>
-                                <th><?php echo $text['column_count'];?></th>
-                                <th><?php echo $text['column_total']; ?></th>
-                                <th><?php echo $text['column_status']; ?></th>
+                                <th width="5%"><?php echo $text['column_no']; ?></th>
+                                <th width="10%"><?php echo $text['device_type'];?></th>
+                                <th width="14%"><?php echo $text['device_name'];?></th>
+                                <th width="10%"><?php echo $text['network_ip'];?></th>
+                                <th width="20%"><?php echo $text['column_datetime']; ?></th>
+                                <th width="6%"><?php echo $text['job_id'];?></th>
+                                <th width="6%"><?php echo $text['seq_id'];?></th>
+                                <th width="6%"><?php echo $text['Torque'];?></th>
+                                <th width="6%"><?php echo $text['torque_unit'];?></th>
+                                <th width="6%"><?php echo $text['angle']; ?></th>
+                                <th width="6%"><?php echo $text['column_count'];?></th>
+                                <th width="6%"><?php echo $text['column_total']; ?></th>
+                                <th width="15%"><?php echo $text['column_status']; ?></th>
                             </tr>
                         </thead>
                         <tbody>

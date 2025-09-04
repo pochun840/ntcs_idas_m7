@@ -43,7 +43,7 @@ if(empty($type)) $type = 'xml';
 $sql = "SELECT * FROM `ntcs_data` ";
 $sql.= "WHERE 1 ";
 $sql .= "ORDER BY id DESC LIMIT ".$limit." ";
-//echo $sql;die();
+
 
 $statement = $db_data->prepare($sql); 
 $statement->execute(); 
@@ -57,6 +57,7 @@ if(!empty($results)){
 # 輸出結果
 switch($type)
 {
+
     
     # 陣列
     case 'array':
