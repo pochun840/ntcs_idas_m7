@@ -294,6 +294,37 @@ class Controller
     }
 
 
+    public function get_operation_id(){
+
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 4097;
+        $quantity = 64;
+
+        $response = ['result' => null, 'error' => ''];
+
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
+
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            $response['result'] = $data[1] ?? null;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+
+        echo json_encode($response);    
+    }
+
+
     public function get_data_info(){
         
         require_once '../app/config/config.php';  // 載入常數

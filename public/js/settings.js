@@ -1120,7 +1120,7 @@ function agent_ip_save() {
     ? ipEl.nextElementSibling
     : null;
 
-  // 不用欄位後方提示：清空並隱藏
+  // 清除欄位提示
   if (feedbackEl) {
     feedbackEl.textContent = '';
     feedbackEl.style.display = 'none';
@@ -1139,6 +1139,7 @@ function agent_ip_save() {
   };
   const TITLE = { 'en-us': 'Warning', 'zh-tw': '警告', 'zh-cn': '警告' }[lang];
   const OKLBL  = { 'en-us': 'OK', 'zh-tw': '確定', 'zh-cn': '确定' }[lang];
+  const CCLBL  = { 'en-us': 'Cancel', 'zh-tw': '取消', 'zh-cn': '取消' }[lang];
 
   const ip = (ipEl.value || '').trim();
   const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -1146,7 +1147,7 @@ function agent_ip_save() {
   // 先清狀態
   ipEl.classList.remove('is-invalid');
 
-  // ❌ 驗證失敗：紅框＋彈窗（無欄位後方提示）
+  // ❌ 驗證失敗
   if (!ip || !ipRegex.test(ip)) {
     ipEl.classList.add('is-invalid');
 
@@ -1159,15 +1160,23 @@ function agent_ip_save() {
       ipEl._bindInvalidClear = true;
     }
 
-    alertify.alert(TITLE, MSG[lang], function () {
-      ipEl.focus();
-      ipEl.select?.();
-    }).set('labels', { ok: OKLBL });
+    alertify.confirm(
+      TITLE,
+      MSG[lang],
+      function onOk() {
+        ipEl.focus();
+        ipEl.select?.();
+      },
+      function onCancel() {
+        // 取消時，直接清掉紅框
+        ipEl.classList.remove('is-invalid');
+      }
+    ).set('labels', { ok: OKLBL, cancel: CCLBL });
 
     return; // 不送出
   }
 
-  // ✅ 驗證通過 → 呼叫後端（成功/錯誤都用彈窗）
+  // ✅ 驗證通過 → 呼叫後端
   const spinner = document.getElementById('spinner');
   if (spinner) spinner.style.display = 'block';
 
@@ -1181,54 +1190,92 @@ function agent_ip_save() {
 
       if (spinner) spinner.style.display = 'none';
 
-      alertify.alert(res.res_type || 'Info', res.res_msg || 'Done.', function () {
-        sessionStorage.setItem('Connect_Setting', 'block');
-        sessionStorage.setItem('Controller_Setting', 'none');
-      });
+      alertify.confirm(
+        res.res_type || 'Info',
+        res.res_msg || 'Done.',
+        function onOk() {
+          sessionStorage.setItem('Connect_Setting', 'block');
+          sessionStorage.setItem('Controller_Setting', 'none');
+        },
+        function onCancel() {
+          // 取消時不用做事
+        }
+      ).set('labels', { ok: OKLBL, cancel: CCLBL });
+
       setTimeout(() => alertify.closeAll(), 3000);
 
       if (res.res_number != null) ipEl.value = res.res_number;
     },
     error: function (xhr) {
       if (spinner) spinner.style.display = 'none';
-      alertify.alert('Error', (xhr && xhr.responseText) || 'Request failed.');
+      alertify.confirm(
+        'Error',
+        (xhr && xhr.responseText) || 'Request failed.',
+        null,
+        null
+      ).set('labels', { ok: OKLBL, cancel: CCLBL });
     }
   });
 }
 
 
 
-function agent_type_save(){
+function agent_type_save() {
+  const agent_type = document.querySelector('input[name="agent_type"]:checked')?.value;
+  if (!agent_type) return;
 
-    var agent_type = document.querySelector('input[name="agent_type"]:checked').value;
-    if(agent_type){
-        document.querySelector(".main-content").classList.add("overlay-active");
-        document.getElementById('spinner').style.display = 'block';
+  // 語系
+  let lang = (typeof getCookie === 'function' ? getCookie('language') : 'en-us') || 'en-us';
+  lang = String(lang).toLowerCase().replace('_', '-');
+  if (lang === 'en') lang = 'en-us';
+  if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
 
-        $.ajax({
-            url: "?url=Admins/SetAgentType",
-            method: "POST",
-            data:{ 
-                agent_type: agent_type
-            },
-            success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg);
-                
-                setTimeout(function() {
-                    alertify.closeAll(); 
-                    document.getElementById('spinner').style.display = 'none';
-                    document.querySelector(".main-content").classList.remove("overlay-active"); 
-                }, 3000); 
-            },
-            
-            error: function(xhr, status, error) {
-                
-            }
-        });   
+  const OKLBL = { 'en-us': 'OK', 'zh-tw': '確定', 'zh-cn': '确定' }[lang];
+  const CCLBL = { 'en-us': 'Cancel', 'zh-tw': '取消', 'zh-cn': '取消' }[lang];
+
+  document.querySelector(".main-content").classList.add("overlay-active");
+  document.getElementById('spinner').style.display = 'block';
+
+  $.ajax({
+    url: "?url=Admins/SetAgentType",
+    method: "POST",
+    data: { agent_type },
+    success: function (response) {
+      let res = {};
+      try { res = JSON.parse(response) || {}; } catch {}
+
+      // 改用 confirm → 有 OK + Cancel
+      alertify.confirm(
+        res.res_type || 'Info',
+        res.res_msg || 'Done.',
+        function onOk() {
+          // OK：保留成功狀態
+        },
+        function onCancel() {
+          // Cancel：可以額外處理，例如還原 radio 按鈕
+        }
+      ).set('labels', { ok: OKLBL, cancel: CCLBL });
+
+      setTimeout(function () {
+        alertify.closeAll();
+        document.getElementById('spinner').style.display = 'none';
+        document.querySelector(".main-content").classList.remove("overlay-active");
+      }, 3000);
+    },
+    error: function (xhr) {
+      document.getElementById('spinner').style.display = 'none';
+      document.querySelector(".main-content").classList.remove("overlay-active");
+
+      alertify.confirm(
+        'Error',
+        (xhr && xhr.responseText) || 'Request failed.',
+        null,
+        null
+      ).set('labels', { ok: OKLBL, cancel: CCLBL });
     }
-
+  });
 }
+
 
 document.addEventListener('DOMContentLoaded', function() {
     var input = document.getElementById('barcode_name');

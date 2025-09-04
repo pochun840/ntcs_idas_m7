@@ -189,6 +189,11 @@ function renderChart(chart_mode, chart_info) {
         }
     };
 
+    // chart=2 時改用 'angle'，其餘維持 'Torque'
+    const yAxisTitle = String(chart_mode) === "2" ? 'Angle' : 'Torque';
+
+
+
     if (chart_mode === "5") {
         const rpmMin = chart_info.min_rpm ?? Math.floor(Math.min(...y_data_val_rpm) / 100) * 100;
         const rpmMax = chart_info.max_rpm ?? Math.ceil(Math.max(...y_data_val_rpm) / 100) * 100;
@@ -221,9 +226,11 @@ function renderChart(chart_mode, chart_info) {
     const option = {
         tooltip: plainTextTooltip,
         xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true  } },
-        yAxis: { type: 'value', name: 'Torque', splitLine: { show: true } },
+        yAxis: { type: 'value', name: yAxisTitle, splitLine: { show: true } },
         series: generateStepSeries(y_data_val, steps, 0)
     };
+
+    
 
     myChart.setOption(option);
 }

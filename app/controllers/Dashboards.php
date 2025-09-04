@@ -139,6 +139,9 @@ class Dashboards extends Controller
         // 取本次圖表原始資料
         $csvdata_arr = $this->DashboardModel->get_info($chart_mode, $id);
 
+
+        
+
         // 用 mode5 原始扭力（轉單位後）得出統一扭力範圍
         $unified_min_torque = 0;
         $unified_max_torque = 100;
@@ -434,6 +437,9 @@ class Dashboards extends Controller
 
         $status_arr = $this->MiscellaneousModel->details('status');
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
+
+
+
 
         $current_data = $this->DataModel->get_operation_info(); 
 

@@ -307,11 +307,16 @@ function renderChart(chart_mode, chart_info) {
         return arr;
     })(x_data_val);
 
+    // ➜ 新增：chart=2 時，Y 軸名稱使用 'Angle'，其餘維持 'Torque'
+    const yAxisTitle = String(chart_mode) === "2" ? 'Angle' : 'Torque';
+
+
+
 
     myChart.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'none' } },
         xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true } },
-        yAxis: { type: 'value', name: 'Torque', splitLine: { show: true } },
+        yAxis: { type: 'value', name: yAxisTitle, splitLine: { show: true } },
         series: finalSeries
     });
 }
