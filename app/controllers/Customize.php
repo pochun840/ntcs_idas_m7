@@ -262,6 +262,7 @@ class Customize extends Controller
 
 
     public function get_modbus_api(int $a, int $b = 1) {
+        
         require_once '../app/config/config.php';
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
