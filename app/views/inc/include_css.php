@@ -44,6 +44,7 @@ function include_css() {
         'Data'      => ['pc' => 'data.css'],
         'Agents'    => ['pc' => 'agent.css'],
         'Remotes'   => ['pc' => 'jobs.css'],
+        'Customize' => ['pc' => 'jobs.css'],
     ];
 
     $cssFile = null;

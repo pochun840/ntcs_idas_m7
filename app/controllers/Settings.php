@@ -292,18 +292,18 @@ class Settings extends Controller
 
                 if ($result) {
                     $res_msg = $text['success'] ?? 'Success';
-                    $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
+                    $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg);
                 } else {
                     $res_msg = $text['fail'] ?? 'Fail';
-                    $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+                    $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
                 }
             } else {
                 $res_msg = $text['not_found'] ?? 'Controller not found';
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+                $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
             }
         } else {
             $res_msg = $text['form_invalid'] ?? 'Invalid input';
-            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+            $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
         }
 
         //
@@ -1010,9 +1010,6 @@ class Settings extends Controller
                 'error_message' => 'Missing job_id'
             ]);
         }
-
-        
-
         exit();
     }
 
@@ -1047,8 +1044,8 @@ class Settings extends Controller
 
 
 
-    public function GetJobBarcode()
-    {
+    public function GetJobBarcode(){
+
         $input_check = true;
         $error_message = '';
         if( !empty($_GET['job_id']) && isset($_GET['job_id'])  ){
@@ -1230,9 +1227,6 @@ class Settings extends Controller
             }
         }
     }
-
-
-
 
 
     // === 語系工具（改用 en-us） ===
@@ -1498,7 +1492,6 @@ class Settings extends Controller
 
         $pwd_arr = array();
 
-
         $pwd_arr = [
             'clear_seq' => $_POST['clear_seq'],
             'clear'     => $_POST['clear'],
@@ -1507,9 +1500,6 @@ class Settings extends Controller
             'disable'   => $_POST['disable'],
             'skip'      => $_POST['skip'],
         ];
-
-    
-       
         $result = $this->SettingModel->edit_feature_pwd($pwd_arr);
 
         if ($result) {
@@ -1648,8 +1638,6 @@ class Settings extends Controller
     }
 
 
-
-
     // 連接到SQLite資料庫
     function connectToSQLite($dbPath) {
          try {
@@ -1735,7 +1723,6 @@ class Settings extends Controller
     } 
 
 
-    
     public function setting_logout() {
         foreach ($_COOKIE as $key => $value) {
             setcookie($key, '', time() - 3600, '/');

@@ -55,6 +55,7 @@ class Dashboards extends Controller
         $device_torque_unit = (int)($res_device['torque_unit'] ?? 1);
         $chart_unit_name    = $unit_arr[$device_torque_unit] ?? 'N.m';
 
+
         // 顯示用的最終鎖付值與單位
         if (!empty($data_info['fasten_status'])) {
             $data_info['error_message'] = $error_message['ERR_' . $data_info['error_message']] ?? $data_info['error_message'];
@@ -96,6 +97,10 @@ class Dashboards extends Controller
         // 目前資料 id
         $id = null;
         $first_data = $this->get_current_data();
+
+        //用modbus 取得鎖附記錄 最後一筆的id
+        //$get_operation_id = $this->get_operation_id();
+
         if (!empty($first_data)) $id = $first_data['id'];
 
         // 當前圖表
@@ -431,16 +436,10 @@ class Dashboards extends Controller
     }
 
 
-
-
     public function get_current_data(){
 
         $status_arr = $this->MiscellaneousModel->details('status');
         $unit_arr   = $this->MiscellaneousModel->details('torque_unit');
-
-
-
-
         $current_data = $this->DataModel->get_operation_info(); 
 
         return $current_data;

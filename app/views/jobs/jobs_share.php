@@ -192,7 +192,6 @@ function delete_jobid(jobid) {
 
 
 
-
 function copy_job_by_id(jobid) {
   const new_jobid   = document.getElementById("to_job_id")?.value.trim();
   const new_jobname = document.getElementById("to_job_name")?.value.trim();
@@ -290,7 +289,7 @@ function copy_job_by_id(jobid) {
         function onCancel() {
           // 取消 → 移除遮罩
           document.querySelector(".main-content")?.classList.remove("overlay-active");
-          alertify.message(i18n.cancelled);
+          //alertify.message(i18n.cancelled);
         }
       );
     },

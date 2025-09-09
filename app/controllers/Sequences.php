@@ -180,9 +180,11 @@ class Sequences extends Controller
             if($res){
                 $res_type = 'Success';
                 $res_msg  = $text['new_seq'].':'. $seq_data['SEQID']."  ".$text['success'];
+                 $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg);
             }else{
                 $res_type = 'Error';
                 $res_msg  = $text['new_seq'].':'. $seq_data['SEQID']."  ".$text['fail'];
+                
             }
             
             $result = array(
@@ -266,11 +268,11 @@ class Sequences extends Controller
 
             $res = $this->sequenceModel->delete_seq_by_id($jobid,$seqid);
             if($res){
-                $res_type = 'Success';
+                $res_type = $text['success'];
                 $res_msg  = $text['del_seq'].':'. $seqid."  ".$text['success'];
                 $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg );
             }else{
-                $res_type = 'Error';
+                $res_type = $text['fail'];
                 $res_msg  = $text['del_seq'].':'. $seqid."  ".$text['fail'];
                 $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg );
             }
@@ -343,14 +345,9 @@ class Sequences extends Controller
             $_POST['unscrew_torque_threshold'] = $roundTorque($_POST['unscrew_torque_threshold']);
         }
 
-
-
         //取得當下 IDAS 設定的扭力單位
         $res_device = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)$res_device['torque_unit'];
-
-      
-
 
         if(isset($_POST['job_id'])){
                           
@@ -656,8 +653,6 @@ class Sequences extends Controller
                 }
             }
 
-
-            //
             $from_unit = 1;
             $tools_temp = $this->MiscellaneousModel->prepareToolTorqueValues($tools_info,$from_unit,$device_torque_unit,$decimals_arr);
             if(!empty($tools_temp)){

@@ -16,10 +16,10 @@ class Data extends Controller
     }
 
     // 取得所有Jobs
-     public function index(){
+    public function index(){
 
         
-        
+    
         $type = 'ALL';
         $this->ntcs_data_db_sysnc();
         $isMobile = $this->isMobileCheck();

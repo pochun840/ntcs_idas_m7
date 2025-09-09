@@ -132,10 +132,10 @@ class Jobs extends Controller
 
             if ($res) {
                 $res_msg = $text['New'] . " " . $text['job_id'] . ': ' . $jobdata['job_id'] . " " . $text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg);
+                $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg);
             } else {
                 $res_msg = $text['New'] . " " . $text['job_id'] . ': ' . $jobdata['job_id'] . " " . $text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+                $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
             }
         }
     }
@@ -164,10 +164,10 @@ class Jobs extends Controller
             $result = array();
             if($res){
                 $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Succes', $res_msg );
+                $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
             }else{
                 $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+                $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg );
             }
 
         } 
@@ -194,10 +194,10 @@ class Jobs extends Controller
             $result = array();
             if($res){
                 $res_msg = $text['Delete']."  ".$text['job_id'].':'. $jobid."  ".$text['success'];
-                $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
+                $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
             }else{
                 $res_msg = $text['Delete']."  ".$text['job_id'].':'. $jobid."  ".$text['fail'];
-                $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+                $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg );
             }
 
         }
@@ -368,10 +368,10 @@ class Jobs extends Controller
                     
                     if($res){
                         $res_msg = $text['Copy']."  ".$text['job_id'].':'. $_POST['new_jobid']."  ".$text['success'];
-                        $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg );
+                        $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
                     }else{
                         $res_msg = $text['Copy']."  ".$text['job_id'].':'. $_POST['new_jobid']."  ".$text['fail'];
-                        $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg );
+                        $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg );
                     }
                     
                 }

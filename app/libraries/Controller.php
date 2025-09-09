@@ -262,8 +262,6 @@ class Controller
     }
 
 
-
-
     public function get_firmware_version(){
         require_once '../app/config/config.php';  // 載入常數
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
@@ -294,6 +292,7 @@ class Controller
     }
 
 
+    
     public function get_operation_id(){
 
         require_once '../app/config/config.php';  // 載入常數
@@ -302,8 +301,8 @@ class Controller
         $ip = CONTROLLER_IP;  // 使用定義的常數
         $port = 502;
         $unitId = 0;
-        $startAddress = 4097;
-        $quantity = 64;
+        $startAddress = 4165;
+        $quantity = 2;
 
         $response = ['result' => null, 'error' => ''];
 
@@ -321,7 +320,7 @@ class Controller
             $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
         }
 
-        echo json_encode($response);    
+        return json_encode($response);    
     }
 
 
@@ -509,7 +508,6 @@ class Controller
     }
 
 
-
     public function ntcs_data_db_sysnc() {
         $this->sync_db(
             '/home/kls/NTCS7/ntcs_data.db',
@@ -540,7 +538,6 @@ class Controller
             }
         }
     }
-
 
 
     public function sync_ntcs_tool_data() {

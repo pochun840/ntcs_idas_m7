@@ -1,4 +1,5 @@
 <?php
+//http://192.168.0.97/ntcs_idas/api/get_operation_api.php?type=json
 #==================================
 #   匯出鎖附記錄API
 #   get_operation_api.php
@@ -21,8 +22,6 @@ NTCS7 匯出鎖附記錄API
 介接位址：/api/get_operation_api.php&type=xml
 　　　　　/api/get_operation_api.php&limit=100&type=xml
 
-
-        
 
 補充說明: 
 1.輸出格式為:xml && json && array
@@ -55,9 +54,7 @@ if(!empty($results)){
 
 
 # 輸出結果
-switch($type)
-{
-
+switch($type){
     
     # 陣列
     case 'array':

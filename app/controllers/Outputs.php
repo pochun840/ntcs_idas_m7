@@ -19,7 +19,6 @@ class Outputs extends Controller
     // 取得所有Jobs
     public function index(){
 
-      
         //要檢查是否有alljobinput，有的話要直接帶入
         $isMobile     = $this->isMobileCheck();
         $joblist      = $this->InputModel->get_job_list();

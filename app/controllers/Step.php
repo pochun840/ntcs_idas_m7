@@ -9,9 +9,9 @@ class Step extends Controller
     private $sequenceModel;
     private $SettingModel;
     private $ToolModel;
-    public function __construct()
-    {
-        //$this->ToolModel = $this->model('Tool');
+
+    public function __construct(){
+    
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->stepModel = $this->model('Steptcc');
         $this->sequenceModel = $this->model('Sequence');
@@ -402,11 +402,11 @@ class Step extends Controller
     
                 $res = $this->stepModel->create_step($step_data);
                 if($res){
-                    $res_type = 'Success';
+                    $res_type = $text['success'];
                     $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['success'];
                     $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
                 }else{
-                    $res_type = 'Error';
+                    $res_type = $text['fail'];
                     $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['fail'];
                     $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
                 }
@@ -420,7 +420,6 @@ class Step extends Controller
 
     #查詢step data
     public function search_stepinfo(){
-
 
         $input_check = true;
         if(!empty($_POST['jobid']) && isset($_POST['jobid'])){
@@ -483,13 +482,10 @@ class Step extends Controller
         $res_device = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)$res_device['torque_unit'];
 
-
         $paramsCount = 0;
         if (!empty($job_id)) $paramsCount++;
         if (!empty($seq_id)) $paramsCount++;
         if (!empty($stepid)) $paramsCount++;
-
-
 
         $type = ($paramsCount === 2) ? 'new' : 'edit';
 
