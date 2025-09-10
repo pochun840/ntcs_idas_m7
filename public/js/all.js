@@ -323,7 +323,7 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
   const title = data?.res_type || 'Info';
   const msg   = data?.res_msg  || '';
 
-  // 取得語系 OK 文案（← 修正：用正規化後的 l 來判斷）
+  // 取得語系 OK/CANCEL 文案
   const cookieLang = (typeof getCookie === 'function' && getCookie('language')) || 'en-us';
   const labels = (typeof getAlertifyLabels === 'function')
     ? getAlertifyLabels(cookieLang)
@@ -349,21 +349,56 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
       else history.go(0);
     };
 
-    // 有些版本對 alert 的 labels 支援不一致：先全域保險設一下 OK
+    // 保險地設定 OK 文案
     if (window.alertify && alertify.defaults && alertify.defaults.glossary) {
       try { alertify.defaults.glossary.ok = labels.ok; } catch (e) {}
     }
 
-    // 顯示 alert（OK 按鈕文字依語系）
-    const dlg = alertify
-      .alert(title, msg, function () {
-        clearTimeout(autoTimer);
-        navigateOnce();
-      })
-      .set('labels', { ok: labels.ok });
+    // ====== 兼容處理：偵測是否支援 (title, message) 兩參數 ======
+    const supportsTitleParam = typeof alertify.alert === 'function' && alertify.alert.length >= 2;
+
+    let dlg;
+    if (supportsTitleParam) {
+      // v1.x 正規 API：alert(title, message)
+      dlg = alertify
+        .alert(title, msg, function () {
+          clearTimeout(autoTimer);
+          navigateOnce();
+        })
+        .set('labels', { ok: labels.ok });
+    } else {
+      // 舊版相容：先建 alert，再設定 title
+      dlg = alertify
+        .alert(msg, function () {
+          clearTimeout(autoTimer);
+          navigateOnce();
+        });
+
+      // 有些舊版用 set('title', ...)；若不支援則退而求其次用 set('header', ...)
+      try {
+        if (typeof dlg.set === 'function') {
+          dlg.set('title', title);
+        } else if (typeof dlg.setting === 'function') {
+          dlg.setting('title', title);
+        }
+      } catch (e) {
+        try { dlg.set('header', title); } catch (e2) {}
+      }
+
+      // 設置按鈕文字（舊版：全域設定；新版：labels）
+      try {
+        if (dlg && typeof dlg.set === 'function') {
+          dlg.set('labels', { ok: labels.ok });
+        } else if (alertify && alertify.set) {
+          alertify.set({ labels: { ok: labels.ok } });
+        }
+      } catch (e) {}
+    }
+    // ====== end 兼容處理 ======
 
     // 3 秒後自動關閉並導頁（避免雙重導頁）
     const autoTimer = setTimeout(navigateOnce, 3000);
+
   }, 1000);
 }
 

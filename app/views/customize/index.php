@@ -18,51 +18,89 @@
                 </td>
                 <td>
                     <button id="home" class="w3-btn w3-round-large" style="height:50px;padding: 0" onclick="window.location.href='./?url=Dashboards'"> <img src="../public/img/btn_home.png"></button>
-                </td>
+                </td> 
             </tr>
         </table>
     </div>
 
     
     <?php
-        // --- i18n strings for the table (fallback if $text 沒定義這些鍵) ---
+        // --- i18n 翻譯文字 ---
         $uiLang = $_SESSION['language'] ?? 'en-us';
         $L = [
-        'en-us' => [
-            'no' => 'NO', 'read' => 'Read Position', 'input' => 'Input Position', 'result' => 'Result',
-            'add' => 'Add Row', 'save' => 'Save', 'delete' => 'Delete', 'placeholder_read' => 'Enter read location…',
-            'placeholder_input' => 'Enter input location…', 'sel_none' => '—', 'sel_ok' => 'OK', 'sel_ng' => 'NG',
-            'saved' => 'Saved successfully', 'save_fail' => 'Save failed', 'confirm_delete' => 'Delete this row?',
-            'delete_sel' => 'Delete Selected',
-            'delete_all' => 'Delete All',
-            'none_selected' => 'Please select at least one row.',
-            'confirm_delete_all' => 'Delete ALL rows?',
-            'num_only' => 'Numbers only.', 
-        ],
-        'zh-tw' => [
-            'no' => 'NO', 'read' => '讀取位置', 'input' => '輸入位置', 'result' => '結果',
-            'add' => '新增列', 'save' => '儲存', 'delete' => '刪除', 'placeholder_read' => '輸入讀取位置…',
-            'placeholder_input' => '輸入輸入位置…', 'sel_none' => '—', 'sel_ok' => 'OK', 'sel_ng' => 'NG',
-            'saved' => '已儲存', 'save_fail' => '儲存失敗', 'confirm_delete' => '要刪除此列嗎？',
-            'delete_sel' => '刪除已選',
-            'delete_all' => '全部刪除',
-            'none_selected' => '請先勾選至少一列。',
-            'confirm_delete_all' => '要刪除全部列嗎？',
-            'num_only' => '只能輸入數字。'
-        ],
-        'zh-cn' => [
-            'no' => 'NO', 'read' => '读取位置', 'input' => '输入位置', 'result' => '结果',
-            'add' => '新增行', 'save' => '保存', 'delete' => '删除', 'placeholder_read' => '输入读取位置…',
-            'placeholder_input' => '输入输入位置…', 'sel_none' => '—', 'sel_ok' => 'OK', 'sel_ng' => 'NG',
-            'saved' => '已保存', 'save_fail' => '保存失败', 'confirm_delete' => '要删除此行吗？',
-            'delete_sel' => '删除所选',
-            'delete_all' => '全部删除',
-            'none_selected' => '请先勾选至少一行。',
-            'confirm_delete_all' => '要删除全部行吗？',
-            'num_only' => '只能输入数字。', 
+            'en-us' => [
+                'no'                  => 'NO',
+                'read'                => 'Read Position',
+                'input'               => 'Input Position',
+                'result'              => 'Result',
+                'add'                 => 'Add Row',
+                'save'                => 'Save',
+                'delete'              => 'Delete',
+                'placeholder_read'    => 'Enter read location…',
+                'placeholder_input'   => 'Enter input location…',
+                'sel_none'            => '—',
+                'sel_ok'              => 'OK',
+                'sel_ng'              => 'NG',
+                'saved'               => 'Saved successfully',
+                'save_fail'           => 'Save failed',
+                'confirm_delete'      => 'Delete this row?',
+                'delete_sel'          => 'Delete Selected',
+                'delete_all'          => 'Delete All',
+                'none_selected'       => 'Please select at least one row.',
+                'confirm_delete_all'  => 'Delete ALL rows?',
+                'num_only'            => 'Numbers only.',
+                'no_dup'              => 'Duplicate values are not allowed.',
+            ],
 
-        ],
+            'zh-tw' => [
+                'no'                  => 'NO',
+                'read'                => '讀取位置',
+                'input'               => '輸入位置',
+                'result'              => '結果',
+                'add'                 => '新增列',
+                'save'                => '儲存',
+                'delete'              => '刪除',
+                'placeholder_read'    => '輸入讀取位置…',
+                'placeholder_input'   => '輸入輸入位置…',
+                'sel_none'            => '—',
+                'sel_ok'              => 'OK',
+                'sel_ng'              => 'NG',
+                'saved'               => '已儲存',
+                'save_fail'           => '儲存失敗',
+                'confirm_delete'      => '要刪除此列嗎？',
+                'delete_sel'          => '刪除已選',
+                'delete_all'          => '全部刪除',
+                'none_selected'       => '請先勾選至少一列。',
+                'confirm_delete_all'  => '要刪除全部列嗎？',
+                'num_only'            => '只能輸入數字。',
+                'no_dup'              => '不可以輸入重複的數值。',
+            ],
+
+            'zh-cn' => [
+                'no'                  => 'NO',
+                'read'                => '读取位置',
+                'input'               => '输入位置',
+                'result'              => '结果',
+                'add'                 => '新增行',
+                'save'                => '保存',
+                'delete'              => '删除',
+                'placeholder_read'    => '输入读取位置…',
+                'placeholder_input'   => '输入输入位置…',
+                'sel_none'            => '—',
+                'sel_ok'              => 'OK',
+                'sel_ng'              => 'NG',
+                'saved'               => '已保存',
+                'save_fail'           => '保存失败',
+                'confirm_delete'      => '要删除此行吗？',
+                'delete_sel'          => '删除所选',
+                'delete_all'          => '全部删除',
+                'none_selected'       => '请先勾选至少一行。',
+                'confirm_delete_all'  => '要删除全部行吗？',
+                'num_only'            => '只能输入数字。',
+                'no_dup'              => '不可以输入重复的数值。',
+            ],
         ];
+
         $L = $L[strtolower($uiLang)] ?? $L['en-us'];
         ?>
 
@@ -181,23 +219,64 @@
 
     // 儲存前檢核（只要有填就必須是數字）
     function validateNumericRows(){
-    let bad = 0;
-    [...tbody.querySelectorAll('tr')].forEach(tr=>{
-        const readEl  = tr.querySelector('td:nth-child(3) input');
-        const inputEl = tr.querySelector('td:nth-child(4) input');
-        const readVal  = readEl?.value?.trim()  ?? '';
-        const inputVal = inputEl?.value?.trim() ?? '';
+        let bad = 0;
+        [...tbody.querySelectorAll('tr')].forEach(tr=>{
+            const readEl  = tr.querySelector('td:nth-child(3) input');
+            const inputEl = tr.querySelector('td:nth-child(4) input');
+            const readVal  = readEl?.value?.trim()  ?? '';
+            const inputVal = inputEl?.value?.trim() ?? '';
 
-        const readOk  = (readVal  === '' || /^\d+$/.test(readVal));
-        const inputOk = (inputVal === '' || /^\d+$/.test(inputVal));
+            const readOk  = (readVal  === '' || /^\d+$/.test(readVal));
+            const inputOk = (inputVal === '' || /^\d+$/.test(inputVal));
 
-        markInvalid(readEl,  !readOk);
-        markInvalid(inputEl, !inputOk);
+            markInvalid(readEl,  !readOk);
+            markInvalid(inputEl, !inputOk);
 
-        if (!readOk || !inputOk) bad++;
-    });
-    return bad === 0;
+            if (!readOk || !inputOk) bad++;
+        });
+        return bad === 0;
     }
+
+    // ====== 不能重複：同欄位內（讀取欄彼此唯一、輸入欄彼此唯一） ======
+    function getColInputs(colIndex){
+        return [...tbody.querySelectorAll(`tr td:nth-child(${colIndex}) input.table-input`)];
+    }
+    function validateUniqueForCol(colIndex){
+    const inputs = getColInputs(colIndex);
+    const seen = new Map();
+    let ok = true;
+
+    // 先清掉舊的 invalid 樣式
+    inputs.forEach(el => el && el.classList.remove('invalid'));
+
+    inputs.forEach(el=>{
+        const v = (el?.value ?? '').trim();
+        if (!v) return;               // 空值跳過
+        if (seen.has(v)) {
+        ok = false;
+        el.classList.add('invalid');
+        // 把第一個相同值也標紅
+        const first = seen.get(v);
+        if (first) first.classList.add('invalid');
+        } else {
+        seen.set(v, el);
+        }
+    });
+    return ok;
+    }
+    function validateUniqueColumns(){
+        // 第3欄=讀取位置、第4欄=輸入位置
+        const okRead  = validateUniqueForCol(3);
+        const okInput = validateUniqueForCol(4);
+        return okRead && okInput;
+    }
+    // 即時高亮（輸入任何數字欄時觸發）
+    document.addEventListener('input', (e)=>{
+        if (e.target && e.target.matches('td:nth-child(3) input.table-input, td:nth-child(4) input.table-input')) {
+            validateUniqueColumns();
+        }
+    });
+
 
 
 
@@ -336,9 +415,6 @@
         return rows;
     }
 
-
-
-
     function syncCkAllState(){
         if (!IS_ADMIN || !ckAll) return;
         const rowCks = tbody.querySelectorAll('.row-ck');
@@ -352,11 +428,11 @@
             // 全部勾選 → 全選打勾
             ckAll.checked = true;
             ckAll.indeterminate = false;
-        } else {
+        }else {
             // 只要不是全部勾選（包含 1/3、2/3）→ 全選不勾，且不顯示半選
             ckAll.checked = false;
             ckAll.indeterminate = false;
-    }
+        }
     }
 
 
@@ -419,6 +495,13 @@
             if (window.alertify) alertify.alert('Error', L['num_only']); else alert(L['num_only']);
             return;
         }
+
+        // 再做不可重複檢查
+        if (!validateUniqueColumns()) {
+            if (window.alertify) alertify.alert('Error', L['no_dup']); else alert(L['no_dup']);
+            return;
+        }
+        
 
 
         if(payload.rows.length === 0){

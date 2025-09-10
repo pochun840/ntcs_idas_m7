@@ -159,7 +159,7 @@ class Customize extends Controller
         $fullpath = rtrim($baseDir, '/\\') . '/' . $filename;
         $tmpPath  = $fullpath . '.tmp';  // 先寫 tmp，再原子覆蓋
 
-        // --- 寫 CSV（覆蓋模式 + 原子替換） ---
+        // --- 寫 CSV（覆蓋模式 + 內容替換） ---
         try {
             $fp = @fopen($tmpPath, 'w');
             if (!$fp) {
