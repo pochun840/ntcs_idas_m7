@@ -56,6 +56,11 @@ class Dashboards extends Controller
         $chart_unit_name    = $unit_arr[$device_torque_unit] ?? 'N.m';
 
 
+        //
+        //
+        //
+
+
         // 顯示用的最終鎖付值與單位
         if (!empty($data_info['fasten_status'])) {
             $data_info['error_message'] = $error_message['ERR_' . $data_info['error_message']] ?? $data_info['error_message'];
@@ -143,6 +148,8 @@ class Dashboards extends Controller
 
         // 取本次圖表原始資料
         $csvdata_arr = $this->DashboardModel->get_info($chart_mode, $id);
+
+        
 
 
         
