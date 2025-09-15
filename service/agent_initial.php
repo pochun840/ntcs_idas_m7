@@ -18,14 +18,14 @@ if (file_exists('/var/www/html/database/das.db') && PHP_OS_FAMILY == 'Linux') {
 	if( $agent_type == 1 && $agent_server_ip != '' ){// client
         // $pgrepCommand = "php /var/www/html/client2.php";
         // exec($pgrepCommand, $pidList);
-        exec('bash -c "exec nohup setsid php /var/www/html/tccidas/service/agent_client.php > /dev/null 2>&1 &"');
+        exec('bash -c "exec nohup setsid php /var/www/html/ntcs_idas/service/agent_client.php > /dev/null 2>&1 &"');
 	}
 
 	if($agent_type == 2){// server
 		// $pgrepCommand = "php /var/www/html/server.php";
         // exec($pgrepCommand, $pidList);
-        exec('bash -c "exec nohup setsid php /var/www/html/tccidas/service/agent_server.php > /dev/null 2>&1 &"');
-        exec('bash -c "exec nohup setsid php /var/www/html/tccidas/service/agent_client.php > /dev/null 2>&1 &"');
+        exec('bash -c "exec nohup setsid php /var/www/html/ntcs_idas/service/agent_server.php > /dev/null 2>&1 &"');
+        exec('bash -c "exec nohup setsid php /var/www/html/ntcs_idas/service/agent_client.php > /dev/null 2>&1 &"');
 	}
 }
 

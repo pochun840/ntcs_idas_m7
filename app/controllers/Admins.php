@@ -180,6 +180,9 @@ class Admins extends Controller
         $this->StopService("agent_server.php");
         sleep(1);
 
+
+        $agent_type = (int)$agent_type;
+
         if ($agent_type == 1) {
             $this->StartService("/var/www/html/ntcs_idas/service/agent_client.php");
         }

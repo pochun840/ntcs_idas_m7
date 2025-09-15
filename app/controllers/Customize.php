@@ -17,12 +17,106 @@ class Customize extends Controller
     public function index(){
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();
+        $data_button = $this->MiscellaneousModel->details('customize');
+
+
+        //判斷 csv 是否存在
+        $data_csv = $this->load_customize_csv_arrays();
+
         $data = [
             'isMobile' => $isMobile,
             'job_list' => $job_list,
+            'data_button' => $data_button,
+            'data_csv' => $data_csv
         ];
         $this->view('customize/index', $data);
     }
+
+
+
+    /**
+     * 讀取 /var/www/html/temp/customize.csv
+     * 回傳：
+     *   [
+     *     'no'             => [1, 2, ...],             // int[]
+     *     'read_position'  => ['#26 fasten_status', ...], // string[]
+     *     'input_position' => [1000, 2000, ...],       // float[]（非數字則為 null）
+     *     'result'         => ['OK', '12.3', ...]      // string[]
+     *   ]
+     * 失敗（檔案不存在/不可讀/表頭不符）則回傳 null
+     */
+    public function load_customize_csv_arrays(string $file = '/var/www/html/temp/customize.csv'): ?array{
+
+        if (!is_file($file) || !is_readable($file)) return null;
+        $fh = @fopen($file, 'r');
+        if (!$fh) return null;
+
+        // 處理 UTF-8 BOM
+        $bom = fread($fh, 3);
+        if ($bom !== "\xEF\xBB\xBF") rewind($fh);
+
+        // 讀表頭
+        $headers = fgetcsv($fh);
+        if ($headers === false || !is_array($headers)) { fclose($fh); return null; }
+
+        // 表頭正規化（大小寫不敏感、空白→底線、去除非 \w）
+        $norm = static function($s){
+            $s = strtolower(trim($s ?? ''));
+            $s = preg_replace('/\s+/', '_', $s);
+            return preg_replace('/[^\w]/', '', $s);
+        };
+        $hmap = [];
+        foreach ($headers as $i => $h) $hmap[$norm($h)] = $i;
+
+        // 需求欄位索引
+        $idxNO  = $hmap['no']             ?? null;
+        $idxRP  = $hmap['read_position']  ?? null;
+        $idxIP  = $hmap['input_position'] ?? null;
+        $idxRES = $hmap['result']         ?? null;
+        if ($idxNO===null || $idxRP===null || $idxIP===null || $idxRES===null) {
+            fclose($fh);
+            return null;
+        }
+
+        $res = [
+            'no'             => [],
+            'read_position'  => [],
+            'input_position' => [],
+            'result'         => [],
+        ];
+
+        while (($row = fgetcsv($fh)) !== false) {
+            if (!is_array($row)) continue;
+
+            // 跳過全空列
+            $allEmpty = true;
+            foreach ($row as $cell) {
+                if (trim((string)$cell) !== '') { $allEmpty = false; break; }
+            }
+            if ($allEmpty) continue;
+
+            // 取值並轉型
+            $no  = (int)trim((string)($row[$idxNO]  ?? ''));
+            $rp  = trim((string)($row[$idxRP]  ?? ''));
+            $ipS = trim((string)($row[$idxIP]  ?? ''));
+            $re  = trim((string)($row[$idxRES] ?? ''));
+
+            $ip = ($ipS === '' ? null : (is_numeric($ipS) ? (float)$ipS : null));
+
+            $res['no'][]             = $no;
+            $res['read_position'][]  = $rp;
+            $res['input_position'][] = $ip;
+            $res['result'][]         = $re;
+        }
+        fclose($fh);
+
+        // 全部都空就算失敗
+        if (empty($res['no']) && empty($res['read_position']) && empty($res['input_position']) && empty($res['result'])) {
+            return null;
+        }
+        return $res;
+    }
+
 
    
 
@@ -32,8 +126,6 @@ class Customize extends Controller
      * 寫入 CSV 至 /var/www/html/temp，檔名：customize_<SN>_YYYYMMDDhhmmss[_n].csv
      * 回傳 JSON：{res_type, res_msg, affected, filename, download_url}
      */
-
-   
     public function save_positions(){
 
         header('Content-Type: application/json; charset=utf-8');
@@ -41,24 +133,9 @@ class Customize extends Controller
         // --- i18n 簡訊息 ---
         $lang = strtolower($_SESSION['language'] ?? 'en-us');
         $M = [
-            'en-us' => [
-                'invalid' => 'Invalid payload.',
-                'empty'   => 'No rows to save.',
-                'ok'      => 'Saved successfully.',
-                'server'  => 'Server error.',
-            ],
-            'zh-tw' => [
-                'invalid' => '傳入資料格式不正確。',
-                'empty'   => '沒有可儲存的資料。',
-                'ok'      => '已儲存成功。',
-                'server'  => '伺服器錯誤。',
-            ],
-            'zh-cn' => [
-                'invalid' => '传入数据格式不正确。',
-                'empty'   => '没有可保存的数据。',
-                'ok'      => '保存成功。',
-                'server'  => '服务器错误。',
-            ],
+            'en-us' => ['invalid'=>'Invalid payload.','empty'=>'No rows to save.','ok'=>'Saved successfully.','server'=>'Server error.'],
+            'zh-tw' => ['invalid'=>'傳入資料格式不正確。','empty'=>'沒有可儲存的資料。','ok'=>'已儲存成功。','server'=>'伺服器錯誤。'],
+            'zh-cn' => ['invalid'=>'传入数据格式不正确。','empty'=>'没有可保存的数据。','ok'=>'保存成功。','server'=>'服务器错误。'],
         ];
         $msg = $M[$lang] ?? $M['en-us'];
 
@@ -71,45 +148,103 @@ class Customize extends Controller
             return;
         }
 
-        // === 清理資料 + 計算每列 $final（要回傳到前端顯示在 result-<row_id>）===
-        $rowsForCsv  = [];  // CSV 用
-        $rowsForResp = [];  // 回傳前端用（讓前端把值塞回 UI）
+        // === 清理資料 + 計算每列 $final（前端寫回 result-<row_id>）===
+        $rowsForCsv  = [];
+        $rowsForResp = [];
+        $columnsWL   = self::ntcsColumns(); // 欄位白名單
+
         foreach ($data['rows'] as $r) {
             if (!is_array($r)) continue;
 
             $row_id = isset($r['row_id']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$r['row_id']) : '';
+
+            // 來源資訊（db / modbus）
+            $read_src       = isset($r['read_src'])       ? strtolower(trim((string)$r['read_src']))  : '';
+            $read_db_index  = isset($r['read_db_index'])  ? trim((string)$r['read_db_index'])         : '';
+            $read_db_name   = isset($r['read_db_name'])   ? trim((string)$r['read_db_name'])          : '';
+
+            // Modbus/手動欄位
             $read   = isset($r['read_pos'])  ? trim((string)$r['read_pos'])  : '';
             $input  = isset($r['input_pos']) ? trim((string)$r['input_pos']) : '';
             $result = isset($r['result'])    ? strtoupper(trim((string)$r['result'])) : '';
             if (!in_array($result, ['', 'OK', 'NG'], true)) $result = '';
 
-            $read  = mb_substr($read,  0, 128, 'UTF-8');
-            $input = mb_substr($input, 0, 128, 'UTF-8');
+            // 長度限制
+            $read         = mb_substr($read,  0, 128, 'UTF-8');
+            $input        = mb_substr($input, 0, 128, 'UTF-8');
+            $read_db_name = mb_substr($read_db_name, 0, 128, 'UTF-8');
 
+            // 顯示於 CSV 的讀取欄位文字
+            $csvReadText = '';
+            if ($read_src === 'db' && $read_db_index !== '') {
+                $idx = (int)$read_db_index;
+                $col = $columnsWL[$idx] ?? '';
+                $tag = '#'.$idx;
+                $csvReadText = $col ? ($tag.' '.$col) : $tag;
+            } else {
+                $csvReadText = $read;
+            }
+
+            // === 計算 $final：分流 ===
             $final = '';
-            if ($read !== '' && $input !== '') {
-                $readPos = (int)$read;
-                try {
-                    $bytes = 1;
-                    if (method_exists($this, 'RegMap')) {
-                        $bytes = (int)$this->RegMap($readPos);
-                        if ($bytes < 1) $bytes = 1;
-                    }
-                    $val = $this->get_modbus_api($readPos, $bytes);
 
-                    if (is_array($val))        $final = implode(',', array_map('strval', $val));
-                    elseif ($val === null)     $final = '';
-                    elseif (is_scalar($val))   $final = (string)$val;
-                    else                       $final = json_encode($val, JSON_UNESCAPED_UNICODE);
-                } catch (\Throwable $e) {
-                    $final = '';
+            if ($read_src === 'db' && $read_db_index !== '') {
+                // ===== DB 讀取模式：改用 get_operation_info() 取最新一筆 =====
+                $idx = (int)$read_db_index;
+                $col = $columnsWL[$idx] ?? null;
+
+                if ($col && preg_match('/^\w+$/', $col)) {
+                    try {
+                        $lastRow = $this->DataModel->get_operation_info();  // ★ 直接取最後一筆
+                        if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
+                            $val = $lastRow[$col];
+                            if (is_array($val))        $final = implode(',', array_map('strval', $val));
+                            elseif ($val === null)     $final = '';
+                            elseif (is_scalar($val))   $final = (string)$val;
+                            else                       $final = json_encode($val, JSON_UNESCAPED_UNICODE);
+                        } else {
+                            $final = '';
+                        }
+                    } catch (\Throwable $e) {
+                        $final = '';
+                    }
+                } else {
+                    $final = ''; // 白名單沒有或欄名不合法
+                }
+
+            } else {
+                // ===== Modbus 讀取模式（維持原規則：讀寫位置都要有值才讀） =====
+                if ($read !== '' && $input !== '') {
+                    $readPos = (int)$read;
+                    try {
+                        $bytes = 1;
+                        if (method_exists($this, 'RegMap')) {
+                            $bytes = (int)$this->RegMap($readPos);
+                            if ($bytes < 1) $bytes = 1;
+                        }
+                        $val = $this->get_modbus_api($readPos, $bytes);
+
+                        if (is_array($val))        $final = implode(',', array_map('strval', $val));
+                        elseif ($val === null)     $final = '';
+                        elseif (is_scalar($val))   $final = (string)$val;
+                        else                       $final = json_encode($val, JSON_UNESCAPED_UNICODE);
+                    } catch (\Throwable $e) {
+                        $final = '';
+                    }
                 }
             }
 
-            if (!($read === '' && $input === '' && $result === '')) {
-                $rowsForCsv[] = ['read_pos' => $read, 'input_pos' => $input];
+            // 收集要寫入 CSV 的行（含 result = $final）
+            if (!($csvReadText === '' && $input === '' && $result === '')) {
+                $rowsForCsv[] = [
+                    'read_pos'  => $csvReadText,
+                    'input_pos' => $input,
+                    'result'    => $final,   // ← 寫出計算後的結果
+                ];
             }
 
+
+            // 回寫前端結果欄
             if ($row_id !== '') {
                 $rowsForResp[] = [
                     'row_id'    => $row_id,
@@ -155,11 +290,10 @@ class Customize extends Controller
         }
 
         // --- 固定檔名；每次覆蓋 ---
-        $filename = "customize_{$deviceSn}.csv";
+        $filename = "customize.csv";
         $fullpath = rtrim($baseDir, '/\\') . '/' . $filename;
-        $tmpPath  = $fullpath . '.tmp';  // 先寫 tmp，再原子覆蓋
+        $tmpPath  = $fullpath . '.tmp';
 
-        // --- 寫 CSV（覆蓋模式 + 內容替換） ---
         try {
             $fp = @fopen($tmpPath, 'w');
             if (!$fp) {
@@ -173,30 +307,26 @@ class Customize extends Controller
                 return;
             }
 
-            // 可選：上鎖避免多程序同時寫同一 tmp（非必要，但更穩）
             @flock($fp, LOCK_EX);
 
             // UTF-8 BOM（Excel 友善）
             fwrite($fp, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             // 表頭
-            fputcsv($fp, ['NO', 'Read Position', 'Input Position']);
+            fputcsv($fp, ['NO', 'Read Position', 'Input Position','result']);
 
             // 內容
             $i = 1;
             foreach ($rowsForCsv as $r) {
-                fputcsv($fp, [$i++, $r['read_pos'], $r['input_pos']]);
+                fputcsv($fp, [$i++, $r['read_pos'], $r['input_pos'], $r['result'] ?? '']);
             }
 
-            // 解鎖 & 關閉
             @flock($fp, LOCK_UN);
             fclose($fp);
             @chmod($tmpPath, 0644);
 
-            // Windows 上 rename 不一定能覆蓋；先刪舊檔再換名
             if (file_exists($fullpath)) { @unlink($fullpath); }
             if (!@rename($tmpPath, $fullpath)) {
-                // 失敗則清理 tmp 並報錯
                 @unlink($tmpPath);
                 http_response_code(500);
                 echo json_encode([
@@ -231,6 +361,35 @@ class Customize extends Controller
             ], JSON_UNESCAPED_UNICODE);
         }
     }
+
+    /**
+     * ntcs_data 欄位白名單（依索引對應欄位）
+     * 供 DB 模式以索引安全映射到實際欄位名
+     */
+    private static function ntcsColumns(): array {
+        $columns = [
+            "id","system_sn","data_time","device_type","device_id","device_sn",
+            "tool_type","tool_sn","tool_status","job_id","job_name","sequence_id",
+            "sequence_name","step_id","torque_unit","target_type","target_torque",
+            "target_angle","target_time","fasten_time","final_fasten_torque",
+            "final_fasten_angle","total_fasten_angle","count_type","last_screw_count",
+            "total_screw_count","fasten_status","error_message","fasten_direction","rpm",
+            "hi_torque","lo_torque","hi_angle","lo_angle","delay_ttime","threshold_torque",
+            "threshold_angle","downshift_torque","downshift_angle","downshift_speed",
+            "final_tool_voltage","final_tool_current","barcode",
+        ];
+        // 你目前只需要 step0~step5
+        for ($i=0; $i<=5; $i++) {
+            $columns[] = "step{$i}_last_times";
+            $columns[] = "step{$i}_last_angle";
+            $columns[] = "step{$i}_last_torque";
+            $columns[] = "step{$i}_last_threadshold";
+        }
+        return array_values($columns);
+    }
+
+
+
 
     /**
      * 確保輸出資料夾存在且可寫；不存在則遞迴建立。
@@ -383,6 +542,260 @@ class Customize extends Controller
         return $map[$a] ?? $default; // 找不到就回 $default（預設 null）
     }
 
+
+    public function get_list() {
+        $this->view('service/client9502'); 
+    }
+
+
+    public function get_api(){
+        header('Content-Type: application/json; charset=utf-8');
+
+        $lang = strtolower($_COOKIE['language'] ?? 'en-us');
+        $M = [
+            'en-us' => ['invalid'=>'Invalid payload.','ok'=>'OK','server'=>'Server error.'],
+            'zh-tw' => ['invalid'=>'傳入資料格式不正確。','ok'=>'OK','server'=>'伺服器錯誤。'],
+            'zh-cn' => ['invalid'=>'传入数据格式不正确。','ok'=>'OK','server'=>'服务器错误。'],
+        ];
+        $msg = $M[$lang] ?? $M['en-us'];
+
+        // —— 讀取 JSON ——
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true);
+
+        if (!is_array($data)) {
+            http_response_code(400);
+            echo json_encode(['res_type'=>'Error','res_msg'=>$msg['invalid']], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 支援兩種形態：rows[] 或 no/read_position/input_position 三陣列
+        $clientRows = [];
+        if (isset($data['rows']) && is_array($data['rows'])) {
+            $clientRows = $data['rows'];
+        } else {
+            $nos  = isset($data['no']) ? (array)$data['no'] : [];
+            $rps  = isset($data['read_position']) ? (array)$data['read_position'] : [];
+            $ips  = isset($data['input_position']) ? (array)$data['input_position'] : [];
+            $len  = max(count($nos), count($rps), count($ips));
+            for ($i=0; $i<$len; $i++){
+                $clientRows[] = [
+                    'no'             => $nos[$i]  ?? null,
+                    'read_position'  => $rps[$i]  ?? null,
+                    'input_position' => $ips[$i]  ?? null,
+                ];
+            }
+        }
+
+        if (empty($clientRows)) {
+            echo json_encode([
+                'res_type'=>'OK',
+                'res_msg' =>$msg['ok'],
+                'server_time'=>date('c'),
+                'affected'=>0,
+                'rows'=>[],
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 限制最多 100 列，避免過度負載
+        if (count($clientRows) > 100) {
+            $clientRows = array_slice($clientRows, 0, 100);
+        }
+
+        $columnsWL = self::ntcsColumns();
+
+        // 先抓一次最新一筆 DB 資料，供所有 DB 模式使用
+        $lastRow = null;
+        try {
+            if (isset($this->DataModel) && method_exists($this->DataModel, 'get_operation_info')) {
+                $lastRow = $this->DataModel->get_operation_info();
+            } elseif (method_exists($this, 'get_operation_info')) {
+                $lastRow = $this->DataModel->get_operation_info();
+            }
+            if (!is_array($lastRow)) $lastRow = null;
+        } catch (\Throwable $e) { $lastRow = null; }
+
+        // 工具：把任意值轉成字串結果
+        $toString = static function($val){
+            if (is_array($val))      return implode(',', array_map('strval', $val));
+            if ($val === null)       return '';
+            if (is_scalar($val))     return (string)$val;
+            return json_encode($val, JSON_UNESCAPED_UNICODE);
+        };
+
+        $rowsOut = [];
+
+        foreach ($clientRows as $r) {
+            if (!is_array($r)) continue;
+
+            $no   = isset($r['no']) ? (int)$r['no'] : null;
+            $rp   = trim((string)($r['read_position']  ?? ''));
+            $ip   = trim((string)($r['input_position'] ?? ''));
+
+            $mode   = '';   // 'db' | 'modbus' | ''
+            $final  = '';
+            $column = null; // DB 模式欄位名
+
+            // 判斷模式
+            if (preg_match('/^#\s*(\d+)(?:\s+.*)?$/', $rp, $m)) {
+                // —— DB 模式 —— ex: "#26 fasten_status"
+                $mode = 'db';
+                $idx  = (int)$m[1];
+                $col  = $columnsWL[$idx] ?? null;
+                if ($col && preg_match('/^\w+$/', $col) && is_array($lastRow) && array_key_exists($col, $lastRow)) {
+                    $column = $col;
+                    $final  = $toString($lastRow[$col]);
+                } else {
+                    $final = '';
+                }
+            } elseif ($rp !== '' && preg_match('/^\d+$/', $rp)) {
+                // —— Modbus 模式 ——（維持你的規則：read 與 input 都要有值）
+                $mode = 'modbus';
+                if ($ip !== '' && preg_match('/^\d+$/', $ip)) {
+                    $readPos = (int)$rp;
+                    try {
+                        $bytes = 1;
+                        if (method_exists($this, 'RegMap')) {
+                            $bytes = (int)$this->RegMap($readPos);
+                            if ($bytes < 1) $bytes = 1;
+                        }
+                        $val = $this->get_modbus_api($readPos, $bytes);
+                        $final = $toString($val);
+                    } catch (\Throwable $e) {
+                        $final = '';
+                    }
+                } else {
+                    $final = '';
+                }
+            } else {
+                // 不明格式 → 不處理
+                $mode  = '';
+                $final = '';
+            }
+
+            $rowsOut[] = [
+                'no'         => $no,
+                'result'     => $final,
+                'read_mode'  => $mode,
+                'column'     => $column, // 只有 DB 模式才會有值
+            ];
+        }
+
+        echo json_encode([
+            'res_type'    => 'OK',
+            'res_msg'     => $msg['ok'],
+            'server_time' => date('c'),
+            'affected'    => count($rowsOut),
+            'rows'        => $rowsOut,
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+
+    public function fillCsvResults(string $csvPath = '/var/www/html/temp/customize.csv'): array{
+        // 1) 取 DB 最新一筆（用你的 Model）
+        $lastRow = null;
+        try {
+            if (isset($this->DataModel) && method_exists($this->DataModel, 'get_operation_info')) {
+                $lastRow = $this->DataModel->get_operation_info();
+            } elseif (method_exists($this, 'get_operation_info')) {
+                $lastRow = $this->DataModel->get_operation_info();
+            }
+            if (!is_array($lastRow)) $lastRow = null;
+        } catch (\Throwable $e) { $lastRow = null; }
+
+        $toString = static function($val){
+            if (is_array($val))  return implode(',', array_map('strval', $val));
+            if ($val === null)   return '';
+            if (is_scalar($val)) return (string)$val;
+            return json_encode($val, JSON_UNESCAPED_UNICODE);
+        };
+
+        // 2) 讀 CSV
+        if (!is_file($csvPath)) return [];
+        $fp = @fopen($csvPath, 'r');
+        if (!$fp) return [];
+
+        $rows = [];
+        $isFirst = true;
+
+        while (($cols = fgetcsv($fp)) !== false) {
+            if ($isFirst && isset($cols[0])) {
+                // 去 BOM
+                $cols[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cols[0]);
+                $isFirst = false;
+            }
+
+            $noRaw   = isset($cols[0]) ? trim((string)$cols[0]) : '';
+            $rpRaw   = isset($cols[1]) ? trim((string)$cols[1]) : '';
+            $ipRaw   = isset($cols[2]) ? trim((string)$cols[2]) : '';
+            $resRaw  = isset($cols[3]) ? trim((string)$cols[3]) : '';
+
+            // 跳過空行
+            if ($noRaw === '' && $rpRaw === '' && $ipRaw === '' && $resRaw === '') continue;
+
+            // 偵測表頭
+            $maybeHeader = preg_match('/^no$/i',$noRaw) ||
+                        preg_match('/^read\s*position$/i',$rpRaw) ||
+                        preg_match('/^input\s*position$/i',$ipRaw) ||
+                        preg_match('/^result$/i',$resRaw);
+            if ($maybeHeader) {
+                // 保留表頭到最前面，後續覆寫時會重建表頭，所以這裡不加入 $rows
+                continue;
+            }
+
+            // 3) 正規化 Read Position
+            // 支援 "#36 threshold_angle" → "threshold_angle"
+            $rpNorm = preg_replace('/^\s*#\s*\d+\s*/', '', $rpRaw);
+
+            // 4) 依規則取值
+            $final = '';
+
+            // 4-1) 先嘗試 DB：Read Position 直接等於欄位名
+            if ($lastRow && $rpNorm !== '' && preg_match('/^\w+$/', $rpNorm) && array_key_exists($rpNorm, $lastRow)) {
+                $final = $toString($lastRow[$rpNorm]);
+
+            // 4-2)（選用）Modbus：Read/Input 都是純數字才讀
+            } elseif ($rpRaw !== '' && preg_match('/^\d+$/', $rpRaw) && $ipRaw !== '' && preg_match('/^\d+$/', $ipRaw)) {
+                try {
+                    $readPos = (int)$rpRaw;
+                    $bytes = method_exists($this,'RegMap') ? max(1,(int)$this->RegMap($readPos)) : 1;
+                    $val = $this->get_modbus_api($readPos, $bytes);
+                    $final = $toString($val);
+                } catch (\Throwable $e) {
+                    $final = '';
+                }
+            }
+
+            $rows[] = [
+                'no'             => ctype_digit($noRaw) ? (int)$noRaw : $noRaw,
+                'read_position'  => $rpRaw,
+                'input_position' => $ipRaw,
+                'result'         => $final,   // ★ 填好的結果
+            ];
+        }
+        fclose($fp);
+
+        // 5) 覆寫回 CSV（友善 Excel：加 BOM + 表頭）
+        $dir = dirname($csvPath);
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+
+        $tmp = $csvPath . '.tmp';
+        $out = fopen($tmp, 'w');
+        if ($out) {
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['no','read_position','input_position','result']);
+            foreach ($rows as $r) {
+                fputcsv($out, [$r['no'], $r['read_position'], $r['input_position'], $r['result']]);
+            }
+            fclose($out);
+            @unlink($csvPath);
+            @rename($tmp, $csvPath);
+            @chmod($csvPath, 0644);
+        }
+
+        return $rows;
+    }
 
 
 }

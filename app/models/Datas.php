@@ -22,19 +22,19 @@ class Datas{
         }
 
         // 預設 SQL
-        $sql = "SELECT * FROM ntcs_data ORDER BY data_time DESC LIMIT 100";
+        $sql = "SELECT * FROM ntcs_data ORDER BY rowid DESC LIMIT 100";
 
         if ($type == 'OK') {
             $sql = "
                 SELECT *
                 FROM (
-                    SELECT * 
+                    SELECT rowid AS rid, *
                     FROM ntcs_data
-                    WHERE fasten_status in ('4','5','6')
-                    ORDER BY data_time DESC
+                    WHERE fasten_status IN (4,5,6)
+                    ORDER BY rid DESC
                     LIMIT 100
                 ) AS recent_data
-                ORDER BY data_time DESC
+                ORDER BY rid DESC;
             ";
         }
 
@@ -42,13 +42,13 @@ class Datas{
             $sql = "
                 SELECT *
                 FROM (
-                    SELECT * 
+                    SELECT rowid AS rid, *
                     FROM ntcs_data
-                    WHERE fasten_status in ('7', '8')
-                    ORDER BY data_time DESC
+                    WHERE fasten_status IN (7,8)
+                    ORDER BY rid DESC
                     LIMIT 100
                 ) AS recent_data
-                ORDER BY data_time DESC
+                ORDER BY rid DESC;
             ";
         }
 
@@ -114,7 +114,7 @@ class Datas{
             return null;
         }
     
-        $sql = "SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1";
+        $sql = "SELECT * FROM ntcs_data ORDER BY rowid DESC LIMIT 1";
     
         try {
             $statement = $this->db_data->prepare($sql);

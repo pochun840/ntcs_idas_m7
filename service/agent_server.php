@@ -1,64 +1,88 @@
 <?php
-// 建立 WebSocket 伺服器
-$server = new swoole_websocket_server("0.0.0.0", 9501);
+use Swoole\WebSocket\Server;
 
-//避免memory leak
-$server->set(array(
-    'worker_num' => 2,    //开启两个worker进程 
-    'max_request' => 2,   //每个worker进程max request设置为2次 
-    'dispatch_mode'=>3,
-));
+$server = new Server("0.0.0.0", 9501);
 
-// 處理連接事件
-$server->on('open', function ($server, $request) {
-    // 當有客戶端連接時
-    // echo "Client connected: {$request->fd}\n";
-    
-    // 在伺服器端保存已連線的客戶端資訊，您可以使用陣列、資料庫或其他方式來管理
-    // 這裡使用一個簡單的陣列
-    $server->userList[$request->fd] = $request->fd;
-    
-    // 發送歡迎訊息給新連接的客戶端
-    $server->push($request->fd, "Welcome to the server!");
-    
-    // 向所有客戶端廣播新客戶端已連接的訊息
-    foreach ($server->connections as $fd) {
-        $server->push($fd, "Client {$request->fd} connected");
-        // var_dump($fd);
-        $info = $server->getClientInfo($fd);
-        // var_dump($info);
+$server->set([
+    'worker_num'               => 2,
+    'max_request'              => 0,
+    'dispatch_mode'            => 3,
+    'heartbeat_check_interval' => 30,
+    'heartbeat_idle_time'      => 60,
+    'package_max_length'       => 4 * 1024 * 1024,
+]);
 
+// 安全檢查已升級為 WS
+$wsReady = function (Server $server, int $fd): bool {
+    if (method_exists($server, 'isEstablished')) {
+        return $server->isEstablished($fd);
     }
-    // var_dump($server->connections);
+    $info = $server->connection_info($fd);
+    return is_array($info) && !empty($info);
+};
 
-});
+// 取得 fd 所在的伺服器埠（9501 或 9502）
+$getPort = function (Server $server, int $fd): int {
+    $info = $server->connection_info($fd);
+    return (int)($info['server_port'] ?? 0);
+};
 
-// 處理訊息事件
-$server->on('message', function ($server, $frame) {
-    // 當收到客戶端傳來的訊息時
-    // echo "Received message: {$frame->data}\n";
-    
-    // 在這裡您可以根據訊息進行相應處理
-    
-    // 向所有客戶端廣播訊息
-    foreach ($server->connections as $fd) {
-        $server->push($fd, "Client {$frame->fd} said: {$frame->data}");
+// 只對「相同埠」的連線廣播
+$broadcastSamePort = function (Server $server, int $fromPort, string $msg) use ($wsReady, $getPort) {
+    foreach ($server->connections as $cfd) {
+        if (!$wsReady($server, $cfd)) continue;
+        if ($getPort($server, $cfd) !== $fromPort) continue; // 🔴 過濾不同埠
+        $server->push($cfd, $msg);
     }
-});
+};
 
-// 處理關閉事件
-$server->on('close', function ($server, $fd) {
-    // 當有客戶端斷開連接時
-    // echo "Client disconnected: {$fd}\n";
-    
-    // 在伺服器端刪除已斷開連接的客戶端資訊
-    unset($server->userList[$fd]);
-    
-    // 向所有客戶端廣播客戶端已斷開連接的訊息
-    foreach ($server->connections as $fd) {
-        $server->push($fd, "Client {$fd} disconnected");
+/** open */
+$onOpen = function (Server $server, $request) use ($wsReady, $broadcastSamePort) {
+    $fd   = $request->fd;
+    $port = (int)($request->server['server_port'] ?? 0);
+    $ip   = $request->server['remote_addr'] ?? 'unknown';
+
+    if ($wsReady($server, $fd)) {
+        $server->push($fd, "Welcome to the server! (fd=$fd, port=$port, ip=$ip)");
     }
-});
+    // ✅ 只通知同一個埠上的同行
+    $broadcastSamePort($server, $port, "Client {$fd} connected on port {$port}");
+};
 
-// 啟動伺服器
+/** message */
+$onMessage = function (Server $server, $frame) use ($wsReady, $broadcastSamePort) {
+    // 找出發話者所在的埠
+    $info = $server->connection_info($frame->fd);
+    $port = (int)($info['server_port'] ?? 0);
+    $msg  = "Client {$frame->fd} said: {$frame->data}";
+    // ✅ 只廣播給同埠
+    $broadcastSamePort($server, $port, $msg);
+};
+
+/** close */
+$onClose = function (Server $server, $fd) use ($wsReady, $broadcastSamePort) {
+    // 找出關閉者所在的埠
+    $info = $server->connection_info($fd);
+    $port = (int)($info['server_port'] ?? 0);
+    // ✅ 只通知同埠
+    $broadcastSamePort($server, $port, "Client {$fd} disconnected");
+};
+
+// 綁定到主埠（9501）
+$server->on('open', $onOpen);
+$server->on('message', $onMessage);
+$server->on('close', $onClose);
+
+// 第二個 WebSocket 埠：9502
+$port2 = $server->listen('0.0.0.0', 9502, SWOOLE_SOCK_TCP);
+$port2->set([
+    'open_http_protocol'      => true,
+    'open_websocket_protocol' => true,
+]);
+
+// 也用同一組 handler（已經有同埠過濾了）
+$port2->on('open', $onOpen);
+$port2->on('message', $onMessage);
+$port2->on('close', $onClose);
+
 $server->start();

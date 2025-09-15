@@ -240,7 +240,7 @@
             }else{
                 document.getElementById('s_status').innerHTML = not_work_icon;
             }
-            if(result.server_status == "true"){
+             if(result.client_status == "true"){
                 document.getElementById('c_status').innerHTML = work_icon;
             }else{
                 document.getElementById('c_status').innerHTML = not_work_icon;

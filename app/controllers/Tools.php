@@ -4,11 +4,13 @@ class Tools extends Controller
 {
     private $ToolModel;
     private $MiscellaneousModel;
+    private $DataModel;
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->ToolModel = $this->model('Tool');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->DataModel = $this->model('Datas');
     }
 
     // 取得所有info
@@ -353,6 +355,83 @@ class Tools extends Controller
         $bL = ($ipL & $mL) | (~$mL & 0xFFFFFFFF);
         return long2ip($bL);
     }
+
+    
+
+
+    public function csvNoHeaderToJson()
+    {
+
+        $csvPath = '/var/www/html/temp/customize.csv';
+        
+        if (!is_file($csvPath)) {
+            return json_encode(['error' => 'csv not found'], JSON_UNESCAPED_UNICODE);
+        }
+        $fp = @fopen($csvPath, 'r');
+        if (!$fp) {
+            return json_encode(['error' => 'cannot open csv'], JSON_UNESCAPED_UNICODE);
+        }
+
+        $rows = [];
+        $isFirst = true;
+
+        $res= $this->DataModel->get_operation_info();
+  
+
+        while (($cols = fgetcsv($fp)) !== false) {
+            // 去除第一格可能的 UTF-8 BOM
+            if ($isFirst && isset($cols[0])) {
+                $cols[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cols[0]);
+                $isFirst = false;
+            }
+
+            // 取欄位（沒有就補空字串）
+            $noRaw     = isset($cols[0]) ? trim((string)$cols[0]) : '';
+            $readRaw   = isset($cols[1]) ? trim((string)$cols[1]) : '';
+            $inputRaw  = isset($cols[2]) ? trim((string)$cols[2]) : '';
+            $resultRaw = isset($cols[3]) ? trim((string)$cols[3]) : '';
+
+            // 略過全空行
+            if ($noRaw === '' && $readRaw === '' && $inputRaw === '' && $resultRaw === '') {
+                continue;
+            }
+
+            // ——— 偵測並略過表頭（不分大小寫）———
+            $looksHeader =
+                preg_match('/^no$/i', $noRaw) ||
+                preg_match('/^read\s*position$/i', $readRaw) ||
+                preg_match('/^input\s*position$/i', $inputRaw) ||
+                preg_match('/^result$/i', $resultRaw);
+            if ($looksHeader) {
+                continue; // 直接跳過表頭
+            }
+
+            // read_position：去掉開頭的 "#<數字>"（空白可有可無）
+            // 例： "#36 threshold_angle"、"#36threshold_angle"、"# 36   threshold_angle" → "threshold_angle"
+            $read = preg_replace('/^\s*#\s*\d+\s*/u', '', $readRaw);
+
+            // no 盡量轉數字
+            $no = ctype_digit($noRaw) ? (int)$noRaw : $noRaw;
+
+            $rows[] = [
+                'no'             => $no,
+                'read_position'  => $read,
+                'input_position' => $inputRaw,
+                'result'         => $res[$read],
+            ];
+        }
+
+        fclose($fp);
+        return json_encode(['rows' => $rows], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    
+    public function test() {
+
+        $data = $this->csvNoHeaderToJson();
+        var_dump($data);
+    }
+
 
 
 

@@ -18,6 +18,66 @@ class Miscellaneous{
     public function details($mode){
         
         $array = array();
+
+        if($mode =="customize"){
+            
+            $array = array(
+                0  => "id",
+                1  => "system_sn",
+                2  => "data_time",
+                3  => "device_type",
+                4  => "device_id",
+                5  => "device_sn",
+                6  => "tool_type",
+                7  => "tool_sn",
+                8  => "tool_status",
+                9  => "job_id",
+                10 => "job_name",
+                11 => "sequence_id",
+                12 => "sequence_name",
+                13 => "step_id",
+                14 => "torque_unit",
+                15 => "target_type",
+                16 => "target_torque",
+                17 => "target_angle",
+                18 => "target_time",
+                19 => "fasten_time",
+                20 => "final_fasten_torque",
+                21 => "final_fasten_angle",
+                22 => "total_fasten_angle",
+                23 => "count_type",
+                24 => "last_screw_count",
+                25 => "total_screw_count",
+                26 => "fasten_status",
+                27 => "error_message",
+                28 => "fasten_direction",
+                29 => "rpm",
+                30 => "hi_torque",
+                31 => "lo_torque",
+                32 => "hi_angle",
+                33 => "lo_angle",
+                34 => "delay_ttime",
+                35 => "threshold_torque",
+                36 => "threshold_angle",
+                37 => "downshift_torque",
+                38 => "downshift_angle",
+                39 => "downshift_speed",
+                40 => "final_tool_voltage",
+                41 => "final_tool_current",
+                42 => "barcode",
+            );
+
+            // 加入 step0 ~ step5
+            $idx = count($array);
+            for ($i = 0; $i <= 5; $i++) {
+                $array[$idx++] = "step{$i}_last_times";
+                $array[$idx++] = "step{$i}_last_angle";
+                $array[$idx++] = "step{$i}_last_torque";
+                $array[$idx++] = "step{$i}_last_threadshold";
+            }
+
+
+        }
         if($mode == "reverse_direction"){
 
             $array = array(
