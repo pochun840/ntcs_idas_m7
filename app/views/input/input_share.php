@@ -45,6 +45,68 @@ document.getElementById("Event_Option").onchange = function() {
     handleEventChange(selectedValue); 
 };
 
+// 放在共用工具區
+function enableRadioById(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.disabled = false;
+  el.classList.remove('disabled_input');
+  el.style.color = '';
+  el.style.pointerEvents = '';
+  el.style.opacity = '';
+}
+
+function disableRadioById(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.disabled = true;
+  el.classList.add('disabled_input');
+  el.style.color = 'gray';
+  el.style.pointerEvents = 'none';
+  el.style.opacity = '0.6';
+}
+
+
+// 從 temp / jobTempData 解析出「被使用的 pin 編號」
+function extractUsedPinsFromTemp(arr) {
+  if (!Array.isArray(arr)) return new Set();
+  const pins = new Set();
+  arr.forEach(id => {
+    // 允許 pin3_high / pin3_low / edit_pin3_high / edit_pin3_low 等格式
+    const m = String(id).match(/(?:^|_)pin(\d+)/i);
+    if (m && m[1]) pins.add(String(parseInt(m[1], 10)));
+  });
+  return pins;
+}
+
+// 解鎖所有編輯用 pin 單選鈕
+function unlockAllEditPins() {
+  document.querySelectorAll('input[type="radio"][id^="edit_pin"]').forEach(r => {
+    r.disabled = false;
+    r.classList.remove('disabled_input');
+    r.style.color = '';
+    r.style.pointerEvents = '';
+    r.style.opacity = '';
+  });
+}
+
+function disableUsedPinsExcept(currentPin) {
+  const data = (window.jobTempData && window.jobTempData[window.job_id]) || {};
+  const used = extractUsedPinsFromTemp(data.temp || window.temp || []);
+  used.delete(String(currentPin));
+  document.querySelectorAll('input[type="radio"][id^="edit_pin"]').forEach(r => {
+    const m = r.id.match(/^edit_pin(\d+)_/i);
+    if (!m) return;
+    const pinNum = m[1];
+    const shouldDisable = used.has(String(pinNum));
+    r.disabled = shouldDisable;
+    r.classList.toggle('disabled_input', shouldDisable);
+    r.style.color = shouldDisable ? 'gray' : '';
+    r.style.pointerEvents = shouldDisable ? 'none' : '';
+    r.style.opacity = shouldDisable ? '0.6' : '';
+  });
+}
+
 
 /** UI 小工具：切換按鈕樣式與文字 */
 function updateUnifiedUI(isOn) {
@@ -738,11 +800,13 @@ function resetElementsByPrefix() {
 
 
 function handleEditJobEvent() {
-    disableRadioList(temp);
 
+  // ❌ 這行會把所有已用 pin 鎖死，導致不能換別的 pin
+  // disableRadioList(temp);
 
-    get_input_info(job_id, input_event);
-    handleEventChange(input_event);
+  // 交給 get_input_info 在資料回來後，依目前事件 pin 做更精準的鎖定
+  get_input_info(job_id, input_event);
+  handleEventChange(input_event);
 }
 
 function parsePhpArrayDumpToObject(txt) {
@@ -1117,93 +1181,109 @@ function get_input_by_job_id(jobid, callback){
     }); 
 }
 
+function get_input_info() {
+  
+  if (!job_id) return;
+  
+  $.ajax({
+    url: "?url=Inputs/check_job_event_conflict",
+    method: "POST",
+    data: { job_id: job_id, input_event: input_event },
+    success: function (resp) {
+      if (!resp || resp === 'no_data') return;
 
-function get_input_info(){
+      // --- 標準化回傳 ---
+      let obj = {};
+      if (typeof resp === 'object') {
+        obj.Pin              = resp.Pin ?? resp.pin ?? resp.PIN ?? '';
+        obj.signal           = resp.signal ?? resp.Signal ?? resp.SIGNAL ?? '';
+        obj.EvenID           = resp.EvenID ?? resp.event ?? resp.EID ?? '';
+        obj.Wp_Ready_Confirm = resp.Wp_Ready_Confirm ?? resp.gateconfirm ?? resp.ready ?? '';
+      } else {
+        const txt = String(resp);
+        const pick = (re) => (txt.match(re) || [,''])[1];
+        obj.Pin              = pick(/\[Pin]\s*=>\s*([^\s]+)/);
+        obj.signal           = pick(/\[signal]\s*=>\s*([^\s]+)/);
+        obj.EvenID           = pick(/\[EvenID]\s*=>\s*([^\s]+)/);
+        obj.Wp_Ready_Confirm = pick(/\[Wp_Ready_Confirm]\s*=>\s*([^\s]+)/);
+      }
 
-    if(job_id){
-        $.ajax({
-            url: "?url=Inputs/check_job_event_conflict",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                input_event: input_event,
-            },
-            success: function(response) {
-                if (response === 'no_data') {
-                    return;
-                }
+      // --- 轉型並檢查 ---
+      const pinNum  = parseInt(obj.Pin, 10);
+      const signal  = Number.isFinite(parseInt(obj.signal, 10)) ? parseInt(obj.signal, 10) : 1; // 預設 high
+      const eventId = Number.isFinite(parseInt(obj.EvenID, 10))  ? parseInt(obj.EvenID, 10)  : 0;
+      const gateReady = parseInt(obj.Wp_Ready_Confirm, 10) || 0;
+      if (!Number.isFinite(pinNum)) {
+        console.warn('Invalid Pin from backend:', obj.Pin);
+        return;
+      }
 
-                document.getElementById('edit_input').style.display='block';  
+      // --- 開啟編輯視窗 ---
+      if (typeof showOverlay === 'function') showOverlay();
+      const editModal = document.getElementById('edit_input');
+      if (editModal) editModal.style.display = 'block';
 
+      // --- 協助函式：徹底啟用/禁用單顆 radio（含樣式） ---
+      const fullyEnableRadio = (id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.disabled = false;
+        el.classList.remove('disabled_input');
+        el.style.color = '';
+        el.style.pointerEvents = '';
+        el.style.opacity = '';
+      };
 
-                var responseJSON = JSON.stringify(response);
-                var cleanString = responseJSON.replace(/Array|\\n/g, '');
-                var cleanString = cleanString.substring(2, cleanString.length - 2);
+      // --- 先全解鎖，再鎖其它事件已用的 pins（排除本事件的 pin） ---
+      if (typeof unlockAllEditPins === 'function') unlockAllEditPins();
+      if (typeof disableUsedPinsExcept === 'function') disableUsedPinsExcept(String(pinNum));
 
-                var [, jobid] = cleanString.match(/\[JOBID]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_event] = cleanString.match(/\[EvenID]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_pin] = cleanString.match(/\[Pin]\s*=>\s*([^ ]+)/) || [, null];
-                var [, input_wave] = cleanString.match(/\[signal]\s*=>\s*([^ ]+)/) || [, null];
-                var [, gateconfirm] = cleanString.match(/\[Wp_Ready_Confirm]\s*=>\s*([^ ]+)/) || [, null];
+      // --- 勾選並啟用當前 pin 的高/低兩顆 ---
+      const highId = `edit_pin${pinNum}_high`;
+      const lowId  = `edit_pin${pinNum}_low`;
+      const currId  = (signal === 1 ? highId : lowId);
+      const otherId = (signal === 1 ? lowId  : highId);
 
-        
-                if(input_wave == 1){
-                    var wave = "_high";
-                }else{
-                    var wave = "_low";
-                }
-                
-                var edit_input_pin = "edit_pin" + input_pin + wave;
-                var radioButton = document.getElementById(edit_input_pin);
-                radioButton.removeAttribute('disabled');
-                old_input_event = input_event;
-                
-                if(radioButton){
-                    radioButton.checked = true;
-                    if(wave == '_high'){
-                        var nstr = "edit_pin" + input_pin + '_low';
-                    }else{
-                        var nstr = "edit_pin" + input_pin + '_high';
-                    }
-                    var element = document.getElementById(nstr);
-                    if(element){
-                        element.disabled = false; 
-                    } 
-                }
+      fullyEnableRadio(currId);
+      fullyEnableRadio(otherId);
+      const currRadio = document.getElementById(currId);
+      if (currRadio) currRadio.checked = true;
 
-                if(input_event != 109){
-                    document.getElementById('edit_work_goc').style.display = 'none';
-                }else{
+      // --- 設定事件下拉、一次感應區塊 ---
+      const eventSel = document.getElementById('edit_Event_Option');
+      const gocWrap  = document.getElementById('edit_work_goc');
 
-                    document.getElementById('edit_work_goc').style.display = 'block';
+      if (eventSel) {
+        eventSel.value = String(eventId);
+        eventSel.onchange = function () {
+          const v = parseInt(this.value, 10);
+          if (gocWrap) gocWrap.style.display = (v === 109 ? 'block' : 'none');
+        };
+      }
 
-                    if(gateconfirm == 1){
-                        document.getElementById("edit_gateconfirm_1").checked = true;
-                    }
+      if (gocWrap) {
+        if (eventId === 109) {
+          gocWrap.style.display = 'block';
+          const g1 = document.getElementById('edit_gateconfirm_1');
+          const g0 = document.getElementById('edit_gateconfirm_0');
+          if (g1) g1.checked = (gateReady === 1);
+          if (g0) g0.checked = (gateReady === 0);
+        } else {
+          gocWrap.style.display = 'none';
+          const g1 = document.getElementById('edit_gateconfirm_1');
+          const g0 = document.getElementById('edit_gateconfirm_0');
+          if (g1) g1.checked = false;
+          if (g0) g0.checked = false;
+        }
+      }
 
-                    if(gateconfirm == 0){
-                        document.getElementById("edit_gateconfirm_0").checked = true;
-                    }
-
-                }
-                
-                document.querySelector("select[name='edit_Event_Option']").value = input_event;
-
-                document.getElementById("edit_Event_Option").onchange = function() {
-                    var selectedValue = this.value; 
-                    edit_handleEventChange(selectedValue,gateconfirm); 
-                };
-
-             
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        });
-   
-        
+      // --- 紀錄舊事件（供送出時使用） ---
+      window.old_input_event = eventId;
+    },
+    error: function (xhr, status, error) {
+      console.error("check_job_event_conflict failed:", status, error, xhr && xhr.responseText);
     }
-
+  });
 }
 
 
