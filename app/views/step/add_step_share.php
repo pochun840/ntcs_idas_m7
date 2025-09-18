@@ -4867,5 +4867,8 @@ function enforcePercentRequiredWithDialogForStepOption(stepOption) {
 
 
 
-
+ document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btnSave')
+      .addEventListener('click', save_or_edit_step);
+  });
 </script>

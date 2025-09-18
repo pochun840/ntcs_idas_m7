@@ -106,7 +106,8 @@ $text['Copy_Sequence'] = '複製工序';
 $text['OK_All_Stop'] = 'OK All 禁止起子啟動';
 $text['ok_all_alarm_time'] = 'OK All 持續時間';
 $text['tighten_repeat'] = '鎖附顆數';
-$text['total_angle_limit'] = '總角度上限';
+$text['total_high_angle'] = '總角度上限';
+$text['total_low_angle'] = '總角度下限';
 //normalstep
 
 $text['normal_step'] = '智能工序目標';

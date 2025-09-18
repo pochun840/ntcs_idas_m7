@@ -35,6 +35,9 @@ class Tools extends Controller
         //韌體的版本
         $firmware_version = $this->get_firmware_version()/ 100; 
 
+        //系統的版本
+        $upgrade_ver = $this->get_upgrade_version();
+
         //起子的型號
         $tools_type_temp =$this->get_tools_type();
         if(!empty($tools_type_temp)){
@@ -80,7 +83,8 @@ class Tools extends Controller
             'MAC' => $MAC,
             'image_version' => $version['version_info'],
             'tools_version' => $tools_version,
-            'firmware_version' => $firmware_version
+            'firmware_version' => $firmware_version,
+            'upgrade_ver' => $upgrade_ver
 
         ];
 
@@ -426,10 +430,13 @@ class Tools extends Controller
     }
 
     
-    public function test() {
+    public function get_upgrade_version(string $path = '/home/kls/upgrade/version'): string{
+        // 讀檔（用 sudo cat），把錯誤丟到 /dev/null 避免噪音
+        $cmd = 'sudo cat ' . escapeshellarg($path) . ' 2>/dev/null';
+        $txt = shell_exec($cmd) ?? '';
 
-        $data = $this->csvNoHeaderToJson();
-        var_dump($data);
+        // 去掉開頭底線、前後空白，再取第一行
+        return preg_split('/\R/', trim(ltrim($txt, '_')))[0] ?? '';
     }
 
 

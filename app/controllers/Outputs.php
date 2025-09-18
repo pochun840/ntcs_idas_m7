@@ -65,6 +65,7 @@ class Outputs extends Controller
         if (!empty($job_id)) {
             $job_outputs = $this->OutputModel->get_output_by_job_id($job_id);
 
+
             //檢查 JOBID 有無被套用(unified)
             $check = $this->OutputModel->check_output_unified_by_job_id($job_id);  
             $isMobile = $this->isMobileCheck();

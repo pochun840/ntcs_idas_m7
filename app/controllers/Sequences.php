@@ -393,6 +393,7 @@ class Sequences extends Controller
                 'dt_time' => $_POST['dt_time'] ?? 0,
                 'tt_time' => $_POST['tt_time'] ?? 0,
                 'total_angle_limit' => $_POST['total_angle_limit'] ?? 0,
+                'total_angle_lower' => $_POST['total_angle_lower'] ?? 0,
 
             );
 
@@ -514,6 +515,8 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['dt_time'] = $val['dt_time'];
                 $new_temp_seq[$kk_seq]['tt_time'] = $val['tt_time'];
                 $new_temp_seq[$kk_seq]['total_angle_limit'] = $val['total_angle_limit'];
+                $new_temp_seq[$kk_seq]['total_angle_lower'] = $val['total_angle_lower'];
+           
 
             }  
 

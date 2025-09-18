@@ -72,7 +72,9 @@ $text['seq_id'] = 'Seq ID';
 $text['seq_name'] = 'Seq Name';
 $text['target_type'] = 'Target Type';
 $text['tightening_repeat'] = 'TR';
-$text['total_angle_limit'] = 'Total High Angle';
+$text['total_high_angle'] = 'Total Angle Limit';
+$text['total_low_angle'] = 'Total Angle Lower';
+
 
 $text['return'] = 'Return';
 $text['up'] = 'Up';
