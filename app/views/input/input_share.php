@@ -66,6 +66,13 @@ function disableRadioById(id) {
   el.style.opacity = '0.6';
 }
 
+function hasAnySourceEvents(jobid) {
+  const data = jobTempData && jobTempData[jobid];
+  return !!(data && Array.isArray(data.temp_event) && data.temp_event.length > 0);
+}
+
+
+
 
 // 從 temp / jobTempData 解析出「被使用的 pin 編號」
 function extractUsedPinsFromTemp(arr) {
@@ -326,41 +333,98 @@ function tablesubmit(keyno){
 }
 
 
-function get_input_by_job_id(jobid) {
-    if (!jobid) return;
+function get_input_by_job_id(jobid, arg2) {
+  if (!jobid) return;
 
-    $.ajax({
-        url: "?url=Inputs/get_input_by_job_id",
-        method: "POST",
-        data: { jobid: jobid },
-        success: function(response) {
-            const data = JSON.parse(response);
-            const job_inputlist = data.job_inputlist;
-            temp = data.temp;
-            tempA = data.tempA;
+  // 第二參數允許是 callback 或 { autoOpenNewInput, closeModals, callback }
+  let opts = {};
+  let callback = null;
+  if (typeof arg2 === 'function') {
+    callback = arg2;
+  } else if (arg2 && typeof arg2 === 'object') {
+    opts = arg2;
+    callback = typeof arg2.callback === 'function' ? arg2.callback : null;
+  }
 
-            document.getElementById("input_jobid_select").innerHTML = job_inputlist;
-            document.getElementById("JobSelect").style.display = 'none';
-            document.getElementById("job_id").value = jobid;
+  const autoOpenNewInput = !!opts.autoOpenNewInput; // 預設 false：不要自動打開 #newinput
+  const closeModals      = !!opts.closeModals;      // 可選：刷新後保險關閉任何 modal
 
-            // 綁定每列點擊事件
-            document.querySelectorAll('#input_jobid_select tr').forEach(row => {
-                row.addEventListener('click', function () {
-                    input_event = this.className;
-                });
-            });
+  $.ajax({
+    url: "?url=Inputs/get_input_by_job_id",
+    method: "POST",
+    data: { jobid: jobid },
+    success: function (response) {
+      // 1) 安全解析
+      let data;
+      try {
+        data = (typeof response === 'string') ? JSON.parse(response) : response;
+      } catch (e) {
+        console.error("parse get_input_by_job_id response failed:", e, response);
+        return;
+      }
 
-            // 語系切換顯示
-            updateInputButtonLabels(getCookie('language'));
+      // 2) 取值並保底成陣列
+      const job_inputlist = data?.job_inputlist || '';
+      temp       = Array.isArray(data?.temp)       ? data.temp       : [];
+      tempA      = Array.isArray(data?.tempA)      ? data.tempA      : [];
+      temp_event = Array.isArray(data?.temp_event) ? data.temp_event : [];
 
-            // 畫面同步禁用該 job 的項目
-            handleNewJobEvent();
-        },
-        error: function(xhr, status, error) {
-            console.error("AJAX request failed:", status, error);
-        }
-    });
+      // 3) 更新列表與欄位
+      const listEl = document.getElementById("input_jobid_select");
+      if (listEl) listEl.innerHTML = job_inputlist;
+      const jobSel = document.getElementById("JobSelect");
+      if (jobSel) jobSel.style.display = 'none';
+      const jobIdInput = document.getElementById("job_id");
+      if (jobIdInput) jobIdInput.value = jobid;
+
+      // 4) 更新快取：後續「編輯/複製」要依這份資料判斷
+      jobTempData[jobid] = { temp, tempA, temp_event };
+
+      // 5) 清空目前選取，避免殘值
+      input_event = null;
+      old_input_event = null;
+
+      // 6) 用事件委派綁一次 click（避免重複綁定）
+      const table = document.getElementById('input_jobid_select');
+      if (table && !table._boundRowClick) {
+        table.addEventListener('click', function (e) {
+          const tr = e.target.closest('tr');
+          if (!tr || !table.contains(tr)) return;
+          table.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+          input_event = tr.className;
+          old_input_event = tr.className;
+          tr.classList.add('selected');
+        });
+        table._boundRowClick = true;
+      }
+
+      // 7) 語系切換按鈕文字
+      if (typeof updateInputButtonLabels === 'function') {
+        updateInputButtonLabels(getCookie?.('language'));
+      }
+
+      // 8) 是否要依快取狀態禁用項目並「打開新增視窗」
+      //    只有在你真的要進入「新增事件」流程時才交給 handleNewJobEvent() 去開 modal
+      if (autoOpenNewInput && typeof handleNewJobEvent === 'function') {
+        handleNewJobEvent();
+      }
+
+      // 9) 如果要求刷新後強制關閉所有 modal（避免 #newinput 被又打開）
+      if (closeModals) {
+        const close = id => document.getElementById(id)?.style.setProperty('display', 'none', 'important');
+        close('newinput');
+        close('edit_input');
+      }
+
+      // 10) 外部 callback
+      if (typeof callback === 'function') callback();
+    },
+    error: function (xhr, status, error) {
+      console.error("AJAX request failed:", status, error);
+    }
+  });
 }
+
 
 // ✅ 抽出語系文字對應表
 const inputLabelMap = {
@@ -523,66 +587,84 @@ function alignsubmit(job_id) {
 
 
 function delete_input_id(job_id, input_event) {
-    if (!job_id) return;
+  if (!job_id) return;
 
-    // 多語系字串
-    var lang = getCookie('language');
-    var title = 'Delete Event';
-    var text  = 'Are you sure you want to delete this event?';
-    var okText = 'OK';
-    var cancelText = 'Cancel';
-    var errMsg = 'Delete failed, please try again later.';
-    var cancelledMsg = 'Cancelled';
+  // 多語系字串
+  var lang = getCookie('language');
+  var title = 'Delete Event';
+  var text  = 'Are you sure you want to delete this event?';
+  var okText = 'OK';
+  var cancelText = 'Cancel';
+  var errMsg = 'Delete failed, please try again later.';
+  var cancelledMsg = 'Cancelled';
 
-    if (lang === 'zh-tw') {
-        title = '刪除事件';
-        text  = '你確定要刪除此事件嗎？';
-        okText = '確定';
-        cancelText = '取消';
-        errMsg = '刪除失敗，請稍後再試！';
-        cancelledMsg = '已取消';
-    } else if (lang === 'zh-cn') {
-        title = '删除事件';
-        text  = '你确定要删除该事件吗？';
-        okText = '确定';
-        cancelText = '取消';
-        errMsg = '删除失败，请稍后再试！';
-        cancelledMsg = '已取消';
-    }
+  if (lang === 'zh-tw') {
+    title = '刪除事件';
+    text  = '你確定要刪除此事件嗎？';
+    okText = '確定';
+    cancelText = '取消';
+    errMsg = '刪除失敗，請稍後再試！';
+    cancelledMsg = '已取消';
+  } else if (lang === 'zh-cn') {
+    title = '删除事件';
+    text  = '你确定要删除该事件吗？';
+    okText = '确定';
+    cancelText = '取消';
+    errMsg = '删除失败，请稍后再试！';
+    cancelledMsg = '已取消';
+  }
 
-    alertify.confirm(
-        title,
-        text,
-        function onOk() {
-            // 顯示遮罩＋spinner
-            document.querySelector(".main-content")?.classList.add("overlay-active");
-            document.getElementById('spinner').style.display = 'block';
+  // 關閉所有相關 modal（加上 !important，避免被樣式覆蓋）
+  const closeModals = () => {
+    ['newinput', 'edit_input'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.setProperty('display', 'none', 'important');
+    });
+  };
 
-            $.ajax({
-                url: "?url=Inputs/delete_input",
-                method: "POST",
-                data: {
-                    job_id: job_id,
-                    input_event: input_event
-                },
-                success: function(response) {
-                    input_success_res(response, job_id, get_input_by_job_id, 'edit_input');
-                    hideOverlay(); // 依你現有函式隱藏遮罩/Spinner
-                },
-                error: function(xhr, status, error) {
-                    alertify.error(errMsg);
-                    document.querySelector(".main-content")?.classList.remove("overlay-active");
-                    document.getElementById('spinner').style.display = 'none';
-                }
-            });
-        },
-        function onCancel() {
+  alertify
+    .confirm(
+      title,
+      text,
+      function onOk() {
+        // 顯示遮罩＋spinner
+        document.querySelector(".main-content")?.classList.add("overlay-active");
+        document.getElementById('spinner').style.display = 'block';
+
+        $.ajax({
+          url: "?url=Inputs/delete_input",
+          method: "POST",
+          data: { job_id: job_id, input_event: input_event },
+          success: function (response) {
+            // 讓 input_success_res 先刷新列表；刷新完成後再關 modal/遮罩
+            input_success_res(
+              response,
+              job_id,
+              function afterRefresh() {
+                closeModals();   // 確保 #newinput / #edit_input 都是關的
+                hideOverlay();   // 關半透明遮罩
+              },
+              'edit_input'       // 保持原本要隱藏的元素 id
+            );
+          },
+          error: function () {
+            alertify.error(errMsg);
             document.querySelector(".main-content")?.classList.remove("overlay-active");
-            hideOverlay();
-            //alertify.message(cancelledMsg);
-        }
-    ).set('labels', { ok: okText, cancel: cancelText });
+            document.getElementById('spinner').style.display = 'none';
+          }
+        });
+      },
+      function onCancel() {
+        closeModals(); // 取消時也關掉
+        document.querySelector(".main-content")?.classList.remove("overlay-active");
+        hideOverlay();
+        // alertify.message(cancelledMsg);
+      }
+    )
+    .set('labels', { ok: okText, cancel: cancelText });
 }
+
+
 
 
 function setSelectDisabled(disabled) {
@@ -658,46 +740,38 @@ function crud_job_event(action) {
                 return;
             }
             showOverlay();
-            handleEditJobEvent();
+            handleEditJobEvent();   
         break;
 
-        case 'copy':
+        case 'copy': {
+                        const messages = {
+                            'en-us': "No event available to copy",
+                            'zh-tw': "沒有可複製的事件",
+                            'zh-cn': "没有可复制的事件"
+                        };
+                        const lang = getCookie('language');
+                        const msg = messages[lang] || messages['en-us'];
 
-            const messages = {
-                'en-us': "No event available to copy",
-                'zh-tw': "沒有可複製的事件",
-                'zh-cn': "没有可复制的事件"
-            };
+                        document.querySelector(".main-content").classList.add("overlay-active");
 
-            // 假設語言來源 (可改成你系統裡的語言判斷方式)
-            var language = getCookie('language');
-            const msg = messages[language] || messages['en-us'];
+                        // ✅ 用快取判斷來源是否有任何事件
+                        if (!hasAnySourceEvents(job_id)) {
+                            if (typeof alertify !== 'undefined') {
+                            alertify.alert(msg);
+                            setTimeout(() => alertify.closeAll(), 3000);
+                            }
+                            document.querySelector(".main-content")?.classList.remove("overlay-active");
+                            if (typeof hideOverlay === 'function') hideOverlay();
+                            return;
+                        }
 
-
-            document.querySelector(".main-content").classList.add("overlay-active");
-            if (!input_event) {
-                if (typeof alertify !== 'undefined') {
-                    alertify.alert(msg, function() {
-                        // callback：使用者按下 OK 時
-                    });
-
-                    // 3 秒後自動關閉 alert 視窗
-                    setTimeout(function() {
-                        alertify.closeAll(); 
-                    }, 3000);
-                }
-
-                document.querySelector(".main-content")?.classList.remove("overlay-active");
-                if (typeof hideOverlay === 'function') hideOverlay();
-
-                return;
-            }
+                        // ✅ 真的有事件才開「複製」對話框
+                        handleCopyJobEvent();
+                        showOverlay();
+                        break;
+                    }
 
 
-            
-            handleCopyJobEvent();
-            showOverlay();
-        break;
 
        
         case 'unified':
@@ -1035,7 +1109,6 @@ function clearNewInputForm() {
 
 function copy_input_id() {
   var language = getCookie('language') || 'en-us';
-
   var messages = {
     'zh-cn': '若设定已存在，将会取代原有设定',
     'zh-tw': '若設定已存在，將會取代原有設定',
@@ -1043,21 +1116,26 @@ function copy_input_id() {
   };
   var text_info = messages[language] || messages['en-us'];
 
-  // OK / Cancel 多語系
   var labels = {
-    'zh-cn': { ok: '确定', cancel: '取消', err: '复制失败，请稍后再试！', cancelled: '已取消' },
-    'zh-tw': { ok: '確定', cancel: '取消', err: '複製失敗，請稍後再試！', cancelled: '已取消' },
-    'en-us': { ok: 'OK',  cancel: 'Cancel', err: 'Copy failed, please try again later.', cancelled: 'Cancelled' }
+    'zh-cn': { ok: '确定', cancel: '取消', err: '复制失败，请稍后再试！', cancelled: '已取消', none: '没有可复制的事件' },
+    'zh-tw': { ok: '確定', cancel: '取消', err: '複製失敗，請稍後再試！', cancelled: '已取消', none: '沒有可複製的事件' },
+    'en-us': { ok: 'OK', cancel: 'Cancel', err: 'Copy failed, please try again later.', cancelled: 'Cancelled', none: 'No event available to copy' }
   };
-  var okText = (labels[language]?.ok) || labels['en-us'].ok;
-  var cancelText = (labels[language]?.cancel) || labels['en-us'].cancel;
-  var errMsg = (labels[language]?.err) || labels['en-us'].err;
-  var cancelledMsg = (labels[language]?.cancelled) || labels['en-us'].cancelled;
+  var okText = labels[language]?.ok || labels['en-us'].ok;
+  var cancelText = labels[language]?.cancel || labels['en-us'].cancel;
+  var errMsg = labels[language]?.err || labels['en-us'].err;
+  var cancelledMsg = labels[language]?.cancelled || labels['en-us'].cancelled;
+  var noneMsg = labels[language]?.none || labels['en-us'].none;
 
-  // 建立 confirm 視窗
+  // ✅ 來源沒有任何事件 → 直接擋下
+  if (!hasAnySourceEvents(job_id)) {
+    alertify.alert(noneMsg);
+    setTimeout(() => alertify.closeAll(), 2500);
+    return;
+  }
+
   var confirmDialog = alertify
     .confirm(text_info, function (confirmed) {
-      // 使用者點選後取消自動關閉計時器
       clearTimeout(autoCancelTimer);
       if (!confirmed) {
         alertify.message(cancelledMsg);
@@ -1067,15 +1145,19 @@ function copy_input_id() {
       var to_job_id = document.getElementById("JobSelect1").value;
       if (!to_job_id) return;
 
+      // ✅ 防呆：不可複製到自己
+      if (String(to_job_id) === String(job_id)) {
+        alertify.alert(labels[language]?.same || 'Target job must be different.');
+        setTimeout(() => alertify.closeAll(), 2500);
+        return;
+      }
+
       document.getElementById('spinner').style.display = 'block';
 
       $.ajax({
         url: "?url=Inputs/copy_input_event",
         method: "POST",
-        data: {
-          from_job_id: job_id,
-          to_job_id: to_job_id
-        },
+        data: { from_job_id: job_id, to_job_id: to_job_id },
         success: function (response) {
           input_success_res(response, job_id, get_input_by_job_id, 'copyinput');
           hideOverlay();
@@ -1087,104 +1169,18 @@ function copy_input_id() {
         }
       });
     })
-    .set('labels', { ok: okText, cancel: cancelText }); // ← 套用多語系按鈕
+    .set('labels', { ok: okText, cancel: cancelText });
 
-  // 自動取消邏輯：3 秒後自動關閉 confirm 視窗
   var autoCancelTimer = setTimeout(function () {
-    alertify.closeAll(); // 關閉 alertify 視窗
-    // 可選提示：
-    // alertify.message(cancelledMsg);
+    alertify.closeAll();
   }, 3000);
 }
 
 
-function get_input_by_job_id(jobid, callback){
-    $.ajax({
-        url: "?url=Inputs/get_input_by_job_id",
-        method: "POST",
-        data: { 
-            jobid: jobid,
-        },
-        success: function(response) {
-
-            var data = JSON.parse(response);
-            var job_inputlist = data.job_inputlist;
-
-            temp = Array.isArray(data.temp) ? data.temp : [];
-            tempA = Array.isArray(data.tempA) ? data.tempA : [];
-            temp_event = Array.isArray(data.temp_event) ? data.temp_event : [];
-
-
-            // ✅ 更新快取
-            jobTempData[jobid] = {
-                temp: temp,
-                tempA: tempA,
-                temp_event: temp_event
-            };
-
-
-            document.getElementById("input_jobid_select").innerHTML = job_inputlist;
-            document.getElementById("JobSelect").style.display = 'none';
-            document.getElementById("job_id").value = jobid;
-        
-            var rows = document.querySelectorAll('#input_jobid_select tr');
-            rows.forEach(function(row) {
-                row.addEventListener('click', function() { 
-                    input_event = this.className; 
-                });
-            });
-
-            var language = getCookie('language');
-                if(language == "zh-cn"){
-
-                    document.getElementById('101') && (document.getElementById('101').textContent = '停用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = '致能');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '清除');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '确认');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '启动');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重启');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感应');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定义1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定义2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定义3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定义4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定义5');
-                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋转');
-                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
-
-
-                }else if(language =="zh-tw"){
-                    document.getElementById('101') && (document.getElementById('101').textContent = '停用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = '致能');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '清除');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '確認');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定義1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定義2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定義3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定義4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定義5');
-                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋轉');
-                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
-                }
-
-        },
-        error: function(xhr, status, error) {
-            console.error("AJAX request failed:", status, error);
-        }
-    }); 
-}
-
 function get_input_info() {
   
   if (!job_id) return;
-  
+
   $.ajax({
     url: "?url=Inputs/check_job_event_conflict",
     method: "POST",

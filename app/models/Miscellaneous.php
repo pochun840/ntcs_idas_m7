@@ -161,6 +161,7 @@ class Miscellaneous{
                 4 => 'Torque v.s Angle',
                 5 => 'Torque v.s Speed',
                 6 => '',
+                7 => '',
             );
         }
 

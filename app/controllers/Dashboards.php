@@ -41,7 +41,9 @@ class Dashboards extends Controller
 
     }
 
+   
     public function operation() {
+        
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
@@ -54,7 +56,6 @@ class Dashboards extends Controller
         $res_device         = $this->SettingModel->GetControllerInfo();
         $device_torque_unit = (int)($res_device['torque_unit'] ?? 1);
         $chart_unit_name    = $unit_arr[$device_torque_unit] ?? 'N.m';
-
 
         // 顯示用的最終鎖付值與單位
         if (!empty($data_info['fasten_status'])) {
@@ -97,14 +98,11 @@ class Dashboards extends Controller
         // 目前資料 id
         $id = null;
         $first_data = $this->get_current_data();
-
-        //用modbus 取得鎖附記錄 最後一筆的id
-        //$get_operation_id = $this->get_operation_id();
-
+        // $get_operation_id = $this->get_operation_id();
         if (!empty($first_data)) $id = $first_data['id'];
 
-        // 當前圖表
-        $chart_mode    = isset($_GET['chart']) && $_GET['chart'] >= 1 && $_GET['chart'] <= 6 ? (int)$_GET['chart'] : 1;
+        // ★ 允許 chart 到 7
+        $chart_mode    = (isset($_GET['chart']) && $_GET['chart'] >= 1 && $_GET['chart'] <= 7) ? (int)$_GET['chart'] : 1;
         $chat_mode_arr = $chart_mode;
 
         // 第一欄 X（多半是時間；去表頭後轉數字）
@@ -136,14 +134,18 @@ class Dashboards extends Controller
         // 選單文字
         $chart_menu_arr = $this->MiscellaneousModel->details('chart_menu');
         $chart_mode_arr = $this->MiscellaneousModel->details('chart_mode');
-        $echart_name    = explode(" v.s ", $chart_mode_arr[$chart_mode]);
+
+        // ★ label 也用 2 的文本（chart=7 等同 2）
+        $label_mode  = ($chart_mode === 7 ? 2 : $chart_mode);
+        $label_text  = $chart_mode_arr[$label_mode] ?? ($chart_mode_arr[2] ?? '');
+        $echart_name = explode(" v.s ", $label_text);
 
         // steps（後面會裁長度）
         $step_only = $this->DashboardModel->get_step_only($id);
 
-        // 取本次圖表原始資料
-        $csvdata_arr = $this->DashboardModel->get_info($chart_mode, $id);
-        
+        // ★ 取資料：chart=7 時改抓 2 的資料
+        $fetch_mode  = ($chart_mode === 7 ? 2 : $chart_mode);
+        $csvdata_arr = $this->DashboardModel->get_info($fetch_mode, $id);
 
         // 用 mode5 原始扭力（轉單位後）得出統一扭力範圍
         $unified_min_torque = 0;
@@ -226,7 +228,7 @@ class Dashboards extends Controller
                         $steps = $step_only;
                         if (!empty($steps) && !is_numeric(reset($steps))) array_shift($steps);
                         $steps = array_values($steps);
-                        $len = isset($temp_chart['x_val']) ? count($temp_chart['x_val']) : 0;
+                        $len   = isset($temp_chart['x_val']) ? count($temp_chart['x_val']) : 0;
                         if ($len > 0) $steps = array_slice($steps, 0, $len);
                         $temp_chart['steps'] = $steps;
                     } else {
@@ -234,11 +236,12 @@ class Dashboards extends Controller
                     }
                 }
 
-                // 1/4/5/6 共用扭力範圍
+                // 1/4/5/6 共用扭力範圍（★ 7 等同 2，不要帶扭力範圍）
                 if (in_array($chart_mode, [1,4,5,6], true)) {
                     $temp_chart['min_torque'] = $unified_min_torque;
                     $temp_chart['max_torque'] = $unified_max_torque;
                 }
+
                 // RPM 範圍（只有 5 用）
                 if ($chart_mode == 5 && $unified_max_rpm > $unified_min_rpm) {
                     $temp_chart['min_rpm'] = $unified_min_rpm;
@@ -250,9 +253,6 @@ class Dashboards extends Controller
                 $temp_chart['chart_unit_name'] = $chart_unit_name;
             }
         }
-
-
-  
 
         // 組回傳
         $data = [
@@ -286,6 +286,7 @@ class Dashboards extends Controller
 
 
 
+
     public function change_language(){
 
         $error_message = '';
@@ -311,27 +312,38 @@ class Dashboards extends Controller
     }
 
     
+        /**
+     * 組裝圖表資料
+     *
+     * @param int   $chat_mode      圖表模式 (1,2,3,4,5,6,7)
+     * @param array $csvdata_arr    後端取回的原始資料（可能含鍵：torque/rpm/angle/y_val/x_val）
+     * @param mixed $chat_mode_arr  未使用（保留簽名）
+     * @param array $x_val          第一欄 X（多半是時間；含表頭時會自動去掉）
+     * @param array $angle_as_x     供 4/6 使用的 X（以 mode2 的 angle 或 y_val 為準）
+     * @return array                chart payload
+     */
     private function ChartData($chat_mode, $csvdata_arr, $chat_mode_arr, $x_val, $angle_as_x = []) {
         $chart_info = [];
-        $chat_mode = (int)$chat_mode;
+        $chat_mode  = (int)$chat_mode;
 
         // 取得裝置扭力單位與精度
-        $res_device = $this->SettingModel->GetControllerInfo();
-        $device_torque_unit = (int)($res_device['torque_unit'] ?? 1);
-        $unit_arr = $this->MiscellaneousModel->details('torque_unit');
-        $unit_name = $unit_arr[$device_torque_unit] ?? 'N.m';
-        $decimals_arr = $this->MiscellaneousModel->details('decimals');
-        $precision = $decimals_arr[$device_torque_unit] ?? 3;
+        $res_device          = $this->SettingModel->GetControllerInfo();
+        $device_torque_unit  = (int)($res_device['torque_unit'] ?? 1);
+        $unit_arr            = $this->MiscellaneousModel->details('torque_unit');
+        $unit_name           = $unit_arr[$device_torque_unit] ?? 'N.m';
+        $decimals_arr        = $this->MiscellaneousModel->details('decimals');
+        $precision           = $decimals_arr[$device_torque_unit] ?? 3;
 
-        // ---- 小工具：正規化序列
+        // ---- 小工具：正規化序列（去表頭、扁平化、轉 float）
         $normalizeSeries = function($arr) {
             if (!is_array($arr)) return [];
+            // 若是關聯陣列（帶子鍵），取第一個常見的子鍵
             if (array_keys($arr) !== range(0, count($arr)-1)) {
-                foreach (['torque','rpm','angle','y_val','x_val'] as $k) {
+                foreach (['torque', 'rpm', 'angle', 'y_val', 'x_val'] as $k) {
                     if (isset($arr[$k]) && is_array($arr[$k])) { $arr = $arr[$k]; break; }
                 }
             }
-            if (!empty($arr) && !is_numeric(reset($arr))) array_shift($arr);
+            if (!empty($arr) && !is_numeric(reset($arr))) array_shift($arr); // 去表頭
             $arr = array_values($arr);
             return array_map('floatval', $arr);
         };
@@ -339,8 +351,8 @@ class Dashboards extends Controller
         // ---- 小工具：chart=2 的序列做 X（angle 或 y_val）
         $normalizeAngleAsX = function($arr) use ($normalizeSeries) {
             if (!is_array($arr)) return [];
-            if (isset($arr['angle']) && is_array($arr['angle'])) $arr = $arr['angle'];
-            elseif (isset($arr['y_val']) && is_array($arr['y_val'])) $arr = $arr['y_val'];
+            if (isset($arr['angle']) && is_array($arr['angle']))          $arr = $arr['angle'];
+            elseif (isset($arr['y_val']) && is_array($arr['y_val']))      $arr = $arr['y_val'];
             return $normalizeSeries($arr);
         };
 
@@ -350,58 +362,60 @@ class Dashboards extends Controller
             return round((float)$converted, $precision);
         };
 
-        // ---- 準備 y 序列（6 與 4 完全同一套）
+        // ---- 準備 Y 序列（各模式）
         if ($chat_mode === 5) {
+            // 扭力 / RPM 雙軸
             $torque = $normalizeSeries($csvdata_arr['torque'] ?? $csvdata_arr);
             $rpm    = $normalizeSeries($csvdata_arr['rpm']    ?? []);
 
-            $torque_converted = array_map($convertTorque, $torque);
-            $chart_info['y_val_torque'] = $torque_converted;
-            $chart_info['y_val_rpm']    = $rpm;
+            $torque_converted              = array_map($convertTorque, $torque);
+            $chart_info['y_val_torque']    = $torque_converted;
+            $chart_info['y_val_rpm']       = $rpm;
+            // 兼容：y_val 預設放扭力
+            $chart_info['y_val']           = $torque_converted;
 
-            $chart_info['max_torque'] = !empty($torque_converted) ? max($torque_converted) : 0;
-            $chart_info['min_torque'] = !empty($torque_converted) ? min($torque_converted) : 0;
-            $chart_info['max_rpm']    = !empty($rpm) ? max($rpm) : 0;
-            $chart_info['min_rpm']    = !empty($rpm) ? min($rpm) : 0;
+            $chart_info['max_torque']      = !empty($torque_converted) ? max($torque_converted) : 0;
+            $chart_info['min_torque']      = !empty($torque_converted) ? min($torque_converted) : 0;
+            $chart_info['max_rpm']         = !empty($rpm) ? max($rpm) : 0;
+            $chart_info['min_rpm']         = !empty($rpm) ? min($rpm) : 0;
 
-            // 兼容：y_val 仍放扭力
-            $chart_info['y_val'] = $torque_converted;
-            $chart_info['max']   = $chart_info['max_torque'];
-            $chart_info['min']   = $chart_info['min_torque'];
+            $chart_info['max']             = $chart_info['max_torque'];
+            $chart_info['min']             = $chart_info['min_torque'];
 
-        } elseif (in_array($chat_mode, [1,2,3,4,6], true)) {
+        } elseif (in_array($chat_mode, [1,2,3,4,6,7], true)) {
             if (in_array($chat_mode, [1,4,6], true)) {
-                // 扭力曲線（單位換算後數值）
+                // 扭力曲線（單位換算）
                 $series = $csvdata_arr;
                 if (is_array($csvdata_arr) && isset($csvdata_arr['torque']) && is_array($csvdata_arr['torque'])) {
                     $series = $csvdata_arr['torque'];
                 }
-                $series = $normalizeSeries($series);
+                $series                         = $normalizeSeries($series);
+                $torque_converted               = array_map($convertTorque, $series);
 
-                $torque_converted = array_map($convertTorque, $series);
-                $chart_info['y_val']        = $torque_converted;     // ★ 4/6 共用
-                $chart_info['max']          = !empty($torque_converted) ? max($torque_converted) : 0;
-                $chart_info['min']          = !empty($torque_converted) ? min($torque_converted) : 0;
-                $chart_info['y_val_torque'] = $torque_converted;
-                $chart_info['max_torque']   = $chart_info['max'];
-                $chart_info['min_torque']   = $chart_info['min'];
+                $chart_info['y_val']            = $torque_converted;
+                $chart_info['max']              = !empty($torque_converted) ? max($torque_converted) : 0;
+                $chart_info['min']              = !empty($torque_converted) ? min($torque_converted) : 0;
+
+                $chart_info['y_val_torque']     = $torque_converted;
+                $chart_info['max_torque']       = $chart_info['max'];
+                $chart_info['min_torque']       = $chart_info['min'];
 
             } else {
-                // 模式 2/3
-                $series = $normalizeSeries($csvdata_arr);
-                $chart_info['y_val'] = $series;
-                $chart_info['max']   = !empty($series) ? max($series) : 0;
-                $chart_info['min']   = !empty($series) ? min($series) : 0;
+                // 模式 2 / 3 / 7（★ 7 等同 2）
+                $series                 = $normalizeSeries($csvdata_arr);
+                $chart_info['y_val']    = $series;
+                $chart_info['max']      = !empty($series) ? max($series) : 0;
+                $chart_info['min']      = !empty($series) ? min($series) : 0;
             }
         } else {
             $chart_info['y_val'] = [];
-            $chart_info['max'] = 0;
-            $chart_info['min'] = 0;
+            $chart_info['max']   = 0;
+            $chart_info['min']   = 0;
         }
 
         $chart_info['unit_name'] = $unit_name;
 
-        // ---- X：一般用第一欄；chart=4/6 都用 chart=2 的序列（Angle）
+        // ---- X 軸：一般用第一欄；chart=4/6 用 mode2 的序列（angle/y_val）
         $x_norm = $normalizeSeries($x_val);
         if ($chat_mode === 4 || $chat_mode === 6) {
             $x_from_mode2 = $normalizeAngleAsX($angle_as_x);
@@ -409,30 +423,27 @@ class Dashboards extends Controller
 
             $len = min(count($x_from_mode2), count($y_series));
             if ($len > 0) {
-                $chart_info['x_val'] = array_slice($x_from_mode2, 0, $len);
-                $chart_info['y_val'] = array_slice($y_series,     0, $len);
-                $chart_info['x_axis_from'] = 'mode2_y';
+                $chart_info['x_val']      = array_slice($x_from_mode2, 0, $len);
+                $chart_info['y_val']      = array_slice($y_series,     0, $len);
+                $chart_info['x_axis_from']= 'mode2_y';
             } else {
-                $chart_info['x_val'] = array_map(function($v){
-                    return ($v == (int)$v) ? (int)$v : (float)$v;
-                }, $x_norm);
-                $chart_info['x_axis_from'] = 'x_first_col';
+                $chart_info['x_val']      = array_map(function($v){ return ($v == (int)$v) ? (int)$v : (float)$v; }, $x_norm);
+                $chart_info['x_axis_from']= 'x_first_col';
             }
 
-            // ★ 把 chart=4 的 y 軸上下界帶出，讓前端 6 也能套同一組
+            // 讓前端可以沿用 4 的 y 軸上下界
             $chart_info['y_min'] = $chart_info['min'];
             $chart_info['y_max'] = $chart_info['max'];
 
         } else {
-            // 其餘圖表沿用第一欄 X
-            $chart_info['x_val'] = array_map(function($v){
-                return ($v == (int)$v) ? (int)$v : (float)$v;
-            }, $x_norm);
+            $chart_info['x_val']       = array_map(function($v){ return ($v == (int)$v) ? (int)$v : (float)$v; }, $x_norm);
             $chart_info['x_axis_from'] = 'x_first_col';
         }
 
         return $chart_info;
     }
+
+
 
 
     public function get_current_data(){
