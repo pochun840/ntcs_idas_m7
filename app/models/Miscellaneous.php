@@ -155,11 +155,11 @@ class Miscellaneous{
 
         if($mode =="chart_mode"){
             $array = array(
-                1 => 'Torque/Time(MS)',
-                2 => 'Angle/Time(MS)',
-                3 => 'RPM/Time(MS)',
-                4 => 'Torque/Angle',
-                5 => 'Torque/Speed',
+                1 => 'Torque v.s Time(MS)',
+                2 => 'Angle v.s Time(MS)',
+                3 => 'RPM v.s Time(MS)',
+                4 => 'Torque v.s Angle',
+                5 => 'Torque v.s Speed',
                 6 => '',
             );
         }

@@ -208,11 +208,11 @@ $text['final_angle'] = '角度(度)';//ANGLE (Deg)
 $text['final_result'] = '结果';//RESULT
 $text['final_message'] = '信息';//MESSAGE
 
-$text['Torque Time'] = "扭力 / 時間";
-$text['Angle Time'] = "角度 / 時間";
-$text['RPM Time'] = "转速 / 時間";
-$text['Torque Angle'] = "扭力 / 角度";
-$text['Torque Speed'] = "扭力 / 转速";
+$text['Torque Time'] = "扭力 v.s 時間";
+$text['Angle Time'] = "角度 v.s 時間";
+$text['RPM Time'] = "转速 v.s 時間";
+$text['Torque Angle'] = "扭力 v.s 角度";
+$text['Torque Speed'] = "扭力 v.s 转速";
 $text['Total_angle'] = "总角度";
 $text['Step_angle']  = "步骤角度";
 
@@ -243,7 +243,7 @@ $text['Disable'] = '禁用';
 $text['Enable'] = '致能';
 $text['Confirm'] = '确认';
 $text['Clear'] = '清除';
-$text['Sequence Clear'] = '序列清除';
+$text['Sequence Clear'] = '工序清除';
 $text['Gate Once'] = '一次感应';
 $text['GATE_TWICE'] = '二次感应';
 $text['Reboot'] = '重启';

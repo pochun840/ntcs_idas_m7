@@ -56,11 +56,6 @@ class Dashboards extends Controller
         $chart_unit_name    = $unit_arr[$device_torque_unit] ?? 'N.m';
 
 
-        //
-        //
-        //
-
-
         // 顯示用的最終鎖付值與單位
         if (!empty($data_info['fasten_status'])) {
             $data_info['error_message'] = $error_message['ERR_' . $data_info['error_message']] ?? $data_info['error_message'];
@@ -141,17 +136,13 @@ class Dashboards extends Controller
         // 選單文字
         $chart_menu_arr = $this->MiscellaneousModel->details('chart_menu');
         $chart_mode_arr = $this->MiscellaneousModel->details('chart_mode');
-        $echart_name    = explode("/", $chart_mode_arr[$chart_mode]);
+        $echart_name    = explode(" v.s ", $chart_mode_arr[$chart_mode]);
 
         // steps（後面會裁長度）
         $step_only = $this->DashboardModel->get_step_only($id);
 
         // 取本次圖表原始資料
         $csvdata_arr = $this->DashboardModel->get_info($chart_mode, $id);
-
-        
-
-
         
 
         // 用 mode5 原始扭力（轉單位後）得出統一扭力範圍
@@ -261,6 +252,7 @@ class Dashboards extends Controller
         }
 
 
+  
 
         // 組回傳
         $data = [

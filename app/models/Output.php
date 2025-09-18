@@ -163,11 +163,11 @@ class Output{
         return $results;
     }
     //delete output by job_id and event_id
-    public function delete_output_event_by_id($output_job_id,$output_event){
+    public function delete_output_event_by_id($output_job_id,$output_event,$output_pin){
 
-        $sql= "DELETE FROM JOBOutput_lst WHERE JOBID = ? AND EvenID = ?";
+        $sql= "DELETE FROM JOBOutput_lst WHERE JOBID = ? AND EvenID = ? AND Pin = ? ";
         $statement = $this->db_iDas->prepare($sql);
-        $results = $statement->execute([$output_job_id,$output_event]);
+        $results = $statement->execute([$output_job_id,$output_event,$output_pin]);
 
         return $results;
     }

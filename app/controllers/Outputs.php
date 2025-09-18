@@ -82,12 +82,12 @@ class Outputs extends Controller
                 }
 
                 // 累積事件 ID
-                if (!empty($event_id)) {
+                $skipIds = [12, 13, 14, 15, 16];//自定義1~自定義5
+                if (!empty($event_id) && !in_array((int)$event_id, $skipIds, true)) {
                     $tempA[] = $event_id;
                 }
-
-           
-
+                        
+                $label = $event_output[$event_id] ?? '';
                 if ($isMobile) {
                     $imgSrc = './img/trigger.png';
                     if ($signal == 0) $imgSrc = './img/signal01.png';
@@ -95,14 +95,14 @@ class Outputs extends Controller
                     $imgTag = "<img src=\"{$imgSrc}\" style=\"max-width: 50px;\">";
 
                     $job_outputlist .= "<tr data-event=\"{$event_id}\">";
-                    $job_outputlist .= "<td id=\"{$event_id}\">" . ($event_output[$event_id] ?? '') . "</td>";
+                    $job_outputlist .= '<td class="evt-label" data-eid="' . (int)$event_id . '">' . htmlspecialchars($label, ENT_QUOTES) . '</td>';
                     $job_outputlist .= "<td data-outputpin=\"{$pin}\">{$pin}</td>";
                     $job_outputlist .= "<td>{$imgTag}</td>";
                     $job_outputlist .= "<td>{$durate}</td>";
                     $job_outputlist .= "</tr>";
                 } else {
                     $job_outputlist .= "<tr data-event=\"{$event_id}\">";
-                    $job_outputlist .= "<td id=\"{$event_id}\">" . ($event_output[$event_id] ?? '') . "</td>";
+                    $job_outputlist .= '<td class="evt-label" data-eid="' . (int)$event_id . '">' . htmlspecialchars($label, ENT_QUOTES) . '</td>';
                     $job_outputlist .= $this->OutputModel->generateTableCell($pin, $signal);
                     $job_outputlist .= "<td>{$durate}</td>";
                     $job_outputlist .= "</tr>";
@@ -114,7 +114,7 @@ class Outputs extends Controller
             'job_outputlist' => $job_outputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'languange' => $_SESSION['language'] ?? 'en',
+            'language' => $_COOKIE['language'] ?? 'en-us',
             'focused_jobid' =>  $job_id,
 
         ]);
@@ -281,22 +281,31 @@ class Outputs extends Controller
         $event    = $this->MiscellaneousModel->details('io_output');
 
         $input_check = true;
+        
         if( !empty($_POST['job_id']) && isset($_POST['job_id'])){
             $output_job_id	 = $_POST['job_id'];
         }else{ 
             $input_check = false; 
         }
+
         if( !empty($_POST['output_event']) && isset($_POST['output_event'])  ){
             $output_event = $_POST['output_event'];
         }else{ 
             $input_check = false; 
         }
+        
+        if( !empty($_POST['output_pin']) && isset($_POST['output_pin'])  ){
+              $output_pin = $_POST['output_pin'];
+        }else{
+             $input_check = false; 
+        }
 
         if($input_check){
+
     
             $count = $this->OutputModel->check_event_conflict($output_job_id,$output_event);
             if ($count > 0){
-                $res = $this->OutputModel->delete_output_event_by_id($output_job_id,$output_event);
+                $res = $this->OutputModel->delete_output_event_by_id($output_job_id,$output_event,$output_pin);
                 if($res){
                     $res_type = 'Success';
                     $res_msg  = $text['del_event'].$text['job_id'].':'.$output_job_id.','.$text['event'].':'.$text[$event[$output_event]]."  ".$text['success'];

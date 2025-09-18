@@ -241,6 +241,8 @@ function handleUnifiedEvent() {
 // 🟩 共用輔助函式
 
 function disableRadioList(radioIds) {
+
+    console.log(radioIds);
     if (Array.isArray(radioIds)) {
         radioIds.forEach(id => {
             const radio = document.getElementById(id);
@@ -583,7 +585,7 @@ function crud_job_event(action) {
                 showOverlay();
                 delete_input_id(job_id, input_event);
             }
-            break;
+        break;
 
         case 'edit':
             document.querySelector(".main-content").classList.add("overlay-active");
@@ -595,7 +597,7 @@ function crud_job_event(action) {
             }
             showOverlay();
             handleEditJobEvent();
-            break;
+        break;
 
         case 'copy':
 
@@ -633,7 +635,7 @@ function crud_job_event(action) {
             
             handleCopyJobEvent();
             showOverlay();
-            break;
+        break;
 
        
         case 'unified':
@@ -736,8 +738,8 @@ function resetElementsByPrefix() {
 
 
 function handleEditJobEvent() {
-    //disableSelectOptions('#edit_Event_Option');
     disableRadioList(temp);
+
 
     get_input_info(job_id, input_event);
     handleEventChange(input_event);
@@ -1077,7 +1079,7 @@ function get_input_by_job_id(jobid, callback){
                     document.getElementById('104') && (document.getElementById('104').textContent = '确认');
                     document.getElementById('105') && (document.getElementById('105').textContent = '启动');
                     document.getElementById('106') && (document.getElementById('106').textContent = '反向');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '序列清除');
+                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
                     document.getElementById('108') && (document.getElementById('108').textContent = '重启');
                     document.getElementById('109') && (document.getElementById('109').textContent = '一次感应');
                     document.getElementById('110') && (document.getElementById('110').textContent = '自定义1');
@@ -1089,8 +1091,6 @@ function get_input_by_job_id(jobid, callback){
                     document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
 
 
-
-                
                 }else if(language =="zh-tw"){
                     document.getElementById('101') && (document.getElementById('101').textContent = '停用');
                     document.getElementById('102') && (document.getElementById('102').textContent = '致能');
@@ -1098,7 +1098,7 @@ function get_input_by_job_id(jobid, callback){
                     document.getElementById('104') && (document.getElementById('104').textContent = '確認');
                     document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
                     document.getElementById('106') && (document.getElementById('106').textContent = '反向');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '序列清除');
+                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
                     document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
                     document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
                     document.getElementById('110') && (document.getElementById('110').textContent = '自定義1');

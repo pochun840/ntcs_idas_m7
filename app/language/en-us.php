@@ -207,11 +207,11 @@ $text['final_angle'] = 'ANGLE (Deg)';//ANGLE (Deg)
 $text['final_result'] = 'RESULT';//RESULT
 $text['final_message'] = 'MESSAGE';//MESSAGE
 
-$text['Torque Time'] = "Torque / Time";
-$text['Angle Time'] = "Angle / Time";
-$text['RPM Time'] = "RPM / Time";
-$text['Torque Angle'] = "Torque / Angle";
-$text['Torque Speed'] = "Torque / Speed";
+$text['Torque Time'] = "Torque v.s Time";
+$text['Angle Time'] = "Angle v.s Time";
+$text['RPM Time'] = "RPM v.s Time";
+$text['Torque Angle'] = "Torque v.s Angle";
+$text['Torque Speed'] = "Torque v.s Speed";
 $text['Total_angle'] = "Total";
 $text['Step_angle'] = "Step";
 

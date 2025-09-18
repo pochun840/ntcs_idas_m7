@@ -71,6 +71,7 @@ class Inputs extends Controller
         $temp = [];        // radio 禁用 ID 清單
         $tempA = [];       // select 隱藏
         $temp_event = [];  // select 灰色
+        $tempAB = [];      // 不禁用的名單
         $job_inputlist = '';
 
         if ($input_check) {
@@ -108,27 +109,49 @@ class Inputs extends Controller
                         $temp_event[] = $vv['EvenID'];
                     }
 
-                    // 額外邏輯補齊
+        
+                    // 1) 先正規化：全部轉成字串並去重
+                    $temp_event = array_values(array_unique(array_map('strval', $temp_event)));
+
+                    // 2) 101/102 成對補齊（只要有任一個就補齊另一個）
                     $pair = ['101', '102'];
-                    if (!empty(array_intersect($pair, $temp_event))) {
+                    if (count(array_intersect($pair, $temp_event)) > 0) {
                         foreach ($pair as $id) {
                             if (!in_array($id, $temp_event, true)) {
                                 $temp_event[] = $id;
                             }
                         }
                     }
-                    
-                    $group2 = ['105', '115'];
-                    if (!empty(array_intersect($group2, $temp_event))) {
-                        foreach ($group2 as $id) {
+
+                    // 3) 互斥規則：105/106 與 115
+                    $has115 = in_array('115', $temp_event, true);
+                    if($has115){
+                        foreach (['105', '106'] as $id) {
                             if (!in_array($id, $temp_event, true)) {
-                                $temp_event[] = $id;
+                                $temp_event[] = $id; // 補齊缺少的 105/106
                             }
                         }
                     }
-               
 
-                
+                    $has105 = in_array('105', $temp_event, true);
+                    if($has105){
+                        foreach (['115'] as $id) {
+                            if (!in_array($id, $temp_event, true)) {
+                                $temp_event[] = $id; // 補齊缺少的 115
+                            }
+                        }
+                    }
+
+                    $has106 = in_array('106', $temp_event, true);
+                    if($has106){
+                        foreach (['115'] as $id) {
+                            if (!in_array($id, $temp_event, true)) {
+                                $temp_event[] = $id; // 補齊缺少的 115
+                            }
+                        }
+                    }
+                    
+                    
                     // 表格輸出
                     $isMobile = $this->isMobileCheck();
                     if ($isMobile) {
