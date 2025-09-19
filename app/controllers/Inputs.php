@@ -188,7 +188,8 @@ class Inputs extends Controller
             'job_inputlist' => $job_inputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'temp_event' => $temp_event
+            'temp_event' => $temp_event,
+            'language' =>$_COOKIE['language'],
         ]);
     }
 

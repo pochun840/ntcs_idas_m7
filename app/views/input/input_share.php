@@ -431,23 +431,23 @@ const inputLabelMap = {
     "zh-cn": {
         101: "禁用", 102: "启用", 103: "颗数清除", 104: "确认", 105: "启动", 106: "拆螺丝",
         107: "工序清除", 108: "重启", 109: "一次感应", 110: "自定义1", 111: "自定义2",
-        112: "自定义3", 113: "自定义4", 114: "自定义5"
+        112: "自定义3", 113: "自定义4", 114: "自定义5",115: "自由旋转",116: "跳工序"
     },
     "zh-tw": {
         101: "禁用", 102: "Enable", 103: "清除顆數", 104: "確認", 105: "啟動", 106: "反向",
         107: "工序清除", 108: "重啟", 109: "一次感應", 110: "自定義1", 111: "自定義2",
-        112: "自定義3", 113: "自定義4", 114: "自定義5"
+        112: "自定義3", 113: "自定義4", 114: "自定義5",115: "自由旋轉",116: "跳工序"
     },
-    "en": {
+    "en-us": {
         101: "Disable", 102: "Enable", 103: "Clear Count", 104: "Confirm", 105: "Start", 106: "Unscrew",
         107: "Clear Step", 108: "Restart", 109: "Once Sense", 110: "Custom1", 111: "Custom2",
-        112: "Custom3", 113: "Custom4", 114: "Custom5"
+        112: "Custom3", 113: "Custom4", 114: "Custom5",115: "FreeRotate",116: "Skip"
     }
 };
 
 // ✅ 更新按鈕標籤
 function updateInputButtonLabels(language) {
-    const map = inputLabelMap[language] || inputLabelMap["en"];
+    const map = inputLabelMap[language] || inputLabelMap["en-us"];
     Object.keys(map).forEach(id => {
         const el = document.getElementById(id);
         if (el) el.textContent = map[id];
@@ -1385,7 +1385,7 @@ function job_confirm(){
                     document.getElementById('112') && (document.getElementById('112').textContent = '自定義3');
                     document.getElementById('113') && (document.getElementById('113').textContent = '自定義4');
                     document.getElementById('114') && (document.getElementById('114').textContent = '自定義5');
-                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋转');
+                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋轉');
                     document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
                 }
 
