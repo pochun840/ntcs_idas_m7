@@ -101,8 +101,8 @@
         data.append("timeout", document.getElementById("timeout").value);
         data.append("dt_time", document.getElementById("dt_time").value);
         data.append("tt_time", document.getElementById("tt_time").value);
-         data.append("total_angle_limit", document.getElementById("total_angle_limit").value);
-
+        data.append("total_angle_limit", document.getElementById("total_angle_limit").value); 
+        data.append("total_angle_lower", document.getElementById("total_angle_lower").value); 
         data.append("ok_seq_val", document.querySelector('input[name="ok_seq"]:checked')?.value ?? null);
         data.append("ok_stop_val", document.querySelector('input[name="ok_stop"]:checked')?.value ?? null);
         data.append("countType", 1);
@@ -278,9 +278,8 @@
 
 
     function setCheckboxesByValue(value) {
-
-        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]'); 
         checkboxes.forEach((checkbox, i) => {
             // 高位元先排前面，所以 index 0 檢查 bit 4
             const bit = 4 - i;
@@ -288,11 +287,13 @@
         });
     }
 
-    
+        
+
     function input_check_seq() {
-        // === 多語詞庫 ===
-        const I18N = {
-            'en-us': {
+        
+    // === 多語詞庫 ===
+    const I18N = {
+        'en-us': {
             dialogTitle: 'Warning',
             empty: '“{label}” cannot be empty.',
             format: '“{label}” contains invalid characters.',
@@ -300,6 +301,8 @@
             minOnly: '“{label}” must be ≥ {min}.',
             maxOnly: '“{label}” must be ≤ {max}.',
             ok: 'OK',
+            total_angle_lower_out_of_range: 'Total angle lower (deg) out of range',
+            total_angle_lower_lt_limit: 'Total angle lower (deg) < Total angle upper (deg)',
             labels: {
                 SEQname: 'Sequence Name',
                 seq_repeat: 'Repeat',
@@ -310,10 +313,11 @@
                 unscrew_torque_threshold: 'Reverse Torque Threshold',
                 unscrew_angle_threshold: 'Reverse Angle Threshold',
                 unscrew_force: 'Reverse Force (%)',
-                total_angle_limit: 'total_angle',
+                total_angle_limit: 'Total Angle Upper (deg)',
+                total_angle_lower: 'Total Angle Lower (deg)',
             },
-            },
-            'zh-tw': {
+        },
+        'zh-tw': {
             dialogTitle: '警告',
             empty: '{label}   不可為空白。',
             format: '{label}  含有不允許的字元。',
@@ -321,6 +325,8 @@
             minOnly: '{label} 必須 ≥ {min}。',
             maxOnly: '{label} 必須 ≤ {max}。',
             ok: '確定',
+            total_angle_lower_out_of_range: '總角度下限(度) 超出範圍',
+            total_angle_lower_lt_limit: '總角度下限(度)  < 總角度上限(度)',
             labels: {
                 SEQname: '工序名稱',
                 seq_repeat: '顆數',
@@ -331,11 +337,11 @@
                 unscrew_torque_threshold: '門檻點扭力',
                 unscrew_angle_threshold: '門檻點角度',
                 unscrew_force: '反轉力度 (%)',
-                total_angle_limit: '總角度上限',
-
+                total_angle_limit: '總角度上限(度)',
+                total_angle_lower: '總角度下限(度)',
             },
-            },
-            'zh-cn': {
+        },
+        'zh-cn': {
             dialogTitle: '警告',
             empty: '{label}   不能为空。',
             format: '{label}  包含不允许的字符。',
@@ -343,6 +349,8 @@
             minOnly: '{label} 必须 ≥ {min}。',
             maxOnly: '{label} 必须 ≤ {max}。',
             ok: '确定',
+            total_angle_lower_out_of_range: '总角度下限(度) 超出范围',
+            total_angle_lower_lt_limit: '总角度下限(度)  < 总角度上限(度)',
             labels: {
                 SEQname: '工序名称',
                 seq_repeat: '颗数',
@@ -353,244 +361,260 @@
                 unscrew_torque_threshold: '门槛点扭力',
                 unscrew_angle_threshold: '门槛点角度',
                 unscrew_force: '反转力度 (%)',
-                total_angle_limit: '总角度上限',
-
+                total_angle_limit: '总角度上限(度)',
+                total_angle_lower: '总角度下限(度)',
             },
-            },
-        };
+        },
+    };
 
-        // --- 語系正規化 ---
-        function normalizeLang(raw) {
-            const x = String(raw || '').toLowerCase();
-            if (!x) return 'en-us';
-            if (x === 'en') return 'en-us';
-            if (x.startsWith('zh')) {
-            if (x.includes('tw') || x.includes('hk') || x.includes('mo') || x.includes('hant')) return 'zh-tw';
-            if (x.includes('cn') || x.includes('sg') || x.includes('hans')) return 'zh-cn';
-            return 'zh-tw';
-            }
-            return x;
+    // --- 語系正規化 ---
+    function normalizeLang(raw) {
+        const x = String(raw || '').toLowerCase();
+        if (!x) return 'en-us';
+        if (x === 'en') return 'en-us';
+        if (x.startsWith('zh')) {
+        if (x.includes('tw') || x.includes('hk') || x.includes('mo') || x.includes('hant')) return 'zh-tw';
+        if (x.includes('cn') || x.includes('sg') || x.includes('hans')) return 'zh-cn';
+        return 'zh-tw';
+        }
+        return x;
+    }
+
+    const langCookie =
+        (typeof getCookie === 'function' && getCookie('language')) ||
+        document.documentElement.getAttribute('lang') ||
+        'en-us';
+    const lang = normalizeLang(langCookie);
+    const dict = I18N[lang] || I18N['en-us'];
+
+    const t = (key, params = {}) => {
+        let s = dict[key] ?? I18N['en-us'][key] ?? key;
+        Object.entries(params).forEach(([k, v]) => { s = s.replaceAll(`{${k}}`, String(v)); });
+        return s;
+    };
+    const labelOf = (id) =>
+        document.getElementById(id)?.getAttribute('data-label') ||
+        dict.labels?.[id] ||
+        id;
+
+    const markAndFocusInvalid = (el) => {
+        if (!el) return;
+        el.classList.add('is-invalid');
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => el.focus({ preventScroll: true }), 0);
+    };
+
+    // 彈窗（雙保險：全域/單次都設 OK 語系）
+    const alertPopup = (msg, el) => {
+        if (window.alertify?.defaults?.glossary) {
+        try { alertify.defaults.glossary.ok = dict.ok; } catch (e) {}
+        }
+        alertify
+        .alert(dict.dialogTitle, msg, () => el && el.focus())
+        .set('movable', false)
+        .set('labels', { ok: dict.ok });
+    };
+
+    // 隱藏欄位後方提示
+    const hideInlineHint = (el) => {
+        const sib = el?.nextElementSibling;
+        if (!sib) return;
+        const classes = ['invalid-feedback', 'text-danger', 'form-text', 'help-block', 'valid-feedback', 'range-hint'];
+        if (classes.some((c) => sib.classList?.contains(c))) {
+        sib.textContent = '';
+        sib.classList.remove('d-block');
+        sib.style.display = 'none';
+        }
+    };
+
+    // --- 讀系統上限/下限 ---
+    const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque')?.value ?? '');
+    const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque')?.value ?? '');
+    const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm')?.value ?? '');
+    const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm')?.value ?? '');
+
+    // --- forcemode 與 auto mode ---
+    const selectedForceMode = document.querySelector('input[name="unscrew_forcemode"]:checked')?.value ?? null; // '0' or others
+    const isAutoMode = !!document.getElementById('unscrew_mode_auto')?.checked;
+
+    // --- unscrew_mode（0 才需要對 threshold 做四捨五入）---
+    const unscrewModeVal = document.querySelector('input[name="unscrew_mode"]:checked')?.value ?? null; // '0'/'1'...
+
+    // --- 讀扭力單位並決定小數位 ---
+    // 0: kgf.cm→2, 1: N·m→3, 2: lbf·in→2, 3: kgf·m→4, 4: cN·m→1
+    const UNIT_DECIMALS = { 0: 2, 1: 3, 2: 2, 3: 4, 4: 1 };
+    const unitEl = document.getElementById('seq_unit_code');
+    const torque_unit = parseInt(unitEl?.value ?? 1, 10);
+    const baseDecimals = Object.prototype.hasOwnProperty.call(UNIT_DECIMALS, torque_unit) ? UNIT_DECIMALS[torque_unit] : 3;
+    const roundDecimals = baseDecimals + 1; // 允許多一位輸入
+    const torqueThreshPattern = new RegExp(`^\\d{1,6}(?:\\.\\d{1,${roundDecimals}})?$`);
+
+    // --- 讀取「總角度上限」供動態比對 ---
+    const totalAngleLimitEl = document.getElementById('total_angle_limit');
+    const totalAngleLimitRaw = (totalAngleLimitEl?.value ?? '').trim();
+    const totalAngleLimitNum = Number(totalAngleLimitRaw);
+    const limitIsFinite = Number.isFinite(totalAngleLimitNum);
+
+    // --- 欄位規則（★ 新增 total_angle_lower）---
+    const conditions = [
+        { id: 'SEQname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
+        { id: 'seq_repeat', pattern: /^\d{0,4}$/, min: 1, max: 99 },
+        { id: 'timeout', pattern: /^\d{0,5}$/, min: 0, max: 60 },
+        { id: 'dt_time', pattern: /^\d{0,5}$/, min: 0, max: 99 },
+        { id: 'tt_time', pattern: /^\d{0,5}$/, min: 0, max: 6000 },
+        { id: 'ng_stop', pattern: /^\d{0,5}$/, min: 0, max: 9 },
+        { id: 'unscrew_rpm', pattern: /^\d+$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
+        { id: 'unscrew_torque_threshold', pattern: torqueThreshPattern, min: 0, max: Tool_Max_Torque },
+        { id: 'unscrew_angle_threshold', pattern: /^\d+(?:\.\d{1})?$/, min: 0, max: 30600 },
+        { id: 'unscrew_force', pattern: /^\d+$/, min: 0, max: 100 },
+        { id: 'total_angle_limit', pattern: /^\d+$/, min: 0, max: 30600 },
+        { id: 'total_angle_lower', pattern: /^\d+$/, min: 0, max: 30600 },
+    ];
+
+    // 彈窗提示的欄位
+    const POPUP_FIELDS = new Set([
+        'SEQname','seq_repeat','timeout','dt_time','tt_time',
+        'unscrew_rpm','unscrew_torque_threshold','unscrew_angle_threshold','unscrew_force',
+        'total_angle_limit','total_angle_lower' // ★ 加入
+    ]);
+
+    let isFormValid = true;
+    let popupShown = false; // 避免一次跳多個彈窗
+
+    // 先把所有欄位後方提示移除/隱藏
+    conditions.forEach((rule) => hideInlineHint(document.getElementById(rule.id)));
+
+    // 驗證
+    conditions.forEach((input) => {
+        const element = document.getElementById(input.id);
+        if (!element) return;
+
+        let value = (element.value ?? '').trim();
+
+        // Auto 模式：跳過反轉相關欄位
+        if (
+        isAutoMode &&
+        (input.id === 'unscrew_torque_threshold' ||
+        input.id === 'unscrew_force' ||
+        input.id === 'unscrew_angle_threshold' ||
+        input.id === 'unscrew_rpm')
+        ) {
+        element.classList.remove('is-invalid');
+        return;
         }
 
-        const langCookie =
-            (typeof getCookie === 'function' && getCookie('language')) ||
-            document.documentElement.getAttribute('lang') ||
-            'en-us';
-        const lang = normalizeLang(langCookie);
-        const dict = I18N[lang] || I18N['en-us'];
-
-        const t = (key, params = {}) => {
-            let s = dict[key] ?? I18N['en-us'][key] ?? key;
-            Object.entries(params).forEach(([k, v]) => {
-            s = s.replaceAll(`{${k}}`, String(v));
-            });
-            return s;
-        };
-        const labelOf = (id) =>
-            document.getElementById(id)?.getAttribute('data-label') ||
-            dict.labels?.[id] ||
-            id;
-
-        const markAndFocusInvalid = (el) => {
-            if (!el) return;
-            el.classList.add('is-invalid');
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => el.focus({ preventScroll: true }), 0);
-        };
-
-        // 彈窗（雙保險：全域/單次都設 OK 語系）
-        const alertPopup = (msg, el) => {
-            if (window.alertify?.defaults?.glossary) {
-            try {
-                alertify.defaults.glossary.ok = dict.ok;
-            } catch (e) {}
-            }
-            alertify
-            .alert(dict.dialogTitle, msg, () => el && el.focus())
-            .set('movable', false)
-            .set('labels', { ok: dict.ok });
-        };
-
-        // 隱藏欄位後方提示
-        const hideInlineHint = (el) => {
-            const sib = el?.nextElementSibling;
-            if (!sib) return;
-            const classes = ['invalid-feedback', 'text-danger', 'form-text', 'help-block', 'valid-feedback', 'range-hint'];
-            if (classes.some((c) => sib.classList?.contains(c))) {
-            sib.textContent = '';
-            sib.classList.remove('d-block');
-            sib.style.display = 'none';
-            }
-        };
-
-        // --- 讀系統上限/下限 ---
-        const Tool_Max_Torque = parseFloat(document.getElementById('tool_max_torque')?.value ?? '');
-        const Tool_Min_Torque = parseFloat(document.getElementById('tool_min_torque')?.value ?? '');
-        const Tool_Max_RPM = parseFloat(document.getElementById('tool_max_rpm')?.value ?? '');
-        const Tool_Min_RPM = parseFloat(document.getElementById('tool_min_rpm')?.value ?? '');
-
-        // --- forcemode 與 auto mode ---
-        const selectedForceMode = document.querySelector('input[name="unscrew_forcemode"]:checked')?.value ?? null; // '0' or others
-        const isAutoMode = !!document.getElementById('unscrew_mode_auto')?.checked;
-
-        // --- unscrew_mode（0 才需要對 threshold 做四捨五入）---
-        const unscrewModeVal = document.querySelector('input[name="unscrew_mode"]:checked')?.value ?? null; // '0'/'1'...
-
-        // --- 讀扭力單位並決定小數位 ---
-        // 0: kgf.cm→2, 1: N·m→3, 2: lbf·in→2, 3: kgf·m→4, 4: cN·m→1
-        const UNIT_DECIMALS = { 0: 2, 1: 3, 2: 2, 3: 4, 4: 1 };
-        const unitEl = document.getElementById('seq_unit_code');
-        const torque_unit = parseInt(unitEl?.value ?? 1, 10);
-        const baseDecimals = Object.prototype.hasOwnProperty.call(UNIT_DECIMALS, torque_unit)
-            ? UNIT_DECIMALS[torque_unit]
-            : 3;
-        const roundDecimals = baseDecimals + 1; // 允許多一位輸入
-        const torqueThreshPattern = new RegExp(`^\\d{1,6}(?:\\.\\d{1,${roundDecimals}})?$`);
-
-        // --- 欄位規則 ---
-        const conditions = [
-            { id: 'SEQname', pattern: /^[a-zA-Z0-9\u4E00-\u9FA5\-]+$/, min: null, max: null },
-            { id: 'seq_repeat', pattern: /^\d{0,4}$/, min: 1, max: 99 },
-            { id: 'timeout', pattern: /^\d{0,5}$/, min: 0, max: 60 },
-            { id: 'dt_time', pattern: /^\d{0,5}$/, min: 0, max: 99 },
-            { id: 'tt_time', pattern: /^\d{0,5}$/, min: 0, max: 6000 },
-            { id: 'ng_stop', pattern: /^\d{0,5}$/, min: 0, max: 9 },
-            { id: 'unscrew_rpm', pattern: /^\d+$/, min: Tool_Min_RPM, max: Tool_Max_RPM },
-            { id: 'unscrew_torque_threshold', pattern: torqueThreshPattern, min: 0, max: Tool_Max_Torque },
-            { id: 'unscrew_angle_threshold', pattern: /^\d+(?:\.\d{1})?$/, min: 0, max: 30600 },
-            { id: 'unscrew_force', pattern: /^\d+$/, min: 0, max: 100 },
-            { id: 'total_angle_limit', pattern: /^\d+$/, min: 0, max: 30600},
-        ];
-
-        // 彈窗提示的欄位
-        const POPUP_FIELDS = new Set([
-            'SEQname',
-            'seq_repeat',
-            'timeout',
-            'dt_time',
-            'tt_time',
-            'unscrew_rpm',
-            'unscrew_torque_threshold',
-            'unscrew_angle_threshold',
-            'unscrew_force',
-            'total_angle_limit'
-        ]);
-
-        let isFormValid = true;
-        let popupShown = false; // 避免一次跳多個彈窗
-
-        // 先把所有欄位後方提示移除/隱藏
-        conditions.forEach((rule) => hideInlineHint(document.getElementById(rule.id)));
-
-        // 驗證
-        conditions.forEach((input) => {
-            const element = document.getElementById(input.id);
-            if (!element) return;
-
-            let value = (element.value ?? '').trim();
-
-            // Auto 模式：跳過反轉相關欄位
-            if (
-            isAutoMode &&
-            (input.id === 'unscrew_torque_threshold' ||
-                input.id === 'unscrew_force' ||
-                input.id === 'unscrew_angle_threshold' ||
-                input.id === 'unscrew_rpm')
-            ) {
-            element.classList.remove('is-invalid');
-            return;
-            }
-
-            // forcemode != 0 時，unscrew_force 停用並跳過
-            if (selectedForceMode !== '0' && input.id === 'unscrew_force') {
-            element.disabled = true;
-            element.classList.remove('is-invalid');
-            hideInlineHint(element);
-            return;
-            } else if (selectedForceMode === '0' && input.id === 'unscrew_force') {
-            element.disabled = false;
-            }
-
-            // unscrew_mode == 0：允許多一位輸入，但提交前回填 base 位
-            if (input.id === 'unscrew_torque_threshold' && unscrewModeVal === '0' && value !== '') {
-            const n = Number(value);
-            if (Number.isFinite(n)) {
-                const rounded = Number(n.toFixed(baseDecimals));
-                element.value = rounded.toFixed(baseDecimals);
-                value = element.value;
-            }
-            element.setAttribute('pattern', `^\\d{1,6}(?:\\.\\d{1,${roundDecimals}})?$`);
-            element.setAttribute('inputmode', 'decimal');
-            element.setAttribute('step', String(1 / Math.pow(10, baseDecimals)));
-            }
-
-            // --- 驗證：空值 ---
-            if (value === '') {
-            element.classList.add('is-invalid');
-            isFormValid = false;
-
-            if (!popupShown && POPUP_FIELDS.has(input.id)) {
-                popupShown = true;
-                markAndFocusInvalid(element);
-                alertPopup(t('empty', { label: labelOf(input.id) }), element);
-            }
-            return;
-            }
-
-            // --- 驗證：格式 ---
-            if (!input.pattern.test(value)) {
-            element.classList.add('is-invalid');
-            isFormValid = false;
-
-            if (!popupShown && POPUP_FIELDS.has(input.id)) {
-                popupShown = true;
-                markAndFocusInvalid(element);
-                alertPopup(t('format', { label: labelOf(input.id) }), element);
-            }
-            return;
-            }
-
-            // --- 驗證：範圍（僅對數值型欄位）
-            const numVal = Number(value);
-            const isNumeric = !Number.isNaN(numVal);
-            const hasMin = Number.isFinite(input.min);
-            const hasMax = Number.isFinite(input.max);
-
-            if (isNumeric && hasMin && numVal < input.min) {
-            element.classList.add('is-invalid');
-            isFormValid = false;
-
-            if (!popupShown && POPUP_FIELDS.has(input.id)) {
-                popupShown = true;
-                markAndFocusInvalid(element);
-                const msg = hasMax
-                ? t('range', { label: labelOf(input.id), min: input.min, max: input.max })
-                : t('minOnly', { label: labelOf(input.id), min: input.min });
-                alertPopup(msg, element);
-            }
-            return;
-            }
-            if (isNumeric && hasMax && numVal > input.max) {
-            element.classList.add('is-invalid');
-            isFormValid = false;
-
-            if (!popupShown && POPUP_FIELDS.has(input.id)) {
-                popupShown = true;
-                markAndFocusInvalid(element);
-                const msg = hasMin
-                ? t('range', { label: labelOf(input.id), min: input.min, max: input.max })
-                : t('maxOnly', { label: labelOf(input.id), max: input.max });
-                alertPopup(msg, element);
-            }
-            return;
-            }
-
-            // OK
-            element.classList.remove('is-invalid');
-        });
-
-        return isFormValid;
+        // forcemode != 0 時，unscrew_force 停用並跳過
+        if (selectedForceMode !== '0' && input.id === 'unscrew_force') {
+        element.disabled = true;
+        element.classList.remove('is-invalid');
+        hideInlineHint(element);
+        return;
+        } else if (selectedForceMode === '0' && input.id === 'unscrew_force') {
+        element.disabled = false;
         }
+
+        // unscrew_mode == 0：允許多一位輸入，但提交前回填 base 位
+        if (input.id === 'unscrew_torque_threshold' && unscrewModeVal === '0' && value !== '') {
+        const n = Number(value);
+        if (Number.isFinite(n)) {
+            const rounded = Number(n.toFixed(baseDecimals));
+            element.value = rounded.toFixed(baseDecimals);
+            value = element.value;
+        }
+        element.setAttribute('pattern', `^\\d{1,6}(?:\\.\\d{1,${roundDecimals}})?$`);
+        element.setAttribute('inputmode', 'decimal');
+        element.setAttribute('step', String(1 / Math.pow(10, baseDecimals)));
+        }
+
+        // --- 驗證：空值 ---
+        if (value === '') {
+        element.classList.add('is-invalid');
+        isFormValid = false;
+
+        if (!popupShown && POPUP_FIELDS.has(input.id)) {
+            popupShown = true;
+            markAndFocusInvalid(element);
+            alertPopup(t('empty', { label: labelOf(input.id) }), element);
+        }
+        return;
+        }
+
+        // --- 驗證：格式 ---
+        if (!input.pattern.test(value)) {
+        element.classList.add('is-invalid');
+        isFormValid = false;
+
+        if (!popupShown && POPUP_FIELDS.has(input.id)) {
+            popupShown = true;
+            markAndFocusInvalid(element);
+            alertPopup(t('format', { label: labelOf(input.id) }), element);
+        }
+        return;
+        }
+
+        // --- 驗證：範圍（僅對數值型欄位）
+        const numVal = Number(value);
+        const isNumeric = !Number.isNaN(numVal);
+        const hasMin = Number.isFinite(input.min);
+        const hasMax = Number.isFinite(input.max);
+
+        // ★ 專屬規則：當「總角度上限」> 0 時，總角度下限必須 < 總角度上限
+        if (input.id === 'total_angle_lower' && limitIsFinite && totalAngleLimitNum > 0) {
+        if (isNumeric && numVal >= totalAngleLimitNum) {
+            element.classList.add('is-invalid');
+            isFormValid = false;
+
+            if (!popupShown && POPUP_FIELDS.has(input.id)) {
+            popupShown = true;
+            markAndFocusInvalid(element);
+            // 同時顯示兩句話
+            alertPopup(
+                `${t('total_angle_lower_out_of_range')}，${t('total_angle_lower_lt_limit')}`,
+                element
+            );
+            }
+            return; // 已處理，跳過一般 min/max 訊息
+        }
+        // 若通過 < 上限，落回一般 min/max（確保 >=0）
+        }
+
+        if (isNumeric && hasMin && numVal < input.min) {
+        element.classList.add('is-invalid');
+        isFormValid = false;
+
+        if (!popupShown && POPUP_FIELDS.has(input.id)) {
+            popupShown = true;
+            markAndFocusInvalid(element);
+            const msg = hasMax
+            ? t('range', { label: labelOf(input.id), min: input.min, max: input.max })
+            : t('minOnly', { label: labelOf(input.id), min: input.min });
+            alertPopup(msg, element);
+        }
+        return;
+        }
+        if (isNumeric && hasMax && numVal > input.max) {
+        element.classList.add('is-invalid');
+        isFormValid = false;
+
+        if (!popupShown && POPUP_FIELDS.has(input.id)) {
+            popupShown = true;
+            markAndFocusInvalid(element);
+            const msg = hasMin
+            ? t('range', { label: labelOf(input.id), min: input.min, max: input.max })
+            : t('maxOnly', { label: labelOf(input.id), max: input.max });
+            alertPopup(msg, element);
+        }
+        return;
+        }
+
+        // OK
+        element.classList.remove('is-invalid');
+    });
+
+    return isFormValid;
+    }
+
+
 
 
 

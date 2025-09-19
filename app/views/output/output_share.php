@@ -375,7 +375,7 @@ function crud_job_event(argument) {
             if (!output_pinval) return; // 需要先有被選到的 pin (從列表 data-outputpin 來)
 
             // 先向後端拿資料並渲染 DOM
-            get_output_info(job_id, output_event);
+            get_output_info(job_id, output_event, output_pinval);
 
             // 等待 DOM 更新完成後再處理互動邏輯
             setTimeout(() => {
@@ -1210,20 +1210,33 @@ function updateInputsBasedOnRadioSelection() {
 }
 
 
-function get_output_info(job_id, output_event) {
+function get_output_info(job_id, output_event, output_pin_param) {
   if (!job_id || !output_event) return;
 
   $.ajax({
     url: "?url=Outputs/check_job_event",
     method: "POST",
-    data: { job_id, output_event },
+    data: { job_id, output_event, output_pin: output_pin_param || '' },
     success: function (response) {
       if (!response || response === 'no_data') {
         getLanguageMessage('language');
         return;
       }
 
-      // --- helper：統一禁用全部 edit_pin 與 edit_time ---
+      // 顯示編輯視窗
+      const editModal = document.getElementById('edit_output');
+      if (editModal) editModal.style.display = 'block';
+
+      // 解析回傳
+      const data = (typeof response === 'string') ? JSON.parse(response) : response;
+
+      // ★ 優先用呼叫端傳入的 pin，沒有才用後端回傳
+      const output_pin = String(output_pin_param ?? data.Pin);
+      const signal     = data.signal;        // 0 / 1 / 2
+      const wave       = Number(data.EvenID);
+      const wave_on    = data.durate;
+
+      // ===== 小工具 =====
       const resetAll = () => {
         for (let i = 1; i <= 11; i++) {
           for (let j = 0; j <= 2; j++) {
@@ -1235,7 +1248,6 @@ function get_output_info(job_id, output_event) {
         }
       };
 
-      // --- helper：7~9（Group A）規則：所有 *_0/*_1 禁用，僅當前 pin 的 *_2 可用；time 全關 ---
       const applyGroupAEdit = (currentPin) => {
         for (let i = 1; i <= 11; i++) {
           const p0 = document.getElementById(`edit_pin${i}_0`);
@@ -1249,13 +1261,12 @@ function get_output_info(job_id, output_event) {
         }
       };
 
-      // --- helper：12~16（Custom）規則：所有 *_1 禁用；當前 pin 的 *_0/_2 可用；僅當前 time 開 ---
       const applyCustomEdit = (currentPin) => {
         for (let i = 1; i <= 11; i++) {
           const p0 = document.getElementById(`edit_pin${i}_0`);
           const p1 = document.getElementById(`edit_pin${i}_1`);
           const p2 = document.getElementById(`edit_pin${i}_2`);
-          if (p1) { p1.checked = false; p1.disabled = true; }
+          if (p1) { p1.checked = false; p1.disabled = true; } // 所有 *_1 禁用
           if (String(i) === String(currentPin)) {
             if (p0) p0.disabled = false;
             if (p2) p2.disabled = false;
@@ -1265,7 +1276,6 @@ function get_output_info(job_id, output_event) {
         }
       };
 
-      // --- helper：事件 6：所有 *_0/*_1 禁用（保留你原本行為）---
       const applyWave6 = () => {
         for (let i = 1; i <= 11; i++) {
           const p0 = document.getElementById(`edit_pin${i}_0`);
@@ -1275,50 +1285,37 @@ function get_output_info(job_id, output_event) {
         }
       };
 
-      // --- 顯示編輯視窗 ---
-      document.getElementById('edit_output').style.display = 'block';
-
-      // 確保 response 是物件
-      const data = (typeof response === 'string') ? JSON.parse(response) : response;
-      const output_pin = data.Pin;        // 當前這筆的 pin 編號（1~11）
-      const signal    = data.signal;      // 0/1/2
-      const wave      = Number(data.EvenID);
-      const wave_on   = data.durate;
-
-      // 事件選單設定
+      // ===== 套 UI =====
+      // 設定事件選單
       const eventOption = document.getElementById('edit_event_option');
       if (eventOption) eventOption.value = wave;
 
-      // 先全數重置
+      // 全數重置
       resetAll();
 
-      // 先把「目前資料」的該顆 radio 勾回來（並暫時開啟它），避免被 resetAll 清掉 UI 狀態
+      // 勾回這筆資料
       const currentRadioId = `edit_pin${output_pin}_${signal}`;
       const currentRadio   = document.getElementById(currentRadioId);
       if (currentRadio) { currentRadio.disabled = false; currentRadio.checked = true; }
 
-      // 時間欄位先寫回原值（等規則套完再決定是否禁用）
       const currentTime = document.getElementById(`edit_time${output_pin}`);
-      if (currentTime) {
-        currentTime.value = (wave_on === '' || wave_on === '0') ? '' : wave_on;
-      }
+      if (currentTime) currentTime.value = (wave_on === '' || wave_on === '0') ? '' : wave_on;
 
       // 依事件代碼套規則
       if ([7, 8, 9].includes(wave)) {
-        // 7~9
+        // 7~9：只允許當前 pin 的 _2；時間全關
         applyGroupAEdit(output_pin);
       } else if (wave >= 12 && wave <= 16) {
-        // 12~16
+        // 12~16：所有 *_1 禁用，當前 pin 的 _0/_2 可用；只開當前時間
         applyCustomEdit(output_pin);
       } else if (wave === 6) {
-        // 6
+        // 6：所有 *_0/*_1 禁用；當前 pin 的 _2 可用；時間依 signal
         applyWave6();
-        // 當前 pin 的 *_2 若是本來就選 2，保留可用；時間依原 signal 規則
         const p2 = document.getElementById(`edit_pin${output_pin}_2`);
         if (p2) p2.disabled = false;
         if (currentTime) currentTime.disabled = (signal != 1);
       } else {
-        // 其他事件：只開當前 pin 的三顆，其他保持禁用
+        // 其他：當前 pin 三顆都開；時間依 signal
         const p0 = document.getElementById(`edit_pin${output_pin}_0`);
         const p1 = document.getElementById(`edit_pin${output_pin}_1`);
         const p2 = document.getElementById(`edit_pin${output_pin}_2`);
@@ -1328,21 +1325,19 @@ function get_output_info(job_id, output_event) {
         if (currentTime) currentTime.disabled = (signal != 1);
       }
 
-      // 事件選單切換時，重新套規則
+      // 事件選單切換時，維持在同一顆 pin 上操作
       if (eventOption && !eventOption._bindEditRules) {
         eventOption.addEventListener('change', () => {
           const newWave = Number(eventOption.value);
-          // 重新依新事件代碼套規則
+
+          // 先重置
           resetAll();
 
-          // 把目前這筆勾回來（避免切事件把 UI 清乾淨）
-          const r0 = document.getElementById(`edit_pin${output_pin}_0`);
-          const r1 = document.getElementById(`edit_pin${output_pin}_1`);
-          const r2 = document.getElementById(`edit_pin${output_pin}_2`);
-          // 預設維持原 signal 的勾選（若該顆之後被禁用，自然會無效）
+          // 保留這筆的 radio 勾選與可操作
           const keep = document.getElementById(`edit_pin${output_pin}_${signal}`);
           if (keep) { keep.disabled = false; keep.checked = true; }
 
+          // 重新套規則（同上）
           if ([7, 8, 9].includes(newWave)) {
             applyGroupAEdit(output_pin);
           } else if (newWave >= 12 && newWave <= 16) {
@@ -1354,9 +1349,12 @@ function get_output_info(job_id, output_event) {
             const t = document.getElementById(`edit_time${output_pin}`);
             if (t) t.disabled = (signal != 1);
           } else {
-            if (r0) r0.disabled = false;
-            if (r1) r1.disabled = false;
-            if (r2) r2.disabled = false;
+            const p0 = document.getElementById(`edit_pin${output_pin}_0`);
+            const p1 = document.getElementById(`edit_pin${output_pin}_1`);
+            const p2 = document.getElementById(`edit_pin${output_pin}_2`);
+            if (p0) p0.disabled = false;
+            if (p1) p1.disabled = false;
+            if (p2) p2.disabled = false;
             const t = document.getElementById(`edit_time${output_pin}`);
             if (t) t.disabled = (signal != 1);
           }
@@ -1364,7 +1362,7 @@ function get_output_info(job_id, output_event) {
         eventOption._bindEditRules = true;
       }
 
-      // 保存舊事件代碼
+      // 記下舊事件代碼（你原本有在用）
       old_output_event = output_event;
     },
     error: function (xhr, status, error) {
@@ -1372,6 +1370,7 @@ function get_output_info(job_id, output_event) {
     }
   });
 }
+
 
 
 
