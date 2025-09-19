@@ -207,8 +207,6 @@
                 })
             } else {
                 Swal.fire('Saved!', '', 'success');
-                // document.getElementById('agent_server_ip').value = '';
-                // window.location = window.location.href;
             }
         });
     }

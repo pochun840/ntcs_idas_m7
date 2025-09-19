@@ -363,16 +363,16 @@ $text['calibration_value'] = 'Calibration Value';
 $text['tools_version'] = 'Version';
 
 $text['controller_info'] = 'Controller Information';
-$text['controller_sn'] = 'Controller SN';
+$text['controller_sn'] = 'Serial SN';
 $text['controller_version'] = 'Controller Version';
 $text['cpb_version'] = 'CPB Version';
-$text['image_version'] = 'Image Version';
-$text['network_ip'] = 'Netword IP';
+$text['image_version'] = 'Image Version/System Version';
+$text['network_ip'] = 'IP';
 $text['mask'] = 'Mask';
-$text['Mac'] = 'Mac';
+$text['Mac'] = 'Mac Address';
 $text['gateway'] = 'Gateway';
 $text['refresh'] = 'Refresh';
-$text['db_version'] = 'Database Version';
+$text['db_version'] = 'DB Version';
 
 //Setting
 $text['controller_setting'] = 'Controller Setting';

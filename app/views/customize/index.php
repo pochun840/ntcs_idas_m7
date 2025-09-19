@@ -40,6 +40,8 @@
                 'confirm_delete_all'  => 'Delete ALL rows?',
                 'num_only'            => 'Numbers only.',
                 'no_dup'              => 'Duplicate values are not allowed.',
+                'move_up'             => 'Move Up',
+                'move_down'           => 'Move Down',
             ],
 
             'zh-tw' => [
@@ -64,6 +66,9 @@
                 'confirm_delete_all'  => '要刪除全部列嗎？',
                 'num_only'            => '只能輸入數字。',
                 'no_dup'              => '不可以輸入重複的數值。',
+                'move_up'             => '往上移動',
+                'move_down'           => '往下移動',
+
             ],
 
             'zh-cn' => [
@@ -88,6 +93,8 @@
                 'confirm_delete_all'  => '要删除全部行吗？',
                 'num_only'            => '只能输入数字。',
                 'no_dup'              => '不可以输入重复的数值。',
+                'move_up'             => '往上移动',
+                'move_down'           => '往下移动',
             ],
         ];
 
@@ -120,6 +127,13 @@
             #dynTable tbody td:nth-child(4) {
             display: none;
             }
+
+            /* 上下移動按鈕的儲存格置中與寬度 */
+            #dynTable td.move-cell,
+            #dynTable th.move-cell { text-align:center; width:90px; }
+
+            /* 小圖示按鈕外觀一致 */
+            .w3-btn.icon-btn { min-width:44px; height:32px; line-height:32px; padding:0 10px; }
 
         </style>
 
@@ -210,8 +224,11 @@
                             <th><?php echo $L['input']; ?></th>
                             <th><?php echo $L['result']; ?></th>
                             <?php if(($_SESSION['privilege'] ?? '') === 'admin'){ ?>
-                            <th style="width:90px"></th>
+                                <th></th>
+                                <th></th>
+                                <th style="width:90px"></th> <!-- 你原本的刪除操作欄 -->
                             <?php } ?>
+
                         </tr>
                     </thead>
 
@@ -277,12 +294,64 @@
         return [...tbody.querySelectorAll('tr:not(.insert-marker)')];
     }
 
+    // 單列上/下移：dir=-1 上移、dir=+1 下移
+    function moveRow(tr, dir, { silent=false } = {}){
+        if (!tr || !tbody) return;
+        const rows = getDataRows();
+        const idx  = rows.indexOf(tr);
+        if (idx === -1) return;
+
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= rows.length) return; // 邊界
+
+        const target = rows[newIdx];
+        if (dir < 0) {
+            // 上移：插到目標之前
+            tbody.insertBefore(tr, target);
+        } else {
+            // 下移：插到目標之後
+            const after = target.nextSibling;
+            after ? tbody.insertBefore(tr, after) : tbody.appendChild(tr);
+        }
+
+        if (!silent) {
+            renumber?.();
+            syncCkAllState?.();
+            bumpDom?.();
+            poller?.triggerNow?.();
+        }
+    }
+
+    // 批次移動：會維持相對順序
+    function moveSelectedRows(dir){
+
+        const rows = getDataRows();
+        const selected = rows.filter(r => r.querySelector('.row-ck')?.checked);
+        if (!selected.length) {
+            if (window.alertify) alertify.alert('Info', L['none_selected'] || 'Please select at least one row.');
+            else alert(L['none_selected'] || 'Please select at least one row.');
+            return;
+        }
+        if (dir < 0) {
+            // 上移：由上到下跑一次
+            selected.forEach(tr => moveRow(tr, -1, { silent:true }));
+        } else {
+            // 下移：由下到上跑一次
+            [...selected].reverse().forEach(tr => moveRow(tr, +1, { silent:true }));
+        }
+        renumber?.();
+        syncCkAllState?.();
+        bumpDom?.();
+        poller?.triggerNow?.();
+    }
+
 
     function headerColspan(){
         return document.querySelectorAll('#dynTable thead th').length || 5;
     }
 
     function ensureInsertMarker(){
+
         if (insertMarker) return insertMarker;
         insertMarker = document.createElement('tr');
         insertMarker.className = 'insert-marker';
@@ -294,17 +363,20 @@
     }
 
     function placeMarkerBefore(tr){
+
         const m = ensureInsertMarker();
         if (tr) tbody.insertBefore(m, tr); else tbody.appendChild(m);
     }
 
     function clearInsertMarker(){
+
         if (insertMarker?.parentNode) insertMarker.parentNode.removeChild(insertMarker);
         insertMarker = null;
     }
 
     // 用滑鼠 Y 找到應該插在誰「前面」
     function computeBeforeTrByY(clientY){
+
         const rows = getDataRows();
         for (const r of rows){
             const rect = r.getBoundingClientRect();
@@ -324,11 +396,13 @@
 
     // 目前列數
     function getRowCount(){
+
         return tbody ? tbody.querySelectorAll('tr:not(.insert-marker)').length : 0;
     }
 
     // 依列數啟用/停用「新增列」按鈕
     function updateAddButtonState(){
+
         if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
     }
 
@@ -338,9 +412,10 @@
 
     // 幫每顆欄位銀行按鈕給一個 id（便於回復）
     if (fieldList) {
+
         [...fieldList.querySelectorAll('.field-btn')].forEach(btn => {
-        const idx = btn.getAttribute('data-field-index');
-        if (!btn.id) btn.id = 'fb-' + String(idx); // 以索引為主鍵，假設唯一
+            const idx = btn.getAttribute('data-field-index');
+            if (!btn.id) btn.id = 'fb-' + String(idx); // 以索引為主鍵，假設唯一
         });
     }
 
@@ -747,7 +822,80 @@
             const noCell = tr.querySelector('.cell-no');
             if (noCell) noCell.textContent = String(idx + 1);
         });
+        updateRowMoveButtonsState(); 
     }
+
+
+    // 只抓真正的資料列（你已有 getDataRows() 可直接沿用）
+    function moveRow(tr, dir){
+        const rows = getDataRows();
+        const idx  = rows.indexOf(tr);
+        if (idx === -1) return;
+
+        const to = idx + dir;
+        if (to < 0 || to >= rows.length) return; // 邊界保護
+
+        const target = rows[to];
+        // dir>0 往下：插到 target 後面；dir<0 往上：插到 target 前面
+        tbody.insertBefore(tr, dir > 0 ? target.nextSibling : target);
+
+        renumber();                // 你原有的重編號
+        syncCkAllState?.();        // 全選方塊狀態
+        updateRowMoveButtonsState();
+        if (typeof bumpDom === 'function') bumpDom();
+        if (poller?.triggerNow) poller.triggerNow();
+        }
+
+        // 讓首列的「上移」與末列的「下移」自動禁用
+        function updateRowMoveButtonsState(){
+        const rows = getDataRows();
+        rows.forEach((tr, i) => {
+            const up   = tr.querySelector('.btn-row-up');
+            const down = tr.querySelector('.btn-row-down');
+            if (up)   up.disabled   = (i === 0);
+            if (down) down.disabled = (i === rows.length - 1);
+        });
+    }
+
+
+    // ——— admin controls ———
+    if (IS_ADMIN) {
+        if (btnAdd)  btnAdd.addEventListener('click', ()=> addRow());
+        if (btnSave) btnSave.addEventListener('click', onSave);
+
+        const controlBar = document.querySelector('.control-bar');
+        if (controlBar && !document.getElementById('btnMoveUp')) {
+            const btnUp = document.createElement('button');
+            btnUp.id = 'btnMoveUp';
+            btnUp.className = 'w3-btn w3-round-large icon-btn';
+            btnUp.title = (L['move_up'] || 'Move Up');
+            btnUp.textContent = '▲';
+            btnUp.addEventListener('click', () => moveSelectedRows(-1));
+
+            const btnDown = document.createElement('button');
+            btnDown.id = 'btnMoveDown';
+            btnDown.className = 'w3-btn w3-round-large icon-btn';
+            btnDown.title = (L['move_down'] || 'Move Down');
+            btnDown.textContent = '▼';
+            btnDown.addEventListener('click', () => moveSelectedRows(+1));
+
+            controlBar.insertBefore(btnUp, controlBar.firstChild);
+            controlBar.insertBefore(btnDown, controlBar.firstChild.nextSibling);
+        }
+    }
+
+    // 批次：把勾選的列整體上/下移一格（順序保持）
+    function moveSelectedRows(dir){
+        const rows = getDataRows();
+        const sel  = rows.filter(r => r.querySelector('.row-ck')?.checked);
+        if (!sel.length) return;
+        // 往上：由上到下移；往下：由下到上移，避免互相干擾
+        const list = (dir < 0) ? sel : sel.slice().reverse();
+        list.forEach(tr => moveRow(tr, dir));
+    }
+
+
+
 
 
     function makeResultSelect(val=''){
@@ -984,34 +1132,69 @@
         tdRes.appendChild(inRes);
         tr.appendChild(tdRes);
 
-        // (6) 操作（admin）
+
+        // (6) 往上 / 往下（admin）
+        if (IS_ADMIN) {
+            // 往上
+            const tdUp = document.createElement('td');
+            tdUp.className = 'move-cell';
+            const bUp = document.createElement('button');
+            bUp.type = 'button';
+            bUp.className = 'w3-btn w3-round-large icon-btn btn-row-up';
+            bUp.title = (L['move_up'] || 'Move Up');
+            bUp.textContent = '▲';
+            bUp.addEventListener('click', () => moveRow(tr, -1));
+            tdUp.appendChild(bUp);
+            tr.appendChild(tdUp);
+
+            // 往下
+            const tdDown = document.createElement('td');
+            tdDown.className = 'move-cell';
+            const bDown = document.createElement('button');
+            bDown.type = 'button';
+            bDown.className = 'w3-btn w3-round-large icon-btn btn-row-down';
+            bDown.title = (L['move_down'] || 'Move Down');
+            bDown.textContent = '▼';
+            bDown.addEventListener('click', () => moveRow(tr, +1));
+            tdDown.appendChild(bDown);
+            tr.appendChild(tdDown);
+        }
+
+        // (8) 操作（admin）— 單筆刪除
         if (IS_ADMIN) {
             const tdAct = document.createElement('td');
             tdAct.className = 'row-actions';
+
             const del = document.createElement('button');
-            del.textContent = L['delete'];
+            del.textContent = L['delete'];                // i18n：刪除 / Delete
             del.className = 'w3-btn w3-round-large';
             del.addEventListener('click', () => {
-            // 刪除前：若有 chip，恢復欄位銀行按鈕
-            const chip = tr.querySelector('.field-chip');
-            if (chip) restoreFieldBankButton(chip.dataset.originId);
+                // 刪除前：若此列有 chip，把欄位庫按鈕恢復
+                tr.querySelectorAll('.field-chip').forEach(chip => {
+                const originId = chip.dataset.originId;
+                if (originId) restoreFieldBankButton(originId);
+                });
 
-            tr.remove();
-            renumber();
-            syncCkAllState();
+                tr.remove();
+                renumber();                 // 重新編號
+                syncCkAllState?.();         // 全選方塊狀態
+                if (btnAdd && getRowCount() < MAX_ROWS) btnAdd.disabled = false;
 
-            if (btnAdd && getRowCount() < MAX_ROWS) btnAdd.disabled = false;
-
-            bumpDom();
-            poller?.triggerNow();
+                bumpDom?.();
+                poller?.triggerNow?.();
             });
+
             tdAct.appendChild(del);
             tr.appendChild(tdAct);
         }
 
+
+
+
         // 插入表身
         tbody.appendChild(tr);
         renumber();
+        updateRowMoveButtonsState(); 
 
         // 新增後若已達上限，停用新增按鈕；否則保持可用
         if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
@@ -1327,3 +1510,15 @@
 
 })();
 </script>
+
+<style>
+    /* 上下移動按鈕尺寸 */
+    .row-actions .icon-btn,
+    .control-bar .icon-btn {
+    padding: 4px 10px;
+    line-height: 1;
+    font-weight: 700;
+    }
+    #btnMoveUp { display: none !important; }
+    #btnMoveDown{ display: none !important; }
+</style>

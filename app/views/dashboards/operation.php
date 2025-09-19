@@ -294,9 +294,64 @@ function renderChart(chart_mode, chart_info) {
     }
 
 
+    // === chart 2：Angle vs Time（Step angle）；X 軸與 chart=7 相同（用數值 Time）===
+    if (String(chart_mode) === "2") {
 
+        // 1) 轉成數值 time / angle
+        const timeX  = (chart_info?.x_val || []).map(v => Number(v) || 0);
+        const angleY = (chart_info?.y_val || []).map(v => Number(v) || 0);
 
+        // 2) 解析 step 編號（S2 / Step 2 / 2 都會變 2；抓不到就用 1）
+        const stepsArr = (chart_info?.steps || timeX.map(() => 1)).map(s => {
+            const m = /(\d+)/.exec(String(s));
+            return m ? +m[1] : 1;
+        });
 
+        // 3) 依出現順序建立 Step 清單（確保顏色/圖例穩定）
+        const stepOrder = [];
+        for (let i = 0; i < stepsArr.length; i++) {
+            const s = stepsArr[i];
+            if (!stepOrder.includes(s)) stepOrder.push(s);
+        }
+
+        // 4) 配色（和其它分支一致）
+        const palette = ['#0066ff','#cc0000','#009933','#ff9900','#6600cc'];
+        const colorFor = (key, idx) =>
+            (typeof key === 'number' && key >= 1 && key <= 5)
+            ? palette[key - 1]
+            : palette[idx % palette.length];
+
+        // 5) 每個 step 一條線，資料點是 [time, local-angle]
+        const series = stepOrder.map((s, idx) => {
+            const pts = [];
+            for (let i = 0; i < timeX.length; i++) {
+            if (stepsArr[i] === s && Number.isFinite(timeX[i]) && Number.isFinite(angleY[i])) {
+                pts.push([timeX[i], angleY[i]]);
+            }
+            }
+            if (!pts.length) return null;
+            return {
+            name: `Step${s}`,
+            type: 'line',
+            showSymbol: false,
+            connectNulls: true,
+            lineStyle: { width: 2, color: colorFor(s, idx) },
+            data: pts
+            };
+        }).filter(Boolean);
+
+        // 6) 用「數值型」X 軸，名稱 Time；Y 軸名稱 Angle
+        myChart.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'line' } },
+            xAxis: { type: 'value', name: 'Time', boundaryGap: false, splitLine: { show: false } },
+            yAxis: { type: 'value', name: 'Angle', splitLine: { show: true } },
+            series: series.length ? series : [{
+            name: 'Angle', type: 'line', showSymbol: false, lineStyle: { width: 2 },
+            data: timeX.map((t, i) => [t, angleY[i]])
+            }]
+        });
+        return; // ✅ 不要再往下跑到通用分支（分類軸）
+    }
 
 
     // === chart 5：Torque + RPM（保留你的做法）===
@@ -314,6 +369,13 @@ function renderChart(chart_mode, chart_info) {
         const palette = ['#0066ff','#cc0000','#009933','#ff9900','#6600cc','#5b9bd5','#ed7d31','#70ad47'];
         const colorFor = (key, idx) => (typeof key === 'number' && key >=1 && key <=5)
         ? palette[key-1] : palette[idx % palette.length];
+
+        // ⭐ chart=5：X 軸標籤改成整數（例：92.5 → 93）
+        const xAxisData5 = (chart_info?.x_val || []).map(v => {
+            const n = Number(v);
+            return Number.isFinite(n) ? Math.round(n) : v;
+        });
+
 
         const torqueSeries = uniqueKeys.map((key, idx) => {
         const seriesData = y_data_val_torque.map((v, i) => stepKeys[i] === key ? v : null);
@@ -340,7 +402,7 @@ function renderChart(chart_mode, chart_info) {
 
         myChart.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-        xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true } },
+        xAxis: { type: 'category', boundaryGap: false, data: xAxisData5, axisLabel: { show: true } },
         yAxis: [
             { type: 'value', name: 'Torque', splitLine: { show: true } },
             { type: 'value', name: 'RPM', min: rpmMin, max: rpmMax, splitLine: { show: false } }
@@ -470,10 +532,19 @@ function renderChart(chart_mode, chart_info) {
     // ➜ 新增：chart=2  && chart=7  時，Y 軸名稱使用 'Angle'，其餘維持 'Torque'
     const yAxisTitle = (String(chart_mode) === "2" || String(chart_mode) === "7") ? 'Angle' : 'Torque';
 
+    // ⭐ chart=1 / chart=3：X 軸標籤改成整數（例：92.5 → 93）
+    const xAxisData = (["1","3"].includes(String(chart_mode)))
+    ? x_data_val.map(v => {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.round(n) : v;
+        })
+    : x_data_val;
+        
+
 
     myChart.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'none' } },
-        xAxis: { type: 'category', boundaryGap: false, data: x_data_val, axisLabel: { show: true } },
+        xAxis: { type: 'category', boundaryGap: false, data: xAxisData, axisLabel: { show: true } },
         yAxis: { type: 'value', name: yAxisTitle, splitLine: { show: true } },
         series: finalSeries
     });
