@@ -331,7 +331,7 @@ if ($data['type'] == 'edit') {
                                 </div>
                             </div>
 
-                             <div class="row">
+                            <div class="row">
                                 <div  class="col-5 t1"><?php echo $text['total_high_angle'];?>:</div>
                                 <div class="col-4 t2">
                                         <input id="total_angle_limit" class="t2 form-control small-input"  value="<?php echo ($data['type'] == 'edit') ? $data['sequences']['total_angle_limit'] : ''; ?>">
@@ -346,8 +346,6 @@ if ($data['type'] == 'edit') {
                                         <div class="invalid-feedback"></div>
                                 </div>
                             </div>
-
-
                         </div>
                     </div>
                 </div>
