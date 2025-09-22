@@ -45,6 +45,7 @@
             document.getElementById("unscrew_angle_threshold").value = 0;
             document.getElementById("unscrew_force").value = 50;
             document.getElementById("total_angle_limit").value = 0;
+            document.getElementById("total_angle_lower").value = 0;
 
             if(seq_unit ==0 ){
                 document.getElementById('unscrew_torque_threshold').value = "0.00";

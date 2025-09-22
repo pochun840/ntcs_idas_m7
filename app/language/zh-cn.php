@@ -313,7 +313,8 @@ $text['kgf.cm'] = '公斤.公分';
 $text['Lbf.in'] = '磅.英吋';
 $text['cN.m'] = '牛頓.厘米';
 
-
+//Customize 
+$text['customize'] = '自定义';
 
 //fasten_status
 $text['fasten_status_0'] = 'INIT';

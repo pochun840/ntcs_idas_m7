@@ -18,7 +18,7 @@ class Logins extends Controller
 
 
         session_start();
-        $device_info = $this->Device_Info();
+        //$device_info = $this->Device_Info();
         $_SESSION['sessionid'] = session_id();
         $_SESSION['privilege'] = '';
         $error_message = '';
@@ -33,7 +33,7 @@ class Logins extends Controller
        
         $data = [
             'error_message' => $error_message,
-            'device_info' => $device_info,
+            //'device_info' => $device_info,
             'account' => $account
         ];
 

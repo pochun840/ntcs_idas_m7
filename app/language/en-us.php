@@ -325,7 +325,8 @@ $text['kgf.cm'] = 'Kgf.cm';
 $text['Lbf.in'] = 'Lbf.in';
 $text['cN.m'] = 'cN.m';
 
-
+//Customize 
+$text['customize'] = 'Customize';
 
 //fasten_status
 $text['fasten_status_0'] = 'INIT';

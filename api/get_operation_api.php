@@ -33,7 +33,6 @@ NTCS7 匯出鎖附記錄API
 $limit =isset($_GET['limit']) ? $_GET['limit'] : null;
 if(!preg_match('/^\d+$/', $limit)) $limit = 100;
 
-
 # 輸出類型
 $type = $_GET['type'];
 if(empty($type)) $type = 'xml';

@@ -1,10 +1,9 @@
-
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table>
             <tr id="header">
                 <td width="100%">
-                    <h3><?php echo "Customize"; ?></h3>
+                    <h3><?php echo $data['text']['customize']; ?></h3>
                 </td>
                 <td>
                     <button id="home" class="w3-btn w3-round-large" style="height:50px;padding: 0" onclick="window.location.href='./?url=Dashboards'"> <img src="../public/img/btn_home.png"></button>
@@ -427,8 +426,7 @@
         const idx = btn.getAttribute('data-field-index') || '';
         const name = btn.getAttribute('data-field-name') || '';
         dragPayload = { idx, name, originId: btn.id };
-        try {
-            e.dataTransfer.setData('text/plain', String(idx));
+        try {   
             e.dataTransfer.effectAllowed = 'copyMove';
         } catch {}
         });

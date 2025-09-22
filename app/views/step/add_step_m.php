@@ -438,4 +438,131 @@
             gap: 0.5rem;
         }
     }
+
+
+    /* === Mobile-first 修復：還原表單元素為可縮放 === */
+.form-control {
+  width: 100% !important;
+  display: block !important;
+  box-sizing: border-box;
+  min-width: 0;              /* 防止父層 flex 擠爆 */
+}
+.form-control.is-invalid { padding-right: inherit !important; }
+.is-invalid ~ .invalid-feedback { display: block !important; }
+
+/* 容器邊距，避免緊貼邊緣 */
+.container-ms { padding: 8px; }
+
+/* 讓頂部資訊列可換行、等分 */
+.topnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.topnav label { margin: 0; white-space: nowrap; }
+.topnav input[disabled] {
+  height: 32px;
+  font-size: 16px;
+  text-align: center;
+  background-color: #DDDDDD;
+  border: 0;
+  padding: 4px 8px;
+  min-width: 90px;           /* 不要太窄，但仍可換行 */
+}
+
+/* 讓左/右兩欄在手機自動滿版（col-md-6 本就會在 <768px 堆疊，這裡補齊間距） */
+.t2 .row { row-gap: 10px; }
+.hr { margin: 16px 0; }
+
+/* 針對「目標類型」的 select 與多處固定寬度 input 做響應式 */
+#StepOption {
+  width: 100% !important;    /* 取代 165/195px 的固定寬度 */
+  max-width: 260px;          /* 桌機時也不要過長 */
+  font-size: 14px;
+  border: 1px solid #DADADA;
+}
+
+/* 百分比小框：手機放大些，避免手指不好點；桌機再略縮回 */
+#step_limit_hi_tor,
+#step_limit_lo_tor,
+#step_limit_hi_ang,
+#step_limit_lo_ang {
+  width: 64px !important;    /* 手機較好點 */
+  display: inline-block !important;
+  text-align: center;
+}
+
+/* 監看區塊改為可換行，避免長 label 撐破 */
+#show_tor .ps-5,
+#show_ang .ps-5 {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-left: 0 !important; /* 移除過大的左內距以節省橫向空間 */
+}
+
+/* Downshift、Threshold 區塊：左右欄在手機改成直排 */
+#threshold_block,
+#downshift_block,
+#downshift_speed_block {
+  display: grid !important;
+  grid-template-columns: 1fr;     /* 手機直排 */
+  row-gap: 8px;
+}
+#threshold_block .col-4,
+#downshift_block .col-4,
+#downshift_speed_block .col-4 {
+  width: 100% !important;
+}
+#threshold_block .col-8,
+#downshift_block .col-8,
+#downshift_speed_block .col-8 {
+  width: 100% !important;
+}
+
+/* 讓長文字能斷行，不把版面撐寬 */
+label, .form-check-label, .col-3, .col-4 {
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* 讓小按鈕/回上一頁在手機不擠爆 */
+#back_btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+/* 儲存按鈕在手機置中且不超寬 */
+.w3-center #button1 {
+  width: 100%;
+  max-width: 320px;
+  height: 48px;
+  font-size: 20px;
+}
+
+/* ====== 大於 768px（桌機/平板橫向）再微調 ====== */
+@media (min-width: 768px) {
+  .topnav { gap: 12px 16px; }
+  #step_limit_hi_tor,
+  #step_limit_lo_tor,
+  #step_limit_hi_ang,
+  #step_limit_lo_ang {
+    width: 56px !important;
+  }
+  #threshold_block,
+  #downshift_block,
+  #downshift_speed_block {
+    grid-template-columns: 140px 1fr; /* 左標籤 + 右輸入 */
+    align-items: center;
+  }
+  .w3-center #button1 {
+    width: 240px;
+    font-size: 22px;
+  }
+}
+.topnav { display:flex; flex-wrap:wrap; gap:8px 12px; }
+.topnav .flex-break { flex-basis:100%; height:0; }
 </style>

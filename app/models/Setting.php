@@ -256,18 +256,6 @@ class Setting{
         return $row['tcscondb_version'];
     }
 
-    public function Get_Controller_Device_version()
-    {
-        // code...
-        $Controller_db_con = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/data.db'); //測試機
-        $sql = "SELECT * FROM `device_info` ";
-        $statement = $Controller_db_con->prepare($sql);
-        $results = $statement->execute();
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
-
-        return $row['device_version'];
-    }
-
     public function GetAllBarcodes(){
     
         $sqlBarcode = "SELECT * FROM " . TABLE_NTCS_BARCODE;
@@ -495,30 +483,7 @@ class Setting{
 
     }
 
-    //get update information
-    public function get_update_info()
-    {
-        //1.tcscondb_version from tcscon.db device table
-        //2.device_version from tcsdev.db device_info table
-        //3.tcsdevdb_version from tcsdev.db device_info table
-        $results = array();
 
-        // $controller_info = $this->GetControllerInfo();//666 Get_Controller_DB_version
-        // $device_info = $this->GetDeviceInfo();
-        
-        // $results['tcscondb_version'] = $controller_info['tcscondb_version'];
-        // $results['device_version'] = $device_info['device_version'];
-        // $results['tcsdevdb_version'] = $device_info['tcsdevdb_version'];
-
-        //判斷控制器本身 而非idas複製出來的db
-        $controller_db_version = $this->Get_Controller_DB_version();//666 Get_Controller_DB_version
-        $device_version = $this->Get_Controller_Device_version();
-
-        $results['tcscondb_version'] = trim($controller_db_version);
-        $results['device_version'] = trim($device_version);
-
-        return $results;
-    }
 
     public function update_idas_vesrion($new_version)
     {

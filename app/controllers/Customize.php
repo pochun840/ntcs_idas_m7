@@ -15,6 +15,12 @@ class Customize extends Controller
 
     // 取得所有Jobs
     public function index(){
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) {
+            include $file;
+        }
+
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();
         $data_button = $this->MiscellaneousModel->details('customize');
@@ -27,7 +33,8 @@ class Customize extends Controller
             'isMobile' => $isMobile,
             'job_list' => $job_list,
             'data_button' => $data_button,
-            'data_csv' => $data_csv
+            'data_csv' => $data_csv,
+            'text' => isset($text) ? $text : []
         ];
         $this->view('customize/index', $data);
     }

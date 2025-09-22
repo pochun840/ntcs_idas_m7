@@ -52,7 +52,6 @@ class Data extends Controller
 
         $unit_arr    = $this->MiscellaneousModel->details('torque_unit');
         $status_arr  = $this->MiscellaneousModel->details('status');
-        $device_info = $this->Device_Info();
         $color_arr   = $this->get_color_type();
 
         foreach ($res_data as &$row) {
@@ -81,7 +80,6 @@ class Data extends Controller
             'res_data'      => $res_data,
             'res_data_ok'   => $res_data_ok,
             'res_data_nok'  => $res_data_nok,
-            'device_info'   => $device_info,
             'unit_arr'      => $unit_arr,
             'status_arr'    => $status_arr,
             'db_exists'     => $db_exists,

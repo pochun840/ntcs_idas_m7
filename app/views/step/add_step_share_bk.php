@@ -2636,7 +2636,77 @@
         })();
 
 
-        
+        // ---- 交叉驗證：StepOption==2 時，若 StepLoTorque 與 StepHiTorque 或 StepTorque 相等，顯示「扭力下限要小於扭力上限」 ----
+        (function enforceEqualitiesForOption2() {
+            if (StepOption !== 2) return;
+
+            const loEl = document.getElementById('StepLoTorque');
+            const hiEl = document.getElementById('StepHiTorque');
+            const tqEl = document.getElementById('StepTorque');
+            if (!loEl || !hiEl || !tqEl) return;
+
+            const loVal = Number(loEl.value);
+            const hiVal = Number(hiEl.value);
+            const tqVal = Number(tqEl.value);
+            if (!Number.isFinite(loVal) || !Number.isFinite(hiVal) || !Number.isFinite(tqVal)) return;
+
+            // 語系
+            const getCookieSafe = (name) => {
+                try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                } catch { return null; }
+            };
+            let lang =
+                (typeof getCookie === 'function' && getCookie('language')) ||
+                getCookieSafe('language') ||
+                'zh-tw';
+            lang = String(lang).toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
+
+            const i18n = {
+                'zh-tw': { loLtHi: '扭力 下限要 小於扭力上限' },
+                'zh-cn': { loLtHi: '扭力 下限要 小于扭力 上限' },
+                'en-us': { loLtHi: 'Torque lower limit must be less than upper limit' },
+            };
+            const T = i18n[lang] || i18n['en-us'];
+
+            // 以 precision 四捨五入後再比較，避免浮點誤差
+            const loR = roundTo(loVal, precision);
+            const hiR = roundTo(hiVal, precision);
+            const tqR = roundTo(tqVal, precision);
+
+            const equalLoHi = loR === hiR;
+            const equalLoTq = loR === tqR;
+
+            if (equalLoHi || equalLoTq) {
+                const fbLo = loEl.nextElementSibling;
+
+                // 標記下限錯誤，顯示「下限 < 上限」
+                loEl.classList.add('is-invalid');
+                if (fbLo?.classList.contains('invalid-feedback')) {
+                    fbLo.innerText = T.loLtHi;
+                    fbLo.classList.add('d-block');
+                    fbLo.style.display = 'block';
+                }
+
+                // 清除可能由其它等號驗證留下在 hi/tq 的錯誤，避免重複訊息
+                [hiEl, tqEl].forEach(el => {
+                    const fb = el?.nextElementSibling;
+                    el?.classList.remove('is-invalid');
+                    if (fb?.classList.contains('invalid-feedback')) {
+                        fb.innerText = '';
+                        fb.classList.remove('d-block');
+                        fb.style.display = 'none';
+                    }
+                });
+
+                isValid = false;
+                if (!errorList.includes('StepLoTorque')) errorList.push('StepLoTorque');
+            }
+        })();
+
 
         // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepHiTorque（用 alertify.alert）----
         (function enforceLoTorqueLessThanHiTorqueForOption2() {
@@ -2682,9 +2752,9 @@
         if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
 
         const I18N = {
-            'en-us': { title: 'Warning', msg: 'Torque lower limit must be less than upper limit' },
-            'zh-tw': { title: '警告',   msg: '扭力下限 要小於 扭力上限' },
-            'zh-cn': { title: '警告',   msg: '扭力下限 要小于 扭力上限' }
+            'en-us': { title: 'Warning', msg: 'Torque lower limit must be less than upper limit (StepLoTorque < StepHiTorque)' },
+            'zh-tw': { title: '警告',   msg: '扭力下限 要小於 扭力上限（StepLoTorque < StepHiTorque）' },
+            'zh-cn': { title: '警告',   msg: '扭力下限 要小于 扭力上限（StepLoTorque < StepHiTorque）' }
         };
         const T = I18N[lang] || I18N['en-us'];
 
