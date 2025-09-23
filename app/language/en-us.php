@@ -327,6 +327,131 @@ $text['cN.m'] = 'cN.m';
 
 //Customize 
 $text['customize'] = 'Customize';
+$text['id'] = 'ID';
+$text['system_sn'] = 'system_sn';
+$text['data_time'] = 'data_time';
+$text['device_type'] = 'device_type';
+$text['device_id'] = 'device_id';
+$text['device_sn'] = 'device_sn';
+$text['tool_type'] = 'tool_type';
+$text['tool_sn'] = 'tool_sn';
+$text['tool_status'] = 'tool_status';
+$text['job_id'] = 'job_id';
+$text['job_name'] = 'job_name';
+$text['sequence_id'] = 'sequence_id';
+$text['sequence_name'] = 'sequence_name';
+$text['step_id'] = 'step_id';
+$text['torque_unit'] = 'torque_unit';
+$text['target_type'] = 'target_type';
+$text['target_torque'] = 'target_torque';
+$text['target_angle'] = 'target_angle';
+$text['target_time'] = 'target_time';
+$text['fasten_time'] = 'fasten_time';
+$text['final_fasten_torque'] = 'final_fasten_torque';
+$text['final_fasten_angle'] = 'final_fasten_angle';
+$text['total_fasten_angle'] = 'total_fasten_angle';
+$text['count_type'] = 'count_type';
+$text['last_screw_count'] = 'last_screw_count';
+$text['total_screw_count'] = 'total_screw_count';
+$text['fasten_status'] = 'fasten_status';
+$text['error_message'] = 'error_message';
+$text['fasten_direction'] = 'fasten_direction';
+$text['rpm'] = 'rpm';
+$text['hi_torque'] = 'hi_torque';
+$text['lo_torque'] = 'lo_torque';
+$text['hi_angle'] = 'hi_angle';
+$text['lo_angle'] = 'lo_angle';
+$text['delay_ttime'] = 'delay_ttime';
+$text['threshold_torque'] = 'threshold_torque';
+$text['threshold_angle'] = 'threshold_angle';
+$text['downshift_torque'] = 'downshift_torque';
+$text['downshift_angle'] = 'downshift_angle';
+$text['downshift_speed'] = 'downshift_speed';
+$text['final_tool_voltage'] = 'final_tool_voltage';
+$text['final_tool_current'] = 'final_tool_current';
+$text['barcode'] = 'barcode';
+
+$text['step0_last_times'] = 'step0_last_times';
+$text['step0_last_angle'] = 'step0_last_angle';
+$text['step0_last_torque'] = 'step0_last_torque';
+$text['step0_last_threadshold'] = 'step0_last_threadshold';
+
+$text['step1_last_times'] = 'step1_last_times';
+$text['step1_last_angle'] = 'step1_last_angle';
+$text['step1_last_torque'] = 'step1_last_torque';
+$text['step1_last_threadshold'] = 'step1_last_threadshold';
+
+$text['step2_last_times'] = 'step2_last_times';
+$text['step2_last_angle'] = 'step2_last_angle';
+$text['step2_last_torque'] = 'step2_last_torque';
+$text['step2_last_threadshold'] = 'step2_last_threadshold';
+
+$text['step3_last_times'] = 'step3_last_times';
+$text['step3_last_angle'] = 'step3_last_angle';
+$text['step3_last_torque'] = 'step3_last_torque';
+$text['step3_last_threadshold'] = 'step3_last_threadshold';
+
+$text['step4_last_times'] = 'step4_last_times';
+$text['step4_last_angle'] = 'step4_last_angle';
+$text['step4_last_torque'] = 'step4_last_torque';
+$text['step4_last_threadshold'] = 'step4_last_threadshold';
+
+$text['step5_last_times'] = 'step5_last_times';
+$text['step5_last_angle'] = 'step5_last_angle';
+$text['step5_last_torque'] = 'step5_last_torque';
+$text['step5_last_threadshold'] = 'step5_last_threadshold';
+
+$text['step6_last_times'] = 'step6_last_times';
+$text['step6_last_angle'] = 'step6_last_angle';
+$text['step6_last_torque'] = 'step6_last_torque';
+$text['step6_last_threadshold'] = 'step6_last_threadshold';
+
+$text['step7_last_times'] = 'step7_last_times';
+$text['step7_last_angle'] = 'step7_last_angle';
+$text['step7_last_torque'] = 'step7_last_torque';
+$text['step7_last_threadshold'] = 'step7_last_threadshold';
+
+$text['step8_last_times'] = 'step8_last_times';
+$text['step8_last_angle'] = 'step8_last_angle';
+$text['step8_last_torque'] = 'step8_last_torque';
+$text['step8_last_threadshold'] = 'step8_last_threadshold';
+
+$text['step9_last_times'] = 'step9_last_times';
+$text['step9_last_angle'] = 'step9_last_angle';
+$text['step9_last_torque'] = 'step9_last_torque';
+$text['step9_last_threadshold'] = 'step9_last_threadshold';
+
+$text['step10_last_times'] = 'step10_last_times';
+$text['step10_last_angle'] = 'step10_last_angle';
+$text['step10_last_torque'] = 'step10_last_torque';
+$text['step10_last_threadshold'] = 'step10_last_threadshold';
+
+$text['step11_last_times'] = 'step11_last_times';
+$text['step11_last_angle'] = 'step11_last_angle';
+$text['step11_last_torque'] = 'step11_last_torque';
+$text['step11_last_threadshold'] = 'step11_last_threadshold';
+
+$text['step12_last_times'] = 'step12_last_times';
+$text['step12_last_angle'] = 'step12_last_angle';
+$text['step12_last_torque'] = 'step12_last_torque';
+$text['step12_last_threadshold'] = 'step12_last_threadshold';
+
+$text['step13_last_times'] = 'step13_last_times';
+$text['step13_last_angle'] = 'step13_last_angle';
+$text['step13_last_torque'] = 'step13_last_torque';
+$text['step13_last_threadshold'] = 'step13_last_threadshold';
+
+$text['step14_last_times'] = 'step14_last_times';
+$text['step14_last_angle'] = 'step14_last_angle';
+$text['step14_last_torque'] = 'step14_last_torque';
+$text['step14_last_threadshold'] = 'step14_last_threadshold';
+
+$text['step15_last_times'] = 'step15_last_times';
+$text['step15_last_angle'] = 'step15_last_angle';
+$text['step15_last_torque'] = 'step15_last_torque';
+$text['step15_last_threadshold'] = 'step15_last_threadshold';
+
+
 
 //fasten_status
 $text['fasten_status_0'] = 'INIT';
