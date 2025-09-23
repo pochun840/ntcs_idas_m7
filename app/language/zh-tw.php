@@ -313,7 +313,7 @@ $text['cN.m'] = '牛頓.釐米';
 
 //Customize 
 $text['customize'] = '自定義';
-$text['id'] = 'ID';
+$text['id'] = 'id';
 $text['system_sn'] = '流水號';
 $text['data_time'] = '資料時間';
 $text['device_type'] = '設備種類';

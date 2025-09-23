@@ -116,7 +116,6 @@ function savejob() {
 }
 
 
-
 //編輯JOB 
 function updatejob() {
   if (typeof refreshAlertifyI18n === 'function') refreshAlertifyI18n();

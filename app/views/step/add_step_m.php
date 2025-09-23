@@ -22,8 +22,7 @@
         font-size: 12px;
         margin-right: 5px;
     }
-
-        
+  
     .is-invalid~.invalid-feedback
     {
         display: inline!important;
@@ -372,10 +371,22 @@
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
-                            <div class="row"  id="downshift_speed_block"  >
+
+
+                            <div class="row">
+                                <div class="col-6 t1"><?php echo $text['Delay Time'];?> (<?php echo $text['Second'];?>):</div>
+                                <div class="col-5 t2">
+                                    <input id="StepDelay" class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepDelay'] : ''; ?>">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                            </div>
+
+
+                            
+                            <div class="row"  id="downshift_speed_block" style="display:none;">
                                 <div class="col-6 t1"><?php echo $text['Downshift_Speed'];?> :</div>
                                 <div class="col-5 t2">
-                                    <input id="StepRPMDownShift" class="t2 form-control small-input" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPMDownShift'] : ''; ?>">
+                                    <input id="StepRPMDownShift" class="form-control form-control-sm" value="<?php echo ($data['type'] == 'edit') ? $data['step']['StepRPMDownShift'] : ''; ?>">
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>

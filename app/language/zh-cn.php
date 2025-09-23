@@ -315,7 +315,7 @@ $text['cN.m'] = '牛頓.厘米';
 
 //Customize 
 $text['customize'] = '自定义';
-$text['id'] = 'ID';
+$text['id'] = 'id';
 $text['system_sn'] = '流水号';
 $text['data_time'] = '数据时间';
 $text['device_type'] = '设备种类';

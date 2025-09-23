@@ -327,7 +327,7 @@ $text['cN.m'] = 'cN.m';
 
 //Customize 
 $text['customize'] = 'Customize';
-$text['id'] = 'ID';
+$text['id'] = 'id';
 $text['system_sn'] = 'system_sn';
 $text['data_time'] = 'data_time';
 $text['device_type'] = 'device_type';

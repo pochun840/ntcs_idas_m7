@@ -93,6 +93,15 @@ class Data extends Controller
 
 
     public function exportData() {
+
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) {
+            include $file;
+        }
+
+
+
         $input_check = true;
 
         // 取得控制器資訊（含序號）
@@ -127,8 +136,16 @@ class Data extends Controller
         }
 
         // 限制最多 10,000 筆
-        $dataset = array_slice($dataset, 0, 10000);
-        $csv_headers = array_keys($dataset[0]);
+        $dataset       = array_slice($dataset, 0, 10000);
+        $csv_headers   = array_keys($dataset[0]); // 取欄位鍵名（用來決定輸出順序）
+        $csv_headers_temp = $csv_headers;         // 這是要「顯示」的表頭
+
+        if (!empty($text) && is_array($text)) {
+            foreach ($csv_headers as $key => $val) {
+                // 將顯示用表頭改成中文（找不到翻譯就用原鍵名）
+                $csv_headers_temp[$key] = $text[$val] ?? $val;
+            }
+        }
 
         // ---- 取得系統時區並設定 PHP 時區（只有在未設定時才設定）----
         $system_timezone = trim(@exec('timedatectl show -p Timezone --value 2>/dev/null'));
@@ -170,14 +187,14 @@ class Data extends Controller
             $output = fopen('php://output', 'w');
 
             // 需要 Excel 友善可視需求加入 BOM：
-            // fwrite($output, "\xEF\xBB\xBF");
+            fwrite($output, "\xEF\xBB\xBF");
 
             // 表頭
-            fputcsv($output, $csv_headers);
 
-            // 資料列
+            fputcsv($output, $csv_headers_temp);
+
+            // 資料列仍依「鍵名順序」輸出
             foreach ($dataset as $row) {
-                // 確保輸出陣列的欄位順序與表頭一致
                 $ordered = [];
                 foreach ($csv_headers as $h) {
                     $ordered[] = $row[$h] ?? '';
@@ -193,9 +210,9 @@ class Data extends Controller
             $fh = fopen('php://temp', 'w+');
 
             // 需要 Excel 友善可選擇寫入 BOM：
-            // fwrite($fh, "\xEF\xBB\xBF");
+            fwrite($fh, "\xEF\xBB\xBF");
 
-            fputcsv($fh, $csv_headers);
+            fputcsv($fh, $csv_headers_temp);
             foreach ($dataset as $row) {
                 $ordered = [];
                 foreach ($csv_headers as $h) {
