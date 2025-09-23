@@ -14,9 +14,38 @@
 
     
     <?php
+
+
+        function norm_lang($s){
+            $s = strtolower(trim((string)$s));
+            if ($s === 'zh' || strpos($s,'hant')!==false || strpos($s,'tw')!==false || strpos($s,'hk')!==false || strpos($s,'mo')!==false) return 'zh-tw';
+            if ($s === 'cn' || strpos($s,'hans')!==false || strpos($s,'cn')!==false || strpos($s,'sg')!==false) return 'zh-cn';
+            return in_array($s, ['en-us','zh-tw','zh-cn']) ? $s : 'en-us';
+        }
+
+        // 1) 先從 Session 推語系
+        $uiLang = norm_lang($_SESSION['language'] ?? 'en-us');
+
+        // 2) 若 $data['text'] 顯示的是繁/簡，則覆蓋 uiLang（確保兩邊一致）
+        if (!empty($data['text']) && is_array($data['text'])) {
+            // 取幾個代表性文字來偵測
+            $probe = implode(' ', array_map(
+                fn($v) => is_string($v) ? $v : '',
+                array_values($data['text'])
+            ));
+            // 有「讀/輸/號/臺」等繁體字 → zh-tw
+            if (preg_match('/[讀輸號臺雜檔錯儲顯開關閃]/u', $probe)) {
+                $uiLang = 'zh-tw';
+            }
+            // 有「读/输/号/台」等簡體字 → zh-cn
+            elseif (preg_match('/[读输号台杂档错储显开关闪]/u', $probe)) {
+                $uiLang = 'zh-cn';
+            }
+        }
+
+        
         // --- 翻譯文字 ---
-        $uiLang = $_SESSION['language'] ?? 'en-us';
-        $L = [
+        $L_dict = [
             'en-us' => [
                 'no'                  => 'NO',
                 'read'                => 'Read Position',
@@ -97,7 +126,7 @@
             ],
         ];
 
-        $L = $L[strtolower($uiLang)] ?? $L['en-us'];
+        $L = $L_dict[$uiLang] ?? $L_dict['en-us'];
         ?>
 
         <style>
@@ -184,19 +213,36 @@
                 <h4><?php echo ($uiLang==='zh-tw'?'欄位快速放置':
                                 ($uiLang==='zh-cn'?'字段快速放置':'Field Quick Insert')); ?></h4>
                 <div class="field-list" id="fieldList">
-                <?php foreach ($btns as $idx => $name): 
-                        $idx = is_numeric($idx) ? (int)$idx : $idx; ?>
-                    <button class="field-btn" 
-                            draggable="true"
-                            data-field-index="<?php echo htmlspecialchars($idx); ?>"
-                            data-field-name="<?php echo htmlspecialchars($name); ?>"
-                            title="<?php echo htmlspecialchars($name); ?>">
-                    <code><?php echo htmlspecialchars($idx); ?></code><?php echo htmlspecialchars($name); ?>
-                    </button>
-                <?php endforeach; ?>
+                <?php foreach ($btns as $idx => $name){
+                    $idx   = is_numeric($idx) ? (int)$idx : $idx;
+                    $label = $data['text'][$name] ?? $name; 
+                ?>
+                <button class="field-btn" 
+                        draggable="true"
+                        id="<?php echo 'fb-'.htmlspecialchars($idx); ?>"
+                        data-field-index="<?php echo htmlspecialchars($idx); ?>"
+                        data-field-name="<?php echo htmlspecialchars($name); ?>"          
+                        data-field-label="<?php echo htmlspecialchars($label); ?>"    
+                        title="<?php echo htmlspecialchars($label); ?>">
+                <code><?php echo htmlspecialchars($idx); ?></code><?php echo htmlspecialchars($label); ?>
+                </button>
+                <?php } ?>
+
+
                 </div>
             </div>
         <?php endif; ?>
+
+        <script>
+            const FIELD_LABEL_BY_INDEX = <?php
+            $labMap = [];
+            if (!empty($btns)) {
+                foreach ($btns as $i=>$n){ $labMap[$i] = $data['text'][$n] ?? $n; }
+            }
+            echo json_encode($labMap, JSON_UNESCAPED_UNICODE);
+            ?> || {};
+        </script>
+
 
 
 
@@ -425,9 +471,15 @@
         if (!btn) return;
         const idx = btn.getAttribute('data-field-index') || '';
         const name = btn.getAttribute('data-field-name') || '';
-        dragPayload = { idx, name, originId: btn.id };
+        dragPayload = {
+            idx,
+            name,
+            label: btn.getAttribute('data-field-label') || btn.getAttribute('title') || '',
+            originId: btn.id
+        };
         try {   
             e.dataTransfer.effectAllowed = 'copyMove';
+            e.dataTransfer.setData('text/plain', idx);
         } catch {}
         });
 
@@ -437,6 +489,7 @@
         if (!btn) return;
         const idx = btn.getAttribute('data-field-index') || '';
         const name = btn.getAttribute('data-field-name') || '';
+        const label = btn.getAttribute('data-field-label') || btn.getAttribute('title') || '';
         const originId = btn.id;
 
         // 找到目標 td
@@ -452,7 +505,7 @@
         }
         if (!targetTd) return;
 
-        assignFieldToCell({ idx, name, originId }, targetTd);
+        assignFieldToCell({ idx, name, label, originId }, targetTd);
         });
     }
 
@@ -494,52 +547,53 @@
         e.preventDefault();
         const td = e.target.closest('td.drop-target[data-drop="read"]');
 
-        // 取出拖曳 payload（和你原本相同）
-        let idx = '', originId = '', name = '';
+        let idx = '', originId = '', name = '', label = '';
         try { idx = e.dataTransfer.getData('text/plain'); } catch {}
+
         if (!idx && dragPayload) idx = dragPayload.idx;
-        if (dragPayload) {
-            originId = dragPayload.originId || '';
+
+        if (dragPayload && dragPayload.idx === idx) {
+            // 直接用 dragPayload，不要去碰未宣告的 btn
+            originId = dragPayload.originId || ('fb-' + String(idx));
             name     = dragPayload.name || '';
+            label    = dragPayload.label || '';
         } else if (idx) {
-            const btn = document.getElementById('fb-' + String(idx));
-            name     = btn?.getAttribute('data-field-name') || '';
-            originId = btn?.id || ('fb-' + String(idx));
+            // 由 DOM 再找回來源按鈕
+            const srcBtn = document.getElementById('fb-' + String(idx));
+            name     = srcBtn?.getAttribute('data-field-name') || '';
+            label    = srcBtn?.getAttribute('data-field-label') || srcBtn?.getAttribute('title') || '';
+            originId = srcBtn?.id || ('fb-' + String(idx));
         }
 
-        // 1) 若是直接丟在讀取欄 → 沿用原本邏輯
         if (td) {
             td.classList.remove('drop-ready');
-            if (idx) assignFieldToCell({ idx, name, originId }, td);
+            if (idx) assignFieldToCell({ idx, name, label, originId }, td);
             clearInsertMarker();
-            return;
-        }
-        // 2) 沒有丟在儲存格，但有「插入線」→ 插在兩列中間（若在最底則變成 NOx+1）
-        if (insertMarker && idx) {
-            const rows = getDataRows();                       // 不含插入線
-            const beforeTr = insertMarker.nextElementSibling; // 插入線後面那列（null 代表最底）
-            const pos = beforeTr ? (rows.indexOf(beforeTr) + 1) : (rows.length + 1); // 1-based
-
+        } else if (insertMarker && idx) {
+            const rows = getDataRows();
+            const beforeTr = insertMarker.nextElementSibling;
+            const pos = beforeTr ? (rows.indexOf(beforeTr) + 1) : (rows.length + 1);
             const newTr = insertRowAt(pos, '', '', '');
             if (newTr) {
-                const newReadTd = newTr.querySelector('td:nth-child(3)');
-                assignFieldToCell({ idx, name, originId }, newReadTd);
-                updateAddButtonState?.();   // 讓「新增列」按鈕狀態即時更新
-                bumpDom?.();
-                poller?.triggerNow?.();
+            const newReadTd = newTr.querySelector('td:nth-child(3)');
+            assignFieldToCell({ idx, name, label, originId }, newReadTd);
+            updateAddButtonState?.();
+            bumpDom?.();
+            poller?.triggerNow?.();
             }
+            clearInsertMarker();
         }
-        clearInsertMarker();
 
+        // 清掉暫存，避免殘留
+        dragPayload = null;
+        });
 
-    });
 
 
 
     // ===== 把欄位指派到某個 td（變成 chip） =====
     function assignFieldToCell(payload, td) {
-
-        const { idx, name, originId: givenOriginId } = payload;
+        const { idx, name, label, originId: givenOriginId } = payload;
         if (!td) return;
 
         const originId = givenOriginId || ('fb-' + String(idx)); // 欄位銀行按鈕的 id 慣例
@@ -563,20 +617,29 @@
             bankBtn.dataset.assignedRowId = td.closest('tr')?.dataset?.rowId || '';
         }
 
-        // 4) 以 chip 取代表格中的 input
+        // 4) 以 chip 取代表格中的 input（顯示中文標籤）
         td.innerHTML = '';
         const chip = document.createElement('div');
         chip.className = 'field-chip';
         chip.dataset.source = 'db';                 // 來源：DB
         chip.dataset.fieldIndex = String(idx);
         chip.dataset.originId = originId;
+
+        // 顯示文字：label（優先）→ FIELD_LABEL_BY_INDEX[idx] → name
+        const displayText =
+            (typeof label !== 'undefined' && label !== null && String(label).trim() !== '')
+            ? label
+            : (typeof FIELD_LABEL_BY_INDEX !== 'undefined' && FIELD_LABEL_BY_INDEX && FIELD_LABEL_BY_INDEX[idx])
+                ? FIELD_LABEL_BY_INDEX[idx]
+                : (name || '');
+
         chip.innerHTML = `
-            <code>${escapeHtml(String(idx))}</code>${escapeHtml(name || '')}
+            <code>${escapeHtml(String(idx))}</code>${escapeHtml(displayText)}
             <button type="button" class="chip-del" aria-label="Remove">×</button>
         `;
         td.appendChild(chip);
 
-        // 5) 放入隱藏 input（沿用你的保存/驗證流程）
+        // 5) 放入隱藏 input（沿用你的保存/驗證流程；依舊存鍵名 name，不變）
         ensureHiddenInputs(td, {
             read_db_index: String(idx),
             read_db_name: String(name || ''),
@@ -594,6 +657,8 @@
         bumpDom();
         poller?.triggerNow();
     }
+
+
 
     /* ---------- 輔助函式 ---------- */
 
@@ -858,8 +923,8 @@
 
     // ——— admin controls ———
     if (IS_ADMIN) {
-        if (btnAdd)  btnAdd.addEventListener('click', ()=> addRow());
-        if (btnSave) btnSave.addEventListener('click', onSave);
+        //if (btnAdd)  btnAdd.addEventListener('click', ()=> addRow());
+        //if (btnSave) btnSave.addEventListener('click', onSave);
 
         const controlBar = document.querySelector('.control-bar');
         if (controlBar && !document.getElementById('btnMoveUp')) {
