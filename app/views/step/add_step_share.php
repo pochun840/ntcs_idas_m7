@@ -1235,6 +1235,38 @@
             }
         }
 
+        
+        // ★★★ 目標角度 + 角度降速：不要用扭力的 min/max 來檢 StepTorqueDownShift
+        if (StepOption === 1 && StepEnableDownShift === "1") {
+            // 先移除既有扭力規則
+            conditions = conditions.filter(c => c.id !== 'StepTorqueDownShift');
+                // 改成角度欄位規則（整數 1~30600）
+                conditions.push({
+                id: 'StepTorqueDownShift',
+                pattern: /^\d{1,5}$/,
+                min: 1,
+                max: 30600,
+                integerOnly: true,
+                noRangeMessage: true
+                });
+        }
+
+        // ★★★ 目標扭力(Opt=2) + 角度降速(DS=1)：StepTorqueDownShift 改用「角度」規則，不要套扭力 min/max
+        if (StepOption === 2 && StepEnableDownShift === "1") {
+            // 先移除原本扭力的規則
+            conditions = conditions.filter(c => c.id !== 'StepTorqueDownShift');
+            // 改成角度欄位（整數 1~30600）；真正與 StepHiAngle 的關係由後面的 IIFE 交叉檢核處理
+            conditions.push({
+              id: 'StepTorqueDownShift',
+              pattern: /^\d{1,5}$/,
+              min: 1,
+              max: 30600,
+              integerOnly: true,
+              noRangeMessage: true
+            });
+        }
+
+
         // StepOption 分支
         const pattern0to99 = /^(?:[0-9]|[1-9][0-9])$/; // 0~99
         if (StepOption === 2) {
@@ -1569,17 +1601,17 @@
                 'en-us': {
                 title: 'Warning',
                 msg: (u, range, cur) =>
-                    `Torque offset (${u}) is out of range.\nRange: ${rrangeStr}`
+                    `Torque offset ${u} is out of range.\nRange: ${rrangeStr}`
                 },
                 'zh-tw': {
                 title: '警告',
                 msg: (u, range, cur) =>
-                    `扭力補償值（${u}）超出範圍。\n允許範圍：${rangeStr}`
+                    `扭力補償值 ${u} 超出範圍。\n允許範圍：${rangeStr}`
                 },
                 'zh-cn': {
                 title: '警告',
                 msg: (u, range, cur) =>
-                    `扭力补偿值（${u}）超出范围。\n允许范围：${rangeStr}`
+                    `扭力补偿值 ${u} 超出范围。\n允许范围：${rangeStr}`
                 }
             }[lang];
 
@@ -3539,7 +3571,7 @@
             if (dsMode !== "2") return; // 只在「扭力降速」時檢查；若兩種都要檢查就刪掉這行
 
             const dsEl = document.getElementById('StepTorqueDownShift'); // 降速扭力
-            const tqEl = document.getElementById('StepTorque');          // 目標扭力
+            const tqEl = document.getElementById('StepHiTorque');          //扭力上限
             if (!dsEl || !tqEl) return;
 
             const dsRaw = dsEl.value?.trim() ?? "";
@@ -3561,9 +3593,9 @@
             const OK_LABEL = (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定'));
 
             const I18N = {
-                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than target torque' },
-                'zh-tw': { title: '警告',   msg: '降速點扭力 必須小於 目標扭力' },
-                'zh-cn': { title: '警告',   msg: '降速点扭力 必须小于 目标扭力' }
+                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than the upper torque limit' },
+                'zh-tw': { title: '警告',   msg: '降速點扭力 必須小於 扭力上限' },
+                'zh-cn': { title: '警告',   msg: '降速点扭力 必须小于 扭力上限' }
             }[lang];
 
             // 驗證：必須嚴格小於
@@ -3602,6 +3634,7 @@
                 }
             }
         })();
+
 
 
 
@@ -4976,8 +5009,13 @@ function enforcePercentRequiredWithDialogForStepOption(stepOption) {
 
 
 
- document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btnSave')
-      .addEventListener('click', save_or_edit_step);
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btnSave');
+  if (!btn) {
+    // console.warn('btnSave not found on this page');
+    return;
+  }
+  btn.addEventListener('click', save_or_edit_step);
+});
+
 </script>
