@@ -196,8 +196,8 @@
         <div class="col-3 t1"><?php echo $text['OK_Sequence'];?>:</div>
         <div class="col t2" >
             <div class="col-1 form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_green" value="0"  <?php echo $data['controller_info']['okseqcolor'] == 0 ? 'checked="checked"' : ''; ?>>
-                <label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
+                <input class="form-check-input" style='white-space: nowrap;'  type="radio" name="okseqcolor" id="okseqcolor_green" value="0"  <?php echo $data['controller_info']['okseqcolor'] == 0 ? 'checked="checked"' : ''; ?>>
+                <label class="form-check-label" style='white-space: nowrap;'  for=""><?php echo $text['green_text'];?></label>
             </div>
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_yellow" value="1"  <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?> >
@@ -210,8 +210,8 @@
         <div class="col-3 t1"><?php echo $text['job_ok'];?>:</div>
         <div class="col t2" >
             <div class="col-1 form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_green" value="0"   <?php echo $data['controller_info']['okjobcolor'] == 0 ? 'checked="checked"' : ''; ?>>
-                <label class="form-check-label" for=""><?php echo $text['green_text'];?></label>
+                <input class="form-check-input" style='white-space: nowrap;' type="radio" name="okjobcolor" id="okjobcolor_green" value="0"   <?php echo $data['controller_info']['okjobcolor'] == 0 ? 'checked="checked"' : ''; ?>>
+                <label class="form-check-label" style='white-space: nowrap;' for=""><?php echo $text['green_text'];?></label>
             </div>
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_yellow" value="1"  <?php echo $data['controller_info']['okjobcolor'] == 1 ? 'checked="checked"' : ''; ?> >

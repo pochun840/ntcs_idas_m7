@@ -222,7 +222,9 @@ class Setting{
             circular_archive =:circular_archive,
             counting_method = :counting_method,
             blackout_recovery = :blackout_recovery,
-            buzzer_mode = :buzzer_mode
+            buzzer_mode = :buzzer_mode,
+            global_downshift_torque = :global_downshift_torque,
+            global_downshift_speed  = :global_downshift_speed
         WHERE device_id = :device_id";
 
         $statement = $this->db_iDas_tools->prepare($sql);
@@ -237,6 +239,8 @@ class Setting{
         $statement->bindValue(':counting_method',$con_setting['counting_method']);
         $statement->bindValue(':blackout_recovery',$con_setting['blackout_recovery']);
         $statement->bindValue(':buzzer_mode', $con_setting['buzzer_mode']);
+        $statement->bindValue(':global_downshift_torque', $con_setting['global_downshift_torque']);
+        $statement->bindValue(':global_downshift_speed', $con_setting['global_downshift_speed']);
         $statement->bindValue(':device_id', $con_setting['control_id']);
 
         // 執行查詢並返回結果

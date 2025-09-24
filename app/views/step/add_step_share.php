@@ -1090,30 +1090,27 @@
         const rpm_check = document.getElementById('StepRPM').value;
 
 
-
-        // ★ 依 precision 取得 StepTorque 的「顯示精度」值，作為 StepHiTorque 的下限
+       // ★ 目標扭力四捨五入到當前顯示精度（用來算 StepHiTorque 的動態下限）
         const stepTorqueRounded = roundHalfUp(check_target_torque_raw, torquePrecision);
 
-        // ★ 各扭力單位的最小增量（以「你要的結果」為準）
-        const unitBumpMap = {
-            0: 0.001,   // kgf.cm
-            1: 0.001,   // N·m
-            2: 0.0001,  // lbf·in
-            3: 0.1,     // cN·m
-            // 其他單位或未知單位，用原本精度的最小增量 fallback
-            4: increment
+        // ★ 以顯示精度推得的基本增量（確保「嚴格大於」）
+        const precisionBump = Number((1 / Math.pow(10, torquePrecision)).toFixed(torquePrecision));
+
+        // ★ 針對不同單位的最小可分辨差覆寫（key = 扭力單位代碼）
+        // 0: kgf·cm, 1: N·m, 2: lbf·in, 3: cN·m, 4: kgf·m
+        const BUMP_OVERRIDE = {
+        4: 0.0003 // kgf·m 需要 0.0003（例如 0.0100 → 0.0103）
         };
 
-        // 取出對應增量（沒有就用 increment 當保底）
-        const bump = Object.prototype.hasOwnProperty.call(unitBumpMap, torque_unit)
-        ? unitBumpMap[torque_unit]
-        : increment;
+        // ★ 最終使用的 bump（有覆寫用覆寫，沒有就用精度推得的 increment）
+        const bump = Object.prototype.hasOwnProperty.call(BUMP_OVERRIDE, torque_unit)
+        ? BUMP_OVERRIDE[torque_unit]
+        : precisionBump;
 
-        // ★ 新的下限：StepHiTorque 必須大於（而非等於）StepTorque
+        // ★ 動態下限：StepHiTorque 必須「嚴格大於」 StepTorque
         const dynamicHiMin = Number.isFinite(stepTorqueRounded)
-        ? stepTorqueRounded + bump
+        ? roundTo(stepTorqueRounded + bump, torquePrecision)
         : check_target_tor_lo_raw;
-        
 
         // 先確認工具設定欄位合法
         const idsToCheck = ['tool_max_torque', 'tool_min_torque', 'tool_max_rpm', 'tool_min_rpm', 'tool_max_torque_diff'];
@@ -1496,11 +1493,11 @@
                             const unitSelect = document.getElementById('step_torque_unit');
                             const unitCode = parseInt(unitSelect?.value ?? 1, 10);
                             const UNIT_TEXT = {
-                            0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
-                            1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺', 'zh-cn':'牛顿·米'   },
-                            2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英寸'   },
-                            3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
-                            4: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺', 'zh-cn':'公斤·米'   }
+                                0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
+                                1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺', 'zh-cn':'牛顿·米'   },
+                                2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英寸'   },
+                                3: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺', 'zh-cn':'公斤·米'   },
+                                4: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
                             };
                             unitText = (UNIT_TEXT[unitCode]?.[lang]) ?? 'N·m';
                         }
@@ -3805,8 +3802,8 @@
                     0: 'kgf.cm',
                     1: 'N.m',
                     2: 'lbf.in',
-                    3: 'cN.m',
-                    4: 'kgf.m',
+                    3: 'kgf.m',
+                    4: 'cN.m',
                 };
 
                 // 3) 若 <select id="step_torque_unit"> 有可視文字，嘗試對應到鍵；否則用數值對照
@@ -4160,8 +4157,8 @@
                     0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
                     1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',   'zh-cn':'牛顿·米'   },
                     2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英吋'   },
-                    3: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
-                    4: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   },
+                    3: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   },
+                    4: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
                 };
                 unit = (UNIT_TEXT?.[torque_unit]?.[lang]) || 'N·m';
                 }
@@ -4498,11 +4495,11 @@
             } catch { return 'en-us'; }
             })();
             const UNIT_TEXT = {
-            0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
-            1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',   'zh-cn':'牛顿·米'    },
-            2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',  'zh-cn':'磅·英寸'   },
-            3: { 'en-us':'cN·m',   'zh-tw':'牛頓·釐米','zh-cn':'牛顿·厘米' },
-            4: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   }
+                0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
+                1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',   'zh-cn':'牛顿·米'    },
+                2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',  'zh-cn':'磅·英寸'   },
+                3: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   },
+                4: { 'en-us':'cN·m',   'zh-tw':'牛頓·釐米','zh-cn':'牛顿·厘米' },
             };
             unitText = (UNIT_TEXT[unitCode]?.[LANG]) ?? 'N·m';
         }
