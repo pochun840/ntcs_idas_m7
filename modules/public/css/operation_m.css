@@ -1,0 +1,205 @@
+﻿.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height: 40px;
+    background-color: hsl(0, 60%, 50%);
+    font-size: 30px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    width: 100%;
+    z-index: 1000;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+body
+{
+    padding-top: 55px;
+    margin: 0;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding: 3px 5px;
+}
+
+.topnav
+{
+    width: 100%;
+    min-height: 40px;
+    font-size: 3vmin;
+    overflow: hidden;
+    background-color: #838588;
+    border: 0px solid #B5B5B5;
+    padding: 2px;
+}
+
+.topnav input
+{
+    min-height:28px; 
+    font-size: 3vmin;
+    text-align: center; 
+    background-color:#D9D9D9 ; 
+    border:0; 
+    margin: 3px;    
+}
+
+.operation-setting 
+{
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-spacing: 30px;}
+
+.column 
+{
+    flex: 1;
+}
+
+.item-target-torque 
+{
+    background-color: #D3CDCD;
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-result
+{
+    /*background-color: #FFEF62;*/
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-targer-angle
+{
+    background-color: #BABABA;
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.item-message
+{
+    background-color: #D3CDCD;
+    height: 17vh;
+    font-size: 3vmin;
+    margin: 5px;
+    text-align: center;
+}
+
+.w3-display-topmiddle
+{
+    margin-top: 5px;
+}
+
+.w3-border-top
+{
+    width: 50%;
+}
+
+.chart-setting 
+{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+    clear: both; /* nếu dùng float trong các phần khác */
+}
+
+.button-chart {
+    display: flex;
+    flex-wrap: wrap;             /* Cho phép xuống dòng */
+    justify-content: center;     /* Căn giữa cả cụm nút */
+    gap: 6px;
+    padding: 5px;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
+}
+
+/* Cài đặt mặc định: 1 hàng 5 nút (ngang) */
+.btn-chart {
+    flex: 0 0 calc((100% - 24px) / 5);  /* 5 nút chia đều (4 khoảng cách 6px = 24px) */
+    max-width: 120px;
+    font-size: clamp(10px, 3vw, 14px);
+    height: 30px;
+    padding: 5px 4px;
+    background-color: #6E8085;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    white-space: normal;         /* Cho phép xuống dòng nếu cần */
+    text-align: center;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    word-break: break-word;
+}
+
+/* Khi màn hình nhỏ (quay dọc), chia 2 hàng: 3 nút + 2 nút */
+@media (max-width: 500px) {
+    .btn-chart {
+        flex: 0 0 calc((100% - 12px) / 3); /* Mỗi hàng có 3 nút max (2 khoảng cách = 12px) */
+    }
+    .button-chart button:nth-child(4),
+    .button-chart button:nth-child(5) {
+        flex: 0 0 calc((100% - 6px) / 2); /* 2 nút hàng dưới chia đều */
+    }
+}
+
+
+.btn-chart.active,
+.btn-chart:hover {
+    background-color: #007bff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Biểu đồ hiển thị */
+.display-chart {
+    width: 100%;
+    flex-grow: 1;
+    background-color: #fff;
+    padding: 0px;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+input:disabled 
+{
+    opacity: 1; /* Giữ độ rõ nét */
+    color: #000; /* Đảm bảo chữ vẫn có màu đen rõ ràng */
+}
+

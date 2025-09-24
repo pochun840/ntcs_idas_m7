@@ -1,0 +1,132 @@
+.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding: 3px 20px;
+}
+
+
+/* Header */
+#header
+{
+    min-height:50px;
+    background-color:hsl(0, 60%, 50%);
+    margin: 10px;
+    font-size: 30px;
+}
+
+/* Job id, Seq id, Return btn */
+.topnav
+{
+    width: 100%;
+    overflow: hidden;
+    background-color: #fff;
+    border: 1px solid #B5B5B5;
+    padding: 2px;
+}
+
+.new-container
+{
+    /*overflow-y: auto;*/
+    padding-top: 3px;
+    background-color: #F2F1F1;
+}
+
+#back_btn
+{
+    height: 32px;
+    width: auto;
+    float: right;
+    margin-right: 5px;
+    padding: 0 3px;
+    background-color: red;
+    border-radius: 5px;
+    color: #fff;
+    border: 0px solid #444E66;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    font-size: 18px;
+    text-align: right;
+}
+
+/* scrollbar style */
+.scrollbar
+{
+    float: left;
+    height: calc(100vh - 180px);
+    width: 100%;
+    overflow-y: scroll;
+}
+
+.force-overflow
+{
+    min-height: 40vh;
+}
+
+#wrapper
+{
+    text-align: center;
+    margin: auto;
+}
+
+/**  STYLE New StepStep */
+#style-newStep::-webkit-scrollbar
+{
+    display: none;
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#style-newStep::-webkit-scrollbar-thumb
+{
+    border-radius: 10px;
+    background: linear-gradient(left, #96A6BF, #63738C);
+    box-shadow: inset 0 0 1px 1px #5C6670;
+}
+
+#style-newStep::-webkit-scrollbar-track
+{
+    border-radius: 10px;
+    background: #eee;
+    box-shadow: 0 0 1px 1px #bbb, inset 0 0 7px rgba(0,0,0,0.3)
+}
+
+#style-newStep::-webkit-scrollbar-thumb:hover
+{
+    background: linear-gradient(left, #8391A6, #536175);
+}
+
+
+.button
+{
+    background-color: #888888;
+    margin-top: 10px;
+    height: 50px;
+    width: 100px;
+    border-radius: 5px;
+    color: #fff;
+    border: 0px solid #444E66;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    font-size: 20px;
+    text-align: center;
+}
+
+.button:hover
+{
+    cursor: pointer;
+    background: #72A1A1;
+    color: white;
+}
+
+

@@ -213,7 +213,7 @@ $text['Torque Time'] = "Torque v.s Time";
 $text['Angle Time'] = "Angle v.s Time";
 $text['RPM Time'] = "RPM v.s Time";
 $text['Torque Angle'] = "Torque v.s Angle";
-$text['Torque Speed'] = "Torque v.s Speed";
+$text['Torque Speed'] = "Torque & Speed";
 $text['Total_angle'] = "Total";
 $text['Step_angle'] = "Step";
 

@@ -213,7 +213,7 @@ $text['Torque Time'] = "扭力 v.s 時間";
 $text['Angle Time'] = "角度 v.s 時間";
 $text['RPM Time'] = "转速 v.s 時間";
 $text['Torque Angle'] = "扭力 v.s 角度";
-$text['Torque Speed'] = "扭力 v.s 转速";
+$text['Torque Speed'] = "扭力 & 转速";
 $text['Total_angle'] = "总角度";
 $text['Step_angle']  = "步骤角度";
 

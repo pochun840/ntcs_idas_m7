@@ -13,18 +13,17 @@ class Logins extends Controller
         $this->AdminModel = $this->model('Admin');
     }
 
-    // 取得所有Jobs
+
     public function index($url){
 
-
         session_start();
-        //$device_info = $this->Device_Info();
         $_SESSION['sessionid'] = session_id();
         $_SESSION['privilege'] = '';
         $error_message = '';
         $authToken = '';
         $account = $this->LoginModel->get_account();
 
+        //複製所附紀錄的db
         $this->ntcs_data_db_sysnc();
 
         $targetDir = '/var/www/html/extracted';
@@ -33,7 +32,6 @@ class Logins extends Controller
        
         $data = [
             'error_message' => $error_message,
-            //'device_info' => $device_info,
             'account' => $account
         ];
 
@@ -59,11 +57,10 @@ class Logins extends Controller
             $password = $_POST['password'];
             $authToken = hash('sha256', $password);
             
+
             
             if($this->verifyCredentials($username,$authToken)){
-
-
-                //
+                //複製所附紀錄的db
                 $this->ntcs_data_db_sysnc();
                 $this->set_ver();
 

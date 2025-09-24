@@ -873,9 +873,9 @@ function get_output_by_job_id(job_id) {
 
         _suppressYellowOnce = false;
 
-        if (!hasAnyData && !isBootFocused && unifiedFlag === 0) {
-          jobIdEl.value = '';
-        }
+        //if (!hasAnyData && !isBootFocused && unifiedFlag === 0) {
+          //jobIdEl.value = '';
+        //}
       }
 
       // === Button_Select 狀態 ===
@@ -891,8 +891,8 @@ function get_output_by_job_id(job_id) {
       // ===== 語系套用（1~16）=====
       const labels = {
         'en-us': {1:'OK',2:'NG',3:'NG - High',4:'NG - Low',5:'OK - Sequence',6:'OK - Job',7:'Tool Running',8:'Tool Trigger',9:'Reverse',10:'BS',11:'Barcode',12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'},
-        'zh-tw': {1:'OK',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'完工信號',7:'馬達信號',8:'啟動信號',9:'拆螺絲',10:'條碼停止',11:'條碼',12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'},
-        'zh-cn': {1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作任务完成信号',7:'马达信号',8:'启动信号',9:'拆螺丝',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'}
+        'zh-tw': {1:'OK',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'完工信號',7:'馬達信號',8:'啟動信號',9:'反向',10:'條碼停止',11:'條碼',12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'},
+        'zh-cn': {1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作任务完成信号',7:'马达信号',8:'启动信号',9:'反向',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'}
       };
       const lang = normalizeLang(data?.language || getCookie('language') || 'en-us');
       const L = labels[lang];

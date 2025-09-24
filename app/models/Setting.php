@@ -9,6 +9,7 @@ class Setting{
     private $db_iDas_tools;
     private $db_iDas_login;
     private $dbh;
+    private $db_das;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
@@ -525,6 +526,29 @@ class Setting{
         $results = $statement->execute();
 
         return $results;
+    }
+
+    public function check_idas_first_login($new_version){
+
+        $exist = $this->check_das_config('idas_first_login');
+
+         if($exist){
+            $sql = "UPDATE `config` 
+                    SET config_value = :new_version
+                    WHERE config_name = 'match_gtcs_app_version' ";
+        }else{
+            $sql = "INSERT INTO `config` ('config_name','config_value' )
+                    VALUES ('match_gtcs_app_version',:new_version )";
+        }
+
+        $statement = $this->db_das->prepare($sql);
+        $statement->bindValue(':new_version', $new_version);
+        $results = $statement->execute();
+
+        return $results;
+
+
+
     }
 
     public function check_das_config($config_name)

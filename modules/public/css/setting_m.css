@@ -1,0 +1,370 @@
+﻿.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height: 40px;
+    background-color: hsl(0, 60%, 50%);
+    font-size: 30px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    width: 100%;
+    z-index: 1000;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+body
+{
+    padding-top: 52px;
+    margin: 0;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding: 5px 5px;
+}
+
+.menu-button 
+{
+    background-color: #fff;
+    padding: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 10;
+    flex-shrink: 0; /* không bị co lại */
+}
+
+/* Khi màn hình dọc (portrait) */
+@media screen and (orientation: portrait) {
+    .menu-button {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* 5 cột, mỗi cột chiếm 1 phần */
+        grid-template-rows: auto auto; /* 2 hàng */
+        gap: 1px;
+    }
+
+    .button 
+    {
+        flex: 1 1 auto; /* Để button tự co giãn */
+        text-align: center;
+    }
+
+    /* Hàng 1: 2 button đầu tiên */
+    .button:nth-child(1) {
+        grid-column: 1 / 2;
+        grid-row: 1;
+    }
+
+    .button:nth-child(2) {
+        grid-column: 2 / 3;
+        grid-row: 1;
+    }
+
+    /* Hàng 2: 3 button còn lại */
+    .button:nth-child(3) {
+        grid-column: 3 / 4;
+        grid-row: 1;
+    }
+
+    .button:nth-child(4) {
+        grid-column: 4 / 5;
+        grid-row: 1;
+    }
+
+    .button:nth-child(5) {
+        grid-column: 7 / 6;
+        grid-row: 1;
+    }
+}
+
+/* Khi màn hình ngang (landscape) */
+@media screen and (orientation: landscape) {
+    .menu-button {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        max-height: 60px; /* Giảm chiều cao */
+    }
+
+    .button {
+        flex: 1;
+        padding: 3px;
+    }
+}
+
+.button
+{
+    background-color: #888888; /* Green */
+    border:  1px outset #CCFFFF;
+    border-radius: 8px;;
+    color: white;
+    padding: 2px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 4px 2px;
+}
+
+.button:hover
+{
+    cursor: pointer;
+    background:#0d6efd;
+    color: white;
+}
+
+.active
+{
+    background-color: #0d6efd;
+}
+
+.divMode
+{
+    width: 100%;
+    height: 100%;
+    margin: 4px 0px;
+}
+
+/* scrollbar style divMode setting all (Controller/System/barcode/Connection)*/
+.setting_scrollbar {
+    height: calc(100vh - 290px);
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: block; /* tránh dùng float */
+}
+
+@media screen and (orientation: landscape) {
+    .setting_scrollbar {
+        height: 45vh !important; /* Chiều cao linh hoạt hơn */
+    }
+}
+
+
+.setting_force-overflow
+{
+    height: 50vh;
+}
+
+
+/**  STYLE divMode setting all (Controller/System/barcode/Connection) */
+#style-setting::-webkit-scrollbar
+{
+    display: none;
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#style-setting::-webkit-scrollbar-thumb
+{
+    border-radius: 10px;
+    background: linear-gradient(left, #96A6BF, #63738C);
+    box-shadow: inset 0 0 1px 1px #5C6670;
+}
+
+#style-setting::-webkit-scrollbar-track
+{
+    border-radius: 10px;
+    background: #eee;
+    box-shadow: 0 0 1px 1px #bbb, inset 0 0 7px rgba(0,0,0,0.3)
+}
+
+#style-setting::-webkit-scrollbar-thumb:hover
+{
+    background: linear-gradient(left, #8391A6, #536175);
+}
+
+.all-btn
+{
+    font-size: 16px;
+    height: 32px;
+    padding: 0 10px;
+    background-color: #EFEFEF;
+    color: #000;
+    width: auto;
+    box-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.2);
+}
+
+select
+{
+    height: 35px;
+    width: 150px;
+    font-size: 16px;
+    border: 1px solid #CCCCCC;
+    cursor: pointer;
+    border-radius: 5px;
+    color: #000;
+    transition: color 0.s ease, background-color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+/* table barcode & connection */
+.table-container 
+{
+    position: relative;
+    max-width: 100%;
+    height: 160px;
+    border: 0px solid #ddd;
+    padding: 5px;
+}
+
+.setting-table
+{
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.setting-table th
+{
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.setting-table td 
+{
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Nút cuộn trang */
+.bacode-btn-container {
+    position: absolute;
+    bottom: 1px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+/* Cập nhật nút để căn giữa icon */
+.bacode-btn {
+    background-color: #CCCCCC;
+    height: 35px;
+    width: 50px;
+    font-size: 30px;  /* Giảm kích thước font icon */
+    color: white;
+    border: none;
+    padding: 0px;
+    cursor: pointer;
+    border-radius: 5px;
+
+    /* Căn giữa icon trong nút */
+    display: flex;
+    justify-content: center;  /* Căn ngang */
+    line-height: 30px;  /* Căn giữa icon theo chiều dọc */
+    vertical-align: middle;  /* Đảm bảo icon căn giữa theo chiều dọc */
+}
+
+
+/* scrollbar barcode setting style */
+.barcode-scrollbar
+{
+    height: auto;
+    max-height: calc(100vh - 270px); /* Giới hạn chiều cao thay vì cố định */
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+@media screen and (orientation: landscape) {
+    .barcode-scrollbar {
+        height: 45vh !important; /* Tăng chiều cao khi quay ngang */
+    }
+}
+
+.barcode-force-overflow
+{
+    min-height: 40vh;
+}
+
+#wrapper
+{
+    text-align: center;
+    margin: auto;
+}
+
+/**  STYLE barcode */
+#style-barcode::-webkit-scrollbar
+{
+    display: none;
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#style-barcode::-webkit-scrollbar-thumb
+{
+    border-radius: 10px;
+    background: linear-gradient(left, #96A6BF, #63738C);
+    box-shadow: inset 0 0 1px 1px #5C6670;
+}
+
+#style-barcode::-webkit-scrollbar-track
+{
+    border-radius: 10px;
+    background: #eee;
+    box-shadow: 0 0 1px 1px #bbb, inset 0 0 7px rgba(0,0,0,0.3)
+}
+
+#style-barcode::-webkit-scrollbar-thumb:hover
+{
+    background: linear-gradient(left, #8391A6, #536175);
+}
+
+.t1{font-size: 17px; margin: 3px 0px; display: flex; align-items: center;padding-left: 2%}
+.t2{font-size: 17px; margin: 3px 0px;}
+.t3{font-size: 17px; height: 30px; margin-bottom:2px}  
+.t4{font-size: 3.5vmin;} /* Menu button font size */  
+.selected { background-color: #9AC0CD !important;}
+.input-pin img{ height: 25px; width: 40px}
+.output-pin img{ height: 25px; width: 45px}
+.disabled_input{ color: #999; pointer-events: none;}
+.zoom{zoom:1.2; vertical-align: middle}
+
+.year-item
+{
+    font-size: 17px;        /* thay 14px theo ý bạn */
+    display: inline-flex;   /* cho phép align-items */
+    align-items: center;    /* căn dọc giữa */
+    gap: 4px;               /* khoảng cách checkbox‑số năm */
+}
+
+.year-checkbox
+{
+    margin: 0;              /* bỏ margin mặc định của bootstrap */
+}
+
+.progress.custom-bg {
+    background-color: #8393A0; 
+    height: 25px;
+}
+
+.progress-bar.custom-bar 
+{
+    background-color: #34C7AC;
+    color: #fff;
+}
