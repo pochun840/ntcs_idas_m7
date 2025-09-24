@@ -307,7 +307,7 @@ function input_check_setting(argument) {
         { id:'control_name',            label:LABELS.control_name,            pattern:/^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min:null, max:null },
         { id:'storage_warning',         label:LABELS.storage_warning,         pattern:/^\d{0,4}$/,                      min:50,   max:95   },
         { id:'torque_filter',           label:LABELS.torque_filter,           pattern:/^\d{1,3}(\.\d{1,6})?$/,          min:0.0,  max:200  },
-        { id:'global_downshift_torque', label:LABELS.global_downshift_torque, pattern:/^\d{0,5}?$/,                     min:0,    max:1000 },
+        { id:'global_downshift_torque', label:LABELS.global_downshift_torque, pattern:/^\d{0,5}?$/,                     min:0,    max:100  },
         { id:'global_downshift_speed',  label:LABELS.global_downshift_speed,  pattern:/^\d{0,5}?$/,                     min:0,    max:100  },
     ];
 

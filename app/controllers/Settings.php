@@ -572,8 +572,9 @@ class Settings extends Controller
             include $file;
         }
 
+
         $del_year_id = $_POST['del_year_id'][0];
-        if(empty($del_year_id )){
+        if(empty($del_year_id)){
             echo json_encode([
                 'result' => false,
                 'res_type' => 'Error',
@@ -588,7 +589,9 @@ class Settings extends Controller
 
         // 檢查是否可以刪除（Modbus 狀態檢查）
         $idas_result = $this->idas_check();
-        if ($idas_result['result'] != 0) {
+
+
+        if ($idas_result['result'] != 1) {
             echo json_encode([
                 'result' => false,
                 'res_type' => 'Error',

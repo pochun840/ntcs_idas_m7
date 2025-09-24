@@ -150,104 +150,151 @@
         });
     }
 
+    // ===== 語系工具 =====
+function resolveLang() {
+  let l = (typeof language === 'string' ? language : (window.getCookie?.('language') || 'zh-tw')) || 'zh-tw';
+  l = String(l).toLowerCase();
+  if (l === 'en') l = 'en-us';
+  return ['zh-tw', 'zh-cn', 'en-us'].includes(l) ? l : 'en-us';
+}
 
+// ===== 多語系字串 =====
+const I18N_DELETE = {
+  'zh-tw': {
+    selectNoneTitle: '提示',
+    selectNoneMsg: '請先選擇要刪除的年份',
+    confirmTitle: '確認刪除',
+    confirmMsg: (n) => `確定要刪除所選的 ${n} 筆年份檔案嗎？`,
+    ok: '刪除',
+    cancel: '取消',
+    ajaxErrorPrefix: 'AJAX 錯誤：',
+    successFallback: '刪除成功',
+    errorFallback: '刪除失敗'
+  },
+  'zh-cn': {
+    selectNoneTitle: '提示',
+    selectNoneMsg: '请先选择要删除的年份',
+    confirmTitle: '确认删除',
+    confirmMsg: (n) => `确定要删除所选的 ${n} 条年份文件吗？`,
+    ok: '删除',
+    cancel: '取消',
+    ajaxErrorPrefix: 'AJAX 错误：',
+    successFallback: '删除成功',
+    errorFallback: '删除失败'
+  },
+  'en-us': {
+    selectNoneTitle: 'Notice',
+    selectNoneMsg: 'Please select at least one year to delete.',
+    confirmTitle: 'Confirm Deletion',
+    confirmMsg: (n) => `Delete ${n} selected year file(s)?`,
+    ok: 'Delete',
+    cancel: 'Cancel',
+    ajaxErrorPrefix: 'AJAX error: ',
+    successFallback: 'Deleted successfully',
+    errorFallback: 'Deletion failed'
+  }
+};
 
-    function deleteSelectedFiles() {
-        var del_year_id = [];
-        var checkboxes = document.querySelectorAll('input[name="year[]"]:checked');
+// ===== 刪除功能（含確認與多語系） =====
+function deleteSelectedFiles() {
+  const del_year_id = [];
+  document.querySelectorAll('input[name="year[]"]:checked')
+    .forEach(cb => del_year_id.push(cb.value));
 
-        checkboxes.forEach(function (checkbox) {
-            del_year_id.push(checkbox.value);
-        });
+  const lang = resolveLang();
+  const T = I18N_DELETE[lang];
 
-        if (del_year_id.length > 0) {
-
-            document.getElementById('spinner').style.display = 'block';
-
-            $.ajax({
-                url: "?url=Settings/delete_files",
-                method: "POST",
-                data: { 
-                    del_year_id: del_year_id
-                },
-                success: function(response) {
-                    var res = JSON.parse(response);
-                    const texts = i18nAlert[language] || i18nAlert['en-us'];
-
-                    if (res.result === true) {
-                        showAlert("successTitle", res.res_msg || texts.successMsg, 3);
-                    } else {
-                        showAlert("errorTitle", res.res_msg || texts.errorMsg, 3);
-                    }
-
-                },
-                error: function(xhr, status, error) {
-                    console.error("刪除失敗", error);
-                    alertify.error("AJAX 錯誤：" + error);
-                }
-            });
-        } else {
-            alert("請先選擇要刪除的年份");
-        }
-
-        document.getElementById('spinner').style.display = 'none';
+  if (del_year_id.length === 0) {
+    if (window.alertify) {
+      alertify.alert(T.selectNoneTitle, T.selectNoneMsg);
+    } else {
+      alert(T.selectNoneMsg);
     }
+    return;
+  }
 
+  const doDelete = () => {
+    const spinner = document.getElementById('spinner');
+    if (spinner) spinner.style.display = 'block';
 
-    function deleteSelectedFiles(){
+    $.ajax({
+      url: "?url=Settings/delete_files",
+      method: "POST",
+      dataType: "json",     // 讓 jQuery 自動 parse JSON
+      traditional: true,    // del_year_id=1&del_year_id=2...
+      data: { del_year_id },
 
-        var del_year_id = [];
-        var checkboxes = document.querySelectorAll('input[name="year[]"]:checked');
-        var language = getCookie('language');
+      success: function (res) {
+        const lang2 = resolveLang();
+        const texts = (typeof i18nAlert !== 'undefined' && i18nAlert[lang2])
+          ? i18nAlert[lang2]
+          : { successMsg: T.successFallback, errorMsg: T.errorFallback };
 
-        checkboxes.forEach(function (checkbox) {
-            del_year_id.push(checkbox.value);
-        });
+        if (res && (res.result === true || res.result === 'true')) {
+          // 顯示成功訊息
+          if (typeof showAlert === 'function') {
+            showAlert("successTitle", res.res_msg || texts.successMsg, 2);
+          } else if (window.alertify) {
+            alertify.success(res.res_msg || texts.successMsg);
+          }
 
-        if (del_year_id.length > 0) {
-            $.ajax({
-                url: "?url=Settings/delete_files",
-                method: "POST",
-                data: { 
-                    del_year_id: del_year_id
-                },
-               success: function(response) {
-                    var res = JSON.parse(response);
-                    if (res.result === true) {
-                        var res = JSON.parse(response);
-                        const texts = i18nAlert[language] || i18nAlert['en-us'];
+          // 重整前打旗標：重整後自動切到 System
+          sessionStorage.setItem('openTabAfterReload', 'System');
 
-                        if (res.result === true) {
-                            showAlert("successTitle", res.res_msg || texts.successMsg, 3);
-                        } else {
-                            showAlert("errorTitle", res.res_msg || texts.errorMsg, 3);
-                        }
-
-                        // 將已勾選的 checkbox 與其旁邊的年份一起從畫面上移除
-                        const checkboxes = document.querySelectorAll('input[name="year[]"]:checked');
-                        checkboxes.forEach(function (checkbox) {
-                            // 移除 checkbox 和其後的文字節點與空白
-                            const labelText = checkbox.nextSibling;
-                            if (labelText && labelText.nodeType === Node.TEXT_NODE) {
-                                labelText.remove();
-                            }
-                            checkbox.remove();
-                        });
-
-                    } else {
-                        //alertify.error("刪除失敗：" + (res.msg || "未知錯誤"));
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error("刪除失敗", error);
-                    alertify.error("AJAX 錯誤：" + error);
-                }
-            });
+          setTimeout(() => location.reload(), 600);
         } else {
-            alert("請先選擇要刪除的年份");
+          const msg = (res && res.res_msg) || texts.errorMsg;
+          if (typeof showAlert === 'function') {
+            showAlert("errorTitle", msg, 3);
+          } else if (window.alertify) {
+            alertify.error(msg);
+          } else {
+            alert(msg);
+          }
         }
-    }
+      },
 
+      error: function (xhr, status, error) {
+        console.error("刪除失敗", error);
+        if (window.alertify) {
+          alertify.error(T.ajaxErrorPrefix + error);
+        } else {
+          alert(T.ajaxErrorPrefix + error);
+        }
+      },
+
+      complete: function () {
+        const spinner = document.getElementById('spinner');
+        if (spinner) spinner.style.display = 'none';
+      }
+    });
+  };
+
+  // 確認對話框（alertify 存在就用，否則用原生 confirm）
+  if (window.alertify && typeof alertify.confirm === 'function') {
+    alertify
+      .confirm(
+        T.confirmTitle,
+        T.confirmMsg(del_year_id.length),
+        doDelete,
+        function onCancel() {}
+      )
+      .set('labels', { ok: T.ok, cancel: T.cancel });
+  } else {
+    if (confirm(T.confirmMsg(del_year_id.length))) doDelete();
+  }
+}
+
+// ===== 重整後自動切到 System =====
+document.addEventListener('DOMContentLoaded', () => {
+  const tab = sessionStorage.getItem('openTabAfterReload');
+  if (tab && typeof OpenButton === 'function') {
+    OpenButton(tab); // e.g. "System"
+    sessionStorage.removeItem('openTabAfterReload');
+  }
+});
+
+ 
     function showAlert(titleKey, message, autoCloseSec = 0) {
         const texts = i18nAlert[language] || i18nAlert['en-us'];
         const title = texts[titleKey] || titleKey;
