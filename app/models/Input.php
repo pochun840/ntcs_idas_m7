@@ -93,6 +93,8 @@ class Input{
 
     }
 
+    
+
     public function create_input($input_data) {   
         $sql = "INSERT INTO `JOBInput_lst` (JOBID, Pin, EvenID, signal, Wp_Ready_Confirm) ";
         $sql .= "VALUES (:JOBID, :Pin, :EvenID, :signal, :Wp_Ready_Confirm) ";

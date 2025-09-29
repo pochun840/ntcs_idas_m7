@@ -349,7 +349,7 @@
                             <div class="row">
                                 <div for="event" class="col-3 t1">Event :</div>
                                 <div class="col-2 t2">
-                                    <select id="edit_Event_Option" name ="edit_Event_Option" class="col custom-file"  >
+                                    <select id="edit_Event_Option" name ="edit_Event_Option" class="col custom-file" >
                                         <?php foreach($data['event'] as $key =>$val){?>
                                             <option value ='<?php echo $key;?>'><?php echo $text[$val];?></option>
                                         <?php } ?>

@@ -22,8 +22,8 @@ class Miscellaneous{
         if($mode =="customize"){
             
             $array = array(
-                0  => "id",
-                1  => "system_sn",
+                0 => "id",
+                //1  => "system_sn",
                 2  => "data_time",
                 3  => "device_type",
                 4  => "device_id",
@@ -40,7 +40,7 @@ class Miscellaneous{
                 15 => "target_type",
                 16 => "target_torque",
                 17 => "target_angle",
-                18 => "target_time",
+                //18 => "target_time",
                 19 => "fasten_time",
                 20 => "final_fasten_torque",
                 21 => "final_fasten_angle",
@@ -62,19 +62,18 @@ class Miscellaneous{
                 37 => "downshift_torque",
                 38 => "downshift_angle",
                 39 => "downshift_speed",
-                40 => "final_tool_voltage",
+                //40 => "final_tool_voltage",
                 41 => "final_tool_current",
                 42 => "barcode",
             );
 
-            // 加入 step0 ~ step5
-            $idx = count($array);
-            for ($i = 0; $i <= 5; $i++) {
-                $array[$idx++] = "step{$i}_last_times";
-                $array[$idx++] = "step{$i}_last_angle";
+            $lastIndex = empty($array) ? -1 : max(array_keys($array));
+            $idx = $lastIndex + 1;   // 這裡會是 43
+            for ($i = 1; $i <= 5; $i++) {
                 $array[$idx++] = "step{$i}_last_torque";
-                $array[$idx++] = "step{$i}_last_threadshold";
+                $array[$idx++] = "step{$i}_last_angle";
             }
+
 
 
         }

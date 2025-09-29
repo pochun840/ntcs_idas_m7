@@ -3085,11 +3085,11 @@
 
 
 
-     
         // ✅ 使用共用函式取得語系與（已本地化的）扭力單位字串
         const { lang: clang, unit } = getLangAndUnit();
 
         const i18N = {
+            
             'en-us': { title: 'Warning', msg: `Torque lower limit (${unit}) must be less than upper limit` },
             'zh-tw': { title: '警告',   msg: `扭力下限（${unit}）必須小於扭力上限` },
             'zh-cn': { title: '警告',   msg: `扭力下限（${unit}）必须小于扭力上限` }
@@ -3220,7 +3220,7 @@
 
         // 多語系訊息（依需求調整文案）
         const I18N = {
-            'zh-tw': { title: '警告',   msg: '目標扭力 {unit}）超出範圍，允許：{range}', ok: '確定' },
+            'zh-tw': { title: '警告',   msg: '目標扭力999 {unit}）超出範圍，允許：{range}', ok: '確定' },
             'zh-cn': { title: '警告',   msg: '目标扭力（{unit}）超出范围，允许：{range}', ok: '确定' },
             'en-us': { title: 'Warning', msg: 'Target torque ({unit}) is out of range. Allowed: {range}', ok: 'OK' },
         };

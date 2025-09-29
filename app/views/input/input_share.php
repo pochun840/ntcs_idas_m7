@@ -363,11 +363,12 @@ function get_input_by_job_id(jobid, arg2) {
         return;
       }
 
-      // 2) 取值並保底成陣列
+      // 2) 取值並保底成陣列（⚠️ 統一字串化，避免 '106' vs 106 比對失敗）
+      const asStrArr = (a) => Array.isArray(a) ? a.map(v => String(v)) : [];
       const job_inputlist = data?.job_inputlist || '';
-      temp       = Array.isArray(data?.temp)       ? data.temp       : [];
-      tempA      = Array.isArray(data?.tempA)      ? data.tempA      : [];
-      temp_event = Array.isArray(data?.temp_event) ? data.temp_event : [];
+      temp       = asStrArr(data?.temp);
+      tempA      = asStrArr(data?.tempA);
+      temp_event = asStrArr(data?.temp_event);
 
       // 3) 更新列表與欄位
       const listEl = document.getElementById("input_jobid_select");
@@ -377,13 +378,8 @@ function get_input_by_job_id(jobid, arg2) {
       const jobIdInput = document.getElementById("job_id");
       if (jobIdInput) jobIdInput.value = jobid;
 
-      // 4) 更新快取：後續「編輯/複製」要依這份資料判斷
+      // 4) 更新快取（用標準化後的陣列）
       jobTempData[jobid] = { temp, tempA, temp_event };
-
-      // 4.1 ★ 若「編輯視窗」已開，重整後立即把 option 灰階禁用套回去（select 不鎖，option 灰階）
-      if (document.getElementById('edit_input')?.style.display === 'block') {
-        refreshEditEventOptions(jobid);
-      }
 
       // 5) 清空目前選取，避免殘值
       input_event = null;
@@ -395,13 +391,20 @@ function get_input_by_job_id(jobid, arg2) {
         table.addEventListener('click', function (e) {
           const tr = e.target.closest('tr');
           if (!tr || !table.contains(tr)) return;
+
           table.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
-          input_event = tr.className;
-          old_input_event = tr.className;
+
+          // ✅ 正確從 data-event 取得事件號
+          const eid = tr.dataset.event || tr.getAttribute('data-event') || tr.className || '';
+          input_event     = String(eid);
+          old_input_event = String(eid);
+
           tr.classList.add('selected');
         });
         table._boundRowClick = true;
       }
+
+
 
       // 7) 語系切換按鈕文字
       if (typeof updateInputButtonLabels === 'function') {
@@ -413,7 +416,7 @@ function get_input_by_job_id(jobid, arg2) {
         handleNewJobEvent();
       }
 
-      // 9) 如果要求刷新後強制關閉所有 modal（避免 #newinput 被又打開）
+      // 9) 若要求刷新後強制關閉所有 modal
       if (closeModals) {
         const close = id => document.getElementById(id)?.style.setProperty('display', 'none', 'important');
         close('newinput');
@@ -422,21 +425,12 @@ function get_input_by_job_id(jobid, arg2) {
 
       // 10) 外部 callback
       if (typeof callback === 'function') callback();
-
-      // 10.1 ★ 若「新增視窗」目前是開著的，刷新後也把禁用規則再套一次
-      if (document.getElementById('newinput')?.style.display === 'block' && typeof handleNewJobEvent === 'function') {
-        handleNewJobEvent();
-      }
     },
     error: function (xhr, status, error) {
       console.error("AJAX request failed:", status, error);
     }
   });
 }
-
-
-// 逐一把「其它已被使用的事件」禁用（灰階）；保留目前事件可選
-
 
 
 // ✅ 抽出語系文字對應表
@@ -841,32 +835,25 @@ function bindPreventOutsideCloseNewInput() {
 let allowCloseNewInput = true;
 
 function handleNewJobEvent() {
-    const data = jobTempData[job_id] || { temp: [], tempA: [], temp_event: [] };
+  const data = jobTempData[job_id] || { temp: [], tempA: [], temp_event: [] };
 
-    // ✅ 重設按鈕狀態
-    resetElementsByPrefix();
+  // ✅ 重設按鈕/Pin 狀態（保留你原本的）
+  resetElementsByPrefix();
 
-    // ✅ 清除所有禁用狀態並重新套用
-    disableOptions('#Event_Option', [], false, true);
-    disableElementsByIdList(data.temp);
-    disableOptions('#Event_Option', data.tempA, false, false);  // 隱藏
-    disableOptions('#Event_Option', data.temp_event, true, false); // 灰色禁用
+  // ✅ 下拉選單：先 reset → 隱藏 tempA → 灰階禁用 temp_event（並自動清掉被禁用的選取）
+  disableOptions('#Event_Option', { reset: true });
+  disableOptions('#Event_Option', { values: data.tempA, mode: 'hide' });
+  disableOptions('#Event_Option', { values: data.temp_event, mode: 'gray', autoClear: true });
 
-    // ✅ 如果目前選中的 <option> 是已禁用的，就清空選擇
-    const selectEl = document.getElementById('Event_Option');
-    const selectedOption = selectEl.options[selectEl.selectedIndex];
-    if (selectedOption && selectedOption.disabled) {
-        selectEl.value = "-1"; // 切回預設提示選項
-        selectEl.dispatchEvent(new Event('change')); // 若有需要觸發 onchange
-    }
+  // ✅ 仍需禁用其它元素（如 pin 等），保留這行
+  disableElementsByIdList(data.temp);
 
-    // ✅ 顯示 Modal（如果尚未開啟）
-    const newInputModal = document.getElementById('newinput');
-    const isCurrentlyVisible = getComputedStyle(newInputModal).display !== 'none';
-    if (!isCurrentlyVisible) {
-        showOverlay();
-        newInputModal.style.display = 'block';
-    }
+  // ✅ 顯示 Modal（如果尚未開啟）
+  const newInputModal = document.getElementById('newinput');
+  if (newInputModal && getComputedStyle(newInputModal).display === 'none') {
+    showOverlay();
+    newInputModal.style.display = 'block';
+  }
 }
 
 
@@ -885,16 +872,45 @@ function resetElementsByPrefix() {
 }
 
 
-
 function handleEditJobEvent() {
+
+  // 沒選列就不要往下（可加提示）
+  if (!input_event) {
+    if (window.alertify) alertify.alert('請先選擇要編輯的事件');
+    return;
+  }
+
+  // 先把目前選到的事件 ID 存起來，避免刷新時被清空
+  const currentEvent = String(input_event);
+
+  // 先刷新 total（會把 input_event 清掉），完成後還原再進單筆查詢
+  get_input_by_job_id(job_id, {
+    closeModals: false,
+    callback: function () {
+      // 還原選擇
+      input_event = currentEvent;
+      old_input_event = currentEvent;
+
+      // 讓畫面上也把那列選回來（可選）
+      reselectRowByEventId(currentEvent);
+
+      // 繼續原本流程
+      get_input_info(job_id, input_event);
+      handleEventChange(input_event);
+    }
+  });
+}
+
+
+//function handleEditJobEvent() {
 
   // ❌ 這行會把所有已用 pin 鎖死，導致不能換別的 pin
   // disableRadioList(temp);
 
   // 交給 get_input_info 在資料回來後，依目前事件 pin 做更精準的鎖定
-  get_input_info(job_id, input_event);
-  handleEventChange(input_event);
-}
+  //get_input_info(job_id, input_event);
+  //handleEventChange(input_event);
+//}
 
 function parsePhpArrayDumpToObject(txt) {
   // 解析單層 print_r：Array ( [JOBID] => 1 [JOBname] => XXX )
@@ -1011,36 +1027,76 @@ function disableElementsByIdList(ids) {
 }
 
 
-function disableOptions(selector, values = [], gray = false, reset = false) {
-    if (!Array.isArray(values)) return; // 不是陣列直接跳出
+function disableOptions(selector, valuesOrOptions = [], gray = false, reset = false) {
+  
+  // 允許兩種呼叫：
+  // 1) 舊版：disableOptions('#Event_Option', ['101','102'], true, false)
+  // 2) 新版：disableOptions('#Event_Option', { values:['101','102'], mode:'gray', reset:true, autoClear:true })
 
-    const valueSet = values.map(String); // 全轉字串，避免型別不一致
-    const options = document.querySelectorAll(`${selector} option`);
-    if (!options.length) return;
+  let opts;
+  if (Array.isArray(valuesOrOptions)) {
+    opts = { values: valuesOrOptions, mode: (gray ? 'gray' : 'hide'), reset };
+  } else if (typeof valuesOrOptions === 'object' && valuesOrOptions !== null) {
+    opts = valuesOrOptions;
+  } else {
+    opts = {};
+  }
 
+  const {
+    values = [],
+    mode = 'hide',      // 'hide' | 'gray'
+    reset: doReset = false,
+    autoClear = false,  // 若目前選項被禁用，清空並觸發 change
+  } = opts;
+
+  const sel = document.querySelector(selector);
+  if (!sel) return;
+
+  const options = sel.tagName === 'SELECT'
+    ? Array.from(sel.options)
+    : Array.from(document.querySelectorAll(`${selector} option`));
+  if (!options.length) return;
+
+  if (doReset) {
     options.forEach(opt => {
-        // 如果 reset=true，先重置所有選項
-        if (reset) {
-            opt.disabled = false;
-            opt.style.color = '';
-            opt.classList.remove('disabled_input');
-            opt.style.display = ''; // 確保顯示
-        }
-
-        // 根據 values 設定 disabled 狀態
-        if (valueSet.includes(opt.value)) {
-            opt.disabled = true;
-            opt.classList.add('disabled_input');
-            if (gray) {
-                opt.style.color = 'gray'; // 灰色標示
-            } else {
-                opt.style.display = 'none'; // 如果沒灰色，用隱藏
-            }
-        }
+      opt.disabled = false;
+      opt.classList.remove('disabled_input');
+      opt.style.color = '';
+      opt.style.display = '';
     });
+  }
+
+  const set = new Set(values.map(String));
+  options.forEach(opt => {
+    if (set.has(String(opt.value))) {
+      opt.disabled = true;
+      opt.classList.add('disabled_input');
+      if (mode === 'gray') {
+        opt.style.color = 'gray';
+        opt.style.display = ''; // 保持顯示但灰階
+      } else {
+        opt.style.display = 'none'; // 隱藏
+      }
+    }
+  });
+
+  if (autoClear && sel.tagName === 'SELECT') {
+    const cur = sel.options[sel.selectedIndex];
+    if (cur && cur.disabled) {
+      sel.value = '-1';
+      sel.dispatchEvent(new Event('change'));
+    }
+  }
 }
 
+function applyUsedEventsToEditSelect(currentEventId) {
+  const used = ((jobTempData && jobTempData[job_id] && jobTempData[job_id].temp_event) || []).map(String);
+  const toDisable = used.filter(v => v !== String(currentEventId)); // 保留目前這筆可選
 
+  // 先重置，再套用灰階禁用
+  disableOptions('#edit_Event_Option', { reset: true });
+  disableOptions('#edit_Event_Option', { values: toDisable, mode: 'gray' });
+}
 
 
 function disableSelectOptions(selector) {
@@ -1054,6 +1110,22 @@ function disableSelectOptions(selector) {
 }
 
 function create_input_id(){
+
+    const sel = document.getElementById("Event_Option");
+    const lang = (typeof getCookie === 'function' && getCookie('language')) || 'en-us';
+    const msgMap = {
+      'zh-tw': '此事件已建立，無法重複新增',
+      'zh-cn': '该事件已建立，无法重复新增',
+      'en-us': 'This event already exists and cannot be added again.',
+    };
+    const tip = msgMap[lang] || msgMap['en-us'];
+
+    if (!sel || sel.selectedIndex < 0) return;
+    if (sel.options[sel.selectedIndex].disabled) {
+      if (window.alertify) alertify.alert(tip);
+      return;
+    }
+    
  
     var input_event = document.getElementById("Event_Option").value;
     var pinval      = collectPinValues('input[name="pin_option"]');
@@ -1190,76 +1262,18 @@ function copy_input_id() {
 }
 
 
-// －－－ 輔助：把「除目前事件外，已被使用的事件 option」設成灰階＋disabled －－－
-function refreshEditEventOptions(jobid, currentEventId) {
-  const sel = document.getElementById('edit_Event_Option');
-  if (!sel) return;
-
-  // 確保整個 select 可操作
-  sel.disabled = false;
-  sel.removeAttribute('disabled');
-  sel.classList.remove('disabled_input');
-
-  // 1) 先從快取拿已用事件
-  const data = (window.jobTempData && window.jobTempData[jobid]) || {};
-  let used = Array.isArray(data.temp_event) ? data.temp_event.map(v => String(v).trim()) : [];
-
-  // 2) 後盾：若後端沒塞 temp_event，就從列表 tr.className 回推
-  if (!used.length) {
-    used = Array.from(document.querySelectorAll('#input_jobid_select tr'))
-      .map(tr => String(tr.className || '').trim())
-      .filter(Boolean);
-  }
-
-  const current = String(currentEventId);
-
-  // 3) 先 reset 全部 option
-  Array.from(sel.options).forEach(opt => {
-    opt.disabled = false;
-    opt.classList.remove('disabled_input');
-    opt.style.color = '';
-    opt.style.display = '';
-  });
-
-  // 4) 禁用「除了目前事件以外」的所有已用事件
-  Array.from(sel.options).forEach(opt => {
-    const val = String(opt.value).trim();
-    if (val !== current && used.includes(val)) {
-      opt.disabled = true;
-      opt.classList.add('disabled_input');
-      opt.style.color = 'gray'; // 有些瀏覽器對 disabled option 不會變灰，手動上色
-    }
-  });
-
-  // 5) 雙保險：目前事件一定可以選
-  const currOpt = Array.from(sel.options).find(o => String(o.value).trim() === current);
-  if (currOpt) {
-    currOpt.disabled = false;
-    currOpt.classList.remove('disabled_input');
-    currOpt.style.color = '';
-    currOpt.style.display = '';
-  }
-
-  // 6) 若有使用 select2 或 bootstrap-select，記得 refresh
-  if (window.jQuery) {
-    const $sel = window.jQuery(sel);
-    if ($sel.data('select2')) $sel.trigger('change.select2');
-    if ($sel.hasClass('selectpicker')) $sel.selectpicker('refresh');
-  }
-}
-
-// －－－ 主函式：開啟編輯、解鎖 select、本事件以外的選項灰階＋disabled －－－
 function get_input_info() {
-  if (!window.job_id) return;
+  
+  if (!job_id) return;
 
   $.ajax({
     url: "?url=Inputs/check_job_event_conflict",
     method: "POST",
-    data: { job_id: window.job_id, input_event: window.input_event },
+    data: { job_id: job_id, input_event: input_event },
     success: function (resp) {
       if (!resp || resp === 'no_data') return;
 
-      // 標準化回傳
+      // --- 標準化回傳 ---
       let obj = {};
       if (typeof resp === 'object') {
         obj.Pin              = resp.Pin ?? resp.pin ?? resp.PIN ?? '';
@@ -1275,23 +1289,22 @@ function get_input_info() {
         obj.Wp_Ready_Confirm = pick(/\[Wp_Ready_Confirm]\s*=>\s*([^\s]+)/);
       }
 
-      // 轉型與檢查
-      const pinNum    = parseInt(obj.Pin, 10);
-      const signal    = Number.isFinite(parseInt(obj.signal, 10)) ? parseInt(obj.signal, 10) : 1; // 預設 high
-      const eventId   = Number.isFinite(parseInt(obj.EvenID, 10))  ? parseInt(obj.EvenID, 10)  : 0;
+      // --- 轉型並檢查 ---
+      const pinNum  = parseInt(obj.Pin, 10);
+      const signal  = Number.isFinite(parseInt(obj.signal, 10)) ? parseInt(obj.signal, 10) : 1; // 預設 high
+      const eventId = Number.isFinite(parseInt(obj.EvenID, 10))  ? parseInt(obj.EvenID, 10)  : 0;
       const gateReady = parseInt(obj.Wp_Ready_Confirm, 10) || 0;
-
       if (!Number.isFinite(pinNum)) {
         console.warn('Invalid Pin from backend:', obj.Pin);
         return;
       }
 
-      // 開啟編輯視窗
+      // --- 開啟編輯視窗 ---
       if (typeof showOverlay === 'function') showOverlay();
       const editModal = document.getElementById('edit_input');
       if (editModal) editModal.style.display = 'block';
 
-      // 幫手：徹底啟用單一 radio（含樣式）
+      // --- 協助函式：徹底啟用/禁用單顆 radio（含樣式） ---
       const fullyEnableRadio = (id) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -1302,11 +1315,11 @@ function get_input_info() {
         el.style.opacity = '';
       };
 
-      // pin：先全解鎖，再鎖「其它事件已用 pins（排除本事件 pin）」
+      // --- 先全解鎖，再鎖其它事件已用的 pins（排除本事件的 pin） ---
       if (typeof unlockAllEditPins === 'function') unlockAllEditPins();
       if (typeof disableUsedPinsExcept === 'function') disableUsedPinsExcept(String(pinNum));
 
-      // 勾選並啟用當前 pin 的高/低兩顆
+      // --- 勾選並啟用當前 pin 的高/低兩顆 ---
       const highId = `edit_pin${pinNum}_high`;
       const lowId  = `edit_pin${pinNum}_low`;
       const currId  = (signal === 1 ? highId : lowId);
@@ -1317,38 +1330,19 @@ function get_input_info() {
       const currRadio = document.getElementById(currId);
       if (currRadio) currRadio.checked = true;
 
-      // 事件下拉 & 一次感應區塊
+      // --- 設定事件下拉、一次感應區塊 ---
       const eventSel = document.getElementById('edit_Event_Option');
       const gocWrap  = document.getElementById('edit_work_goc');
 
       if (eventSel) {
-        // 解鎖整個 select
-        eventSel.disabled = false;
-        eventSel.removeAttribute('disabled');
-        eventSel.classList.remove('disabled_input');
-
-        // 設定目前事件
         eventSel.value = String(eventId);
-
-        // 顯示/隱藏一次感應
-        const applyGoc = (v) => {
-          if (!gocWrap) return;
-          gocWrap.style.display = (v === 109 ? 'block' : 'none');
-        };
-        applyGoc(eventId);
-
-        // ★ 關鍵：把「其它已用事件」灰階＋disabled；目前事件保留可選
-        refreshEditEventOptions(window.job_id, eventId);
-
-        // 切換時也維持禁用名單
+        applyUsedEventsToEditSelect(eventId);
         eventSel.onchange = function () {
           const v = parseInt(this.value, 10);
-          applyGoc(v);
-          refreshEditEventOptions(window.job_id, v);
+          if (gocWrap) gocWrap.style.display = (v === 109 ? 'block' : 'none');
         };
       }
 
-      // 一次感應 gateconfirm 單選
       if (gocWrap) {
         if (eventId === 109) {
           gocWrap.style.display = 'block';
@@ -1365,7 +1359,7 @@ function get_input_info() {
         }
       }
 
-      // 紀錄舊事件（供送出用）
+      // --- 紀錄舊事件（供送出時使用） ---
       window.old_input_event = eventId;
     },
     error: function (xhr, status, error) {
@@ -1373,6 +1367,18 @@ function get_input_info() {
     }
   });
 }
+
+
+function reselectRowByEventId(eid) {
+  const table = document.getElementById('input_jobid_select');
+  if (!table || !eid) return;
+  table.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+  const row = Array.from(table.querySelectorAll('tr')).find(
+    r => String(r.dataset.event || r.getAttribute('data-event') || r.className) === String(eid)
+  );
+  if (row) row.classList.add('selected');
+}
+
 
 
 function resetalignsubmit(job_id) {
@@ -1396,99 +1402,31 @@ function resetalignsubmit(job_id) {
 }
 
 
-function job_confirm(){
-    var jobid = document.getElementById("JobNameSelect").value;
-    localStorage.setItem("jobid", jobid);
-    job_id = jobid;
-    all_job = jobid;
-    
+function job_confirm() {
 
-    if(jobid){
-        $.ajax({
-            url: "?url=Inputs/get_input_by_job_id",
-            method: "POST",
-            data:{ 
-                jobid: jobid,
-            },
-            success: function(response) {
-                var data = JSON.parse(response);
-                var job_inputlist = data.job_inputlist;
-                
-                temp  = Array.isArray(data.temp) ? data.temp : [];
-                tempA = Array.isArray(data.tempA) ? data.tempA : [];
+  const jobid = document.getElementById("JobNameSelect").value;
+  if (!jobid) return;
 
+  localStorage.setItem("jobid", jobid);
+  job_id  = jobid;
+  all_job = jobid;
 
-                jobTempData[job_id] = {
-                    temp: Array.isArray(data.temp) ? data.temp : [],
-                    tempA: Array.isArray(data.tempA) ? data.tempA : [],
-                    temp_event: Array.isArray(data.temp_event) ? data.temp_event : []
-                };
+  // 用統一流程載入一切（列表、快取、語系、點擊事件委派…）
+  get_input_by_job_id(jobid, {
+    closeModals: true,
+    callback: function () {
+      // 額外 UI 校正
+      document.getElementById("JobSelect")?.style.setProperty('display', 'none', 'important');
+      const jobIdInput = document.getElementById("job_id");
+      if (jobIdInput) jobIdInput.value = jobid;
 
-
-                document.getElementById("input_jobid_select").innerHTML = job_inputlist;
-                document.getElementById("JobSelect").style.display = 'none';
-                document.getElementById("job_id").value = jobid;
-
-                var s3Button = document.getElementById('S3');
-          
-            
-                var rows = document.querySelectorAll('#input_jobid_select tr');
-                rows.forEach(function(row) {
-                    row.addEventListener('click', function() { 
-                        input_event = this.className; 
-                        old_input_event = this.className;
-                    
-                    });
-                });
-
-                var language = getCookie('language');
-                if(language == "zh-cn"){
-
-                    document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = '启用');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '颗数清除');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '确认');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '启动');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重启');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感应');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定义1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定义2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定义3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定义4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定义5');
-                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋转');
-                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
-
-                
-                }else if(language =="zh-tw"){
-                    document.getElementById('101') && (document.getElementById('101').textContent = '禁用');
-                    document.getElementById('102') && (document.getElementById('102').textContent = 'Enable');
-                    document.getElementById('103') && (document.getElementById('103').textContent = '清除顆數');
-                    document.getElementById('104') && (document.getElementById('104').textContent = '確認');
-                    document.getElementById('105') && (document.getElementById('105').textContent = '啟動');
-                    document.getElementById('106') && (document.getElementById('106').textContent = '反向');
-                    document.getElementById('107') && (document.getElementById('107').textContent = '工序清除');
-                    document.getElementById('108') && (document.getElementById('108').textContent = '重啟');
-                    document.getElementById('109') && (document.getElementById('109').textContent = '一次感應');
-                    document.getElementById('110') && (document.getElementById('110').textContent = '自定義1');
-                    document.getElementById('111') && (document.getElementById('111').textContent = '自定義2');
-                    document.getElementById('112') && (document.getElementById('112').textContent = '自定義3');
-                    document.getElementById('113') && (document.getElementById('113').textContent = '自定義4');
-                    document.getElementById('114') && (document.getElementById('114').textContent = '自定義5');
-                    document.getElementById('115') && (document.getElementById('115').textContent = '自由旋轉');
-                    document.getElementById('116') && (document.getElementById('116').textContent = '跳工序');
-                }
-
-
-            },
-            error: function(xhr, status, error) {
-            
-            }
-        }); 
+      if (typeof updateInputButtonLabels === 'function') {
+        updateInputButtonLabels(getCookie?.('language'));
+      }
     }
+  });
 }
+
 
 
 function input_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
@@ -1576,6 +1514,6 @@ function hideOverlay() {
         padding: 10px;
     }
 
-    #edit_Event_Option option:disabled { color: gray; }
-
+    #Event_Option option:disabled { color: gray !important; }
+    #edit_Event_Option option:disabled { color: gray !important; }
 </style>

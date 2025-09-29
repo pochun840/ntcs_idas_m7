@@ -16,7 +16,7 @@
     <div style="margin-top: 10px">
         <div id="menu">
             <a id="bnt1" onclick="OpenButton('agent')"><?php echo $text['agent_title'];?></a>
-            <a id="bnt2" href="?url=Customize" target="_blank"   rel="noopener noreferrer"   style="color:#fff; text-decoration:none;" ><?php echo "廣達自定義";?></a>
+    
             <!--<a id="bnt2" onclick="OpenButton('button1')">Button2</a>
             <a id="bnt3" onclick="OpenButton('button2')">Button3</a>-->
         </div>

@@ -24,8 +24,7 @@ class Customize extends Controller
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();
         $data_button = $this->MiscellaneousModel->details('customize');
-
-
+   
         //判斷 csv 是否存在
         $data_csv = $this->load_customize_csv_arrays();
 
@@ -80,7 +79,7 @@ class Customize extends Controller
         $idxRP  = $hmap['read_position']  ?? null;
         $idxIP  = $hmap['input_position'] ?? null;
         $idxRES = $hmap['result']         ?? null;
-        if ($idxNO===null || $idxRP===null || $idxIP===null || $idxRES===null) {
+        if ($idxNO===null || $idxRP===null || $idxRES===null) {
             fclose($fh);
             return null;
         }
@@ -105,10 +104,10 @@ class Customize extends Controller
             // 取值並轉型
             $no  = (int)trim((string)($row[$idxNO]  ?? ''));
             $rp  = trim((string)($row[$idxRP]  ?? ''));
-            $ipS = trim((string)($row[$idxIP]  ?? ''));
+            $ipS = ($idxIP === null) ? '' : trim((string)($row[$idxIP] ?? ''));
             $re  = trim((string)($row[$idxRES] ?? ''));
 
-            $ip = ($ipS === '' ? null : (is_numeric($ipS) ? (float)$ipS : null));
+            $ip  = ($ipS === '' ? null : (is_numeric($ipS) ? (float)$ipS : null));
 
             $res['no'][]             = $no;
             $res['read_position'][]  = $rp;
@@ -221,7 +220,8 @@ class Customize extends Controller
 
             } else {
                 // ===== Modbus 讀取模式（維持原規則：讀寫位置都要有值才讀） =====
-                if ($read !== '' && $input !== '') {
+                if ($read !== '' && preg_match('/^\d+$/', $read)){
+
                     $readPos = (int)$read;
                     try {
                         $bytes = 1;
@@ -230,6 +230,56 @@ class Customize extends Controller
                             if ($bytes < 1) $bytes = 1;
                         }
                         $val = $this->get_modbus_api($readPos, $bytes);
+
+                        /* 與 get_api() 相同的前導 0 移除規則 */
+                        /*if (is_array($val)) {
+                            $i = 0;
+                            $n = count($val);
+                            while ($i < $n && (int)$val[$i] === 0) $i++;
+                            if ($i > 0) {
+                                $val = array_slice($val, $i);
+                                if (count($val) === 0)       $val = 0;
+                                elseif (count($val) === 1)   $val = $val[0];
+                            }
+                        }*/
+
+                        /* === 先除以 1000 === */
+                        if (in_array($readPos, [4170, 4171,4155,4156,4172,4173,4174,4175,4182,4183,4184,4185,4242,4243,4246,4247,4250,4251,4254,4255,4258,4259], true)) {
+                            if (is_numeric($val)) {
+                                $val = $val / 1000;
+                            } elseif (is_array($val)) {
+                                $val = array_map(static function($x){
+                                    return is_numeric($x) ? ($x / 1000) : $x;
+                                }, $val);
+                            }
+                        }
+
+                        /* === 通用：移除「尾端 0」(例: [2343,0] -> 2343) === */
+                        if (is_array($val)) {
+                            while (!empty($val) && is_numeric(end($val)) && (float)end($val) == 0.0) {
+                                array_pop($val);
+                            }
+                            if (count($val) === 0)       { $val = 0; }
+                            elseif (count($val) === 1)   { $val = $val[0]; }
+                        }
+
+                        /* === 通用：移除「尾端近零」(例: [2343,0] / [0.264,0.001] -> 2343 / 0.264) === */
+                        /* 可調整的近零門檻：1e-3 表示 <= 0.001 當作 0 */
+                        $TAIL_ZERO_EPS = 1e-3;
+
+                        if (is_array($val)) {
+                            while (!empty($val)) {
+                                $last = end($val);
+                                $isZeroish = is_numeric($last) && abs((float)$last) <= $TAIL_ZERO_EPS;
+                                if ($isZeroish) array_pop($val);
+                                else break;
+                            }
+                            if (count($val) === 0)       { $val = 0; }
+                            elseif (count($val) === 1)   { $val = $val[0]; }
+                        }
+
+                        
+
 
                         if (is_array($val))        $final = implode(',', array_map('strval', $val));
                         elseif ($val === null)     $final = '';
@@ -245,7 +295,6 @@ class Customize extends Controller
             if (!($csvReadText === '' && $input === '' && $result === '')) {
                 $rowsForCsv[] = [
                     'read_pos'  => $csvReadText,
-                    'input_pos' => $input,
                     'result'    => $final,   // ← 寫出計算後的結果
                 ];
             }
@@ -320,12 +369,12 @@ class Customize extends Controller
             fwrite($fp, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             // 表頭
-            fputcsv($fp, ['NO', 'Read Position', 'Input Position','result']);
+            fputcsv($fp, ['NO', 'Read Position','result']);
 
             // 內容
             $i = 1;
             foreach ($rowsForCsv as $r) {
-                fputcsv($fp, [$i++, $r['read_pos'], $r['input_pos'], $r['result'] ?? '']);
+                fputcsv($fp, [$i++, $r['read_pos'], $r['result'] ?? '']);
             }
 
             @flock($fp, LOCK_UN);
@@ -490,50 +539,125 @@ class Customize extends Controller
         }
     }
 
+
     public function RegMap($addr, $default = null){
+
         static $inited = false;
-        static $map = [];      // 精確位址對應：addr => bytes
+        static $map = [];      // 精確位址對應：addr => bytes（words）
         static $ranges = [];   // 連續區間： [beg, end, bytes]
 
         if (!$inited) {
             $inited = true;
 
-            // 小工具：一次加入多個位址
-            $add = function (int $size, array $addresses) use (&$map) {
-                foreach ($addresses as $a) {
+            // 小工具：一次加入多個起點位址（每個起點固定回傳 size 個 16-bit words）
+            $add = function (int $size, array $starts) use (&$map) {
+                foreach ($starts as $a) {
                     $map[(int)$a] = $size;
                 }
             };
 
             // 4.1 鎖附結果資訊
-            $add(1, range(4096, 4101));                         // FASTEN_YEAR..FASTEN_SEC
-            $add(2, [4102]);                                    // FASTEN_CONTROLLER_SN
-            $add(10, [4112, 4122, 4132]);                       // TOOL_MN / TOOL_SN / JOB_NAME
-            $add(6, [4138]);                                    // SEQ_NAME
-            $add(1, [4144,4145,4148,4149,4150,4151,4152,4153,   // 單位元組欄位
-                    4154,4157,4158,4161,4162,4163,4164,4167,
-                    4168,4169]);
-            $add(2, [4146,4155,4159,4165,4170,4172,4174,4176,   // 兩位元組欄位
-                    4178,4180,4182,4184,4188,4190]);
-            $add(1, [4186, 4187]);                              // DOWNSHITF_RPM / FIND_RPM
-            $add(50, [4192]);                                   // FASTEN_BARCODE
+            $add(1, range(4096, 4101)); // FASTEN_YEAR..FASTEN_SEC（每點 1 word）
 
-            // 目前條碼（CURRENT/INPUT_BARCODE 都在 396，50 bytes）
-            $add(50, [396]);
+            // 控制器序號：4102~4111，任意起點都讀滿 10 words
+            $add(10, range(4102, 4111));
 
-            // ===== 這裡是「連續區間」：每點固定 2 bytes =====
-            // 4.3 過程資料（含 Torque/Angle/RPM/Power/Time）
-            $ranges[] = [8192, 12190, 2];   // Torque
-            $ranges[] = [12192, 16190, 2];  // Angle
-            $ranges[] = [16192, 18191, 2];  // RPM
-            $ranges[] = [18192, 20191, 2];  // Power
-            $ranges[] = [20192, 22191, 2];  // Time
+            // 起子型號：4112~4121，任意起點都讀滿 10 words
+            $add(10, range(4112, 4121));
 
-            // 4.2 進階步驟資料（這段在規格中是連續偶數位址，統一 2 bytes）
+            // 起子序號：4122~4131，任意起點都讀滿 10 words
+            // （若現場不需要亦可移除，不影響其餘邏輯）
+            $add(10, range(4122, 4131));
+
+            // JOB_NAME：4132~4137，任意起點讀滿 6 words（確保 4132 與 4133 會不同）
+            $add(6, range(4132, 4137));
+
+            // SEQ_NAME：4138~4143，任意起點讀滿 6 words
+            $add(6, range(4138, 4143));
+
+            // 目標扭力：4170~4171，任意起點讀滿 2 words
+            $add(2, range(4170, 4171));
+
+            // 目標角度：4176~4177，任意起點讀滿 2 words
+            $add(2, range(4176, 4177));
+
+            // 鎖附角度：4159~4160，任意起點讀滿 2 words
+            $add(2, range(4159, 4160));
+            
+            // 鎖附總角度：4190~4191，任意起點讀滿 2 words
+            $add(2, range(4190, 4191));
+
+            // 扭力上限：4172~4173，任意起點讀滿 2 words
+            $add(2, range(4172, 4173));
+
+            // 扭力下限：4174~4175，任意起點讀滿 2 words
+            $add(2, range(4174, 4175));
+
+            // 角度上限：4178~4179，任意起點讀滿 2 words
+            $add(2, range(4178, 4179));
+
+            // 角度下限：4180~4181，任意起點讀滿 2 words
+            $add(2, range(4180, 4181));
+
+            // 門檻點扭力：4182~4183，任意起點讀滿 2 words
+            $add(2, range(4182, 4183));
+
+            // 降速點扭力：4184~4185，任意起點讀滿 2 words
+            $add(2, range(4184, 4185));
+
+            // 步驟1扭力：4242~4243，任意起點讀滿 2 words
+            $add(2, range(4242, 4243));
+
+            // 步驟1角度：4244~4245，任意起點讀滿 2 words
+            $add(2, range(4244, 4245));
+
+            // 步驟2扭力：4246~4247，任意起點讀滿 2 words
+            $add(2, range(4246, 4247));
+
+            // 步驟2角度：4248~4249，任意起點讀滿 2 words
+            $add(2, range(4248, 4249));
+
+            // 步驟3扭力：4250~4251，任意起點讀滿 2 words
+            $add(2, range(4250, 4251));
+
+            // 步驟3角度：4252~4253，任意起點讀滿 2 words
+            $add(2, range(4252, 4253));
+
+            // 步驟4扭力：4254~4255，任意起點讀滿 2 words
+            $add(2, range(4254, 4255));
+
+            // 步驟4角度：4256~4257，任意起點讀滿 2 words
+            $add(2, range(4256, 4257));
+
+            
+            // 步驟5扭力：4258~4259，任意起點讀滿 2 words
+            $add(2, range(4258, 4259));
+
+            // 步驟5角度：4260~4261，任意起點讀滿 2 words
+            $add(2, range(4260, 4261));
+
+
+
+            // 其他單/雙 word 欄位（照你原表）
+            $add(1, [4144,4145,4148,4149,4150,4151,4152,4153,4154,4157,4158,4161,4162,4163,4164,4167,4168,4169]);
+            $add(2, [4146,4155,4159,4165,4170,4172,4174,4176,4178,4180,4182,4184,4188,4190]);
+            $add(1, [4186, 4187]);    // DOWNSHIFT_RPM / FIND_RPM
+
+            // 字串型大區塊
+            $add(50, [4192]);         // FASTEN_BARCODE（50 bytes）
+            $add(50, [396]);          // CURRENT/INPUT_BARCODE（50 bytes）
+
+            // ===== 連續區間（每點固定 2 bytes = 1 word）=====
+            // 4.3 過程資料（Torque/Angle/RPM/Power/Time）
+            $ranges[] = [8192, 12190, 2];  // Torque
+            $ranges[] = [12192, 16190, 2]; // Angle
+            $ranges[] = [16192, 18191, 2]; // RPM
+            $ranges[] = [18192, 20191, 2]; // Power
+            $ranges[] = [20192, 22191, 2]; // Time
+
+            // 4.2 進階步驟資料
             $ranges[] = [4242, 4272, 2];
             $ranges[] = [4400, 4426, 2];
-
-            // 需要再擴充其他位址 → 直接照上面 $add(...) 或 $ranges[] 加就好
         }
 
         $a = (int)$addr;
@@ -548,6 +672,8 @@ class Customize extends Controller
         // 再查精確位址
         return $map[$a] ?? $default; // 找不到就回 $default（預設 null）
     }
+
+
 
 
     public function get_list() {
@@ -657,22 +783,103 @@ class Customize extends Controller
                     $final = '';
                 }
             } elseif ($rp !== '' && preg_match('/^\d+$/', $rp)) {
-                // —— Modbus 模式 ——（維持你的規則：read 與 input 都要有值）
+                // —— Modbus 模式：只要 read 是數字就讀（input 可省略）
                 $mode = 'modbus';
-                if ($ip !== '' && preg_match('/^\d+$/', $ip)) {
-                    $readPos = (int)$rp;
-                    try {
-                        $bytes = 1;
-                        if (method_exists($this, 'RegMap')) {
-                            $bytes = (int)$this->RegMap($readPos);
-                            if ($bytes < 1) $bytes = 1;
-                        }
-                        $val = $this->get_modbus_api($readPos, $bytes);
-                        $final = $toString($val);
-                    } catch (\Throwable $e) {
-                        $final = '';
+                $readPos = (int)$rp;
+                try {
+                    $bytes = 1;
+                    if (method_exists($this, 'RegMap')) {
+                        $bytes = (int)$this->RegMap($readPos);
+                        if ($bytes < 1) $bytes = 1;
                     }
-                } else {
+                    $val = $this->get_modbus_api($readPos, $bytes);
+                    /* === 通用規則：若回傳為 16-bit 陣列，移除前導 0 ===
+                    範例：
+                        [0, 1093]   -> 1093
+                        [0, 0, 25]  -> 25
+                        [0]         -> 0      （全為 0 的情況保留單一 0）
+                        [12, 0]     -> "12,0" （非前導 0 不移除）
+                    */
+                    /*if (is_array($val)) {
+                        // 去掉前導 0
+                        $i = 0;
+                        $n = count($val);
+                        while ($i < $n && (int)$val[$i] === 0) $i++;
+                        if ($i > 0) {
+                            $val = array_slice($val, $i);
+                            // 若切完空陣列，表示全是 0，統一回傳 0
+                            if (count($val) === 0) $val = 0;
+                            // 若只剩一個數值，直接降維成純量，方便前端顯示
+                            elseif (count($val) === 1) $val = $val[0];
+                        }
+                    }*/
+
+                    /* === 先除以 1000 === */
+                    if (in_array($readPos, [4170, 4171,4155,4156,4172,4173,4174,4175,4182,4183,4184,4185,4242,4243,4246,4247,4250,4251,4254,4255,4258,4259], true)) {
+                        if (is_numeric($val)) {
+                            $val = $val / 1000;
+                        } elseif (is_array($val)) {
+                            $val = array_map(static function($x){
+                                return is_numeric($x) ? ($x / 1000) : $x;
+                            }, $val);
+
+                            /* ★ 再移除「尾端」的 0，避免 0.24,0 這類字串 */
+                            while (!empty($val) && is_numeric(end($val)) && (float)end($val) == 0.0) {
+                                array_pop($val);
+                            }
+                            if (count($val) === 0)       { $val = 0; }
+                            elseif (count($val) === 1)   { $val = $val[0]; }
+                        }
+                    }
+
+                    //總鎖附時間 先除以 1000
+                    if (in_array($readPos, [4158], true)) {
+                        if (is_numeric($val)) {
+                            $val = $val / 1000;
+                        } elseif (is_array($val)) {
+                            $val = array_map(static function($x){
+                                return is_numeric($x) ? ($x / 1000) : $x;
+                            }, $val);
+
+                            /* ★ 再移除「尾端」的 0，避免 0.24,0 這類字串 */
+                            while (!empty($val) && is_numeric(end($val)) && (float)end($val) == 0.0) {
+                                array_pop($val);
+                            }
+                            if (count($val) === 0)       { $val = 0; }
+                            elseif (count($val) === 1)   { $val = $val[0]; }
+                        }
+                    }
+
+                    
+                    /* === 通用：移除「尾端 0」(例: [2343,0] -> 2343) === */
+                    if (is_array($val)) {
+                        while (!empty($val) && is_numeric(end($val)) && (float)end($val) == 0.0) {
+                            array_pop($val);
+                        }
+                        if (count($val) === 0)       { $val = 0; }
+                        elseif (count($val) === 1)   { $val = $val[0]; }
+                    }
+
+                    /* === 通用：移除「尾端近零」(例: [2343,0] / [0.264,0.001] -> 2343 / 0.264) === */
+                    /* 可調整的近零門檻：1e-3 表示 <= 0.001 當作 0 */
+                    $TAIL_ZERO_EPS = 1e-3;
+
+                    if (is_array($val)) {
+                        while (!empty($val)) {
+                            $last = end($val);
+                            $isZeroish = is_numeric($last) && abs((float)$last) <= $TAIL_ZERO_EPS;
+                            if ($isZeroish) array_pop($val);
+                            else break;
+                        }
+                        if (count($val) === 0)       { $val = 0; }
+                        elseif (count($val) === 1)   { $val = $val[0]; }
+                    }
+
+
+                    $final = $toString($val);
+
+
+                } catch (\Throwable $e) {
                     $final = '';
                 }
             } else {
