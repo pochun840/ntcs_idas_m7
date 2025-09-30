@@ -29,19 +29,8 @@ function OpenButton(ButtonMode){
     }else if(ButtonMode == "Export_Data_download"){
         downloadCSVZip();
     }else if(ButtonMode == "Customize"){
-        const url = "?url=Customize";
-        const win = window.open(url, "_blank", "noopener,noreferrer");
-        if (!win) {
-            // 若被彈窗阻擋，改用隱形 <a> 觸發
-            const a = document.createElement("a");
-            a.href = url;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        }
-        return; // 避免走到後面的 alert
+        window.location.href = "?url=Customize";
+        return;
     }else{
         alert("Function ["+ ButtonMode +"] is under constructing ...");
     }

@@ -159,6 +159,7 @@ class Customize extends Controller
         $rowsForResp = [];
         $columnsWL   = self::ntcsColumns(); // 欄位白名單
 
+
         foreach ($data['rows'] as $r) {
             if (!is_array($r)) continue;
 
@@ -202,6 +203,8 @@ class Customize extends Controller
                 if ($col && preg_match('/^\w+$/', $col)) {
                     try {
                         $lastRow = $this->DataModel->get_operation_info();  // ★ 直接取最後一筆
+
+                        var_dump($lastRow);die();
                         if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
                             $val = $lastRow[$col];
                             if (is_array($val))        $final = implode(',', array_map('strval', $val));
@@ -230,18 +233,6 @@ class Customize extends Controller
                             if ($bytes < 1) $bytes = 1;
                         }
                         $val = $this->get_modbus_api($readPos, $bytes);
-
-                        /* 與 get_api() 相同的前導 0 移除規則 */
-                        /*if (is_array($val)) {
-                            $i = 0;
-                            $n = count($val);
-                            while ($i < $n && (int)$val[$i] === 0) $i++;
-                            if ($i > 0) {
-                                $val = array_slice($val, $i);
-                                if (count($val) === 0)       $val = 0;
-                                elseif (count($val) === 1)   $val = $val[0];
-                            }
-                        }*/
 
                         /* === 先除以 1000 === */
                         if (in_array($readPos, [4170, 4171,4155,4156,4172,4173,4174,4175,4182,4183,4184,4185,4242,4243,4246,4247,4250,4251,4254,4255,4258,4259], true)) {
@@ -279,7 +270,6 @@ class Customize extends Controller
                         }
 
                         
-
 
                         if (is_array($val))        $final = implode(',', array_map('strval', $val));
                         elseif ($val === null)     $final = '';
@@ -434,14 +424,12 @@ class Customize extends Controller
             "threshold_angle","downshift_torque","downshift_angle","downshift_speed",
             "final_tool_voltage","final_tool_current","barcode",
         ];
-        // 你目前只需要 step0~step5
-        for ($i=0; $i<=5; $i++) {
-            $columns[] = "step{$i}_last_times";
-            $columns[] = "step{$i}_last_angle";
-            $columns[] = "step{$i}_last_torque";
-            $columns[] = "step{$i}_last_threadshold";
+        // ★ 與前端索引一致：43..52 = step1~step5 的 [torque, angle]
+        for ($i = 1; $i <= 5; $i++) {
+            $columns[] = "step{$i}_last_torque"; // 43,45,47,49,51
+            $columns[] = "step{$i}_last_angle";  // 44,46,48,50,52
         }
-        return array_values($columns);
+        return $columns;
     }
 
 
@@ -800,7 +788,7 @@ class Customize extends Controller
                         [0]         -> 0      （全為 0 的情況保留單一 0）
                         [12, 0]     -> "12,0" （非前導 0 不移除）
                     */
-                    /*if (is_array($val)) {
+                    if (is_array($val)) {
                         // 去掉前導 0
                         $i = 0;
                         $n = count($val);
@@ -812,7 +800,7 @@ class Customize extends Controller
                             // 若只剩一個數值，直接降維成純量，方便前端顯示
                             elseif (count($val) === 1) $val = $val[0];
                         }
-                    }*/
+                    }
 
                     /* === 先除以 1000 === */
                     if (in_array($readPos, [4170, 4171,4155,4156,4172,4173,4174,4175,4182,4183,4184,4185,4242,4243,4246,4247,4250,4251,4254,4255,4258,4259], true)) {
