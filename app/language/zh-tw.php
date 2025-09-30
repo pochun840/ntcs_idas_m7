@@ -315,13 +315,13 @@ $text['cN.m'] = '牛頓.釐米';
 $text['customize'] = '自定義';
 $text['id'] = '系統流水號';
 $text['system_sn'] = '系統流水號';
-$text['data_time'] = '資料時間';
-$text['device_type'] = '鎖附控制器類型';
+$text['data_time'] = '鎖附紀錄時間';
+$text['info_device_type'] = '鎖附控制器類型';
 $text['device_id'] = '鎖附控制器編號';
 $text['device_sn'] = '鎖附控制器序號';
-$text['tool_type'] = '鎖附起子型號';
-$text['tool_sn'] = '鎖附起子序號';
-$text['tool_status'] = '鎖附起子狀態';
+$text['info_tool_type'] = '鎖附起子型號';
+$text['info_tool_sn'] = '鎖附起子序號';
+$text['info_tool_status'] = '鎖附起子狀態';
 $text['job_id'] = '鎖附工作編號';
 $text['job_name'] = '鎖附工作名稱';
 $text['sequence_id'] = '鎖附工序編號';
@@ -341,7 +341,7 @@ $text['last_screw_count'] = '鎖附顆數';
 $text['total_screw_count'] = '總顆數';
 $text['fasten_status'] = '鎖附結果';
 $text['error_message'] = '錯誤訊息';
-$text['fasten_direction'] = '工具運轉方向';
+$text['info_fasten_direction'] = '鎖附起子轉向';
 $text['rpm'] = '鎖附轉速';
 $text['hi_torque'] = '鎖附扭力上限';
 $text['lo_torque'] = '鎖附扭力下限';
@@ -436,9 +436,6 @@ $text['step15_last_times']       = '鎖附步驟15時間';
 $text['step15_last_angle']       = '鎖附步驟15角度';
 $text['step15_last_torque']      = '鎖附步驟15扭力';
 $text['step15_last_threadshold'] = '鎖附步驟15門檻';
-
-
-
 
 
 

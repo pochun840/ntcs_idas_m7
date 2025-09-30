@@ -196,11 +196,10 @@ function csvNoHeaderToJson(){
         // 取欄位（沒有就補空字串）
         $noRaw     = isset($cols[0]) ? trim((string)$cols[0]) : '';
         $readRaw   = isset($cols[1]) ? trim((string)$cols[1]) : '';
-        $inputRaw  = isset($cols[2]) ? trim((string)$cols[2]) : '';
         $resultRaw = isset($cols[3]) ? trim((string)$cols[3]) : '';
 
         // 略過全空行
-        if ($noRaw === '' && $readRaw === '' && $inputRaw === '' && $resultRaw === '') {
+        if ($noRaw === '' && $readRaw === '' && $resultRaw === '') {
             continue;
         }
 
@@ -208,7 +207,6 @@ function csvNoHeaderToJson(){
         $looksHeader =
             preg_match('/^no$/i', $noRaw) ||
             preg_match('/^read\s*position$/i', $readRaw) ||
-            preg_match('/^input\s*position$/i', $inputRaw) ||
             preg_match('/^result$/i', $resultRaw);
         if ($looksHeader) {
             continue; // 直接跳過表頭
@@ -224,7 +222,6 @@ function csvNoHeaderToJson(){
         $rows[] = [
             'no'             => $no,
             'read_position'  => $read,
-            'input_position' => $inputRaw,
             'result'         => $res[$read],
         ];
     }

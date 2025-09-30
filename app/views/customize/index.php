@@ -47,6 +47,10 @@
         'max_rows' => 'Maximum 100 rows allowed.', 'forbidden_idx' => 'This field ID is not allowed.',
         'in_use' => 'This field conflicts with the manual value. Remove one of them.',
         'nothing_to_save' => 'Nothing to save. Please add at least one row.',
+        'confirm_save_empty' => 'No data found. Do you want to save an empty configuration ?',
+        'saved_empty' => 'Saved.','ok' => 'OK', 'cancel' => 'Cancel',
+
+
 
 
       ],
@@ -63,6 +67,8 @@
         'max_rows' => '最多允許 100 列。','forbidden_idx' => '此欄位不可使用。',
         'in_use' => '此欄位與手動輸入的數值互斥，請移除其中之一。',
         'nothing_to_save' => '沒有可儲存的內容，請先新增至少一列或填入資料。',
+        'confirm_save_empty' => '目前沒有任何資料。要儲存為空設定嗎？',
+        'saved_empty' => '已儲存。', 'ok' => '確定', 'cancel' => '取消',
 
       ],
       'zh-cn' => [
@@ -78,6 +84,8 @@
         'max_rows' => '最多允许 100 行。','forbidden_idx' => '此字段不可使用。',
         'in_use' => '该字段与手动输入的数值互斥，请移除其中之一。',
         'nothing_to_save' => '没有可保存的内容，请先新增至少一行或填写数据。',
+        'confirm_save_empty' => '目前没有任何数据。要保存为空配置吗？',
+        'saved_empty' => '已保存。','ok' => '确定', 'cancel' => '取消',
 
       ],
     ];
@@ -661,8 +669,15 @@ function forbidMsg(digit){
 
 <script>
     (function(){
+
+    // 允許空白儲存（清空）
+    const ALLOW_EMPTY_SAVE = true; 
+
+    // 想要空表格就設 false
+    const START_WITH_EMPTY_ROW = false;  
+
     // 從 PHP 帶入
-    const CSV_DATA = <?php echo json_encode($data['data_csv'] ?? null, JSON_UNESCAPED_UNICODE); ?>;
+    let CSV_DATA = <?php echo json_encode($data['data_csv'] ?? null, JSON_UNESCAPED_UNICODE); ?>;
     const FIELD_NAME_BY_INDEX = <?php echo json_encode($btns ?? [], JSON_UNESCAPED_UNICODE); ?> || {};
 
     let ROW_UID = 1;
@@ -680,6 +695,29 @@ function forbidMsg(digit){
 
     let poller = null;
     let insertMarker = null;
+
+    // 取得 L 後
+    if (typeof alertify !== 'undefined' && alertify?.defaults?.glossary) {
+      alertify.defaults.glossary.ok = L.ok || 'OK';
+      alertify.defaults.glossary.cancel = L.cancel || 'Cancel';
+    }
+
+
+    if (
+      CSV_DATA &&
+      (
+        (CSV_DATA.no && CSV_DATA.no.length) ||
+        (CSV_DATA.read_position && CSV_DATA.read_position.length) ||
+        (CSV_DATA.input_position && CSV_DATA.input_position.length) ||
+        (CSV_DATA.result && CSV_DATA.result.length)
+      )
+    ) {
+      hydrateFromCsv(CSV_DATA);
+    } else if (START_WITH_EMPTY_ROW) {
+      addRow();
+    }
+    updateSaveButtonState();
+
 
     /* =========================
     * 互斥規則（唯一保留的限制）
@@ -854,9 +892,20 @@ function forbidMsg(digit){
 
     // 依據是否有內容啟用/停用儲存鈕
     function updateSaveButtonState(){
+
       if (!btnSave) return;
-      const on = anyDataExists();
-      btnSave.disabled = !on;
+      const hasData = anyDataExists();
+
+      if (ALLOW_EMPTY_SAVE) {
+        btnSave.disabled = false;  // 空也可按
+        btnSave.title = hasData ? '' : (L['confirm_save_empty'] || '');
+      } else {
+        btnSave.disabled = !hasData; // 需要有資料才可按
+        btnSave.title = '';
+      }
+
+      // 不要任何會讓它變淡或擋點擊的樣式
+      btnSave.classList.remove('w3-opacity', 'w3-disabled');
     }
 
 
@@ -1595,12 +1644,6 @@ function forbidMsg(digit){
         return tr;
     }
 
-    // 初始化
-    if (CSV_DATA && ((CSV_DATA.no && CSV_DATA.no.length) || (CSV_DATA.read_position && CSV_DATA.read_position.length) || (CSV_DATA.input_position && CSV_DATA.input_position.length) || (CSV_DATA.result && CSV_DATA.result.length))) {
-        hydrateFromCsv(CSV_DATA);
-    } else {
-        addRow();
-    }
 
     updateSaveButtonState();
 
@@ -1679,43 +1722,58 @@ function forbidMsg(digit){
     }
 
     function deleteSelectedRows(){
-        const rows = [...tbody.querySelectorAll('.row-ck:checked')].map(ck => ck.closest('tr')).filter(Boolean);
-        if (rows.length === 0) { if (window.alertify) alertify.alert('Info', L['none_selected']); else alert(L['none_selected']); return; }
+      const rows = [...tbody.querySelectorAll('.row-ck:checked')].map(ck => ck.closest('tr')).filter(Boolean);
+      if (rows.length === 0) {
+        if (window.alertify) alertify.alert('Info', L['none_selected']);
+        else alert(L['none_selected']);
+        return;
+      }
 
-        const doRemove = () => {
+      const doRemove = () => {
         rows.forEach(tr => {
-            tr.querySelectorAll('.field-chip').forEach(chip => { const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId); });
-            tr.remove();
+          tr.querySelectorAll('.field-chip').forEach(chip => {
+            const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId);
+          });
+          tr.remove();
         });
         renumber(); syncCkAllState();
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
         if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
-            bumpDom(); poller?.triggerNow();
+        bumpDom(); poller?.triggerNow();
+        updateSaveButtonState();
+      };
 
-              //刪完後更新儲存鈕狀態
-              updateSaveButtonState();
-        };
-
-        if (window.alertify) alertify.confirm(L['delete_sel'], L['confirm_delete'], doRemove, function(){});
-        else if (confirm(L['confirm_delete'])) doRemove();
+      if (window.alertify)
+        alertify
+          .confirm(L['delete_sel'], L['confirm_delete'], doRemove, function(){})
+          .set('labels', { ok: L.ok || 'OK', cancel: L.cancel || 'Cancel' });
+      else if (confirm(L['confirm_delete'])) doRemove();
     }
 
+
+
     function deleteAllRows(){
-        const doRemoveAll = () => {
-        tbody.querySelectorAll('.field-chip').forEach(chip => { const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId); });
+      
+      const doRemoveAll = () => {
+        tbody.querySelectorAll('.field-chip').forEach(chip => {
+          const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId);
+        });
         tbody.innerHTML = '';
         renumber(); syncCkAllState();
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
         if (btnAdd) btnAdd.disabled = false;
         bumpDom(); poller?.triggerNow();
+        updateSaveButtonState();
+      };
 
-        updateSaveButtonState(); // 新增
-
-        };
-
-        if (window.alertify) alertify.confirm(L['delete_all'], L['confirm_delete_all'], doRemoveAll, function(){});
-        else if (confirm(L['confirm_delete_all'])) doRemoveAll();
+      if (window.alertify)
+        alertify
+          .confirm(L['delete_all'], L['confirm_delete_all'], doRemoveAll, function(){})
+          .set('labels', { ok: L.ok || 'OK', cancel: L.cancel || 'Cancel' });
+      else if (confirm(L['confirm_delete_all'])) doRemoveAll();
     }
+
+
 
     if(IS_ADMIN){
         if(btnDelSel) btnDelSel.addEventListener('click', deleteSelectedRows);
@@ -1745,72 +1803,99 @@ function forbidMsg(digit){
     function insertBetweenFilled(n){ insertRowAt( getPosBetweenFilledPair(n) ); }
     function insertBetweenNos(no){ insertRowAt(no + 1); }
 
+    async function onSave(){
+        const hasData = anyDataExists();
 
-
-
-    function onSave(){
-
-        //頁面沒任何資料就不送
-        if (!anyDataExists()) {
-          const msg = L['nothing_to_save'] || 'Nothing to save. Please add at least one row.';
-          if (window.alertify) alertify.alert('Info', msg);
-          else alert(msg);
-          return;
+        // 空白儲存處理
+        if (!hasData) {
+          if (!ALLOW_EMPTY_SAVE) {
+            const msg = L['nothing_to_save'] || 'Nothing to save. Please add at least one row.';
+            if (window.alertify) alertify.alert('Info', msg); else alert(msg);
+            return;
+          }
+          // 允許空白儲存 → 詢問是否清空伺服端資料
+          const confirmMsg = L['confirm_save_empty'] || 'No data found. Save empty (clear server data)?';
+          const ok = (window.alertify)
+            ? await new Promise(res => alertify.confirm('Confirm', confirmMsg, () => res(true), () => res(false)))
+            : confirm(confirmMsg);
+          if (!ok) return;
         }
 
-        const payload = { rows: collectData() };
+        // 一律蒐集（空白時 rows 會是 []），並帶 clear 旗標（後端可用）
+        const payload = { rows: collectData(), clear: hasData ? 0 : 1 };
 
-        if (!validateNumericRows()) {
-        if (window.alertify) alertify.alert('Error', L['num_only']);
-        else alert(L['num_only']);
-        return;
+        // ★ 相容舊版後端（有的後端會檢查這三個欄位長度）
+        if (!hasData) {
+          payload.no = [];
+          payload.read_position = [];
+          payload.input_position = [];
         }
 
-        if (!validateUniqueColumns()) {
-        if (window.alertify) alertify.alert('Error', L['no_dup']);
-        else alert(L['no_dup']);
-        return;
+
+        // 有資料時才需要做驗證（空白清空可略過）
+        if (hasData) {
+          if (!validateNumericRows()) {
+            if (window.alertify) alertify.alert('Error', L['num_only']); else alert(L['num_only']);
+            return;
+          }
+          if (!validateUniqueColumns()) {
+            if (window.alertify) alertify.alert('Error', L['no_dup']); else alert(L['no_dup']);
+            return;
+          }
+          if (!validateMutexRules()){
+            const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '欄位與手動值互斥，請移除其中之一。';
+            if (window.alertify) alertify.alert('Error', msg); else alert(msg);
+            return;
+          }
         }
-
-        // 互斥最終檢查
-        if (!validateMutexRules()){
-        const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '欄位與手動值互斥，請移除其中之一。';
-        if (window.alertify) alertify.alert('Error', msg);
-        else alert(msg);
-        return;
-        }
-
-    
-
 
         const spinner = document.getElementById('spinner');
         if (spinner) spinner.style.display = 'block';
 
         $.ajax({
-        url: SAVE_URL,
-        type:'POST',
-        data: JSON.stringify(payload),
-        contentType:'application/json; charset=UTF-8',
-        success: function(resp){
+          url: SAVE_URL,
+          type:'POST',
+          data: JSON.stringify(payload),
+          contentType:'application/json; charset=UTF-8',
+          success: function(resp){
             if (spinner) spinner.style.display = 'none';
+
+            // 回填 result（跟原本一樣）
             if (resp && Array.isArray(resp.rows)) {
-            resp.rows.forEach(r => {
+              resp.rows.forEach(r => {
                 const id = r.result_id || ('result-' + r.row_id);
                 const el = document.getElementById(id);
                 if (el) el.value = (r.result ?? '');
-            });
+              });
             }
-            if (window.alertify) { alertify.alert('OK', L['saved']); }
-            else { alert(L['saved']); }
-        },
-        error: function(xhr){
+
+            //若是「空設定」的儲存，清掉前端 fallback，避免輪詢再吃舊 CSV_DATA
+            if (!hasData) {
+                CSV_DATA = null; // 這裡需要第 1 步把 const 改成 let
+                try { localStorage.removeItem('customize.csv.cache'); } catch(e) {}
+                if (poller) {
+                  poller.stop();
+                  poller = createPoller();  // 重新啟動，這次不會帶 CSV_DATA
+                  poller.triggerNow();
+                }
+            }
+
+
+            // 依是否為清空顯示不同訊息（若沒加多語系可用預設英字）
+            const msg = (!hasData)
+              ? (L['saved_empty'] || 'Saved (empty configuration).')
+              : (L['saved'] || 'Saved successfully');
+            if (window.alertify) alertify.alert('OK', msg); else alert(msg);
+          },
+          error: function(xhr){
             if (spinner) spinner.style.display = 'none';
-            if (window.alertify) { alertify.alert('Error', L['save_fail']); }
-            else { alert(L['save_fail']); }
+            if (window.alertify) alertify.alert('Error', L['save_fail']); else alert(L['save_fail']);
             console.error('Save error:', xhr?.responseText || xhr);
-        }
+          }
         });
-    }
+      }
+
+
 
     })(); 
 </script>
@@ -1931,4 +2016,11 @@ function forbidMsg(digit){
       if(saved === '1') toggleTableDrawer(true);
     }catch(e){}
   })();
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnSave = document.getElementById('btnSave');
+    if (btnSave) btnSave.classList.remove('w3-opacity', 'w3-disabled');
+  });
 </script>

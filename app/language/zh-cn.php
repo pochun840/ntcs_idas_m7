@@ -314,16 +314,17 @@ $text['Lbf.in'] = '磅.英吋';
 $text['cN.m'] = '牛頓.厘米';
 
 //Customize 
+// zh-cn（简体中文）
 $text['customize'] = '自定义';
 $text['id'] = '系统流水号';
 $text['system_sn'] = '系统流水号';
-$text['data_time'] = '数据时间';
-$text['device_type'] = '设备种类';
+$text['data_time'] = '锁附记录时间';
+$text['info_device_type'] = '锁附控制器类型';
 $text['device_id'] = '锁附控制器编号';
 $text['device_sn'] = '锁附控制器序号';
-$text['tool_type'] = '锁附起子型号';
-$text['tool_sn'] = '锁附起子序号';
-$text['tool_status'] = '锁附起子状态';
+$text['info_tool_type'] = '锁附起子型号';
+$text['info_tool_sn'] = '锁附起子序号';
+$text['info_tool_status'] = '锁附起子状态';
 $text['job_id'] = '锁附工作编号';
 $text['job_name'] = '锁附工作名称';
 $text['sequence_id'] = '锁附工序编号';
@@ -343,7 +344,7 @@ $text['last_screw_count'] = '锁附颗数';
 $text['total_screw_count'] = '总颗数';
 $text['fasten_status'] = '锁附结果';
 $text['error_message'] = '错误信息';
-$text['fasten_direction'] = '工具运转方向';
+$text['info_fasten_direction'] = '锁附起子转向';
 $text['rpm'] = '锁附转速';
 $text['hi_torque'] = '锁附扭力上限';
 $text['lo_torque'] = '锁附扭力下限';
@@ -356,7 +357,7 @@ $text['downshift_torque'] = '锁附降速点扭力';
 $text['downshift_angle'] = '锁附降速点角度';
 $text['downshift_speed'] = '锁附降速点转速';
 $text['final_tool_voltage'] = '工具电压';
-$text['final_tool_current'] = '工具电流';
+$text['final_tool_current'] = '工具颗数';
 $text['barcode'] = '锁附条码';
 
 $text['step0_last_times']       = '锁附步骤0时间';
@@ -438,6 +439,7 @@ $text['step15_last_times']       = '锁附步骤15时间';
 $text['step15_last_angle']       = '锁附步骤15角度';
 $text['step15_last_torque']      = '锁附步骤15扭力';
 $text['step15_last_threadshold'] = '锁附步骤15门槛';
+
 
 
 

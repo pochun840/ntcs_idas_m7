@@ -132,11 +132,33 @@ class Customize extends Controller
      * 寫入 CSV 至 /var/www/html/temp，檔名：customize_<SN>_YYYYMMDDhhmmss[_n].csv
      * 回傳 JSON：{res_type, res_msg, affected, filename, download_url}
      */
+   
     public function save_positions(){
 
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            exit;
+        }
         header('Content-Type: application/json; charset=utf-8');
 
-        // --- i18n 簡訊息 ---
+        // 同時支援 JSON 與 x-www-form-urlencoded
+        $raw  = file_get_contents('php://input');
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            $data = $_POST; // 舊式表單也吃
+        }
+
+        $rows  = $data['rows'] ?? [];
+        $clear = !empty($data['clear']); // 前端會傳 1
+
+        // 相容舊版前端：三欄都空也視為清空
+        $compatAllEmpty = empty($rows)
+                    && empty($data['no'])
+                    && empty($data['read_position'])
+                    && empty($data['input_position']);
+
+        // --- i18n 訊息 ---
         $lang = strtolower($_SESSION['language'] ?? 'en-us');
         $M = [
             'en-us' => ['invalid'=>'Invalid payload.','empty'=>'No rows to save.','ok'=>'Saved successfully.','server'=>'Server error.'],
@@ -145,10 +167,29 @@ class Customize extends Controller
         ];
         $msg = $M[$lang] ?? $M['en-us'];
 
-        // --- 讀取 JSON ---
-        $raw = file_get_contents('php://input');
-        $data = json_decode($raw, true);
-        if (!is_array($data) || !isset($data['rows']) || !is_array($data['rows'])) {
+        // === 空設定：清空伺服端資料 ===
+        if ($clear || $compatAllEmpty) {
+            $csvFile = '/var/www/html/temp/customize.csv';
+            $ok = true;
+
+            if (is_file($csvFile)) {
+                $ok = @unlink($csvFile);
+                if (!$ok) { // 刪不掉就截斷
+                    $fp = @fopen($csvFile, 'w');
+                    if ($fp) { fclose($fp); $ok = true; }
+                }
+            }
+
+            echo json_encode([
+                'res_type' => $ok ? 'OK' : 'Error',
+                'res_msg'  => $ok ? ($msg['ok'] ?? 'OK') : ($msg['server'] ?? 'Server error'),
+                'rows'     => []   // 前端 success 內會用到 resp.rows
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // === 檢查 payload ===
+        if (!is_array($rows)) {
             http_response_code(400);
             echo json_encode(['res_type'=>'Error','res_msg'=>$msg['invalid']], JSON_UNESCAPED_UNICODE);
             return;
@@ -159,8 +200,7 @@ class Customize extends Controller
         $rowsForResp = [];
         $columnsWL   = self::ntcsColumns(); // 欄位白名單
 
-
-        foreach ($data['rows'] as $r) {
+        foreach ($rows as $r) {
             if (!is_array($r)) continue;
 
             $row_id = isset($r['row_id']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$r['row_id']) : '';
@@ -202,8 +242,7 @@ class Customize extends Controller
 
                 if ($col && preg_match('/^\w+$/', $col)) {
                     try {
-                        $lastRow = $this->DataModel->get_operation_info();  // ★ 直接取最後一筆
-
+                        $lastRow = $this->DataModel->get_operation_info();  // 取最後一筆
                         if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
                             $val = $lastRow[$col];
                             if (is_array($val))        $final = implode(',', array_map('strval', $val));
@@ -221,9 +260,8 @@ class Customize extends Controller
                 }
 
             } else {
-                // ===== Modbus 讀取模式（維持原規則：讀寫位置都要有值才讀） =====
+                // ===== Modbus 讀取模式（維持原規則） =====
                 if ($read !== '' && preg_match('/^\d+$/', $read)){
-
                     $readPos = (int)$read;
                     try {
                         $bytes = 1;
@@ -233,8 +271,8 @@ class Customize extends Controller
                         }
                         $val = $this->get_modbus_api($readPos, $bytes);
 
-                        /* === 先除以 1000 === */
-                        if (in_array($readPos, [4170, 4171,4155,4156,4172,4173,4174,4175,4182,4183,4184,4185,4242,4243,4246,4247,4250,4251,4254,4255,4258,4259], true)) {
+                        /* 先除以 1000 的欄位 */
+                        if (in_array($readPos, [4170,4171,4155,4156,4172,4173,4174,4175,4182,4183,4184,4185,4242,4243,4246,4247,4250,4251,4254,4255,4258,4259], true)) {
                             if (is_numeric($val)) {
                                 $val = $val / 1000;
                             } elseif (is_array($val)) {
@@ -244,7 +282,7 @@ class Customize extends Controller
                             }
                         }
 
-                        /* === 通用：移除「尾端 0」(例: [2343,0] -> 2343) === */
+                        /* 移除尾端 0 / 近零 */
                         if (is_array($val)) {
                             while (!empty($val) && is_numeric(end($val)) && (float)end($val) == 0.0) {
                                 array_pop($val);
@@ -252,11 +290,7 @@ class Customize extends Controller
                             if (count($val) === 0)       { $val = 0; }
                             elseif (count($val) === 1)   { $val = $val[0]; }
                         }
-
-                        /* === 通用：移除「尾端近零」(例: [2343,0] / [0.264,0.001] -> 2343 / 0.264) === */
-                        /* 可調整的近零門檻：1e-3 表示 <= 0.001 當作 0 */
                         $TAIL_ZERO_EPS = 1e-3;
-
                         if (is_array($val)) {
                             while (!empty($val)) {
                                 $last = end($val);
@@ -268,8 +302,6 @@ class Customize extends Controller
                             elseif (count($val) === 1)   { $val = $val[0]; }
                         }
 
-                        
-
                         if (is_array($val))        $final = implode(',', array_map('strval', $val));
                         elseif ($val === null)     $final = '';
                         elseif (is_scalar($val))   $final = (string)$val;
@@ -280,14 +312,13 @@ class Customize extends Controller
                 }
             }
 
-            // 收集要寫入 CSV 的行（含 result = $final）
+            // 收集要寫入 CSV 的行（只留 NO / Read Position / result）
             if (!($csvReadText === '' && $input === '' && $result === '')) {
                 $rowsForCsv[] = [
-                    'read_pos'  => $csvReadText,
-                    'result'    => $final,   // ← 寫出計算後的結果
+                    'read_pos' => $csvReadText,
+                    'result'   => $final,   // 寫出計算後的結果
                 ];
             }
-
 
             // 回寫前端結果欄
             if ($row_id !== '') {
@@ -357,8 +388,8 @@ class Customize extends Controller
             // UTF-8 BOM（Excel 友善）
             fwrite($fp, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-            // 表頭
-            fputcsv($fp, ['NO', 'Read Position','result']);
+            // 表頭（已移除 Input Position）
+            fputcsv($fp, ['NO', 'Read Position', 'result']);
 
             // 內容
             $i = 1;
@@ -406,6 +437,8 @@ class Customize extends Controller
             ], JSON_UNESCAPED_UNICODE);
         }
     }
+
+
 
     /**
      * ntcs_data 欄位白名單（依索引對應欄位）

@@ -207,6 +207,10 @@ class Admins extends Controller
         $message['client_status'] = $this->StopService("agent_client.php");//1.檢測server.php
         $message['server_status'] = $this->StopService("agent_server.php");//2.檢測client.php
 
+        // 再把 9501、9502 這兩個埠上的 listener 一次關掉
+        $message['ports'] = $this->StopPorts([9501, 9502]);
+
+
         echo json_encode($message);
     }
 
@@ -255,6 +259,39 @@ class Admins extends Controller
         return $message;
 
     }
+
+    private function StopPorts(array $ports): array
+    {
+        $killed = [];
+        $notFound = [];
+
+        foreach ($ports as $p) {
+            $port = (int)$p;
+            if ($port < 1 || $port > 65535) { continue; }
+
+            // 1) 試 fuser 一次關
+            $out = []; $code = 0;
+            exec("sudo fuser -k {$port}/tcp 2>&1", $out, $code);
+            if ($code === 0) { $killed[] = $port; continue; }
+
+            // 2) 退而求其次：用 lsof 抓 LISTEN 的 PID 再 kill
+            $pids = [];
+            exec("lsof -t -iTCP:{$port} -sTCP:LISTEN 2>/dev/null", $pids);
+            if (!empty($pids)) {
+                foreach ($pids as $pid) {
+                    $pid = (int)$pid;
+                    if ($pid > 0) { exec("sudo kill " . escapeshellarg($pid)); }
+                }
+                $killed[] = $port;
+            } else {
+                $notFound[] = $port;
+            }
+        }
+
+        return ['killed' => $killed, 'not_found' => $notFound];
+    }
+
+
 
     public function EditCsvPath()
     {

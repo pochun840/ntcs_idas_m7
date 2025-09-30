@@ -7,8 +7,6 @@ $server->set([
     'worker_num'               => 2,
     'max_request'              => 0,
     'dispatch_mode'            => 3,
-    'heartbeat_check_interval' => 30,
-    'heartbeat_idle_time'      => 60,
     'package_max_length'       => 4 * 1024 * 1024,
 ]);
 
@@ -50,14 +48,35 @@ $onOpen = function (Server $server, $request) use ($wsReady, $broadcastSamePort)
 };
 
 /** message */
-$onMessage = function (Server $server, $frame) use ($wsReady, $broadcastSamePort) {
+
+$onMessage = function (Server $server, $frame) use ($broadcastSamePort) {
     // 找出發話者所在的埠
     $info = $server->connection_info($frame->fd);
     $port = (int)($info['server_port'] ?? 0);
-    $msg  = "Client {$frame->fd} said: {$frame->data}";
-    // ✅ 只廣播給同埠
+
+    if ($port === 9502) {
+        // 9502：移除 "rows":[ 與結尾的 ]，只送出 rows 內部物件（以逗號串接）
+        $data = json_decode($frame->data, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && isset($data['rows']) && is_array($data['rows'])) {
+            $payload = implode(',', array_map(
+                fn($r) => json_encode($r, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                $data['rows']
+            ));
+            $broadcastSamePort($server, $port, $payload);
+            return;
+        }
+
+        // 格式不是預期，就原樣轉發
+        $broadcastSamePort($server, $port, (string)$frame->data);
+        return;
+    }
+
+    // 9501：保留 "Client X said: ..."
+    $msg = "Client {$frame->fd} said: {$frame->data}";
     $broadcastSamePort($server, $port, $msg);
 };
+
 
 /** close */
 $onClose = function (Server $server, $fd) use ($wsReady, $broadcastSamePort) {
