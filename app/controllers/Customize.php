@@ -204,7 +204,6 @@ class Customize extends Controller
                     try {
                         $lastRow = $this->DataModel->get_operation_info();  // ★ 直接取最後一筆
 
-                        var_dump($lastRow);die();
                         if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
                             $val = $lastRow[$col];
                             if (is_array($val))        $final = implode(',', array_map('strval', $val));
@@ -624,6 +623,8 @@ class Customize extends Controller
             // 步驟5角度：4260~4261，任意起點讀滿 2 words
             $add(2, range(4260, 4261));
 
+            //鎖附條碼：4192~4241，任意起點讀滿 50 words
+             $add(50, range(4192, 4241));
 
 
             // 其他單/雙 word 欄位（照你原表）

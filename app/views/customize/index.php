@@ -46,6 +46,8 @@
         'move_up'=>'Move Up','move_down'=>'Move Down',
         'max_rows' => 'Maximum 100 rows allowed.', 'forbidden_idx' => 'This field ID is not allowed.',
         'in_use' => 'This field conflicts with the manual value. Remove one of them.',
+        'nothing_to_save' => 'Nothing to save. Please add at least one row.',
+
 
       ],
       'zh-tw' => [
@@ -60,6 +62,7 @@
         'move_up'=>'往上移動','move_down'=>'往下移動',
         'max_rows' => '最多允許 100 列。','forbidden_idx' => '此欄位不可使用。',
         'in_use' => '此欄位與手動輸入的數值互斥，請移除其中之一。',
+        'nothing_to_save' => '沒有可儲存的內容，請先新增至少一列或填入資料。',
 
       ],
       'zh-cn' => [
@@ -74,6 +77,7 @@
         'move_up'=>'往上移动','move_down'=>'往下移动',
         'max_rows' => '最多允许 100 行。','forbidden_idx' => '此字段不可使用。',
         'in_use' => '该字段与手动输入的数值互斥，请移除其中之一。',
+        'nothing_to_save' => '没有可保存的内容，请先新增至少一行或填写数据。',
 
       ],
     ];
@@ -282,36 +286,62 @@
   </style>
 
   <?php if(($_SESSION['privilege'] ?? '') === 'admin' && !empty($btns)) : ?>
-    <div class="tabs" id="customizeTabs">
-      <div class="tabs-nav" role="tablist">
-        <button class="tab-btn" data-tab-target="#tab-4-1">4-1</button>
-        <!-- <button class="tab-btn" data-tab-target="#tab-4-2">4-2</button> -->
-      </div>
+      <div class="tabs" id="customizeTabs">
+        <div class="tabs-nav" role="tablist">
+          <button class="tab-btn" data-tab-target="#tab-4-1">4-1</button>
+          <button class="tab-btn" data-tab-target="#tab-4-2">4-2</button>
+        </div>
 
-      <div class="tab-pane" id="tab-4-1" role="tabpanel">
-        <div class="field-bank">
-          <h4><?php echo htmlspecialchars($data['text']['customize'] ?? 'Customize'); ?></h4>
-          <div class="field-list" id="fieldList">
-            <?php foreach ($btns as $idx => $name){
-              $idx   = is_numeric($idx) ? (int)$idx : $idx;
-              $label = $data['text'][$name] ?? $name;
-            ?>
-              <button class="field-btn"
-                      draggable="true"
-                      id="<?php echo 'fb-'.htmlspecialchars($idx); ?>"
-                      data-field-index="<?php echo htmlspecialchars($idx); ?>"
-                      data-field-name="<?php echo htmlspecialchars($name); ?>"
-                      data-field-label="<?php echo htmlspecialchars($label); ?>"
-                      title="<?php echo htmlspecialchars($label); ?>">
-                <code><?php //echo htmlspecialchars($idx); ?></code><?php echo htmlspecialchars($label); ?>
-              </button>
-            <?php } ?>
-          </div>
+        <!-- 4-1：不顯示 43~52 -->
+        <div class="tab-pane" id="tab-4-1" role="tabpanel">
+            <div class="field-bank">
+              <h4><?php echo htmlspecialchars($data['text']['customize'] ?? 'Customize'); ?></h4>
+              <div class="field-list" id="fieldList">
+                <?php foreach ($btns as $idx => $name){
+                  $intIdx = is_numeric($idx) ? (int)$idx : null;
+                  if ($intIdx !== null && $intIdx >= 43 && $intIdx <= 52) { continue; } // 跳過 43~52
+                  $label = $data['text'][$name] ?? $name;
+                ?>
+                  <button class="field-btn"
+                          draggable="true"
+                          id="<?php echo 'fb-'.htmlspecialchars($idx); ?>"
+                          data-field-index="<?php echo htmlspecialchars($idx); ?>"
+                          data-field-name="<?php echo htmlspecialchars($name); ?>"
+                          data-field-label="<?php echo htmlspecialchars($label); ?>"
+                          title="<?php echo htmlspecialchars($label); ?>">
+                    <code><?php /* echo htmlspecialchars($idx); */ ?></code><?php echo htmlspecialchars($label); ?>
+                  </button>
+                <?php } ?>
+              </div>
+            </div>
+        </div>
+
+        <!-- 4-2：只顯示 43~52 -->
+        <div class="tab-pane" id="tab-4-2" role="tabpanel">
+            <div class="field-bank">
+              <h4><?php echo htmlspecialchars($data['text']['customize'] ?? 'Customize'); ?></h4>
+              <div class="field-list" id="fieldList-2">
+                <?php for ($idx = 43; $idx <= 52; $idx++):
+                  if (!isset($btns[$idx])) continue;
+                  $name  = $btns[$idx];
+                  $label = $data['text'][$name] ?? $name;
+                ?>
+                  <button class="field-btn"
+                          draggable="true"
+                          id="fb-<?php echo htmlspecialchars($idx); ?>"
+                          data-field-index="<?php echo htmlspecialchars($idx); ?>"
+                          data-field-name="<?php echo htmlspecialchars($name); ?>"
+                          data-field-label="<?php echo htmlspecialchars($label); ?>"
+                          title="<?php echo htmlspecialchars($label); ?>">
+                    <code></code><?php echo htmlspecialchars($label); ?>
+                  </button>
+                <?php endfor; ?>
+              </div>
+            </div>
         </div>
       </div>
 
-      <div class="tab-pane" id="tab-4-2" role="tabpanel"></div>
-    </div>
+
   <?php endif; ?>
 
   <script>
@@ -643,7 +673,7 @@ function forbidMsg(digit){
     const tbody = document.getElementById('dynTbody');
     const btnAdd = document.getElementById('btnAddRow');
     const btnSave = document.getElementById('btnSave');
-
+    updateSaveButtonState(); 
     const ckAll  = document.getElementById('ckAll');
     const btnDelSel = document.getElementById('btnDeleteSelected');
     const btnDelAll = document.getElementById('btnDeleteAll');
@@ -807,48 +837,89 @@ function forbidMsg(digit){
     }
 
     function getRowCount(){ return tbody ? tbody.querySelectorAll('tr:not(.insert-marker)').length : 0; }
+
+    // 是否任何一列有「有效內容」：有 chip、或讀/輸入欄有數字
+    function anyDataExists(){
+      const rows = [...tbody.querySelectorAll('tr:not(.insert-marker)')];
+      for (const tr of rows){
+        const tdRead  = tr.querySelector('td:nth-child(3)');
+        const tdInput = tr.querySelector('td:nth-child(4)');
+        const hasChip = !!tdRead?.querySelector('.field-chip');
+        const readVal = tdRead?.querySelector('input.table-input[type="text"]')?.value?.trim() || '';
+        const inputVal= tdInput?.querySelector('input.table-input[type="text"]')?.value?.trim() || '';
+        if (hasChip || readVal !== '' || inputVal !== '') return true;
+      }
+      return false;
+    }
+
+    // 依據是否有內容啟用/停用儲存鈕
+    function updateSaveButtonState(){
+      if (!btnSave) return;
+      const on = anyDataExists();
+      btnSave.disabled = !on;
+    }
+
+
+
     function updateAddButtonState(){ if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS; }
 
-    /* ===== 欄位銀行 ===== */
-    const fieldList = document.getElementById('fieldList');
-    let dragPayload = null;
+    /* ===== （同時支援 4-1 與 4-2） 分頁  ===== */
+      function bindFieldBank(containerId){
+        const bank = document.getElementById(containerId);
+        if (!bank) return;
 
-    if (fieldList) {
-        [...fieldList.querySelectorAll('.field-btn')].forEach(btn => {
-        const idx = btn.getAttribute('data-field-index'); if (!btn.id) btn.id = 'fb-' + String(idx);
+        // 確保每顆按鈕有 id=fb-<index>
+        [...bank.querySelectorAll('.field-btn')].forEach(btn => {
+          const idx = btn.getAttribute('data-field-index');
+          if (idx && !btn.id) btn.id = 'fb-' + String(idx);
         });
 
-        fieldList.addEventListener('dragstart', (e) => {
-        const btn = e.target.closest('.field-btn'); if (!btn) return;
-        const idx = btn.getAttribute('data-field-index') || '';
-        const name= btn.getAttribute('data-field-name') || '';
-        dragPayload = {
+        let localDragPayload = null;
+
+        bank.addEventListener('dragstart', (e) => {
+          const btn = e.target.closest('.field-btn'); if (!btn) return;
+          const idx = btn.getAttribute('data-field-index') || '';
+          const name= btn.getAttribute('data-field-name') || '';
+          localDragPayload = {
             idx, name,
             label: btn.getAttribute('data-field-label') || btn.getAttribute('title') || '',
             originId: btn.id
-        };
-        try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', idx); } catch {}
+          };
+          try {
+            e.dataTransfer.effectAllowed = 'copyMove';
+            e.dataTransfer.setData('text/plain', idx);
+          } catch {}
         });
 
         // 點一下 → 放到聚焦或第一個空白「讀取位置」
-        fieldList.addEventListener('click', (e) => {
-        const btn = e.target.closest('.field-btn'); if (!btn) return;
-        const idx = btn.getAttribute('data-field-index') || '';
-        const name= btn.getAttribute('data-field-name') || '';
-        const label = btn.getAttribute('data-field-label') || btn.getAttribute('title') || '';
-        const originId = btn.id;
+        bank.addEventListener('click', (e) => {
+          const btn = e.target.closest('.field-btn'); if (!btn) return;
+          const idx   = btn.getAttribute('data-field-index') || '';
+          const name  = btn.getAttribute('data-field-name')  || '';
+          const label = btn.getAttribute('data-field-label') || btn.getAttribute('title') || '';
+          const originId = btn.id;
 
-        let targetTd = document.activeElement?.closest?.('td.drop-target[data-drop="read"]') || null;
-        if (!targetTd) {
+          let targetTd = document.activeElement?.closest?.('td.drop-target[data-drop="read"]') || null;
+          if (!targetTd) {
             targetTd = [...tbody.querySelectorAll('td.drop-target[data-drop="read"]')].find(td => {
-            const chip = td.querySelector('.field-chip'); if (chip) return false;
-            const inp = td.querySelector('input.table-input'); return !inp || !inp.value.trim();
+              const chip = td.querySelector('.field-chip'); if (chip) return false;
+              const inp  = td.querySelector('input.table-input'); return !inp || !inp.value.trim();
             }) || null;
-        }
-        if (!targetTd) return;
-        assignFieldToCell({ idx, name, label, originId }, targetTd);
+          }
+          if (!targetTd) return;
+          assignFieldToCell({ idx, name, label, originId }, targetTd);
         });
-    }
+
+        // 美化拖曳狀態（可選）
+        bank.addEventListener('dragstart', e => { const b = e.target.closest('.field-btn'); if (b) b.classList.add('dragging'); });
+        bank.addEventListener('dragend',   e => { const b = e.target.closest('.field-btn'); if (b) b.classList.remove('dragging'); });
+      }
+
+      // 綁定兩個銀行
+      bindFieldBank('fieldList');
+      bindFieldBank('fieldList-2');
+
+    
 
     /* ===== 表格拖放（合併 dragover） ===== */
     tbody.addEventListener('dragover', (e) => {
@@ -963,6 +1034,9 @@ function forbidMsg(digit){
 
         validateUniqueColumns();
         bumpDom(); poller?.triggerNow?.();
+
+        //有資料時 儲存
+        updateSaveButtonState(); 
     }
 
     /* ===== 輔助 ===== */
@@ -1018,13 +1092,20 @@ function forbidMsg(digit){
 
         validateUniqueColumns?.();
         if (btnAdd) {
-        const count = tbody ? tbody.querySelectorAll('tr').length : 0;
-        btnAdd.disabled = count >= 100;
+          const count = tbody ? tbody.querySelectorAll('tr').length : 0;
+          btnAdd.disabled = count >= 100;
         }
+
+        //載入完成後更新儲存鈕
+        updateSaveButtonState();
     }
 
-    function findBankButtonByIndex(idx) { return fieldList?.querySelector(`.field-btn[data-field-index="${cssEscape(String(idx))}"]`) || null; }
-    function findBankButtonByOrigin(originId) { return fieldList?.querySelector(`.field-btn#${cssEscape(originId)}`) || null; }
+    function findBankButtonByIndex(idx) {
+      return document.querySelector(`.field-btn[data-field-index="${cssEscape(String(idx))}"]`) || null;
+    }
+    function findBankButtonByOrigin(originId) {
+      return document.querySelector(`.field-btn#${cssEscape(originId)}`) || null;
+    }
     function restoreFieldBankButton(originId) {
         const btn = document.getElementById(originId) || findBankButtonByOrigin(originId);
         if (btn) { btn.style.display = ''; delete btn.dataset.assignedRowId; }
@@ -1047,6 +1128,9 @@ function forbidMsg(digit){
 
         if (restoreButton && originId) restoreFieldBankButton(originId);
         bumpDom(); poller?.triggerNow?.();
+
+        // 若全空則禁用儲存
+        updateSaveButtonState(); 
     }
 
     /* 數字與唯一性驗證（沿用） */
@@ -1452,12 +1536,26 @@ function forbidMsg(digit){
         const tdRead = document.createElement('td'); tdRead.classList.add('drop-target'); tdRead.dataset.drop = 'read';
         const inRead = document.createElement('input'); inRead.type = 'text'; inRead.className = 'table-input'; inRead.placeholder = L['placeholder_read']; inRead.value = readVal; tdRead.appendChild(inRead);
         bindExclusive416xListeners(inRead);
+
+        inRead.addEventListener('input', updateSaveButtonState);  
         tr.appendChild(tdRead);
 
         // (4) 輸入位置（隱藏欄）
-        const tdInput = document.createElement('td'); tdInput.classList.add('col-input');
-        const inInput = document.createElement('input'); inInput.type = 'text'; inInput.className = 'table-input'; inInput.placeholder = L['placeholder_input']; inInput.value = inputVal;
-        tdInput.appendChild(inInput); tr.appendChild(tdInput);
+        const tdInput = document.createElement('td');
+        tdInput.classList.add('col-input');
+
+        const inInput = document.createElement('input');
+        inInput.type = 'text';
+        inInput.className = 'table-input';
+        inInput.placeholder = L['placeholder_input'];
+        inInput.value = inputVal;
+
+        tdInput.appendChild(inInput);
+
+        //加上監聽，讓輸入欄位變動時更新儲存鈕狀態
+        inInput.addEventListener('input', updateSaveButtonState);
+
+        tr.appendChild(tdInput);
 
         // (5) 結果（唯讀）
         const tdRes = document.createElement('td');
@@ -1466,24 +1564,28 @@ function forbidMsg(digit){
 
         // (6/7) 上/下
         if (IS_ADMIN) {
-        const tdUp = document.createElement('td'); tdUp.className = 'move-cell';
-        const bUp = document.createElement('button'); bUp.type='button'; bUp.className='w3-btn w3-round-large icon-btn btn-row-up'; bUp.title=(L['move_up']||'Move Up'); bUp.textContent='▲';
-        bUp.addEventListener('click', () => moveRow(tr, -1)); tdUp.appendChild(bUp); tr.appendChild(tdUp);
+          const tdUp = document.createElement('td'); tdUp.className = 'move-cell';
+          const bUp = document.createElement('button'); bUp.type='button'; bUp.className='w3-btn w3-round-large icon-btn btn-row-up'; bUp.title=(L['move_up']||'Move Up'); bUp.textContent='▲';
+          bUp.addEventListener('click', () => moveRow(tr, -1)); tdUp.appendChild(bUp); tr.appendChild(tdUp);
 
-        const tdDown = document.createElement('td'); tdDown.className = 'move-cell';
-        const bDown = document.createElement('button'); bDown.type='button'; bDown.className='w3-btn w3-round-large icon-btn btn-row-down'; bDown.title=(L['move_down']||'Move Down'); bDown.textContent='▼';
-        bDown.addEventListener('click', () => moveRow(tr, +1)); tdDown.appendChild(bDown); tr.appendChild(tdDown);
+          const tdDown = document.createElement('td'); tdDown.className = 'move-cell';
+          const bDown = document.createElement('button'); bDown.type='button'; bDown.className='w3-btn w3-round-large icon-btn btn-row-down'; bDown.title=(L['move_down']||'Move Down'); bDown.textContent='▼';
+          bDown.addEventListener('click', () => moveRow(tr, +1)); tdDown.appendChild(bDown); tr.appendChild(tdDown);
         }
 
         // (8) 單筆刪除
         if (IS_ADMIN) {
-        const tdAct = document.createElement('td'); tdAct.className = 'row-actions';
-        const del = document.createElement('button'); del.textContent = L['delete']; del.className = 'w3-btn w3-round-large';
-        del.addEventListener('click', () => {
-            tr.querySelectorAll('.field-chip').forEach(chip => { const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId); });
-            tr.remove(); renumber(); syncCkAllState?.(); if (btnAdd && getRowCount() < MAX_ROWS) btnAdd.disabled = false; bumpDom?.(); poller?.triggerNow?.();
-        });
-        tdAct.appendChild(del); tr.appendChild(tdAct);
+          const tdAct = document.createElement('td'); tdAct.className = 'row-actions';
+          const del = document.createElement('button'); del.textContent = L['delete']; del.className = 'w3-btn w3-round-large';
+          del.addEventListener('click', () => {
+              tr.querySelectorAll('.field-chip').forEach(chip => { const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId); });
+              tr.remove(); renumber(); syncCkAllState?.(); if (btnAdd && getRowCount() < MAX_ROWS) btnAdd.disabled = false; bumpDom?.(); poller?.triggerNow?.();
+
+              
+              //刪完後更新儲存鈕狀態
+              updateSaveButtonState();
+          });
+          tdAct.appendChild(del); tr.appendChild(tdAct);
         }
 
         tbody.appendChild(tr);
@@ -1499,6 +1601,8 @@ function forbidMsg(digit){
     } else {
         addRow();
     }
+
+    updateSaveButtonState();
 
     // 啟動輪詢（+ 可見度暫停/恢復）
     const createPoller = () => startResultPolling({
@@ -1586,7 +1690,10 @@ function forbidMsg(digit){
         renumber(); syncCkAllState();
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
         if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
-        bumpDom(); poller?.triggerNow();
+            bumpDom(); poller?.triggerNow();
+
+              //刪完後更新儲存鈕狀態
+              updateSaveButtonState();
         };
 
         if (window.alertify) alertify.confirm(L['delete_sel'], L['confirm_delete'], doRemove, function(){});
@@ -1601,6 +1708,9 @@ function forbidMsg(digit){
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
         if (btnAdd) btnAdd.disabled = false;
         bumpDom(); poller?.triggerNow();
+
+        updateSaveButtonState(); // 新增
+
         };
 
         if (window.alertify) alertify.confirm(L['delete_all'], L['confirm_delete_all'], doRemoveAll, function(){});
@@ -1639,6 +1749,15 @@ function forbidMsg(digit){
 
 
     function onSave(){
+
+        //頁面沒任何資料就不送
+        if (!anyDataExists()) {
+          const msg = L['nothing_to_save'] || 'Nothing to save. Please add at least one row.';
+          if (window.alertify) alertify.alert('Info', msg);
+          else alert(msg);
+          return;
+        }
+
         const payload = { rows: collectData() };
 
         if (!validateNumericRows()) {
@@ -1661,11 +1780,8 @@ function forbidMsg(digit){
         return;
         }
 
-        if (payload.rows.length === 0){
-        if (window.alertify) { alertify.alert('Info', L['save_fail']); }
-        else { alert(L['save_fail']); }
-        return;
-        }
+    
+
 
         const spinner = document.getElementById('spinner');
         if (spinner) spinner.style.display = 'block';
