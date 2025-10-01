@@ -166,69 +166,125 @@ function GetLastResult(): string {
 
 
 /* ===== 你的資料來源 #2：CSV 自定義 ===== */
-function csvNoHeaderToJson(){
+/**
+ * 讀取 /var/www/html/temp/customize.csv（或自訂路徑）
+ * 將每列轉為 {no, read_position, result}，規則：
+ *  - "#<addr> <name>"：優先用 name 去 DB 最新一筆抓值
+ *  - 純數字（如 4168）：使用 CSV 第 3 欄 result 直接回傳
+ *  - 純欄位名（如 fasten_status）：用 DB 最新一筆同名欄位回傳
+ *  - 特例：若 addr=4168 且 DB fasten_status ∈ {4,5,6}，result 強制為 "1"
+ */
+function csvNoHeaderToJson(string $csvPath = '/var/www/html/temp/customize.csv'): string
+{
+    // 1) 讀 DB 最新一筆（可用於欄位名對應）
+    $dbRow = [];
+    try {
+        if (is_file('/home/kls/NTCS7/ntcs_data.db')) {
+            $dbh = new PDO('sqlite:/home/kls/NTCS7/ntcs_data.db');
+            $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $dbRow = $dbh->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1")
+                         ->fetch(PDO::FETCH_ASSOC) ?: [];
+            $dbh = null;
+        }
+    } catch (Throwable $e) {
+        // 不中斷流程
+    }
 
-    $csvPath = '/var/www/html/temp/customize.csv';
-    
+    // 2) 檢查 CSV
     if (!is_file($csvPath)) {
-        return json_encode(['error' => 'csv not found'], JSON_UNESCAPED_UNICODE);
+        return json_encode(['error' => 'csv not found', 'path' => $csvPath], JSON_UNESCAPED_UNICODE);
     }
     $fp = @fopen($csvPath, 'r');
     if (!$fp) {
-        return json_encode(['error' => 'cannot open csv'], JSON_UNESCAPED_UNICODE);
+        return json_encode(['error' => 'cannot open csv', 'path' => $csvPath], JSON_UNESCAPED_UNICODE);
     }
-
-    $dbh = new PDO('sqlite:/home/kls/NTCS7/ntcs_data.db');
-    $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $res = $dbh->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
-
 
     $rows = [];
     $isFirst = true;
 
     while (($cols = fgetcsv($fp)) !== false) {
-        // 去除第一格可能的 UTF-8 BOM
+        // 欄位：NO(0), Read Position(1), result(2) —— 你的 CSV 第 3 欄就是 result
         if ($isFirst && isset($cols[0])) {
-            $cols[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cols[0]);
+            $cols[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cols[0]); // 去 BOM
             $isFirst = false;
         }
 
-        // 取欄位（沒有就補空字串）
         $noRaw     = isset($cols[0]) ? trim((string)$cols[0]) : '';
-        $readRaw   = isset($cols[1]) ? trim((string)$cols[1]) : '';
-        $resultRaw = isset($cols[3]) ? trim((string)$cols[3]) : '';
+        $rpRaw     = isset($cols[1]) ? trim((string)$cols[1]) : '';
+        $resultRaw = isset($cols[2]) ? trim((string)$cols[2]) : '';
 
-        // 略過全空行
-        if ($noRaw === '' && $readRaw === '' && $resultRaw === '') {
+        // 跳過空行
+        if ($noRaw === '' && $rpRaw === '' && $resultRaw === '') {
             continue;
         }
 
-        // ——— 偵測並略過表頭（不分大小寫）———
+        // 跳過表頭
         $looksHeader =
             preg_match('/^no$/i', $noRaw) ||
-            preg_match('/^read\s*position$/i', $readRaw) ||
+            preg_match('/^read\s*position$/i', $rpRaw) ||
             preg_match('/^result$/i', $resultRaw);
-        if ($looksHeader) {
-            continue; // 直接跳過表頭
+        if ($looksHeader) continue;
+
+        // 解析 Read Position：
+        // 1) "#<addr> <name"   → addr 捕捉位址，name(可選)捕捉欄位名
+        // 2) 純數字               → addr
+        // 3) 純文字               → 欄位名
+        $addr    = null;
+        $field   = null;
+
+        if (preg_match('/^\s*#\s*(\d+)\s*(.*)$/u', $rpRaw, $m)) {
+            $addr  = $m[1];                      // e.g. "0"
+            $field = trim((string)$m[2]) ?: null; // e.g. "id"（可能為 null）
+        } elseif (ctype_digit($rpRaw)) {
+            $addr  = $rpRaw;                     // e.g. "4168"
+        } else {
+            $field = $rpRaw;                     // e.g. "fasten_status"
         }
 
-        // read_position：去掉開頭的 "#<數字>"（空白可有可無）
-        // 例： "#36 threshold_angle"、"#36threshold_angle"、"# 36   threshold_angle" → "threshold_angle"
-        $read = preg_replace('/^\s*#\s*\d+\s*/u', '', $readRaw);
-
-        // no 盡量轉數字
+        // NO 轉型
         $no = ctype_digit($noRaw) ? (int)$noRaw : $noRaw;
 
+        // 輸出的 read_position：如果有欄位名，輸出純欄位名（去掉 "#<addr>"）
+        // 若沒有欄位名但有位址，輸出位址字串；若兩者皆無就輸出原字串以保底。
+        if ($field !== null) {
+            $readOut = $field;          // ★ 重點："#0 id" -> "id"
+        } elseif ($addr !== null) {
+            $readOut = $addr;           // 純數字 -> 位址
+        } else {
+            $readOut = $rpRaw;          // fallback
+        }
+
+        // 計算 result
+        $value = null;
+        if ($field !== null) {
+            // 有欄位名 → 取 DB 欄位（找不到就 null）
+            $value = array_key_exists($field, $dbRow) ? $dbRow[$field] : null;
+        } elseif ($addr !== null) {
+            // 純數字位址 → 直接用 CSV 第 3 欄（你要求）
+            $value = ($resultRaw === '') ? null : $resultRaw;
+
+            // 特例：4168 同步到 NO-ERR 規則
+            if ($addr === '4168') {
+                $fs = isset($dbRow['fasten_status']) ? (string)$dbRow['fasten_status'] : '';
+                if (in_array($fs, ['4','5','6'], true)) {
+                    $value = '1';
+                }
+            }
+        }
+
         $rows[] = [
-            'no'             => $no,
-            'read_position'  => $read,
-            'result'         => $res[$read],
+            'no'            => $no,
+            'read_position' => $readOut,
+            'result'        => ($value === null ? null : (string)$value),
         ];
     }
 
     fclose($fp);
     return json_encode(['rows' => $rows], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
+
+
+
 
 
 

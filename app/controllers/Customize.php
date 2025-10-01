@@ -243,8 +243,6 @@ class Customize extends Controller
                 if ($col && preg_match('/^\w+$/', $col)) {
                     try {
                         $lastRow = $this->DataModel->get_operation_info();  // 取最後一筆
-
-                        var_dump($lastRow);die();
                         if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
                             $val = $lastRow[$col];
                             if (is_array($val))        $final = implode(',', array_map('strval', $val));

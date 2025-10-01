@@ -1,3 +1,8 @@
 ﻿NO,"Read Position",result
-1,"#0 id",1634
-2,"#3 device_type",11
+1,"#0 id",1657
+2,"#2 data_time","2025-10-01 08:39:23"
+3,"#5 device_sn",NTR211859
+4,"#21 final_fasten_angle",500
+5,"#22 total_fasten_angle",2500
+6,"#26 fasten_status",6
+7,4168,1
