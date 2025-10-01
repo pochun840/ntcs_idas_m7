@@ -48,7 +48,9 @@
         'in_use' => 'This field conflicts with the manual value. Remove one of them.',
         'nothing_to_save' => 'Nothing to save. Please add at least one row.',
         'confirm_save_empty' => 'No data found. Do you want to save an empty configuration ?',
-        'saved_empty' => 'Saved.','ok' => 'OK', 'cancel' => 'Cancel',
+        'saved_empty' => 'Saved.',
+        'ok_btn'=>'OK','cancel_btn'=>'Cancel',
+        'title_ok'=>'OK','title_info'=>'Info','title_error'=>'Error','title_confirm'=>'Confirm',
 
 
 
@@ -68,7 +70,10 @@
         'in_use' => '此欄位與手動輸入的數值互斥，請移除其中之一。',
         'nothing_to_save' => '沒有可儲存的內容，請先新增至少一列或填入資料。',
         'confirm_save_empty' => '目前沒有任何資料。要儲存為空設定嗎？',
-        'saved_empty' => '已儲存。', 'ok' => '確定', 'cancel' => '取消',
+        'saved_empty' => '已儲存。',
+        'ok_btn'=>'確定','cancel_btn'=>'取消',
+        'title_ok'=>'完成','title_info'=>'訊息','title_error'=>'錯誤','title_confirm'=>'確認',
+
 
       ],
       'zh-cn' => [
@@ -85,7 +90,10 @@
         'in_use' => '该字段与手动输入的数值互斥，请移除其中之一。',
         'nothing_to_save' => '没有可保存的内容，请先新增至少一行或填写数据。',
         'confirm_save_empty' => '目前没有任何数据。要保存为空配置吗？',
-        'saved_empty' => '已保存。','ok' => '确定', 'cancel' => '取消',
+        'saved_empty' => '已保存。',
+        'ok_btn'=>'确定','cancel_btn'=>'取消',
+        'title_ok'=>'完成','title_info'=>'信息','title_error'=>'错误','title_confirm'=>'确认',
+
 
       ],
     ];
@@ -286,6 +294,29 @@
     }
 
 
+    /* 表頭固定，tbody 在外層容器內捲動 */
+    #dynTable thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    /* 可捲動容器；高度由 JS 寫入 --table-max-h 控制可見列數上限 */
+    .table-scroller {
+      display: block;
+      overflow: auto;
+      max-height: var(--table-max-h, 9999px);
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+    }
+
+    /* 視覺小優化：最後一列邊界 */
+    #dynTable tbody tr:last-child td {
+      border-bottom-width: 1px;
+    }
+
+
 
 
 
@@ -419,6 +450,8 @@
       <?php } ?>
     </div>
 
+    
+  <div id="tableScroller" class="table-scroller">
     <table id="dynTable">
       <thead>
         <tr>
@@ -440,6 +473,7 @@
       </thead>
       <tbody id="dynTbody"><!-- rows injected by JS --></tbody>
     </table>
+    </div>
   </div>
 </div>
 
@@ -477,25 +511,27 @@
             </tr>
 
             <?php
-              // 1) 從 JS 的 SPECIAL_MUTEX 做一份 PHP 對照
+             // 1) 從 JS 的 SPECIAL_MUTEX 做一份 PHP 對照（與 JS 完全一致）
               $specialMutex = [
                 0  => range(4165,4166),           // 系統流水號
                 2  => range(4096,4101),           // 時間(Y-M-D H:I:S)
-                3  => [4144],                     // 鎖附控制器類型
+
+                // 3  => [4144],                  //（JS 未定義，若需要請同步加回 JS）
+
                 5  => range(4102,4111),           // 鎖附控制器序號
                 6  => range(4112,4121),           // 鎖附起子型號
-                7  => range(4112,4121),           // 鎖附起子序號
-                9  => [4157],                     // JOBID
+                7  => range(4122,4131),           // 鎖附起子序號（修正原本 4122~4121 的錯誤）
+                9  => [4148],                     // JOBID
                 10 => range(4132,4137),           // JOBNAME
                 11 => [4149],                     // SEQID
                 12 => range(4138,4143),           // SEQNAME
-                14 => [4148],                     // 扭力單位
+                14 => [4157],                     // 扭力單位（修正原本 4148）
                 15 => [4153],                     // 鎖附目標類型
                 16 => [4170,4171],                // 目標扭力
                 17 => [4176,4177],                // 目標角度
                 19 => [4158],                     // 總鎖附時間(秒)
                 20 => [4155,4156],                // 鎖附扭力
-                21 => [4170,4171],                // 鎖附角度
+                21 => [4176,4177],                // 鎖附角度（修正原本 4170/4171）
                 22 => [4190,4191],                // 鎖附總角度
                 23 => [4161],                     // 計數模式
                 24 => [4162],                     // 鎖附顆數
@@ -512,16 +548,18 @@
                 37 => [4184,4185],                // 鎖附降速點扭力
                 39 => [4186],                     // 鎖附降速轉速
                 42 => range(4192,4241),           // 條碼
-                43 => [4244,4245],                // 鎖附步驟1角度
-                44 => [4242,4243],                // 鎖附步驟1扭力
-                45 => [4246,4247],                // 鎖附步驟2扭力
-                46 => [4248,4249],                // 鎖附步驟2角度
-                47 => [4250,4251],                // 鎖附步驟3扭力
-                48 => [4252,4253],                // 鎖附步驟3角度
-                49 => [4254,4255],                // 鎖附步驟4扭力
-                50 => [4256,4257],                // 鎖附步驟4角度
-                51 => [4258,4259],                // 鎖附步驟5扭力
-                52 => [4260,4261],                // 鎖附步驟5角度
+
+                // 步驟 1~5（依 JS）
+                43 => [4242,4243],                // 步驟1扭力（修正原本放成角度）
+                44 => [4244,4245],                // 步驟1角度（修正原本放成扭力）
+                45 => [4246,4247],                // 步驟2扭力
+                46 => [4248,4249],                // 步驟2角度
+                47 => [4250,4251],                // 步驟3扭力
+                48 => [4252,4253],                // 步驟3角度
+                49 => [4254,4255],                // 步驟4扭力
+                50 => [4256,4257],                // 步驟4角度
+                51 => [4258,4259],                // 步驟5扭力
+                52 => [4260,4261],                // 步驟5角度
               ];
 
               // 直接算出「起始位址」與「Bytes(長度)」
@@ -696,28 +734,22 @@ function forbidMsg(digit){
     let poller = null;
     let insertMarker = null;
 
-    // 取得 L 後
-    if (typeof alertify !== 'undefined' && alertify?.defaults?.glossary) {
-      alertify.defaults.glossary.ok = L.ok || 'OK';
-      alertify.defaults.glossary.cancel = L.cancel || 'Cancel';
-    }
+    (function i18nAlertify(){
+      if (!window.alertify) return;
+      const ok = (L && (L.ok_btn || L.ok)) || 'OK';
+      const cancel = (L && (L.cancel_btn || L.cancel)) || 'Cancel';
 
+      // alertify.js 1.x：全域字彙
+      if (alertify.defaults && alertify.defaults.glossary) {
+        alertify.defaults.glossary.ok = ok;
+        alertify.defaults.glossary.cancel = cancel;
+      }
 
-    if (
-      CSV_DATA &&
-      (
-        (CSV_DATA.no && CSV_DATA.no.length) ||
-        (CSV_DATA.read_position && CSV_DATA.read_position.length) ||
-        (CSV_DATA.input_position && CSV_DATA.input_position.length) ||
-        (CSV_DATA.result && CSV_DATA.result.length)
-      )
-    ) {
-      hydrateFromCsv(CSV_DATA);
-    } else if (START_WITH_EMPTY_ROW) {
-      addRow();
-    }
-    updateSaveButtonState();
-
+      // 舊版相容（若仍有 set('labels',...) 可用）
+      if (typeof alertify.set === 'function') {
+        try { alertify.set('labels', { ok, cancel }); } catch(e){}
+      }
+    })();
 
     /* =========================
     * 互斥規則（唯一保留的限制）
@@ -732,11 +764,12 @@ function forbidMsg(digit){
         { dbIndex: '5', manualValues: ['4102','4103','4104','4105','4106','4107','4108','4109','4110','4111'] }, //鎖附控制器序號 
         { dbIndex: '6', manualValues: ['4112','4113','4114','4115','4116','4117','4118','4119','4120','4121'] }, //鎖附起子型號 
         { dbIndex: '7', manualValues: ['4122','4123','4124','4125','4126','4127','4128','4129','4130','4131'] }, //鎖附起子序號 
-        { dbIndex: '9', manualValues: ['4157'] },//JOBID
+        { dbIndex: '8', manualValues: ['4167'] },//鎖附起子狀態
+        { dbIndex: '9', manualValues: ['4148'] },//JOBID
         { dbIndex: '10', manualValues: ['4132','4133','4134','4135','4136','4137'] },//JOBNANE
         { dbIndex: '11', manualValues: ['4149'] },//SEQID
         { dbIndex: '12', manualValues: ['4138','4139','4140','4141','4142','4143'] },//SEQNANE
-        { dbIndex: '14', manualValues: ['4148'] },//扭力單位
+        { dbIndex: '14', manualValues: ['4157'] },//扭力單位
         { dbIndex: '15', manualValues: ['4153'] },//鎖附目標類型
         { dbIndex: '16', manualValues: ['4170','4171'] },//目標扭力
         { dbIndex: '17', manualValues: ['4176','4177'] },//目標角度
@@ -776,6 +809,22 @@ function forbidMsg(digit){
         { dbIndex: '52', manualValues: ['4260', '4261'] }, // 步驟5角度
     
     ];
+
+    // 建表：manual 值 → 可能互斥的 dbIndex 清單（用於即時輸入攔截）
+    const __MX_MANUAL_TO_DBIDXS = (() => {
+      const map = new Map();
+      for (const r of (SPECIAL_MUTEX || [])) {
+        const dbi = String(r.dbIndex);
+        for (const mv of (r.manualValues || [])) {
+          const k = String(mv);
+          const set = map.get(k) || new Set();
+          set.add(dbi);
+          map.set(k, set);
+        }
+      }
+      return map;
+    })();
+
 
 
     // 是否有（其他格）出現指定的手動數值；exceptTd 可排除目前編輯中的格
@@ -834,44 +883,68 @@ function forbidMsg(digit){
         return null;
     }
 
-    // 上/下移（統一版本，支援 silent）
+    // 上/下移（統一版本，支援 silent）— 取代原有 moveRow
     function moveRow(tr, dir, { silent=false } = {}){
-        if (!tr || !tbody) return;
-        const rows = getDataRows();
-        const idx  = rows.indexOf(tr);
-        if (idx === -1) return;
+      if (!tr || !tbody) return;
+      const rows = getDataRows();
+      const idx  = rows.indexOf(tr);
+      if (idx === -1) return;
 
-        const newIdx = idx + dir;
-        if (newIdx < 0 || newIdx >= rows.length) return;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= rows.length) return;
 
-        const target = rows[newIdx];
-        if (dir < 0) {
+      const target = rows[newIdx];
+      if (dir < 0) {
         tbody.insertBefore(tr, target);
-        } else {
+      } else {
         const after = target.nextSibling;
         after ? tbody.insertBefore(tr, after) : tbody.appendChild(tr);
-        }
+      }
 
-        if (!silent) {
+      if (!silent) {
         renumber?.();
         syncCkAllState?.();
         bumpDom?.();
         poller?.triggerNow?.();
+
+        // ★ 保持可視：移動後把它捲回可見範圍
+        if (typeof window.__ensureRowVisible === 'function') {
+          window.__ensureRowVisible(tr);
         }
+        if (typeof window.__fitTableVisibleRows === 'function') {
+          window.__fitTableVisibleRows();
+        }
+      }
     }
 
-    // 批次移動（維持相對順序）
+
+    // 批次移動（維持相對順序）— 取代原有 moveSelectedRows
     function moveSelectedRows(dir){
-        const rows = getDataRows();
-        const selected = rows.filter(r => r.querySelector('.row-ck')?.checked);
-        if (!selected.length) {
+      const rows = getDataRows();
+      const selected = rows.filter(r => r.querySelector('.row-ck')?.checked);
+      if (!selected.length) {
         if (window.alertify) alertify.alert('Info', L['none_selected'] || 'Please select at least one row.');
         else alert(L['none_selected'] || 'Please select at least one row.');
         return;
-        }
-        if (dir < 0) { selected.forEach(tr => moveRow(tr, -1, { silent:true })); }
-        else { [...selected].reverse().forEach(tr => moveRow(tr, +1, { silent:true })); }
-        renumber?.(); syncCkAllState?.(); bumpDom?.(); poller?.triggerNow?.();
+      }
+
+      // 移動時維持相對順序
+      if (dir < 0) { selected.forEach(tr => moveRow(tr, -1, { silent:true })); }
+      else { [...selected].reverse().forEach(tr => moveRow(tr, +1, { silent:true })); }
+
+      renumber?.();
+      syncCkAllState?.();
+      bumpDom?.();
+      poller?.triggerNow?.();
+
+      // ★ 群組保持可視：以「群組第一列」為基準
+      const anchor = selected[0];
+      if (typeof window.__ensureRowVisible === 'function') {
+        window.__ensureRowVisible(anchor);
+      }
+      if (typeof window.__fitTableVisibleRows === 'function') {
+        window.__fitTableVisibleRows();
+      }
     }
 
     function getRowCount(){ return tbody ? tbody.querySelectorAll('tr:not(.insert-marker)').length : 0; }
@@ -1032,7 +1105,7 @@ function forbidMsg(digit){
         for (const rule of SPECIAL_MUTEX){
         if (String(idx) === rule.dbIndex && hasManualOf(rule.manualValues, td)){
             const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '此欄位已被使用或與手動值互斥。';
-            if (window.alertify) alertify.alert('Error', msg);
+            if (window.alertify) alertify.alert(L['title_error'] || 'Error', msg);
             else alert(msg);
             return; // 不指派
         }
@@ -1276,7 +1349,7 @@ function forbidMsg(digit){
     function _softToast416x(msg){
       try {
         if (typeof alertify !== 'undefined' && alertify) {
-          if (typeof alertify.alert === 'function') { alertify.alert('Info', msg); return; }
+          if (typeof alertify.alert === 'function') { alertify.alert(L['title_info'] || 'Info', msg); return; }
           if (typeof alertify.message === 'function') { alertify.message(msg); return; }
         }
       } catch (e) {}
@@ -1304,10 +1377,23 @@ function forbidMsg(digit){
 
 
 
-  function _enforceExclusive416x(currentEl, evt){
+    // 小工具：此手動值是否與任何已存在 chip（依 SPECIAL_MUTEX）互斥
+    function __violatesChipMutex(digits){
+      if (!digits) return false;
+      const set = __MX_MANUAL_TO_DBIDXS && __MX_MANUAL_TO_DBIDXS.get(String(digits));
+      if (!set || !set.size) return false;
+      for (const dbi of set) {
+        if (typeof chipExistsForIndex === 'function' && chipExistsForIndex(dbi)) {
+          return true; // 該手動值對應的某 dbIndex 的 chip 已存在 → 互斥
+        }
+      }
+      return false;
+    }
+
+    function _enforceExclusive416x(currentEl, evt){
       // 預測這次輸入後的值（insert 類型）
       const predicted = (() => {
-        try {
+        try{
           if (evt && evt.type === 'beforeinput' &&
               (evt.inputType === 'insertText' || evt.inputType === 'insertFromPaste')) {
             const data = (typeof evt.data === 'string') ? evt.data : '';
@@ -1315,7 +1401,7 @@ function forbidMsg(digit){
             const e = currentEl.selectionEnd   ?? currentEl.value.length;
             return String(currentEl.value || '').slice(0, s) + data + String(currentEl.value || '').slice(e);
           }
-        } catch(e){}
+        }catch(e){}
         return String(currentEl.value || '');
       })();
 
@@ -1332,12 +1418,17 @@ function forbidMsg(digit){
         clearAndNotify(currentEl, forbidMsg(nextDigits), evt);
         return;
       }
+      // A-2) 若將成為某「互斥手動值」，且其對應欄位 chip 已存在 → 擋
+      if (__violatesChipMutex(nextDigits)) {
+        clearAndNotify(currentEl, (window.L && (L.in_use || L.forbidden_idx)) || '此欄位與手動值互斥，請移除其中之一。', evt);
+        return;
+      }
 
       // 若輸入即將變成 4165/4166 → 做互斥檢查
       if (nextDigits === '4165' || nextDigits === '4166') {
         // 規則 1：有 ID chip(0) 就不允許
         if (typeof chipExistsForIndex === 'function' && chipExistsForIndex('0')) {
-          clearAndNotify(currentEl, (window.L && (L.in_use || L.forbidden_idx)) || '此值與欄位互斥，無法同時使用。');
+          clearAndNotify(currentEl, (window.L && (L.in_use || L.forbidden_idx)) || '此值與欄位互斥，無法同時使用。', evt);
           requestAnimationFrame(() => _enforceExclusive416x(currentEl));
           return;
         }
@@ -1353,6 +1444,12 @@ function forbidMsg(digit){
       // B. 已輸進去後再補救（非 beforeinput 或其他程式碼回填）
       if (FORBID_MANUAL.has(nowDigits)) {
         clearAndNotify(currentEl, forbidMsg(nowDigits));
+        requestAnimationFrame(() => _enforceExclusive416x(currentEl));
+        return;
+      }
+      // B-2) 已輸入後：若現在值與既有 chip 互斥 → 清空並提示
+      if (__violatesChipMutex(nowDigits)) {
+        clearAndNotify(currentEl, (window.L && (L.in_use || L.forbidden_idx)) || '此欄位與手動值互斥，請移除其中之一。');
         requestAnimationFrame(() => _enforceExclusive416x(currentEl));
         return;
       }
@@ -1382,6 +1479,8 @@ function forbidMsg(digit){
 
       currentEl.classList.remove('invalid');
     }
+
+
 
 
   // === END REPLACE ===
@@ -1644,6 +1743,12 @@ function forbidMsg(digit){
         return tr;
     }
 
+    // 初始化
+    if (CSV_DATA && ((CSV_DATA.no && CSV_DATA.no.length) || (CSV_DATA.read_position && CSV_DATA.read_position.length) || (CSV_DATA.input_position && CSV_DATA.input_position.length) || (CSV_DATA.result && CSV_DATA.result.length))) {
+        hydrateFromCsv(CSV_DATA);
+    } else {
+        addRow();
+    }
 
     updateSaveButtonState();
 
@@ -1722,58 +1827,43 @@ function forbidMsg(digit){
     }
 
     function deleteSelectedRows(){
-      const rows = [...tbody.querySelectorAll('.row-ck:checked')].map(ck => ck.closest('tr')).filter(Boolean);
-      if (rows.length === 0) {
-        if (window.alertify) alertify.alert('Info', L['none_selected']);
-        else alert(L['none_selected']);
-        return;
-      }
+        const rows = [...tbody.querySelectorAll('.row-ck:checked')].map(ck => ck.closest('tr')).filter(Boolean);
+        if (rows.length === 0) { if (window.alertify) alertify.alert('Info', L['none_selected']); else alert(L['none_selected']); return; }
 
-      const doRemove = () => {
+        const doRemove = () => {
         rows.forEach(tr => {
-          tr.querySelectorAll('.field-chip').forEach(chip => {
-            const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId);
-          });
-          tr.remove();
+            tr.querySelectorAll('.field-chip').forEach(chip => { const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId); });
+            tr.remove();
         });
         renumber(); syncCkAllState();
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
         if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
-        bumpDom(); poller?.triggerNow();
-        updateSaveButtonState();
-      };
+            bumpDom(); poller?.triggerNow();
 
-      if (window.alertify)
-        alertify
-          .confirm(L['delete_sel'], L['confirm_delete'], doRemove, function(){})
-          .set('labels', { ok: L.ok || 'OK', cancel: L.cancel || 'Cancel' });
-      else if (confirm(L['confirm_delete'])) doRemove();
+              //刪完後更新儲存鈕狀態
+              updateSaveButtonState();
+        };
+
+        if (window.alertify) alertify.confirm(L['delete_sel'], L['confirm_delete'], doRemove, function(){});
+        else if (confirm(L['confirm_delete'])) doRemove();
     }
 
-
-
     function deleteAllRows(){
-      
-      const doRemoveAll = () => {
-        tbody.querySelectorAll('.field-chip').forEach(chip => {
-          const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId);
-        });
+        const doRemoveAll = () => {
+        tbody.querySelectorAll('.field-chip').forEach(chip => { const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId); });
         tbody.innerHTML = '';
         renumber(); syncCkAllState();
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
         if (btnAdd) btnAdd.disabled = false;
         bumpDom(); poller?.triggerNow();
-        updateSaveButtonState();
-      };
 
-      if (window.alertify)
-        alertify
-          .confirm(L['delete_all'], L['confirm_delete_all'], doRemoveAll, function(){})
-          .set('labels', { ok: L.ok || 'OK', cancel: L.cancel || 'Cancel' });
-      else if (confirm(L['confirm_delete_all'])) doRemoveAll();
+        updateSaveButtonState(); // 新增
+
+        };
+
+        if (window.alertify) alertify.confirm(L['delete_all'], L['confirm_delete_all'], doRemoveAll, function(){});
+        else if (confirm(L['confirm_delete_all'])) doRemoveAll();
     }
-
-
 
     if(IS_ADMIN){
         if(btnDelSel) btnDelSel.addEventListener('click', deleteSelectedRows);
@@ -1810,13 +1900,13 @@ function forbidMsg(digit){
         if (!hasData) {
           if (!ALLOW_EMPTY_SAVE) {
             const msg = L['nothing_to_save'] || 'Nothing to save. Please add at least one row.';
-            if (window.alertify) alertify.alert('Info', msg); else alert(msg);
+            if (window.alertify) alertify.alert(L['title_info'] || 'Info', msg); else alert(msg);
             return;
           }
           // 允許空白儲存 → 詢問是否清空伺服端資料
           const confirmMsg = L['confirm_save_empty'] || 'No data found. Save empty (clear server data)?';
           const ok = (window.alertify)
-            ? await new Promise(res => alertify.confirm('Confirm', confirmMsg, () => res(true), () => res(false)))
+            ? await new Promise(res => alertify.confirm(L['title_confirm'] || 'Confirm', confirmMsg, () => res(true), () => res(false)))
             : confirm(confirmMsg);
           if (!ok) return;
         }
@@ -1844,7 +1934,7 @@ function forbidMsg(digit){
           }
           if (!validateMutexRules()){
             const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '欄位與手動值互斥，請移除其中之一。';
-            if (window.alertify) alertify.alert('Error', msg); else alert(msg);
+            if (window.alertify) alertify.alert(L['title_error'] || 'Error', msg); else alert(msg);
             return;
           }
         }
@@ -1885,7 +1975,7 @@ function forbidMsg(digit){
             const msg = (!hasData)
               ? (L['saved_empty'] || 'Saved (empty configuration).')
               : (L['saved'] || 'Saved successfully');
-            if (window.alertify) alertify.alert('OK', msg); else alert(msg);
+            if (window.alertify) alertify.alert(L['title_ok'] || 'OK', msg);
           },
           error: function(xhr){
             if (spinner) spinner.style.display = 'none';
@@ -2024,3 +2114,82 @@ function forbidMsg(digit){
     if (btnSave) btnSave.classList.remove('w3-opacity', 'w3-disabled');
   });
 </script>
+
+
+<script>
+/** ===== 可見列數控制（100 列）＋ 避免被底部抽屜遮擋 ===== */
+(function visibleRowsLimiter(){
+  // 你要的最多顯示列數
+  const MAX_VISIBLE_ROWS = 100;
+
+  const scroller = document.getElementById('tableScroller');
+  const table    = document.getElementById('dynTable');
+  if (!scroller || !table) return;
+
+  // 量測列高與表頭高 → 設定可捲動容器 max-height
+  function fitTableVisibleRows(maxRows = MAX_VISIBLE_ROWS) {
+    try {
+      const thead = table.querySelector('thead');
+      const tbody = table.querySelector('tbody');
+      const firstRow = tbody?.querySelector('tr:not(.insert-marker)');
+      const headH = thead ? thead.getBoundingClientRect().height : 40;
+      const rowH  = firstRow ? firstRow.getBoundingClientRect().height : 40;
+
+      // 底部抽屜把手高度 + 安全間距，避免最後一列被遮
+      const drawerHandle = document.querySelector('#tableDrawer .handle');
+      const reserve = (drawerHandle ? drawerHandle.getBoundingClientRect().height : 36) + 24;
+
+      // 期望高度：表頭 + N 列
+      const want = headH + (rowH * maxRows);
+
+      // 可用高度：視窗到底部抽屜上緣之間的空間
+      const scTop = scroller.getBoundingClientRect().top;
+      const canUse = Math.max(180, window.innerHeight - scTop - reserve);
+
+      const maxH = Math.min(want, canUse);
+      scroller.style.setProperty('--table-max-h', `${Math.round(maxH)}px`);
+    } catch(e) {}
+  }
+
+  // 讓指定列保持在可視範圍
+  function ensureRowVisible(tr) {
+    if (!tr) return;
+    try { tr.scrollIntoView({ block: 'nearest' }); } catch(e) {}
+  }
+
+  // 視窗變化 / 容器尺寸變化 → 重算
+  window.addEventListener('resize', () => fitTableVisibleRows());
+  const ro = new ResizeObserver(() => fitTableVisibleRows());
+  ro.observe(scroller);
+
+  // 抽屜開關（#tableDrawer .open） → 重算
+  const drawer = document.getElementById('tableDrawer');
+  if (drawer) {
+    const mo = new MutationObserver(() => fitTableVisibleRows());
+    mo.observe(drawer, { attributes: true, attributeFilter: ['class', 'style', 'aria-expanded'] });
+  }
+
+  // tbody 有增刪列 → 重算高度，並確保新增列可見
+  const tbodyEl = table.querySelector('tbody');
+  if (tbodyEl) {
+    const mo2 = new MutationObserver((muts) => {
+      fitTableVisibleRows();
+      const lastAdd = muts.find(m => m.addedNodes && m.addedNodes.length);
+      if (lastAdd) {
+        const tr = [...lastAdd.addedNodes].find(n => n.nodeType===1 && n.tagName==='TR' && !n.classList.contains('insert-marker'));
+        if (tr) ensureRowVisible(tr);
+      }
+    });
+    mo2.observe(tbodyEl, { childList: true, subtree: false });
+  }
+
+  // 初始執行
+  document.addEventListener('DOMContentLoaded', () => fitTableVisibleRows());
+  setTimeout(fitTableVisibleRows, 0);
+
+  // —— 曝光 helper 給外面（可選）——
+  window.__ensureRowVisible = ensureRowVisible;
+  window.__fitTableVisibleRows = fitTableVisibleRows;
+})();
+</script>
+

@@ -243,6 +243,8 @@ class Customize extends Controller
                 if ($col && preg_match('/^\w+$/', $col)) {
                     try {
                         $lastRow = $this->DataModel->get_operation_info();  // 取最後一筆
+
+                        var_dump($lastRow);die();
                         if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
                             $val = $lastRow[$col];
                             if (is_array($val))        $final = implode(',', array_map('strval', $val));
@@ -791,6 +793,13 @@ class Customize extends Controller
             $mode   = '';   // 'db' | 'modbus' | ''
             $final  = '';
             $column = null; // DB 模式欄位名
+
+            // 如果 $lastRow 存在，且 fasten_status ∈ [4,5,6]，同時 error_message 為 "0"
+            // 就把 error_message 改成 "1"
+            if (!empty($lastRow) && ($lastRow['error_message'] ?? null) === '0'
+                && in_array((string)($lastRow['fasten_status'] ?? ''), ['4','5','6'], true)) {
+                $lastRow['error_message'] = '1';
+            }
 
             // 判斷模式
             if (preg_match('/^#\s*(\d+)(?:\s+.*)?$/', $rp, $m)) {
