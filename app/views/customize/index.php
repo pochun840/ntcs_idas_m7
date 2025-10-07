@@ -316,25 +316,7 @@
       border-bottom-width: 1px;
     }
 
-    .field-btn {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;  /* 保持點擊 */
-      user-select: none;
-    }
 
-    .drag-handle {
-      cursor: grab;
-      font-size: 14px;
-      padding: 0 4px;
-      color: #555;
-    }
-
-    .drag-handle:active {
-      cursor: grabbing;
-    }
 
 
 
@@ -366,7 +348,7 @@
                           data-field-name="<?php echo htmlspecialchars($name); ?>"
                           data-field-label="<?php echo htmlspecialchars($label); ?>"
                           title="<?php echo htmlspecialchars($label); ?>">
-                      <span class="drag-handle" draggable="true">☰</span><?php echo htmlspecialchars($label); ?>
+                    <code><?php /* echo htmlspecialchars($idx); */ ?></code><?php echo htmlspecialchars($label); ?>
                   </button>
                 <?php } ?>
               </div>
@@ -2129,49 +2111,49 @@ function forbidMsg(digit){
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // 啟用存檔按鈕
-    const btnSave = document.getElementById('btnSave');
-    if (btnSave) btnSave.classList.remove('w3-opacity', 'w3-disabled');
+ document.addEventListener('DOMContentLoaded', () => {
+  // 啟用存檔按鈕
+  const btnSave = document.getElementById('btnSave');
+  if (btnSave) btnSave.classList.remove('w3-opacity', 'w3-disabled');
 
-    // tab 4-1 與 4-2 容器做事件委派
-    ['fieldList', 'fieldList-2'].forEach(cid => {
-      const bank = document.getElementById(cid);
-      if (!bank) return;
+  // 兩個「欄位銀行」容器做事件委派（涵蓋 tab 4-1 與 4-2）
+  ['fieldList', 'fieldList-2'].forEach(cid => {
+    const bank = document.getElementById(cid);
+    if (!bank) return;
 
-      bank.addEventListener('dragstart', e => {
-        // 不管拖到哪個子節點，一律往上找 .field-btn
-        const btn = e.target.closest('.field-btn');
-        if (!btn) return;
+    bank.addEventListener('dragstart', e => {
+      // 不管拖到哪個子節點，一律往上找 .field-btn
+      const btn = e.target.closest('.field-btn');
+      if (!btn) return;
 
-        const idx   = btn.dataset.fieldIndex || '';
-        const name  = btn.dataset.fieldName  || '';
-        const label = btn.dataset.fieldLabel || btn.title || '';
-        const originId = btn.id || ('fb-' + String(idx));
+      const idx   = btn.dataset.fieldIndex || '';
+      const name  = btn.dataset.fieldName  || '';
+      const label = btn.dataset.fieldLabel || btn.title || '';
+      const originId = btn.id || ('fb-' + String(idx));
 
-        // 有些瀏覽器需要非空字串才會啟動 DnD
-        try {
-          e.dataTransfer.effectAllowed = 'copyMove';
-          e.dataTransfer.setData('text/plain', idx || 'x');
-        } catch (_) {}
+      // 有些瀏覽器需要非空字串才會啟動 DnD
+      try {
+        e.dataTransfer.effectAllowed = 'copyMove';
+        e.dataTransfer.setData('text/plain', idx || 'x');
+      } catch (_) {}
 
-        // 提供給 drop 端使用
-        window.dragPayload = { idx, name, label, originId };
+      // 提供給 drop 端使用
+      window.dragPayload = { idx, name, label, originId };
 
-        // 若需要較好看的拖曳影像，可用：
-        // if (btn) e.dataTransfer.setDragImage(btn, 10, 10);
-      });
-
-      // 視覺加成：拖曳時加上 .dragging，結束時移除
-      bank.addEventListener('dragstart', e => {
-        const b = e.target.closest('.field-btn');
-        if (b) b.classList.add('dragging');
-      });
-      bank.addEventListener('dragend', e => {
-        const b = e.target.closest('.field-btn');
-        if (b) b.classList.remove('dragging');
-      });
+      // 若需要較好看的拖曳影像，可用：
+      // if (btn) e.dataTransfer.setDragImage(btn, 10, 10);
     });
+
+    // 視覺加成：拖曳時加上 .dragging，結束時移除
+    bank.addEventListener('dragstart', e => {
+      const b = e.target.closest('.field-btn');
+      if (b) b.classList.add('dragging');
+    });
+    bank.addEventListener('dragend', e => {
+      const b = e.target.closest('.field-btn');
+      if (b) b.classList.remove('dragging');
+    });
+  });
 });
 </script>
 

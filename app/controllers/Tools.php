@@ -439,6 +439,8 @@ class Tools extends Controller
         return preg_split('/\R/', trim(ltrim($txt, '_')))[0] ?? '';
     }
 
-    
+
+
+
 }
 ?>

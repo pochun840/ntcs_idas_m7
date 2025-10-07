@@ -1210,9 +1210,7 @@ function updateInputsBasedOnRadioSelection() {
 }
 
 
-
 function get_output_info(job_id, output_event, output_pin_param) {
-  
   if (!job_id || !output_event) return;
 
   $.ajax({
@@ -1232,6 +1230,7 @@ function get_output_info(job_id, output_event, output_pin_param) {
       // 解析回傳
       const data = (typeof response === 'string') ? JSON.parse(response) : response;
 
+      // ★ 優先用呼叫端傳入的 pin，沒有才用後端回傳
       const output_pin = String(output_pin_param ?? data.Pin);
       const signal     = data.signal;        // 0 / 1 / 2
       const wave       = Number(data.EvenID);
@@ -1249,10 +1248,53 @@ function get_output_info(job_id, output_event, output_pin_param) {
         }
       };
 
-      // 套 UI
+      const applyGroupAEdit = (currentPin) => {
+        for (let i = 1; i <= 11; i++) {
+          const p0 = document.getElementById(`edit_pin${i}_0`);
+          const p1 = document.getElementById(`edit_pin${i}_1`);
+          const p2 = document.getElementById(`edit_pin${i}_2`);
+          if (p0) { p0.checked = false; p0.disabled = true; }
+          if (p1) { p1.checked = false; p1.disabled = true; }
+          if (p2) { p2.disabled = String(i) !== String(currentPin); } // 只放行當前 pin 的 _2
+          const t = document.getElementById(`edit_time${i}`);
+          if (t) t.disabled = true; // 7~9 不用時間
+        }
+      };
+
+      const applyCustomEdit = (currentPin) => {
+        for (let i = 1; i <= 11; i++) {
+          const p0 = document.getElementById(`edit_pin${i}_0`);
+          const p1 = document.getElementById(`edit_pin${i}_1`);
+          const p2 = document.getElementById(`edit_pin${i}_2`);
+          if (p1) { p1.checked = false; p1.disabled = true; } // 所有 *_1 禁用
+          if (String(i) === String(currentPin)) {
+            if (p0) p0.disabled = false;
+            if (p2) p2.disabled = false;
+          }
+          const t = document.getElementById(`edit_time${i}`);
+          if (t) t.disabled = String(i) !== String(currentPin); // 只開當前 pin 的時間
+        }
+      };
+
+      const applyWave6 = () => {
+        for (let i = 1; i <= 11; i++) {
+          const p0 = document.getElementById(`edit_pin${i}_0`);
+          const p1 = document.getElementById(`edit_pin${i}_1`);
+          if (p0) p0.disabled = true;
+          if (p1) p1.disabled = true;
+        }
+      };
+
+      // ===== 套 UI =====
+      // 設定事件選單
       const eventOption = document.getElementById('edit_event_option');
       if (eventOption) eventOption.value = wave;
 
+      //啟用下拉，並將「其他列已使用的一次性事件(1~11)」灰掉
+      setupEditEventDropdownForEdit(eventOption, wave);
+
+
+      // 全數重置
       resetAll();
 
       // 勾回這筆資料
@@ -1263,90 +1305,68 @@ function get_output_info(job_id, output_event, output_pin_param) {
       const currentTime = document.getElementById(`edit_time${output_pin}`);
       if (currentTime) currentTime.value = (wave_on === '' || wave_on === '0') ? '' : wave_on;
 
-      // ===== 下拉選單禁用規則 =====
-      (function lockUsedEvents() {
-        const usedEvents = new Set();
-        document.querySelectorAll('#output_jobid_select tr[data-event]').forEach(tr => {
-          const eid = parseInt(tr.getAttribute('data-event'), 10);
-          const pin = tr.querySelector('[data-outputpin]')?.getAttribute('data-outputpin');
-          if (Number.isFinite(eid)) {
-            // 排除自己這筆
-            if (!(String(eid) === String(output_event) && String(pin) === String(output_pin))) {
-              usedEvents.add(eid);
-            }
-          }
-        });
+      // 依事件代碼套規則
+      if ([7, 8, 9].includes(wave)) {
+        // 7~9：只允許當前 pin 的 _2；時間全關
+        applyGroupAEdit(output_pin);
+      } else if (wave >= 12 && wave <= 16) {
+        // 12~16：所有 *_1 禁用，當前 pin 的 _0/_2 可用；只開當前時間
+        applyCustomEdit(output_pin);
+      } else if (wave === 6) {
+        // 6：所有 *_0/*_1 禁用；當前 pin 的 _2 可用；時間依 signal
+        applyWave6();
+        const p2 = document.getElementById(`edit_pin${output_pin}_2`);
+        if (p2) p2.disabled = false;
+        if (currentTime) currentTime.disabled = (signal != 1);
+      } else {
+        // 其他：當前 pin 三顆都開；時間依 signal
+        const p0 = document.getElementById(`edit_pin${output_pin}_0`);
+        const p1 = document.getElementById(`edit_pin${output_pin}_1`);
+        const p2 = document.getElementById(`edit_pin${output_pin}_2`);
+        if (p0) p0.disabled = false;
+        if (p1) p1.disabled = false;
+        if (p2) p2.disabled = false;
+        if (currentTime) currentTime.disabled = (signal != 1);
+      }
 
-        document.querySelectorAll('#edit_event_option option').forEach(opt => {
-          const val = parseInt(opt.value, 10);
-          if (usedEvents.has(val) && val >= 1 && val <= 11) {
-            opt.disabled = true;
-            opt.style.color = 'gray';
-            opt.classList.add('disabled_input');
-          } else {
-            opt.disabled = false;
-            opt.style.color = '';
-            opt.classList.remove('disabled_input');
-          }
-        });
-      })();
-
-      // ===== 套規則（7~9 / 12~16 / 其他）=====
-      const applyRules = (waveCode) => {
-        resetAll();
-
-        // 勾回目前這筆
-        const keep = document.getElementById(`edit_pin${output_pin}_${signal}`);
-        if (keep) { keep.disabled = false; keep.checked = true; }
-
-        const timeEl = document.getElementById(`edit_time${output_pin}`);
-
-        if ([7, 8, 9].includes(waveCode)) {
-          for (let i = 1; i <= 11; i++) {
-            const p0 = document.getElementById(`edit_pin${i}_0`);
-            const p1 = document.getElementById(`edit_pin${i}_1`);
-            const p2 = document.getElementById(`edit_pin${i}_2`);
-            if (p0) { p0.checked = false; p0.disabled = true; }
-            if (p1) { p1.checked = false; p1.disabled = true; }
-            if (p2) { p2.disabled = String(i) !== String(output_pin); }
-            const t = document.getElementById(`edit_time${i}`);
-            if (t) t.disabled = true;
-          }
-        } else if (waveCode >= 12 && waveCode <= 16) {
-          for (let i = 1; i <= 11; i++) {
-            const p0 = document.getElementById(`edit_pin${i}_0`);
-            const p1 = document.getElementById(`edit_pin${i}_1`);
-            const p2 = document.getElementById(`edit_pin${i}_2`);
-            if (p1) { p1.checked = false; p1.disabled = true; }
-            if (String(i) === String(output_pin)) {
-              if (p0) p0.disabled = false;
-              if (p2) p2.disabled = false;
-            }
-            const t = document.getElementById(`edit_time${i}`);
-            if (t) t.disabled = String(i) !== String(output_pin);
-          }
-        } else {
-          // 其他事件
-          for (let j = 0; j <= 2; j++) {
-            const r = document.getElementById(`edit_pin${output_pin}_${j}`);
-            if (r) r.disabled = false;
-          }
-          if (timeEl) timeEl.disabled = (signal != 1);
-        }
-      };
-
-      // 初始化
-      applyRules(wave);
-
-      // 下拉切換 → 套新規則
+      // 事件選單切換時，維持在同一顆 pin 上操作
       if (eventOption && !eventOption._bindEditRules) {
         eventOption.addEventListener('change', () => {
           const newWave = Number(eventOption.value);
-          applyRules(newWave);
+
+          // 先重置
+          resetAll();
+
+          // 保留這筆的 radio 勾選與可操作
+          const keep = document.getElementById(`edit_pin${output_pin}_${signal}`);
+          if (keep) { keep.disabled = false; keep.checked = true; }
+
+          // 重新套規則（同上）
+          if ([7, 8, 9].includes(newWave)) {
+            applyGroupAEdit(output_pin);
+          } else if (newWave >= 12 && newWave <= 16) {
+            applyCustomEdit(output_pin);
+          } else if (newWave === 6) {
+            applyWave6();
+            const p2 = document.getElementById(`edit_pin${output_pin}_2`);
+            if (p2) p2.disabled = false;
+            const t = document.getElementById(`edit_time${output_pin}`);
+            if (t) t.disabled = (signal != 1);
+          } else {
+            const p0 = document.getElementById(`edit_pin${output_pin}_0`);
+            const p1 = document.getElementById(`edit_pin${output_pin}_1`);
+            const p2 = document.getElementById(`edit_pin${output_pin}_2`);
+            if (p0) p0.disabled = false;
+            if (p1) p1.disabled = false;
+            if (p2) p2.disabled = false;
+            const t = document.getElementById(`edit_time${output_pin}`);
+            if (t) t.disabled = (signal != 1);
+          }
         });
         eventOption._bindEditRules = true;
       }
 
+      // 記下舊事件代碼（你原本有在用）
       old_output_event = output_event;
     },
     error: function (xhr, status, error) {
@@ -1354,6 +1374,7 @@ function get_output_info(job_id, output_event, output_pin_param) {
     }
   });
 }
+
 
 
 
@@ -1553,6 +1574,50 @@ function disableOptions(selector, values = [], gray = false, reset = false) {
         }
     });
 }
+
+
+/**
+ * 從列表 DOM 收集已被使用的「一次性事件」(1~11)
+ * @param {string} tableSelector  列表選擇器（預設 '#output_jobid_select'）
+ * @returns {Set<number>}
+ */
+function collectUsedOneShotEventsFromList(tableSelector = '#output_jobid_select') {
+  const used = new Set();
+  document.querySelectorAll(`${tableSelector} tr[data-event]`).forEach(tr => {
+    const eid = parseInt(tr.getAttribute('data-event'), 10);
+    if (eid >= 1 && eid <= 11) used.add(eid);
+  });
+  return used;
+}
+
+
+/**
+ * 編輯模式：啟用下拉，灰掉「其他列已使用」的一次性事件 (1~11)。
+ * - currentWave：本列事件值，需保持可選
+ */
+function setupEditEventDropdownForEdit(selectEl, currentWave) {
+  if (!selectEl) return;
+
+  // 先重置整個下拉（移除既有 disabled/灰階）
+  disableOptions('#edit_event_option', [], false, true);
+
+  // 讀取目前列表已使用的一次性事件 (1~11)
+  const usedOneShots = collectUsedOneShotEventsFromList();
+
+  // 把本列的事件從 used 集合移除（避免自己也被灰掉）
+  usedOneShots.delete(Number(currentWave));
+
+  // 只灰 1~11（一次性事件）；12~16 可重複 -> 不處理
+  disableOptions('#edit_event_option', Array.from(usedOneShots), true, false);
+
+  // 確保下拉是啟用狀態（可選）
+  selectEl.disabled = false;
+  selectEl.classList.remove('select-locked');
+  selectEl.removeAttribute('aria-disabled');
+  selectEl.removeAttribute('tabindex');
+  selectEl.title = ''; // 清除鎖定提示
+}
+
 
 
 // ✅ 抽成共用復原函式

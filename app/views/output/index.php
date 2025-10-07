@@ -163,7 +163,7 @@
                                 <div class="row">
                                     <div for="event" class="col-3 t1"><?php echo $text['event'];?> :</div>
                                     <div class="col-2 t2">
-                                        <select id="edit_event_option" name='edit_event_option' class="col custom-file grey-disabled" >
+                                        <select id="edit_event_option" name='edit_event_option' class="col custom-file grey-disabled">
                                            <?php foreach($data['event_output'] as $key =>$val){?>
                                                 <option value ='<?php echo $key;?>'><?php echo $text[$val];?></option>
                                             <?php } ?>
