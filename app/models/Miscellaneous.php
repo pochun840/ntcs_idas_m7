@@ -438,17 +438,7 @@ class Miscellaneous{
         return number_format($final, $dec, '.', '');
     }
 
-    /*public function get_unit_name_by_index($index) {
-        $unit_map = [
-            0 => "kgf.cm",
-            1 => "N.m",
-            2 => "Lbf.in",
-            3 => "kgf.m",
-            4 => "cN.m"
-        ];
-        return isset($unit_map[$index]) ? $unit_map[$index] : null;
-    }*/
-
+   
   
     public function batch_convert_grouped_by_unit_chart(array $values, int $inputType) {
         $unit_keys = ["kgf.cm", "N.m", "Lbf.in", "kgf.m", "cN.m"];

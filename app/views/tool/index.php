@@ -90,7 +90,7 @@
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo isset($data['gateway']) && $data['gateway'] !== '' ? $data['gateway'] : '--'; ?></div>
                         </div>
 
-
+                        
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['Mac'];?>:</div>
                             <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['MAC']; ?></div>

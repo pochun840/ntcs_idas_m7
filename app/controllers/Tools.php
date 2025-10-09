@@ -25,9 +25,9 @@ class Tools extends Controller
         $MAC = $this->getMacAddress();
         $ip_addr = $this->getIp();
         $netmask = $this->get_netmask('eth0');
-        $gateway = $this->getNetworkInfo(); //
+        list($iface, $gw) = $this->getDefaultIfaceAndGateway();
+        $gateway_temp = $this->getIPv4AndBroadcast($iface);
         $version = $this->getFirmwareVersion();
-
 
         //起子的版本
         $tools_version = $this->get_tools_version() / 100; 
@@ -78,7 +78,7 @@ class Tools extends Controller
             'Controllers_Info' => $controllers_info,
             'IP' => $ip_addr,
             'netmask' => $netmask,
-            'gateway' => $gateway['broadcast'],
+            'gateway' => $gateway_temp['broadcast'],
             'unit_name' => $unit_name,
             'MAC' => $MAC,
             'image_version' => $version['version_info'],
@@ -267,7 +267,7 @@ class Tools extends Controller
         return $result;
     }
 
-        /**
+    /**
      * 取得網路資訊（default gateway / 介面 / IPv4 / netmask / broadcast）
      * - 先從 /proc/net/route 找 default route（不需外部指令）
      * - 再用 ip 指令抓該介面的 IP/Mask/Broadcast（若可用）
@@ -361,75 +361,6 @@ class Tools extends Controller
     }
 
     
-
-
-    public function csvNoHeaderToJson()
-    {
-
-        $csvPath = '/var/www/html/temp/customize.csv';
-        
-        if (!is_file($csvPath)) {
-            return json_encode(['error' => 'csv not found'], JSON_UNESCAPED_UNICODE);
-        }
-        $fp = @fopen($csvPath, 'r');
-        if (!$fp) {
-            return json_encode(['error' => 'cannot open csv'], JSON_UNESCAPED_UNICODE);
-        }
-
-        $rows = [];
-        $isFirst = true;
-
-        $res= $this->DataModel->get_operation_info();
-  
-
-        while (($cols = fgetcsv($fp)) !== false) {
-            // 去除第一格可能的 UTF-8 BOM
-            if ($isFirst && isset($cols[0])) {
-                $cols[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cols[0]);
-                $isFirst = false;
-            }
-
-            // 取欄位（沒有就補空字串）
-            $noRaw     = isset($cols[0]) ? trim((string)$cols[0]) : '';
-            $readRaw   = isset($cols[1]) ? trim((string)$cols[1]) : '';
-            $inputRaw  = isset($cols[2]) ? trim((string)$cols[2]) : '';
-            $resultRaw = isset($cols[3]) ? trim((string)$cols[3]) : '';
-
-            // 略過全空行
-            if ($noRaw === '' && $readRaw === '' && $inputRaw === '' && $resultRaw === '') {
-                continue;
-            }
-
-            // ——— 偵測並略過表頭（不分大小寫）———
-            $looksHeader =
-                preg_match('/^no$/i', $noRaw) ||
-                preg_match('/^read\s*position$/i', $readRaw) ||
-                preg_match('/^input\s*position$/i', $inputRaw) ||
-                preg_match('/^result$/i', $resultRaw);
-            if ($looksHeader) {
-                continue; // 直接跳過表頭
-            }
-
-            // read_position：去掉開頭的 "#<數字>"（空白可有可無）
-            // 例： "#36 threshold_angle"、"#36threshold_angle"、"# 36   threshold_angle" → "threshold_angle"
-            $read = preg_replace('/^\s*#\s*\d+\s*/u', '', $readRaw);
-
-            // no 盡量轉數字
-            $no = ctype_digit($noRaw) ? (int)$noRaw : $noRaw;
-
-            $rows[] = [
-                'no'             => $no,
-                'read_position'  => $read,
-                'input_position' => $inputRaw,
-                'result'         => $res[$read],
-            ];
-        }
-
-        fclose($fp);
-        return json_encode(['rows' => $rows], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    }
-
-    
     public function get_upgrade_version(string $path = '/home/kls/upgrade/version'): string{
         // 讀檔（用 sudo cat），把錯誤丟到 /dev/null 避免噪音
         $cmd = 'sudo cat ' . escapeshellarg($path) . ' 2>/dev/null';
@@ -440,7 +371,201 @@ class Tools extends Controller
     }
 
 
+    /**
+     * Linux 網路資訊工具：可靠取得預設路由介面、IPv4、Broadcast（廣播位址）、Gateway
+     * - 先讀 /proc/net/route（快 & 不依賴外部指令），失敗再用 `ip route`
+     * - 取 IPv4/廣播：優先 `ip -j`，退回 `ip -4 -o`
+     * - 廣播位址計算使用 32-bit 安全的位元組法
+     */
+
+    /** 執行命令並回傳 [exitCode, stdout(string)] */
+    public function runCmd(string $cmd): array {
+        $out = [];
+        $code = 0;
+        exec($cmd, $out, $code);
+        return [$code, implode("\n", $out)];
+    }
+
+    /** 以 /proc/net/route 取得 [iface, gateway]；失敗回傳 [null, null] */
+    public function getDefaultIfaceGatewayFromProc(): array {
+        $path = '/proc/net/route';
+        if (!is_readable($path)) return [null, null];
+
+        $fh = fopen($path, 'r');
+        if (!$fh) return [null, null];
+
+        // 欄位: Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window IRTT
+        fgets($fh); // skip header
+        while (($line = fgets($fh)) !== false) {
+            $fields = preg_split('/\s+/', trim($line));
+            if (count($fields) < 11) continue;
+            [$iface, $destHex, $gwHex] = [$fields[0], strtoupper($fields[1]), strtoupper($fields[2])];
+            if ($destHex !== '00000000') continue;
+
+            // 小端 32-bit hex → IPv4
+            $gwLong = hexdec($gwHex);
+            $gw = inet_ntop(pack('V', $gwLong)); // 'V' = little-endian unsigned long
+            fclose($fh);
+            return [$iface, $gw];
+        }
+        fclose($fh);
+        return [null, null];
+    }
+
+    /** 從 `ip route` 取得 [iface, gateway]；失敗回傳 [null, null] */
+    public function getDefaultIfaceGatewayFromIp(): array {
+        // 例: "default via 192.168.0.1 dev eth0 ..."
+        [, $txt] = $this->runCmd("ip route 2>/dev/null");
+        foreach (explode("\n", $txt) as $line) {
+            $line = trim($line);
+            if ($line === '' || strpos($line, 'default ') !== 0) continue;
+            $parts = preg_split('/\s+/', $line);
+            $gw = null; $iface = null;
+            foreach ($parts as $i => $p) {
+                if ($p === 'via' && isset($parts[$i+1])) $gw = $parts[$i+1];
+                if ($p === 'dev' && isset($parts[$i+1])) $iface = $parts[$i+1];
+            }
+            if ($iface && $gw) return [$iface, $gw];
+        }
+        return [null, null];
+    }
+
+    /** 取得預設路由的介面與 gateway；優先 /proc，退回 ip route */
+    public function getDefaultIfaceAndGateway(): array {
+        [$iface, $gw] = $this->getDefaultIfaceGatewayFromProc();
+        if ($iface && $gw) return [$iface, $gw];
+        return $this->getDefaultIfaceGatewayFromIp();
+    }
+
+    /** 32-bit 安全：從 IP/CIDR 計算廣播位址（位元組法） */
+    public function calcBroadcastFromIpCidr(string $ip, int $cidr): ?string {
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) return null;
+        if ($cidr < 0 || $cidr > 32) return null;
+
+        $bin = @inet_pton($ip);
+        if ($bin === false || strlen($bin) !== 4) return null;
+        $bytes = unpack('C4', $bin);
+
+        // 產生 4 個遮罩位元組
+        $maskBytes = [0,0,0,0];
+        $full = intdiv($cidr, 8);
+        $rem  = $cidr % 8;
+        for ($i = 0; $i < 4; $i++) {
+            if ($i < $full) {
+                $maskBytes[$i] = 0xFF;
+            } elseif ($i === $full && $rem > 0) {
+                $maskBytes[$i] = (0xFF << (8 - $rem)) & 0xFF;
+            } else {
+                $maskBytes[$i] = 0x00;
+            }
+        }
+
+        // broadcast = (ip & mask) | (~mask)
+        $bcast = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $ipb = $bytes[$i];
+            $msk = $maskBytes[$i-1];
+            $bcast[] = (($ipb & $msk) | (~$msk & 0xFF)) & 0xFF;
+        }
+        return inet_ntop(pack('C4', ...$bcast));
+    }
+
+    /**
+     * 取得指定介面的 IPv4 與 Broadcast（廣播位址）
+     * 回傳: ['ip' => 'A.B.C.D', 'broadcast' => 'A.B.C.255']（若無法取得則為 null）
+     */
+    public function getIPv4AndBroadcast(string $iface): array {
+        // 先試 ip -j（較穩定）
+        $cmdJ = sprintf("ip -j -4 addr show dev %s scope global 2>/dev/null", escapeshellarg($iface));
+        [$codeJ, $json] = $this->runCmd($cmdJ);
+        if ($codeJ === 0 && trim($json) !== '') {
+            $arr = json_decode($json, true);
+            if (is_array($arr) && isset($arr[0]['addr_info']) && is_array($arr[0]['addr_info'])) {
+                foreach ($arr[0]['addr_info'] as $info) {
+                    if (($info['scope'] ?? '') !== 'global') continue;
+                    $ip = $info['local'] ?? null;
+                    $b  = $info['broadcast'] ?? null;
+                    if ($ip && $b) return ['ip' => $ip, 'broadcast' => $b];
+                    if ($ip && isset($info['prefixlen'])) {
+                        $b2 = $this->calcBroadcastFromIpCidr($ip, (int)$info['prefixlen']);
+                        return ['ip' => $ip, 'broadcast' => $b2];
+                    }
+                }
+            }
+        }
+
+        // 退回 ip -4 -o 正則
+        $cmd = sprintf("ip -4 -o addr show dev %s scope global 2>/dev/null", escapeshellarg($iface));
+        [, $line] = $this->runCmd($cmd);
+        $line = trim($line);
+        if ($line !== '') {
+            if (preg_match('/inet\s+([0-9.]+)\/(\d+)(?:.*?\bbrd\s+([0-9.]+))?/', $line, $m)) {
+                $ip = $m[1]; $cidr = (int)$m[2];
+                $b  = $m[3] ?? null;
+                if (!$b) $b = $this->calcBroadcastFromIpCidr($ip, $cidr);
+                return ['ip' => $ip, 'broadcast' => $b];
+            }
+        }
+        return ['ip' => null, 'broadcast' => null];
+    }
+
+    /** 只回傳廣播位址；若找不到回 null */
+    public function getBroadcastOnly(): ?string {
+        [$iface, ] = $this->getDefaultIfaceAndGateway();
+        if (!$iface) return null;
+        $info = $this->getIPv4AndBroadcast($iface);
+        return $info['broadcast'] ?? null;
+    }
+
+    /** 只回傳預設 gateway；若找不到回 null */
+    public function getGatewayOnly(): ?string {
+        [, $gw] = $this->getDefaultIfaceAndGateway();
+        return $gw ?: null;
+    }
+
+    /**
+     * 自動偵測 IP 與「-b 要帶的值」並呼叫 Ethernet_Setting
+     * 預設使用 **broadcast** 當 -b；若要改帶 gateway，把 $useBroadcastAsB = false
+     */
+    public function applyEthernetSettingAuto(bool $useBroadcastAsB = true): array {
+        [$iface, $gw] = $this->getDefaultIfaceAndGateway();
+        if (!$iface) {
+            return ['ok' => false, 'msg' => '找不到預設路由介面', 'stdout' => '', 'cmd' => null];
+        }
+
+        $info = $this->getIPv4AndBroadcast($iface);
+        $ip = $info['ip'] ?? null;
+        $broadcast = $info['broadcast'] ?? null;
+
+        if (!$ip) {
+            return ['ok' => false, 'msg' => '無法取得 IPv4', 'stdout' => '', 'cmd' => null];
+        }
+
+        $bArg = $useBroadcastAsB ? ($broadcast ?? '') : ($gw ?? '');
+        if ($bArg === '') {
+            return ['ok' => false, 'msg' => $useBroadcastAsB ? '無法取得廣播位址' : '無法取得 Gateway', 'stdout' => '', 'cmd' => null];
+        }
+
+        $cmd = sprintf(
+            'sudo /home/kls/NTCS7/Ethernet_Setting -i %s -b %s 2>&1',
+            escapeshellarg($ip),
+            escapeshellarg($bArg)
+        );
+        [$code, $stdout] = $this->runCmd($cmd);
+
+        return [
+            'ok'        => ($code === 0),
+            'msg'       => $code === 0 ? 'done' : "exit code $code",
+            'stdout'    => $stdout,
+            'cmd'       => $cmd,
+            'iface'     => $iface,
+            'ip'        => $ip,
+            'broadcast' => $broadcast,
+            'gateway'   => $gw,
+            'b_used'    => $bArg,
+        ];
+    }
+
 
 
 }
-?>

@@ -242,7 +242,7 @@ $text['NO'] = '否';
 
 $text['Start-IN'] = '啟動';
 $text['REVERSE_IN'] = '拆螺絲';
-$text['Unscrew'] = '拆螺絲';
+$text['Unscrew(Remote)'] = '反向';
 $text['Disable'] = '禁用';
 $text['Enable'] = '致能';
 $text['Confirm'] = '確認';
