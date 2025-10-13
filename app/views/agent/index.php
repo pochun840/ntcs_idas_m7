@@ -22,33 +22,49 @@
         </div>
 
         <!-- Agent -->
-        <div id="Agent_Display"  style="margin-top: 18px">
-            <div class="scrollbar table-container" id="style-Agent">
-                <div class="force-overflow">
-                    <table id="data-table" class="container2">
-                        <thead>
-                            <tr>
-                                <th width="5%"><?php echo $text['column_no']; ?></th>
-                                <th width="10%"><?php echo $text['device_type'];?></th>
-                                <th width="14%"><?php echo $text['device_name'];?></th>
-                                <th width="10%"><?php echo $text['network_ip'];?></th>
-                                <th width="20%"><?php echo $text['column_datetime']; ?></th>
-                                <th width="6%"><?php echo $text['job_id'];?></th>
-                                <th width="6%"><?php echo $text['seq_id'];?></th>
-                                <th width="6%"><?php echo $text['Torque'];?></th>
-                                <th width="6%"><?php echo $text['torque_unit'];?></th>
-                                <th width="6%"><?php echo $text['angle']; ?></th>
-                                <th width="6%"><?php echo $text['column_count'];?></th>
-                                <th width="6%"><?php echo $text['column_total']; ?></th>
-                                <th width="15%"><?php echo $text['column_status']; ?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
+        <div id="Agent_Display" class="agent-display" style="margin-top:18px">
+            <div class="table-scroll" id="style-Agent">
+                <table id="data-table" class="container2" role="table" aria-label="<?php echo htmlspecialchars($text['agent_title'] ?? 'Agent', ENT_QUOTES); ?>">
+                <!-- 固定欄寬，避免抖動 -->
+                <colgroup>
+                    <col style="min-width:56px">   <!-- no -->
+                    <col style="min-width:120px">  <!-- device_type -->
+                    <col style="min-width:160px">  <!-- device_name -->
+                    <col style="min-width:140px">  <!-- ip -->
+                    <col style="min-width:200px">  <!-- datetime -->
+                    <col style="min-width:80px">   <!-- job -->
+                    <col style="min-width:80px">   <!-- seq -->
+                    <col style="min-width:110px">  <!-- torque -->
+                    <col style="min-width:110px">  <!-- unit -->
+                    <col style="min-width:110px">  <!-- angle -->
+                    <col style="min-width:90px">   <!-- count -->
+                    <col style="min-width:90px">   <!-- total -->
+                    <col style="min-width:160px">  <!-- status -->
+                </colgroup>
+
+                <thead class="sticky">
+                    <tr>
+                    <th class="col-no"><?php echo $text['column_no']; ?></th>
+                    <th class="col-type"><?php echo $text['device_type'];?></th>
+                    <th class="col-name"><?php echo $text['device_name'];?></th>
+                    <th class="col-ip"><?php echo $text['network_ip'];?></th>
+                    <th class="col-dt"><?php echo $text['column_datetime']; ?></th>
+                    <th class="col-job"><?php echo $text['job_id'];?></th>
+                    <th class="col-seq"><?php echo $text['seq_id'];?></th>
+                    <th class="col-torque"><?php echo $text['Torque'];?></th>
+                    <th class="col-unit"><?php echo $text['torque_unit'];?></th>
+                    <th class="col-angle"><?php echo $text['angle']; ?></th>
+                    <th class="col-count"><?php echo $text['column_count'];?></th>
+                    <th class="col-total"><?php echo $text['column_total']; ?></th>
+                    <th class="col-status"><?php echo $text['column_status']; ?></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                </table>
             </div>
         </div>
+
+
 
         <!-- Button2 -->
         <div id="Button2_Display">
@@ -72,251 +88,197 @@
 
 </div>
 
+
 <script>
-  const fasten_status = [
-          { index: 0, status: "Initialize", color: "" },
-          { index: 1, status: "Tool Ready", color: "" },
-          { index: 2, status: "Tool running", color: "" },
-          { index: 3, status: "Reverse", color: "" },
-          { index: 4, status: "OK", color: "green" },
-          { index: 5, status: "OK-SEQ", color: "yellow" },
-          { index: 6, status: "OK-JOB", color: "yellow" },
-          { index: 7, status: "NG", color: "red" },
-          { index: 8, status: "NG Stop", color: "red" },
-          { index: 9, status: "Setting", color: "" },
-          { index: 10, status: "EOC", color: "" },
-          { index: 11, status: "C1", color: "" },
-          { index: 12, status: "C2", color: "" },
-          { index: 13, status: "C4", color: "" },
-          { index: 14, status: "C5", color: "" },
-          { index: 15, status: "BS", color: "" },
-        ];
-  const torque_unit = [
-          { index: 0, status: "Kgf-m", color: "" },
-          { index: 1, status: "N-m", color: "" },
-          { index: 2, status: "Kgf-cm", color: "" },
-          { index: 3, status: "In-lbs", color: "" },
-        ];
-  const device_type = [
-          { index: 0, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 1, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 2, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 3, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 4, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 5, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 6, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 7, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 8, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 9, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-          { index: 10, status: "<?php echo DEVICE_TYPE_7; ?>", color: "" },
-        ];
-  // 用于跟踪IP到表格行的映射
-  const ipToTableRow = new Map();
+    (function(){
+    "use strict";
 
-  // 用于处理WebSocket消息的回调函数
-  function handleWebSocketMessage(event) {
-      const message = event.data;
+    /** ---------- 對照表與轉換 ---------- */
+    const FASTEN_STATUS = [
+        "Initialize","Tool Ready","Tool running","Reverse","OK",
+        "OK-SEQ","OK-JOB","NG","NG Stop","Setting","EOC","C1","C2","C4","C5","BS"
+    ];
+    const TORQUE_UNIT = ["Kgf-m","N-m","Kgf-cm","In-lbs"];
 
-      // 检查消息是否以 "client X said:" 开头
-      const match = message.match(/^Client (\d+) said: (.*)/);
-
-      if (match) {
-          const clientNumber = match[1];
-          const jsonMessage = match[2];
-          const DEVICE_TYPE_7 = <?php echo json_encode(DEVICE_TYPE_7); ?>;
-
-
-          try {
-              const data = JSON.parse(jsonMessage);
-
-              // 检查IP是否在映射中
-
-              if (ipToTableRow.has(data.client_ip)) {
-
-
-                
-                  // 如果IP已存在，更新现有行
-                  const row = ipToTableRow.get(data.client_ip);
-                  // row.cells[0].textContent = 1;
-                  row.cells[1].textContent = DEVICE_TYPE_7;
-                  row.cells[2].textContent = data.device_name;
-                  row.cells[3].textContent = data.client_ip;
-                  row.cells[4].textContent = data.data_time;
-                  row.cells[5].textContent = data.job_id;
-                  row.cells[6].textContent = data.sequence_id;
-                  row.cells[7].textContent = data.final_fasten_torque;
-                  row.cells[8].textContent = torque_unit[data.torque_unit].status;
-                  row.cells[9].textContent = data.final_fasten_angle;
-                  row.cells[10].textContent = data.last_screw_count;
-                  row.cells[11].textContent = data.total_screw_count;
-                  row.cells[12].textContent = fasten_status[data.fasten_status].status;
-                  // row.classList.add("breathing-row");// 閃的css
-
-                  setTimeout(() => {
-                      // row.className = "";
-                      row.classList.remove("breathing-row");
-                  }, "1000");
-
-                  // 更新其他单元格
-              } else {
-
-              console.log(data.device_type);  
-              console.log(data);
-              
-                  if(data.client_ip != null){
-                  // 如果IP不存在，创建一行
-                  const table = document.getElementById("data-table").getElementsByTagName('tbody')[0];
-                  const row = table.insertRow();
-                  row.insertCell(0).textContent = ipToTableRow.size+1;
-                  row.insertCell(1).textContent = DEVICE_TYPE_7;
-                  //row.insertCell(1).textContent = device_type[data.device_type].status;
-                  row.insertCell(2).textContent = data.device_name;
-                  row.insertCell(3).textContent = data.client_ip;
-                  row.insertCell(4).textContent = data.data_time;
-                  row.insertCell(5).textContent = data.job_id;
-                  row.insertCell(6).textContent = data.sequence_id;
-                  row.insertCell(7).textContent = data.final_fasten_torque;
-                  row.insertCell(8).textContent = torque_unit[data.torque_unit].status;
-                  row.insertCell(9).textContent = data.final_fasten_angle;
-                  row.insertCell(10).textContent = data.total_screw_count;
-                  row.insertCell(11).textContent = data.last_screw_count;
-                  row.insertCell(12).textContent = fasten_status[data.fasten_status].status;
-                  // row.className = "breathing-row";// 閃的css
-                  // 添加其他单元格
-                  // alert(456)
-                  setTimeout(() => {
-                      row.className = "";
-                  }, "1000");
-                  // 将IP与表格行关联
-                  ipToTableRow.set(data.client_ip, row);
-                  table2.row.add( row ).draw();
-              }
-
-              }
-          } catch (error) {
-              console.error("Error parsing JSON message: " + error);
-          }
-      }
-  }
-
-  // 通过WebSocket接收消息
-  // let socket = new WebSocket('ws://192.168.0.42:9501');
-  // socket.addEventListener('message', handleWebSocketMessage);
-
-  //--------------------------------------------
-  let socket; // WebSocket对象
-  const server_ip = '<?php echo $data['agent_server_ip']; ?>';
-  const serverUrl = 'ws://'+server_ip+':9501';
-  var table2 = $('#data-table').DataTable({
-          // paging: false,
-          searching: false,
-          bInfo: false,
-          "ordering": false,
-          // "bPaginate": false,
-          "dom": "frti",
-          "pageLength": 99,
-          language: {
-              "zeroRecords": " "
-          },
-      });
-
-  function connectWebSocket() {
-      socket = new WebSocket(serverUrl);
-
-      socket.addEventListener('open', (event) => {
-          console.log('WebSocket连接已建立');
-          // 在连接建立时可以执行其他逻辑
-      });
-
-      socket.addEventListener('message', (event) => {
-          // 处理接收到的WebSocket消息
-          handleWebSocketMessage(event);
-      });
-
-      socket.addEventListener('close', (event) => {
-          console.log('WebSocket连接已关闭');
-          // 连接关闭时，设置定时器以尝试重新连接
-          setTimeout(connectWebSocket, 5000); // 2秒后重新连接
-      });
-
-      socket.addEventListener('error', (event) => {
-          console.error('WebSocket连接发生错误', event);
-          // 在发生错误时也可以执行其他逻辑
-      });
-  }  
-
-  // 初始连接
-  connectWebSocket();
-</script>
-<script type="text/javascript">
-    $(document).ready(function () {
-        ShowTime();
-        $('#data-table tbody').on('click', 'tr', function () {
-            if ($(this).hasClass('selected')) {
-                $(this).removeClass('selected');
-            } else {
-                table2.$('tr.selected').removeClass('selected');
-                $(this).addClass('selected');
-            }
-        });
-    });
-    function change_page(argument) {
-        let table = $('#data-table').DataTable();
-        table.page( argument ).draw( 'page' );
-        // let page_info = table.page.info();
-        // $('#CurrentPage').val(page_info.page + 1);
+    function fastenStatusName(idx){
+        const n = Number(idx);
+        return Number.isInteger(n) && n>=0 && n<FASTEN_STATUS.length ? FASTEN_STATUS[n] : String(idx ?? "");
+    }
+    function torqueUnitName(idx){
+        const n = Number(idx);
+        return Number.isInteger(n) && n>=0 && n<TORQUE_UNIT.length ? TORQUE_UNIT[n] : String(idx ?? "");
     }
 
-    function open_das(argument) {
-        let table = $('#data-table').DataTable();
-        let ip;
-        try { 
-            ip = table.row('.selected').data()[3];
-        } catch (error) {
-            ip = null; /* 任意默认值都可以被使用 */
+    /** ---------- DataTable 初始化 ---------- */
+    const DEVICE_TYPE_7 = <?php echo json_encode(DEVICE_TYPE_7); ?>;
+
+    const table2 = $('#data-table').DataTable({
+        autoWidth: false,          // 讓 colgroup 生效
+        searching: false,
+        info: false,
+        ordering: false,
+        dom: "frti",
+        pageLength: 99,
+        language: { zeroRecords: " " },
+        rowId: 'client_ip',        // 以 client_ip 當主鍵
+        columns: [
+        { data: null, width:"5%",  render: (d,t,r,meta)=> meta.row + 1 }, // 編號
+        { data: 'device_type_name',   width:"10%" },
+        { data: 'device_name',        width:"14%" },
+        { data: 'client_ip',          width:"10%" },
+        { data: 'data_time',          width:"20%" },
+        { data: 'job_id',             width:"6%"  },
+        { data: 'sequence_id',        width:"6%"  },
+        { data: 'final_fasten_torque',width:"6%"  },
+        { data: 'torque_unit_name',   width:"6%"  },
+        { data: 'final_fasten_angle', width:"6%"  },
+        { data: 'last_screw_count',   width:"6%"  },
+        { data: 'total_screw_count',  width:"6%"  },
+        { data: 'fasten_status_name', width:"15%" }
+        ]
+    });
+
+    // 列單選高亮
+    $('#data-table tbody').on('click','tr', function(){
+        if ($(this).hasClass('selected')) $(this).removeClass('selected');
+        else {
+        table2.$('tr.selected').removeClass('selected');
+        $(this).addClass('selected');
+        }
+    });
+
+    /** ---------- WebSocket upsert ---------- */
+    let socket;
+    const server_ip  = <?php echo json_encode($data['agent_server_ip']); ?>;
+    const serverUrl  = `ws://${server_ip}:9501`;
+
+    function upsertRow(payload){
+        const rowData = {
+        device_type_name: DEVICE_TYPE_7,
+        device_name: payload.device_name ?? '',
+        client_ip: payload.client_ip ?? '',
+        data_time: payload.data_time ?? '',
+        job_id: payload.job_id ?? '',
+        sequence_id: payload.sequence_id ?? '',
+        final_fasten_torque: payload.final_fasten_torque ?? '',
+        torque_unit_name: torqueUnitName(payload.torque_unit),
+        final_fasten_angle: payload.final_fasten_angle ?? '',
+        last_screw_count: payload.last_screw_count ?? '',
+        total_screw_count: payload.total_screw_count ?? '',
+        fasten_status_name: fastenStatusName(payload.fasten_status)
         };
-        
-        if (ip != null) {
-            window.open("http://"+ip+"/das/public/", "_blank");
+        if (!rowData.client_ip) return;
+
+        // 依主鍵 upsert
+        const rowApi = table2.row(function(_, d){ return d.client_ip === rowData.client_ip; });
+        if (rowApi.any()){
+        const merged = Object.assign({}, rowApi.data(), rowData);
+        rowApi.data(merged).draw(false);
+        } else {
+        table2.row.add(rowData).draw(false);
         }
     }
 
-    function ShowTime(){
-    　var NowDate=new Date();
-    　var y=NowDate.getFullYear();
-    　var m=NowDate.getMonth()+1;
-    　var d=NowDate.getDate();
-    　var h=NowDate.getHours();
-    　var i=NowDate.getMinutes();
-    　var s=NowDate.getSeconds();
-      h = String(h).padStart(2, "0");//補0到2位數
-      s = String(s).padStart(2, "0");//補0到2位數
-    　document.getElementById('day').innerHTML = y+'/'+m+'/'+d;
-    　document.getElementById('time').innerHTML = h+':'+i+':'+s+'';
-    　setTimeout('ShowTime()',1000);
+    function handleWebSocketMessage(event){
+        // 支援 "Client X said: {...}" 格式
+        const m = /^Client \d+ said:\s*(\{.*\})$/.exec(event.data);
+        const jsonStr = m ? m[1] : event.data;
+        try{
+        const payload = JSON.parse(jsonStr);
+        upsertRow(payload);
+        }catch(err){
+        console.error("JSON parse error:", err, "raw:", event.data);
+        }
     }
 
-    
+    function connectWebSocket(){
+        try{
+        socket = new WebSocket(serverUrl);
+        }catch(e){
+        console.error('WebSocket 無法建立：', e);
+        setTimeout(connectWebSocket, 5000);
+        return;
+        }
+
+        socket.addEventListener('open', ()=> {
+        console.log('WebSocket 連線成功');
+        });
+
+        socket.addEventListener('message', handleWebSocketMessage);
+
+        socket.addEventListener('close', ()=> {
+        console.log('WebSocket 關閉，5 秒後重連...');
+        setTimeout(connectWebSocket, 5000);
+        });
+
+        socket.addEventListener('error', (e)=> {
+        console.error('WebSocket 錯誤', e);
+        try{ socket.close(); }catch(_){}
+        });
+    }
+
+    /** ---------- 對外：開啟 DAS ---------- */
+    window.open_das = function(){
+        const d = table2.row('.selected').data();
+        const ip = d?.client_ip;
+        if (ip) window.open(`http://${ip}/das/public/`, '_blank');
+    };
+
+    /** ---------- 啟動 ---------- */
+    $(document).ready(function(){
+        connectWebSocket();
+    });
+
+    })();
 </script>
 
-<style>
-  /* CSS */
-  .breathing-row {
-      animation: breathing 1s alternate;
-  }
 
-  @keyframes breathing {
-      0% {
-          background-color: #66f26b;
-      }
-
-      100% {
-          background-color: #2C344600;
-      }
-  }
-  .dataTables_empty{
-    display: none;
-  }
-</style>
 
 <?php require APPROOT . 'views/inc/footer.php'; ?>
+
+<style>
+    .agent-display .table-scroll{
+        position: relative;
+        max-height: calc(100vh - 260px); /* 視頁面排版調整 */
+        overflow: auto;
+    }
+
+    #data-table{
+        width: 100%;
+        table-layout: fixed; /* 配合 colgroup，防抖動 */
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    #data-table th, #data-table td{
+        padding: 8px 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* 黏住表頭 */
+    #data-table thead.sticky th{
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #1f2937; /* 深灰 */
+        color: #fff;
+    }
+
+    /* 響應式：窄螢幕隱藏次要欄位（可依需求調整） */
+    @media (max-width: 1200px){
+        #data-table .col-count, #data-table .col-total { display: none; }
+    }
+    @media (max-width: 992px){
+        #data-table .col-angle, #data-table .col-unit { display: none; }
+    }
+    @media (max-width: 768px){
+        #data-table .col-job, #data-table .col-seq, #data-table .col-type { display: none; }
+    }
+
+    /* 沿用你的空表訊息隱藏 */
+    .dataTables_empty{ display:none; }
+
+
+</style>

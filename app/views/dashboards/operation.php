@@ -1,8 +1,9 @@
 <?php
     // chart=6 視覺上歸到 chart=4 的按鈕
     // chart=7 視覺上歸到 chart=2 的按鈕
-    $effective_mode = ((string)$data['chart_mode'] === '6') ? '4' : (string)$data['chart_mode'];
-    $effective_mode = ((string)$data['chart_mode'] === '7') ? '2' : (string)$data['chart_mode'];
+    $cm  = (string)($data['chart_mode'] ?? '');
+    $map = ['6' => '4', '7' => '2'];
+    $effective_mode = $map[$cm] ?? $cm;
 ?>
 
 
@@ -190,6 +191,43 @@ function updateChartUrl(currentUrl, chart) {
 
 const chartMode = "<?php echo $data['chart_mode']; ?>";
 
+// 啟用縮放 
+function enableZoom(xAxisType = 'value') {
+  // 類別軸用 filterMode: 'empty'，數值軸用 'filter'，避免扯到另一邊的資料
+  const isCategory = String(xAxisType) === 'category';
+  myChart.setOption({
+    toolbox: {
+      right: 10,
+      feature: {
+        dataZoom: { yAxisIndex: 'none' },   // 工具列上的縮放/還原
+        restore: {},
+        saveAsImage: {}
+      }
+    },
+    dataZoom: [
+      // 內建手勢/滑輪縮放（手機/滑鼠）
+      {
+        type: 'inside',
+        xAxisIndex: 0,
+        filterMode: isCategory ? 'empty' : 'filter',
+        zoomOnMouseWheel: 'shift',  // 滾輪需搭配 Shift，避免誤觸；想直接滾輪縮放就改 true
+        moveOnMouseMove: true,
+        preventDefaultMouseMove: false,
+        throttle: 50
+      },
+      // 底部滑桿
+      {
+        type: 'slider',
+        xAxisIndex: 0,
+        height: 18,
+        brushSelect: false,
+        filterMode: isCategory ? 'empty' : 'filter'
+      }
+    ]
+  });
+}
+
+
 function renderChart(chart_mode, chart_info) {
     const chartDom = document.getElementById('chart');
     echarts.dispose(chartDom);
@@ -224,6 +262,7 @@ function renderChart(chart_mode, chart_info) {
             y_min: chart_info?.y_min,
             y_max: chart_info?.y_max
         });
+        //enableZoom('value');
         return; // 別讓下面覆蓋
     }
 
@@ -290,6 +329,7 @@ function renderChart(chart_mode, chart_info) {
             yAxis: { type: 'value', name: 'Angle', splitLine: { show: true } },
             series
         });
+        //enableZoom('value');
         return;
     }
 
@@ -350,6 +390,7 @@ function renderChart(chart_mode, chart_info) {
             data: timeX.map((t, i) => [t, angleY[i]])
             }]
         });
+        //enableZoom('value');
         return; // ✅ 不要再往下跑到通用分支（分類軸）
     }
 
@@ -409,6 +450,7 @@ function renderChart(chart_mode, chart_info) {
         ],
         series: [...torqueSeries, rpmSeries]
         });
+        //enableZoom('value');
         return;
     }
 
@@ -480,6 +522,7 @@ function renderChart(chart_mode, chart_info) {
             data: contX.map((x, i) => [x, y_data_val[i]])
             }]
         });
+        //enableZoom('value');
         return; // 不要進到下面的一般 1~4 分支
     }
 
@@ -548,6 +591,8 @@ function renderChart(chart_mode, chart_info) {
         yAxis: { type: 'value', name: yAxisTitle, splitLine: { show: true } },
         series: finalSeries
     });
+
+    //enableZoom('value');
 }
 
 

@@ -24,12 +24,10 @@ class Dashboards extends Controller
         
         $isMobile = $this->isMobileCheck();
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
-        //$device_info = $this->Device_Info();
 
         $data = [
             'isMobile' => $isMobile,
             'agent_type' => $agent_type,
-            //'device_info' => $device_info,
         ];
 
         if($isMobile){
