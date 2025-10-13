@@ -447,8 +447,8 @@ const inputLabelMap = {
     },
     "en-us": {
         101: "Disable", 102: "Enable", 103: "Clear", 104: "Confirm", 105: "Start", 106: "Unscrew",
-        107: "Clear Step", 108: "Restart", 109: "Once Sense", 110: "Custom1", 111: "Custom2",
-        112: "Custom3", 113: "Custom4", 114: "Custom5",115: "FreeRotate",116: "Skip"
+        107: "Clear Step", 108: "Restart", 109: "Gate Once", 110: "UserDefine1", 111: "UserDefine2",
+        112: "UserDefine3", 113: "UserDefine4", 114: "UserDefine5",115: "FreeRotate",116: "Skip"
     }
 };
 
