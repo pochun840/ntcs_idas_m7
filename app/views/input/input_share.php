@@ -436,12 +436,12 @@ function get_input_by_job_id(jobid, arg2) {
 // ✅ 抽出語系文字對應表
 const inputLabelMap = {
     "zh-cn": {
-        101: "禁用", 102: "启用", 103: "清除", 104: "确认", 105: "启动", 106: "反向",
+        101: "禁用", 102: "智能", 103: "清除", 104: "确认", 105: "启动", 106: "反向",
         107: "工序清除", 108: "重启", 109: "一次感应", 110: "自定义1", 111: "自定义2",
         112: "自定义3", 113: "自定义4", 114: "自定义5",115: "自由旋转",116: "跳工序"
     },
     "zh-tw": {
-        101: "禁用", 102: "Enable", 103: "清除", 104: "確認", 105: "啟動", 106: "反向",
+        101: "禁用", 102: "智能", 103: "清除", 104: "確認", 105: "啟動", 106: "反向",
         107: "工序清除", 108: "重啟", 109: "一次感應", 110: "自定義1", 111: "自定義2",
         112: "自定義3", 113: "自定義4", 114: "自定義5",115: "自由旋轉",116: "跳工序"
     },
@@ -872,6 +872,32 @@ function resetElementsByPrefix() {
 }
 
 
+// === Helper：讓「禁用」事件在編輯下拉選單中灰階且不可選 ===
+function grayAndDisableBanEventOption(selectEl) {
+  if (!selectEl) return;
+  const isBan = (opt) => {
+    const label = (opt.textContent || opt.innerText || '').trim();
+    const val   = String(opt.value || '').trim();
+    // 以文字為主（中/英）
+    //if (/禁用/.test(label)) return true;
+    //if (/\bdisable(d)?\b/i.test(label)) return true;
+
+    // 若你知道固定 ID，取消註解其中一行會更精準：
+     if (val === '110') return true;
+     if (['110','0','-1'].includes(val)) return true;
+
+    return false;
+  };
+  Array.from(selectEl.options).forEach(opt => {
+    if (isBan(opt)) {
+      opt.disabled = true;          // 使其不可選
+      opt.style.color = 'gray';     // 保險：顏色灰
+      opt.classList.add('grayed-disabled'); // 若有 CSS 可一起套
+    }
+  });
+}
+
+
 function handleEditJobEvent() {
 
   // 沒選列就不要往下（可加提示）
@@ -883,6 +909,9 @@ function handleEditJobEvent() {
   // 先把目前選到的事件 ID 存起來，避免刷新時被清空
   const currentEvent = String(input_event);
 
+  // 顯示遮罩（可視需要）
+  if (typeof showOverlay === 'function') showOverlay();
+
   // 先刷新 total（會把 input_event 清掉），完成後還原再進單筆查詢
   get_input_by_job_id(job_id, {
     closeModals: false,
@@ -892,25 +921,66 @@ function handleEditJobEvent() {
       old_input_event = currentEvent;
 
       // 讓畫面上也把那列選回來（可選）
-      reselectRowByEventId(currentEvent);
+      if (typeof reselectRowByEventId === 'function') reselectRowByEventId(currentEvent);
 
-      // 繼續原本流程
+      // 取得單筆詳細（會帶入編輯表單資料）
       get_input_info(job_id, input_event);
-      handleEventChange(input_event);
+
+      // 開啟「編輯」視窗
+      const editModal = document.getElementById('edit_input');
+      if (editModal) editModal.style.display = 'block';
+
+      // 等 DOM/資料回填後，解鎖事件下拉與 PIN 選項
+      setTimeout(function () {
+        const eventSel = document.getElementById('edit_Event_Option');
+        const gocWrap  = document.getElementById('edit_work_goc');
+
+        // === 事件下拉：先完全解鎖，再設回目前事件值，最後鎖住「禁用」 ===
+        if (eventSel) {
+          if (typeof disableOptions === 'function') disableOptions('#edit_Event_Option', { reset: true });
+          eventSel.disabled = false;
+          Array.from(eventSel.options).forEach(opt => {
+            opt.disabled = false;
+            opt.hidden   = false;
+            opt.style.color = '';
+          });
+
+          // 設回已有事件值
+          eventSel.value = String(currentEvent);
+
+          // 把「禁用」選項灰階＋disabled（仍可看到，但不能選它）
+          grayAndDisableBanEventOption(eventSel);
+
+          // 一次感應事件(109) 顯示/隱藏
+          if (gocWrap) gocWrap.style.display = (parseInt(eventSel.value, 10) === 109 ? 'block' : 'none');
+
+          // 變更時維持禁用規則＋一次感應顯示切換
+          eventSel.onchange = function () {
+            const v = parseInt(this.value, 10);
+            if (gocWrap) gocWrap.style.display = (v === 109 ? 'block' : 'none');
+            grayAndDisableBanEventOption(this);
+          };
+        }
+
+        // === PIN 單選鈕：先全部解鎖，再只鎖住「其他已被使用的 pin」===
+        if (typeof unlockAllEditPins === 'function') unlockAllEditPins();
+
+        if (typeof disableUsedPinsExcept === 'function') {
+          // 取得目前已選的 edit_pin（高/低任一）
+          const curr = document.querySelector('input[type="radio"][id^="edit_pin"][name="edit_pin_option"]:checked');
+          const m = curr?.id?.match(/^edit_pin(\d+)_/i);
+          if (m && m[1]) {
+            // 只鎖住「除了目前 pin 以外」的已使用 pin
+            disableUsedPinsExcept(String(m[1]));
+          }
+        }
+      }, 0);
     }
   });
 }
 
 
-//function handleEditJobEvent() {
 
-  // ❌ 這行會把所有已用 pin 鎖死，導致不能換別的 pin
-  // disableRadioList(temp);
-
-  // 交給 get_input_info 在資料回來後，依目前事件 pin 做更精準的鎖定
-  //get_input_info(job_id, input_event);
-  //handleEventChange(input_event);
-//}
 
 function parsePhpArrayDumpToObject(txt) {
   // 解析單層 print_r：Array ( [JOBID] => 1 [JOBname] => XXX )
@@ -1090,13 +1160,13 @@ function disableOptions(selector, valuesOrOptions = [], gray = false, reset = fa
 }
 
 function applyUsedEventsToEditSelect(currentEventId) {
-  const used = ((jobTempData && jobTempData[job_id] && jobTempData[job_id].temp_event) || []).map(String);
-  const toDisable = used.filter(v => v !== String(currentEventId)); // 保留目前這筆可選
-
-  // 先重置，再套用灰階禁用
+  // 在「編輯」狀態下允許自由切換事件：先重置，再單獨鎖住「禁用」
   disableOptions('#edit_Event_Option', { reset: true });
-  disableOptions('#edit_Event_Option', { values: toDisable, mode: 'gray' });
+  const sel = document.getElementById('edit_Event_Option');
+  grayAndDisableBanEventOption(sel);
 }
+
+
 
 
 function disableSelectOptions(selector) {

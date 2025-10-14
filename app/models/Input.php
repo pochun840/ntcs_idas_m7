@@ -72,6 +72,20 @@ class Input{
         return $rows;
     }
 
+
+    public function check_input_event_wave($input_job_id,$Pin,$signal){
+
+        $sql = "DELETE FROM JOBInput_lst WHERE JOBID = ? AND Pin = ? AND signal = ?";
+        $stmt = $this->db_iDas->prepare($sql);
+        $params = [$input_job_id,$Pin,$signal];
+        $stmt->execute($params);
+
+        return (int)$stmt->rowCount();
+    }
+
+
+    
+
     public function check_job_event_count($input_job_id,$input_event){
         
         $sql = "SELECT count(*)  FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";

@@ -85,13 +85,11 @@ class Output{
 
     public function create_output($output_data) {    
 
-        // 預設值處理
-        if (!isset($output_data['durate']) || $output_data['durate'] === '' || $output_data['durate'] === null) {
-            $output_data['durate'] = 100;
-        }
 
         $output_data['stop_trig'] = 1;
         $output_data['cycle'] = 1;
+
+        
 
         $sql = "INSERT INTO `JOBOutput_lst` (JOBID, Pin, EvenID, signal, durate, stop_trig, cycle) ";
         $sql .= "VALUES (:jobid, :pin, :evenid, :signal, :durate, :stop_trig, :cycle) ";        
@@ -110,6 +108,49 @@ class Output{
     }
 
 
+    public function delete_all_by_job_pin($jobId, $pin) {
+        $sql = "DELETE FROM JOBOutput_lst WHERE JOBID = ? AND Pin = ?";
+        $st  = $this->db_iDas->prepare($sql);
+        $st->execute([$jobId, $pin]);
+        return (int)$st->rowCount();
+    }
+
+
+    public function delete_conflict_event($jobId, $pin, $signal, $targetEvenId) {
+        $sql = "DELETE FROM JOBOutput_lst WHERE JOBID = ? AND Pin = ? AND signal = ? AND EvenID = ?";
+        $st  = $this->db_iDas->prepare($sql);
+        $st->execute([$jobId, $pin, $signal, $targetEvenId]);
+        return (int)$st->rowCount();
+    }
+
+    public function update_output_event($jobId, $pin, $oldEvenId, $newEvenId, $signal, $durate) {
+        $sql = "UPDATE JOBOutput_lst
+                SET EvenID = :newEven, signal = :signal, durate = :durate
+                WHERE JOBID = :job AND Pin = :pin AND EvenID = :oldEven";
+        $st  = $this->db_iDas->prepare($sql);
+        $st->bindValue(':newEven', $newEvenId, PDO::PARAM_INT);
+        $st->bindValue(':signal',  $signal,   PDO::PARAM_INT);
+        // durate 可能為空字串：視 schema 若為 INT 可轉 0 或 NULL，這裡沿用你原本的字串/數值
+        $st->bindValue(':durate',  $durate);
+        $st->bindValue(':job',     $jobId,    PDO::PARAM_INT);
+        $st->bindValue(':pin',     $pin,      PDO::PARAM_INT);
+        $st->bindValue(':oldEven', $oldEvenId,PDO::PARAM_INT);
+        $st->execute();
+        return (int)$st->rowCount();
+    }
+
+    public function insert_output_event($jobId, $pin, $evenId, $signal, $durate) {
+        $sql = "INSERT INTO JOBOutput_lst (JOBID, Pin, EvenID, signal, durate)
+                VALUES (:job, :pin, :even, :signal, :durate)";
+        $st  = $this->db_iDas->prepare($sql);
+        $st->bindValue(':job',    $jobId,  PDO::PARAM_INT);
+        $st->bindValue(':pin',    $pin,    PDO::PARAM_INT);
+        $st->bindValue(':even',   $evenId, PDO::PARAM_INT);
+        $st->bindValue(':signal', $signal, PDO::PARAM_INT);
+        $st->bindValue(':durate', $durate);
+        $st->execute();
+        return (int)$st->rowCount();
+    }
 
 
     public function edit_output($output_data) {
@@ -171,6 +212,22 @@ class Output{
 
         return $results;
     }
+
+
+
+    
+    public function check_output_event_wave($output_job_id,$Pin,$signal){
+
+        $sql = "DELETE FROM JOBOutput_lst WHERE JOBID = ? AND Pin = ? AND signal = ?";
+        $stmt = $this->db_iDas->prepare($sql);
+        $params = [$output_job_id,$Pin,$signal];
+        $stmt->execute($params);
+
+        return (int)$stmt->rowCount();
+    }
+
+
+
 
 
     public function generateTableCell($value,$value2) {

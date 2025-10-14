@@ -1055,42 +1055,80 @@ function create_output_id() {
 
 
 
-function edit_output_id(){
+function edit_output_id() {
+  var select = document.getElementById("edit_event_option");
+  if (!select) {
+    console.error('[edit_output_id] #edit_event_option not found');
+    return;
+  }
 
-    var output_event = document.getElementById("edit_event_option").value;
-    var pinval       = collectPinValues('input[name="edit_pin_option"]');
-    var pin_old      = pinval[0]['id'];
-    var wave         = pinval[0]['value'];
-    var match        = pin_old.match(/\d+/); 
-    var output_pin   = match ? parseInt(match[0]) : null;
+  var output_event = select.value;
+  var pinval       = collectPinValues('input[name="edit_pin_option"]');
+  if (!pinval || !pinval.length) {
+    alertify && alertify.alert('請先選擇要編輯的輸出腳位');
+    return;
+  }
 
-    var time_ms = 'edit_time'+ output_pin;
-    var wave_on =  document.getElementById(time_ms).value;
-    if(job_id){
+  var pin_old      = pinval[0]['id'];        // e.g. "edit_pin2_1"
+  var wave         = pinval[0]['value'];     // 0/1/2...
+  var match        = pin_old.match(/\d+/);
+  var output_pin   = match ? parseInt(match[0], 10) : null;
 
-        document.getElementById('spinner').style.display = 'block';
+  if (!job_id || !output_pin) {
+    alertify && alertify.alert('資料不完整，請重新選取事件/腳位');
+    return;
+  }
 
-        $.ajax({
-            url: "?url=Outputs/edit_output_event",
-            method: "POST",
-            data: { 
-                job_id: job_id,
-                output_pin: output_pin,
-                output_event: output_event,
-                wave: wave,
-                wave_on: wave_on,
-                old_output_event: old_output_event
-            },
-            success: function(response) {
-                output_success_res(response, job_id, get_output_by_job_id, 'edit_output');
-                hideOverlay();
+  var time_ms_id = 'edit_time' + output_pin;
+  var wave_on_el = document.getElementById(time_ms_id);
+  var wave_on    = wave_on_el ? wave_on_el.value : '';
 
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX request failed:", status, error);
-            }
-        });         
+  // 顯示遮罩 + spinner
+  document.querySelector(".main-content")?.classList.add("overlay-active");
+  var spinner = document.getElementById('spinner');
+  if (spinner) spinner.style.display = 'block';
+
+  // 小工具：真正送出「編輯」
+  function doSave() {
+    $.ajax({
+      url: "?url=Outputs/edit_output_event",
+      method: "POST",
+      data: {
+        job_id: job_id,
+        output_pin: output_pin,
+        output_event: output_event,      // 目標事件（ex: NG）
+        wave: wave,
+        wave_on: wave_on,
+        old_output_event: old_output_event // 後端若需要比對舊事件
+      },
+      success: function (response) {
+        output_success_res(response, job_id, get_output_by_job_id, 'edit_output');
+        hideOverlay();
+      },
+      error: function (xhr, status, error) {
+        console.error("[edit_output_id] save failed:", status, error);
+        hideOverlay();
+        if (spinner) spinner.style.display = 'none';
+        alertify && alertify.alert('編輯失敗，請稍後再試');
+      }
+    });
+  }
+
+  // 先「靜默刪除」目標事件（若存在就清掉），避免唯一性衝突
+  // 刪除結束（成功/失敗/不存在）都一律往下 doSave()
+  $.ajax({
+    url: "?url=Outputs/delete_output",
+    method: "POST",
+    data: {
+      job_id: job_id,
+      output_event: output_event,   // 要換成的事件（先清除可能已有的）
+      output_pin: output_pin
+    },
+    complete: function () {
+      // 無論刪除成功/失敗與否，皆嘗試儲存（若原本就不存在，這裡等於 no-op）
+      doSave();
     }
+  });
 }
 
 function resetalignsubmit(job_id) {

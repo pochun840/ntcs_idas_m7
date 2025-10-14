@@ -333,12 +333,16 @@ class Inputs extends Controller
             $input_data['gateconfirm'] = '';
         }else{
             $input_data['gateconfirm'] = $_POST['gateconfirm'];
+            
         }
  
 
         if($input_check){
-            $count = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
-            $ans  = $this->InputModel->delete_input_event_by_id($input_data['JOBID'],$input_data['EvenID']);
+
+            $deleted = $this->InputModel->check_input_event_wave($input_data['JOBID'],$input_data['Pin'],$input_data['signal']);
+            $count   = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
+            $ans     = $this->InputModel->delete_input_event_by_id($input_data['JOBID'],$input_data['EvenID']);
+
             $res  = $this->InputModel->create_input($input_data);
 
             $result = array();
