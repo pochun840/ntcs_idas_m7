@@ -13,6 +13,9 @@ var input_job;
 var temp_event;
 let jobTempData = {}; 
 
+const ALLOW_MULTI_EVENTS = new Set(['110','111','112','113','114']);
+
+
 $(document).ready(function () {
     highlight_row_input('input_table');
  
@@ -263,9 +266,13 @@ function getLanguageMessage(cookieName) {
 // 🟩 個別處理邏輯封裝
 
 function handleNewEvent() {
+
     disableRadioList(temp);
-    disableOptions('#Event_Option', tempA, false, true);       // ✅ 重置後再禁用 tempA
-    disableOptions('#Event_Option', temp_event, true, false);  // ✅ 只針對 temp_event 顯示灰色，不重設
+    disableOptions('#Event_Option', { values: tempA, reset: true, mode: 'hide' });
+
+    // 只禁用「不可重複」的已用事件；110~114 保持可選
+    const usedForBlocking = eventsToDisable(temp_event);
+    disableOptions('#Event_Option', { values: usedForBlocking, mode: 'gray' });
 
     showOverlay();
     document.getElementById('newinput').style.display = 'block';
@@ -843,7 +850,10 @@ function handleNewJobEvent() {
   // ✅ 下拉選單：先 reset → 隱藏 tempA → 灰階禁用 temp_event（並自動清掉被禁用的選取）
   disableOptions('#Event_Option', { reset: true });
   disableOptions('#Event_Option', { values: data.tempA, mode: 'hide' });
-  disableOptions('#Event_Option', { values: data.temp_event, mode: 'gray', autoClear: true });
+
+  // 只禁用「不可重複」的已用事件；110~114 保持可選
+  const usedForBlocking = eventsToDisable(data.temp_event);
+  disableOptions('#Event_Option', { values: usedForBlocking, mode: 'gray', autoClear: true });
 
   // ✅ 仍需禁用其它元素（如 pin 等），保留這行
   disableElementsByIdList(data.temp);
@@ -875,27 +885,22 @@ function resetElementsByPrefix() {
 // === Helper：讓「禁用」事件在編輯下拉選單中灰階且不可選 ===
 function grayAndDisableBanEventOption(selectEl) {
   if (!selectEl) return;
-  const isBan = (opt) => {
-    const label = (opt.textContent || opt.innerText || '').trim();
-    const val   = String(opt.value || '').trim();
-    // 以文字為主（中/英）
-    //if (/禁用/.test(label)) return true;
-    //if (/\bdisable(d)?\b/i.test(label)) return true;
 
-    // 若你知道固定 ID，取消註解其中一行會更精準：
-     if (val === '110') return true;
-     if (['110','0','-1'].includes(val)) return true;
+  //const isBanByLabel = (txt) => /禁用|disable(d)?/i.test(String(txt || ''));
+  //const isBanByValue = (val) => ['101', '-1', '0', ''].includes(String(val || '').trim());
 
-    return false;
-  };
   Array.from(selectEl.options).forEach(opt => {
-    if (isBan(opt)) {
-      opt.disabled = true;          // 使其不可選
-      opt.style.color = 'gray';     // 保險：顏色灰
-      opt.classList.add('grayed-disabled'); // 若有 CSS 可一起套
-    }
+    const val   = String(opt.value || '').trim();
+    const label = (opt.textContent || opt.innerText || '').trim();
+
+    const shouldDisable = isBanByValue(val) || isBanByLabel(label);
+
+    opt.disabled = shouldDisable;
+    opt.style.color = shouldDisable ? 'gray' : '';
+    opt.classList.toggle('grayed-disabled', shouldDisable);
   });
 }
+
 
 
 function handleEditJobEvent() {
@@ -1094,6 +1099,13 @@ function disableElementsByIdList(ids) {
             el.style.color = 'gray';
         }
     });
+}
+
+function eventsToDisable(usedList) {
+  // 只回傳「不允許重複」的已用事件（排除 110~114）
+  return (Array.isArray(usedList) ? usedList : [])
+    .map(String)
+    .filter(v => !ALLOW_MULTI_EVENTS.has(v));
 }
 
 
