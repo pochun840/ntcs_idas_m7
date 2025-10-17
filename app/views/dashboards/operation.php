@@ -191,15 +191,18 @@ function updateChartUrl(currentUrl, chart) {
 
 const chartMode = "<?php echo $data['chart_mode']; ?>";
 
-// 啟用縮放 
+
+// 啟用縮放（無底部 slider）
 function enableZoom(xAxisType = 'value') {
-  // 類別軸用 filterMode: 'empty'，數值軸用 'filter'，避免扯到另一邊的資料
+  // 類別軸用 filterMode: 'empty'，數值軸用 'filter'
   const isCategory = String(xAxisType) === 'category';
+
   myChart.setOption({
     toolbox: {
       right: 10,
       feature: {
-        dataZoom: { yAxisIndex: 'none' },   // 工具列上的縮放/還原
+        // 工具列提供區域縮放/還原/存圖；不會產生底部 slider
+        dataZoom: { yAxisIndex: 'none' },
         restore: {},
         saveAsImage: {}
       }
@@ -210,18 +213,11 @@ function enableZoom(xAxisType = 'value') {
         type: 'inside',
         xAxisIndex: 0,
         filterMode: isCategory ? 'empty' : 'filter',
-        zoomOnMouseWheel: 'shift',  // 滾輪需搭配 Shift，避免誤觸；想直接滾輪縮放就改 true
+        // 滾輪縮放行為：'shift' 需配合 Shift；若想直接用滾輪縮放改成 true
+        zoomOnMouseWheel: 'shift',
         moveOnMouseMove: true,
         preventDefaultMouseMove: false,
         throttle: 50
-      },
-      // 底部滑桿
-      {
-        type: 'slider',
-        xAxisIndex: 0,
-        height: 18,
-        brushSelect: false,
-        filterMode: isCategory ? 'empty' : 'filter'
       }
     ]
   });

@@ -191,6 +191,9 @@ class Controller
         return $response;
     }
 
+
+   
+
         
     //取得控制器 目前用了多少容量
     public function check_controller_size(){
@@ -260,6 +263,7 @@ class Controller
 
         return  $response['result'];
     }
+    
 
 
     public function get_firmware_version(){
@@ -429,6 +433,83 @@ class Controller
         }
         
         return $response;
+    }
+
+
+    public function get_controller_sn(){
+
+        require_once '../app/config/config.php';  // 載入常數
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $ip = CONTROLLER_IP;
+        $port = 502;
+        $unitId = 0;
+        $startAddress = 4102;  // 字串起始暫存器
+        $quantity = 10;        // 讀 10 格＝20 bytes
+
+        // 小工具：把 16-bit 暫存器陣列轉成 ASCII
+        $regsToAscii = function(array $regs, string $endian = 'BE', bool $stripNul = true, bool $printableOnly = true): string {
+            $out = '';
+            foreach ($regs as $n) {
+                $n  = (int)$n & 0xFFFF;
+                $hi = ($n >> 8) & 0xFF;
+                $lo =  $n       & 0xFF;
+                $bytes = ($endian === 'LE') ? [$lo, $hi] : [$hi, $lo];
+                foreach ($bytes as $b) {
+                    if ($stripNul && $b === 0x00) continue;
+                    if ($printableOnly && ($b < 0x20 || $b > 0x7E)) continue;
+                    $out .= chr($b);
+                }
+            }
+            return $out;
+        };
+
+        $response = [
+            'ok'             => false,
+            'error'          => '',
+            'unitId'         => $unitId,
+            'start'          => $startAddress,
+            'quantity'       => $quantity,
+            'raw_registers'  => [],
+            'ascii_be'       => '',
+            'ascii_le'       => '',
+            'model'          => '',
+        ];
+
+        try {
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
+            $modbus->timeout_sec = 10;
+
+            // 功能碼 FC3: 讀取保持暫存器
+            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+
+            if (!is_array($data) || empty($data)) {
+                throw new Exception('No data returned from Modbus');
+            }
+
+            // 轉成 int 陣列（保底）
+            $regs = array_map('intval', $data);
+
+            // 兩種端序的字串
+            $asciiBE = $regsToAscii($regs, 'BE', true, true);
+            $asciiLE = $regsToAscii($regs, 'LE', true, true);
+
+            // 以 Big-Endian 為主（多數裝置字串是這樣），也可換成 $asciiLE
+            $model = $asciiBE;
+
+            $response['ok']            = true;
+            $response['raw_registers'] = $regs;
+            $response['ascii_be']      = $asciiBE;
+            $response['ascii_le']      = $asciiLE;
+            $response['model']         = $model;
+
+        } catch (Exception $e) {
+            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+        }
+        
+        return $response;
+
     }
 
     //起子型號

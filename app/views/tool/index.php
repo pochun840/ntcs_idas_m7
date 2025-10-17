@@ -39,7 +39,7 @@
 
                          <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['tools_version'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['tools_version'];?></div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['tmd_fw_version'];?></div>
                         </div>
                      
 
@@ -87,7 +87,7 @@
 
                         <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['gateway'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo isset($data['gateway']) && $data['gw_display'] !== '' ? $data['gw_display'] : '--'; ?></div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo isset($data['gateway']) && $data['gateway'] !== '' ? $data['gateway'] : '--'; ?></div>
                         </div>
 
                         

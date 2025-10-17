@@ -73,8 +73,10 @@ class Tools extends Controller
 
         // 版本資訊
         $tools_version    = $this->get_tools_version() / 100; 
+        //$tools_version    = $this->get_tools_version();
         $firmware_version = $this->get_firmware_version() / 100; 
         $upgrade_ver      = $this->get_upgrade_version();
+
 
         // 起子型號
         $tools_type_temp = $this->get_tools_type();
@@ -85,6 +87,7 @@ class Tools extends Controller
 
         // 起子序號
         $tools_type_tmp = $this->get_tools_sn(); 
+
         if (!empty($tools_type_tmp)){
             $this->ToolModel->update_tools_sn($tools_type_tmp);
             $Tool_Info['tool_sn'] = $tools_type_tmp['model'];

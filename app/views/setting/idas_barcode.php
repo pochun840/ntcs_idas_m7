@@ -303,6 +303,42 @@
     $(function(){ toggleBarcodeSeq(); });
 
 
+    // 局部刷新條碼清單（避免整頁 reload）
+    function refreshBarcodeList(i18n, options) {
+        options = options || {};
+        const keepScroll = options.keepScroll !== false; // 預設保留卷軸位置
+        const container = document.getElementById('total_barcodes');
+        const prevScroll = (keepScroll && container) ? container.scrollTop : 0;
+
+        $.ajax({
+            url: "?url=Settings/show_Barcodes",
+            method: "GET",
+            success: function (html) {
+            $('#total_barcodes').html(html);
+            if (keepScroll && container) container.scrollTop = prevScroll;
+
+            // 事件委已用 $(document).on('change', '.barcode-check', ...) 不需重綁
+            try { if (typeof toggleBarcodeSeq === 'function') toggleBarcodeSeq(); } catch(_) {}
+            try {
+                if ($('.barcode-check:checked').length === 0 && typeof resetBarcodeForm === 'function') {
+                resetBarcodeForm();
+                }
+            } catch(_) {}
+            try { $(document).trigger('barcode:list:refreshed'); } catch(_) {}
+            },
+            error: function () {
+            console.error("刷新條碼失敗");
+            try {
+                if (i18n && i18n.refreshFail) alertify.error(i18n.refreshFail);
+                else alertify.error('刷新條碼列表失敗');
+            } catch(_) {}
+            setTimeout(function(){ try { alertify.closeAll(); } catch(_) {} }, 3000);
+            }
+        });
+    }
+
+
+
 
     function delete_barcode_item() {
         // ---- 語系處理 ----
@@ -371,17 +407,26 @@
         } catch (_) {}
 
         const spinner = document.getElementById('spinner');
-        const checked = document.querySelectorAll('.barcode-check:checked');
+        // 更穩健的選取：支援 .barcode-check、name="barcode_check"、以及 #barcode_check
+        const checked = document.querySelectorAll('.barcode-check:checked, input[name="barcode_check"]:checked, #barcode_check:checked');
 
-        const jobIds = Array.from(checked)
-            .map(cb => Number(cb.dataset.jobId))
-            .filter(n => Number.isInteger(n) && n > 0);
+        // 從 data-job-id 取得 jobId；若缺，從 id="barcode_check_<jobid>_..." 推回
+        const jobIds = Array.from(checked).map(cb => {
+            const raw = (cb.dataset && cb.dataset.jobId) ? cb.dataset.jobId : cb.getAttribute('data-job-id');
+            if (raw && /^\d+$/.test(raw)) return Number(raw);
+            const m = (cb.id || '').match(/^barcode_check_(\d+)_/);
+            if (m) return Number(m[1]);
+            return null;
+        }).filter(n => Number.isInteger(n));
 
-        if (jobIds.length === 0) {
+        if (checked.length === 0 || jobIds.length === 0) {
             alertify.alert(i18n.info, i18n.noSelect);
             setTimeout(() => alertify.closeAll(), 3000);
             return;
         }
+
+
+
 
         alertify.confirm(
             i18n.confirm,
@@ -408,20 +453,8 @@
 
                         setTimeout(function () {
                             alertify.closeAll();
-                            $.ajax({
-                                url: "?url=Settings/show_Barcodes",
-                                method: "GET",
-                                success: function (html) {
-                                    $('#total_barcodes').html(html);
-                                    location.reload();
-                                },
-                                error: function () {
-                                    console.error("刷新條碼失敗");
-                                    alertify.error(i18n.refreshFail);
-                                    setTimeout(() => alertify.closeAll(), 3000);
-                                    location.reload();
-                                }
-                            });
+                            // 使用局部刷新，不整頁重載
+                            refreshBarcodeList(i18n);
                         }, 3000);
                     },
                     error: function(xhr, status, error) {

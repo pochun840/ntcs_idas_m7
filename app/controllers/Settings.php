@@ -721,6 +721,9 @@ class Settings extends Controller
 
 
 
+
+
+
     public function Sync_check_db() {
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
@@ -1794,7 +1797,20 @@ class Settings extends Controller
         // ✅ 檢查是否可同步（Modbus 工具狀態）
         $idas_result = $this->idas_check();
 
-        if ($idas_result['result'] != 0) {
+        // 取得控制器 SN（DB）
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+        $device_sn_raw   = (string)($controller_info['device_sn'] ?? '');
+        $device_sn       = preg_replace('/[^A-Za-z0-9_\-]/', '_', $device_sn_raw);
+
+        // 透過 Modbus 取得控制器 SN
+        $modbus_info   = (array)($this->get_controller_sn() ?? []);
+        $modbus_sn_raw = (string)($modbus_info['model'] ?? '');
+        $modbus_sn     = preg_replace('/[^A-Za-z0-9_\-]/', '_', $modbus_sn_raw);
+
+        // SN 是否相符（兩邊都有值才比較）
+        $sn_match = ($device_sn !== '' && $modbus_sn !== '' && strcasecmp($device_sn, $modbus_sn) === 0);
+        
+        if ($idas_result['result'] != 0  && $sn_match) {
             echo json_encode([
                 'result'   => false,
                 'login'    => 0,
