@@ -294,9 +294,7 @@ class Inputs extends Controller
         }
     }
 
-    public function edit_input_event()
-    {
-
+    public function edit_input_event(){
 
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
