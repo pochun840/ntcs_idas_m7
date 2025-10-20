@@ -32,6 +32,8 @@ class Outputs extends Controller
             foreach($joblist as $kk =>$vv){
                 $job_list_new[$vv['JOBID']] =$vv;  
             }
+        }else{
+            $job_list_new = '';
         }
 
         $this->ntcs_data_db_sysnc();

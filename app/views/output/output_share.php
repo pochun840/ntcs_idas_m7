@@ -1054,7 +1054,6 @@ function create_output_id() {
 }
 
 
-
 function edit_output_id() {
   var select = document.getElementById("edit_event_option");
   if (!select) {
@@ -1083,6 +1082,48 @@ function edit_output_id() {
   var wave_on_el = document.getElementById(time_ms_id);
   var wave_on    = wave_on_el ? wave_on_el.value : '';
 
+  // === 語系偵測（優先順序：window.CURR_LANG → <html lang> → #curr_lang → 預設 en-us）===
+  var LANG = (window.CURR_LANG || document.documentElement.lang || document.getElementById('curr_lang')?.value || 'en-us').toLowerCase();
+
+  // === 動態訊息：空值與範圍錯誤都顯示「輸入框{id}數值不在 100 到 10000 之間。」===
+  var MIN = 100, MAX = 10000;
+  var MSG = {
+    'en-us': {
+      empty: (id, min, max) => `Input ${id} must be an integer between ${min} and ${max}.`,
+      range: (id, min, max) => `Input ${id} must be an integer between ${min} and ${max}.`
+    },
+    'zh-tw': {
+      empty: (id, min, max) => `輸入框${id}數值不在 ${min} 到 ${max} 之間。`,
+      range: (id, min, max) => `輸入框${id}數值不在 ${min} 到 ${max} 之間。`
+    },
+    'zh-cn': {
+      empty: (id, min, max) => `输入框${id}数值不在 ${min} 到 ${max} 之间。`,
+      range: (id, min, max) => `输入框${id}数值不在 ${min} 到 ${max} 之间。`
+    }
+  };
+  if (!MSG[LANG]) LANG = 'en-us';
+
+  // === wave==1：必填 + 範圍（整數）檢查 ===
+  if (Number(wave) === 1) {
+    var v = String(wave_on ?? '').trim();
+
+    if (v === '') {
+      alertify && alertify.alert(MSG[LANG].empty(output_pin, MIN, MAX));
+      if (wave_on_el) wave_on_el.focus();
+      return;
+    }
+
+    var n = Number(v);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < MIN || n > MAX) {
+      alertify && alertify.alert(MSG[LANG].range(output_pin, MIN, MAX));
+      if (wave_on_el) wave_on_el.focus();
+      return;
+    }
+
+    // 正規化為整數字串再送出
+    wave_on = String(parseInt(n, 10));
+  }
+
   // 顯示遮罩 + spinner
   document.querySelector(".main-content")?.classList.add("overlay-active");
   var spinner = document.getElementById('spinner');
@@ -1099,7 +1140,7 @@ function edit_output_id() {
         output_event: output_event,      // 目標事件（ex: NG）
         wave: wave,
         wave_on: wave_on,
-        old_output_event: old_output_event // 後端若需要比對舊事件
+        old_output_event: old_output_event // 後端若需要比對舊事件（未定義時等於 undefined）
       },
       success: function (response) {
         output_success_res(response, job_id, get_output_by_job_id, 'edit_output');
@@ -1130,6 +1171,8 @@ function edit_output_id() {
     }
   });
 }
+
+
 
 function resetalignsubmit(job_id) {
     unifiedFlag = 0;   // ✅ 執行 resetalignsubmit 時設回 0
