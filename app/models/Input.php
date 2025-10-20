@@ -75,9 +75,9 @@ class Input{
 
     public function check_input_event_wave($input_job_id,$Pin,$signal){
 
-        $sql = "DELETE FROM JOBInput_lst WHERE JOBID = ? AND Pin = ? AND signal = ?";
+        $sql = "DELETE FROM JOBInput_lst WHERE JOBID = ? AND Pin = ? ";
         $stmt = $this->db_iDas->prepare($sql);
-        $params = [$input_job_id,$Pin,$signal];
+        $params = [$input_job_id,$Pin];
         $stmt->execute($params);
 
         return (int)$stmt->rowCount();

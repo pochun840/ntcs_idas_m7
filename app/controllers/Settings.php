@@ -719,65 +719,63 @@ class Settings extends Controller
     }
 
 
-
-
-
-
-
-    public function Sync_check_db() {
+      public function Sync_check_db() {
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
 
-        // --- 11: LIN ---
         $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
         $midPath1     = '/mnt/ramdisk/11.Lin';
         $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
         $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
 
-        // --- 11: barcode DB ---
         $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
         $midPath2     = '/mnt/ramdisk/11.db';
         $finalPath2   = '/mnt/ramdisk/ftp/11.db';
         $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
 
-        // --- 12: device DB ---
         $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
-        $midPath3     = '/mnt/ramdisk/12.db';
-        $finalPath3   = '/mnt/ramdisk/ftp/12.db';
-        $renamedPath3 = '/mnt/ramdisk/ftp/12_db_temp.db';
-
+        $dst3         = '/home/kls/NTCS7/ntcs_device.db';
 
         if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
 
-            // 檢查 3 個來源檔是否存在
-            if (!file_exists($src1) || !file_exists($src2) || !file_exists($src3)) {
-                $missing = [];
-                if (!file_exists($src1)) $missing[] = 'KLS_NTCS_IDAS.Lin';
-                if (!file_exists($src2)) $missing[] = 'ntcs_barcode_IDAS.db';
-                if (!file_exists($src3)) $missing[] = 'ntcs_device_IDAS.db';
-                $this->MiscellaneousModel->generateErrorResponse('Error', 'Source file(s) missing: ' . implode(', ', $missing));
-                return;
+            // ✅ 先同步 device.db (src3 → dst3)
+            if (file_exists($src3)) {
+                if (!copy($src3, $dst3)) {
+                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
+                }
+                @chmod($dst3, 0777);
+                $this->get_db_sync();
             }
 
-            // 初始化 Modbus
+            //  檢查原始檔案是否存在
+            if (!file_exists($src1) || !file_exists($src2)) {
+                $missingFiles = [];
+                if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
+                if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
+
+                $this->MiscellaneousModel->generateErrorResponse(
+                    'Error',
+                    'Source file(s) missing: ' . implode(', ', $missingFiles)
+                );
+            }
+
+            //初始化 Modbus
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
             $modbus->port = 502;
             $modbus->timeout_sec = 10;
 
             try {
-                // ----------- Sync 11: LIN -----------
+                // ----------- Sync LIN File -----------
                 if (!$this->safeCopy($src1, $midPath1)) {
                     $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1");
-                    return;
                 }
                 @chmod($midPath1, 0777);
 
                 if (!$this->safeCopy($midPath1, $finalPath1)) {
                     $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath1");
-                    return;
                 }
                 unlink($midPath1);
                 $this->logMessage("$src1 copied to FTP");
@@ -786,23 +784,20 @@ class Settings extends Controller
 
                 if (!$this->safeCopy($finalPath1, $renamedPath1)) {
                     $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
-                    return;
                 }
                 unlink($finalPath1);
                 $this->logMessage("$finalPath1 renamed to $renamedPath1");
 
                 usleep(1_000_000); // sleep 1 sec
 
-                // ----------- Sync 11: barcode DB -----------
+                // ----------- Sync DB File (barcode) -----------
                 if (!$this->safeCopy($src2, $midPath2)) {
                     $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2");
-                    return;
                 }
                 @chmod($midPath2, 0777);
 
                 if (!$this->safeCopy($midPath2, $finalPath2)) {
                     $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath2");
-                    return;
                 }
                 unlink($midPath2);
                 $this->logMessage("$src2 copied to FTP");
@@ -811,47 +806,20 @@ class Settings extends Controller
 
                 if (!$this->safeCopy($finalPath2, $renamedPath2)) {
                     $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
-                    return;
                 }
                 unlink($finalPath2);
                 $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
-                usleep(1_000_000); // sleep 1 sec
-
-                // ----------- ✅ Sync 12: device DB -----------
-                if (!$this->safeCopy($src3, $midPath3)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3");
-                    return;
-                }
-                @chmod($midPath3, 0777);
-
-                if (!$this->safeCopy($midPath3, $finalPath3)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath3");
-                    return;
-                }
-                unlink($midPath3);
-                $this->logMessage("$src3 copied to FTP");
-
-                // 先產生完成檔（12_db_temp.db），再通知控制器（確保控制器看到實體檔案）
-                if (!$this->safeCopy($finalPath3, $renamedPath3)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename device DB file");
-                    return;
-                }
-                unlink($finalPath3);
-                $this->logMessage("$finalPath3 renamed to $renamedPath3");
-
-                // 建議使用地址 12594 對應 "12"；若控制器只監聽 12593，改回 [1, 12593]
-                $this->notifyModbus($modbus, [1, 12594], "DB");
-
-                // ✅ 成功（純 JSON）
+                // ✅ 最後回傳成功訊息（純 JSON）
                 $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
-                return;
 
             } catch (Exception $e) {
                 $this->logMessage('Modbus write fail: ' . $e->getMessage());
                 $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
-                return;
             }
+
+
+    
         }
 
         // ❌ 非 Linux 或參數錯誤

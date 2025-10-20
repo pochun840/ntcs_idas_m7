@@ -4521,8 +4521,8 @@
             if (!hiInRange) {
                 const rng = (cLoStr && cHiStr) ? `${cLoStr} ${sepChar} ${cHiStr}` : `${allowedLo} ${sepChar} ${allowedHi}`;
                 const msg = (lang === 'en-us') ? `Torque high limit must fall within the allowed range: ${rng}`
-                        : (lang === 'zh-cn') ? `扭矩上限需位于允许范围：${rng}`
-                        : `扭力上限需位於允許範圍：${rng}`;
+                        : (lang === 'zh-cn') ? `扭力上限 超出范围：${rng}`
+                        : `扭力上限 超出範圍：${rng}`;
                 (window.alertify?.alert ? alertify.alert('警告', msg) : alert(msg));
                 hiEl.classList.add('is-invalid'); try { hiEl.focus(); hiEl.select?.(); } catch {}
                 return false;
@@ -4537,7 +4537,7 @@
             const rng = (cLoStr && cHiStr) ? `${cLoStr} ${sepChar} ${cHiStr}` : `${allowedLo} ${sepChar} ${allowedHi}`;
             const msg = (lang === 'en-us') ? `Torque limits must fall within the allowed range: ${rng}`
                         : (lang === 'zh-cn') ? `扭矩上下限需位于允许范围：${rng}`
-                        : `扭力上下限需位於允許範圍：${rng}`;
+                        : `扭力上下限 超出範圍 允許範圍：${rng}`;
             (window.alertify?.alert ? alertify.alert('警告', msg) : alert(msg));
             if (lo < allowedLo || lo > allowedHi) { loEl.classList.add('is-invalid'); try { loEl.focus(); loEl.select?.(); } catch {} }
             else { hiEl.classList.add('is-invalid'); try { hiEl.focus(); hiEl.select?.(); } catch {} }
