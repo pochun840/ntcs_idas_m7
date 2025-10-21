@@ -789,10 +789,11 @@ $error_message['ERR_10'] = '总步骤角度上限错误';
 $error_message['ERR_11'] = '总步骤角度下限错误';
 $error_message['ERR_12'] = '扭力上限错误';
 $error_message['ERR_13'] = '扭力下限错误';
+$error_message['ERR_14'] = '总角度上限错误';
+$error_message['ERR_15'] = '总角度下限错误';
 
-
-$error_message['ERR_14'] = '设定步骤异常';
-$error_message['ERR_15'] = '起子控制器通讯异常';
+//$error_message['ERR_14'] = '设定步骤异常';
+//$error_message['ERR_15'] = '起子控制器通讯异常';
 $error_message['ERR_16'] = '控制器Flash验证码错误';
 $error_message['ERR_17'] = '控制器Fram验证码错误';
 $error_message['ERR_18'] = '角度超出上限';

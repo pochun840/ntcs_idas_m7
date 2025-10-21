@@ -31,7 +31,6 @@ define('CONTROLLER_IP', '127.0.0.1');
 // 每次刷新都取最新時間，避免快取
 define('ASSET_VERSION', date('YmdHi')); 
 
-
 //table - barcode 
 define('TABLE_NTCS_BARCODE', 'ntcs_barcode_test');
 

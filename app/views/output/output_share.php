@@ -1,4 +1,7 @@
 <script>
+
+document.addEventListener('DOMContentLoaded', applyUnifiedUIFromStore);
+
 // 🔝 放最上面，避免「初始化前被使用」的錯誤
 let unifiedFlag = 0;
 let _getOutputReqId = 0;
@@ -235,6 +238,100 @@ function lockPin01ForGroupAEdit({ currentPinNo, pinCount = 11, idPrefix = 'edit_
     const t = document.getElementById(`edit_time${i}`);
     if (t) t.disabled = true; // 7~9 不用時間
   }
+}
+
+// 讓「變淺」效果穩定
+function ensureSelectBtnDimCSS() {
+  if (document.getElementById('btnSelectDimCSS')) return;
+  const tag = document.createElement('style');
+  tag.id = 'btnSelectDimCSS';
+  tag.textContent = `
+  #Button_Select.btn-dimmed{
+    opacity:.45 !important;
+    filter:grayscale(40%) !important;
+    cursor:not-allowed !important;
+    pointer-events:none !important;
+  }`;
+  document.head.appendChild(tag);
+}
+
+// 切換 #Button_Select 的外觀與可用性
+function setSelectBtnDisabled(disabled) {
+  ensureSelectBtnDimCSS();
+  const btn = document.getElementById('Button_Select');
+  if (!btn) return;
+
+  btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+
+  // 若是原生 button/input，順便切 disabled 屬性
+  if (/^(BUTTON|INPUT)$/i.test(btn.nodeName)) {
+    if (disabled) btn.setAttribute('disabled', 'disabled');
+    else btn.removeAttribute('disabled');
+  } else {
+    // 非原生按鈕，補上可達性屬性
+    if (disabled) {
+      if (!btn.getAttribute('role')) btn.setAttribute('role', 'button');
+      btn.setAttribute('tabindex', '-1');
+    } else {
+      btn.removeAttribute('tabindex');
+    }
+  }
+
+  // 視覺「變淺」
+  btn.classList.toggle('btn-dimmed', !!disabled);
+  // 專案若有其它禁用 class，也一併同步
+  ['disabled_input','disabled','btn-disabled','is-disabled'].forEach(cls => {
+    btn.classList.toggle(cls, !!disabled);
+  });
+
+  if (!disabled) {
+    btn.style.opacity = '';
+    btn.style.filter = '';
+    btn.style.pointerEvents = '';
+    btn.style.cursor = '';
+  }
+}
+
+// 鎖/解鎖「工作選擇」相關元件
+function setJobPickerDisabled(disabled) {
+  const picks = [
+    document.getElementById('JobNameSelect'),
+    document.getElementById('JobSelect1'),
+  ].filter(Boolean);
+
+  picks.forEach(sel => {
+    sel.disabled = !!disabled;
+    sel.classList.toggle('disabled_input', !!disabled);
+    if (!disabled) {
+      // 若曾把 option 設 disabled（例如複製或別處邏輯），解除時全開
+      Array.from(sel.options).forEach(opt => {
+        opt.disabled = false;
+        opt.classList.remove('disabled_input');
+      });
+    }
+  });
+}
+
+// === 統一以 localStorage 為主（避免 aria/樣式在換頁後丟失）===
+const UNIFIED_LOCK_KEY = 'unified_locked';
+const UNIFIED_JOB_KEY  = 'unified_job_id';
+
+function isUnifiedLockedStored() {
+  return localStorage.getItem(UNIFIED_LOCK_KEY) === '1';
+}
+function setUnifiedLockedStored(locked, jobId) {
+  if (locked) {
+    localStorage.setItem(UNIFIED_LOCK_KEY, '1');
+    if (jobId != null) localStorage.setItem(UNIFIED_JOB_KEY, String(jobId));
+  } else {
+    localStorage.removeItem(UNIFIED_LOCK_KEY);
+    localStorage.removeItem(UNIFIED_JOB_KEY);
+  }
+}
+function applyUnifiedUIFromStore() {
+  const locked = isUnifiedLockedStored();
+  setSelectBtnDisabled(locked);
+  setJobPickerDisabled(locked);
 }
 
 
@@ -570,19 +667,52 @@ function crud_job_event(argument) {
 
         case 'unified': {
             if (!job_id) {
-                if (typeof alertify !== 'undefined') {
-                    //alertify.alert('缺少 Job', '目前沒有選定的 Job。');
-                    setTimeout(() => alertify.closeAll(), 2000);
-                }
-                break;
+              if (typeof alertify !== 'undefined') setTimeout(() => alertify.closeAll(), 2000);
+              break;
             }
 
-            // 若目前是黃色 → 表示已啟用，按一次要「取消」
-            // 若目前不是黃色 → 按一次要「啟用」
-            const currentlyYellow = isJobIdYellow();
-            setUnifiedState(job_id, !currentlyYellow);
-        break;
-        }
+            // 以 localStorage 的狀態為主（不要看 aria/樣式，避免換頁後不同步）
+            const lockedNow = isUnifiedLockedStored();
+            const willLock  = !lockedNow; // true=套用(鎖定/變淺)；false=解除(恢復)
+
+            // 若有後端 API（回傳 Promise），可沿用；沒有就讓它為 null
+            const maybePromise = (typeof setUnifiedState === 'function')
+              ? setUnifiedState(job_id, willLock)
+              : null;
+
+            const finishUI = () => {
+              // 持久化狀態 → 下次進來會自動還原
+              setUnifiedLockedStored(willLock, job_id);
+
+              // 立刻套 UI
+              setSelectBtnDisabled(willLock);
+              setJobPickerDisabled(willLock);
+
+              // 關 overlay/spinner（若有）
+              document.querySelector(".main-content")?.classList.remove("overlay-active");
+              const sp = document.getElementById('spinner'); if (sp) sp.style.display = 'none';
+            };
+
+            const revertUI = () => {
+              // 失敗 → 回復到原本狀態
+              setUnifiedLockedStored(lockedNow, job_id);
+              setSelectBtnDisabled(lockedNow);
+              setJobPickerDisabled(lockedNow);
+              document.querySelector(".main-content")?.classList.remove("overlay-active");
+              const sp = document.getElementById('spinner'); if (sp) sp.style.display = 'none';
+            };
+
+            // showOverlay?.(); // 若有覆蓋層可打開
+
+            if (maybePromise && typeof maybePromise.then === 'function') {
+              maybePromise.then(finishUI).catch(revertUI);
+            } else {
+              finishUI();
+            }
+            break;
+          }
+
+
 
         default:
             console.warn(`Unknown action: ${argument}`);

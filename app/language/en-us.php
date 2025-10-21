@@ -788,10 +788,11 @@ $error_message['ERR_10'] = 'Total Step Angle Upper Limit Error';
 $error_message['ERR_11'] = 'Total Step Angle Lower Limit Error';
 $error_message['ERR_12'] = 'Torque Upper Limit Error';
 $error_message['ERR_13'] = 'Torque Lower Limit Error';
+$error_message['ERR_14'] = 'ERR-TOTAL-HIGH-ANGLE';
+$error_message['ERR_15'] = 'ERR-TOTAL-LOW-ANGLE';
 
-
-$error_message['ERR_14'] = 'ERR-STEP-NA';
-$error_message['ERR_15'] = 'ERR-DMS-COMM';
+//$error_message['ERR_14'] = 'ERR-STEP-NA';
+//$error_message['ERR_15'] = 'ERR-DMS-COMM';
 $error_message['ERR_16'] = 'ERR-FLASH';
 $error_message['ERR_17'] = 'ERR-FRAM';
 $error_message['ERR_18'] = 'ERR-HIGH-ANGLE';

@@ -779,13 +779,13 @@ $error_message['ERR_6'] =  '傳感器異常';
 $error_message['ERR_7'] =  '接錯起子';
 $error_message['ERR_8'] =  '超時失敗';
 $error_message['ERR_9'] =  '中斷警報';
-$error_message['ERR_10'] = '總步驟角度上限錯誤';
-$error_message['ERR_11'] = '總步驟角度下限錯誤';
+$error_message['ERR_10'] = '總步驟角度上限錯誤'; 
+$error_message['ERR_11'] = '總步驟角度下限錯誤'; 
 $error_message['ERR_12'] = '扭力上限錯誤';
 $error_message['ERR_13'] = '扭力下限錯誤';
 
-$error_message['ERR_14'] = '設定步驟異常';
-$error_message['ERR_15'] = '起子控制器通訊異常';
+$error_message['ERR_14'] = '總角度上限錯誤';
+$error_message['ERR_15'] = '總角度下限錯誤';
 $error_message['ERR_16'] = '控制器Flash驗證碼錯誤';
 $error_message['ERR_17'] = '控制器Fram驗證碼錯誤';
 $error_message['ERR_18'] = '角度超出上限';
