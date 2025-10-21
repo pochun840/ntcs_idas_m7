@@ -73,7 +73,6 @@ class Tools extends Controller
 
         // 版本資訊
         $tools_version    = $this->get_tools_version() / 100; 
-        //$tools_version    = $this->get_tools_version();
         $firmware_version = $this->get_firmware_version() / 100; 
         $upgrade_ver      = $this->get_upgrade_version();
 
@@ -116,8 +115,11 @@ class Tools extends Controller
 
         $gw_display = $gw;
 
-        if ($net_method === 'DHCP' && preg_match('/^(\d+\.\d+\.\d+)\.1$/', $gw, $m)) {
-            $gw_display = $m[1] . '.255';
+
+        if ($net_method === 'DHCP') {
+            $gw_display = $this->getBroadcast('eth0');
+        }else{
+            $gw_display = $this->getBroadcast('eth0');
         }
 
         // 組資料（確保 gateway/broadcast 映射正確）
@@ -711,5 +713,62 @@ class Tools extends Controller
         }
 
         return ['method' => 'unknown', 'detector' => null, 'raw' => null];
+    }
+
+
+    public function getBroadcast($iface = 'eth0'){
+
+
+        // 1) 優先：ip 命令（NetworkManager 與非 NM 都可）
+        $cmd = 'ip -o -4 addr show dev ' . escapeshellarg($iface) . ' 2>/dev/null';
+        @exec($cmd, $out, $rc);
+        if ($rc === 0 && !empty($out)) {
+            $text = implode("\n", $out);
+            if (preg_match('/\bbrd\s+([0-9.]+)/', $text, $m)) {
+                return $m[1];
+            }
+        }
+
+        // 2) 退回：ifconfig（新舊兩種格式皆支援）
+        $cmd = '/sbin/ifconfig ' . escapeshellarg($iface) . ' 2>/dev/null || ifconfig ' . escapeshellarg($iface) . ' 2>/dev/null';
+        $out = [];
+        @exec($cmd, $out, $rc);
+        if (!empty($out)) {
+            $text = implode("\n", $out);
+
+            // 新式：... netmask 255.255.255.0 broadcast 192.168.0.255
+            if (preg_match('/\bbroadcast\s+([0-9.]+)/i', $text, $m)) {
+                return $m[1];
+            }
+            // 舊式：... Bcast:192.168.0.255
+            if (preg_match('/\bBcast:([0-9.]+)/', $text, $m)) {
+                return $m[1];
+            }
+
+            // 3) 最後備援：用 IP + netmask 計算 broadcast
+            // 新式：inet 192.168.0.166  netmask 255.255.255.0 ...
+            if (preg_match('/\binet\s+([0-9.]+)\s+.*?\bnetmask\s+([0-9.]+)/i', $text, $mm)) {
+                $ip = $mm[1];
+                $mask = $mm[2];
+            }
+            // 舊式：inet addr:192.168.0.166  Mask:255.255.255.0
+            elseif (preg_match('/\binet\s+(?:addr:)?([0-9.]+)\s+.*?\bMask:([0-9.]+)/i', $text, $mm)) {
+                $ip = $mm[1];
+                $mask = $mm[2];
+            } else {
+                $ip = $mask = null;
+            }
+
+            if ($ip && $mask) {
+                $ipL   = ip2long($ip);
+                $maskL = ip2long($mask);
+                if ($ipL !== false && $maskL !== false) {
+                    $bcast = ($ipL & $maskL) | (~$maskL & 0xFFFFFFFF);
+                    return long2ip($bcast);
+                }
+            }
+        }
+
+        return null;
     }
 }
