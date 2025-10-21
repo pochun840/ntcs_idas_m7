@@ -112,10 +112,8 @@ class Tools extends Controller
             if (isset($high_torque_arr[$unit_name])) $Tool_Info['max_torque'] = $high_torque_arr[$unit_name];
         }
 
-
         $gw_display = $gw;
-
-
+        
         if ($net_method === 'DHCP') {
             $gw_display = $this->getBroadcast('eth0');
         }else{
