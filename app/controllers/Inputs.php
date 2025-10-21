@@ -296,70 +296,110 @@ class Inputs extends Controller
 
     public function edit_input_event(){
 
-        $file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }
+    $file = $this->MiscellaneousModel->lang_load();
+    if(!empty($file)){
+        include $file;
+    }
 
-        $event    = $this->MiscellaneousModel->details('io_input');
-        
-        $input_check = true;
-        $input_data = array();
-        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
-            $input_data['JOBID'] = $_POST['job_id'];
-        }else{ 
-            $input_check = false; 
-        }
+    $event = $this->MiscellaneousModel->details('io_input');
 
-        if( !empty($_POST['input_event']) && isset($_POST['input_event'])  ){
-            $input_data['EvenID'] = $_POST['input_event'];
-        }else{ 
-            $input_check = false; 
-        }
+    $input_check = true;
+    $input_data = array();
 
-        if( !empty($_POST['input_pin']) && isset($_POST['input_pin'])  ){
-            $input_data['Pin'] = intval($_POST['input_pin']);
-        }else{ 
-            $input_check = false; 
-        }
+    // === 取值 & 基本驗證 ===
+    if(!empty($_POST['job_id']) && isset($_POST['job_id'])){
+        $input_data['JOBID'] = $_POST['job_id'];
+    }else{
+        $input_check = false;
+    }
 
- 
-        $input_data['signal'] = $_POST['input_wave'];
+    if(!empty($_POST['input_event']) && isset($_POST['input_event'])){
+        $input_data['EvenID'] = $_POST['input_event']; // 新的事件
+    }else{
+        $input_check = false;
+    }
 
+    if(!empty($_POST['input_pin']) && isset($_POST['input_pin'])){
+        $input_data['Pin'] = intval($_POST['input_pin']); // 新的 Pin
+    }else{
+        $input_check = false;
+    }
 
-        if($input_data['EvenID'] != 109){
-            $input_data['gateconfirm'] = '';
-        }else{
-            $input_data['gateconfirm'] = $_POST['gateconfirm'];
-            
-        }
- 
+    // 波形/訊號
+    $input_data['signal'] = $_POST['input_wave'] ?? '';
 
-        if($input_check){
+    // GateConfirm（只有事件 109 需要）
+    if(($input_data['EvenID'] ?? null) != 109){
+        $input_data['gateconfirm'] = '';
+    }else{
+        $input_data['gateconfirm'] = $_POST['gateconfirm'] ?? '';
+    }
 
-            $deleted = $this->InputModel->check_input_event_wave($input_data['JOBID'],$input_data['Pin'],$input_data['signal']);
-            $count   = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
-            $ans     = $this->InputModel->delete_input_event_by_id($input_data['JOBID'],$input_data['EvenID']);
+    // ★ 新增：舊事件（由前端帶進來）
+    $origin_event = $_POST['origin_event'] ?? null;
 
-            $res  = $this->InputModel->create_input($input_data);
+    if($input_check){
 
-            $result = array();
-            if($res){
-                $res_type = 'Success';
-                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$input_data['JOBID'].','.$text['event'].':'.$text[$event[$input_data['EvenID']]]."  ".$text['success'];
-            } else {
-                $res_type = 'Error';
-                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$input_data['JOBID'].','.$text['event'].':'.$text[$event[$input_data['EvenID']]]."  ".$text['fail'];
+        try {
+            // 建議用交易，避免半套狀態
+            $this->db->beginTransaction();
+
+            // === (A) 刪除舊的那一筆（以舊事件為準） ===
+            if (!empty($origin_event)) {
+                // 舊事件存在就刪（避免與新事件共存）
+                $this->InputModel->delete_input_event_by_id(
+                    $input_data['JOBID'],
+                    $origin_event
+                );
             }
-            
-            $result = array(
-                'res_type' => $res_type,
-                'res_msg'  => $res_msg 
+
+            // === (B) 安全保底：刪掉同 JOB + 新事件（若本來就有同事件殘留）===
+            $this->InputModel->delete_input_event_by_id(
+                $input_data['JOBID'],
+                $input_data['EvenID']
             );
 
-            echo json_encode($result);
+            // === (C) 你原本的其他檢查（維持不動，若不需要可保留或移除）===
+            $deleted = $this->InputModel->check_input_event_wave(
+                $input_data['JOBID'], $input_data['Pin'], $input_data['signal']
+            );
+            $count   = $this->InputModel->check_job_event_conflict(
+                $input_data['JOBID'], $input_data['EvenID']
+            );
+
+            // === (D) 插入更新後的那一筆 ===
+            $res = $this->InputModel->create_input($input_data);
+
+            $this->db->commit();
+
+            // === 回應 ===
+            if($res){
+                $res_type = 'Success';
+                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$input_data['JOBID']
+                         .','.$text['event'].':'.$text[$event[$input_data['EvenID']]]
+                         ."  ".$text['success'];
+            } else {
+                $res_type = 'Error';
+                $res_msg  = $text['edit_event']."  ".$text['job_id'].':'.$input_data['JOBID']
+                         .','.$text['event'].':'.$text[$event[$input_data['EvenID']]]
+                         ."  ".$text['fail'];
+            }
+
+            echo json_encode([
+                'res_type' => $res_type,
+                'res_msg'  => $res_msg
+            ]);
+
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            echo json_encode([
+                'res_type' => 'Error',
+                'res_msg'  => 'DB error'
+            ]);
         }
     }
+}
+
 
     public function copy_input_event(){
 

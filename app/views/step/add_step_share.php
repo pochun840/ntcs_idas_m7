@@ -4077,95 +4077,139 @@
         })();
 
 
-
         // ---- 交叉驗證：StepOption==2；StepTorque 超出「工具規格」範圍，但未超過 StepHiTorque → 彈窗 + 語系 ----
         (function enforceTargetTorqueWithinToolSpecButBelowHi() {
-            if (StepOption !== 2) return;
+        try {
+            // 讀 StepOption（避免依賴外層變數）
+            const _stepOpt = parseInt(document.getElementById('StepOption')?.value ?? 0, 10);
+            if (_stepOpt !== 2) return;
 
             const tqEl = document.getElementById('StepTorque');
             const hiEl = document.getElementById('StepHiTorque');
             if (!tqEl || !hiEl) return;
 
-            const tqRaw = Number(tqEl.value);
-            const hiRaw = Number(hiEl.value);
-            const specMinRaw = Number(Tool_Min_Torque);
-            const specMaxRaw = Number(Tool_Max_Torque);
-            if (!Number.isFinite(tqRaw) || !Number.isFinite(hiRaw) ||
-                !Number.isFinite(specMinRaw) || !Number.isFinite(specMaxRaw)) return;
+            const tqRaw     = Number(tqEl.value);
+            const hiRaw     = Number(hiEl.value);
 
-            // 依目前單位精度四捨五入
-            const tq   = roundTo(tqRaw,       precision);
-            const hi   = roundTo(hiRaw,       precision);
-            const sMin = roundTo(specMinRaw,  precision);
-            const sMax = roundTo(specMaxRaw,  precision);
+            // 工具規格（若頁面上沒有 Tool_Min_Torque/Tool_Max_Torque，仍可運作）
+            const Tool_Min_Torque = Number(window.Tool_Min_Torque ?? NaN);
+            const Tool_Max_Torque = Number(window.Tool_Max_Torque ?? NaN);
+
+            // 顯示用範圍取自 check_*（可保留補零），若缺就 fallback 工具規格
+            const loStrDom = (document.getElementById('check_target_tor_lo')?.value ?? '').trim();
+            const hiStrDom = (document.getElementById('check_target_tor_hi')?.value ?? '').trim();
+            const loDomNum = Number(loStrDom);
+            const hiDomNum = Number(hiStrDom);
+
+            // roundTo / precision 防呆
+            const roundTo = (typeof window.roundTo === 'function')
+            ? window.roundTo
+            : (n, d = 3) => {
+                const v = Number(n);
+                if (!isFinite(v)) return NaN;
+                const f = Math.pow(10, d);
+                return Math.round(v * f) / f;
+                };
+            const precision = (typeof window.precision === 'number' && isFinite(window.precision)) ? window.precision : 3;
+
+            // 語系與單位
+            const getCookieSafe = (name) => {
+            try {
+                const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                return m ? decodeURIComponent(m[1]) : null;
+            } catch { return null; }
+            };
+            let lang = 'en-us', unitText = 'N·m';
+            if (typeof window.getLangAndUnit === 'function') {
+            const lu = window.getLangAndUnit() || {};
+            lang = String(lu.lang || 'en-us').toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            unitText = lu.unit || 'N·m';
+            } else {
+            lang = (getCookieSafe('language') || 'en-us').toLowerCase();
+            if (lang === 'en') lang = 'en-us';
+            if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
+            const code = parseInt(document.getElementById('step_torque_unit')?.value ?? window.torque_unit ?? 1, 10);
+            const UNIT_TEXT = {
+                0: { 'en-us': 'kgf·cm', 'zh-tw': '公斤·公分', 'zh-cn': '公斤·公分' },
+                1: { 'en-us': 'N·m',    'zh-tw': '牛頓·公尺', 'zh-cn': '牛顿·米' },
+                2: { 'en-us': 'lbf·in', 'zh-tw': '磅·英吋',   'zh-cn': '磅·英寸' },
+                3: { 'en-us': 'kgf·m',  'zh-tw': '公斤·公尺', 'zh-cn': '公斤·米' },
+                4: { 'en-us': 'cN·m',   'zh-tw': '牛頓·釐米', 'zh-cn': '牛顿·厘米' },
+            };
+            unitText = (UNIT_TEXT[code]?.[lang]) || 'N·m';
+            }
+
+            // 範圍字串：優先用 DOM 原字串（保留 0 補位），否則用工具規格數值格式化
+            const SEP = (lang === 'en-us') ? '~' : ' - ';
+            const fmt = (n) => Number(n).toFixed(precision);
+
+            const showLoStr =
+            (loStrDom && isFinite(loDomNum)) ? loStrDom
+            : (isFinite(Tool_Min_Torque) ? fmt(Tool_Min_Torque) : '');
+            const showHiStr =
+            (hiStrDom && isFinite(hiDomNum)) ? hiStrDom
+            : (isFinite(Tool_Max_Torque) ? fmt(Tool_Max_Torque) : '');
+
+            // 用於「是否超出範圍」的比較：若 DOM 有數值，用 DOM；否則用工具規格
+            const cmpLo = isFinite(loDomNum) ? loDomNum : Tool_Min_Torque;
+            const cmpHi = isFinite(hiDomNum) ? hiDomNum : Tool_Max_Torque;
+
+            if (![tqRaw, hiRaw, cmpLo, cmpHi].every(Number.isFinite)) return;
+
+            const tq = roundTo(tqRaw, precision);
+            const hi = roundTo(hiRaw, precision);
 
             // 觸發條件：
-            // 1) 目標扭力沒有超過 StepHiTorque（tq <= hi）
-            // 2) 但目標扭力落在工具規格之外（tq < specMin 或 tq > specMax）
-            if (tq <= hi && (tq < sMin || tq > sMax)) {
-                // 標紅並關掉 inline 訊息（改用彈窗）
-                tqEl.classList.add('is-invalid');
-                const fb = tqEl.nextElementSibling;
-                if (fb?.classList.contains('invalid-feedback')) {
+            // 1) tq <= hi（沒有超過步驟上限）
+            // 2) tq 落在允許範圍之外（這裡用 DOM check_* 範圍為主，缺值才退回工具規格）
+            if (tq <= hi && (tq < cmpLo || tq > cmpHi)) {
+            // 關閉 inline 錯誤（改用彈窗）
+            tqEl.classList.add('is-invalid');
+            const fb = tqEl.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) {
                 fb.innerText = '';
                 fb.classList.remove('d-block');
                 fb.style.display = 'none';
-                }
+            }
 
-                // 取得語系與單位（沿用你的共用函式，若不存在就做 fallback）
-                let lang = 'en-us', unit = 'N·m';
-                if (typeof getLangAndUnit === 'function') {
-                const lu = getLangAndUnit();
-                lang = (lu?.lang) || 'en-us';
-                unit = (lu?.unit) || 'N·m';
-                } else {
-                // 簡單 fallback
-                const getCookieSafe = (name) => {
-                    try { const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
-                    catch { return null; }
-                };
-                lang = (getCookieSafe('language') || 'en-us').toLowerCase();
-                if (lang === 'en') lang = 'en-us';
-                if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
-                const UNIT_TEXT = {
-                    0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·公分' },
-                    1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',   'zh-cn':'牛顿·米'   },
-                    2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英吋'   },
-                    3: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   },
-                    4: { 'en-us':'cN·m',   'zh-tw':'牛頓·厘米', 'zh-cn':'牛顿·厘米' },
-                };
-                unit = (UNIT_TEXT?.[torque_unit]?.[lang]) || 'N·m';
-                }
+            // 多語訊息（顯示：目標扭力（單位）超出範圍（lo - hi））
+            const rangeStr = `${showLoStr} ${SEP} ${showHiStr}`;
+            const I18N = {
+                'en-us': { title: 'Warning', msg: `Target torque (${unitText}) is out of range (${rangeStr})`, ok: 'OK' },
+                'zh-tw': { title: '警告',   msg: `目標扭力（${unitText}）超出範圍（${rangeStr}）`, ok: '確定' },
+                'zh-cn': { title: '警告',   msg: `目标扭力（${unitText}）超出范围（${rangeStr}）`, ok: '确定' }
+            }[lang] || { title: 'Warning', msg: `Target torque (${unitText}) is out of range (${rangeStr})`, ok: 'OK' };
 
-                // 多語
-                const fmt = (n) => Number(n).toFixed(precision);
-                const rangeStr = `${fmt(sMin)} ~ ${fmt(sMax)}`;
-                const I18N = {
-                'en-us': { title: 'Warning', msg: `Target torque (${unit}) is out of range. Allowed: ${rangeStr}`, ok: 'OK' },
-                'zh-tw': { title: '警告',   msg: `目標扭力（${unit}）需小於扭力上限 `,        ok: '確定' },
-                'zh-cn': { title: '警告',   msg: `目标扭力（${unit}）需小於扭力上限`,        ok: '确定' }
-                };
-                const T = I18N[lang] || I18N['en-us'];
-
-                // 節流避免重複彈窗
-                if (window._alertingTQvsSpec) {
-                isValid = false;
-                if (!errorList.includes('StepTorque')) errorList.push('StepTorque');
+            // 節流避免重複彈窗
+            if (window._alertingTQvsSpec) {
+                if (typeof window.isValid !== 'undefined') window.isValid = false;
+                if (Array.isArray(window.errorList) && !window.errorList.includes('StepTorque')) window.errorList.push('StepTorque');
                 return;
-                }
-                window._alertingTQvsSpec = true;
+            }
+            window._alertingTQvsSpec = true;
 
+            if (window.alertify?.alert) {
                 alertify
-                .alert(T.title, T.msg, function () {
+                .alert(I18N.title, I18N.msg, function () {
                     try { tqEl.focus(); tqEl.select?.(); } catch {}
                     window._alertingTQvsSpec = false;
                 })
-                .set('labels', { ok: T.ok });
-
-                isValid = false;
-                if (!errorList.includes('StepTorque')) errorList.push('StepTorque');
+                .set('labels', { ok: I18N.ok });
+            } else {
+                alert(`${I18N.title}\n${I18N.msg}`);
+                window._alertingTQvsSpec = false;
             }
+
+            // 不觸發 TDZ：僅在已宣告時才寫入
+            if (typeof window.isValid !== 'undefined') window.isValid = false;
+            if (Array.isArray(window.errorList) && !window.errorList.includes('StepTorque')) window.errorList.push('StepTorque');
+            }
+        } catch (e) {
+            console.error('[enforceTargetTorqueWithinToolSpecButBelowHi] error:', e);
+        }
         })();
+
 
 
 

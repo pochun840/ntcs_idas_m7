@@ -213,7 +213,7 @@
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
                             <h3 id='modal_title'><?php echo $text['edit_event'];?></h3>
                         </header>
-
+                        <input type="hidden" id="origin_event" name="origin_event" value="">      
                         <div class="modal-body">
                             <form id="new_input_form" style="padding-left: 5%">
                                 <div class="row">

@@ -779,8 +779,8 @@ $error_message['ERR_6'] =  '傳感器異常';
 $error_message['ERR_7'] =  '接錯起子';
 $error_message['ERR_8'] =  '超時失敗';
 $error_message['ERR_9'] =  '中斷警報';
-$error_message['ERR_10'] = '總步驟角度上限錯誤'; 
-$error_message['ERR_11'] = '總步驟角度下限錯誤'; 
+$error_message['ERR_10'] = '步驟角度上限錯誤'; 
+$error_message['ERR_11'] = '步驟角度下限錯誤'; 
 $error_message['ERR_12'] = '扭力上限錯誤';
 $error_message['ERR_13'] = '扭力下限錯誤';
 
