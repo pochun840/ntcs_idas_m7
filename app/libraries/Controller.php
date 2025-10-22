@@ -548,7 +548,7 @@ class Controller
     //起子型號
     public function get_tools_type() {
 
-        require_once '../app/config/config.php';  // 載入常數
+        require_once '../app/config/config.php';  
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;

@@ -1,6 +1,35 @@
 <script>
 
-document.addEventListener('DOMContentLoaded', applyUnifiedUIFromStore);
+document.addEventListener('DOMContentLoaded', () => {
+
+  // 先套用你原本的 UI 邏輯（若有）
+  try {
+    if (typeof applyUnifiedUIFromStore === 'function') {
+      applyUnifiedUIFromStore();
+    }
+  } catch (e) {
+    // noop
+  }
+
+  // 再依 localStorage 狀態初始化 Button_Select
+  let locked = false;
+  try {
+    locked = (typeof isUnifiedLockedStored === 'function')
+      ? !!isUnifiedLockedStored()
+      : false;
+  } catch (e) {
+    locked = false;
+  }
+
+  try {
+    if (typeof syncButtonSelect === 'function') {
+      syncButtonSelect(locked);
+    }
+  } catch (e) {
+    // noop
+  }
+});
+
 
 // 🔝 放最上面，避免「初始化前被使用」的錯誤
 let unifiedFlag = 0;
@@ -250,47 +279,33 @@ function ensureSelectBtnDimCSS() {
     opacity:.45 !important;
     filter:grayscale(40%) !important;
     cursor:not-allowed !important;
-    pointer-events:none !important;
   }`;
   document.head.appendChild(tag);
 }
 
-// 切換 #Button_Select 的外觀與可用性
+
+// 切換 #Button_Select 的外觀（只負責視覺，絕不動 aria/disabled） 
 function setSelectBtnDisabled(disabled) {
-  ensureSelectBtnDimCSS();
+  ensureSelectBtnDimCSS?.(); // 若有此函式就呼叫，沒有也無妨
+
   const btn = document.getElementById('Button_Select');
   if (!btn) return;
 
-  btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-
-  // 若是原生 button/input，順便切 disabled 屬性
-  if (/^(BUTTON|INPUT)$/i.test(btn.nodeName)) {
-    if (disabled) btn.setAttribute('disabled', 'disabled');
-    else btn.removeAttribute('disabled');
-  } else {
-    // 非原生按鈕，補上可達性屬性
-    if (disabled) {
-      if (!btn.getAttribute('role')) btn.setAttribute('role', 'button');
-      btn.setAttribute('tabindex', '-1');
-    } else {
-      btn.removeAttribute('tabindex');
-    }
-  }
-
-  // 視覺「變淺」
+  // ✅ 只做視覺：變淺/加上你的專案禁用類別（這些類別請不要包含 pointer-events:none）
   btn.classList.toggle('btn-dimmed', !!disabled);
-  // 專案若有其它禁用 class，也一併同步
-  ['disabled_input','disabled','btn-disabled','is-disabled'].forEach(cls => {
+  ['disabled_input', 'disabled', 'btn-disabled', 'is-disabled'].forEach(cls => {
     btn.classList.toggle(cls, !!disabled);
   });
 
+  // 清除任何可能殘留的 inline 視覺屬性（不影響事件）
   if (!disabled) {
     btn.style.opacity = '';
     btn.style.filter = '';
-    btn.style.pointerEvents = '';
+    btn.style.pointerEvents = ''; // 讓點擊可用（pointer-events 請交由 syncButtonSelect 控制）
     btn.style.cursor = '';
   }
 }
+
 
 // 鎖/解鎖「工作選擇」相關元件
 function setJobPickerDisabled(disabled) {
@@ -333,6 +348,209 @@ function applyUnifiedUIFromStore() {
   setSelectBtnDisabled(locked);
   setJobPickerDisabled(locked);
 }
+
+//統一同步 #Button_Select 狀態（禁用/解除都處理）
+function syncButtonSelect(disabled) {
+  const btn = document.getElementById('Button_Select');
+  if (!btn) return;
+
+  // 備份 onclick / tabindex（第一次而已）
+  if (!btn._originalOnclickSaved) {
+    btn._originalOnclickSaved = true;
+    if (typeof btn.onclick === 'function') btn._originalOnclick = btn.onclick;
+    btn._originalTabIndex = btn.getAttribute('tabindex');
+  }
+
+  const DISABLE_CLASSES = ['is-disabled', 'disabled', 'w3-disabled', 'btn-disabled', 'disabled_input'];
+
+  const clearAncestorBlocks = (el) => {
+    let p = el.parentElement;
+    while (p) {
+      if (p.tagName === 'FIELDSET' && p.disabled) p.disabled = false;
+      const cs = getComputedStyle(p);
+      if (cs.pointerEvents === 'none') p.style.pointerEvents = '';
+      p = p.parentElement;
+    }
+  };
+
+  if (disabled) {
+    btn.setAttribute('aria-disabled', 'true');
+    btn.setAttribute('disabled', '');
+    if ('disabled' in btn) btn.disabled = true;
+    if (window.jQuery) try { jQuery(btn).prop('disabled', true); } catch(e){}
+    btn.setAttribute('tabindex', '-1');
+    DISABLE_CLASSES.forEach(c => btn.classList.add(c));
+    // 指針事件由這支統一控管
+    btn.style.pointerEvents = 'none';
+  } else {
+    btn.setAttribute('aria-disabled', 'false');
+    btn.removeAttribute('disabled');
+    if ('disabled' in btn) btn.disabled = false;
+    if (window.jQuery) try { jQuery(btn).prop('disabled', false); } catch(e){}
+    if (btn._originalTabIndex != null) btn.setAttribute('tabindex', btn._originalTabIndex);
+    else btn.removeAttribute('tabindex');
+    DISABLE_CLASSES.forEach(c => btn.classList.remove(c));
+    btn.style.pointerEvents = '';
+
+    // 祖先層級也一併放開
+    clearAncestorBlocks(btn);
+
+    // 若 inline onclick 曾被清掉，還原
+    if (!btn.onclick && typeof btn._originalOnclick === 'function') {
+      btn.onclick = btn._originalOnclick;
+    }
+  }
+}
+
+// ===== Button_Select 診斷與強制可點工具 =====
+(function(){
+  // 1) 列印現況（直接呼叫 debugButtonSelect() 看為什麼點不到）
+  window.debugButtonSelect = function(){
+    const btns = document.querySelectorAll('#Button_Select');
+    if (btns.length !== 1) {
+      console.warn('[debugButtonSelect] 找到', btns.length, '個 #Button_Select（ID 重複會導致狀態對不起來）', btns);
+      return;
+    }
+    const btn = btns[0];
+    const st = getComputedStyle(btn);
+    const info = {
+      aria: btn.getAttribute('aria-disabled'),
+      disabled_prop: !!btn.disabled,
+      disabled_attr: btn.hasAttribute?.('disabled'),
+      classes: btn.className,
+      pointerEvents: st.pointerEvents,
+      tabindex: btn.getAttribute('tabindex'),
+      rect: btn.getBoundingClientRect()
+    };
+    console.log('[debugButtonSelect] button state:', info);
+
+    // 檢查祖先層是否擋點
+    let p = btn.parentElement, guard = [];
+    while (p) {
+      const cs = getComputedStyle(p);
+      guard.push({
+        el: p,
+        tag: p.tagName, id: p.id, cls: p.className,
+        fieldset_disabled: (p.tagName === 'FIELDSET' && p.disabled) || false,
+        pointerEvents: cs.pointerEvents,
+        zIndex: cs.zIndex
+      });
+      p = p.parentElement;
+    }
+    console.table(guard);
+
+    // 看遮擋（用 center 點）
+    const cx = info.rect.left + info.rect.width/2;
+    const cy = info.rect.top + info.rect.height/2;
+    const topEl = document.elementFromPoint(cx, cy);
+    console.log('[debugButtonSelect] elementFromPoint:', topEl);
+    if (topEl && topEl !== btn && !btn.contains(topEl)) {
+      console.warn('有元素壓在上面 →', topEl);
+    }
+  };
+
+  // 2) 清擋點（父層 fieldset.disabled / pointer-events:none；若有遮罩覆蓋也移除 pointer-events）
+  function clearBlocksFor(el){
+    if (!el) return;
+    // 自身
+    el.style.pointerEvents = '';
+
+    // 父層
+    let p = el.parentElement;
+    while (p) {
+      if (p.tagName === 'FIELDSET' && p.disabled) p.disabled = false;
+      const cs = getComputedStyle(p);
+      if (cs.pointerEvents === 'none') p.style.pointerEvents = '';
+      p = p.parentElement;
+    }
+
+    // 若有「覆蓋在上面」的元素 → 移除它的 pointer-events
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width/2;
+    const cy = r.top + r.height/2;
+    const topEl = document.elementFromPoint(cx, cy);
+    if (topEl && topEl !== el && !el.contains(topEl)) {
+      // 僅清 inline（不改全域 CSS）
+      topEl.style.pointerEvents = 'none';
+      // 再試一次
+      const top2 = document.elementFromPoint(cx, cy);
+      if (top2 && top2 !== el && !el.contains(top2)) {
+        // 若還有，記錄給你看
+        console.warn('[clearBlocksFor] 仍有覆蓋元素：', top2);
+      }
+    }
+  }
+
+  // 3) 最終強制可點（解除時呼叫）
+  window.forceEnableButtonSelect = function(){
+    const btn = document.getElementById('Button_Select');
+    if (!btn) return;
+
+    // 清自身禁用
+    btn.removeAttribute('disabled'); btn.disabled = false;
+    btn.setAttribute('aria-disabled','false');
+    btn.classList.remove('is-disabled','disabled','w3-disabled','btn-disabled','disabled_input','btn-dimmed');
+    btn.style.pointerEvents = ''; btn.style.cursor = ''; btn.style.opacity = ''; btn.style.filter = '';
+    if (btn._originalTabIndex != null) btn.setAttribute('tabindex', btn._originalTabIndex);
+    else btn.removeAttribute('tabindex');
+
+    // 清祖先/覆蓋
+    clearBlocksFor(btn);
+
+    // 還原 inline onclick（若曾被清掉）
+    if (!btn.onclick && typeof btn._originalOnclick === 'function') {
+      btn.onclick = btn._originalOnclick;
+    }
+  };
+
+  // 4) 安裝「委派 click 備援」：若沒有 inline onclick/事件，仍嘗試轉發
+  if (!window._buttonSelectDelegateInstalled) {
+    window._buttonSelectDelegateInstalled = true;
+    document.addEventListener('click', function(e){
+      const el = e.target?.closest?.('#Button_Select');
+      if (!el) return;
+
+      // 禁用就不處理
+      if (el.getAttribute('aria-disabled') === 'true' || el.disabled) return;
+
+      // 已有 onclick（或別處 addEventListener）→ 讓原本的處理
+      // （我們不攔截；這個委派只是在完全沒 handler 時兜底）
+      if (typeof el.onclick === 'function') return;
+
+      // data-click="函式名"（若你有這種慣例）
+      const fnName = el.dataset?.click;
+      if (fnName && typeof window[fnName] === 'function') {
+        window[fnName].call(el, e);
+        return;
+      }
+
+      // 有備份的原始 onclick 就叫回去
+      if (typeof el._originalOnclick === 'function') {
+        el._originalOnclick.call(el, e);
+      }
+    }, true); // 用捕獲階段，避免被晚綁定的 stopPropagation 阻擋
+  }
+
+  // 5) 守門員：在頁面回來/渲染後，最後再強制一次
+  function assertButtonEnabledSoon(){
+    try {
+      const locked = typeof isUnifiedLockedStored === 'function' ? !!isUnifiedLockedStored() : false;
+      if (!locked) {
+        // 解除狀態 → 連續幾個時點強制放開（避免晚到的覆蓋）
+        setTimeout(forceEnableButtonSelect, 0);
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(forceEnableButtonSelect);
+        setTimeout(forceEnableButtonSelect, 120);
+        setTimeout(forceEnableButtonSelect, 300);
+      }
+    } catch(e){}
+  }
+  window.addEventListener('pageshow', assertButtonEnabledSoon, {passive:true});
+  document.addEventListener('DOMContentLoaded', assertButtonEnabledSoon, {once:true});
+
+  // DOM 大變動也再跑一次（例如 AJAX 重繪）
+  const mo = new MutationObserver(() => { assertButtonEnabledSoon(); });
+  mo.observe(document.body, { childList:true, subtree:true });
+})();
 
 
 function crud_job_event(argument) {
@@ -691,15 +909,27 @@ function crud_job_event(argument) {
               // 關 overlay/spinner（若有）
               document.querySelector(".main-content")?.classList.remove("overlay-active");
               const sp = document.getElementById('spinner'); if (sp) sp.style.display = 'none';
+
+              // ★ 關鍵：同步 #Button_Select（willLock=false 時 → aria-disabled="false" 且可 onclick）
+              syncButtonSelect(willLock);
+              if (!willLock) forceEnableButtonSelect();
+
             };
 
             const revertUI = () => {
+
               // 失敗 → 回復到原本狀態
               setUnifiedLockedStored(lockedNow, job_id);
               setSelectBtnDisabled(lockedNow);
               setJobPickerDisabled(lockedNow);
               document.querySelector(".main-content")?.classList.remove("overlay-active");
               const sp = document.getElementById('spinner'); if (sp) sp.style.display = 'none';
+
+              // ★ 同步 #Button_Select 回原本狀態
+              syncButtonSelect(lockedNow);
+              if (!lockedNow) forceEnableButtonSelect();
+
+
             };
 
             // showOverlay?.(); // 若有覆蓋層可打開
@@ -1011,11 +1241,18 @@ function get_output_by_job_id(job_id) {
       // === Button_Select 狀態 ===
       const btn = document.getElementById('Button_Select');
       if (btn) {
-        const disabled = isBootFocused ? true : (unifiedFlag !== 0);
-        btn.disabled = disabled;
-        btn.classList.toggle('disabled', disabled);
-        btn.classList.toggle('disabled_input', disabled);
-        btn.setAttribute('aria-disabled', String(disabled));
+          // 以 localStorage 的鎖定狀態為準；若使用者已「套用解除」，就應該可點
+          const lockedByStore = (typeof isUnifiedLockedStored === 'function') ? !!isUnifiedLockedStored() : false;
+          const shouldDisable = lockedByStore || (unifiedFlag !== 0);
+          if (typeof syncButtonSelect === 'function') {
+            syncButtonSelect(shouldDisable);
+          } else {
+            // 保底：環境若沒有 syncButtonSelect，沿用原邏輯避免壞掉
+            btn.disabled = shouldDisable;
+            btn.classList.toggle('disabled', shouldDisable);
+            btn.classList.toggle('disabled_input', shouldDisable);
+            btn.setAttribute('aria-disabled', String(shouldDisable));
+          }
       }
 
       // ===== 語系套用（1~16）=====
@@ -1920,5 +2157,10 @@ input#job_id.bg-yellow[disabled] {
   opacity: 1;
 }
 
-
+/* 你要的視覺變淺效果 */
+.btn-dimmed {
+  opacity: 0.5;
+  filter: saturate(0.6);
+  /* 不要加 pointer-events 或禁止游標，點擊控制交給 JS */
+}
 </style>
