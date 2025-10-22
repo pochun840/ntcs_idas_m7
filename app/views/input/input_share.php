@@ -487,6 +487,7 @@ function edit_handleEventChange(selectedValue,gateconfirm) {
 }
 
 function edit_input_id() {
+
     const ONCE_SENSE_EVENT = 109;
 
     const getInputValue = id => document.getElementById(id)?.value || '';
@@ -494,6 +495,10 @@ function edit_input_id() {
         const selected = document.querySelector(`input[name="${name}"]:checked`);
         return selected ? selected.value : 0;
     };
+
+
+    const old_input_event = getInputValue("old_input_event");                    
+  
 
     const input_event = getInputValue("edit_Event_Option");
     const pinval = collectPinValues('input[name="edit_pin_option"]');
@@ -525,7 +530,7 @@ function edit_input_id() {
                 gateconfirm,
                 pagemode,
                 input_seqid,
-                old_input_event
+                old_input_event,
             },
             success: function (response) {
                 input_success_res(response, job_id, get_input_by_job_id, 'edit_input');
@@ -928,9 +933,16 @@ function handleEditJobEvent() {
       // 讓畫面上也把那列選回來（可選）
       if (typeof reselectRowByEventId === 'function') reselectRowByEventId(currentEvent);
 
+      // === 🆕 新增：從被選取列抓出原筆資訊 ===
+      const oldEvInput = document.getElementById('old_input_event');
+      if (oldEvInput) oldEvInput.value = currentEvent;
+      // === 🆕 新增結束 ===
+
+
       // 取得單筆詳細（會帶入編輯表單資料）
       get_input_info(job_id, input_event);
 
+  
       // 開啟「編輯」視窗
       const editModal = document.getElementById('edit_input');
       if (editModal) editModal.style.display = 'block';

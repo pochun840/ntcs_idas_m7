@@ -84,6 +84,36 @@ class Input{
     }
 
 
+
+    public function check_input_event($input_job_id, $input_event, $old_event){
+        try {
+            // 僅在同一 JOBID 下，且事件不同時檢查
+            if ($input_event != $old_event) {
+
+                // 檢查是否存在舊事件
+                $sql_check = "SELECT COUNT(*) FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";
+                $stmt = $this->db_iDas->prepare($sql_check);
+                $stmt->execute([$input_job_id, $old_event]);
+                $count = $stmt->fetchColumn();
+
+                // 若有舊事件 → 先刪除
+                if ($count > 0) {
+                    $sql_del = "DELETE FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";
+                    $delStmt = $this->db_iDas->prepare($sql_del);
+                    $delStmt->execute([$input_job_id, $old_event]);
+                }
+            }
+
+            return true;
+
+        } catch (Exception $e) {
+            error_log("check_input_event error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+
+
     
 
     public function check_job_event_count($input_job_id,$input_event){
