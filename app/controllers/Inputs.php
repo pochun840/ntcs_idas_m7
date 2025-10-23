@@ -328,13 +328,12 @@ class Inputs extends Controller
         $input_data['old_input_event'] = $_POST['old_input_event'];
 
 
-        if($input_data['EvenID'] != 109){
+        if($input_data['EvenID'] != "109"){
             $input_data['gateconfirm'] = '';
         }else{
             $input_data['gateconfirm'] = $_POST['gateconfirm'];
             
         }
-
 
  
 

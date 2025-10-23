@@ -114,8 +114,6 @@ class Input{
 
 
 
-    
-
     public function check_job_event_count($input_job_id,$input_event){
         
         $sql = "SELECT count(*)  FROM JOBInput_lst WHERE JOBID = ? AND EvenID = ?";
@@ -123,7 +121,7 @@ class Input{
         $statement->execute([$input_job_id,$input_event]);
         $count = $statement->fetchColumn();
         
-        return (int)$count;
+        return (int)$count; 
     }
 
     public function check_job_event($input_job_id){
@@ -138,7 +136,6 @@ class Input{
     }
 
     
-
     public function create_input($input_data) {   
         $sql = "INSERT INTO `JOBInput_lst` (JOBID, Pin, EvenID, signal, Wp_Ready_Confirm) ";
         $sql .= "VALUES (:JOBID, :Pin, :EvenID, :signal, :Wp_Ready_Confirm) ";
@@ -148,7 +145,7 @@ class Input{
         $statement->bindValue(':Pin', $input_data['Pin']);
         $statement->bindValue(':EvenID', $input_data['EvenID']);
         $statement->bindValue(':signal', $input_data['signal']);
-        $statement->bindValue(':Wp_Ready_Confirm', $input_data['Wp_Ready_Confirm'] ?? 0);
+        $statement->bindValue(':Wp_Ready_Confirm', $input_data['gateconfirm'] ?? 0);
 
         $results = $statement->execute();
 

@@ -906,98 +906,107 @@ function grayAndDisableBanEventOption(selectEl) {
   });
 }
 
-
-
 function handleEditJobEvent() {
-
-  // 沒選列就不要往下（可加提示）
   if (!input_event) {
     if (window.alertify) alertify.alert('請先選擇要編輯的事件');
     return;
   }
 
-  // 先把目前選到的事件 ID 存起來，避免刷新時被清空
   const currentEvent = String(input_event);
-
-  // 顯示遮罩（可視需要）
   if (typeof showOverlay === 'function') showOverlay();
 
-  // 先刷新 total（會把 input_event 清掉），完成後還原再進單筆查詢
   get_input_by_job_id(job_id, {
     closeModals: false,
     callback: function () {
-      // 還原選擇
+      // 還原全域
       input_event = currentEvent;
       old_input_event = currentEvent;
 
-      // 讓畫面上也把那列選回來（可選）
+      // 可選：把那列重新選回來
       if (typeof reselectRowByEventId === 'function') reselectRowByEventId(currentEvent);
 
-      // === 🆕 新增：從被選取列抓出原筆資訊 ===
-      const oldEvInput = document.getElementById('old_input_event');
-      if (oldEvInput) oldEvInput.value = currentEvent;
-      // === 🆕 新增結束 ===
+      // === 將原筆資訊寫入三個欄位（你若只要 old_input_event，也保留下行即可）===
+      const tr = document.querySelector('#input_jobid_select tr.selected');
+      if (tr) {
+        const d   = tr.dataset || {};
+        const id  = d.id  ?? d.rowId ?? tr.querySelector('td[data-field="id"]')?.textContent?.trim()  ?? '';
+        const pin = d.pin ??          tr.querySelector('td[data-field="pin"]')?.textContent?.trim()  ?? '';
+        const ev  = d.event ??        tr.querySelector('td[data-field="event"]')?.textContent?.trim()?? currentEvent;
 
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+        setVal('edit_row_id',   id);
+        setVal('old_input_pin', pin);
+        setVal('old_input_event', ev); // ← 你特別需要的欄位
+      }
+      // === 原筆資訊寫入結束 ===
 
-      // 取得單筆詳細（會帶入編輯表單資料）
+      // 取得單筆資料（回填到表單）
       get_input_info(job_id, input_event);
 
-  
-      // 開啟「編輯」視窗
+      // 開啟編輯視窗
       const editModal = document.getElementById('edit_input');
       if (editModal) editModal.style.display = 'block';
 
-      // 等 DOM/資料回填後，解鎖事件下拉與 PIN 選項
+
+
+
+      // 回填後做下拉與 PIN 狀態調整
       setTimeout(function () {
         const eventSel = document.getElementById('edit_Event_Option');
-        const gocWrap  = document.getElementById('edit_work_goc');
 
-        // === 事件下拉：先完全解鎖，再設回目前事件值，最後鎖住「禁用」 ===
         if (eventSel) {
+          // 先恢復可選狀態
           if (typeof disableOptions === 'function') disableOptions('#edit_Event_Option', { reset: true });
           eventSel.disabled = false;
-          Array.from(eventSel.options).forEach(opt => {
-            opt.disabled = false;
-            opt.hidden   = false;
-            opt.style.color = '';
-          });
+          Array.from(eventSel.options).forEach(opt => { opt.disabled = false; opt.hidden = false; opt.style.color = ''; });
 
-          // 設回已有事件值
+          // 設回目前事件值（很關鍵：設值 → 立刻更新 GOC 顯示）
           eventSel.value = String(currentEvent);
+          updateEditGOCVisibility();
 
-          // 把「禁用」選項灰階＋disabled（仍可看到，但不能選它）
-          grayAndDisableBanEventOption(eventSel);
+          // 若有禁用規則，套用（套用後若 109 被你規則誤禁，請確保規則不禁 109）
+          if (typeof grayAndDisableBanEventOption === 'function') {
+            grayAndDisableBanEventOption(eventSel);
+          }
 
-          // 一次感應事件(109) 顯示/隱藏
-          if (gocWrap) gocWrap.style.display = (parseInt(eventSel.value, 10) === 109 ? 'block' : 'none');
-
-          // 變更時維持禁用規則＋一次感應顯示切換
-          eventSel.onchange = function () {
-            const v = parseInt(this.value, 10);
-            if (gocWrap) gocWrap.style.display = (v === 109 ? 'block' : 'none');
-            grayAndDisableBanEventOption(this);
-          };
+          // 用 addEventListener，避免被別處覆蓋 onchange
+          eventSel.addEventListener('change', function () {
+            updateEditGOCVisibility();
+            if (typeof grayAndDisableBanEventOption === 'function') {
+              grayAndDisableBanEventOption(eventSel);
+            }
+          });
         }
 
-        // === PIN 單選鈕：先全部解鎖，再只鎖住「其他已被使用的 pin」===
+        // PIN 解鎖/鎖已使用（原流程保留）
         if (typeof unlockAllEditPins === 'function') unlockAllEditPins();
-
         if (typeof disableUsedPinsExcept === 'function') {
-          // 取得目前已選的 edit_pin（高/低任一）
           const curr = document.querySelector('input[type="radio"][id^="edit_pin"][name="edit_pin_option"]:checked');
           const m = curr?.id?.match(/^edit_pin(\d+)_/i);
-          if (m && m[1]) {
-            // 只鎖住「除了目前 pin 以外」的已使用 pin
-            disableUsedPinsExcept(String(m[1]));
-          }
+          if (m && m[1]) disableUsedPinsExcept(String(m[1]));
         }
       }, 0);
+
+      // Modal 顯示後保險再跑一次（避免時序問題）
+      setTimeout(updateEditGOCVisibility, 0);
     }
   });
 }
 
+// 顯示/隱藏 GOC：edit_Event_Option 選到 109 → 顯示，否則隱藏
+function updateEditGOCVisibility() {
+  const eventSel = document.getElementById('edit_Event_Option');
+  const gocWrap  = document.getElementById('edit_work_goc');
+  if (!eventSel || !gocWrap) return;
 
+  const is109 = String(eventSel.value).trim() === '109';
 
+  // 清掉可能干擾的類別
+  gocWrap.classList.remove('d-none', 'hidden');
+  // 設定顯示/隱藏
+  gocWrap.style.setProperty('display', is109 ? 'block' : 'none', '');
+  gocWrap.setAttribute('aria-hidden', String(!is109));
+}
 
 function parsePhpArrayDumpToObject(txt) {
   // 解析單層 print_r：Array ( [JOBID] => 1 [JOBname] => XXX )
@@ -1597,6 +1606,24 @@ function showOverlay() {
 function hideOverlay() {
     document.getElementById("modal-overlay").style.display = "none";
 }
+
+
+document.addEventListener('change', function (e) {
+  if (e.target && e.target.id === 'edit_Event_Option') {
+    const v = String(e.target.value).trim();
+
+    const wrap = document.getElementById('edit_work_goc');
+    if (!wrap) return;
+
+    // 選到 109 → 顯示；否則隱藏
+    wrap.style.display = (v === '109') ? 'block' : 'none';
+    // （可選）同步 aria 狀態
+    wrap.setAttribute('aria-hidden', (v === '109') ? 'false' : 'true');
+  }
+});
+
+
+
 </script>
 
 
