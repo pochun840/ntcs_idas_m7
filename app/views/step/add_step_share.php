@@ -4480,9 +4480,7 @@
         return true;
     }
 
-
-
-
+    
 
     // ---- 驗證 StepOption==2 且 StepTorque/StepLoTorque 與 StepHiTorque 的關係（訊息含單位與範圍）----
     // ① StepTorque > StepHiTorque 且 StepLoTorque < StepHiTorque → 顯示(最小刻度 ~ #check_target_tor_hi)【保留舊行為條件】
@@ -4490,6 +4488,61 @@
     // ③ StepTorque == StepLoTorque 且 StepTorque/StepLoTorque > StepHiTorque → 顯示 #check_target_tor_lo ~ #check_target_tor_hi
     function validateTorqueEqualLo() {
         const stepOpt = parseInt(document.getElementById("StepOption")?.value ?? 0, 10);
+
+        // ========== 新增通用規則：StepHiTorque < check_target_tor_lo ==========
+        const hiElGlobal = document.getElementById('StepHiTorque');
+        const chkLoEl    = document.getElementById('check_target_tor_lo');
+
+        if (hiElGlobal && chkLoEl) {
+            const hiVal = Number(hiElGlobal.value);
+            const chkLoVal = Number(chkLoEl.value);
+
+            if (Number.isFinite(hiVal) && Number.isFinite(chkLoVal) && hiVal < chkLoVal) {
+
+                // 取語系
+                const getCookieSafe = (name) => {
+                    try {
+                        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                        return m ? decodeURIComponent(m[1]) : null;
+                    } catch { return null; }
+                };
+                let lang = (typeof getCookie === 'function' && getCookie('language')) || getCookieSafe('language') || 'zh-tw';
+                lang = String(lang).toLowerCase();
+                if (lang === 'en') lang = 'en-us';
+                if (!['en-us', 'zh-tw', 'zh-cn'].includes(lang)) lang = 'en-us';
+
+                // 單位
+                let unitText = '扭力單位';
+                const unitCode = parseInt(document.getElementById('step_torque_unit')?.value ?? 1, 10);
+                const UNIT_TEXT = {
+                    0: { 'en-us': 'kgf·cm', 'zh-tw': '公斤·公分', 'zh-cn': '公斤·公分' },
+                    1: { 'en-us': 'N·m', 'zh-tw': '牛頓·公尺', 'zh-cn': '牛顿·米' },
+                    2: { 'en-us': 'lbf·in', 'zh-tw': '磅·英吋', 'zh-cn': '磅·英寸' },
+                    3: { 'en-us': 'kgf·m', 'zh-tw': '公斤·公尺', 'zh-cn': '公斤·米' },
+                    4: { 'en-us': 'cN·m', 'zh-tw': '牛頓·釐米', 'zh-cn': '牛顿·厘米' },
+                };
+                unitText = (UNIT_TEXT[unitCode]?.[lang]) ?? '扭力單位';
+
+                // 語系訊息
+                const MSG = {
+                    'zh-tw': `目標扭力（${unitText}）需小於扭力上限`,
+                    'zh-cn': `目标扭力（${unitText}）需小于扭力上限`,
+                    'en-us': `Target torque (${unitText}) must be less than torque upper limit`
+                }[lang];
+
+                try {
+                    alertify.alert(
+                        (lang === 'en-us' ? 'Warning' : '警告'),
+                        MSG
+                    ).set('labels', { ok: (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定')) });
+                } catch { alert(MSG); }
+
+                try { hiElGlobal.focus(); hiElGlobal.select?.(); } catch {}
+                hiElGlobal.classList.add('is-invalid');
+                return false;
+            }
+        }
+
 
         // ================== StepOption == 1（目標角度） ==================
         if (stepOpt === 1) {
@@ -4719,8 +4772,8 @@
             const msg = (lang2 === 'en-us')
             ? `Target torque (${unitText}) is out of range. (${showLo} ${sepChar2} ${showHi})`
             : (lang2 === 'zh-cn')
-                ? `目標扭力（${unitText}）超出范围，（${showLo} ${sepChar2} ${showHi}）`
-                : `目標扭力（${unitText}）超出範圍，（${showLo} ${sepChar2} ${showHi}）`;
+                ? `目標扭力WW（${unitText}）超出范围，（${showLo} ${sepChar2} ${showHi}）`
+                : `目標扭力SW（${unitText}）超出範圍，（${showLo} ${sepChar2} ${showHi}）`;
             tqEl.classList.add('is-invalid');
             try {
             alertify.alert(I18N.title, msg, function () {
@@ -4729,6 +4782,8 @@
             } catch { alert(msg); }
             return false;
         }
+
+
 
         // ---- 以下保留你原本的 ①/②/③ 行為（若需要）----
 
