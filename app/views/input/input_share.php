@@ -12,6 +12,9 @@ var backgroundColorYellow = false;
 var input_job;
 var temp_event;
 let jobTempData = {}; 
+var Wp_Ready_Confirm_raw = '';
+var Wp_Ready_Confirm_num = 0; // 或 null
+
 
 const ALLOW_MULTI_EVENTS = new Set(['110','111','112','113','114']);
 
@@ -1397,11 +1400,18 @@ function get_input_info() {
       const signal  = Number.isFinite(parseInt(obj.signal, 10)) ? parseInt(obj.signal, 10) : 1; // 預設 high
       const eventId = Number.isFinite(parseInt(obj.EvenID, 10))  ? parseInt(obj.EvenID, 10)  : 0;
       const gateReady = parseInt(obj.Wp_Ready_Confirm, 10) || 0;
+
+      //存成全域變數（原始字串 & 轉為數字後）
+      globalThis.Wp_Ready_Confirm_raw = obj.Wp_Ready_Confirm ?? '';
+      globalThis.Wp_Ready_Confirm_num = gateReady;
+
       if (!Number.isFinite(pinNum)) {
         console.warn('Invalid Pin from backend:', obj.Pin);
         return;
       }
 
+
+    
       // --- 開啟編輯視窗 ---
       if (typeof showOverlay === 'function') showOverlay();
       const editModal = document.getElementById('edit_input');
@@ -1447,7 +1457,7 @@ function get_input_info() {
       }
 
       if (gocWrap) {
-        if (eventId === 109) {
+        if (eventId === "109") {
           gocWrap.style.display = 'block';
           const g1 = document.getElementById('edit_gateconfirm_1');
           const g0 = document.getElementById('edit_gateconfirm_0');
@@ -1619,9 +1629,15 @@ document.addEventListener('change', function (e) {
     wrap.style.display = (v === '109') ? 'block' : 'none';
     // （可選）同步 aria 狀態
     wrap.setAttribute('aria-hidden', (v === '109') ? 'false' : 'true');
-  }
+  } 
 });
 
+
+(function () {
+  const v = String(globalThis.Wp_Ready_Confirm_num ?? 0);
+  const target = document.querySelector(`input[name="edit_gateconfirm"][value="${v}"]`);
+  if (target) target.checked = true;
+})();
 
 
 </script>

@@ -145,7 +145,7 @@ class Input{
         $statement->bindValue(':Pin', $input_data['Pin']);
         $statement->bindValue(':EvenID', $input_data['EvenID']);
         $statement->bindValue(':signal', $input_data['signal']);
-        $statement->bindValue(':Wp_Ready_Confirm', $input_data['gateconfirm'] ?? 0);
+        $statement->bindValue(':Wp_Ready_Confirm', $input_data['Wp_Ready_Confirm'] ?? 0);
 
         $results = $statement->execute();
 

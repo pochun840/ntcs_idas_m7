@@ -165,7 +165,9 @@ class Inputs extends Controller
                         $job_inputlist .= "<td>{$img}</td>";
                         $job_inputlist .= "</tr>";
                     } else {
-                        $Wp_Ready_Confirm = ($vv['Wp_Ready_Confirm'] == 1) ? "YES" : "NO";
+
+                        $Wp_Ready_Confirm = ($vv['Wp_Ready_Confirm'] == "1") ? "YES" : "NO";
+
                         $job_inputlist .= "<tr data-event='{$vv['EvenID']}'>";
                         $job_inputlist .= "<td id='{$vv['EvenID']}'>{$event[$vv['EvenID']]}</td>";
                         $job_inputlist .= $this->InputModel->generateTableCell($vv['Pin'], $vv['signal']);
@@ -268,6 +270,9 @@ class Inputs extends Controller
             $input_check = false; 
         }
 
+
+        var_dump($input_data);die();
+
         if($input_check){
             
             $count = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
@@ -329,13 +334,12 @@ class Inputs extends Controller
 
 
         if($input_data['EvenID'] != "109"){
-            $input_data['gateconfirm'] = '';
+            $input_data['Wp_Ready_Confirm'] = '';
         }else{
-            $input_data['gateconfirm'] = $_POST['gateconfirm'];
+            $input_data['Wp_Ready_Confirm'] = $_POST['gateconfirm'];
             
         }
 
- 
 
         if($input_check){
 
@@ -344,8 +348,7 @@ class Inputs extends Controller
             $deleted   = $this->InputModel->check_input_event_wave($input_data['JOBID'],$input_data['Pin'],$input_data['signal']);
             $count     = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);
             $ans       = $this->InputModel->delete_input_event_by_id($input_data['JOBID'],$input_data['EvenID']);
-
-            $res  = $this->InputModel->create_input($input_data);
+            $res       = $this->InputModel->create_input($input_data);
 
             $result = array();
             if($res){
