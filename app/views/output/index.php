@@ -22,18 +22,18 @@
                 <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled
                     style="height:30px; font-size:2.5vmin; text-align: center; background-color: #DDDDDD; border:0; line-height:30px;">
 
-                <button id="Button_Select" type="button" onclick="document.getElementById('JobSelect').style.display='block'"
+                <button id="Button_Select" type="button"  onclick="openJobSelect()"
                         style="height:30px;width:100px; font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
                     <?php echo $text['select'];?>
                 </button>
             </div>
 
             <!-- Job Select Modal -->
-            <div id="JobSelect" class="modal">
+            <div id="JobSelect" class="w3-modal" >
                 <form class="w3-modal-content w3-card-4 w3-animate-zoom" style="width: 400px; top: 12%; left: -20%" action="">
                     <div class="w3-light-grey">
                         <header class="w3-container w3-dark-grey" style="height: 48px">
-                            <span onclick="document.getElementById('JobSelect').style.display='none'" class="w3-button w3-red w3-large w3-display-topright" style="margin: 2px">&times;</span>
+                            <span   onclick="closeJobSelect()"  class="w3-button w3-red w3-large w3-display-topright" style="margin: 2px">&times;</span>
                             <h3 style="margin: 5px"><?php echo $text['job_select'];?></h3>
                         </header>
                         <table id="Job_Select">
@@ -50,7 +50,7 @@
                     </div>
                     <div class="modal-footer justify-content-center w3-dark-grey" style="height: 48px">
                         <button id="select_confirm" type="button" class="btn btn-primary" onclick='job_confirm()'><?php echo $text['confirm'];?></button>
-                        <button id="select_close" type="button" class="btn btn-secondary" onclick="document.getElementById('JobSelect').style.display='none'"><?php echo $text['close'];?></button>
+                        <button id="select_close"   type="button" class="btn btn-secondary" onclick="closeJobSelect()"> <?php echo $text['close'];?></button>
                     </div>
                 </form>
             </div>
@@ -346,3 +346,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<style>
+  /* 保險層級（避免被其他框架壓過） */
+  #JobSelect.w3-modal { z-index: 1055 !important; }
+  #JobSelect .w3-modal-content { z-index: 1056 !important; }
+</style>

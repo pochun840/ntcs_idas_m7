@@ -211,43 +211,67 @@ class Setting{
         return $results;
     }
 
-    public function Controller_Setting($con_setting)
-    {
+
+
+    public function Controller_Setting($con_setting){
+        // 舊ID（WHERE 用）
+        $device_id_old = $con_setting['control_id'] ?? null;
+        // 新ID（SET 用）；沒提供就沿用舊ID（= 不改）
+        $device_id_new = $con_setting['control_id_new'] ?? $device_id_old;
+
+        // 舊 ID 為 NULL（或空字串）→ 用 IS NULL；否則用等號
+        $useIsNull = is_null($device_id_old) || $device_id_old === '';
+
+
         $sql = "UPDATE " . TABLE_NTCS_DEVICE . " 
-        SET device_name = :device_name,
-            storage_warning =:storage_warning,
-            torque_filter=:torque_filter,
-            language = :language,
-            torque_unit =:torque_unit,
-            circular_archive =:circular_archive,
-            counting_method = :counting_method,
-            blackout_recovery = :blackout_recovery,
-            buzzer_mode = :buzzer_mode,
-            global_downshift_torque = :global_downshift_torque,
-            global_downshift_speed  = :global_downshift_speed
-        WHERE device_id = :device_id";
+            SET device_id               = :device_id_new,
+                device_name             = :device_name,
+                storage_warning         = :storage_warning,
+                torque_filter           = :torque_filter,
+                language                = :language,
+                torque_unit             = :torque_unit,
+                circular_archive        = :circular_archive,
+                counting_method         = :counting_method,
+                blackout_recovery       = :blackout_recovery,
+                buzzer_mode             = :buzzer_mode,
+                global_downshift_torque = :global_downshift_torque,
+                global_downshift_speed  = :global_downshift_speed
+            WHERE " . ($useIsNull ? "device_id IS NULL" : "device_id = :device_id_old");
 
-        $statement = $this->db_iDas_tools->prepare($sql);
+        $st = $this->db_iDas_tools->prepare($sql);
 
+        // ★ 一定要綁 :device_id_new
+        if ($device_id_new === null || $device_id_new === '') {
+            // 若你允許把新 ID 設回 NULL，就用 PARAM_NULL；否則可在此擋掉並回傳 false
+            $st->bindValue(':device_id_new', null, PDO::PARAM_NULL);
+        } else {
+            $st->bindValue(':device_id_new', $device_id_new, PDO::PARAM_STR);
+        }
 
-        $statement->bindValue(':device_name', $con_setting['control_name']);
-        $statement->bindValue(':language', $con_setting['lang_val']);
-        $statement->bindValue(':torque_unit', $con_setting['unit_val']);
-        $statement->bindValue(':storage_warning',$con_setting['storage_warning']);
-        $statement->bindValue('torque_filter',$con_setting['torque_filter']);
-        $statement->bindValue(':circular_archive',$con_setting['circular_archive']);
-        $statement->bindValue(':counting_method',$con_setting['counting_method']);
-        $statement->bindValue(':blackout_recovery',$con_setting['blackout_recovery']);
-        $statement->bindValue(':buzzer_mode', $con_setting['buzzer_mode']);
-        $statement->bindValue(':global_downshift_torque', $con_setting['global_downshift_torque']);
-        $statement->bindValue(':global_downshift_speed', $con_setting['global_downshift_speed']);
-        $statement->bindValue(':device_id', $con_setting['control_id']);
+        // 其他欄位（依你資料型別可用 PARAM_INT/STR）
+        $st->bindValue(':device_name',             $con_setting['control_name']);
+        $st->bindValue(':storage_warning',         $con_setting['storage_warning']);
+        $st->bindValue(':torque_filter',           $con_setting['torque_filter']);
+        $st->bindValue(':language',                $con_setting['lang_val']);
+        $st->bindValue(':torque_unit',             $con_setting['unit_val']);
+        $st->bindValue(':circular_archive',        $con_setting['circular_archive']);
+        $st->bindValue(':counting_method',         $con_setting['counting_method']);
+        $st->bindValue(':blackout_recovery',       $con_setting['blackout_recovery']);
+        $st->bindValue(':buzzer_mode',             $con_setting['buzzer_mode']);
+        $st->bindValue(':global_downshift_torque', $con_setting['global_downshift_torque']);
+        $st->bindValue(':global_downshift_speed',  $con_setting['global_downshift_speed']);
 
-        // 執行查詢並返回結果
-        $results = $statement->execute();
+        // 只有在非 NULL 的情況才綁 WHERE 的舊 ID
+        if (!$useIsNull) {
+            $st->bindValue(':device_id_old', $device_id_old, PDO::PARAM_STR);
+        }
 
-        return $results;
+        $ok = $st->execute();
+        // （可選）你也可以檢查受影響筆數：$rows = $st->rowCount();
+        return $ok;
     }
+
+
 
     public function Get_Controller_DB_version()
     {

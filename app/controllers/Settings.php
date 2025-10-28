@@ -241,6 +241,7 @@ class Settings extends Controller
         return $decimalValue;
     }
 
+    
     public function control_setting() {
 
         $file = $this->MiscellaneousModel->lang_load();
@@ -255,8 +256,8 @@ class Settings extends Controller
             return isset($_POST[$key]) && $_POST[$key] !== '' ? $_POST[$key] : $default;
         };
 
-        // 必填欄位驗證
-        $required_fields = ['control_id', 'control_name', 'storage_warning', 'torque_filter'];
+        // ===== 必填欄位（除了 ID 新舊外）=====
+        $required_fields = ['control_name', 'storage_warning', 'torque_filter'];
         foreach ($required_fields as $field) {
             $val = $get($field);
             if ($val === null) {
@@ -266,7 +267,18 @@ class Settings extends Controller
             }
         }
 
-        // 可選欄位（含預設值）
+        // ===== 舊/新 ID 讀取（把空字串視為 NULL）=====
+        $control_id_raw     = isset($_POST['control_id']) ? $_POST['control_id'] : null;
+        $control_id_old     = ($control_id_raw === '' ? null : $control_id_raw);
+
+        $control_id_new_raw = isset($_POST['control_id_new']) ? $_POST['control_id_new'] : $control_id_old;
+        $control_id_new     = ($control_id_new_raw === '' ? null : $control_id_new_raw);
+
+        // 寫回設定陣列（Model 需要）
+        $con_setting['control_id']     = $control_id_old;   // WHERE 用
+        $con_setting['control_id_new'] = $control_id_new;   // SET 用
+
+        // ===== 可選欄位（含預設）=====
         $con_setting['lang_val'] = (int)$get('lang_val', 0);
         $con_setting['unit_val'] = (int)$get('unit_val', 0);
 
@@ -278,36 +290,63 @@ class Settings extends Controller
             'global_downshift_torque',
             'global_downshift_speed'
         ];
-
         foreach ($optional_fields as $field) {
-            $con_setting[$field] = $get($field, ''); // 空字串作為預設值
+            $con_setting[$field] = $get($field, '');
         }
 
-        // 若前面驗證通過
-        if ($input_check) {
-            $res = $this->SettingModel->GetControllerInfo_count($con_setting['control_id']);
+        // 基本數值型別正規化（選用：避免字串進 DB）
+        foreach (['counting_method','circular_archive','blackout_recovery','buzzer_mode','lang_val','unit_val'] as $nf) {
+            if (isset($con_setting[$nf]) && $con_setting[$nf] !== '') $con_setting[$nf] = (int)$con_setting[$nf];
+        }
+        foreach (['global_downshift_torque','global_downshift_speed','storage_warning','torque_filter'] as $nf) {
+            if (isset($con_setting[$nf]) && $con_setting[$nf] !== '') $con_setting[$nf] = $con_setting[$nf] + 0;
+        }
 
-            if ($res['count'] === "1") {
-                $result = $this->SettingModel->Controller_Setting($con_setting);
+        if (!$input_check) {
+            $res_type = $text['fail'] ?? 'Fail';
+            $res_msg  = $text['form_invalid'] ?? 'Invalid input';
+            $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+            return;
+        }
 
-                if ($result) {
-                    $res_msg = $text['success'] ?? 'Success';
-                    $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg);
-                } else {
-                    $res_msg = $text['fail'] ?? 'Fail';
-                    $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
-                }
-            } else {
-                $res_msg = $text['not_found'] ?? 'Controller not found';
-                $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
+        // ===== 舊 ID 存在性檢查（舊 ID 非 NULL 才檢查；NULL 交由 Model 用 IS NULL 去更新）=====
+        $exists = true;
+        if ($control_id_old !== null) {
+            $res = $this->SettingModel->GetControllerInfo_count($control_id_old);
+            $exists = ((int)($res['count'] ?? 0) === 1);
+        }
+        if (!$exists) {
+            $res_type = $text['fail'] ?? 'Fail';
+            $res_msg  = $text['not_found'] ?? 'Controller not found';
+            $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+            return;
+        }
+
+        // ===== 如要更改 ID，檢查新 ID 是否已存在（新 ID 非 NULL 才檢查）=====
+        $is_change_id = ($control_id_old !== $control_id_new);
+        if ($is_change_id && $control_id_new !== null) {
+            $resNew = $this->SettingModel->GetControllerInfo_count($control_id_new);
+            if ((int)($resNew['count'] ?? 0) !== 0) {
+                $res_type = $text['fail'] ?? 'Fail';
+                $res_msg  = $text['device_id_conflict'] ?? 'Target device_id already exists';
+                $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+                return;
             }
-        } else {
-            $res_msg = $text['form_invalid'] ?? 'Invalid input';
-            $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
         }
 
-        //
+        // ===== 執行更新（Model 需為先前已修改的版本：支援 :device_id_new，且 WHERE 可處理 IS NULL）=====
+        $ok = $this->SettingModel->Controller_Setting($con_setting);
+
+        if ($ok) {
+            $res_type = $text['success'] ?? 'Success';
+            $res_msg  = $text['success'] ?? 'Success';
+        } else {
+            $res_type = $text['fail'] ?? 'Fail';
+            $res_msg  = $text['fail'] ?? 'Fail';
+        }
+        $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
     }
+
 
 
 

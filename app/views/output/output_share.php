@@ -96,6 +96,43 @@ window.onclick = function(event) {
 }
 
 
+  function killBackdropsAndLocks() {
+    // 1) Bootstrap 背板 & body 鎖定
+    try { document.querySelectorAll('.modal-backdrop').forEach(el => el.remove()); } catch(e) {}
+    try { document.body.classList.remove('modal-open'); } catch(e) {}
+    try { document.body.style.removeProperty('padding-right'); } catch(e) {}
+
+    // 2) Alertify 遮罩（ajs-dimmer）與可能殘留的對話框
+    try { document.querySelectorAll('.ajs-dimmer, .ajs-modal').forEach(el => el.remove()); } catch(e) {}
+
+    // 3) 任意把整頁點擊擋掉的殘留屬性
+    try { document.documentElement.style.pointerEvents = 'auto'; } catch(e) {}
+    try { document.body.style.pointerEvents = 'auto'; } catch(e) {}
+  }
+
+  function openJobSelect() {
+    killBackdropsAndLocks();
+
+    // 提高層級 + 確保可點擊
+    const modal = document.getElementById('JobSelect');
+    if (!modal) return;
+    modal.style.display = 'block';
+    modal.style.zIndex = '1055'; // 比 .modal-backdrop(1050) 高
+    const content = modal.querySelector('.w3-modal-content');
+    if (content) content.style.zIndex = '1056';
+    modal.style.pointerEvents = 'auto';
+  }
+
+  function closeJobSelect() {
+    const modal = document.getElementById('JobSelect');
+    if (!modal) return;
+    modal.style.display = 'none';
+
+    // 關閉後也順便清殘留
+    killBackdropsAndLocks();
+  }
+
+
 function lockEventDropdownForNew(usedEvents = []) {
   // 清單可能是字串或數字；先正規化
   const usedSingle = usedEvents

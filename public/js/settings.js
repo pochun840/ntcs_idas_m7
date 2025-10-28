@@ -148,57 +148,58 @@ function updateCurrentTime(serverDateTime) {
 
 
 function controller_save(){
+  // 取值 & 去除前後空白
+  const trim = (v) => (v == null ? '' : String(v).trim());
 
-    var control_id = document.getElementById('control_id').value;
-    if (isNaN(control_id) || control_id < 1 || control_id > 250) {
-        return false;
+  const control_id_old = trim(document.getElementById('control_id_old')?.value); // 舊ID（'' 代表 NULL）
+  const control_id     = trim(document.getElementById('control_id')?.value);     // 螢幕上顯示的 ID（當新ID）
+  const control_name   = trim(document.getElementById('control_name')?.value);
+  const storage_warning = trim(document.getElementById('storage_warning')?.value);
+  const torque_filter   = trim(document.getElementById('torque_filter')?.value);
+  const lang_val        = trim(document.getElementById('select_language')?.value);
+  const unit_val        = trim(document.getElementById('select_torque_unit')?.value);
+  const counting_method_val   = trim(document.querySelector('input[name="counting_method"]:checked')?.value);
+  const circular_archive_val  = trim(document.querySelector('input[name="circular_archive"]:checked')?.value);
+  const blackout_recovery_val = trim(document.querySelector('input[name="blackout_recovery"]:checked')?.value);
+  const buzzer_val            = trim(document.querySelector('input[name="buzzer_mode"]:checked')?.value);
+  const global_downshift_torque = trim(document.getElementById('global_downshift_torque')?.value);
+  const global_downshift_speed  = trim(document.getElementById('global_downshift_speed')?.value);
+
+  // 你的原本驗證
+  let check = input_check_setting();
+  if (!check) return;
+
+  // 只有當使用者真的改了 ID，才送 control_id_new；否則送空字串（後端視為不更改）
+  const control_id_new = (control_id !== control_id_old) ? control_id : '';
+
+  $.ajax({
+    url: "?url=Settings/control_setting",
+    method: "POST",
+    data: {
+      // 後端會把 '' 視為 NULL（舊ID可為 NULL；新ID空字串代表不改）
+      control_id: control_id_old,
+      control_id_new: control_id_new,
+
+      control_name: control_name,
+      lang_val: lang_val,
+      unit_val: unit_val,
+      storage_warning: storage_warning,
+      torque_filter: torque_filter,
+      counting_method: counting_method_val,
+      circular_archive: circular_archive_val,
+      blackout_recovery: blackout_recovery_val,
+      buzzer_mode: buzzer_val,
+      global_downshift_torque: global_downshift_torque,
+      global_downshift_speed: global_downshift_speed
+    },
+    success: function(response) {
+      suppressRangeHints(true);
+      handleAjaxResponse(response); // 你原本的處理
+    },
+    error: function(xhr, status, error) {
+      // 依需求處理
     }
-
-    var control_name = document.getElementById('control_name').value;
-    var storage_warning = document.getElementById('storage_warning').value;
-    var torque_filter   = document.getElementById('torque_filter').value;
-    var lang_val = document.getElementById('select_language').value; 
-    var unit_val = document.getElementById('select_torque_unit').value; 
-    var counting_method_val =  document.querySelector('input[name="counting_method"]:checked').value;
-    var circular_archive_val = document.querySelector('input[name="circular_archive"]:checked').value;
-    var blackout_recovery_val = document.querySelector('input[name="blackout_recovery"]:checked').value;
-    var buzzer_val = document.querySelector('input[name="buzzer_mode"]:checked').value;
-    var global_downshift_torque = document.getElementById('global_downshift_torque').value;
-    var global_downshift_speed  = document.getElementById('global_downshift_speed').value;
-
-
-    //新增驗證
-    let check = input_check_setting();
-    if(check){
-        $.ajax({
-            url: "?url=Settings/control_setting",
-            method: "POST",
-            data:{ 
-                control_id: control_id,
-                control_name: control_name,
-                lang_val: lang_val,
-                unit_val: unit_val,
-                storage_warning: storage_warning,
-                torque_filter: torque_filter,
-                counting_method: counting_method_val,
-                circular_archive: circular_archive_val,
-                blackout_recovery: blackout_recovery_val,
-                buzzer_mode:buzzer_val,
-                global_downshift_torque:global_downshift_torque,
-                global_downshift_speed: global_downshift_speed
-     
-
-            },
-            success: function(response) {
-
-                suppressRangeHints(true);
-                handleAjaxResponse(response);
-            },
-            error: function(xhr, status, error) {
-                
-            }
-        }); 
-    }
+  });
 }
 
 
@@ -237,9 +238,9 @@ function input_check_setting(argument) {
 
     // 字串資源
     const LABELS = {
-        'en-us': { control_name:'Control Name', storage_warning:'Storage Warning (%)', torque_filter:'Torque Filter', global_downshift_torque:'Downshift Torque', global_downshift_speed:'Downshift Speed' },
-        'zh-tw': { control_name:'設備名稱', storage_warning:'容量警示(%)', torque_filter:'扭力過濾', global_downshift_torque:'降檔扭力', global_downshift_speed:'降檔速' },
-        'zh-cn': { control_name:'设备名称', storage_warning:'容量警示(%)', torque_filter:'扭力过滤', global_downshift_torque:'降档扭力', global_downshift_speed:'降档速度' }
+        'en-us': { control_id: 'Device ID',control_name:'Device Name', storage_warning:'Storage Warning (%)', torque_filter:'Torque Filter', global_downshift_torque:'Downshift Torque', global_downshift_speed:'Downshift Speed' },
+        'zh-tw': { control_id: '設備編號',control_name:'設備名稱', storage_warning:'容量警示(%)', torque_filter:'扭力過濾', global_downshift_torque:'降檔扭力', global_downshift_speed:'降檔速' },
+        'zh-cn': { control_id: '设备编号',control_name:'设备名称', storage_warning:'容量警示(%)', torque_filter:'扭力过滤', global_downshift_torque:'降档扭力', global_downshift_speed:'降档速度' }
     }[lang];
 
     const I18N = {
@@ -304,6 +305,7 @@ function input_check_setting(argument) {
 
     // 規則
     const conditions = [
+        { id:'control_id',              label:LABELS.control_id,              pattern:/^\d{0,4}$/,                      min:1,   max:512   },
         { id:'control_name',            label:LABELS.control_name,            pattern:/^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min:null, max:null },
         { id:'storage_warning',         label:LABELS.storage_warning,         pattern:/^\d{0,4}$/,                      min:50,   max:95   },
         { id:'torque_filter',           label:LABELS.torque_filter,           pattern:/^\d{1,3}(\.\d{1,6})?$/,          min:0.0,  max:200  },

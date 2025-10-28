@@ -3,7 +3,8 @@
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_id'];?>:</div>
         <div class="col-3 t2">
-            <input id="control_id" name="control_id" type="number" max=250 min=1 maxlength="3" value="<?php echo isset($data['controller_info']['device_id']) ? $data['controller_info']['device_id'] : ''; ?>" class="t3 form-control"  required disabled>
+            <input type="hidden" id="control_id_old" value="<?php echo htmlspecialchars($data['controller_info']['device_id'] ?? '', ENT_QUOTES); ?>">
+            <input id="control_id" name="control_id" type="number" max=512  min=1 maxlength="3" value="<?php echo isset($data['controller_info']['device_id']) ? $data['controller_info']['device_id'] : ''; ?>" class="t3 form-control"  required >
         </div>
     </div>    
     <div class="row t2">
@@ -96,7 +97,7 @@
                 <label class="form-check-label"><?php echo $text['switch_off'];?></label>
             </div>
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1"  <?php echo $data['controller_info']['blackout_recovery'] == 1 ? 'checked="checked"' : ''; ?>>
+                <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1_1"  <?php echo $data['controller_info']['blackout_recovery'] == 1 ? 'checked="checked"' : ''; ?>>
                 <label class="form-check-label"><?php echo $text['switch_on'];?></label>
             </div>
         </div>

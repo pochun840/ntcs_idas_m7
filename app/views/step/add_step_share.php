@@ -4543,6 +4543,60 @@
             }
         }
 
+        // ========== 新增通用規則：StepHiTorque > check_target_tor_hi ==========
+        {
+            const hiElGlobal2 = document.getElementById('StepHiTorque');
+            const chkHiEl     = document.getElementById('check_target_tor_hi');
+
+            if (hiElGlobal2 && chkHiEl) {
+                const hiVal2  = Number(hiElGlobal2.value);
+                const chkHiVal = Number(chkHiEl.value);
+
+                if (Number.isFinite(hiVal2) && Number.isFinite(chkHiVal) && hiVal2 > chkHiVal) {
+                // 取語系
+                const getCookieSafe = (name) => {
+                    try {
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
+                    } catch { return null; }
+                };
+                let lang = (typeof getCookie === 'function' && getCookie('language')) || getCookieSafe('language') || 'zh-tw';
+                lang = String(lang).toLowerCase();
+                if (lang === 'en') lang = 'en-us';
+                if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
+
+                // 單位
+                let unitText = '扭力單位';
+                const unitCode = parseInt(document.getElementById('step_torque_unit')?.value ?? 1, 10);
+                const UNIT_TEXT = {
+                    0: { 'en-us': 'kgf·cm', 'zh-tw': '公斤·公分', 'zh-cn': '公斤·公分' },
+                    1: { 'en-us': 'N·m',    'zh-tw': '牛頓·公尺', 'zh-cn': '牛顿·米' },
+                    2: { 'en-us': 'lbf·in', 'zh-tw': '磅·英吋',   'zh-cn': '磅·英寸' },
+                    3: { 'en-us': 'kgf·m',  'zh-tw': '公斤·公尺', 'zh-cn': '公斤·米' },
+                    4: { 'en-us': 'cN·m',   'zh-tw': '牛頓·釐米', 'zh-cn': '牛顿·厘米' },
+                };
+                unitText = (UNIT_TEXT[unitCode]?.[lang]) ?? '扭力單位';
+
+                // 提示訊息（與你前面一致）
+                const MSG = {
+                    'zh-tw': `目標扭力（${unitText}）需小於扭力上限`,
+                    'zh-cn': `目标扭力（${unitText}）需小于扭力上限`,
+                    'en-us': `Target torque (${unitText}) must be less than torque upper limit`
+                }[lang];
+
+                try {
+                    alertify
+                    .alert((lang === 'en-us' ? 'Warning' : '警告'), MSG)
+                    .set('labels', { ok: (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定')) });
+                } catch { alert(MSG); }
+
+                try { hiElGlobal2.focus(); hiElGlobal2.select?.(); } catch {}
+                hiElGlobal2.classList.add('is-invalid');
+                return false;
+                }
+            }
+        }
+
 
         // ================== StepOption == 1（目標角度） ==================
         if (stepOpt === 1) {
@@ -4772,8 +4826,8 @@
             const msg = (lang2 === 'en-us')
             ? `Target torque (${unitText}) is out of range. (${showLo} ${sepChar2} ${showHi})`
             : (lang2 === 'zh-cn')
-                ? `目標扭力WW（${unitText}）超出范围，（${showLo} ${sepChar2} ${showHi}）`
-                : `目標扭力SW（${unitText}）超出範圍，（${showLo} ${sepChar2} ${showHi}）`;
+                ? `目標扭力（${unitText}）超出范围，（${showLo} ${sepChar2} ${showHi}）`
+                : `目標扭力（${unitText}）超出範圍，（${showLo} ${sepChar2} ${showHi}）`;
             tqEl.classList.add('is-invalid');
             try {
             alertify.alert(I18N.title, msg, function () {
