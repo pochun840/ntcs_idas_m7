@@ -270,6 +270,7 @@ class Inputs extends Controller
             $input_check = false; 
         }
 
+
         if($input_check){
             
             $count = $this->InputModel->check_job_event_conflict($input_data['JOBID'],$input_data['EvenID']);

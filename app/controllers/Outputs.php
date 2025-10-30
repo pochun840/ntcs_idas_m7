@@ -421,26 +421,20 @@ class Outputs extends Controller
             $durate = 100;
         }
 
-        try {
-            // 1) 先把「同 JOB + Pin」的舊資料全部刪掉（無論事件/波形）
-            $this->OutputModel->delete_all_by_job_pin($jobId, $pin);
 
-            // 2) 再插入新的事件資料
+        if(!empty($_POST['old_output_event'])){
+
+            $this->OutputModel->delete_job_old_event($jobId,$_POST['old_output_event']);
             $this->OutputModel->insert_output_event($jobId, $pin, $newEv, $signal, $durate);
 
             $label = $text[$eventMap[$newEv] ?? $newEv] ?? $newEv;
             $result['res_type'] = 'Success';
             $result['res_msg']  = $text['edit_event'].$text['job_id'].':'.$jobId.','.$text['event'].':'.$label.'  '.$text['success'];
-        } catch (Throwable $e) {
-            error_log('edit_output_event error: '.$e->getMessage());
-            $label = $text[$eventMap[$newEv] ?? $newEv] ?? $newEv;
-            $result['res_type'] = 'Error';
-            $result['res_msg']  = $text['edit_event'].$text['job_id'].':'.$jobId.','.$text['event'].':'.$label.'  '.$text['fail'];
+            echo json_encode($result);
         }
 
-        echo json_encode($result);
-    }
-
+        
+    }   
 
 
 

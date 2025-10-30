@@ -353,11 +353,13 @@ class Step extends Controller
             $old_res= $this->stepModel->getStepNo($jobid,$seqid,$stepid);
       
             if(!empty($old_res)){
+
+                $step_name = "STEP-".$stepid_new;
                 $step_data = array(
                     'JOBID'                    => $jobid,
                     'SEQID'                    => $seqid,
                     'StepSelect'               => $stepid_new,
-                    'STEPname'                 => $old_res[0]['STEPname'],
+                    'STEPname'                 => $step_name,
                     'type'                     => $old_res[0]['type'],
                     'time'                     => $old_res[0]['time'],
                     'act'                      => $old_res[0]['act'],
@@ -399,7 +401,6 @@ class Step extends Controller
 
                 );
 
-    
                 $res = $this->stepModel->create_step($step_data);
                 if($res){
                     $res_type = $text['success'];

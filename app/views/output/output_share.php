@@ -96,43 +96,6 @@ window.onclick = function(event) {
 }
 
 
-  function killBackdropsAndLocks() {
-    // 1) Bootstrap 背板 & body 鎖定
-    try { document.querySelectorAll('.modal-backdrop').forEach(el => el.remove()); } catch(e) {}
-    try { document.body.classList.remove('modal-open'); } catch(e) {}
-    try { document.body.style.removeProperty('padding-right'); } catch(e) {}
-
-    // 2) Alertify 遮罩（ajs-dimmer）與可能殘留的對話框
-    try { document.querySelectorAll('.ajs-dimmer, .ajs-modal').forEach(el => el.remove()); } catch(e) {}
-
-    // 3) 任意把整頁點擊擋掉的殘留屬性
-    try { document.documentElement.style.pointerEvents = 'auto'; } catch(e) {}
-    try { document.body.style.pointerEvents = 'auto'; } catch(e) {}
-  }
-
-  function openJobSelect() {
-    killBackdropsAndLocks();
-
-    // 提高層級 + 確保可點擊
-    const modal = document.getElementById('JobSelect');
-    if (!modal) return;
-    modal.style.display = 'block';
-    modal.style.zIndex = '1055'; // 比 .modal-backdrop(1050) 高
-    const content = modal.querySelector('.w3-modal-content');
-    if (content) content.style.zIndex = '1056';
-    modal.style.pointerEvents = 'auto';
-  }
-
-  function closeJobSelect() {
-    const modal = document.getElementById('JobSelect');
-    if (!modal) return;
-    modal.style.display = 'none';
-
-    // 關閉後也順便清殘留
-    killBackdropsAndLocks();
-  }
-
-
 function lockEventDropdownForNew(usedEvents = []) {
   // 清單可能是字串或數字；先正規化
   const usedSingle = usedEvents
@@ -439,13 +402,27 @@ function syncButtonSelect(disabled) {
   }
 }
 
-// ===== Button_Select 診斷與強制可點工具 =====
-(function(){
-  // 1) 列印現況（直接呼叫 debugButtonSelect() 看為什麼點不到）
-  window.debugButtonSelect = function(){
+
+// ===== Button_Select 診斷與強制可點工具 (stable) =====
+(function () {
+  // ========= 公用：清除殘留的 Alertify 遮罩 =========
+  function clearAlertifyDimmer() {
+    try {
+      // 只有在沒有任何 alertify modal 時，才移除 dimmer
+      const hasModal = !!document.querySelector('.ajs-modal');
+      if (!hasModal) {
+        document.querySelectorAll('.ajs-dimmer').forEach(n => n.remove());
+        document.body.classList.remove('ajs-no-overflow');
+      }
+    } catch (e) {}
+  }
+  window.clearAlertifyDimmer = window.clearAlertifyDimmer || clearAlertifyDimmer;
+
+  // ========= 偵錯：列印 Button_Select 狀態 =========
+  window.debugButtonSelect = function () {
     const btns = document.querySelectorAll('#Button_Select');
     if (btns.length !== 1) {
-      console.warn('[debugButtonSelect] 找到', btns.length, '個 #Button_Select（ID 重複會導致狀態對不起來）', btns);
+      console.warn('[debugButtonSelect] 找到', btns.length, '個 #Button_Select（ID 重複會導致狀態錯亂）', btns);
       return;
     }
     const btn = btns[0];
@@ -477,8 +454,8 @@ function syncButtonSelect(disabled) {
     console.table(guard);
 
     // 看遮擋（用 center 點）
-    const cx = info.rect.left + info.rect.width/2;
-    const cy = info.rect.top + info.rect.height/2;
+    const cx = info.rect.left + info.rect.width / 2;
+    const cy = info.rect.top + info.rect.height / 2;
     const topEl = document.elementFromPoint(cx, cy);
     console.log('[debugButtonSelect] elementFromPoint:', topEl);
     if (topEl && topEl !== btn && !btn.contains(topEl)) {
@@ -486,13 +463,17 @@ function syncButtonSelect(disabled) {
     }
   };
 
-  // 2) 清擋點（父層 fieldset.disabled / pointer-events:none；若有遮罩覆蓋也移除 pointer-events）
-  function clearBlocksFor(el){
+  // ========= 核心：清擋點（已加入 Alertify 友善邏輯） =========
+  function clearBlocksFor(el) {
     if (!el) return;
-    // 自身
+
+    // A. 有 alertify modal：讓對話流程先走，不清擋、不警告
+    if (document.querySelector('.ajs-modal')) return;
+
+    // 自身解除 inline 限制
     el.style.pointerEvents = '';
 
-    // 父層
+    // 祖先解除 fieldset.disabled / pointer-events:none
     let p = el.parentElement;
     while (p) {
       if (p.tagName === 'FIELDSET' && p.disabled) p.disabled = false;
@@ -501,93 +482,133 @@ function syncButtonSelect(disabled) {
       p = p.parentElement;
     }
 
-    // 若有「覆蓋在上面」的元素 → 移除它的 pointer-events
+    // B. 偵測覆蓋元素（center 點）
     const r = el.getBoundingClientRect();
-    const cx = r.left + r.width/2;
-    const cy = r.top + r.height/2;
-    const topEl = document.elementFromPoint(cx, cy);
-    if (topEl && topEl !== el && !el.contains(topEl)) {
-      // 僅清 inline（不改全域 CSS）
-      topEl.style.pointerEvents = 'none';
-      // 再試一次
-      const top2 = document.elementFromPoint(cx, cy);
-      if (top2 && top2 !== el && !el.contains(top2)) {
-        // 若還有，記錄給你看
-        console.warn('[clearBlocksFor] 仍有覆蓋元素：', top2);
-      }
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    let topEl = document.elementFromPoint(cx, cy);
+
+    if (!topEl || topEl === el || el.contains(topEl)) return;
+
+    // C. 遇到 alertify 的 dimmer：排到「下一幀」再清（避開動畫時序）
+    if (topEl.classList?.contains('ajs-dimmer')) {
+      requestAnimationFrame(() => {
+        if (!document.querySelector('.ajs-modal')) {
+          clearAlertifyDimmer();
+        }
+      });
+      // 不警告：屬正常/短暫殘留
+      return;
     }
+
+    // D. 其他覆蓋元素：先關閉其 pointer-events（僅動 inline）
+    topEl.style.pointerEvents = 'none';
+
+    // E. 下一幀再檢一次；仍被擋才顯示警告
+    requestAnimationFrame(() => {
+      const t2 = document.elementFromPoint(cx, cy);
+      if (t2 && t2 !== el && !el.contains(t2)) {
+        console.warn('[clearBlocksFor] 仍有覆蓋元素：', t2);
+      }
+    });
   }
 
-  // 3) 最終強制可點（解除時呼叫）
-  window.forceEnableButtonSelect = function(){
+  // ========= 對外：強制可點 =========
+  window.forceEnableButtonSelect = function () {
     const btn = document.getElementById('Button_Select');
     if (!btn) return;
 
-    // 清自身禁用
+    // 有 alertify 對話 → 先不動（避免與流程打架）
+    if (document.querySelector('.ajs-modal')) return;
+
+    // 自身解鎖
     btn.removeAttribute('disabled'); btn.disabled = false;
-    btn.setAttribute('aria-disabled','false');
-    btn.classList.remove('is-disabled','disabled','w3-disabled','btn-disabled','disabled_input','btn-dimmed');
+    btn.setAttribute('aria-disabled', 'false');
+    btn.classList.remove('is-disabled', 'disabled', 'w3-disabled', 'btn-disabled', 'disabled_input', 'btn-dimmed');
     btn.style.pointerEvents = ''; btn.style.cursor = ''; btn.style.opacity = ''; btn.style.filter = '';
     if (btn._originalTabIndex != null) btn.setAttribute('tabindex', btn._originalTabIndex);
     else btn.removeAttribute('tabindex');
 
-    // 清祖先/覆蓋
+    // 祖先與覆蓋清理
     clearBlocksFor(btn);
 
-    // 還原 inline onclick（若曾被清掉）
+    // 還原 inline onclick（若曾備份）
     if (!btn.onclick && typeof btn._originalOnclick === 'function') {
       btn.onclick = btn._originalOnclick;
     }
   };
 
-  // 4) 安裝「委派 click 備援」：若沒有 inline onclick/事件，仍嘗試轉發
+  // ========= 委派 click 備援（完全沒 handler 時兜底） =========
   if (!window._buttonSelectDelegateInstalled) {
     window._buttonSelectDelegateInstalled = true;
-    document.addEventListener('click', function(e){
+    document.addEventListener('click', function (e) {
       const el = e.target?.closest?.('#Button_Select');
       if (!el) return;
 
       // 禁用就不處理
       if (el.getAttribute('aria-disabled') === 'true' || el.disabled) return;
 
-      // 已有 onclick（或別處 addEventListener）→ 讓原本的處理
-      // （我們不攔截；這個委派只是在完全沒 handler 時兜底）
+      // 有 alertify 對話 → 不處理（避免誤觸）
+      if (document.querySelector('.ajs-modal')) return;
+
+      // 已有 onclick/其他監聽 → 交回原處理
       if (typeof el.onclick === 'function') return;
 
-      // data-click="函式名"（若你有這種慣例）
+      // data-click="函式名"
       const fnName = el.dataset?.click;
       if (fnName && typeof window[fnName] === 'function') {
         window[fnName].call(el, e);
         return;
       }
 
-      // 有備份的原始 onclick 就叫回去
+      // 有備份的原始 onclick
       if (typeof el._originalOnclick === 'function') {
         el._originalOnclick.call(el, e);
       }
-    }, true); // 用捕獲階段，避免被晚綁定的 stopPropagation 阻擋
+    }, true); // 捕獲階段，提高兜底成功率
   }
 
-  // 5) 守門員：在頁面回來/渲染後，最後再強制一次
-  function assertButtonEnabledSoon(){
+  // ========= 時序守門員：渲染/回頁/DOM 變動後分時強制 =========
+  function assertButtonEnabledSoon() {
     try {
-      const locked = typeof isUnifiedLockedStored === 'function' ? !!isUnifiedLockedStored() : false;
-      if (!locked) {
-        // 解除狀態 → 連續幾個時點強制放開（避免晚到的覆蓋）
-        setTimeout(forceEnableButtonSelect, 0);
-        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(forceEnableButtonSelect);
-        setTimeout(forceEnableButtonSelect, 120);
-        setTimeout(forceEnableButtonSelect, 300);
-      }
-    } catch(e){}
-  }
-  window.addEventListener('pageshow', assertButtonEnabledSoon, {passive:true});
-  document.addEventListener('DOMContentLoaded', assertButtonEnabledSoon, {once:true});
+      // 有 alertify 對話 → 暫停
+      if (document.querySelector('.ajs-modal')) return;
 
-  // DOM 大變動也再跑一次（例如 AJAX 重繪）
+      // 若有「統一鎖」狀態，則不強制
+      const locked = typeof isUnifiedLockedStored === 'function' ? !!isUnifiedLockedStored() : false;
+      if (locked) return;
+
+      setTimeout(window.forceEnableButtonSelect, 0);
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(window.forceEnableButtonSelect);
+      setTimeout(window.forceEnableButtonSelect, 120);
+      setTimeout(window.forceEnableButtonSelect, 300);
+    } catch (e) {}
+  }
+
+  window.addEventListener('pageshow', assertButtonEnabledSoon, { passive: true });
+  document.addEventListener('DOMContentLoaded', assertButtonEnabledSoon, { once: true });
+
+  // DOM 大變動（例如 AJAX 重繪）也再跑一次
   const mo = new MutationObserver(() => { assertButtonEnabledSoon(); });
-  mo.observe(document.body, { childList:true, subtree:true });
+  try { mo.observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+
+  // =========（可選）Patch 現有 clearBlocksFor（若你的頁面已有同名全域）=========
+  (function patchExistingClearBlocksFor() {
+    const orig = window.clearBlocksFor;
+    if (typeof orig !== 'function') return; // 沒有就不動
+    // 用我們的增強版包起來：有 modal 早退、殘留 dimmer 自動清
+    window.clearBlocksFor = function patchedClearBlocksFor() {
+      if (document.querySelector('.ajs-modal')) return;
+      document.querySelectorAll('.ajs-dimmer').forEach(n => {
+        const pe = (n.style.pointerEvents || getComputedStyle(n).pointerEvents || '').toLowerCase();
+        if (!document.querySelector('.ajs-modal') && pe === 'none') n.remove();
+      });
+      return orig.apply(this, arguments);
+    };
+  })();
 })();
+
+
 
 
 function crud_job_event(argument) {
@@ -1531,7 +1552,7 @@ function edit_output_id() {
   // 顯示遮罩 + spinner
   document.querySelector(".main-content")?.classList.add("overlay-active");
   var spinner = document.getElementById('spinner');
-  if (spinner) spinner.style.display = 'block';
+  if (spinner) spinner.style.display = 'none';
 
   // 小工具：真正送出「編輯」
   function doSave() {
@@ -2172,6 +2193,20 @@ function syncButtonSelectState() {
   }
 }
 
+
+// 全域：清除殘留的 alertify 遮罩（無 modal 時才移除）
+function clearAlertifyDimmer() {
+  try {
+    const hasModal = !!document.querySelector('.ajs-modal');
+    if (!hasModal) {
+      document.querySelectorAll('.ajs-dimmer').forEach(n => n.remove());
+      document.body.classList.remove('ajs-no-overflow');
+    }
+  } catch (e) {}
+}
+
+
+
 </script>
 
 <style>
@@ -2200,4 +2235,165 @@ input#job_id.bg-yellow[disabled] {
   filter: saturate(0.6);
   /* 不要加 pointer-events 或禁止游標，點擊控制交給 JS */
 }
+</style>
+
+
+
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- 0) 確保必要 hidden ----------
+  function ensureHidden(id){
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('input');
+      el.type = 'hidden';
+      el.id = id;
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  const hidMode    = ensureHidden('mode');               // 'edit' or 'new'
+  const hidJobId   = ensureHidden('selected_job_id');    // 當前選到的 job_id
+  const hidEventId = ensureHidden('selected_event_id');  // 當前選到的 event_id
+
+  // ---------- 1) 模式管理（單一真相 + edit 優先） ----------
+  window.IdasMode = (function(){
+    const KEY = 'idas_mode';
+    const BODY = document.body;
+
+    function read() {
+      const v = (hidMode.value || localStorage.getItem(KEY) || BODY.dataset.mode || 'new').toLowerCase();
+      return (v === 'edit') ? 'edit' : 'new';
+    }
+    function write(v, {force=false} = {}) {
+      v = (v || '').toLowerCase();
+      if (v !== 'edit' && v !== 'new') return;
+
+      // 若目前是 edit，除非 force 才允許改回 new（避免被別的程式誤蓋）
+      if (!force && read() === 'edit' && v === 'new') return;
+
+      hidMode.value = v;
+      localStorage.setItem(KEY, v);
+      BODY.dataset.mode = v;
+    }
+
+    // 初始：若空值，預設 new；若 localStorage 裡是 edit，沿用
+    if (!hidMode.value) write(localStorage.getItem(KEY) || 'new', {force:true});
+
+    // 監看 hidden 被外部改寫 → 若我們正在 edit，就立即拉回
+    const mo = new MutationObserver(() => {
+      if (localStorage.getItem(KEY) === 'edit' && hidMode.value !== 'edit') {
+        write('edit', {force:true});
+      }
+    });
+    mo.observe(hidMode, { attributes:true, attributeFilter:['value'] });
+
+    // 暴露 API
+    return {
+      get: read,
+      set: (v) => write(v),
+      force: (v) => write(v, {force:true})
+    };
+  })();
+
+  // ---------- 2) 在「編輯」按鈕按下時，鎖定 edit 優先權 ----------
+  // 依你的實際 DOM 補齊 selector（可多顆）
+  document.querySelectorAll("#btnEdit, [data-action='edit']").forEach(btn => {
+    if (btn.dataset.boundEdit === "1") return;
+    btn.addEventListener("click", function(){
+      window.IdasMode.force('edit'); // 一鍵鎖定 edit
+      // 這裡只鎖 mode，原本的編輯流程請照舊執行（不要在這裡 reset 表單）
+    });
+    btn.dataset.boundEdit = "1";
+  });
+
+  // ---------- 3) 「選擇」按鈕只負責開窗，不碰 mode ----------
+  const btnSelect = document.getElementById('Button_Select');
+  const modal     = document.getElementById('JobSelect');
+
+  function openJobSelectSafe(){
+    // 不改 mode！避免把 edit 覆蓋回 new
+    // 若你真的需要在沒有編輯意圖時預設 new，請改用：
+    // if (IdasMode.get() !== 'edit') IdasMode.set('new');
+    if (!modal) return;
+    // 建議：開窗前清殘留遮罩（避免第2次卡住）
+    try { if (window.JobSelectMgr?.open) return window.JobSelectMgr.open(); } catch {}
+    modal.style.display = "block";
+    modal.dataset.open = "1";
+    modal.removeAttribute("aria-hidden");
+    modal.style.pointerEvents = "auto";
+    document.body.classList.add("overflow-hidden");
+    modal.style.zIndex = "2147483647";
+  }
+
+  if (btnSelect && btnSelect.dataset.boundSelect !== "1") {
+    btnSelect.addEventListener("click", function(){
+      // 讓「你原本掛在 Button_Select 上的邏輯」先跑（包含狀態設定），我們僅補開窗
+      setTimeout(openJobSelectSafe, 0);
+    }, { passive:true });
+    btnSelect.dataset.boundSelect = "1";
+  }
+
+  // ---------- 4) 在 JobSelect 裡選 job_id：只寫 job，不動 mode ----------
+  if (modal && !modal.dataset.bindJobPick) {
+    modal.addEventListener("click", function(e){
+      const item = e.target.closest(".job-item"); // ← 改成你實際的工作項目 selector
+      if (!item) return;
+      const jobId = item.getAttribute("data-job-id") || item.dataset.jobId || item.value;
+      if (!jobId) return;
+      hidJobId.value = jobId;
+
+      // 關窗（不動 mode）
+      try { if (window.JobSelectMgr?.close) return window.JobSelectMgr.close(); } catch {}
+      modal.style.display = "none";
+      modal.dataset.open = "0";
+      modal.setAttribute("aria-hidden","true");
+      document.body.classList.remove("overflow-hidden");
+    });
+    modal.dataset.bindJobPick = "1";
+  }
+
+  // ---------- 5) 在事件列表點選事件：只寫 event_id，不動 mode ----------
+  document.addEventListener("click", function(e){
+    const row = e.target.closest(".event-row"); // ← 改成你實際的事件列 selector
+    if (!row) return;
+    const eid = row.getAttribute("data-event-id") || row.dataset.eventId || row.value;
+    if (eid) {
+      hidEventId.value = eid;
+      // 視覺效果（可選）
+      document.querySelectorAll(".event-row.selected").forEach(r => r.classList.remove("selected"));
+      row.classList.add("selected");
+    }
+  });
+
+  // ---------- 6) 在真正要決定「新增/編輯」的地方，統一用這個 ----------
+  // 在你現有的開表單 / 送出前的判斷處，改成呼叫 decideFinalMode()
+  window.decideFinalMode = function(){
+    const current = window.IdasMode.get(); // 'edit' | 'new'
+    const hasEvent = !!(hidEventId.value || '').trim();
+    // 只要現在是 edit 且有選到事件，就一律走 edit
+    return (current === 'edit' && hasEvent) ? 'edit' : 'new';
+  };
+
+  // 你可以在原本分流的地方改成：
+  // const finalMode = decideFinalMode();
+  // if (finalMode === 'edit') { ...編輯流程... } else { ...新增流程... }
+
+  // ---------- 7) 最後一道保險：有人偷偷把 mode 改成 new → 拉回來 ----------
+  setInterval(() => {
+    if (localStorage.getItem('idas_mode') === 'edit' && hidMode.value !== 'edit') {
+      window.IdasMode.force('edit');
+    }
+  }, 120);
+
+})();
+</script>
+
+<style>
+  .event-row.selected { outline: 2px solid #6aa1ff; }
+  #JobSelect { z-index: 2147483647; }
+  .overflow-hidden { overflow: hidden; }
 </style>
