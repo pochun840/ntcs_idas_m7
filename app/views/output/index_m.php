@@ -193,6 +193,8 @@
                         </div>
 
                         <div class="modal-footer justify-content-center">
+                            <input type="hidden" id="old_output_event">
+                            <input type="hidden" id="old_output_pin">
                             <button id="" class="button-modal" onclick="edit_output_id()"><?php echo $text['save'];?></button>
                             <button id="" class="button-modal" onclick="closebutton('edit_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>

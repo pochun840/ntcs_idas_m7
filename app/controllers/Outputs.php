@@ -421,10 +421,9 @@ class Outputs extends Controller
             $durate = 100;
         }
 
-
-        if(!empty($_POST['old_output_event'])){
-
-            $this->OutputModel->delete_job_old_event($jobId,$_POST['old_output_event']);
+        if(!empty($_POST['job_id'])){
+            
+            $this->OutputModel->delete_job_old_event($jobId,$_POST['old_output_event'],$_POST['old_output_pin']);
             $this->OutputModel->insert_output_event($jobId, $pin, $newEv, $signal, $durate);
 
             $label = $text[$eventMap[$newEv] ?? $newEv] ?? $newEv;

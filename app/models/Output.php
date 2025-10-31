@@ -115,10 +115,11 @@ class Output{
         return (int)$st->rowCount();
     }
 
-    public function delete_job_old_event($jobId,$evenId){
-        $sql = "DELETE FROM JOBOutput_lst WHERE JOBID = ?  AND EvenID = ?";
+    public function delete_job_old_event($jobId,$evenId,$old_pin){
+
+        $sql = "DELETE FROM JOBOutput_lst WHERE JOBID = ?  AND EvenID = ? AND Pin = ? ";
         $st  = $this->db_iDas->prepare($sql);
-        $st->execute([$jobId,$evenId]);
+        $st->execute([$jobId,$evenId,$old_pin]);
         return (int)$st->rowCount();
     }
 

@@ -746,7 +746,7 @@ function crud_job_event(argument) {
             if (!selectedEditRows.length) return;
 
             if (!output_pinval) return; // 需要先有被選到的 pin (從列表 data-outputpin 來)
-
+            
             // 先向後端拿資料並渲染 DOM
             get_output_info(job_id, output_event, output_pinval);
 
@@ -1481,121 +1481,113 @@ function create_output_id() {
 
 function edit_output_id() {
   var select = document.getElementById("edit_event_option");
-  if (!select) {
-    console.error('[edit_output_id] #edit_event_option not found');
-    return;
-  }
+  if (!select) { console.error('[edit_output_id] #edit_event_option not found'); return; }
 
-  var output_event = select.value;
-  var pinval       = collectPinValues('input[name="edit_pin_option"]');
-  if (!pinval || !pinval.length) {
-    alertify && alertify.alert('請先選擇要編輯的輸出腳位');
-    return;
-  }
+  var output_event = select.value; // 新事件（目標）
+  var pinval = collectPinValues('input[name="edit_pin_option"]');
+  if (!pinval || !pinval.length) { alertify && alertify.alert('請先選擇要編輯的輸出腳位'); return; }
 
-  var pin_old      = pinval[0]['id'];        // e.g. "edit_pin2_1"
-  var wave         = pinval[0]['value'];     // 0/1/2...
-  var match        = pin_old.match(/\d+/);
-  var output_pin   = match ? parseInt(match[0], 10) : null;
+  var pin_old    = pinval[0]['id'];                 // e.g. "edit_pin2_1"
+  var wave       = pinval[0]['value'];              // 0/1/2...
+  var match      = pin_old.match(/\d+/);
+  var output_pin = match ? parseInt(match[0], 10) : null;
 
-  if (!job_id || !output_pin) {
-    alertify && alertify.alert('資料不完整，請重新選取事件/腳位');
-    return;
-  }
+  if (!job_id || !output_pin) { alertify && alertify.alert('資料不完整，請重新選取事件/腳位'); return; }
 
   var time_ms_id = 'edit_time' + output_pin;
   var wave_on_el = document.getElementById(time_ms_id);
   var wave_on    = wave_on_el ? wave_on_el.value : '';
 
-  // === 語系偵測（優先順序：window.CURR_LANG → <html lang> → #curr_lang → 預設 en-us）===
+  // 語系
   var LANG = (window.CURR_LANG || document.documentElement.lang || document.getElementById('curr_lang')?.value || 'en-us').toLowerCase();
-
-  // === 動態訊息：空值與範圍錯誤都顯示「輸入框{id}數值不在 100 到 10000 之間。」===
   var MIN = 100, MAX = 10000;
   var MSG = {
-    'en-us': {
-      empty: (id, min, max) => `Input ${id} must be an integer between ${min} and ${max}.`,
-      range: (id, min, max) => `Input ${id} must be an integer between ${min} and ${max}.`
-    },
-    'zh-tw': {
-      empty: (id, min, max) => `輸入框${id}數值不在 ${min} 到 ${max} 之間。`,
-      range: (id, min, max) => `輸入框${id}數值不在 ${min} 到 ${max} 之間。`
-    },
-    'zh-cn': {
-      empty: (id, min, max) => `输入框${id}数值不在 ${min} 到 ${max} 之间。`,
-      range: (id, min, max) => `输入框${id}数值不在 ${min} 到 ${max} 之间。`
-    }
+    'en-us': { empty: (id,min,max)=>`Input ${id} must be an integer between ${min} and ${max}.`, range: (id,min,max)=>`Input ${id} must be an integer between ${min} and ${max}.` },
+    'zh-tw': { empty: (id,min,max)=>`輸入框${id}數值不在 ${min} 到 ${max} 之間。`,       range: (id,min,max)=>`輸入框${id}數值不在 ${min} 到 ${max} 之間。` },
+    'zh-cn': { empty: (id,min,max)=>`输入框${id}数值不在 ${min} 到 ${max} 之间。`,       range: (id,min,max)=>`输入框${id}数值不在 ${min} 到 ${max} 之间。` }
   };
   if (!MSG[LANG]) LANG = 'en-us';
 
-  // === wave==1：必填 + 範圍（整數）檢查 ===
+  // wave==1 才檢查 time
   if (Number(wave) === 1) {
     var v = String(wave_on ?? '').trim();
-
-    if (v === '') {
-      alertify && alertify.alert(MSG[LANG].empty(output_pin, MIN, MAX));
-      if (wave_on_el) wave_on_el.focus();
-      return;
-    }
-
+    if (v === '') { alertify && alertify.alert(MSG[LANG].empty(output_pin, MIN, MAX)); wave_on_el && wave_on_el.focus(); return; }
     var n = Number(v);
     if (!Number.isFinite(n) || !Number.isInteger(n) || n < MIN || n > MAX) {
       alertify && alertify.alert(MSG[LANG].range(output_pin, MIN, MAX));
-      if (wave_on_el) wave_on_el.focus();
+      wave_on_el && wave_on_el.focus();
       return;
     }
-
-    // 正規化為整數字串再送出
     wave_on = String(parseInt(n, 10));
   }
+
+  // 從全域取得舊值（若沒有就設為 null）
+  var old_output_event = (typeof window.old_output_event !== 'undefined') ? window.old_output_event : null;
+  var old_output_pin   = (typeof window.old_output_pin   !== 'undefined') ? window.old_output_pin   : null;
 
   // 顯示遮罩 + spinner
   document.querySelector(".main-content")?.classList.add("overlay-active");
   var spinner = document.getElementById('spinner');
-  if (spinner) spinner.style.display = 'none';
+  if (spinner) spinner.style.display = 'block';
 
-  // 小工具：真正送出「編輯」
+  function hideOverlay() {
+    document.querySelector(".main-content")?.classList.remove("overlay-active");
+    if (spinner) spinner.style.display = 'none';
+  }
+
+  // 封裝：送出「編輯」
   function doSave() {
+    // 只送基本型別（字串/數字）
+    var payload = {
+      job_id: String(job_id),
+      output_pin: Number(output_pin),
+      output_event: String(output_event),
+      wave: Number(wave),
+      wave_on: (wave === '0' || wave === '2') ? 100 : Number(wave_on), // 後端也有同樣邏輯，這裡先對齊
+      old_output_event: old_output_event ? String(old_output_event) : '',
+      old_output_pin:  (output_pinval != null ? Number(output_pinval) : '')
+    };
+
     $.ajax({
       url: "?url=Outputs/edit_output_event",
       method: "POST",
-      data: {
-        job_id: job_id,
-        output_pin: output_pin,
-        output_event: output_event,      // 目標事件（ex: NG）
-        wave: wave,
-        wave_on: wave_on,
-        old_output_event: old_output_event // 後端若需要比對舊事件（未定義時等於 undefined）
-      },
+      data: payload,
+      dataType: "json",
       success: function (response) {
         output_success_res(response, job_id, get_output_by_job_id, 'edit_output');
-        hideOverlay();
+        document.getElementById('modal-overlay').style.display = 'none';
       },
       error: function (xhr, status, error) {
         console.error("[edit_output_id] save failed:", status, error);
-        hideOverlay();
-        if (spinner) spinner.style.display = 'none';
         alertify && alertify.alert('編輯失敗，請稍後再試');
-      }
+      },
+      complete: function () { hideOverlay(); } // ✅ 不論成功/失敗都關遮罩
     });
   }
 
-  // 先「靜默刪除」目標事件（若存在就清掉），避免唯一性衝突
-  // 刪除結束（成功/失敗/不存在）都一律往下 doSave()
-  $.ajax({
-    url: "?url=Outputs/delete_output",
-    method: "POST",
-    data: {
-      job_id: job_id,
-      output_event: output_event,   // 要換成的事件（先清除可能已有的）
-      output_pin: output_pin
-    },
-    complete: function () {
-      // 無論刪除成功/失敗與否，皆嘗試儲存（若原本就不存在，這裡等於 no-op）
-      doSave();
-    }
-  });
+  // 有舊值且有變動 → 先刪「舊事件+舊腳位」，再存；否則直接存
+  var hasOld  = (old_output_event != null && old_output_event !== '');
+  var changed = hasOld && (
+      String(old_output_event) !== String(output_event) ||
+      Number(old_output_pin)   !== Number(output_pin)
+  );
+
+  if (changed && old_output_pin != null) {
+    $.ajax({
+      url: "?url=Outputs/delete_output",
+      method: "POST",
+      data: {
+        job_id: String(job_id),
+        output_event: String(old_output_event),
+        output_pin: Number(old_output_pin)
+      },
+      complete: function () { doSave(); } // 不管刪成不成功都繼續存
+    });
+  } else {
+    doSave();
+  }
 }
+
 
 
 
@@ -2007,21 +1999,53 @@ function hideOverlay() {
 }
 
 function output_success_res(response, job_id, callbackFn, hideElementId = 'newinput') {
-    var responseData = JSON.parse(response);
-    alertify.alert(responseData.res_type, responseData.res_msg);
+  // 安全解析回傳：既支援字串(JSON)也支援已解析物件
+  let data;
+  try {
+    data = (typeof response === 'string') ? JSON.parse(response) : response;
+  } catch (e) {
+    data = { res_type: 'Info', res_msg: String(response || 'Done') };
+  }
 
-    setTimeout(function () {
-        alertify.closeAll();
-        document.querySelector(".main-content").classList.remove("overlay-active");
-        document.getElementById('spinner').style.display = 'none';
+  const title = data?.res_type || '';
+  const msg   = data?.res_msg  || '';
 
-        if (typeof callbackFn === 'function') {
-            callbackFn(job_id);
-        }
-    }, 2000);
+  // 依語系決定 OK 文案（含常見變體）
+  const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||
+                  document.documentElement.getAttribute('lang') || 'en-us';
+  const l = String(rawLang).toLowerCase();
+  let okLabel = 'OK';
+  if (l === 'zh-tw') okLabel = '確定';
+  else if (l === 'zh-cn') okLabel = '确定';
 
-    const hideEl = document.getElementById(hideElementId);
-    if (hideEl) hideEl.style.display = 'none';
+  // 顯示彈窗
+  try {
+    if (window.alertify && typeof alertify.alert === 'function') {
+      const dlg = alertify.alert(title, msg);
+      try { dlg.set('basic', false).set('movable', false); } catch (e) {}
+      try { dlg.set('labels', { ok: okLabel }); } catch (e) {}
+    } else {
+      alert(msg);
+    }
+  } catch (e) {
+    console.error('[output_success_res] show alert failed:', e);
+  }
+
+  // 完成後關遮罩＋回呼
+  setTimeout(function () {
+    try { alertify && alertify.closeAll(); } catch (e) {}
+    document.querySelector(".main-content")?.classList.remove("overlay-active");
+    const sp = document.getElementById('spinner');
+    if (sp) sp.style.display = 'none';
+
+    if (typeof callbackFn === 'function') {
+      try { callbackFn(job_id); } catch (e) { console.error('[output_success_res] callback failed:', e); }
+    }
+  }, 2000);
+
+  // 隱藏指定區塊（若存在）
+  const hideEl = document.getElementById(hideElementId);
+  if (hideEl) hideEl.style.display = 'none';
 }
 
 
@@ -2397,3 +2421,53 @@ input#job_id.bg-yellow[disabled] {
   #JobSelect { z-index: 2147483647; }
   .overflow-hidden { overflow: hidden; }
 </style>
+
+
+<script>
+(function(){
+  // 避免重複綁定
+  if (document._bindOldOutputOnce) return;
+  document._bindOldOutputOnce = true;
+
+  document.addEventListener('click', function(e){
+    const row = e.target.closest('.event-row'); // ← 改成你實際的事件列 selector
+    if (!row) return;
+
+    // 舊事件 / 舊腳位
+    window.old_output_event = row.getAttribute('data-event-id') || row.dataset.eventId || row.value;
+    const pinStr = row.getAttribute('data-pin') || row.dataset.pin;
+    window.old_output_pin = (pinStr != null && pinStr !== '') ? parseInt(pinStr, 10) : null;
+
+    // 預設新目標先等於舊值（使用者可改下拉）
+    window.output_event = window.old_output_event;
+
+    // （可選）同步 hidden 與模式
+    const hidEvt  = document.getElementById('selected_event_id');
+    if (hidEvt) hidEvt.value = String(window.old_output_event ?? '');
+    const hidMode = document.getElementById('mode');
+    if (hidMode) hidMode.value = 'edit';
+  });
+})();
+</script>
+
+<script>
+(function(){
+  if (document._bindFreezeOldOnce) return;
+  document._bindFreezeOldOnce = true;
+
+  // 把 '.event-row' 換成你事件列實際的 selector（如：'#output_jobid_select tr'）
+  document.addEventListener('click', function(e){
+    const row = e.target.closest('.event-row');
+    if (!row) return;
+
+    window.old_output_event = row.getAttribute('data-event-id') || row.dataset.eventId || row.value;
+    const pinStr = row.getAttribute('data-pin') || row.dataset.pin;
+    window.old_output_pin = (pinStr != null && pinStr !== '') ? parseInt(pinStr, 10) : null;
+
+    document.getElementById('old_output_event')?.setAttribute('value', String(window.old_output_event ?? ''));
+    document.getElementById('old_output_pin')?.setAttribute('value', (window.old_output_pin != null ? String(window.old_output_pin) : ''));
+
+    document.getElementById('mode')?.setAttribute('value', 'edit');
+  });
+})();
+</script>
