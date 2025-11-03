@@ -249,6 +249,8 @@ class Settings extends Controller
             include $file;
         }
 
+
+
         $con_setting = [];
         $input_check = true;
 
@@ -334,6 +336,9 @@ class Settings extends Controller
             }
         }
 
+        if($con_setting["blackout_recovery"] ==1){
+            $con_setting["blackout_recovery"] = "1_1";
+        }
         // ===== 執行更新（Model 需為先前已修改的版本：支援 :device_id_new，且 WHERE 可處理 IS NULL）=====
         $ok = $this->SettingModel->Controller_Setting($con_setting);
 

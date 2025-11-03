@@ -4,18 +4,6 @@
     $stepOption = isset($data['step']['StepOption']) ? $data['step']['StepOption'] : null;
 ?>
 <script>
-
-    // === 扭力單位表（統一來源） ===
-    window.UNIT_LABELS = Object.freeze({
-        0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤力·厘米' },
-        1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺', 'zh-cn':'牛顿·米'     },
-        2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅力·英寸'   },
-        3: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺', 'zh-cn':'公斤·米'     },
-        4: { 'en-us':'cN·m',   'zh-tw':'牛頓·釐米', 'zh-cn':'牛顿·厘米'   },
-    });
-    
-
-
     document.addEventListener('DOMContentLoaded', function () {
         const langRaw = getCookie('language') || 'en-us';
         const language = (langRaw.toLowerCase() === 'en') ? 'en-us' : langRaw.toLowerCase();

@@ -103,7 +103,7 @@
         				    <div class="row">
         				        <label for="to_step_id" class="t1 col-5 col-form-label"><?php echo $text['step_id'];?> :</label>
         				        <div class="t2 col-4">
-        				            <input type="number" class="form-control" id="to_step_id">
+        				            <input type="number" class="form-control" id="to_step_id" disabled >
         				        </div>
         				    </div>
         			    </div>

@@ -111,7 +111,7 @@
         				    <div class="row">
         				        <label for="to_seq_id" class="t1 col-4 col-form-label"><?php echo $text['seq_id'];?> :</label>
         				        <div class="t2 col-5">
-        				            <input type="number" class="form-control" id="to_seq_id" value ='<?php echo $data['next_seq_id'];?>'>
+        				            <input type="number" class="form-control" id="to_seq_id" value ='<?php echo $data['next_seq_id'];?>' disabled>
         				        </div>
         				    </div>
         				    <div class="row">

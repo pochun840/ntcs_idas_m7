@@ -97,7 +97,7 @@
                 <label class="form-check-label"><?php echo $text['switch_off'];?></label>
             </div>
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1_1"  <?php echo $data['controller_info']['blackout_recovery'] == 1 ? 'checked="checked"' : ''; ?>>
+                <input class="form-check-input" type="radio" name="blackout_recovery" id="blackout_recovery_on" value="1_1"  <?php echo $data['controller_info']['blackout_recovery'] == "1_1" ? 'checked="checked"' : ''; ?>>
                 <label class="form-check-label"><?php echo $text['switch_on'];?></label>
             </div>
         </div>

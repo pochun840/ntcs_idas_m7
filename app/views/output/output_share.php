@@ -1589,8 +1589,6 @@ function edit_output_id() {
 }
 
 
-
-
 function resetalignsubmit(job_id) {
     unifiedFlag = 0;   // ✅ 執行 resetalignsubmit 時設回 0
 
