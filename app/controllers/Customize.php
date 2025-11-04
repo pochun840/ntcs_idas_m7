@@ -124,7 +124,6 @@ class Customize extends Controller
     }
 
 
-   
 
     /**
      * POST /?url=Customize/save_positions
@@ -1039,6 +1038,5 @@ class Customize extends Controller
 
         return $rows;
     }
-
 
 }
