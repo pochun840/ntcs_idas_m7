@@ -43,6 +43,7 @@ let _suppressYellowOnce = false;  // 下一次 get_output_by_job_id 執行時，
 
 // 從 PHP 帶入目前 unified 的 jobid（可能為 null/空字串/數字）
 const BOOT_FOCUSED_JOBID = <?php echo json_encode($data['focused_jobid'] ?? null); ?>;
+const BOOT_unified_JOBID = <?php echo json_encode($data['check_jobid_unified'] ?? null); ?>;
 
 var job_id; 
 var output_event;
@@ -1263,6 +1264,16 @@ function get_output_by_job_id(job_id) {
       temp  = Array.isArray(data?.temp)  ? data.temp  : [];
       tempA = Array.isArray(data?.tempA) ? data.tempA : [];
 
+      // 從 API 取出此 job 的「是否 unified」與聚焦 job（若有）
+      const apiUnified = (typeof data?.check_jobid_unified !== 'undefined')
+        ? !!data.check_jobid_unified
+        : null; // 未帶此欄位就維持現有規則
+
+      if (typeof data?.focused_jobid !== 'undefined') {
+        window.BOOT_FOCUSED_JOBID = String(data.focused_jobid ?? '');
+      }
+
+
       // 渲染表格
       const listEl = document.getElementById('output_jobid_select');
       if (listEl) listEl.innerHTML = job_outputlist;
@@ -1282,7 +1293,7 @@ function get_output_by_job_id(job_id) {
       );
 
       // 尊重一次性抑制旗標
-      const allowYellow = !_suppressYellowOnce && (shouldYellowByUnified || isBootFocused);
+      const allowYellow = (apiUnified === false) ? false: (!_suppressYellowOnce && (shouldYellowByUnified || isBootFocused));
 
       if (jobIdEl) {
         jobIdEl.classList.remove('bg-yellow');
@@ -1300,8 +1311,19 @@ function get_output_by_job_id(job_id) {
       const btn = document.getElementById('Button_Select');
       if (btn) {
           // 以 localStorage 的鎖定狀態為準；若使用者已「套用解除」，就應該可點
-          const lockedByStore = (typeof isUnifiedLockedStored === 'function') ? !!isUnifiedLockedStored() : false;
-          const shouldDisable = lockedByStore || (unifiedFlag !== 0);
+          
+          // 3) 讀 per-job 鎖定；伺服器若明確回 false → 應可點
+          const lockedByStore = (typeof isUnifiedLockedStored === 'function')
+            ? !!isUnifiedLockedStored(job_id)   // ★ 帶 job_id（per-job）
+            : false;
+
+          const shouldDisable = (apiUnified === false)
+            ? false
+            : (lockedByStore || (unifiedFlag !== 0));
+
+            
+
+
           if (typeof syncButtonSelect === 'function') {
             syncButtonSelect(shouldDisable);
           } else {
@@ -1587,6 +1609,8 @@ function edit_output_id() {
     doSave();
   }
 }
+
+
 
 
 function resetalignsubmit(job_id) {

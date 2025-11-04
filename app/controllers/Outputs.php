@@ -119,6 +119,7 @@ class Outputs extends Controller
             'tempA' => $tempA,
             'language' => $_COOKIE['language'] ?? 'en-us',
             'focused_jobid' =>  $job_id,
+            'check_jobid_unified' => $check
 
         ]);
         
@@ -466,6 +467,28 @@ class Outputs extends Controller
     public function set_output_unified(){
 
     
+    }
+
+
+
+    public function check_jobid_unified(){
+        
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
+        }  
+
+        $input_check = true;
+        if( !empty($_POST['job_id']) && isset($_POST['job_id'])  ){
+            $output_job_id = $_POST['job_id'];
+        }else{ 
+            $input_check = false; 
+        }
+
+        $check = $this->OutputModel->check_output_unified_by_job_id($output_job_id);  
+
+        return $check;
+
     }
 }
 
