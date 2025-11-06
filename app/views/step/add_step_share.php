@@ -173,28 +173,44 @@
             stepTorqueTS.removeAttribute('pattern');
             stepTorqueTS.removeAttribute('inputmode');
             stepTorqueTS.removeAttribute('step');
+
+            // ✅ 一次性掛勾：記住上一個「合法小數字串」
+            if (!stepTorqueTS.dataset.prevHook) {
+            stepTorqueTS.dataset.prev = stepTorqueTS.value || '';
+            stepTorqueTS.addEventListener('input', function () {
+                const v = this.value;
+                // 允許空字串、數字、小數點（最多一個）
+                if (/^\d*\.?\d*$/.test(v)) this.dataset.prev = v;
+            });
+            stepTorqueTS.dataset.prevHook = '1';
+            }
         }
 
         // 取小數位數（扭力單位）
         const places = getTorquePrecision();
+        const stepVal = (1 / Math.pow(10, places)).toFixed(places);
+        const decimalPattern = '^\\d+(?:\\.\\d{0,' + places + '})?$';
 
-        // TORQUE 模式
+        // TORQUE 模式（允許小數）
         if (isModeTorque) {
             if (stepTorqueTSBlock) stepTorqueTSBlock.style.display = 'block';
             if (stepTorqueTS) {
             stepTorqueTS.disabled = false;
-            // 新增時給預設 0（帶小數位）
             if (dataType === 'new') stepTorqueTS.value = (0).toFixed(places);
-            // 讓瀏覽器原生上下鍵符合精度
-            stepTorqueTS.step = (1 / Math.pow(10, places)).toFixed(places);
-            stepTorqueTS.inputMode = 'decimal';
 
-            // 綁一次離焦四捨五入（避免重複綁定）
+            // ✅ 關鍵：正確設定 step / inputmode / pattern（允許小數）
+            stepTorqueTS.setAttribute('step', stepVal);
+            stepTorqueTS.setAttribute('inputmode', 'decimal');
+            stepTorqueTS.setAttribute('pattern', decimalPattern);
+
+            // 離焦四捨五入到當前單位精度（不會把小數吃掉）
             if (!stepTorqueTS.dataset.blurFixed) {
                 stepTorqueTS.addEventListener('blur', () => {
                 const n = Number(stepTorqueTS.value);
                 if (!Number.isFinite(n)) return;
                 stepTorqueTS.value = roundHalfUp(n, places).toFixed(places);
+                // ✅ 同步 prev，避免後續檢核回填老值
+                stepTorqueTS.dataset.prev = stepTorqueTS.value;
                 });
                 stepTorqueTS.dataset.blurFixed = '1';
             }
@@ -208,19 +224,22 @@
             if (stepTorqueTS) {
             stepTorqueTS.disabled = false;
             if (dataType === 'new') stepTorqueTS.value = 0;
-            stepTorqueTS.step = '1';
-            stepTorqueTS.pattern = '\\d+';     // 只允許整數
-            stepTorqueTS.inputMode = 'numeric';
+
+            // ✅ 整數限制（維持原來邏輯）
+            stepTorqueTS.setAttribute('step', '1');
+            stepTorqueTS.setAttribute('pattern', '\\d+');
+            stepTorqueTS.setAttribute('inputmode', 'numeric');
+            // 更新 prev
+            stepTorqueTS.dataset.prev = stepTorqueTS.value;
             }
             if (showAngle) showAngle.style.display = 'block';
         }
 
         // 整塊顯示
         if (thresholdBlock) thresholdBlock.style.display = isModeOff ? 'none' : 'flex';
-        }
+    }
 
 
-    
     function toggleDownShift() {
         const dataType = "<?php echo $data['type']; ?>";
 
@@ -3255,8 +3274,8 @@
 
             // 多語訊息
             const i18n = {
-            'zh-tw': { title:'警告',   msg:'目標扭力1（{unit}）超出範圍，（{range}）', ok:'確定' },
-            'zh-cn': { title:'警告',   msg:'目标扭力1（{unit}）超出范围，（{range}）', ok:'确定' },
+            'zh-tw': { title:'警告',   msg:'目標扭力（{unit}）超出範圍，（{range}）', ok:'確定' },
+            'zh-cn': { title:'警告',   msg:'目标扭力（{unit}）超出范围，（{range}）', ok:'确定' },
             'en-us': { title:'Warning', msg:'Target torque ({unit}) is out of range ({range})', ok:'OK' },
             }[lang] || { title:'Warning', msg:'Target torque ({unit}) is out of range ({range})', ok:'OK' };
 
@@ -3285,10 +3304,6 @@
         })();
 
 
-
-       
-
-
         // ---- 交叉驗證：StepOption==2 && DownShift==2 → StepTorqueDownShift < StepTorque（alertify + i18n）----
         (function enforceDownshiftLessThanTargetTorque() {
             if (StepOption !== 2) return;
@@ -3298,37 +3313,54 @@
             const tqEl = document.getElementById('StepTorque');          // 目標扭力
             if (!dsEl || !tqEl) return;
 
+            // 1) 先清掉殘留 invalid 狀態（避免第二次擋小數點）
+            if (typeof dsEl.setCustomValidity === 'function') dsEl.setCustomValidity('');
+            if (typeof tqEl.setCustomValidity === 'function') tqEl.setCustomValidity('');
+
             const dsValRaw = Number(dsEl.value);
             const tqValRaw = Number(tqEl.value);
             if (!Number.isFinite(dsValRaw) || !Number.isFinite(tqValRaw)) return;
 
-            // 依目前單位精度做四捨五入（你前面已定義 roundTo 與 precision）
+            // 2) 依目前單位精度四捨五入（沿用你的 roundTo / precision）
             const dsVal = roundTo(dsValRaw, precision);
             const tqVal = roundTo(tqValRaw, precision);
 
-            // 先把兩個欄位的 inline 錯誤收掉（我們改用彈窗）
+            // 3) 收掉 inline 錯誤（使用彈窗）
             const clearInline = (el) => {
                 el.classList.remove('is-invalid');
                 const fb = el.nextElementSibling;
                 if (fb?.classList.contains('invalid-feedback')) {
-                fb.innerText = '';
-                fb.classList.remove('d-block');
-                fb.style.display = 'none';
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
                 }
             };
             clearInline(dsEl);
             clearInline(tqEl);
 
-            if (dsVal < tqVal) return; // OK
+            if (dsVal < tqVal) return; // ✅ 合格
 
-            // ❌ 不通過：只標在 StepTorqueDownShift
+            // ❌ 不通過：只標在 StepTorqueDownShift，並確保下一次可輸入小數點
             dsEl.classList.add('is-invalid');
 
-            // 取得語系（與你其它區塊一致）
+            
+            // [ADD] 防止被 number/pattern 鎖成整數，確保下一次可輸入小數點
+            dsEl.type = 'text';
+            dsEl.removeAttribute('pattern');
+            dsEl.setAttribute('inputmode','decimal'); // 可選，讓行動裝置出小數鍵盤
+
+
+
+
+            // 4) 關鍵：取消 invalid 旗標並清空值，避免下一次 '.' 被擋
+            if (typeof dsEl.setCustomValidity === 'function') dsEl.setCustomValidity('');
+            dsEl.value = '';
+
+            // 5) i18n（沿用你的語系 cookie）
             const getCookieSafe = (name) => {
                 try {
-                const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-                return m ? decodeURIComponent(m[1]) : null;
+                    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                    return m ? decodeURIComponent(m[1]) : null;
                 } catch { return null; }
             };
             let lang = (typeof getCookie === 'function' && getCookie('language')) || getCookieSafe('language') || 'zh-tw';
@@ -3344,7 +3376,7 @@
             const OK = (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定'));
             const T = I18N[lang] || I18N['en-us'];
 
-            // 避免一次驗證彈多次
+            // 6) 避免一次驗證彈多次
             if (window._alertingDSltTQ) {
                 isValid = false;
                 if (!errorList.includes('StepTorqueDownShift')) errorList.push('StepTorqueDownShift');
@@ -3352,16 +3384,27 @@
             }
             window._alertingDSltTQ = true;
 
-            alertify
-                .alert(T.title, T.msg, function () {
+            // 7) 彈窗後再聚焦，避免與 keydown 過濾時序衝突
+            const refocus = () => {
                 try { dsEl.focus(); dsEl.select?.(); } catch {}
                 window._alertingDSltTQ = false;
-                })
-                .set('labels', { ok: OK });
+            };
 
+            if (typeof alertify !== 'undefined' && alertify?.alert) {
+                alertify.alert(T.title, T.msg, refocus).set('labels', { ok: OK });
+            } else {
+                alert(`${T.title}\n\n${T.msg}`);
+                refocus();
+            }
+
+            // 8) 回報整體驗證狀態（沿用你的 isValid / errorList）
             isValid = false;
             if (!errorList.includes('StepTorqueDownShift')) errorList.push('StepTorqueDownShift');
         })();
+
+
+        
+
 
 
         // ---- 交叉驗證：StepOption==1 && Threshold==2 → StepTorqueTS < StepHiTorque（alertify + i18n）----
@@ -3369,7 +3412,7 @@
             if (StepOption !== 1 || StepEnableThreshold !== "2") return;
 
             const tsEl = document.getElementById('StepTorqueTS');   // 門檻扭力
-            const hiEl = document.getElementById('StepHiTorque');   // 扭力上限
+            const hiEl = document.getElementById('check_target_tor_hi');   // 扭力上限(起子規格)
             if (!tsEl || !hiEl) return;
 
             const tsRaw = Number(tsEl.value);
@@ -3602,80 +3645,131 @@
 
 
 
-        // ---- 交叉驗證：StepOption==1 且「扭力降速」時，StepTorqueDownShift 必須小於 StepTorque（彈窗 + 語系）----
+        // ---- 交叉驗證：StepOption==1 且「扭力降速」時，StepTorqueDownShift 必須小於 StepTorque（彈窗 + 語系 + 小數點可再輸入）----
         (function enforceDSTorqueLessThanTarget_WhenOpt1() {
-            // 目標角度
             const stepOpt = parseInt(document.getElementById('StepOption')?.value ?? 0, 10);
             if (stepOpt !== 1) return;
 
-            // 取得降速模式（"0"=未啟用, "1"=角度降速, "2"=扭力降速）
+            // "0"=未啟用, "1"=角度降速, "2"=扭力降速
             const dsMode = document.querySelector('input[name="StepEnableDownShift"]:checked')?.value ?? "0";
-            if (dsMode !== "2") return; // 只在「扭力降速」時檢查；若兩種都要檢查就刪掉這行
+            if (dsMode !== "2") return;
 
             const dsEl = document.getElementById('StepTorqueDownShift'); // 降速扭力
-            const tqEl = document.getElementById('StepHiTorque');          //扭力上限
+            const tqEl = document.getElementById('StepTorque');          // ← 目標扭力（改這裡）
             if (!dsEl || !tqEl) return;
 
-            const dsRaw = dsEl.value?.trim() ?? "";
-            const tqRaw = tqEl.value?.trim() ?? "";
-            const dsVal = Number(dsRaw);
-            const tqVal = Number(tqRaw);
-
-            // 值不是數字就交給其他格式/範圍檢核處理
+            const dsVal = Number(dsEl.value?.trim() ?? "");
+            const tqVal = Number(tqEl.value?.trim() ?? "");
             if (!Number.isFinite(dsVal) || !Number.isFinite(tqVal)) return;
 
-            // 語系（優先 getLangAndUnit，否則 cookie fallback）
-            const getCookieSafe = (name) => {
-                try { const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
-                catch { return null; }
-            };
+            // 語系
+            const getCookieSafe = (name) => { try {
+                const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                return m ? decodeURIComponent(m[1]) : null;
+            } catch { return null; } };
             let lang = (typeof getLangAndUnit === 'function' ? getLangAndUnit().lang : (getCookieSafe('language') || 'zh-tw')) || 'zh-tw';
             lang = String(lang).toLowerCase(); if (lang === 'en') lang = 'en-us';
             if (!['en-us','zh-tw','zh-cn'].includes(lang)) lang = 'en-us';
             const OK_LABEL = (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定'));
-
             const I18N = {
-                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than the upper torque limit' },
-                'zh-tw': { title: '警告',   msg: '降速點扭力 必須小於 扭力上限' },
-                'zh-cn': { title: '警告',   msg: '降速点扭力 必须小于 扭力上限' }
+                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than Target torque.' },
+                'zh-tw': { title: '警告',   msg: '降速扭力 必須小於 目標扭力。' },
+                'zh-cn': { title: '警告',   msg: '降速扭力 必须小于 目标扭力。' }
             }[lang];
 
-            // 驗證：必須嚴格小於
-            if (!(dsVal < tqVal)) {
-                // 標紅 + 關掉 inline 的 invalid-feedback（避免雙重訊息）
-                dsEl.classList.add('is-invalid');
-                const fb = dsEl.nextElementSibling;
-                if (fb?.classList.contains('invalid-feedback')) {
-                fb.innerText = '';
-                fb.classList.remove('d-block');
-                fb.style.display = 'none';
+            // 通過 → 清錯
+            if (dsVal < tqVal) {
+                dsEl.classList.remove('is-invalid');
+                const fbOK = dsEl.nextElementSibling;
+                if (fbOK?.classList.contains('invalid-feedback')) {
+                fbOK.innerText = ''; fbOK.classList.remove('d-block'); fbOK.style.display = 'none';
                 }
+                return;
+            }
 
-                // 節流避免重複彈窗
-                if (!window._alertingDSTorqueVsTarget_Opt1) {
+            // ❌ 不通過：加紅框 + 關掉 inline 提示
+            dsEl.classList.add('is-invalid');
+            const fb = dsEl.nextElementSibling;
+            if (fb?.classList.contains('invalid-feedback')) {
+                fb.innerText = ''; fb.classList.remove('d-block'); fb.style.display = 'none';
+            }
+
+            // === 關鍵：確保下一次可輸入「.」 ===
+            dsEl.type = 'text';                 // 避開 number 的原生限制
+            dsEl.removeAttribute('pattern');    // 移除可能的整數正則
+            dsEl.setAttribute('inputmode','decimal');
+
+            // 只綁一次捕獲守門與正規化（允許只輸入 '.' 立即顯示）
+            if (dsEl.dataset.dotGuardAttached !== '1') {
+                const currentPrecision = () => {
+                if (typeof window.precision === 'number' && isFinite(window.precision)) return window.precision;
+                if (typeof getTorquePrecision === 'function') return Number(getTorquePrecision()) || 3;
+                return 3;
+                };
+
+                dsEl.addEventListener('keydown', function (e) {
+                const isDot = (e.key === '.' || e.key === 'Decimal' || e.key === ',');
+                if (!isDot) return;
+                const allowDecimal = currentPrecision() > 0;
+                if (allowDecimal) {
+                    // 放行小數點，但阻斷往上冒泡，避免被全域整數委派攔掉
+                    e.stopImmediatePropagation();
+                } else {
+                    e.preventDefault(); e.stopImmediatePropagation();
+                }
+                }, true); // capture=true
+
+                dsEl.addEventListener('input', function () {
+                const prec = currentPrecision();
+                let v = String(this.value ?? '');
+
+                // 允許單獨 '.' 立即顯示
+                if (prec > 0 && v === '.') { this.value = '.'; return; }
+
+                // 僅保留數字與一個小數點；限制小數位
+                v = v.replace(/[^\d.]/g, '');
+                const firstDot = v.indexOf('.');
+                if (firstDot !== -1) {
+                    v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+                }
+                if (prec === 0) {
+                    v = v.replace(/\..*$/, '');
+                } else if (firstDot !== -1 && v !== '.') {
+                    const [ip, dp = ''] = v.split('.');
+                    v = ip + '.' + dp.slice(0, prec);
+                }
+                this.value = v;
+                });
+
+                dsEl.addEventListener('paste', function (e) {
+                // 放行貼上但阻斷上層委派，避免被清掉小數點
+                e.stopImmediatePropagation();
+                }, true);
+
+                dsEl.dataset.dotGuardAttached = '1';
+            }
+            // === 關鍵處理結束 ===
+
+            // 節流避免重複彈窗
+            if (!window._alertingDSTorqueVsTarget_Opt1) {
                 window._alertingDSTorqueVsTarget_Opt1 = true;
-                alertify
-                    .alert(I18N.title, I18N.msg, function () {
+                if (typeof alertify !== 'undefined' && alertify?.alert) {
+                alertify.alert(I18N.title, I18N.msg, function () {
                     try { dsEl.focus(); dsEl.select?.(); } catch {}
                     window._alertingDSTorqueVsTarget_Opt1 = false;
-                    })
-                    .set('labels', { ok: OK_LABEL });
-                }
-
-                // 阻擋送出
-                isValid = false;
-                if (!errorList.includes('StepTorqueDownShift')) errorList.push('StepTorqueDownShift');
-            } else {
-                // 通過 → 清錯
-                dsEl.classList.remove('is-invalid');
-                const fb = dsEl.nextElementSibling;
-                if (fb?.classList.contains('invalid-feedback')) {
-                fb.innerText = '';
-                fb.classList.remove('d-block');
-                fb.style.display = 'none';
+                }).set('labels', { ok: OK_LABEL });
+                } else {
+                alert(`${I18N.title}\n\n${I18N.msg}`);
+                try { dsEl.focus(); dsEl.select?.(); } catch {}
+                window._alertingDSTorqueVsTarget_Opt1 = false;
                 }
             }
+
+            // 阻擋送出
+            isValid = false;
+            if (!errorList.includes('StepTorqueDownShift')) errorList.push('StepTorqueDownShift');
         })();
+
 
 
 
@@ -4342,12 +4436,12 @@
                     'zh-tw': {
                     title: '警告',
                     ok: '確定',
-                    tmpl: (u, r) => `目標扭力2（${u}）超出範圍，（${r}）`
+                    tmpl: (u, r) => `目標扭力（${u}）超出範圍，（${r}）`
                     },
                     'zh-cn': {
                     title: '警告',
                     ok: '确定',
-                    tmpl: (u, r) => `目标扭力2（${u}）超出范围，（${r}）`
+                    tmpl: (u, r) => `目标扭力（${u}）超出范围，（${r}）`
                     },
                     'en-us': {
                     title: 'Warning',
@@ -4842,8 +4936,8 @@
                 (lang === 'en-us')
                 ? `Target torque (${unitText}) is out of range. (${showLo} ${SEP} ${showHi})`
                 : (lang === 'zh-cn')
-                ? `目標扭力4（${unitText}）超出范围，（${showLo} ${SEP} ${showHi}）`
-                : `目標扭力4（${unitText}）超出範圍，（${showLo} ${SEP} ${showHi}）`;
+                ? `目標扭力（${unitText}）超出范围，（${showLo} ${SEP} ${showHi}）`
+                : `目標扭力（${unitText}）超出範圍，（${showLo} ${SEP} ${showHi}）`;
             setInvalid(tqEl);
             alertMsg(msg, tqEl);
             return false;
@@ -4882,8 +4976,8 @@
             (lang === 'en-us')
                 ? `Target torque (${unitText}) is out of range. (${bareRange})`
                 : (lang === 'zh-cn')
-                ? `目標扭力5（${unitText}）超出范围，（${bareRange}）`
-                : `目標扭力5（${unitText}）超出範圍，（${bareRange}）`;
+                ? `目標扭力（${unitText}）超出范围，（${bareRange}）`
+                : `目標扭力（${unitText}）超出範圍，（${bareRange}）`;
             setInvalid(tqEl);
             alertMsg(text, tqEl);
             return false;
@@ -4896,8 +4990,8 @@
             (lang === 'en-us')
                 ? `Target torque (${unitText}) is out of range. (${finalRange})`
                 : (lang === 'zh-cn')
-                ? `目標扭力6（${unitText}）超出范围，（${finalRange}）`
-                : `目標扭力6（${unitText}）超出範圍，（${finalRange}）`;
+                ? `目標扭力（${unitText}）超出范围，（${finalRange}）`
+                : `目標扭力（${unitText}）超出範圍，（${finalRange}）`;
             setInvalid(tqEl);
             alertMsg(text, tqEl);
             return false;
@@ -5459,4 +5553,111 @@ document.head.insertAdjacentHTML(
   '<style>#StepHiTorque + .invalid-feedback{display:none!important;}</style>'
 );
 
+// A) 每次輸入都清掉 invalid 旗標（防殘留）
+document.getElementById('StepTorqueDownShift')?.addEventListener('input', function () {
+  this.setCustomValidity && this.setCustomValidity('');
+});
+
+// B) 若你使用 type="text"（或就算是 number 也沒壞處）—保證只允許 0-9 與單一 '.'
+(function () {
+  const dsEl = document.getElementById('StepTorqueDownShift');
+  if (!dsEl) return;
+  dsEl.addEventListener('input', function () {
+    const before = this.value;
+    // 去掉非數字與非點
+    let s = before.replace(/[^0-9.]/g, '');
+    // 只保留第一個點
+    const i = s.indexOf('.');
+    if (i !== -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '');
+    if (s !== before) this.value = s;
+  });
+})();
+
+
 </script>
+
+
+<script>
+// 讓 #StepTorqueDownShift 無論何時都能輸入小數點（含關掉警示後）
+(function installDownshiftDecimalGuard(){
+  const FIELD_ID = 'StepTorqueDownShift';
+
+  // 你專案已有 precision / getTorquePrecision 就會用，沒有就預設 3
+  function currentPrecision(){
+    if (typeof window.precision === 'number' && isFinite(window.precision)) return window.precision;
+    if (typeof getTorquePrecision === 'function') return Number(getTorquePrecision()) || 3;
+    return 3;
+  }
+
+  function makeFieldDecimalFriendly(){
+    const el = document.getElementById(FIELD_ID);
+    if (!el) return null;
+    el.type = 'text';
+    el.setAttribute('inputmode','decimal');
+    el.removeAttribute('pattern');            // 避免整數限制
+    el.removeAttribute('data-integer-only');  // 避免自定整數鎖
+    return el;
+  }
+
+  function insertAtCursor(input, ch){
+    const start = input.selectionStart ?? input.value.length;
+    const end   = input.selectionEnd ?? start;
+    let v       = input.value;
+
+    // 只允許一個小數點
+    if (ch === '.' && v.includes('.')) return;
+
+    input.value = v.slice(0, start) + ch + v.slice(end);
+    const pos = start + ch.length;
+    try { input.setSelectionRange(pos, pos); } catch {}
+
+    // 這次 input 事件先擋掉上層清理器（一次性）
+    const onceStop = (ev) => { ev.stopImmediatePropagation(); input.removeEventListener('input', onceStop, true); };
+    input.addEventListener('input', onceStop, true);
+
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // 捕獲階段最先處理「.」，確保任何整數委派都攔不到
+  document.addEventListener('keydown', function(e){
+    const t = e.target;
+    if (!t || t.id !== FIELD_ID) return;
+
+    const el = makeFieldDecimalFriendly();
+    if (!el) return;
+
+    const prec = currentPrecision();
+    const isDot = (e.key === '.' || e.key === 'Decimal' || e.key === ',');
+    if (!isDot) return;
+
+    if (prec > 0) {
+      e.preventDefault();            // 攔原生與上層
+      e.stopImmediatePropagation();
+      insertAtCursor(el, '.');       // 手動寫入「.」→ 立刻可見
+    } else {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true); // capture=true
+
+  // 捕獲貼上：允許含小數，避免被上層委派清掉
+  document.addEventListener('paste', function(e){
+    const t = e.target;
+    if (!t || t.id !== FIELD_ID) return;
+    const el = makeFieldDecimalFriendly(); if (!el) return;
+
+    const prec = currentPrecision();
+    const text = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+    if (prec === 0 && /[^\d]/.test(text)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+    e.stopImmediatePropagation();
+  }, true);
+
+  // 首次保險
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', makeFieldDecimalFriendly);
+  } else {
+    makeFieldDecimalFriendly();
+  }
+})();
+</script>
+

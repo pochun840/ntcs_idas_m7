@@ -350,7 +350,7 @@
                                     <div class="col-4" id="show_downshift_torque" style="display:block;" ><?php echo $text['Downshift_Torque'];?> (<?php echo $text[$data['torque_unit']]; ?>):</div>
                                     <div class="col-4" id="show_downshift_angle" style="display:none;" ><?php echo $text['Downshift_Angle'];?> </div>
                                     <div class="col-8" id="StepTorqueDownShift_block"  >
-                                        <input id="StepTorqueDownShift" class="form-control form-control-sm" value="<?= ($data['type'] === 'edit' && is_numeric($data['step']['StepTorqueDownShift'])) ? $data['step']['StepTorqueDownShift'] : '' ?>">
+                                        <input id="StepTorqueDownShift" inputmode="decimal" class="form-control form-control-sm" value="<?= ($data['type'] === 'edit' && is_numeric($data['step']['StepTorqueDownShift'])) ? $data['step']['StepTorqueDownShift'] : '' ?>">
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>

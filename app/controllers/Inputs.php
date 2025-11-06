@@ -34,6 +34,8 @@ class Inputs extends Controller
             foreach($joblist as $kk =>$vv){
                 $job_list_new[$vv['JOBID']] =$vv;  
             }
+        }else{
+            $job_list_new = '';
         }
 
 

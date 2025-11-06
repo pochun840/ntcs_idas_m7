@@ -1126,10 +1126,23 @@ function disableElementsByIdList(ids) {
 }
 
 function eventsToDisable(usedList) {
-  // 只回傳「不允許重複」的已用事件（排除 110~114）
-  return (Array.isArray(usedList) ? usedList : [])
-    .map(String)
-    .filter(v => !ALLOW_MULTI_EVENTS.has(v));
+  const list = Array.isArray(usedList) ? usedList : [];
+  const toBlock = new Set();
+
+  // 先依規則：凡不在 ALLOW_MULTI_EVENTS 的都禁用
+  for (const v of list) {
+    const s = String(v);
+    if (!ALLOW_MULTI_EVENTS.has(s)) toBlock.add(s);
+  }
+
+  // 再強制把 110~114 已用者加入禁用（即便誤被允許）
+  const FORCE_SINGLE = new Set(['110','111','112','113','114']);
+  for (const v of list) {
+    const s = String(v);
+    if (FORCE_SINGLE.has(s)) toBlock.add(s);
+  }
+
+  return [...toBlock];
 }
 
 
