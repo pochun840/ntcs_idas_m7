@@ -500,9 +500,28 @@ class Customize extends Controller
         require_once '../app/config/config.php';
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
+
+        // 取得控制器資訊
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+
+        // 正確拿出 device_id
+        $device_id = isset($controller_info['device_id'])
+            ? (int)$controller_info['device_id']
+            : 1;   // 沒抓到就先用 1
+
+        // Modbus slave ID 合理範圍通常是  1~512
+        $unitId = $device_id;
+        if ($unitId < 1 || $unitId > 512) {
+            $unitId = 1; 
+        }
+
+
+
+
+
         $ip = CONTROLLER_IP;
         $port = 502;
-        $unitId = 0;
+        //$unitId = 0;
         $startAddress = $a;
         $quantity = $b;  // 每個「暫存器」= 16-bit (= 2 bytes)
 

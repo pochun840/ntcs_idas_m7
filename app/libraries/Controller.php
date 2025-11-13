@@ -154,14 +154,14 @@ class Controller
     
 
     //判斷控制器的登入登出
-    public function idas_check(){
+    public function idas_check($device_id){
 
         require_once '../app/config/config.php';  // 載入常數
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
+
         $port = 502;
-        $unitId = 0;
         $startAddress = 29002;
         $quantity = 1;
 
@@ -170,8 +170,7 @@ class Controller
         // 驗證 IP 格式
         if (!filter_var($ip, FILTER_VALIDATE_IP)) {
             $response['error'] = "無效的 IP 位址：$ip";
-            echo json_encode($response);
-            return;
+            return $response; 
         }
 
         try {
@@ -180,7 +179,7 @@ class Controller
             $modbus->timeout_sec = 10;
 
             // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+            $data = $modbus->readMultipleRegisters($device_id, $startAddress, $quantity);
 
             $response['result'] = $data[1] ?? null;
 
@@ -190,6 +189,9 @@ class Controller
 
         return $response;
     }
+
+
+
 
 
    

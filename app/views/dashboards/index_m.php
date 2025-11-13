@@ -125,7 +125,6 @@ function language_change(language){
     }
 }
 
-
 function DB_sync_idas(argument) {
     const language = getCookie('language');
 
@@ -173,42 +172,66 @@ function DB_sync_idas(argument) {
 
     // ★ 新增：OK / Cancel 語系
     const okText = (language === 'zh-cn') ? '确定' :
-                    (language === 'zh-tw') ? '確定' : 'OK';
+                   (language === 'zh-tw') ? '確定' : 'OK';
     const cancelText = (language === 'zh-cn') ? '取消' :
-                        (language === 'zh-tw') ? '取消' : 'Cancel';
+                       (language === 'zh-tw') ? '取消' : 'Cancel';
 
+    const title       = titles[language]?.[argument]   || titles["default"][argument];
+    const message     = messages[language]?.[argument] || messages["default"][argument];
+    const syncingText = syncingTexts[language]         || syncingTexts["default"];
+    const errorText   = errorMessages[language]        || errorMessages["default"];
 
-    const title = titles[language]?.[argument] || titles["default"][argument];
-    const message = messages[language]?.[argument] || messages["default"][argument];
-    const syncingText = syncingTexts[language] || syncingTexts["default"];
-    const errorText = errorMessages[language] || errorMessages["default"];
+    // ★ 新增：安全解析 JSON 的 helper
+    function parseJsonSafe(response) {
+        if (response && typeof response === 'object') {
+            return response; // 已經是物件
+        }
+        if (typeof response !== 'string') {
+            console.error("Unexpected response type:", typeof response, response);
+            return null;
+        }
+        const trimmed = response.trim();
+        if (!trimmed) return null;
+        try {
+            return JSON.parse(trimmed);
+        } catch (e) {
+            console.error("JSON.parse failed:", e, response);
+            return null;
+        }
+    }
 
     alertify.confirm(title, message, function () {
         $.ajax({
             url: "?url=Settings/get_controller_login",
             method: "POST",
+            // dataType: "text", // 可加可不加，保險一點就加
             success: function (response) {
-                try {
-                        const result = JSON.parse(response);
-                        if (!result.result) {
-                            showAlertAutoClose('Error', result.res_msg || errorText.check);
-                            return;
-                        }
-                        // ✅ 通過檢查：開始同步
-                        startSyncProcess(argument, syncingText, errorText);
+                const result = parseJsonSafe(response);
 
-                } catch (e) {
-                    console.error("Login check parse error:", e, response);
+                // 檢查基本格式
+                if (!result || typeof result !== 'object' || typeof result.result === 'undefined') {
+                    console.error("Unexpected login response format:", response);
                     showAlertAutoClose('Error', errorText.json);
+                    return;
                 }
+
+                // 後端說「不能同步」（例：控制器有人登入）
+                if (!result.result) {
+                    showAlertAutoClose('Error', result.res_msg || errorText.check);
+                    return;
+                }
+
+                // ✅ 通過檢查：開始同步
+                startSyncProcess(argument, syncingText, errorText);
             },
             error: function (xhr, status, error) {
                 console.error("AJAX login check failed:", status, error);
+                console.error("Response text:", xhr.responseText);
                 showAlertAutoClose('Error', errorText.check);
             }
         });
     }, function () {})
-    .set('labels', { ok: okText, cancel: cancelText }); // ← 加上這行
+    .set('labels', { ok: okText, cancel: cancelText });
 
     function startSyncProcess(argument, syncingText, errorText) {
         let progress = 0;
@@ -235,22 +258,26 @@ function DB_sync_idas(argument) {
                     url: getSyncUrl(argument),
                     method: "POST",
                     data: { argument },
+                    // dataType: "text",
                     success: function (response) {
-                        try {
-                            const res = JSON.parse(response);
-                            showAlertAutoClose(res.res_type, res.res_msg);
-                            setTimeout(() => {
-                                removeOverlay();
-                                if (res.res_type === "Success") history.go(0);
-                            }, 3000);
-                        } catch (e) {
-                            console.error("Response parse error:", e, response);
+                        const res = parseJsonSafe(response);
+
+                        if (!res || typeof res !== 'object' || typeof res.res_type === 'undefined') {
+                            console.error("Unexpected sync response format:", response);
                             showAlertAutoClose('Error', errorText.json);
                             setTimeout(removeOverlay, 3000);
+                            return;
                         }
+
+                        showAlertAutoClose(res.res_type, res.res_msg);
+                        setTimeout(() => {
+                            removeOverlay();
+                            if (res.res_type === "Success") window.location.reload();
+                        }, 3000);
                     },
                     error: function (xhr, status, error) {
                         console.error("Sync failed:", status, error);
+                        console.error("Response text:", xhr.responseText);
                         showAlertAutoClose('Error', errorText.syncFail);
                         setTimeout(removeOverlay, 3000);
                     }
@@ -263,7 +290,7 @@ function DB_sync_idas(argument) {
         switch (argument) {
             case 'D2C': return '?url=Settings/Sync_check_db';
             case 'C2D': return '?url=Settings/Sync_check_db_load';
-            default: return '';
+            default:    return '';
         }
     }
 
@@ -293,7 +320,6 @@ function DB_sync_idas(argument) {
     }
 
     function createProgressDialog(syncingText) {
-
         const dialog = document.createElement("div");
         dialog.id = "customProgressDialog";
         Object.assign(dialog.style, {
@@ -354,12 +380,12 @@ function DB_sync_idas(argument) {
         document.body.appendChild(dialog);
     }
 
-
     function removeProgressDialog() {
         const dialog = document.getElementById("customProgressDialog");
         if (dialog) dialog.remove();
     }
 }
+
 
 </script>
 

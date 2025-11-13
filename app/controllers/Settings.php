@@ -402,6 +402,11 @@ class Settings extends Controller
             exit();
         }
 
+        // 取得控制器的id
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+
         if( PHP_OS_FAMILY == 'Linux'){
             $this->logMessage('firmware update start');
 
@@ -428,12 +433,12 @@ class Settings extends Controller
                     $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
 
                     // FC 16
-                    $modbus->writeMultipleRegister(0, 480, $data, $dataTypes);
+                    $modbus->writeMultipleRegister( $unitId , 480, $data, $dataTypes);
                     $this->logMessage('modbus write 480 ,array = '.implode("','", $data));
                     $this->logMessage('modbus status:'.$modbus->status);
                     $this->logMessage('firmware update end');
                     //自動重新啟動控制器
-                    $modbus->writeMultipleRegister(0, 462, array(1), $dataTypes);
+                    $modbus->writeMultipleRegister( $unitId , 462, array(1), $dataTypes);
 
                     echo json_encode(array('error' => ''));
                     exit();
@@ -489,6 +494,13 @@ class Settings extends Controller
             return;
         }
 
+        
+        // 取得控制器的id
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1; 
+        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+
+
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         // 1) 觸發控制器產檔
@@ -497,7 +509,7 @@ class Settings extends Controller
             $modbus->port = 502;
             $data = [1];
             $dataTypes = ["INT"]; // 長度與 data 一致
-            $modbus->writeMultipleRegister(0, 505, $data, $dataTypes);
+            $modbus->writeMultipleRegister($unitId, 505, $data, $dataTypes);
             $this->logMessage('modbus write 505 ok');
         } catch (Exception $e) {
             $this->logMessage('modbus write 505 fail: ' . $e->getMessage());
@@ -632,8 +644,9 @@ class Settings extends Controller
         $temp_del_year = $del_year_id[0]; // 只處理第一筆
 
         // 檢查是否可以刪除（Modbus 狀態檢查）
-        $idas_result = $this->idas_check();
-
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+        $device_id   = $controller_info['device_id'];
+        $idas_result = $this->idas_check($device_id);
 
         if ($idas_result['result'] != 1) {
             echo json_encode([
@@ -656,7 +669,7 @@ class Settings extends Controller
             $modbus->timeout_sec = 10;
             $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
 
-            $modbus->writeMultipleRegister(0, 517, $year, $dataTypes);
+            $modbus->writeMultipleRegister($device_id, 517, $year, $dataTypes);
 
             echo json_encode([
                 'result' => true,
@@ -763,112 +776,104 @@ class Settings extends Controller
     }
 
 
-      public function Sync_check_db() {
+    public function Sync_check_db(){
+        
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
 
         $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        $midPath1     = '/mnt/ramdisk/11.Lin';
         $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
         $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
 
         $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
-        $midPath2     = '/mnt/ramdisk/11.db';
         $finalPath2   = '/mnt/ramdisk/ftp/11.db';
         $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
 
         $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
         $dst3         = '/home/kls/NTCS7/ntcs_device.db';
 
-        if (PHP_OS_FAMILY === 'Linux' && $argument === 'D2C') {
-
-            // ✅ 先同步 device.db (src3 → dst3)
-            if (file_exists($src3)) {
-                if (!copy($src3, $dst3)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
-                }
-                @chmod($dst3, 0777);
-                $this->get_db_sync();
-            }
-
-            //  檢查原始檔案是否存在
-            if (!file_exists($src1) || !file_exists($src2)) {
-                $missingFiles = [];
-                if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
-                if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
-
-                $this->MiscellaneousModel->generateErrorResponse(
-                    'Error',
-                    'Source file(s) missing: ' . implode(', ', $missingFiles)
-                );
-            }
-
-            //初始化 Modbus
-            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-            $modbus = new ModbusMaster("127.0.0.1", "TCP");
-            $modbus->port = 502;
-            $modbus->timeout_sec = 10;
-
-            try {
-                // ----------- Sync LIN File -----------
-                if (!$this->safeCopy($src1, $midPath1)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1");
-                }
-                @chmod($midPath1, 0777);
-
-                if (!$this->safeCopy($midPath1, $finalPath1)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath1");
-                }
-                unlink($midPath1);
-                $this->logMessage("$src1 copied to FTP");
-
-                $this->notifyModbus($modbus, [1, 12593], "LIN");
-
-                if (!$this->safeCopy($finalPath1, $renamedPath1)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
-                }
-                unlink($finalPath1);
-                $this->logMessage("$finalPath1 renamed to $renamedPath1");
-
-                usleep(1_000_000); // sleep 1 sec
-
-                // ----------- Sync DB File (barcode) -----------
-                if (!$this->safeCopy($src2, $midPath2)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2");
-                }
-                @chmod($midPath2, 0777);
-
-                if (!$this->safeCopy($midPath2, $finalPath2)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy to $finalPath2");
-                }
-                unlink($midPath2);
-                $this->logMessage("$src2 copied to FTP");
-
-                $this->notifyModbus($modbus, [1, 12593], "DB");
-
-                if (!$this->safeCopy($finalPath2, $renamedPath2)) {
-                    $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
-                }
-                unlink($finalPath2);
-                $this->logMessage("$finalPath2 renamed to $renamedPath2");
-
-                // ✅ 最後回傳成功訊息（純 JSON）
-                $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
-
-            } catch (Exception $e) {
-                $this->logMessage('Modbus write fail: ' . $e->getMessage());
-                $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
-            }
-
-
-    
+        // 只處理 Linux + D2C，其它情況直接回錯誤
+        if (PHP_OS_FAMILY !== 'Linux' || $argument !== 'D2C') {
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
         }
 
-        // ❌ 非 Linux 或參數錯誤
-        $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+        // ✅ 先同步 device.db (src3 → dst3)
+        if (file_exists($src3)) {
+            if (!copy($src3, $dst3)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
+            }
+            @chmod($dst3, 0777);
+
+            // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
+            // $this->get_db_sync();
+        }
+
+        //  檢查原始檔案是否存在
+        if (!file_exists($src1) || !file_exists($src2)) {
+            $missingFiles = [];
+            if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
+            if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
+
+            $this->MiscellaneousModel->generateErrorResponse(
+                'Error',
+                'Source file(s) missing: ' . implode(', ', $missingFiles)
+            );
+        }
+
+        // 初始化 Modbus
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $modbus = new ModbusMaster("127.0.0.1", "TCP");
+        $modbus->port        = 502;
+        $modbus->timeout_sec = 2;   // 原本 10 → 3，這裡直接壓到 2 秒
+
+        try {
+            // ----------- Sync LIN File（簡化：直接 src → final → rename）-----------
+            if (!$this->safeCopy($src1, $finalPath1)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1 to $finalPath1");
+            }
+            @chmod($finalPath1, 0777);
+            $this->logMessage("$src1 copied to $finalPath1");
+
+            // 通知控制器有新 LIN
+            $this->notifyModbus($modbus, [1, 12593], "LIN");
+
+            if (!$this->safeCopy($finalPath1, $renamedPath1)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
+            }
+            @unlink($finalPath1);
+            $this->logMessage("$finalPath1 renamed to $renamedPath1");
+
+            // 🔥 拿掉 usleep(1_000_000) 不再強制多等 1 秒
+            // usleep(1_000_000);
+
+            // ----------- Sync DB File (barcode)（一樣簡化）-----------
+            if (!$this->safeCopy($src2, $finalPath2)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2 to $finalPath2");
+            }
+            @chmod($finalPath2, 0777);
+            $this->logMessage("$src2 copied to $finalPath2");
+
+            // 通知控制器有新 DB
+            $this->notifyModbus($modbus, [1, 12593], "DB");
+
+            if (!$this->safeCopy($finalPath2, $renamedPath2)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
+            }
+            @unlink($finalPath2);
+            $this->logMessage("$finalPath2 renamed to $renamedPath2");
+
+            // ✅ 最後回傳成功訊息（純 JSON）
+            $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+
+        } catch (Exception $e) {
+            $this->logMessage('Modbus write fail: ' . $e->getMessage());
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
+        }
     }
+
+
 
 
     public function Sync_check_db_load() {
@@ -934,13 +939,32 @@ class Settings extends Controller
     /**
      * 發送 Modbus 訊號
      */
-    private function notifyModbus($modbus, $data, $tag = "") {
-        $dataTypes = array_fill(0, 16, 'INT');
-        $payload = array_merge($data, array_fill(0, 16 - count($data), 0));
+    private function notifyModbus($modbus, $data, $tag = ""){
+        
+        // 取得控制器資訊
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
 
-        $modbus->writeMultipleRegister(0, 506, $payload, $dataTypes);
-        $this->logMessage("Modbus write ($tag): " . implode(',', $payload));
+        // 正確拿出 device_id
+        $device_id = isset($controller_info['device_id'])
+            ? (int)$controller_info['device_id']
+            : 1;   // 沒抓到就先用 1
+
+        // Modbus slave ID 合理範圍通常是  1~512
+        $unitId = $device_id;
+        if ($unitId < 1 || $unitId > 512) {
+            $unitId = 1; 
+        }
+
+        $dataTypes = array_fill(0, 16, 'INT');
+        $payload   = array_merge($data, array_fill(0, 16 - count($data), 0));
+
+        $modbus->writeMultipleRegister($unitId, 506, $payload, $dataTypes);
+        $this->logMessage("Modbus write ($tag) [unitId=$unitId]: " . implode(',', $payload));
     }
+
+
+
+
     
     //get barcode
     public function GetBarcodes(){
@@ -1569,6 +1593,13 @@ class Settings extends Controller
             include $file;
         }
 
+        // 取得控制器的id
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1; 
+        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+
+
+
         // 驗證上傳
         if (empty($_FILES) || !isset($_FILES['file'])) {
             $this->MiscellaneousModel->generateErrorResponse('Error', 'No file uploaded.');
@@ -1644,7 +1675,7 @@ class Settings extends Controller
             $data = [1, 26948, 24947]; // iDas
             $dataTypes = array_fill(0, 16, "INT");
 
-            $modbus->writeMultipleRegister(0, 506, $data, $dataTypes);
+            $modbus->writeMultipleRegister($unitId, 506, $data, $dataTypes);
             $this->logMessage("modbus write 506 ,array = " . implode("','", $data));
             $this->logMessage("modbus status: " . $modbus->status);
             $this->logMessage("Import config end");
@@ -1653,7 +1684,7 @@ class Settings extends Controller
             $this->MiscellaneousModel->generateErrorResponse('Success', 'Import successful.');
 
             // 第二次寫入 Modbus
-            $modbus->writeMultipleRegister(0, 462, [1], $dataTypes);
+            $modbus->writeMultipleRegister($unitId, 462, [1], $dataTypes);
 
 
             //重啟控制器 
@@ -1784,6 +1815,8 @@ class Settings extends Controller
     
     public function get_controller_login() {
 
+        header('Content-Type: application/json; charset=utf-8');
+
         // 取得語系
         $language = $_COOKIE['language'] ?? 'en-us';
 
@@ -1806,43 +1839,58 @@ class Settings extends Controller
         // 找不到對應語言時，預設 en-us
         $msg = $messages[strtolower($language)] ?? $messages['en-us'];
 
-        // ✅ 檢查是否可同步（Modbus 工具狀態）
-        $idas_result = $this->idas_check();
-
         // 取得控制器 SN（DB）
         $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
         $device_sn_raw   = (string)($controller_info['device_sn'] ?? '');
         $device_sn       = preg_replace('/[^A-Za-z0-9_\-]/', '_', $device_sn_raw);
 
-        // 透過 Modbus 取得控制器 SN
-        $modbus_info   = (array)($this->get_controller_sn() ?? []);
-        $modbus_sn_raw = (string)($modbus_info['model'] ?? '');
-        $modbus_sn     = preg_replace('/[^A-Za-z0-9_\-]/', '_', $modbus_sn_raw);
+        // ✅ 檢查是否可同步（Modbus 工具狀態）
+        $device_id = isset($controller_info['device_id'])
+            ? (int)$controller_info['device_id']
+            : 1; // 防呆，沒有就給 1 (依你實際情況調整)
 
-        // SN 是否相符（兩邊都有值才比較）
-        $sn_match = ($device_sn !== '' && $modbus_sn !== '' && strcasecmp($device_sn, $modbus_sn) === 0);
-        
-        if ($idas_result['result'] != 0  && $sn_match) {
-            echo json_encode([
-                'result'   => false,
-                'login'    => 0,
-                'res_type' => 'SuccessError',
-                'res_msg'  => $msg['already_logged_in']
-            ]);
-            return;
-        } else {
-            echo json_encode([
-                'result'   => true,
-                'login'    => 1,
-                'res_type' => 'Success',
-                'res_msg'  => $msg['login_status']
-            ]);
-            return;
+        $idas_result = $this->idas_check($device_id);
+
+        // 防呆，避免 idas_check 回傳 null 或其他型別
+        if (!is_array($idas_result)) {
+            $idas_result = ['result' => null, 'error' => 'idas_check 回傳異常'];
         }
 
-        // 這段應該永遠不會被執行到
-        $this->ntcs_data_db_sysnc();
+        $regVal  = $idas_result['result']; // 暫存器值，0 / 1 / null
+        $errMsg  = $idas_result['error'];  // 錯誤訊息（若有）
+
+        // 預設回應（假設可同步）
+        $response = [
+            'result'   => true,
+            'login'    => 0,
+            'res_type' => 'Success',
+            'res_msg'  => $msg['login_status']
+        ];
+
+        // 如果 modbus 有錯誤，直接回傳錯誤訊息給前端
+        if (!empty($errMsg)) {
+            $response = [
+                'result'   => false,
+                'login'    => 0,
+                'res_type' => 'Error',
+                'res_msg'  => $errMsg   // 或換成 $msg['login_status'] 也可以，看你要不要曝錯
+            ];
+        } elseif ($regVal != 0) {
+            // 暫存器值 != 0 代表「有人登入，不能同步」
+            $response = [
+                'result'   => false,
+                'login'    => 1,
+                'res_type' => 'SuccessError',
+                'res_msg'  => $msg['already_logged_in']
+            ];
+        }
+
+        echo json_encode($response);
+        exit;  // 統一在這裡結束，不再往下跑
+
+        // $this->ntcs_data_db_sysnc(); // 這段永遠不會被執行到，如果要用另開一個 action
     }
+
 
 
 }
