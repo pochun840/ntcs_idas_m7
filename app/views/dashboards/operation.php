@@ -49,7 +49,8 @@
                     <div class="item-result w3-display-container" id='fasten_status_color'  style="<?php echo $bgStyle; ?>" >
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-black"><?php echo $data['text']['final_result'];?></div>
                         <div id="Torque_Result" class="w3-display-middle" style="font-size: 4vmin">
-                            <?php echo $data['text'][$data['data_info']['fasten_status_text']];?>
+
+                            <?php  echo $data['text'][$data['data_info']['fasten_status_text']];?>
                         </div>            
                     </div>
                 </div>

@@ -92,7 +92,7 @@ class Dashboard{
 
         // 找出所有符合 $id 的 CSV 檔案
         $csv_folder = "/mnt/ramdisk/ftp/";
-        $csv_files = glob($csv_folder . $id . "__*.csv");  // ✅ 根據 ID 篩選檔名開頭
+        $csv_files = glob($csv_folder . $id . "_*.csv");  // ✅ 根據 ID 篩選檔名開頭
 
         if (empty($csv_files)) {
             return [];
@@ -101,6 +101,7 @@ class Dashboard{
         // 根據建立時間由新到舊排序
         usort($csv_files, fn($a, $b) => filectime($b) - filectime($a));
         $latest_file = $csv_files[0];  // 最新的符合檔案
+
 
         // 讀取並轉為陣列
         $csv_content = file_get_contents($latest_file);

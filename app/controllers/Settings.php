@@ -565,9 +565,15 @@ class Settings extends Controller
             // $zip->addFromString("README.txt", "KLS_NTCS.Lin not ready at packaging time.\n");
         }
 
-        $barcode = "/mnt/ramdisk/ftp/ntcs_barcode.db";
+       $barcode = "/var/www/html/database/ntcs_barcode_IDAS.db";
         if (is_file($barcode)) {
-            $zip->addFile($barcode, "ntcs_barcode.cfg");
+            // 保留原本的名稱（如果你不需要，可以刪掉這行）
+            //$zip->addFile($barcode, "ntcs_barcode.cfg");
+
+            // 新增一個帶時間戳的檔名，例如：ntcs_barcode_2025-11-13_141115.db
+            $barcodeTime = date('Y-m-d_His'); // 格式：2025-11-13_141115
+            $barcodeZipName = "ntcs_barcode_{$barcodeTime}.db";
+            $zip->addFile($barcode, $barcodeZipName);
         } else {
             $this->logMessage("file not found: {$barcode}");
         }
@@ -794,6 +800,14 @@ class Settings extends Controller
         $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
         $dst3         = '/home/kls/NTCS7/ntcs_device.db';
 
+
+         // 取得控制器的id
+        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+
+
+
         // 只處理 Linux + D2C，其它情況直接回錯誤
         if (PHP_OS_FAMILY !== 'Linux' || $argument !== 'D2C') {
             $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
@@ -807,7 +821,7 @@ class Settings extends Controller
             @chmod($dst3, 0777);
 
             // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
-            // $this->get_db_sync();
+            $this->get_db_sync($unitId);
         }
 
         //  檢查原始檔案是否存在

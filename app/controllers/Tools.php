@@ -21,6 +21,10 @@ class Tools extends Controller
         $Tool_Info = end($Tool_Info);
 
         $controllers_info = $this->ToolModel->GetControllerInfo();
+
+        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1; 
+        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+
         $MAC      = $this->getMacAddress();
         $ip_addr  = $this->getIp();
         $netmask  = $this->get_netmask('eth0');
@@ -71,21 +75,23 @@ class Tools extends Controller
 
         $version = $this->getFirmwareVersion();
 
+
+
         // 版本資訊
-        $tools_version    = $this->get_tools_version() / 100; 
-        $firmware_version = $this->get_firmware_version() / 100; 
+        $tools_version    = $this->get_tools_version($unitId) / 100; 
+        $firmware_version = $this->get_firmware_version($unitId) / 100; 
         $upgrade_ver      = $this->get_upgrade_version();
 
 
         // 起子型號
-        $tools_type_temp = $this->get_tools_type();
+        $tools_type_temp = $this->get_tools_type($unitId);
         if (!empty($tools_type_temp)){
             $this->ToolModel->update_tools($tools_type_temp);
             $Tool_Info['tool_type'] = $tools_type_temp['model'];
         }
 
         // 起子序號
-        $tools_type_tmp = $this->get_tools_sn(); 
+        $tools_type_tmp = $this->get_tools_sn($unitId); 
 
         if (!empty($tools_type_tmp)){
             $this->ToolModel->update_tools_sn($tools_type_tmp);

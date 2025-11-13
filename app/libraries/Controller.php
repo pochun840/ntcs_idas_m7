@@ -237,13 +237,13 @@ class Controller
 
 
 
-    public function get_tools_version(){
+    public function get_tools_version($unitId){
         require_once '../app/config/config.php';  // 載入常數
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
         $port = 502;
-        $unitId = 0;
+        //$unitId = 0;
         $startAddress = 29003;
         $quantity = 1;
 
@@ -268,13 +268,13 @@ class Controller
     
 
 
-    public function get_firmware_version(){
+    public function get_firmware_version($unitId){
         require_once '../app/config/config.php';  // 載入常數
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
         $port = 502;
-        $unitId = 0;
+        //$unitId = 0;
         $startAddress = 29004;
         $quantity = 1;
 
@@ -298,14 +298,14 @@ class Controller
     }
 
 
-    public function get_db_sync(){
+    public function get_db_sync($unitId){
 
         require_once '../app/config/config.php';  // 載入常數
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
         $port = 502;
-        $unitId = 0;
+        //$unitId = 0;
         $startAddress = 29006;
         $quantity = 1;
 
@@ -395,14 +395,14 @@ class Controller
 
 
     //起子sn
-    public function get_tools_sn() {
+    public function get_tools_sn($unitId) {
 
         require_once '../app/config/config.php';  // 載入常數
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
         $port = 502;
-        $unitId = 0;
+        //$unitId = 0;
         $startAddress = 4122;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
 
@@ -548,14 +548,14 @@ class Controller
     }
 
     //起子型號
-    public function get_tools_type() {
+    public function get_tools_type($unitId) {
 
         require_once '../app/config/config.php';  
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
         $port = 502;
-        $unitId = 0;
+        //$unitId = 0;
         $startAddress = 4112;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
 
