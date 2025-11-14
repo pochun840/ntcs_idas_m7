@@ -151,6 +151,252 @@ class Controller
         }
     }
 
+
+    private function writeDeviceIdToDb($dbPath, $deviceId){
+
+        if (!file_exists($dbPath)) {
+            error_log('[writeDeviceIdToDb] DB file not found: ' . $dbPath);
+            return false;
+        }
+
+        try {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 先看有沒有資料
+            $sqlCheck  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
+            $stmtCheck = $pdo->query($sqlCheck);
+            $row       = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+            if ($row && isset($row['device_id'])) {
+                // 有資料 → update
+                $sqlUpdate = "UPDATE ntcs_device_test SET device_id = :device_id";
+                $stmtUpd   = $pdo->prepare($sqlUpdate);
+                $stmtUpd->execute([':device_id' => $deviceId]);
+            } else {
+                // 沒資料 → insert
+                $sqlInsert = "INSERT INTO ntcs_device_test (device_id) VALUES (:device_id)";
+                $stmtIns   = $pdo->prepare($sqlInsert);
+                $stmtIns->execute([':device_id' => $deviceId]);
+            }
+
+            return true;
+        } catch (Exception $e) {
+            error_log('[writeDeviceIdToDb] Write device_id failed (' . $dbPath . '): ' . $e->getMessage());
+            return false;
+        }
+    }
+
+
+
+    public function ntcs_device_db_sysnc($forceRefresh = false){
+        // 路徑集中放這裡
+        $srcController = '/home/kls/NTCS7/ntcs_device.db';            // 控制器端 ntcs_device.db
+        $tempDbPath    = '/var/www/html/database/ntcs_device_temp.db';// iDAS 暫存
+        $idasDbPath    = '/var/www/html/database/ntcs_device_IDAS.db';// iDAS 正式用的 device DB
+
+        // === 0) 先用 cookie 快取，避免每次都重跑整個流程 ===
+        //     cacheTtl：幾秒內視為「不用再重新偵測」，你可以自己調整（例如 30 秒/60 秒）
+        $cacheTtl = 30; // 秒
+
+        if (
+            !$forceRefresh &&
+            isset($_COOKIE['temp_device_id'], $_COOKIE['temp_device_id_ts'])
+        ) {
+            $cid = (int)$_COOKIE['temp_device_id'];
+            $ts  = (int)$_COOKIE['temp_device_id_ts'];
+
+            if ($cid >= 1 && $cid <= 512 && $ts > 0 && (time() - $ts) < $cacheTtl) {
+                // 在快取有效時間內 → 直接回傳，完全不打 DB / Modbus
+                return $cid;
+            }
+        }
+
+        $finalDeviceId = null;   // 最後決定「實際 Modbus 通訊的 device_id」
+        $modbusOk      = false;  // 有沒有成功打到 Modbus
+
+        // -------------------------------------------------------
+        // 1) 先用「目前 iDAS DB」裡的 device_id 試著打 Modbus（不先 sync）
+        // -------------------------------------------------------
+        $deviceIdFromIdas = $this->readDeviceIdFromDb($idasDbPath);
+
+        if ($deviceIdFromIdas !== null) {
+            $check1 = $this->idas_check($deviceIdFromIdas);
+
+            if (empty($check1['error']) && $check1['result'] !== null) {
+                $modbusOk      = true;
+                $finalDeviceId = $deviceIdFromIdas;
+            }
+        }
+
+        // -------------------------------------------------------
+        // 2) 若第一步 Modbus 失敗 → 才執行 sync_db + 用 temp DB 再試一次
+        // -------------------------------------------------------
+        if (!$modbusOk) {
+            // 2-1) 控制器 → temp（這邊才做 sync，平常有通就不會跑到這裡）
+            $this->sync_db($srcController, $tempDbPath);
+
+            // 2-2) 從 temp DB 讀 device_id
+            $deviceIdFromTemp = $this->readDeviceIdFromDb($tempDbPath);
+
+            if ($deviceIdFromTemp !== null) {
+                $check2 = $this->idas_check($deviceIdFromTemp);
+
+                if (empty($check2['error']) && $check2['result'] !== null) {
+                    $modbusOk      = true;
+                    $finalDeviceId = $deviceIdFromTemp;
+
+                    // 2-3) 只有在 temp 的 device_id 可以成功打到 Modbus 時，
+                    //      才把 temp DB 覆蓋到 iDAS DB（避免錯誤設定也覆蓋過去）
+                    if (!@copy($tempDbPath, $idasDbPath)) {
+                        error_log('[ntcs_device_db_sysnc] Failed to copy temp DB to IDAS DB');
+                    } else {
+                        @chmod($idasDbPath, 0777);
+                        $this->logMessage('[ntcs_device_db_sysnc] temp DB copied to ntcs_device_IDAS.db');
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------
+        // 3) 將「實際 Modbus 通訊的 device_id」寫入 cookie（如果有找到）
+        // -------------------------------------------------------
+        if ($finalDeviceId !== null) {
+            $exp = time() + 86400 * 30; // 30 天
+
+            // 實際用來打 Modbus 的 device_id
+            setcookie('temp_device_id', (string)$finalDeviceId, $exp, '/', '', false, true);
+            // 紀錄偵測時間，用來做 cache TTL
+            setcookie('temp_device_id_ts', (string)time(), $exp, '/', '', false, true);
+
+            $_COOKIE['temp_device_id']    = (string)$finalDeviceId;
+            $_COOKIE['temp_device_id_ts'] = (string)time();
+        }
+
+        return $finalDeviceId;
+    }
+
+    /**
+     * 小工具：從指定 SQLite DB 抓 ntcs_device_test.device_id
+     * 讀不到 / DB 不存在 → 回傳 null
+     */
+    private function readDeviceIdFromDb($dbPath){
+        
+        if (!file_exists($dbPath)) {
+            // 不寫 log 也可以，看你要不要
+            // error_log('[readDeviceIdFromDb] DB file not found: ' . $dbPath);
+            return null;
+        }
+
+        try {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            $sql  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
+            $stmt = $pdo->query($sql);
+            $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row && isset($row['device_id'])) {
+                $id = (int)$row['device_id'];
+                if ($id >= 1 && $id <= 512) {
+                    return $id;
+                }
+            }
+        } catch (Exception $e) {
+            error_log('[readDeviceIdFromDb] Read device_id failed: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
+
+
+
+
+
+        /**
+     * 將 /var/www/html/database/ntcs_device_temp.db 的 device_id
+     * 寫入到 /var/www/html/database/ntcs_device_IDAS.db
+     *
+     * 回傳：
+     *   - 成功：對應的 device_id (int)
+     *   - 失敗：null
+     */
+    public function syncTempDeviceIdToIdas(){
+        
+        $tempDbPath = '/var/www/html/database/ntcs_device_temp.db';
+        $idasDbPath = '/var/www/html/database/ntcs_device_IDAS.db';
+
+        // 1) 先從 temp DB 讀 device_id
+        if (!file_exists($tempDbPath)) {
+            error_log('[syncTempDeviceIdToIdas] temp DB not found: ' . $tempDbPath);
+            return null;
+        }
+
+        $deviceId = null;
+
+        try {
+            $pdoTemp = new PDO('sqlite:' . $tempDbPath);
+            $pdoTemp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            $sql  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
+            $stmt = $pdoTemp->query($sql);
+            $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row && isset($row['device_id'])) {
+                $deviceId = (int)$row['device_id'];
+            } else {
+                error_log('[syncTempDeviceIdToIdas] No device_id found in temp DB.');
+                return null;
+            }
+        } catch (Exception $e) {
+            error_log('[syncTempDeviceIdToIdas] Read temp DB failed: ' . $e->getMessage());
+            return null;
+        }
+
+        // 2) 把這個 device_id 寫入 IDAS DB
+        if (!file_exists($idasDbPath)) {
+            error_log('[syncTempDeviceIdToIdas] IDAS DB not found: ' . $idasDbPath);
+            return null;
+        }
+
+        try {
+            $pdoIdas = new PDO('sqlite:' . $idasDbPath);
+            $pdoIdas->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 檢查 IDAS DB 裡是否已有資料
+            $sqlCheck  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
+            $stmtCheck = $pdoIdas->query($sqlCheck);
+            $rowIdas   = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+            if ($rowIdas && isset($rowIdas['device_id'])) {
+                // 有資料 → update
+                $sqlUpdate = "UPDATE ntcs_device_test SET device_id = :device_id";
+                $stmtUpd   = $pdoIdas->prepare($sqlUpdate);
+                $stmtUpd->execute([':device_id' => $deviceId]);
+            } else {
+                // 沒資料 → insert
+                $sqlInsert = "INSERT INTO ntcs_device_test (device_id) VALUES (:device_id)";
+                $stmtIns   = $pdoIdas->prepare($sqlInsert);
+                $stmtIns->execute([':device_id' => $deviceId]);
+            }
+
+            // 視需要調權限
+            @chmod($idasDbPath, 0777);
+
+            error_log('[syncTempDeviceIdToIdas] Synced device_id=' . $deviceId . ' from temp DB to IDAS DB.');
+
+            return $deviceId;
+
+        } catch (Exception $e) {
+            error_log('[syncTempDeviceIdToIdas] Write to IDAS DB failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+
+
+
     
 
     //判斷控制器的登入登出
@@ -189,52 +435,6 @@ class Controller
 
         return $response;
     }
-
-
-
-
-
-   
-
-        
-    //取得控制器 目前用了多少容量
-    public function check_controller_size(){
-
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
-        $unitId = 0;
-        $startAddress = 269;
-        $quantity = 1;
-
-        $response = ['result' => null, 'error' => ''];
-
-        // 驗證 IP 格式
-        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-            $response['error'] = "無效的 IP 位址：$ip";
-            echo json_encode($response);
-            return;
-        }
-
-        try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            $response['result'] = $data[1] ?? null;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
-        }
-
-        echo json_encode($response);
-    }
-
 
 
     public function get_tools_version($unitId){
@@ -633,6 +833,9 @@ class Controller
         $this->sync_ntcs_tool_data();
     }
 
+
+
+
     public function ntcs_device_db_load() {
         $this->sync_db(
             '/home/kls/NTCS7/ntcs_device.db',
@@ -797,7 +1000,4 @@ class Controller
             echo $e->getMessage();
         }
     }
-
-
-
 }

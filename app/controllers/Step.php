@@ -9,6 +9,8 @@ class Step extends Controller
     private $sequenceModel;
     private $SettingModel;
     private $ToolModel;
+    Private $deviceId;
+
 
     public function __construct(){
     
@@ -17,10 +19,15 @@ class Step extends Controller
         $this->sequenceModel = $this->model('Sequence');
         $this->SettingModel = $this->model('Setting');
         $this->ToolModel = $this->model('Tool');
-        
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
     }
 
     public function index($job_id,$seq_id){
+
+
         if( isset($job_id) && !empty($job_id)  && isset($seq_id) && !empty($seq_id)){
 
         }else{

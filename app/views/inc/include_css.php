@@ -138,6 +138,159 @@ function include_css() {
 
     <!-- ================== 其他工具 JS ================== -->
 
+<script>
+/* ============================================================
+   Device ID 自動偵測 + alertify 語系提示
+   ============================================================ */
+
+// -----------------------------
+// 1) 安全取得 cookie
+// -----------------------------
+function getCookieSafe(name) {
+    try {
+        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// -----------------------------
+// 2) 取得語系 (en-us / zh-tw / zh-cn)
+// -----------------------------
+function getLangCode() {
+    let lang =
+        (typeof getCookie === "function" && getCookie("language")) ||
+        getCookieSafe("language") ||
+        "zh-tw";
+
+    lang = String(lang).toLowerCase();
+    if (lang === "en") lang = "en-us";
+    if (!["en-us", "zh-tw", "zh-cn"].includes(lang)) lang = "en-us";
+    return lang;
+}
+
+// -----------------------------
+// 3) 語系提示訊息
+// -----------------------------
+function getDeviceReloadMessage(newId) {
+    const lang = getLangCode();
+
+    if (lang === "zh-tw") {
+        return "控制器裝置編號已變更為 " + newId + "，是否重新整理畫面";
+    }
+    if (lang === "zh-cn") {
+        return "控制器设备编号已变更为 " + newId + "，是否重新刷新页面";
+    }
+    return "Controller device ID has changed to " + newId + ". Reload the page now";
+}
+
+// -----------------------------
+// 4) alertify 語系 UI
+// -----------------------------
+function getAlertifyUiText() {
+    const lang = getLangCode();
+
+    if (lang === "zh-tw") {
+        return { title: "提示", ok: "確定", cancel: "取消" };
+    }
+    if (lang === "zh-cn") {
+        return { title: "提示", ok: "确定", cancel: "取消" };
+    }
+    return { title: "Notice", ok: "OK", cancel: "Cancel" };
+}
+
+// -----------------------------
+// 5) 全域變數
+// -----------------------------
+var currentDeviceId = null;
+var deviceReloadDialogShown = false; // 避免狂跳 alert 視窗
+
+// -----------------------------
+// 6) 主輪詢函式
+// -----------------------------
+function pollDeviceId() {
+    $.ajax({
+        url: "?url=Customize/ajax_check_device_id",
+        type: "POST",
+        dataType: "json",
+        data: {
+            current_device_id: currentDeviceId
+        },
+        success: function (res) {
+            if (!res || res.res_type !== "OK") return;
+
+            var newId =
+                res.device_id !== null && res.device_id !== undefined
+                    ? parseInt(res.device_id, 10)
+                    : null;
+
+            if (!Number.isFinite(newId)) newId = null;
+
+            var changed = !!res.changed; // 完全依後端判斷
+
+            // 初始化 currentDeviceId
+            if (newId !== null && currentDeviceId === null) {
+                currentDeviceId = newId;
+                return; // 第一次不彈窗
+            }
+
+            // 若後端說 changed = true → 就跳 alertify
+            if (newId !== null && changed) {
+
+                if (typeof alertify === "undefined" || !alertify.confirm) {
+                    console.warn("Alertify not loaded -- cannot show popup.");
+                    return;
+                }
+
+                if (deviceReloadDialogShown) return;
+                deviceReloadDialogShown = true;
+
+                var msg = getDeviceReloadMessage(newId);
+                var ui = getAlertifyUiText();
+
+                alertify
+                    .confirm(
+                        ui.title,
+                        msg,
+                        function () {
+                            location.reload(); // OK → reload
+                        },
+                        function () {
+                            deviceReloadDialogShown = false; // Cancel → 等下一次偵測
+                        }
+                    )
+                    .set({
+                        labels: {
+                            ok: ui.ok,
+                            cancel: ui.cancel
+                        }
+                    });
+            }
+
+            // 更新 currentDeviceId
+            if (newId !== null) currentDeviceId = newId;
+        },
+        complete: function () {
+            setTimeout(pollDeviceId, 2000); // 每2秒檢查一次
+        }
+    });
+}
+
+// -----------------------------
+// 7) 初始化
+// -----------------------------
+$(function () {
+    var cookieVal = getCookieSafe("temp_device_id");
+    if (cookieVal !== null && cookieVal !== "") {
+        currentDeviceId = parseInt(cookieVal, 10);
+        if (!Number.isFinite(currentDeviceId)) currentDeviceId = null;
+    }
+
+    pollDeviceId(); // 啟動輪詢
+});
+
+</script>
 
 
 

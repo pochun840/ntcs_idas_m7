@@ -5,12 +5,17 @@ class Tools extends Controller
     private $ToolModel;
     private $MiscellaneousModel;
     private $DataModel;
+    Private $deviceId;
 
     public function __construct()
     {
         $this->ToolModel = $this->model('Tool');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
     }
 
     // 取得所有info
@@ -22,7 +27,7 @@ class Tools extends Controller
 
         $controllers_info = $this->ToolModel->GetControllerInfo();
 
-        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1; 
+        $device_id = isset( $this->deviceId) ? (int) $this->deviceId : 1; 
         $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
 
         $MAC      = $this->getMacAddress();

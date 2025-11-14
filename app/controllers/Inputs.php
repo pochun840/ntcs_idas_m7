@@ -6,6 +6,7 @@ class Inputs extends Controller
     private $InputModel;
     private $MiscellaneousModel;
     private $jobModel;
+    Private $deviceId;
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
@@ -13,6 +14,10 @@ class Inputs extends Controller
         $this->InputModel = $this->model('Input');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->jobModel = $this->model('Job');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
     }
 
     // 取得所有Inputs

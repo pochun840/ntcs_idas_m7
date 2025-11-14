@@ -6,6 +6,8 @@ class Data extends Controller
     private $MiscellaneousModel;
     private $ToolModel;
     private $SettingModel;
+    Private $deviceId;
+
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
@@ -13,13 +15,15 @@ class Data extends Controller
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->ToolModel = $this->model('Tool');
         $this->SettingModel = $this->model('Setting');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
     }
 
     // 取得所有Jobs
     public function index(){
 
-        
-    
         $type = 'ALL';
         $this->ntcs_data_db_sysnc();
         $isMobile = $this->isMobileCheck();

@@ -9,6 +9,7 @@ class Jobs extends Controller
     private $sequenceModel;
     private $stepModel;
     private $OutputModel;
+    Private $deviceId;
  
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
@@ -22,6 +23,10 @@ class Jobs extends Controller
         $this->SettingModel = $this->model('Setting');
         $this->OutputModel = $this->model('Output');
 
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
+
     }
 
     // 取得所有Jobs
@@ -29,6 +34,8 @@ class Jobs extends Controller
 
         $this->ntcs_data_db_sysnc();
         $this->ntcs_device_db_load();
+
+
 
         $data = array();
 
@@ -68,11 +75,6 @@ class Jobs extends Controller
             $this->view('jobs/job_management', $data);
         }
     }
-
-    
-
-
-
 
     #create 
     public function create_job() {
@@ -466,12 +468,6 @@ class Jobs extends Controller
 
         //echo json_encode(['ok' => $ok]);
     }
-
-    
-    
-
-
-
 }
 
 ?>

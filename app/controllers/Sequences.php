@@ -8,6 +8,8 @@ class Sequences extends Controller
     private $SettingModel;
     private $ToolModel;
     private $stepModel;
+    Private $deviceId;
+
     public function __construct(){
 
         $this->sequenceModel = $this->model('Sequence');
@@ -15,6 +17,10 @@ class Sequences extends Controller
         $this->SettingModel = $this->model('Setting');
         $this->ToolModel = $this->model('Tool');
         $this->stepModel = $this->model('Steptcc');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
     }
 
     // 取得所有Sequences
@@ -42,6 +48,7 @@ class Sequences extends Controller
 
         $this->ntcs_data_db_sysnc();
         $this->ntcs_device_db_load();
+
         $isMobile = $this->isMobileCheck();
      
         $data =array();

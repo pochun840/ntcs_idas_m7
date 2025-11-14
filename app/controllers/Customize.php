@@ -5,12 +5,18 @@ class Customize extends Controller
     private $DataModel;
     private $SettingModel;
     private $MiscellaneousModel;
+    Private $deviceId;
+    private $change;
 
-    public function __construct()
-    {
+
+    public function __construct(){
+
         $this->DataModel = $this->model('Datas');
         $this->SettingModel = $this->model('Setting');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
     }
 
     // 取得所有Jobs
@@ -21,6 +27,8 @@ class Customize extends Controller
             include $file;
         }
 
+        var_dump($this->deviceId);
+        
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();
         $data_button = $this->MiscellaneousModel->details('customize');
@@ -500,28 +508,14 @@ class Customize extends Controller
         require_once '../app/config/config.php';
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
-
-        // 取得控制器資訊
-        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
-
-        // 正確拿出 device_id
-        $device_id = isset($controller_info['device_id'])
-            ? (int)$controller_info['device_id']
-            : 1;   // 沒抓到就先用 1
-
         // Modbus slave ID 合理範圍通常是  1~512
-        $unitId = $device_id;
+        $unitId = $$this->deviceId;
         if ($unitId < 1 || $unitId > 512) {
             $unitId = 1; 
         }
 
-
-
-
-
         $ip = CONTROLLER_IP;
         $port = 502;
-        //$unitId = 0;
         $startAddress = $a;
         $quantity = $b;  // 每個「暫存器」= 16-bit (= 2 bytes)
 
@@ -1057,5 +1051,31 @@ class Customize extends Controller
 
         return $rows;
     }
+
+
+    public function ajax_check_device_id(){
+        header('Content-Type: application/json; charset=utf-8');
+
+        // 前端傳來目前畫面認知的 device_id（從 cookie 或 JS 變數帶）
+        $current = isset($_POST['current_device_id']) ? (int)$_POST['current_device_id'] : null;
+
+        // 這邊可以視情況決定要不要強制 refresh
+        // - true  → 每次都重新偵測（最保險，但稍微重）
+        // - false → 使用你之前加的快取機制（比較省）
+        $new = $this->ntcs_device_db_sysnc(false);
+
+        $changed = false;
+        if ($new !== null && $current !== null && $new !== $current) {
+            $changed = true;
+        }
+
+        echo json_encode([
+            'res_type'   => 'OK',
+            'device_id'  => $new,
+            'changed'    => $changed,
+        ]);
+        exit;
+    }
+
 
 }

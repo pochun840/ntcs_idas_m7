@@ -5,16 +5,24 @@ class Logins extends Controller
     private $AdminModel;
     private $LoginModel;
     private $stepModel;
+    Private $deviceId;
+
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
         $this->LoginModel = $this->model('Login');
         $this->stepModel = $this->model('Steptcc');
         $this->AdminModel = $this->model('Admin');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
+
     }
 
 
     public function index($url){
+
 
         session_start();
         $_SESSION['sessionid'] = session_id();

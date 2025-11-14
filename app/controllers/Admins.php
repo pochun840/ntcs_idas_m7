@@ -5,16 +5,21 @@ class Admins extends Controller
     // 在建構子中將 Post 物件（Model）實例化
     private $MiscellaneousModel;
     private $AdminModel;
+    Private $deviceId;
+
     public function __construct()
     {
         $this->AdminModel = $this->model('Admin');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
+
     }
 
     // 取得所有info
     public function index(){
-
-        
 
         $isMobile = $this->isMobileCheck();
         $active_session = $this->AdminModel->GetActiveSession();

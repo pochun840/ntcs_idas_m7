@@ -8,15 +8,22 @@ class Settings extends Controller
     private $MiscellaneousModel;
     private $DataModel;
     private $stepModel;
+    Private $deviceId;
+
     // 在建構子中將 Post 物件（Model）實例化
-    public function __construct()
-    {
+    public function __construct(){
+
+        
         $this->SettingModel = $this->model('Setting');
         $this->AdminModel = $this->model('Admin');
         $this->ToolModel = $this->model('Tool');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
         $this->stepModel = $this->model('Steptcc');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
     }
 
     // 取得所有info
@@ -24,7 +31,6 @@ class Settings extends Controller
 
 
         $this->ntcs_data_db_sysnc();
-        
         $isMobile = $this->isMobileCheck();
 
         $lang = $this->MiscellaneousModel->details('lang');
@@ -403,8 +409,7 @@ class Settings extends Controller
         }
 
         // 取得控制器的id
-        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
-        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1;
+        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
         $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
 
         if( PHP_OS_FAMILY == 'Linux'){
@@ -496,8 +501,7 @@ class Settings extends Controller
 
         
         // 取得控制器的id
-        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
-        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1; 
+        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1; 
         $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
 
 
@@ -650,9 +654,9 @@ class Settings extends Controller
         $temp_del_year = $del_year_id[0]; // 只處理第一筆
 
         // 檢查是否可以刪除（Modbus 狀態檢查）
-        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
-        $device_id   = $controller_info['device_id'];
-        $idas_result = $this->idas_check($device_id);
+        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+        $idas_result = $this->idas_check( $unitId);
 
         if ($idas_result['result'] != 1) {
             echo json_encode([
@@ -801,9 +805,8 @@ class Settings extends Controller
         $dst3         = '/home/kls/NTCS7/ntcs_device.db';
 
 
-         // 取得控制器的id
-        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
-        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1;
+        // 取得 正確的 Modbus id
+        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
         $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
 
 
@@ -1607,12 +1610,9 @@ class Settings extends Controller
             include $file;
         }
 
-        // 取得控制器的id
-        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
-        $device_id = isset($controller_info['device_id']) ? (int)$controller_info['device_id'] : 1; 
+        // 取得Modbus的uid
+        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1; 
         $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
-
-
 
         // 驗證上傳
         if (empty($_FILES) || !isset($_FILES['file'])) {
@@ -1859,8 +1859,8 @@ class Settings extends Controller
         $device_sn       = preg_replace('/[^A-Za-z0-9_\-]/', '_', $device_sn_raw);
 
         // ✅ 檢查是否可同步（Modbus 工具狀態）
-        $device_id = isset($controller_info['device_id'])
-            ? (int)$controller_info['device_id']
+        $device_id = isset($this->deviceId)
+            ? (int)$this->deviceId
             : 1; // 防呆，沒有就給 1 (依你實際情況調整)
 
         $idas_result = $this->idas_check($device_id);

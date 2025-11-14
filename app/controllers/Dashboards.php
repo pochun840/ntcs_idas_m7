@@ -7,14 +7,22 @@ class Dashboards extends Controller
     private $MiscellaneousModel;
     private $DataModel;
     private $SettingModel;
+    Private $deviceId;
+
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
     {
+
+
         $this->DashboardModel = $this->model('Dashboard');
         $this->AdminModel = $this->model('Admin');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
         $this->SettingModel = $this->model('Setting');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
     }
 
     // 取得所有Jobs
