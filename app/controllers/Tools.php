@@ -28,7 +28,7 @@ class Tools extends Controller
         $controllers_info = $this->ToolModel->GetControllerInfo();
 
         $device_id = isset( $this->deviceId) ? (int) $this->deviceId : 1; 
-        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
         $MAC      = $this->getMacAddress();
         $ip_addr  = $this->getIp();

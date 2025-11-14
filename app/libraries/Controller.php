@@ -197,7 +197,7 @@ class Controller
 
         // === 0) 先用 cookie 快取，避免每次都重跑整個流程 ===
         //     cacheTtl：幾秒內視為「不用再重新偵測」，你可以自己調整（例如 30 秒/60 秒）
-        $cacheTtl = 30; // 秒
+        $cacheTtl = 10; // 秒
 
         if (
             !$forceRefresh &&
@@ -206,7 +206,7 @@ class Controller
             $cid = (int)$_COOKIE['temp_device_id'];
             $ts  = (int)$_COOKIE['temp_device_id_ts'];
 
-            if ($cid >= 1 && $cid <= 512 && $ts > 0 && (time() - $ts) < $cacheTtl) {
+            if ($cid >= 1 && $cid <= 255 && $ts > 0 && (time() - $ts) < $cacheTtl) {
                 // 在快取有效時間內 → 直接回傳，完全不打 DB / Modbus
                 return $cid;
             }
@@ -281,7 +281,7 @@ class Controller
      * 讀不到 / DB 不存在 → 回傳 null
      */
     private function readDeviceIdFromDb($dbPath){
-        
+
         if (!file_exists($dbPath)) {
             // 不寫 log 也可以，看你要不要
             // error_log('[readDeviceIdFromDb] DB file not found: ' . $dbPath);
@@ -298,7 +298,7 @@ class Controller
 
             if ($row && isset($row['device_id'])) {
                 $id = (int)$row['device_id'];
-                if ($id >= 1 && $id <= 512) {
+                if ($id >= 1 && $id <= 255) {
                     return $id;
                 }
             }
@@ -1000,4 +1000,31 @@ class Controller
             echo $e->getMessage();
         }
     }
+
+
+    public function ajax_check_device_id(){
+        header('Content-Type: application/json; charset=utf-8');
+
+        // 前端傳來目前畫面認知的 device_id（從 cookie 或 JS 變數帶）
+        $current = isset($_POST['current_device_id']) ? (int)$_POST['current_device_id'] : null;
+
+        // 這邊可以視情況決定要不要強制 refresh
+        // - true  → 每次都重新偵測（最保險，但稍微重）
+        // - false → 使用你之前加的快取機制（比較省）
+        $new = $this->ntcs_device_db_sysnc(false);
+
+        $changed = false;
+        if ($new !== null && $current !== null && $new !== $current) {
+            $changed = true;
+        }
+
+        echo json_encode([
+            'res_type'   => 'OK',
+            'device_id'  => $new,
+            'changed'    => $changed,
+        ]);
+        exit;
+    }
+
+
 }

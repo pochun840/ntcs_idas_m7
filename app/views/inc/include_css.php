@@ -211,7 +211,7 @@ var deviceReloadDialogShown = false; // 避免狂跳 alert 視窗
 // -----------------------------
 function pollDeviceId() {
     $.ajax({
-        url: "?url=Customize/ajax_check_device_id",
+        url: "?url=Check/ajax_check_device_id",
         type: "POST",
         dataType: "json",
         data: {
@@ -235,10 +235,10 @@ function pollDeviceId() {
                 return; // 第一次不彈窗
             }
 
-            // 若後端說 changed = true → 就跳 alertify
+            // 若後端說 changed = true → 就跳 alertify（只能按「確定」，不能關）
             if (newId !== null && changed) {
 
-                if (typeof alertify === "undefined" || !alertify.confirm) {
+                if (typeof alertify === "undefined" || !alertify.alert) {
                     console.warn("Alertify not loaded -- cannot show popup.");
                     return;
                 }
@@ -247,24 +247,29 @@ function pollDeviceId() {
                 deviceReloadDialogShown = true;
 
                 var msg = getDeviceReloadMessage(newId);
-                var ui = getAlertifyUiText();
+                var ui  = getAlertifyUiText();
 
+                // 使用 alertify.alert：只有一顆 OK 按鈕，關閉時強制 reload
                 alertify
-                    .confirm(
+                    .alert(
                         ui.title,
                         msg,
                         function () {
-                            location.reload(); // OK → reload
-                        },
-                        function () {
-                            deviceReloadDialogShown = false; // Cancel → 等下一次偵測
+                            // 使用者一定要按「確定」才能關閉 → 這裡直接 reload
+                            location.reload();
                         }
                     )
                     .set({
-                        labels: {
-                            ok: ui.ok,
-                            cancel: ui.cancel
+                        labels: { ok: ui.ok }, // 只顯示「確定 / OK」
+                        closable: false,       // 關掉右上角 X
+                        movable: false,        // 可選：不要讓使用者拖動
+                        onshow: function () {
+                            // 只給這個 dialog 加一個特殊 class
+                            this.elements.root.classList.add('device-reload-alert');
                         }
+
+                        // 若你的 alertify 支援，可以再加：
+                        // closableByDimmer: false
                     });
             }
 
@@ -289,10 +294,18 @@ $(function () {
 
     pollDeviceId(); // 啟動輪詢
 });
-
 </script>
 
 
+<style>
+/* 只縮小「device-reload-alert」這種對話框的確定按鈕 */
+.device-reload-alert .ajs-footer .ajs-button {
+    padding: 2px 12px;   /* 內距變小 */
+    font-size: 13px;     /* 字體小一點 */
+    min-width: 70px;     /* 按鈕寬度縮短 */
+    line-height: 1.2;
+}
+</style>
 
 
 

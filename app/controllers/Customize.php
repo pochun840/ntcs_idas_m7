@@ -6,7 +6,6 @@ class Customize extends Controller
     private $SettingModel;
     private $MiscellaneousModel;
     Private $deviceId;
-    private $change;
 
 
     public function __construct(){
@@ -26,8 +25,6 @@ class Customize extends Controller
         if (!empty($file)) {
             include $file;
         }
-
-        var_dump($this->deviceId);
         
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();
@@ -508,9 +505,9 @@ class Customize extends Controller
         require_once '../app/config/config.php';
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
-        // Modbus slave ID 合理範圍通常是  1~512
-        $unitId = $$this->deviceId;
-        if ($unitId < 1 || $unitId > 512) {
+        // Modbus slave ID 合理範圍通常是  1~255
+        $unitId = $this->deviceId;
+        if ($unitId < 1 || $unitId > 255) {
             $unitId = 1; 
         }
 
@@ -1050,31 +1047,6 @@ class Customize extends Controller
         }
 
         return $rows;
-    }
-
-
-    public function ajax_check_device_id(){
-        header('Content-Type: application/json; charset=utf-8');
-
-        // 前端傳來目前畫面認知的 device_id（從 cookie 或 JS 變數帶）
-        $current = isset($_POST['current_device_id']) ? (int)$_POST['current_device_id'] : null;
-
-        // 這邊可以視情況決定要不要強制 refresh
-        // - true  → 每次都重新偵測（最保險，但稍微重）
-        // - false → 使用你之前加的快取機制（比較省）
-        $new = $this->ntcs_device_db_sysnc(false);
-
-        $changed = false;
-        if ($new !== null && $current !== null && $new !== $current) {
-            $changed = true;
-        }
-
-        echo json_encode([
-            'res_type'   => 'OK',
-            'device_id'  => $new,
-            'changed'    => $changed,
-        ]);
-        exit;
     }
 
 

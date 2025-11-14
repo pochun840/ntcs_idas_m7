@@ -5,7 +5,7 @@
             <div class="row t2">
                 <div class="col-6 t1"><?php echo $text['system_id'];?>:</div>
                 <div class="col t2">
-                    <input id="control_id" name="control_id" type="number" max=512 min=1 maxlength="3" value="<?php echo $data['controller_info']['device_id'];?>" class="t3 form-control"  required>
+                    <input id="control_id" name="control_id" type="number" max=255 min=1 maxlength="3" value="<?php echo $data['controller_info']['device_id'];?>" class="t3 form-control"  required>
                 </div>
             </div>    
             <div class="row t2">
@@ -235,7 +235,7 @@
      function input_check_setting(argument) {
 
         let conditions = [
-            { id: 'control_id', pattern: /^\d{0,4}$/, min: 1, max: 512 },
+            { id: 'control_id', pattern: /^\d{0,4}$/, min: 1, max: 255 },
             { id: 'control_name', pattern: /^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min: null, max: null },
             { id: 'storage_warning', pattern: /^\d{0,4}$/, min: 50, max: 95 },
             { id: 'torque_filter', pattern: /^\d{1,3}(\.\d{1,6})?$/, min: 0.0, max: 200 },

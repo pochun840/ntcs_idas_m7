@@ -410,7 +410,7 @@ class Settings extends Controller
 
         // 取得控制器的id
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
         if( PHP_OS_FAMILY == 'Linux'){
             $this->logMessage('firmware update start');
@@ -502,7 +502,7 @@ class Settings extends Controller
         
         // 取得控制器的id
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1; 
-        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
 
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
@@ -655,7 +655,7 @@ class Settings extends Controller
 
         // 檢查是否可以刪除（Modbus 狀態檢查）
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
         $idas_result = $this->idas_check( $unitId);
 
         if ($idas_result['result'] != 1) {
@@ -807,7 +807,7 @@ class Settings extends Controller
 
         // 取得 正確的 Modbus id
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
 
 
@@ -966,9 +966,9 @@ class Settings extends Controller
             ? (int)$controller_info['device_id']
             : 1;   // 沒抓到就先用 1
 
-        // Modbus slave ID 合理範圍通常是  1~512
+        // Modbus slave ID 合理範圍通常是  1~255
         $unitId = $device_id;
-        if ($unitId < 1 || $unitId > 512) {
+        if ($unitId < 1 || $unitId > 255) {
             $unitId = 1; 
         }
 
@@ -1612,7 +1612,7 @@ class Settings extends Controller
 
         // 取得Modbus的uid
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1; 
-        $unitId = ($device_id >= 1 && $device_id <= 512) ? $device_id : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
         // 驗證上傳
         if (empty($_FILES) || !isset($_FILES['file'])) {
