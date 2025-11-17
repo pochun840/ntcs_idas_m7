@@ -17,17 +17,14 @@ class Remotes extends Controller
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
+
+
     }
 
     // 取得所有Jobs
     public function index(){
 
-        
-
-        /*$file = $this->MiscellaneousModel->lang_load();
-        if(!empty($file)){
-            include $file;
-        }*/
+   
         $this->ntcs_data_db_sysnc();
 
         $isMobile = $this->isMobileCheck();
@@ -59,6 +56,7 @@ class Remotes extends Controller
             $error_message .= "seq_id,";
         }
 
+        $device_id = $this->deviceId;
         if($input_check && PHP_OS_FAMILY == 'Linux'){ 
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
@@ -69,7 +67,7 @@ class Remotes extends Controller
                 $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
 
                 // FC 16
-                $modbus->writeMultipleRegister(0, 463, $data, $dataTypes);
+                $modbus->writeMultipleRegister($device_id, 463, $data, $dataTypes);
 
                 echo json_encode(array('error' => '','modbus_status' => $modbus->status));
                 exit();
@@ -88,6 +86,8 @@ class Remotes extends Controller
     public function get_current_job($value='')
     {
         $error_message = '';
+       
+        $device_id = $this->deviceId;
         if(PHP_OS_FAMILY == 'Linux'){
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
@@ -97,7 +97,7 @@ class Remotes extends Controller
                 $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
 
                 // FC 3
-                $recData = $modbus->readMultipleRegisters(1, 4305, 3);
+                $recData = $modbus->readMultipleRegisters($device_id, 4305, 3);
 
                 $data['jod_id']  = $recData[0]*16 + $recData[1];
                 $data['seq_id']  = $recData[2]*16 + $recData[3];

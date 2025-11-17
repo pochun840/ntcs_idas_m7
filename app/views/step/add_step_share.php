@@ -3457,17 +3457,17 @@
             const I18N = {
                 'en-us': { 
                     title: 'Warning', 
-                    msg: `Threshold torque (${unit}) must be less than High Torque`, 
+                    msg: `Threshold torque (${unit}) must be less than Target Torque`, 
                     ok: 'OK' 
                 },
                 'zh-tw': { 
                     title: '警告',   
-                    msg: `門檻點扭力 (${unit}) 需小於 扭力上限`, 
+                    msg: `門檻點扭力 (${unit}) 需小於 目標扭力`, 
                     ok: '確定' 
                 },
                 'zh-cn': { 
                     title: '警告',   
-                    msg: `门槛点扭力 (${unit}) 需小于 扭力上限`, 
+                    msg: `门槛点扭力 (${unit}) 需小于 目标扭力`, 
                     ok: '确定' 
                 }
             };

@@ -152,51 +152,15 @@ class Controller
     }
 
 
-    private function writeDeviceIdToDb($dbPath, $deviceId){
-
-        if (!file_exists($dbPath)) {
-            error_log('[writeDeviceIdToDb] DB file not found: ' . $dbPath);
-            return false;
-        }
-
-        try {
-            $pdo = new PDO('sqlite:' . $dbPath);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            // 先看有沒有資料
-            $sqlCheck  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
-            $stmtCheck = $pdo->query($sqlCheck);
-            $row       = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-
-            if ($row && isset($row['device_id'])) {
-                // 有資料 → update
-                $sqlUpdate = "UPDATE ntcs_device_test SET device_id = :device_id";
-                $stmtUpd   = $pdo->prepare($sqlUpdate);
-                $stmtUpd->execute([':device_id' => $deviceId]);
-            } else {
-                // 沒資料 → insert
-                $sqlInsert = "INSERT INTO ntcs_device_test (device_id) VALUES (:device_id)";
-                $stmtIns   = $pdo->prepare($sqlInsert);
-                $stmtIns->execute([':device_id' => $deviceId]);
-            }
-
-            return true;
-        } catch (Exception $e) {
-            error_log('[writeDeviceIdToDb] Write device_id failed (' . $dbPath . '): ' . $e->getMessage());
-            return false;
-        }
-    }
-
-
 
     public function ntcs_device_db_sysnc($forceRefresh = false){
+
         // 路徑集中放這裡
         $srcController = '/home/kls/NTCS7/ntcs_device.db';            // 控制器端 ntcs_device.db
         $tempDbPath    = '/var/www/html/database/ntcs_device_temp.db';// iDAS 暫存
         $idasDbPath    = '/var/www/html/database/ntcs_device_IDAS.db';// iDAS 正式用的 device DB
 
         // === 0) 先用 cookie 快取，避免每次都重跑整個流程 ===
-        //     cacheTtl：幾秒內視為「不用再重新偵測」，你可以自己調整（例如 30 秒/60 秒）
         $cacheTtl = 10; // 秒
 
         if (
@@ -246,14 +210,9 @@ class Controller
                     $modbusOk      = true;
                     $finalDeviceId = $deviceIdFromTemp;
 
-                    // 2-3) 只有在 temp 的 device_id 可以成功打到 Modbus 時，
-                    //      才把 temp DB 覆蓋到 iDAS DB（避免錯誤設定也覆蓋過去）
-                    if (!@copy($tempDbPath, $idasDbPath)) {
-                        error_log('[ntcs_device_db_sysnc] Failed to copy temp DB to IDAS DB');
-                    } else {
-                        @chmod($idasDbPath, 0777);
-                        $this->logMessage('[ntcs_device_db_sysnc] temp DB copied to ntcs_device_IDAS.db');
-                    }
+                    // 2-3) ✅ 不再整個 copy DB
+                    //      改成只同步 ntcs_device_test 這張表的內容
+                    $this->syncTempDeviceIdToIdas();  // ★ 關鍵在這行
                 }
             }
         }
@@ -263,10 +222,7 @@ class Controller
         // -------------------------------------------------------
         if ($finalDeviceId !== null) {
             $exp = time() + 86400 * 30; // 30 天
-
-            // 實際用來打 Modbus 的 device_id
             setcookie('temp_device_id', (string)$finalDeviceId, $exp, '/', '', false, true);
-            // 紀錄偵測時間，用來做 cache TTL
             setcookie('temp_device_id_ts', (string)time(), $exp, '/', '', false, true);
 
             $_COOKIE['temp_device_id']    = (string)$finalDeviceId;
@@ -275,6 +231,8 @@ class Controller
 
         return $finalDeviceId;
     }
+
+
 
     /**
      * 小工具：從指定 SQLite DB 抓 ntcs_device_test.device_id
@@ -309,95 +267,103 @@ class Controller
         return null;
     }
 
-
-
-
-
-
-        /**
-     * 將 /var/www/html/database/ntcs_device_temp.db 的 device_id
-     * 寫入到 /var/www/html/database/ntcs_device_IDAS.db
+    
+    /**
+     * 將 /var/www/html/database/ntcs_device_temp.db 的
+     * table ntcs_device_test「整張表」同步到
+     * /var/www/html/database/ntcs_device_IDAS.db 的 ntcs_device_test。
+     *
+     * 結果：
+     *   - IDAS DB 中 ntcs_device_test 的所有列 & 欄位
+     *     都會與 temp DB 的 ntcs_device_test 完全相同。
      *
      * 回傳：
-     *   - 成功：對應的 device_id (int)
-     *   - 失敗：null
+     *   - 成功：若有抓到第一筆 device_id，回傳 (int)device_id
+     *   - 若表為空或失敗：回傳 null
      */
     public function syncTempDeviceIdToIdas(){
-        
+
         $tempDbPath = '/var/www/html/database/ntcs_device_temp.db';
         $idasDbPath = '/var/www/html/database/ntcs_device_IDAS.db';
 
-        // 1) 先從 temp DB 讀 device_id
         if (!file_exists($tempDbPath)) {
             error_log('[syncTempDeviceIdToIdas] temp DB not found: ' . $tempDbPath);
             return null;
         }
-
-        $deviceId = null;
-
-        try {
-            $pdoTemp = new PDO('sqlite:' . $tempDbPath);
-            $pdoTemp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            $sql  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
-            $stmt = $pdoTemp->query($sql);
-            $row  = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($row && isset($row['device_id'])) {
-                $deviceId = (int)$row['device_id'];
-            } else {
-                error_log('[syncTempDeviceIdToIdas] No device_id found in temp DB.');
-                return null;
-            }
-        } catch (Exception $e) {
-            error_log('[syncTempDeviceIdToIdas] Read temp DB failed: ' . $e->getMessage());
-            return null;
-        }
-
-        // 2) 把這個 device_id 寫入 IDAS DB
         if (!file_exists($idasDbPath)) {
             error_log('[syncTempDeviceIdToIdas] IDAS DB not found: ' . $idasDbPath);
             return null;
         }
 
         try {
+            // 開啟兩個 DB
+            $pdoTemp = new PDO('sqlite:' . $tempDbPath);
+            $pdoTemp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
             $pdoIdas = new PDO('sqlite:' . $idasDbPath);
             $pdoIdas->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            // 檢查 IDAS DB 裡是否已有資料
-            $sqlCheck  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
-            $stmtCheck = $pdoIdas->query($sqlCheck);
-            $rowIdas   = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+            // 1) 先從 temp DB 抓出整張 ntcs_device_test 的資料
+            $sqlSel  = "SELECT * FROM ntcs_device_test";
+            $stmtSel = $pdoTemp->query($sqlSel);
+            $rows    = $stmtSel->fetchAll(PDO::FETCH_ASSOC);
 
-            if ($rowIdas && isset($rowIdas['device_id'])) {
-                // 有資料 → update
-                $sqlUpdate = "UPDATE ntcs_device_test SET device_id = :device_id";
-                $stmtUpd   = $pdoIdas->prepare($sqlUpdate);
-                $stmtUpd->execute([':device_id' => $deviceId]);
-            } else {
-                // 沒資料 → insert
-                $sqlInsert = "INSERT INTO ntcs_device_test (device_id) VALUES (:device_id)";
-                $stmtIns   = $pdoIdas->prepare($sqlInsert);
-                $stmtIns->execute([':device_id' => $deviceId]);
+            // 若 temp 表完全沒資料，就清空 IDAS 對應表，然後 return null
+            if (empty($rows)) {
+                $pdoIdas->exec("DELETE FROM ntcs_device_test");
+                error_log('[syncTempDeviceIdToIdas] temp ntcs_device_test is empty, cleared IDAS table.');
+                return null;
             }
 
-            // 視需要調權限
+            // 2) 取得欄位列表（用第一列的 key 當所有欄位）
+            $columns = array_keys($rows[0]);
+            $colList = implode(',', $columns);
+            $paramList = ':' . implode(',:', $columns);
+
+            // 3) 在 IDAS 這邊用交易：先清空，再整批 INSERT
+            $pdoIdas->beginTransaction();
+
+            // 3-1) 先把 IDAS 的 ntcs_device_test 清空
+            $pdoIdas->exec("DELETE FROM ntcs_device_test");
+
+            // 3-2) 將 temp 的每一列，整列寫入 IDAS
+            $sqlIns = "INSERT INTO ntcs_device_test ({$colList}) VALUES ({$paramList})";
+            $stmtIns = $pdoIdas->prepare($sqlIns);
+
+            foreach ($rows as $row) {
+                $params = [];
+                foreach ($columns as $col) {
+                    $params[":{$col}"] = $row[$col];
+                }
+                $stmtIns->execute($params);
+            }
+
+            $pdoIdas->commit();
+
             @chmod($idasDbPath, 0777);
 
-            error_log('[syncTempDeviceIdToIdas] Synced device_id=' . $deviceId . ' from temp DB to IDAS DB.');
-
-            return $deviceId;
+            // 4) 回傳第一筆 device_id（若有的話）
+            $firstRow = $rows[0];
+            if (isset($firstRow['device_id'])) {
+                $deviceId = (int)$firstRow['device_id'];
+                error_log('[syncTempDeviceIdToIdas] synced table ntcs_device_test, device_id=' . $deviceId);
+                return $deviceId;
+            } else {
+                error_log('[syncTempDeviceIdToIdas] synced table ntcs_device_test but no device_id column in first row.');
+                return null;
+            }
 
         } catch (Exception $e) {
-            error_log('[syncTempDeviceIdToIdas] Write to IDAS DB failed: ' . $e->getMessage());
+            if (isset($pdoIdas) && $pdoIdas->inTransaction()) {
+                $pdoIdas->rollBack();
+            }
+            error_log('[syncTempDeviceIdToIdas] sync table ntcs_device_test failed: ' . $e->getMessage());
             return null;
         }
     }
 
 
 
-
-    
 
     //判斷控制器的登入登出
     public function idas_check($device_id){
