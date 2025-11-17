@@ -56,7 +56,12 @@ class Remotes extends Controller
             $error_message .= "seq_id,";
         }
 
+        
         $device_id = $this->deviceId;
+        if ($device_id === null || $device_id < 1 || $device_id > 255) {
+            $error_message = 'device_id,';
+        }
+
         if($input_check && PHP_OS_FAMILY == 'Linux'){ 
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
@@ -83,11 +88,16 @@ class Remotes extends Controller
         }
     }
 
-    public function get_current_job($value='')
-    {
+    public function get_current_job($value=''){
+
         $error_message = '';
        
         $device_id = $this->deviceId;
+        if ($device_id === null || $device_id < 1 || $device_id > 255) {
+            $error_message = 'device_id,';
+        }
+
+
         if(PHP_OS_FAMILY == 'Linux'){
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
