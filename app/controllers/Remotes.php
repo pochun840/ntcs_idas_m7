@@ -8,16 +8,14 @@ class Remotes extends Controller
     Private $deviceId;
     
     // 在建構子中將 Post 物件（Model）實例化
-    public function __construct()
-    {
+    public function __construct(){
+        
         $this->DataModel = $this->model('Datas');
         $this->SettingModel = $this->model('Setting');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
-
-
 
     }
 
