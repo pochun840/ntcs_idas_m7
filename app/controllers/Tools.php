@@ -81,12 +81,10 @@ class Tools extends Controller
         $version = $this->getFirmwareVersion();
 
 
-
         // 版本資訊
         $tools_version    = $this->get_tools_version($unitId) / 100; 
         $firmware_version = $this->get_firmware_version($unitId) / 100; 
         $upgrade_ver      = $this->get_upgrade_version();
-
 
         // 起子型號
         $tools_type_temp = $this->get_tools_type($unitId);
