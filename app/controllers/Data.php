@@ -104,8 +104,6 @@ class Data extends Controller
             include $file;
         }
 
-
-
         $input_check = true;
 
         // 取得控制器資訊（含序號）

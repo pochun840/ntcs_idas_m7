@@ -493,17 +493,16 @@ class Settings extends Controller
 
 
     public function export_sysytem_config() {
+    
         if (PHP_OS_FAMILY !== 'Linux') {
             http_response_code(400);
             echo json_encode(['error' => 'Only supported on Linux']);
             return;
         }
 
-        
-        // 取得控制器的id
+        // 取得控制器的 id
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1; 
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
-
 
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
@@ -524,8 +523,13 @@ class Settings extends Controller
         // 2) 基本資訊
         $controller_info = $this->SettingModel->GetControllerInfo();
         $sn = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
+
+        // Lin 檔名用原本格式（YmdHis）
         $system_date = trim(shell_exec("date '+%Y%m%d%H%M%S'")) ?: date('YmdHis');
         $linNameInZip = "con_{$sn}_{$system_date}.Lin";
+
+        // 其他檔案共用同一個時間戳（Y-m-d_His）
+        $exportTime = date('Y-m-d_His');  // ex: 2025-11-18_091704
 
         // 3) 等候檔案出現（並確認大小穩定）
         $candidates = [
@@ -561,27 +565,34 @@ class Settings extends Controller
             return;
         }
 
+        // 4-1) 加入 KLS_NTCS / KLS_NTCS_IDAS 檔
         if ($srcLin) {
             $zip->addFile($srcLin, $linNameInZip);
         } else {
             $this->logMessage('KLS_NTCS.Lin not found or not stable — skipped');
-            // 想要更明顯也可加提示檔：
-            // $zip->addFromString("README.txt", "KLS_NTCS.Lin not ready at packaging time.\n");
         }
 
-       $barcode = "/var/www/html/database/ntcs_barcode_IDAS.db";
+        // 4-2) 加入條碼資料庫（帶時間戳，與 exportTime 共用）
+        $barcode = "/var/www/html/database/ntcs_barcode_IDAS.db";
         if (is_file($barcode)) {
-            // 保留原本的名稱（如果你不需要，可以刪掉這行）
-            //$zip->addFile($barcode, "ntcs_barcode.cfg");
-
-            // 新增一個帶時間戳的檔名，例如：ntcs_barcode_2025-11-13_141115.db
-            $barcodeTime = date('Y-m-d_His'); // 格式：2025-11-13_141115
-            $barcodeZipName = "ntcs_barcode_{$barcodeTime}.db";
+            // ex: ntcs_barcode_2025-11-18_091704.db
+            $barcodeZipName = "ntcs_barcode_{$exportTime}.db";
             $zip->addFile($barcode, $barcodeZipName);
         } else {
-            $this->logMessage("file not found: {$barcode}");
+            $this->logMessage("file not found: {$barcode}"); 
         }
 
+        // 4-3) 加入 log 檔 /home/kls/NTCS7/ntcs_log.csv（帶時間戳，與 exportTime 共用）
+        $logCsv = "/home/kls/NTCS7/ntcs_log.csv";
+        if (is_file($logCsv)) {
+            // ex: ntcs_log_2025-11-18_091704.csv
+            $logZipName = "ntcs_log_{$exportTime}.csv";
+            $zip->addFile($logCsv, $logZipName);
+        } else {
+            $this->logMessage("file not found: {$logCsv}");
+        }
+
+     
         $zip->close();
 
         // 5) 送下載
@@ -593,7 +604,6 @@ class Settings extends Controller
         readfile($zipPath);
         exit;
     }
-
 
 
     public function get_file_list($value='')

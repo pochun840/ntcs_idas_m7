@@ -298,14 +298,33 @@ $(function () {
 
 
 <style>
-/* 只縮小「device-reload-alert」這種對話框的確定按鈕 */
-.device-reload-alert .ajs-footer .ajs-button {
-    padding: 2px 12px;   /* 內距變小 */
-    font-size: 13px;     /* 字體小一點 */
-    min-width: 70px;     /* 按鈕寬度縮短 */
-    line-height: 1.2;
+
+/* 不要再用裸的 button，改用 big-btn */
+.big-btn {
+    background: #EEEEEE;
+    border-radius: 10%;
+    width: 130px;
+    height: 130px;
+    color: #FFFFFF;
+    text-align: center;
+    /* float: center; 這個其實是無效值，可以拿掉，改用 flex 或 text-align 排版 */
+}
+
+/* 只縮小 Device ID 警告視窗裡的「確定」(OK) 按鈕 */
+.device-reload-alert .ajs-footer .ajs-buttons .ajs-button.ajs-ok {
+    width: auto !important;
+    height: auto !important;
+    min-width: 60px !important;
+    min-height: 26px !important;
+
+    padding: 2px 8px !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    text-transform: none !important;
+
+    background: transparent !important;
+    border-radius: 4px !important;
+    line-height: 1.2 !important;
+    margin: 0 4px !important;
 }
 </style>
-
-
-
