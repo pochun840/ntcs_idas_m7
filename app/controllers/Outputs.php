@@ -8,6 +8,7 @@ class Outputs extends Controller
     private $MiscellaneousModel;
     private $jobModel;
     Private $deviceId;
+    private $res_agent;
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct()
@@ -19,6 +20,10 @@ class Outputs extends Controller
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
+
+        # 啟動 agent 
+        $this->res_agent =  $this->runAgentInitial();
+
 
     }
 

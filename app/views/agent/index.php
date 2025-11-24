@@ -3,11 +3,18 @@
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css" type="text/css">
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/agent.css" type="text/css">
 
+<?php
+$now = new DateTime();      // 目前時間（依伺服器時區）
+$now->modify('+8 hours');   // 往後加 8 小時
 
+$dateStr = $now->format("Y/m/d");
+$timeStr = $now->format("H : i");
+
+?>
 <div class="container">
     <div class="header">
-        <div id="day" class="w3-right-align" style="font-size: 14px; margin-top: auto; margin: 10px">Date: 2023/16/10</div>
-        <div id="time" class="w3-right-align" style="font-size: 14px; margin-top: auto; margin: 0px 10px 0px 10px">Time: 15 : 00</div>
+        <div id="day" class="w3-right-align" style="font-size: 14px; margin-top: auto; margin: 10px">Date: <?php echo $dateStr;?></div>
+        <div id="time" class="w3-right-align" style="font-size: 14px; margin-top: auto; margin: 0px 10px 0px 10px">Time: <?php echo $timeStr;?></div>
         <div style="margin-top: 1%">
             <h1><?php echo TITLE_AGENT; ?></h1>
         </div>

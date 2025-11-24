@@ -985,4 +985,23 @@ class Controller
     }
 
 
+    public function runAgentInitial(){
+        
+        // 指令（記得確認 php 路徑是否正確 = which php）
+        $cmd = 'sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php 2>&1';
+
+        // 執行指令
+        $output = shell_exec($cmd);
+
+        // 判斷成功或失敗（依 output 是否為空）
+        $success = !empty($output);
+
+        // 回傳資訊
+        return [
+            'success' => $success,
+            'output'  => $output
+        ];
+    }
+
+
 }

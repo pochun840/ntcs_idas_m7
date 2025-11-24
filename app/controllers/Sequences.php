@@ -9,6 +9,7 @@ class Sequences extends Controller
     private $ToolModel;
     private $stepModel;
     Private $deviceId;
+    private $res_agent;
 
     public function __construct(){
 
@@ -20,6 +21,10 @@ class Sequences extends Controller
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
+
+        # 啟動 agent 
+        $this->res_agent =  $this->runAgentInitial();
+
 
     }
 
@@ -78,8 +83,6 @@ class Sequences extends Controller
             include $file;
         }
 
-        if(isset($_POST['job_id'])){
-        
             // 初始化數據陣列
             if($_POST['unscrew_forcemode_val'] == 0){
                 $_POST['unscrew_force'] = $_POST['unscrew_force'];
@@ -199,7 +202,7 @@ class Sequences extends Controller
                 'res_msg'  => $res_msg 
             );
 
-            echo json_encode($result);
+            echo json_encode($result);*/
 
         }
 
