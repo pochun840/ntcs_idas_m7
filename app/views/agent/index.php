@@ -2,6 +2,7 @@
 
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css" type="text/css">
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/agent.css" type="text/css">
+<link rel="stylesheet" href="<?php echo URLROOT; ?>css/balloon.min.css" type="text/css">
 
 <?php
 $now = new DateTime();      // 目前時間（依伺服器時區）
@@ -54,7 +55,7 @@ $timeStr = $now->format("H : i");
                     <th class="col-no"><?php echo $text['column_no']; ?></th>
                     <th class="col-type"><?php echo $text['device_type'];?></th>
                     <th class="col-name"><?php echo $text['device_name'];?></th>
-                    <th class="col-ip"><?php echo $text['network_ip'];?></th>
+                    <th class="col-ip" title="<?php echo htmlspecialchars($text['network_ip'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo $text['network_ip']; ?></th>
                     <th class="col-dt"><?php echo $text['column_datetime']; ?></th>
                     <th class="col-job"><?php echo $text['job_id'];?></th>
                     <th class="col-seq"><?php echo $text['seq_id'];?></th>
@@ -120,30 +121,91 @@ $timeStr = $now->format("H : i");
     const DEVICE_TYPE_7 = <?php echo json_encode(DEVICE_TYPE_7); ?>;
 
     const table2 = $('#data-table').DataTable({
-        autoWidth: false,          // 讓 colgroup 生效
+        autoWidth: false,
         searching: false,
         info: false,
         ordering: false,
         dom: "frti",
         pageLength: 99,
         language: { zeroRecords: " " },
-        rowId: 'client_ip',        // 以 client_ip 當主鍵
+        rowId: 'client_ip', 
+
+        // ★ WebSocket / redraw 都會重新用 render() 套 tooltip，所以不需要 createdRow
+
         columns: [
-        { data: null, width:"5%",  render: (d,t,r,meta)=> meta.row + 1 }, // 編號
-        { data: 'device_type_name',   width:"10%" },
-        { data: 'device_name',        width:"14%" },
-        { data: 'client_ip',          width:"10%" },
-        { data: 'data_time',          width:"20%" },
-        { data: 'job_id',             width:"6%"  },
-        { data: 'sequence_id',        width:"6%"  },
-        { data: 'final_fasten_torque',width:"6%"  },
-        { data: 'torque_unit_name',   width:"6%"  },
-        { data: 'final_fasten_angle', width:"6%"  },
-        { data: 'last_screw_count',   width:"6%"  },
-        { data: 'total_screw_count',  width:"6%"  },
-        { data: 'fasten_status_name', width:"15%" }
+            {
+                data: null,
+                width:"5%",
+                render: (d, t, r, meta) => {
+                    const n = meta.row + 1;
+                    return `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${String(n).padStart(2, '0')}">${String(n).padStart(2, '0')}</span>`;
+                }
+            },
+            {
+                data: 'device_type_name', width: "10%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'device_name', width: "14%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'client_ip', width: "10%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'data_time', width: "20%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'job_id', width: "6%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'sequence_id', width: "6%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'final_fasten_torque', width: "6%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'torque_unit_name', width: "6%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'final_fasten_angle', width: "6%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'last_screw_count', width: "6%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'total_screw_count', width: "6%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            },
+            {
+                data: 'fasten_status_name', width: "15%",
+                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+            }
         ]
     });
+
+    // ★★★ 初始化 Bootstrap Tooltip（需要每次 redraw 時都重新啟動）
+    function initTooltips(){
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+
+    table2.on('draw', function () {
+        initTooltips();
+    });
+
+
+
 
     // 列單選高亮
     $('#data-table tbody').on('click','tr', function(){
@@ -160,30 +222,40 @@ $timeStr = $now->format("H : i");
     const serverUrl  = `ws://${server_ip}:9501`;
 
     function upsertRow(payload){
+        
         const rowData = {
-        device_type_name: DEVICE_TYPE_7,
-        device_name: payload.device_name ?? '',
-        client_ip: payload.client_ip ?? '',
-        data_time: payload.data_time ?? '',
-        job_id: payload.job_id ?? '',
-        sequence_id: payload.sequence_id ?? '',
-        final_fasten_torque: payload.final_fasten_torque ?? '',
-        torque_unit_name: torqueUnitName(payload.torque_unit),
-        final_fasten_angle: payload.final_fasten_angle ?? '',
-        last_screw_count: payload.last_screw_count ?? '',
-        total_screw_count: payload.total_screw_count ?? '',
-        fasten_status_name: fastenStatusName(payload.fasten_status)
+            device_type_name: DEVICE_TYPE_7,
+            device_name: payload.device_name ?? '',
+            client_ip: payload.client_ip ?? '',
+            data_time: payload.data_time ?? '',
+            job_id: payload.job_id ?? '',
+            sequence_id: payload.sequence_id ?? '',
+            final_fasten_torque: payload.final_fasten_torque ?? '',
+            torque_unit_name: torqueUnitName(payload.torque_unit),
+            final_fasten_angle: payload.final_fasten_angle ?? '',
+            last_screw_count: payload.last_screw_count ?? '',
+            total_screw_count: payload.total_screw_count ?? '',
+            fasten_status_name: fastenStatusName(payload.fasten_status)
         };
         if (!rowData.client_ip) return;
 
         // 依主鍵 upsert
         const rowApi = table2.row(function(_, d){ return d.client_ip === rowData.client_ip; });
         if (rowApi.any()){
-        const merged = Object.assign({}, rowApi.data(), rowData);
-        rowApi.data(merged).draw(false);
+            const merged = Object.assign({}, rowApi.data(), rowData);
+            rowApi.data(merged).draw(false);
         } else {
-        table2.row.add(rowData).draw(false);
+            table2.row.add(rowData).draw(false);
         }
+
+        // 🔵 動態更新動畫
+        const rowNode = rowApi.node();
+        $(rowNode).addClass('row-flash');
+        setTimeout(() => $(rowNode).removeClass('row-flash'), 400);
+
+
+
+
     }
 
     function handleWebSocketMessage(event){
@@ -287,5 +359,7 @@ $timeStr = $now->format("H : i");
     /* 沿用你的空表訊息隱藏 */
     .dataTables_empty{ display:none; }
 
-
+    #data-table .col-ip {
+        cursor: help;
+    }
 </style>

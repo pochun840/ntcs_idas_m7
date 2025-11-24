@@ -9,7 +9,6 @@ class Sequences extends Controller
     private $ToolModel;
     private $stepModel;
     Private $deviceId;
-    private $res_agent;
 
     public function __construct(){
 
@@ -21,10 +20,6 @@ class Sequences extends Controller
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
-
-        # 啟動 agent 
-        $this->res_agent =  $this->runAgentInitial();
-
 
     }
 

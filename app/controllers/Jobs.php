@@ -29,7 +29,7 @@ class Jobs extends Controller
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
         # 啟動 agent 
-        $this->res_agent =  $this->runAgentInitial();
+        //$this->res_agent =  $this->runAgentInitial();
 
 
 

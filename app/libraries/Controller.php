@@ -986,20 +986,17 @@ class Controller
 
 
     public function runAgentInitial(){
-        
-        // 指令（記得確認 php 路徑是否正確 = which php）
-        $cmd = 'sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php 2>&1';
 
-        // 執行指令
-        $output = shell_exec($cmd);
+        // & 表示背景執行，立即結束
+        $cmd = 'sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php > /dev/null 2>&1 &';
 
-        // 判斷成功或失敗（依 output 是否為空）
-        $success = !empty($output);
+        // 只要執行指令，不等待結果
+        shell_exec($cmd);
 
-        // 回傳資訊
+        // 立即回傳成功（因為背景執行）
         return [
-            'success' => $success,
-            'output'  => $output
+            'success' => true,
+            'output'  => 'Agent start triggered (background mode)'
         ];
     }
 

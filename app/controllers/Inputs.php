@@ -18,7 +18,7 @@ class Inputs extends Controller
         $this->jobModel = $this->model('Job');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
+        //$this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
