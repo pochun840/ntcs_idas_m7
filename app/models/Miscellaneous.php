@@ -5,12 +5,17 @@ class Miscellaneous{
     private $db_data;//devdb tool
     private $dbh;
     private $db_iDas_tools;
+    private $db_iDas_agent;
 
     // 在建構子將 Database 物件實例化
     public function __construct()
     {
         $this->db_iDas_tools = new Database;
         $this->db_iDas_tools = $this->db_iDas_tools->getDb_das_tools();
+
+        $this->db_iDas_agent = new Database;
+        $this->db_iDas_agent = $this->db_iDas_agent->getDb_das_agent();
+
 
     }
 
@@ -653,6 +658,38 @@ class Miscellaneous{
         }
 
         return $step;
+    }
+
+
+    public function get_controller_device_info(){
+
+        // 1) DB 路徑
+        $dbPath = '/var/www/html/database/ntcs_device_temp.db';
+
+        // 檔案不存在就直接回傳 null
+        if (!file_exists($dbPath)) {
+            error_log("ntcs_device_temp.db not found at: " . $dbPath);
+            return null;
+        }
+
+        try {
+            // 2) 建立 SQLite 連線
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // 3) 讀取 table: ntcs_device_test
+            $sql = "SELECT * FROM ntcs_device_test LIMIT 1";
+            $statement = $pdo->prepare($sql);
+            $statement->execute();
+
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+            return $row ?: null;   // 沒資料就回傳 null
+        } catch (PDOException $e) {
+            // 4) 發生錯誤時記 log，避免直接噴 fatal
+            error_log("get_controller_device_info() DB error: " . $e->getMessage());
+            return null;
+        }
     }
 
 

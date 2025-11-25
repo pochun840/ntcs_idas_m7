@@ -52,6 +52,24 @@ class Check extends Controller
         ]);
         exit;
     }
+
+    public function runAgentInitial() {
+
+        // & 表示背景執行，立即結束
+        $cmd = 'sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php > /dev/null 2>&1 &';
+
+        // 只要執行指令，不等待結果
+        shell_exec($cmd);
+
+        // 回傳 JSON 給前端（避免畫面有多餘輸出）
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => true,
+            'output'  => 'Agent start triggered (background mode)'
+        ]);
+        exit;
+    }
+
     
 
   

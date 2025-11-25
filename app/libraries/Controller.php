@@ -984,21 +984,64 @@ class Controller
         exit;
     }
 
+    public function runAgentInitial()
+    {
+        // 先檢查 agent 是否有在跑（2 秒 timeout）
+        if ($this->isAgentAlive()) {
+            return [
+                'success' => true,
+                'output'  => 'Agent already running (connection OK)'
+            ];
+        }
 
-    public function runAgentInitial(){
-
-        // & 表示背景執行，立即結束
+        // 超過 2 秒還沒連上 / 連線失敗 → 啟動 agent
         $cmd = 'sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php > /dev/null 2>&1 &';
-
-        // 只要執行指令，不等待結果
         shell_exec($cmd);
 
-        // 立即回傳成功（因為背景執行）
         return [
             'success' => true,
             'output'  => 'Agent start triggered (background mode)'
         ];
     }
+
+    /**
+     * 檢查 agent 是否有連線成功
+     * 這裡用 TCP 連線測試（請依實際 agent host/port 調整）
+     *
+     * @return bool true = 連線成功（agent OK）；false = 連線失敗或超時
+     */
+    private function isAgentAlive(): bool
+    {
+        // TODO: 依實際 agent 監聽位置修改
+        $host    = CONTROLLER_IP;  // 使用定義的常數
+        $port    = 9501;     // 例如 WebSocket / agent port
+        $timeout = 2;        // 秒
+
+        $errno = 0;
+        $errstr = '';
+
+        $start = microtime(true);
+
+        $fp = @fsockopen($host, $port, $errno, $errstr, $timeout);
+
+        if ($fp === false) {
+            // 失敗（可能是 timeout 或 port 沒開），視為 agent 不在
+            return false;
+        }
+
+        // 成功連線 → agent 存活
+        fclose($fp);
+
+        // （如果你真的想嚴格判斷「是否超過 2 秒」，也可以這樣）
+        $elapsed = microtime(true) - $start;
+        if ($elapsed > $timeout) {
+            // 雖然有回應，但超過設定 timeout -> 當作失敗
+            return false;
+        }
+
+        return true;
+    }
+
 
 
 }

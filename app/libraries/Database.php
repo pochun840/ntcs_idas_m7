@@ -8,6 +8,7 @@ class Database
     private $db_iDas_device;
     private $db_barcode;
     private $db_iDas_tools;
+    private $db_iDas_agent;
     private $db_con;
 
     public function __construct()
@@ -47,6 +48,7 @@ class Database
             'iDas_login'  => BASE_PATH . 'das.db',
             'iDas_device' => BASE_PATH . 'data_device.db',
             'iDas_tools'  => BASE_PATH . 'ntcs_device_IDAS.db',
+            'iDas_agent'  => BASE_PATH . 'ntcs_device_temp.db',
             'barcode'     => BASE_PATH . 'ntcs_barcode_IDAS.db',
         ];
 

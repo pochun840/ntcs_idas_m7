@@ -12,7 +12,7 @@ const torque_unit = [
 ];
 
 // 裝置類型（全部用 DEVICE_TYPE_10，根據 PHP 定義）
-const device_type = Array(11).fill({ status: "<?php echo DEVICE_TYPE_7; ?>" });
+const device_type = Array(11).fill({ status: "<?php echo DEVICE_TYPE_11; ?>" });
 
 // 儲存 IP → 資料列的對應關係
 const ipToTableRow = new Map();

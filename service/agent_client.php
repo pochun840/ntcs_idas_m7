@@ -145,9 +145,9 @@ function GetLastResult(): string {
 
     // 裝置名稱（可快取）
     static $device_name = null;
-    if ($device_name === null && file_exists('/var/www/html/database/ntcs_device_IDAS.db')) {
+    if ($device_name === null && file_exists('/var/www/html/database/ntcs_device_temp.db')) {
         try {
-            $d = new PDO('sqlite:/var/www/html/database/ntcs_device_IDAS.db');
+            $d = new PDO('sqlite:/var/www/html/database/ntcs_device_temp.db');
             $device_name = (string)($d->query("SELECT device_name FROM ntcs_device_test")->fetchColumn() ?? 'unknown');
             $d = null;
         } catch (Throwable $e) {
