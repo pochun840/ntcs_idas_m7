@@ -234,7 +234,7 @@ $timeStr = $now->format("H : i");
             case 9:
                 return 'TCC-HMI';
             case 11:
-                return 'NTCS-M7';
+                return 'KL-NTCS-M7';
             default:
                 // 如果不是上述幾種，就顯示原本值（或空字串，看你需求）
         return deviceType ?? '';

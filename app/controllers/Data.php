@@ -526,6 +526,77 @@ class Data extends Controller
         return null;
     }
 
+    public function qa_check(){
+           $type = 'ALL';
+        $this->ntcs_data_db_sysnc();
+        $isMobile = $this->isMobileCheck();
+        $decimals_arr = $this->MiscellaneousModel->details("decimals");
+        // 取得當前年份
+        if (PHP_OS_FAMILY === 'Linux') {
+            $db_path = "/var/www/html/database/data".date('Y').".db";
+
+            // 檢查資料庫是否存在
+            $db_exists = file_exists($db_path);
+    
+            if ($db_exists) {
+                $res_data     = $this->DataModel->getData('ALL');
+                $res_data_ok  = $this->DataModel->getData('OK');
+                $res_data_nok = $this->DataModel->getData('NOK');
+            } else {
+                $res_data     = [];
+                $res_data_ok  = [];
+                $res_data_nok = [];
+            }
+
+        }else{
+            $res_data     = $this->DataModel->getData('ALL');
+            $res_data_ok  = $this->DataModel->getData('OK');
+            $res_data_nok = $this->DataModel->getData('NOK');
+            $db_exists = '';
+            $db_path = '';
+        }
+
+
+        $unit_arr    = $this->MiscellaneousModel->details('torque_unit');
+        $status_arr  = $this->MiscellaneousModel->details('status');
+        $color_arr   = $this->get_color_type();
+
+        foreach ($res_data as &$row) {
+            $status = $row['fasten_status'];
+
+            // 加入 NG 顏色或 OK 顏色分類
+            if ($status == 5) {
+                $row['row_color'] = $color_arr['okseqcolor_text'];
+            }else if($status == 6) {
+                $row['row_color'] = $color_arr['okseqcolor_text'];
+            }else if ($status == 4){
+                $row['row_color'] = 'status-ok';
+            }else{
+                $row['row_color'] = 'status-ng';
+            } 
+
+            $torque_value = $row['final_fasten_torque'] ?? 0;
+            $torque_unit  = $row['torque_unit'] ?? 1; // 預設為 N.m
+            $precision = $decimals_arr[$torque_unit] ?? 3; // 預設顯示三位小數
+            $row['final_fasten_torque'] = number_format((float)$torque_value, $precision);
+
+        }
+
+        $data = array(
+            'isMobile'      => $isMobile,
+            'res_data'      => $res_data,
+            'res_data_ok'   => $res_data_ok,
+            'res_data_nok'  => $res_data_nok,
+            'unit_arr'      => $unit_arr,
+            'status_arr'    => $status_arr,
+            'db_exists'     => $db_exists,
+            'db_path'       => $db_path,
+            'color_arr'     => $color_arr
+        );
+
+        $this->view('data/qa_check', $data);
+    }
+
 
 
 

@@ -20,16 +20,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         $class = $row['row_color'] ?? '';  // 這一行決定樣式 class
 
         echo "<tr>
-                <td>{$row['id']}</td>
-                <td style='white-space: nowrap;'>{$row['data_time']}</td>
-                <td>{$row['job_name']}</td>
-                <td>{$row['sequence_name']}</td>
+        
                 <td class='td-torque'>{$row['final_fasten_torque']}</td>
-                <td>{$text[$unit_arr[$row['torque_unit']]]}</td>
-                <td>{$row['total_fasten_angle']}</td>
-                <td>{$row['last_screw_count']}</td>
-                <td>{$row['total_screw_count']}</td>
-                <td class='{$class}'>{$status_arr[$status]}</td>
               </tr>";
     }
 }
@@ -50,11 +42,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
     <div class="main-content">
         <div class="center-content">
             <div class="w3-center" style="position: relative; padding-right: 10px">
-                <button id="bnt1" name="History_Display" class="button active" onclick="OpenButton('History')"><?php echo $text['data_history'];?></button>
-                <button id="bnt2" name="Export_Data_Display" class="button" onclick="OpenButton('Exportdata')"><?php echo $text['data_export'];?></button>
-                <button id="bnt3" name="Export_Data_download" class="button" onclick="OpenButton('Export_Data_download')"><?php echo $text['download_chart'];?></button>
-                <button id="bnt4" name="Customize" class="button" onclick="OpenButton('Customize')"><?php echo $text['customize'];?></button>
-
+              
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
                         <option value="ALL">ALL</option>
@@ -81,18 +69,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                 <table class="table w3-table w3-hoverable">
                                     <thead>
                                         <tr style="font-size: 16px; color: white;">
-                                            <th><?php echo $text['column_no']; ?></th>
-                                            <th style="white-space: nowrap;"><?php echo $text['column_datetime']; ?></th>
-                                            <th><?php echo $text['job_name']; ?></th>
-                                            <th><?php echo $text['seq_name']; ?></th>
                                             <th><?php echo $text['torque']; ?></th>
-                                            <th><?php echo $text['column_unit']; ?></th>
-                                            <th><?php echo $text['angle']; ?></th>
-                                            <th><?php echo $text['column_count']; ?></th>
-                                            <th><?php echo $text['column_total']; ?></th>
-                                            <th><?php echo $text['column_status']; ?></th>
-                                            <th><?php echo $text['system_barcode']; ?></th>
-                                        </tr>
+
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">
                                         <?php renderTableRows($config['data'], $data['unit_arr'], $data['status_arr'], $text,$data['color_arr']); ?>
@@ -276,17 +254,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
             let status = row.fasten_status;
             const html = `
                 <tr>
-                    <td>${row.id}</td>
-                    <td style="white-space: nowrap;" >${row.data_time}</td>
-                    <td>${row.job_name}</td>
-                    <td>${row.sequence_name}</td>
                     <td >${row.final_fasten_torque}</td>
-                    <td>${unit_arr[row.torque_unit]}</td>
-                    <td>${row.total_fasten_angle}</td>
-                    <td>${row.last_screw_count}</td>
-                    <td>${row.total_screw_count}</td>
-                    <td class="${row.row_color}">${status_arr[status]}</td>
-                    <td >${row.barcode}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
         });
