@@ -4,18 +4,51 @@
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/agent.css" type="text/css">
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/balloon.min.css" type="text/css">
 
-<?php
-$now = new DateTime();
-$now->modify('+8 hours');
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 如果你一定要固定用 UTC+8，而不是用瀏覽器時區：
+    function getNowPlus8() {
+        const now = new Date();
+        // 取得 UTC 毫秒 + 8 小時
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        return new Date(utc + 8 * 60 * 60 * 1000);
+    }
 
-$dateStr = $now->format("Y/m/d");
-$timeStr = $now->format("H : i");
+    function pad2(n) {
+        return n.toString().padStart(2, '0');
+    }
 
-?>
+    function updateDateTime() {
+        const now = getNowPlus8(); // 如果要用瀏覽器自己的時區，可改成 new Date()
+
+        const year  = now.getFullYear();
+        const month = pad2(now.getMonth() + 1);
+        const day   = pad2(now.getDate());
+
+        const hour   = pad2(now.getHours());
+        const minute = pad2(now.getMinutes());
+
+        const dateStr = `${year}/${month}/${day}`;
+        const timeStr = `${hour} : ${minute}`;
+
+        const dayEl  = document.getElementById('day');
+        const timeEl = document.getElementById('time');
+
+        if (dayEl)  dayEl.textContent  = 'Date: ' + dateStr;
+        if (timeEl) timeEl.textContent = 'Time: ' + timeStr;
+    }
+
+    // 先立刻更新一次
+    updateDateTime();
+    // 之後每 1 分鐘更新一次（要每秒改成 1000 也可以）
+    setInterval(updateDateTime, 60 * 1000);
+});
+</script>
+
 <div class="container">
     <div class="header">
-        <div id="day" class="w3-right-align" style="font-size: 14px; margin: 10px">Date: <?php echo $dateStr;?></div>
-        <div id="time" class="w3-right-align" style="font-size: 14px; margin: 0px 10px;">Time: <?php echo $timeStr;?></div>
+        <div id="day" class="w3-right-align" style="font-size: 14px; margin: 10px">Date:</div>
+        <div id="time" class="w3-right-align" style="font-size: 14px; margin: 0px 10px;">Time:</div>
         <div style="margin-top: 1%">
             <h1><?php echo TITLE_AGENT; ?></h1>
         </div>
