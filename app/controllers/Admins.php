@@ -182,8 +182,8 @@ class Admins extends Controller
         return $result;
     }
 
-    public function StartAgent()
-    {
+    public function StartAgent(){
+        
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
         $this->StopService("agent_client.php");
         sleep(1);

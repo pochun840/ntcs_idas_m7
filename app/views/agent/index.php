@@ -299,6 +299,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // 先轉成數字方便判斷
         const deviceType = Number(payload.device_type);
 
+        
+
         const rowData = {
             device_type_name: getDeviceTypeName(payload.device_type),
             device_name: payload.device_name ?? '',

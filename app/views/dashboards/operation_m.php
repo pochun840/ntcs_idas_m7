@@ -46,7 +46,11 @@
 
                     <div class="item-result w3-display-container" id='fasten_status_color'  style="<?php echo $bgStyle; ?>"  >
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-black"><?php echo  $data['text']['final_result'];?></div>
-                        <div id="Torque_Result" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0">     <?php echo $data['text'][$data['data_info']['fasten_status_text']];?></div>            
+                        <div id="Torque_Result" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0">     
+                            <?php if(!empty($data['data_info'])){?>
+                                <?php echo $data['text'][$data['data_info']['fasten_status_text']];?>
+                            <?php }?>
+                        </div>            
                     </div>
                 </div>
                 <div class="column">
@@ -57,8 +61,10 @@
                     <div class="item-message w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_message'];?></div>
                         <div id="Message" class="w3-display-middle" style="font-size: 5vmin; margin: 5px 0">  
-                            <?php if ($data['data_info']['error_message']){?>
-                                <?php echo $data['data_info']['error_message']; ?>
+                            <?php if(!empty($data['data_info'])){?>
+                                <?php if ($data['data_info']['error_message']){?>
+                                    <?php echo $data['data_info']['error_message']; ?>
+                                <?php }?>
                             <?php }?>
                         </div>                                    
                     </div>
@@ -78,12 +84,10 @@
                     <?php } ?>
                 </div>
 
-
-                
-                <div id="graph" class="display-chart">
-                
-                    <div id="chart" style="max-width: 100%; height: 290px;"></div>
-                </div> 
+                    <div id="graph" class="display-chart">
+                        <div id="chart" style="max-width: 100%; height: 290px;"></div>
+                    </div> 
+              
             </div>
         </div>
     </div>
@@ -275,8 +279,9 @@ function fetchChartAndRender() {
             const statusKey = info.fasten_status_text ?? '-';
             
 
-            document.getElementById("Job_Name").value = info.job_id + "/" +info.job_name ?? '***';
-            document.getElementById("Seq_Name").value = info.sequence_id + "/" + info.sequence_name ?? '***';
+            
+            document.getElementById("Job_Name").value =`${info?.job_id ?? '***'}/${info?.job_name ?? '***'}`;
+            document.getElementById("Seq_Name").value =`${info?.sequence_id ?? '***'}/${info?.sequence_name ?? '***'}`;
             document.getElementById("Screws").value = info.	last_screw_count + "/" + info.total_screw_count  ?? '***';
             document.getElementById("Target_Torque").innerText = info.final_fasten_torque ?? '-';
             document.getElementById("Target_Angle").innerText = info.total_fasten_angle ?? '-';

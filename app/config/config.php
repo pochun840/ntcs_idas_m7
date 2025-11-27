@@ -17,7 +17,6 @@ define('SITENAME', 'iDAS');
 // iDAS連線模式 0:單機版 1:連線版
 define('IDASMODE', '1');
 
-
 // 設定語言狀態
 $language = array(
 	0=>array('简中','zh-cn'),

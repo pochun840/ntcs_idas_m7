@@ -41,16 +41,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
     
     <div class="main-content">
         <div class="center-content">
-            <div class="w3-center" style="position: relative; padding-right: 10px">
-              
-                <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
-                    <select id="data_select" class="form-select" onchange="DataMode(this)">
-                        <option value="ALL">ALL</option>
-                        <option value="OK">OK</option>
-                        <option value="NOK">NG</option>
-                    </select>
-                </div>
-            </div>
+            
             
             <div id="DataButtonMode">
                 <div id="HistoryDisplay">

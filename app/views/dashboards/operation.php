@@ -49,8 +49,9 @@
                     <div class="item-result w3-display-container" id='fasten_status_color'  style="<?php echo $bgStyle; ?>" >
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-black"><?php echo $data['text']['final_result'];?></div>
                         <div id="Torque_Result" class="w3-display-middle" style="font-size: 4vmin">
-
+                            <?php if(!empty($data['data_info'])){?>
                             <?php  echo $data['text'][$data['data_info']['fasten_status_text']];?>
+                            <?php }?>
                         </div>            
                     </div>
                 </div>
@@ -62,9 +63,11 @@
                     <div class="item-message w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo $data['text']['final_message'];?></div>
                         <div id="Message" class="w3-display-middle" style="font-size: 28px">
-                        <?php if ($data['data_info']['error_message']){?>
-                            <?php echo $data['data_info']['error_message']; ?>
-                        <?php }?>
+                            <?php if(!empty($data['data_info'])){?>
+                                <?php if ($data['data_info']['error_message']){?>
+                                    <?php echo $data['data_info']['error_message']; ?>
+                                <?php }?>
+                            <?php }?>
                         </div>                                    
                     </div>
                 </div>
@@ -108,10 +111,12 @@
                             <?php } ?>
 
                         </div>
-
-                        <div id="graph" class="display-chart">
-                            <div id="chart" style="width: 100%; height: 100%"></div>
-                        </div>      
+                        
+    
+                            <div id="graph" class="display-chart">
+                                <div id="chart" style="width: 100%; height: 100%"></div>
+                            </div>   
+            
                     </div>
                 </div>
             </div>
@@ -700,8 +705,10 @@ function fetchChartAndRender() {
             const textMap = data.text || {};
             const statusKey = info.fasten_status_text ?? '-';
 
-            document.getElementById("Job_Name").value = info.job_id + "/" +info.job_name ?? '***';
-            document.getElementById("Seq_Name").value = info.sequence_id + "/" + info.sequence_name ?? '***';
+            console.log(info);
+
+            document.getElementById("Job_Name").value =`${info?.job_id ?? '***'}/${info?.job_name ?? '***'}`;
+            document.getElementById("Seq_Name").value =`${info?.sequence_id ?? '***'}/${info?.sequence_name ?? '***'}`;
             document.getElementById("Screws").value = info.	last_screw_count + "/" + info.total_screw_count  ?? '***';
 
             document.getElementById("Screws").value = info.total_screw_count ?? '***';

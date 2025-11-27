@@ -197,12 +197,9 @@ class Sequences extends Controller
                 'res_msg'  => $res_msg 
             );
 
-            echo json_encode($result);*/
+            echo json_encode($result);
 
         }
-
-    }
-
     
 
         public function getConvertedToolInfo() {

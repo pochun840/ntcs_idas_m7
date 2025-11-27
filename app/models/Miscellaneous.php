@@ -664,7 +664,8 @@ class Miscellaneous{
     public function get_controller_device_info(){
 
         // 1) DB 路徑
-        $dbPath = '/var/www/html/database/ntcs_device_temp.db';
+        $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+
 
         // 檔案不存在就直接回傳 null
         if (!file_exists($dbPath)) {

@@ -143,17 +143,16 @@ function GetLastResult(): string {
         return json_encode(['message' => 'db error', 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
     }
 
-    // 裝置名稱（可快取）
-    static $device_name = null;
-    if ($device_name === null && file_exists('/var/www/html/database/ntcs_device_temp.db')) {
-        try {
-            $d = new PDO('sqlite:/var/www/html/database/ntcs_device_temp.db');
-            $device_name = (string)($d->query("SELECT device_name FROM ntcs_device_test")->fetchColumn() ?? 'unknown');
-            $d = null;
-        } catch (Throwable $e) {
-            $device_name = 'unknown';
-        }
+    // 裝置名稱
+    try {
+        $d = new PDO('sqlite:/home/kls/NTCS7/ntcs_device.db');
+        $device_name = (string)($d->query("SELECT device_name FROM ntcs_device_test")->fetchColumn() ?? 'unknown');
+        $d = null;
+    } catch (Throwable $e) {
+        $device_name = 'unknown';
     }
+
+
     $row['device_name'] = $device_name ?? 'unknown';
     $row['client_ip']   = getIp();
 

@@ -4,7 +4,7 @@ use Swoole\WebSocket\Server;
 $server = new Server("0.0.0.0", 9501);
 
 $server->set([
-    'worker_num'               => 2,
+    'worker_num'               => 1,
     'max_request'              => 0,
     'dispatch_mode'            => 3,
     'package_max_length'       => 4 * 1024 * 1024,
