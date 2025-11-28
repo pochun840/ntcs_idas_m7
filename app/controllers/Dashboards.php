@@ -287,6 +287,11 @@ class Dashboards extends Controller
             return;
         }
 
+    
+  
+
+
+
         if ($isMobile) {
             $this->view('dashboards/operation_m', $data);
         } else {

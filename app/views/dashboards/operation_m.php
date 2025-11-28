@@ -84,9 +84,11 @@
                     <?php } ?>
                 </div>
 
-                    <div id="graph" class="display-chart">
-                        <div id="chart" style="max-width: 100%; height: 290px;"></div>
-                    </div> 
+                    <?php if(!empty($data['chart_info'])){?>
+                        <div id="graph" class="display-chart">
+                            <div id="chart" style="max-width: 100%; height: 290px;"></div>
+                        </div> 
+                    <?php }?>
               
             </div>
         </div>

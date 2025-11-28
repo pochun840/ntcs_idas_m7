@@ -112,10 +112,11 @@
 
                         </div>
                         
-    
-                            <div id="graph" class="display-chart">
-                                <div id="chart" style="width: 100%; height: 100%"></div>
-                            </div>   
+                            <?php if(!empty($data['chart_info'])){?>
+                                <div id="graph" class="display-chart">
+                                    <div id="chart" style="width: 100%; height: 100%"></div>
+                                </div>   
+                            <?php }?>
             
                     </div>
                 </div>
