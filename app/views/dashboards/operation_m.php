@@ -60,7 +60,7 @@
                     </div>
                     <div class="item-message w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_message'];?></div>
-                        <div id="Message" class="w3-display-middle" style="font-size: 5vmin; margin: 5px 0">  
+                        <div id="Message" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0">  
                             <?php if(!empty($data['data_info'])){?>
                                 <?php if ($data['data_info']['error_message']){?>
                                     <?php echo $data['data_info']['error_message']; ?>
