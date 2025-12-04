@@ -15,7 +15,8 @@
     <div class="main-content">
         <div class="center-content">
             <div class="container" style="padding: 10px;border-radius: 5px ;box-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.2);">
-                <div id="Tool_Setting">
+                <div id="Tool_Setting" class="divTool">
+                    <div class="scrollbar" id="style-tool">
                         <h3 style="margin: 5px 3px 10px"><b><?php echo $text['tool_info'];?></b></h3>
                        
                         <div class="row border-bottom">
@@ -106,7 +107,7 @@
                                     onclick="window.open('https://www.kilews.com.tw/tc/', '_blank');"
                             >
                         </div>
-
+                    </div>
                 </div>
             </div>
         </div>

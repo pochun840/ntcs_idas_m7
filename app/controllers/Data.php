@@ -54,7 +54,8 @@ class Data extends Controller
         }
 
 
-        $unit_arr    = $this->MiscellaneousModel->details('torque_unit');
+        //$unit_arr    = $this->MiscellaneousModel->details('torque_unit');
+        $unit_arr    = $this->MiscellaneousModel->details('modbus_torque_unit');
         $status_arr  = $this->MiscellaneousModel->details('status');
         $color_arr   = $this->get_color_type();
 
@@ -74,8 +75,11 @@ class Data extends Controller
 
             $torque_value = $row['final_fasten_torque'] ?? 0;
             $torque_unit  = $row['torque_unit'] ?? 1; // 預設為 N.m
+
+
             $precision = $decimals_arr[$torque_unit] ?? 3; // 預設顯示三位小數
             $row['final_fasten_torque'] = number_format((float)$torque_value, $precision);
+            //$row['final_fasten_torque'] = "0.0275";
 
         }
 
@@ -286,7 +290,7 @@ class Data extends Controller
         }
 
         $res_data     = $this->DataModel->getData($mode);
-        $unit_arr     = $this->MiscellaneousModel->details('torque_unit');
+        $unit_arr     = $this->MiscellaneousModel->details('modbus_torque_unit');
         $status_arr   = $this->MiscellaneousModel->details('status');
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
 
@@ -310,8 +314,8 @@ class Data extends Controller
 
             $torque_value = $row['final_fasten_torque'] ?? 0;
             $torque_unit  = $row['torque_unit'] ?? 1; // 預設為 N.m
-            $precision = $decimals_arr[$torque_unit] ?? 3; // 預設顯示三位小數
-            $row['final_fasten_torque'] = number_format((float)$torque_value, $precision);
+            //$precision = $decimals_arr[$torque_unit] ?? 3; // 預設顯示三位小數
+            //$row['final_fasten_torque'] = number_format((float)$torque_value, $precision);
 
    
         }

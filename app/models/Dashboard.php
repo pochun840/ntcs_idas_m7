@@ -86,75 +86,96 @@ class Dashboard{
     }
 
 
-    public function get_info($chat_mode, $id) {
+    public function get_info($chat_mode, $id){
         
-        $resultarr = [];
+        $chat_mode = (int)$chat_mode;
 
-        // 找出所有符合 $id 的 CSV 檔案
+        // === 1. 找 CSV ===
         $csv_folder = "/mnt/ramdisk/ftp/";
-        $csv_files = glob($csv_folder . $id . "_*.csv");  // ✅ 根據 ID 篩選檔名開頭
+        $csv_files  = glob($csv_folder . $id . "_*.csv");
 
-        if (empty($csv_files)) {
-            return [];
-        }
+        if (empty($csv_files)) return [];
 
-        // 根據建立時間由新到舊排序
+        // 最新檔案
         usort($csv_files, fn($a, $b) => filectime($b) - filectime($a));
-        $latest_file = $csv_files[0];  // 最新的符合檔案
+        $latest_file = $csv_files[0];
 
+        // 讀檔
+        $lines = file($latest_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (!$lines) return [];
 
-        // 讀取並轉為陣列
-        $csv_content = file_get_contents($latest_file);
-        if (empty($csv_content)) {
-            return [];
-        }
+        // === 2. 轉成陣列 ===
+        $rows = array_map('str_getcsv', $lines);
+        if (empty($rows)) return [];
 
-        $lines = explode("\n", $csv_content);
-        $csv_array = array_map('str_getcsv', $lines);
-        $csv_array = array_filter($csv_array); // 過濾空行
+        // === 3. 丟掉 header ===
+        array_shift($rows);
 
-        // ➤ Torque 模式 (1, 4, 5)：抓欄位 1
-        if (in_array((int)$chat_mode, [1, 4, 5])) {
-            $torque = [];
-            foreach ($csv_array as $row) {
-                if (isset($row[1])) {
-                    $torque[] = $row[1];
+        // === 4. 統一每列至少有 8 欄 ===
+        foreach ($rows as &$r) {
+            for ($i = 0; $i < 8; $i++) {
+                if (!isset($r[$i]) || trim($r[$i]) === "") {
+                    $r[$i] = "0";   // string "0" → 避免 floatval(null) 變 0 但 isset 判斷失敗
                 }
             }
+        }
+        unset($r);
 
-            // ➤ Mode 5：再抓 RPM 欄位（第 3 欄）
-            if ((int)$chat_mode === 5) {
-                $rpm = [];
-                foreach ($csv_array as $row) {
-                    if (isset($row[3])) {
-                        $rpm[] = $row[3];
-                    }
-                }
+        /*
+            CSV 欄位標準化：
 
-                return [
-                    'torque' => $torque,
-                    'rpm' => $rpm
-                ];
-            }
+            0 => time
+            1 => torque
+            2 => angle
+            3 => rpm
+            4 => step_local
+            5 => step_global
+            6 => torque_calc?
+            7 => angle_calc?
+        */
 
-            return $torque;
+        // === 5. Mode 5：Torque + RPM（雙軸）=========================
+        if ($chat_mode === 5) {
+            $torque = array_map('floatval', array_column($rows, 1));
+            $rpm    = array_map('floatval', array_column($rows, 3));
+
+            return [
+                'torque' => $torque,
+                'rpm'    => $rpm
+            ];
         }
 
-        // ➤ Mode 2（Angle = 第2欄） 或 Mode 3（RPM = 第3欄）
-        $position = (int)$chat_mode;
-        foreach ($csv_array as $row) {
-            if (isset($row[$position])) {
-                $resultarr[] = $row[$position];
-            }
+        // === 6. Mode 1 / 4 / 6：Torque =============================
+        if (in_array($chat_mode, [1, 4, 6], true)) {
+            // Mode 6 在 ChartData 會用 Angle 作 X，所以這裡 torque 沒問題
+            return array_map('floatval', array_column($rows, 1));
         }
 
-        return $resultarr;
+        // === 7. Mode 2：Angle（固定 index 2）======================
+        if ($chat_mode === 2) {
+            return array_map('floatval', array_column($rows, 2));
+        }
+
+        // === 8. Mode 3：RPM（固定 index 3）========================
+        if ($chat_mode === 3) {
+            return array_map('floatval', array_column($rows, 3));
+        }
+
+        // === 9. Mode 7（Step 分析）→ 抓第 4 欄 ====================
+        if ($chat_mode === 7) {
+            return array_map('floatval', array_column($rows, 4)); // step_local
+        }
+
+        // === 10. 其他模式 fallback（不建議，但安全）===============
+        return array_map('floatval', array_column($rows, $chat_mode));
     }
+
+
 
 
     public function get_step_only($id) {
         $csv_folder = "/mnt/ramdisk/ftp/";
-        $csv_files = glob($csv_folder . $id . "__*.csv");
+        $csv_files = glob($csv_folder . $id . "_*.csv");
         if (empty($csv_files)) return [];
 
         // 取最新檔案

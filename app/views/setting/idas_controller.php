@@ -193,33 +193,55 @@
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Background_Color_text'];?></div>
 
     
-     <div class="row t2">
+    <div class="row t2">
         <div class="col-3 t1"><?php echo $text['OK_Sequence'];?>:</div>
-        <div class="col t2" >
-            <div class="col-1 form-check form-check-inline">
-                <input class="form-check-input" style='white-space: nowrap;'  type="radio" name="okseqcolor" id="okseqcolor_green" value="0"  <?php echo $data['controller_info']['okseqcolor'] == 0 ? 'checked="checked"' : ''; ?>>
-                <label class="form-check-label" style='white-space: nowrap;'  for=""><?php echo $text['green_text'];?></label>
+
+        <!-- 用 d-flex 讓兩顆 radio 同行排列 -->
+        <div class="col t2 d-flex align-items-center">
+            <div class="form-check form-check-inline me-3">
+                <input class="form-check-input" type="radio"
+                    name="okseqcolor" id="okseqcolor_green" value="0"
+                    <?php echo $data['controller_info']['okseqcolor'] == 0 ? 'checked="checked"' : ''; ?>>
+                <label class="form-check-label" for="okseqcolor_green">
+                    <?php echo $text['green_text']; ?>
+                </label>
             </div>
+
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="okseqcolor" id="okseqcolor_yellow" value="1"  <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?> >
-                <label class="form-check-label" for="`"><?php echo $text['yellow_text'];?></label>
+                <input class="form-check-input" type="radio"
+                    name="okseqcolor" id="okseqcolor_yellow" value="1"
+                    <?php echo $data['controller_info']['okseqcolor'] == 1 ? 'checked="checked"' : ''; ?>>
+                <label class="form-check-label" for="okseqcolor_yellow">
+                    <?php echo $text['yellow_text']; ?>
+                </label>
             </div>
         </div>
     </div>
-    
+
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['job_ok'];?>:</div>
-        <div class="col t2" >
-            <div class="col-1 form-check form-check-inline">
-                <input class="form-check-input" style='white-space: nowrap;' type="radio" name="okjobcolor" id="okjobcolor_green" value="0"   <?php echo $data['controller_info']['okjobcolor'] == 0 ? 'checked="checked"' : ''; ?>>
-                <label class="form-check-label" style='white-space: nowrap;' for=""><?php echo $text['green_text'];?></label>
+
+        <div class="col t2 d-flex align-items-center">
+            <div class="form-check form-check-inline me-3">
+                <input class="form-check-input" type="radio"
+                    name="okjobcolor" id="okjobcolor_green" value="0"
+                    <?php echo $data['controller_info']['okjobcolor'] == 0 ? 'checked="checked"' : ''; ?>>
+                <label class="form-check-label" for="okjobcolor_green">
+                    <?php echo $text['green_text']; ?>
+                </label>
             </div>
+
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="okjobcolor" id="okjobcolor_yellow" value="1"  <?php echo $data['controller_info']['okjobcolor'] == 1 ? 'checked="checked"' : ''; ?> >
-                <label class="form-check-label" for=""><?php echo $text['yellow_text'];?></label>
+                <input class="form-check-input" type="radio"
+                    name="okjobcolor" id="okjobcolor_yellow" value="1"
+                    <?php echo $data['controller_info']['okjobcolor'] == 1 ? 'checked="checked"' : ''; ?>>
+                <label class="form-check-label" for="okjobcolor_yellow">
+                    <?php echo $text['yellow_text']; ?>
+                </label>
             </div>
         </div>
     </div>
+
 
 
    

@@ -104,6 +104,20 @@ class Miscellaneous{
 
         }
 
+        //mosbus 專用(for 鎖附頁面+data頁面)
+        if($mode == "modbus_torque_unit"){
+             $array = array(
+                0 => 'kgf.m',
+                1 => 'N.m',
+                2 => 'kgf.cm',
+                3 => 'Lbf.in',
+                4 => 'cN.m'
+                
+            );
+
+        }
+
+
         if($mode == "target_option" ){
             $array = array(
                 2 => 'Torque',
@@ -252,6 +266,21 @@ class Miscellaneous{
             );
 
         }
+
+
+        
+        if($mode =="decimals"){
+            $array = array(
+                0 => 2, // KGF-cm
+                1 => 3, // N.m
+                2 => 2, // Lbf.in
+                3 => 4, // KGF-m
+                4 => 1  // cN.m
+            );
+
+        }
+
+        
 
         return $array;
 
