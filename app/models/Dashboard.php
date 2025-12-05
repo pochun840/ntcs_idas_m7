@@ -108,6 +108,19 @@ class Dashboard{
         $rows = array_map('str_getcsv', $lines);
         if (empty($rows)) return [];
 
+        // === 修正 UTF-8 BOM & 隱藏字元 ===
+        foreach ($rows as &$r) {
+            foreach ($r as &$cell) {
+                // 去除 UTF-8 BOM
+                $cell = preg_replace('/^\xEF\xBB\xBF/', '', $cell);
+                // 去除奇怪控制字元
+                $cell = preg_replace('/[\x00-\x1F\x7F]/', '', $cell);
+                $cell = trim($cell);
+            }
+        }
+        unset($r, $cell);
+
+
         // === 3. 丟掉 header ===
         array_shift($rows);
 
@@ -136,7 +149,14 @@ class Dashboard{
 
         // === 5. Mode 5：Torque + RPM（雙軸）=========================
         if ($chat_mode === 5) {
-            $torque = array_map('floatval', array_column($rows, 1));
+
+            // 修正：改用 torque_calc (index 6) 優先
+            $torque = array_map('floatval',
+                        array_map(function($r){
+                            return ($r[6] != 0) ? $r[6] : $r[1];
+                        }, $rows)
+                    );
+
             $rpm    = array_map('floatval', array_column($rows, 3));
 
             return [
@@ -145,11 +165,31 @@ class Dashboard{
             ];
         }
 
+
+        /*if ($chat_mode === 5) {
+            $torque = array_map('floatval', array_column($rows, 1));
+            $rpm    = array_map('floatval', array_column($rows, 3));
+
+            return [
+                'torque' => $torque,
+                'rpm'    => $rpm
+            ];
+        }*/
+
         // === 6. Mode 1 / 4 / 6：Torque =============================
         if (in_array($chat_mode, [1, 4, 6], true)) {
+            // 修正：改用 torque_calc (index 6) 優先
+            return array_map('floatval',
+                    array_map(function($r){
+                        return ($r[6] != 0) ? $r[6] : $r[1];
+                    }, $rows)
+                );
+        }
+
+        /*if (in_array($chat_mode, [1, 4, 6], true)) {
             // Mode 6 在 ChartData 會用 Angle 作 X，所以這裡 torque 沒問題
             return array_map('floatval', array_column($rows, 1));
-        }
+        }*/
 
         // === 7. Mode 2：Angle（固定 index 2）======================
         if ($chat_mode === 2) {
@@ -166,6 +206,7 @@ class Dashboard{
             return array_map('floatval', array_column($rows, 4)); // step_local
         }
 
+      
         // === 10. 其他模式 fallback（不建議，但安全）===============
         return array_map('floatval', array_column($rows, $chat_mode));
     }
@@ -205,7 +246,7 @@ class Dashboard{
         $folder = "/mnt/ramdisk/ftp/";
 
         // 取得所有以指定 ID 開頭且結尾為 .csv 的檔案
-        $file_list = glob($folder . $id . "__*.csv");
+        $file_list = glob($folder . $id . "_*.csv");
 
         if (!empty($file_list)) {
             // 根據建立時間從新到舊排序

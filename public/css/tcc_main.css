@@ -32,173 +32,86 @@ html, body
     }
 }
 
-button
+.button {
+   padding-top: 20px;
+   flex-direction: column;
+   align-items: center;   /* giữ ngang giữa */
+   gap: 15px;
+
+   height: calc(80vh - 135px);
+
+   width: 100%;
+   overflow: auto; /* Ẩn thanh cuộn */
+   justify-content: center;
+   align-items: center;
+}
+
+/* Vẫn cho phép cuộn nhưng ẩn thanh cuộn */
+.button::-webkit-scrollbar {
+   display: none; /* Ẩn thanh cuộn trên Chrome, Safari */
+}
+
+.button 
+{
+   -ms-overflow-style: none;  /* Ẩn thanh cuộn trên IE, Edge */
+   scrollbar-width: none;  /* Ẩn thanh cuộn trên Firefox */
+}
+
+.row {
+   display: flex;
+   justify-content: center;
+   flex-wrap: wrap;
+   gap: 10px;
+   margin-bottom: 10px;  /* khoảng cách giữa các hàng */
+}
+
+.menu-item 
 {
    background: #EEEEEE;
    border-radius: 10%;
-   width: 130px;
-   height: 130px;
+   width: clamp(90px, 18vw, 130px);
+   height: clamp(90px, 18vw, 130px);
+   font-size: clamp(14px, 2.5vw, 20px);
    color: #FFFFFF;
    text-align: center;
-   float: center;
+   border: none;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   cursor: pointer;
 }
 
-.menu
-{
-   width: 80px;
-   height: 80px;
-   text-align: center;
-   box-sizing: border-box;
-   font-size: 30px;
-}
-
-.menu-item:hover
-{
+.menu-item:hover {
    background: #EEEEEE;
    color: #3290B1;
 }
 
-.blue
-{
-   background-color: #669AE1;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+/* iPad dọc: không thay đổi kích thước, chỉ căn giữa */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+    .row {
+        justify-content: center; /* căn giữa toàn bộ row */
+        gap: 10px; /* khoảng cách giữa các nút */
+    }
 }
 
-.blue:hover
-{
-   color: #669AE1;
-   text-shadow: none;
-}
+/* Mobile dưới 768px: 2 cột x 5 hàng, căn giữa màn hình */
+@media (max-width: 768px) {
+    .row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 cột */
+        grid-auto-rows: 135px; /* giữ cao bằng PC */
+        gap: 10px;
+        width: auto;
+        max-width: 300px; /* hoặc tùy chỉnh vừa màn hình */
+        margin: 0 auto; /* căn giữa màn hình */
+        justify-items: center; /* căn giữa nút trong ô */
+        overflow-x: hidden;
+    }
 
-.green
-{
-   background-color: #70CC72;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.green:hover
-{
-   color: #70CC72;
-   text-shadow: none;
-}
-
-.red
-{
-   background-color: #FE4365;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.red:hover
-{
-   color: #FE4365;
-   text-shadow: none;
-}
-
-.orange
-{
-   background-color: #FC913A;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.orange:hover
-{
-   color: #FC913A;
-   text-shadow: none;
-}
-
-.purple
-{
-   background-color: #C49CDE;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.purple:hover
-{
-   color: #C49CDE;
-   text-shadow: none;
-}
-
-.lightblue
-{
-   background-color: #62C2E4;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.lightblue:hover
-{
-   color: #62C2E4;
-   text-shadow: none;
-}
-
-.pink
-{
-   background-color: #FFC0CB;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.pink:hover
-{
-   color: #FFC0CB;
-   text-shadow: none;
-}
-
-.PaleGreen
-{
-   background-color: #008B8B;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.PaleGreen:hover
-{
-   color: #008B8B;
-   text-shadow: none;
-}
-
-.lime
-{
-   background-color: #CDDC39;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.lime:hover
-{
-   color: #CDDC39;
-   text-shadow: none;
-}
-
-.indigo
-{
-   background-color: #3F51B5;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.indigo:hover
-{
-   color: #3F51B5;
-   text-shadow: none;
-}
-
-.deep-orange
-{
-   background-color: #FF5722;
-   box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.14);
-   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
-}
-
-.deep-orange:hover
-{
-   color: #FF5722;
-   text-shadow: none;
+    .menu-item {
+        width: 100%;  /* rộng bằng ô grid */
+        height: 100%; /* cao bằng ô grid */
+    }
 }
 
 /* Text  */

@@ -1,0 +1,103 @@
+﻿.container-ms
+{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+#header
+{
+    min-height:50px;
+    background-color:hsl(0, 60%, 50%);
+    margin: 10px;
+    font-size: 30px;
+}
+
+.no-border
+{
+    border: none;
+}
+
+.no-border td
+{
+    border: none;
+}
+
+html, body 
+{
+    margin: 0;
+    padding: 0;
+    padding-top: 0px;
+    font-family: Arial, sans-serif;
+}
+
+.main-content
+{
+    display: flex;
+}
+
+.center-content
+{
+    width: 100%;
+    padding: 5px 20px;
+}
+
+.divTool
+{
+    width: 100%;
+    margin: 4px 0px;
+}
+
+/* scrollbar style Tool*/
+.scrollbar{
+    height: calc(100vh - 100px);
+    max-height: 80vh; /* tránh quá cao khi nội dung ít */
+    width: 100%;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+@media screen and (orientation: landscape) {
+    .scrollbar {
+        height: calc(100vh - 115px); /* 120px là tổng header + footer */
+    }
+}
+
+
+.force-overflow
+{
+    min-height: auto;
+}
+
+
+/**  STYLE TOOL*/
+#style-tool::-webkit-scrollbar
+{
+    display: none;
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#style-tool::-webkit-scrollbar-thumb
+{
+    border-radius: 10px;
+    background: linear-gradient(left, #96A6BF, #63738C);
+    box-shadow: inset 0 0 1px 1px #5C6670;
+}
+
+#style-tool::-webkit-scrollbar-track
+{
+    border-radius: 10px;
+    background: #eee;
+    box-shadow: 0 0 1px 1px #bbb, inset 0 0 7px rgba(0,0,0,0.3)
+}
+
+#style-tool::-webkit-scrollbar-thumb:hover
+{
+    background: linear-gradient(left, #8391A6, #536175);
+}
+
+.t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;padding-left: 5%}
+.t2{font-size: 17px; margin: 5px 0px;}

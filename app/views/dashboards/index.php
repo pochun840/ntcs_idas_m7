@@ -18,26 +18,30 @@
                 </div>
             </div>
 
-            <div class="button col pt-5">
-                <button class="menu-item blue" id="job_manager" style="font-size: 20px;" onclick="window.location.href='?url=Jobs/index'"><span style="visibility: hidden;">Job</span></button>
-                <button class="menu-item green" id="io_input" style="font-size: 20px;"   onclick="window.location.href='?url=Inputs/index'"><span style="visibility: hidden;">IO Input</span></button>
-                <button class="menu-item orange" id="io_output" style="font-size: 20px"  onclick="window.location.href='?url=Outputs/index'"><span style="visibility: hidden;">IO Output</span></button>
-                <br><br>
-                <button class="menu-item purple" id="operation" style="font-size: 20px" onclick="window.location.href='?url=Dashboards/operation'"><span style="visibility: hidden;">Operation</span></button>
-                <button class="menu-item lightblue" id="data" style="font-size: 20px" onclick="window.location.href='?url=Data/index'"><span style="visibility: hidden;">Data</span></button>
-                <button class="menu-item pink" id="tool" style="font-size: 20px" onclick="window.location.href='?url=Tools/index'"><span style="visibility: hidden;">Tool</span></button>
-                <button class="menu-item PaleGreen" id="setting" style="font-size: 20px;" onclick="window.location.href='?url=Settings/index'"><span style="visibility: hidden;">Setting</span></button>
-                <br><br>
-
-                <div>
-                    <button class="menu-item lime" id="remote" style="font-size: 20px" onclick="window.location.href='?url=Remotes'"><span style="visibility: hidden;">Remotes</span></button>
-                    <button class="menu-item lime" id="agent" style="font-size: 20px"  onclick="window.location.href='?url=Agents'" ><span style="visibility: hidden;">Agent</span></button>
-                    <button class="menu-item indigo" id="load" style="font-size: 20px" onclick="DB_sync_idas('C2D')"><span style="visibility: hidden;">Load</span></button>
-                    <button class="menu-item deep-orange" id="save" style="font-size: 20px;" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
+            <div class="button">
+                <!-- Hàng 1: 3 nút -->
+                <div class="row">
+                    <button class="menu-item blue" id="job_manager" onclick="window.location.href='?url=Jobs/index'"><span style="visibility: hidden;">Job</span></button>
+                    <button class="menu-item green" id="io_input" onclick="window.location.href='?url=Inputs/index'"><span style="visibility: hidden;">IO Input</span></button>
+                    <button class="menu-item orange" id="io_output" onclick="window.location.href='?url=Outputs/index'"><span style="visibility: hidden;">IO Output</span></button>
                 </div>
-           
 
-            </div>
+                <!-- Hàng 2: 4 nút -->
+                <div class="row">
+                    <button class="menu-item purple" id="operation" onclick="window.location.href='?url=Dashboards/operation'"><span style="visibility: hidden;">Operation</span></button>
+                    <button class="menu-item lightblue" id="data" onclick="window.location.href='?url=Data/index'"><span style="visibility: hidden;">Data</span></button>
+                    <button class="menu-item pink" id="tool" onclick="window.location.href='?url=Tools/index'"><span style="visibility: hidden;">Tool</span></button>
+                    <button class="menu-item PaleGreen" id="setting" onclick="window.location.href='?url=Settings/index'"><span style="visibility: hidden;">Setting</span></button>
+                </div>
+
+                <div class="row">
+                    <button class="menu-item lime" id="remote" onclick="window.location.href='?url=Remotes'"><span style="visibility: hidden;">Remotes</span></button>
+                    <button class="menu-item lime" id="agent"  onclick="window.location.href='?url=Agents'" ><span style="visibility: hidden;">Agent</span></button>
+                    <button class="menu-item indigo" id="load" onclick="DB_sync_idas('C2D')"><span style="visibility: hidden;">Load</span></button>
+                    <button class="menu-item deep-orange" id="save" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
+                </div>
+            </div>            
+            
         </div>
     </div>
 </div>

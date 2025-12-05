@@ -12,7 +12,7 @@
                 </div>
 
      
-                <div style=" margin-top: 5%">   
+                <div style=" margin-top: 1%">   
                     <h1 class="col-ms-3 pt-5"  style="font-size: 50px;"><?php echo TITLE_INDEX; ?></h1>
                     <div style="text-shadow:2px 2px 0 #444; font-size: 30px" class="text w3-center w3-text-yellow"><?php echo SUBTITLE_INDEX; ?></div>
                 </div>
@@ -21,57 +21,24 @@
 
             </div>
 
-            <div class="w3-center button-container" style="margin: 20px">
-                <button class="menu-item blue" id="job_manager" onclick="window.location.href='?url=Jobs/index'"><span style="visibility: hidden;">Job</span></button>
-                <button class="menu-item purple" id="operation" onclick="window.location.href='?url=Dashboards/operation'"><span style="visibility: hidden;">Operation</span></button>
-                
-                <button class="menu-item green" id="io_input" onclick="window.location.href='?url=Inputs/index'"><span style="visibility: hidden;">IO Input</span></button>
-                <button class="menu-item orange" id="io_output" onclick="window.location.href='?url=Outputs/index'"><span style="visibility: hidden;">IO Output</span></button>
-
-                <button class="menu-item lightblue" id="data" onclick="window.location.href='?url=Data/index'"><span style="visibility: hidden;">Data</span></button>
-                <button class="menu-item pink" id="tool" onclick="window.location.href='?url=Tools/index'"><span style="visibility: hidden;">Tool</span></button>
-                
-                <button class="menu-item PaleGreen" id="setting" onclick="window.location.href='?url=Settings/index'"><span style="visibility: hidden;">Setting</span></button>
-               
-        
-                <button class="menu-item lime" id="agent" onclick="window.location.href='?url=Agents'"><span style="visibility: hidden;">Agent</span></button>
-                <button class="menu-item indigo" id="load"      onclick="DB_sync_idas('C2D')"><span style="visibility: hidden;">Load</span></button>
-                <button class="menu-item deep-orange" id="save" onclick="DB_sync_idas('D2C')"><span style="visibility: hidden;">Save</span></button>
-                <button class="menu-item lime" id="remote" onclick="window.location.href='?url=Remotes'"><span style="visibility: hidden;">Remotes</span></button>
-
+            <div class="button">
+                <div class="row">  <!-- chỉ 1 row duy nhất -->
+                    <button class="menu-item blue" id="job_manager" onclick="window.location.href='?url=Jobs/index'"></button>
+                    <button class="menu-item green" id="io_input" onclick="window.location.href='?url=Inputs/index'"></button>
+                    <button class="menu-item orange" id="io_output" onclick="window.location.href='?url=Outputs/index'"></button>
+                    <button class="menu-item purple" id="operation" onclick="window.location.href='?url=Dashboards/operation'"></button>
+                    <button class="menu-item lightblue" id="data" onclick="window.location.href='?url=Data/index'"></button>
+                    <button class="menu-item pink" id="tool" onclick="window.location.href='?url=Tools/index'"></button>
+                    <button class="menu-item PaleGreen" id="setting" onclick="window.location.href='?url=Settings/index'"></button>
+                    <button class="menu-item lime" id="agent" onclick="window.location.href='?url=Agents'"></button>
+                    <button class="menu-item indigo" id="load"      onclick="DB_sync_idas('C2D')"></button>
+                    <button class="menu-item deep-orange" id="save" onclick="DB_sync_idas('D2C')"></button>
+                    <button class="menu-item lime" id="remote" onclick="window.location.href='?url=Remotes'"></button>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-.button-container 
-{
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center; /* Center buttons in the container */
-    gap: 10px; /* Adjust space between buttons */
-}
-
-/* Khi màn hình nhỏ (dưới 768px), hiển thị 2 nút trên 1 hàng */
-@media (max-width: 768px) {
-    .button-container {
-        justify-content: space-evenly; /* Chia đều không gian giữa các nút */
-    }
-    
-}
-
-@media only screen and (max-width: 768px) {
-    .bottom-right {
-        position: fixed; /* 固定在螢幕右下角 */
-        bottom: 10px;  /* 距離頁面底部 10px */
-        right: 10px;   /* 距離頁面右邊 10px */
-        color: white;
-        font-size: 18px;
-    }
-}
-
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
