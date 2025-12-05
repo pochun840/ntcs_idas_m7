@@ -261,24 +261,47 @@ function renderChart(chart_mode, chart_info) {
 
     /* -----------------------------
        CHART 6 - Step Angle (Y = Mode4)
-       ----------------------------- */
+    ----------------------------- */
     if (String(chart_mode) === "6") {
-        // 這裡直接用後端給的 x_val（通常是累積角度 contX）
-        const xContinuous = (chart_info?.x_val || []).map(Number);
-        const yFromMode4  = (chart_info?.y_val?.length ? chart_info.y_val : y_data_val).map(Number);
-        const steps       = chart_info?.steps || [];
 
-        const len = Math.min(xContinuous.length, yFromMode4.length, steps.length || Infinity);
+    // 1️⃣ X 軸是累積角度（後端給的 x_val）
+    const angleX = (chart_info?.x_val || []).map(v => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    });
 
-        renderChartMode6({
-            x_val: xContinuous.slice(0, len),
-            y_val: yFromMode4.slice(0, len),
-            steps: steps.slice(0, len),
-            y_min: chart_info?.y_min,
-            y_max: chart_info?.y_max
-        });
-        return;
+    // 2️⃣ Y 軸是扭力（從 chart_info.torque 或 y_data_val 抓）
+    let torqueY = [];
+    if (chart_info?.torque?.length) {
+        torqueY = chart_info.torque.map(v => Number(v) || 0);
+    } else {
+        // fallback 從 y_data_val 取 torque 欄位
+        torqueY = (y_data_val || []).map(v => Number(v) || 0);
     }
+
+    // 3️⃣ Step 資料
+    const stepsRaw = chart_info?.steps || chart_info?.step || [];
+    const steps = (stepsRaw.length ? stepsRaw : angleX.map(() => 1)).map(s => {
+        const m = /(\d+)/.exec(String(s));
+        return m ? +m[1] : 1;
+    });
+
+    // 4️⃣ 對齊 array
+    const len = Math.min(angleX.length, torqueY.length, steps.length);
+
+    renderChartMode6({
+        x_val: angleX.slice(0, len),
+        y_val: torqueY.slice(0, len),
+        steps: steps.slice(0, len),
+        y_min: chart_info?.y_min,
+        y_max: chart_info?.y_max
+    });
+
+    return;
+}
+
+
+
 
     /* -----------------------------
        CHART 7 - Angle vs Time (per step)
@@ -331,39 +354,37 @@ function renderChart(chart_mode, chart_info) {
     }
 
     /* -----------------------------
-       CHART 2 - Step Angle vs Time
-       ----------------------------- */
+    CHART 2 - Step Angle vs Time（步驟之間不連線）
+    ----------------------------- */
     if (String(chart_mode) === "2") {
+
         const timeX  = x_data_val.map(v => Number(v) || 0);
         const angleY = y_data_val.map(v => Number(v) || 0);
 
+        // 解析 step
         const stepsArr = (stepsRaw.length ? stepsRaw : timeX.map(() => 1)).map(s => {
             const m = /(\d+)/.exec(String(s));
             return m ? +m[1] : 1;
         });
 
-        const stepOrder = [...new Set(stepsArr)];
+        // 依 step 分組資料
+        const byStep = new Map();
+        for (let i = 0; i < timeX.length; i++) {
+            const s = stepsArr[i];
+            if (!byStep.has(s)) byStep.set(s, []);
+            byStep.get(s).push([ timeX[i], angleY[i] ]);
+        }
 
         const palette = ['#0066ff','#cc0000','#009933','#ff9900','#6600cc'];
-        const colorFor = (k, i) =>
-            (k >= 1 && k <= 5) ? palette[k - 1] : palette[i % palette.length];
 
-        const series = stepOrder.map((s, idx) => {
-            const pts = [];
-            for (let i = 0; i < timeX.length; i++) {
-                if (stepsArr[i] === s)
-                    pts.push([timeX[i], angleY[i]]);
-            }
-            if (!pts.length) return null;
-            return {
-                name: `Step${s}`,
-                type: 'line',
-                showSymbol: false,
-                connectNulls: true,
-                lineStyle: { width: 2, color: colorFor(s, idx) },
-                data: pts
-            };
-        }).filter(Boolean);
+        const series = [...byStep.entries()].map(([step, pts], idx) => ({
+            name: `Step${step}`,
+            type: 'line',
+            showSymbol: false,
+            connectNulls: false,
+            lineStyle: { width: 2, color: palette[idx % palette.length] },
+            data: pts
+        }));
 
         myChart.setOption({
             tooltip: { trigger: 'axis' },
@@ -374,6 +395,9 @@ function renderChart(chart_mode, chart_info) {
 
         return;
     }
+
+
+
 
 
     /* -----------------------------
@@ -507,6 +531,10 @@ function renderChart(chart_mode, chart_info) {
 
 
 
+    /* 防止 fallback 覆蓋 chart_mode 2 / 4 / 5 / 6 / 7 */
+    if (["2","4","5","6","7"].includes(String(chart_mode))) {
+        return;
+    }
 
     /* -----------------------------
        CHART 1 / 3 (Time / RPM)
