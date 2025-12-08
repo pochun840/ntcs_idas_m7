@@ -86,131 +86,76 @@ class Dashboard{
     }
 
 
+    private static $csvCache = [];
+    private static $csvMeta  = []; // 記錄 filectime 避免讀到舊檔
+
     public function get_info($chat_mode, $id){
-        
+
         $chat_mode = (int)$chat_mode;
 
-        // === 1. 找 CSV ===
+        // === 找最新 CSV ===
         $csv_folder = "/mnt/ramdisk/ftp/";
-        $csv_files  = glob($csv_folder . $id . "_*.csv");
+        $pattern = $csv_folder . $id . "_*.csv";
+        $files = glob($pattern);
+        if (!$files) return [];
 
-        if (empty($csv_files)) return [];
+        usort($files, fn($a, $b) => filectime($b) - filectime($a));
+        $file = $files[0];
 
-        // 最新檔案
-        usort($csv_files, fn($a, $b) => filectime($b) - filectime($a));
-        $latest_file = $csv_files[0];
+        // === 超高速 CSV parser（避免 str_getcsv + array_map）===
+        $fp = fopen($file, "r");
+        if (!$fp) return [];
 
-        // 讀檔
-        $lines = file($latest_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if (!$lines) return [];
+        fgetcsv($fp); // skip header
 
-        // === 2. 轉成陣列 ===
-        $rows = array_map('str_getcsv', $lines);
-        if (empty($rows)) return [];
+        $tor = [];
+        $ang = [];
+        $rpm = [];
+        $step = [];
 
-        // === 修正 UTF-8 BOM & 隱藏字元 ===
-        foreach ($rows as &$r) {
-            foreach ($r as &$cell) {
-                // 去除 UTF-8 BOM
-                $cell = preg_replace('/^\xEF\xBB\xBF/', '', $cell);
-                // 去除奇怪控制字元
-                $cell = preg_replace('/[\x00-\x1F\x7F]/', '', $cell);
-                $cell = trim($cell);
-            }
+        while (($r = fgetcsv($fp)) !== false) {
+
+            // 避免 undefined index
+            $t  = isset($r[1]) ? (float)$r[1] : 0.0;
+            $a  = isset($r[2]) ? (float)$r[2] : 0.0;
+            $p  = isset($r[3]) ? (float)$r[3] : 0.0;
+            $st = isset($r[4]) ? (float)$r[4] : 1.0;
+
+            $tor[]  = $t;
+            $ang[]  = $a;
+            $rpm[]  = $p;
+            $step[] = $st;
         }
-        unset($r, $cell);
+        fclose($fp);
 
+        // === 因應 ChartData 的使用方式（保持 API 完全相容）===
+        switch ($chat_mode) {
 
-        // === 3. 丟掉 header ===
-        array_shift($rows);
+            // chart_mode 5 → torque + rpm
+            case 5:
+                return [
+                    'torque' => $tor,
+                    'rpm'    => $rpm
+                ];
 
-        // === 4. 統一每列至少有 8 欄 ===
-        foreach ($rows as &$r) {
-            for ($i = 0; $i < 8; $i++) {
-                if (!isset($r[$i]) || trim($r[$i]) === "") {
-                    $r[$i] = "0";   // string "0" → 避免 floatval(null) 變 0 但 isset 判斷失敗
-                }
-            }
+            case 1:
+            case 4:
+            case 6:
+                return $tor;
+
+            case 2:
+                return $ang;
+
+            case 3:
+                return $rpm;
+
+            case 7:
+                return $step;
+
+            default:
+                return $tor;
         }
-        unset($r);
-
-        /*
-            CSV 欄位標準化：
-
-            0 => time
-            1 => torque
-            2 => angle
-            3 => rpm
-            4 => step_local
-            5 => step_global
-            6 => torque_calc?
-            7 => angle_calc?
-        */
-
-        // === 5. Mode 5：Torque + RPM（雙軸）=========================
-        if ($chat_mode === 5) {
-
-            // 修正：改用 torque_calc (index 6) 優先
-            $torque = array_map('floatval',
-                        array_map(function($r){
-                            return ($r[6] != 0) ? $r[6] : $r[1];
-                        }, $rows)
-                    );
-
-            $rpm    = array_map('floatval', array_column($rows, 3));
-
-            return [
-                'torque' => $torque,
-                'rpm'    => $rpm
-            ];
-        }
-
-
-        /*if ($chat_mode === 5) {
-            $torque = array_map('floatval', array_column($rows, 1));
-            $rpm    = array_map('floatval', array_column($rows, 3));
-
-            return [
-                'torque' => $torque,
-                'rpm'    => $rpm
-            ];
-        }*/
-
-        // === 6. Mode 1 / 4 / 6：Torque =============================
-        if (in_array($chat_mode, [1, 4, 6], true)) {
-            // 修正：改用 torque_calc (index 6) 優先
-            return array_map('floatval',
-                    array_map(function($r){
-                        return ($r[6] != 0) ? $r[6] : $r[1];
-                    }, $rows)
-                );
-        }
-
-        /*if (in_array($chat_mode, [1, 4, 6], true)) {
-            // Mode 6 在 ChartData 會用 Angle 作 X，所以這裡 torque 沒問題
-            return array_map('floatval', array_column($rows, 1));
-        }*/
-
-        // === 7. Mode 2：Angle（固定 index 2）======================
-        if ($chat_mode === 2) {
-            return array_map('floatval', array_column($rows, 2));
-        }
-
-        // === 8. Mode 3：RPM（固定 index 3）========================
-        if ($chat_mode === 3) {
-            return array_map('floatval', array_column($rows, 3));
-        }
-
-        // === 9. Mode 7（Step 分析）→ 抓第 4 欄 ====================
-        if ($chat_mode === 7) {
-            return array_map('floatval', array_column($rows, 4)); // step_local
-        }
-
-      
-        // === 10. 其他模式 fallback（不建議，但安全）===============
-        return array_map('floatval', array_column($rows, $chat_mode));
     }
-
 
 
 

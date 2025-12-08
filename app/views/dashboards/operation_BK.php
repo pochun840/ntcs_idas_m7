@@ -116,10 +116,6 @@
                                 <div id="graph" class="display-chart">
                                     <div id="chart" style="width: 100%; height: 100%"></div>
                                 </div>   
-
-
-                            
-
                             <?php }?>
             
                     </div>
@@ -489,6 +485,16 @@ function renderChart(chart_mode, chart_info) {
 
         return;
     }
+
+
+
+
+
+
+
+
+
+
 
     // === chart 5：Torque + RPM（保留你的做法）===
     if (String(chart_mode) === "5") {

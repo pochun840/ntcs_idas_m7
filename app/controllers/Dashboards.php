@@ -279,6 +279,7 @@ class Dashboards extends Controller
         }
 
 
+
         // 組回傳
         $data = [
             'isMobile'       => $isMobile,
@@ -343,7 +344,7 @@ class Dashboards extends Controller
     }
 
 
-    /**
+       /**
      * 組裝圖表資料
      *
      * @param int   $chat_mode      圖表模式 (1,2,3,4,5,6,7)
@@ -353,12 +354,7 @@ class Dashboards extends Controller
      * @param array $angle_as_x     供 4/6 使用的 X（以 mode2 的 angle 或 y_val 為準）
      * @return array                chart payload
      */
-
-
-    
-
-
-    /*private function ChartData($chat_mode, $csvdata_arr, $chat_mode_arr, $x_val, $angle_as_x = []) {
+    private function ChartData($chat_mode, $csvdata_arr, $chat_mode_arr, $x_val, $angle_as_x = []) {
         $chart_info = [];
         $chat_mode  = (int)$chat_mode;
 
@@ -419,7 +415,6 @@ class Dashboards extends Controller
             $chart_info['min']             = $chart_info['min_torque'];
 
         } elseif (in_array($chat_mode, [1,2,3,4,6,7], true)) {
-
             if (in_array($chat_mode, [1,4,6], true)) {
                 // 扭力曲線（單位換算）
                 $series = $csvdata_arr;
@@ -482,7 +477,7 @@ class Dashboards extends Controller
         * 控制器的 Step2, Step3 角度不會從 0 開始畫
         * 必須做「角度累積」→ 才會長得跟控制器 UI 一樣
         * ---------------------------- */
-        /*if ($chat_mode === 7) {
+        if ($chat_mode === 7) {
             $angle = $chart_info['y_val'] ?? [];
 
             $acc = 0;         // 累積角度偏移值
@@ -511,152 +506,10 @@ class Dashboards extends Controller
 
 
         return $chart_info;
-    }*/
-
-
-    private function ChartData($chat_mode, $csvdata_arr, $chat_mode_arr, $x_val, $angle_as_x = []) {
-
-        $chart_info = [];
-        $chat_mode  = (int)$chat_mode;
-
-        // 取得裝置扭力單位與精度
-        $res_device          = $this->SettingModel->GetControllerInfo();
-        $device_torque_unit  = (int)($res_device['torque_unit'] ?? 1);
-        $unit_arr            = $this->MiscellaneousModel->details('torque_unit');
-        $unit_name           = $unit_arr[$device_torque_unit] ?? 'N.m';
-        $decimals_arr        = $this->MiscellaneousModel->details('decimals');
-        $precision           = $decimals_arr[$device_torque_unit] ?? 3;
-
-        // ============================================
-        // 🔥 修正後 normalizeSeries()（不再誤砍第一筆）
-        // ============================================
-        $normalizeSeries = function($arr) {
-
-            if (!is_array($arr)) return [];
-
-            // 若是關聯陣列，取第一個常見資料欄
-            if (array_keys($arr) !== range(0, count($arr)-1)) {
-                foreach (['torque', 'rpm', 'angle', 'y_val', 'x_val'] as $k) {
-                    if (isset($arr[$k]) && is_array($arr[$k])) { 
-                        $arr = $arr[$k];
-                        break;
-                    }
-                }
-            }
-
-            // 🔥 移除 BOM / Zero-width-space / FEFF 等隱藏字元
-            $arr = array_map(function($v){
-                if (!is_string($v)) return $v;
-
-                // 去除 BOM / FEFF / ZERO WIDTH SPACE
-                $v = preg_replace('/^[\xEF\xBB\xBF\x{200B}\x{FEFF}]+/u', '', $v);
-
-                return trim($v);
-            }, $arr);
-
-            // ❗不再使用 array_shift()，避免誤刪第一筆資料
-            return array_map('floatval', $arr);
-        };
-
-        // 用於 chart 4 / 6 的 angle 做 X 軸
-        $normalizeAngleAsX = function($arr) use ($normalizeSeries) {
-            if (!is_array($arr)) return [];
-            if (isset($arr['angle']) && is_array($arr['angle']))          $arr = $arr['angle'];
-            elseif (isset($arr['y_val']) && is_array($arr['y_val']))      $arr = $arr['y_val'];
-            return $normalizeSeries($arr);
-        };
-
-        // 扭力單位轉換
-        $convertTorque = function($val) use ($device_torque_unit, $precision) {
-            $converted = $this->MiscellaneousModel->convert_single_torque_unit($val, 1, $device_torque_unit);
-            return round((float)$converted, $precision);
-        };
-
-        // ============================================
-        // Y 軸資料處理
-        // ============================================
-        if ($chat_mode === 5) {
-            $torque = $normalizeSeries($csvdata_arr['torque'] ?? $csvdata_arr);
-            $rpm    = $normalizeSeries($csvdata_arr['rpm']    ?? []);
-
-            $torque_converted              = array_map($convertTorque, $torque);
-            $chart_info['y_val']           = $torque_converted;
-            $chart_info['y_val_torque']    = $torque_converted;
-            $chart_info['y_val_rpm']       = $rpm;
-
-            $chart_info['max']             = max($torque_converted);
-            $chart_info['min']             = min($torque_converted);
-        }
-        elseif (in_array($chat_mode, [1,4,6], true)) {
-
-            $series = $csvdata_arr;
-            if (isset($csvdata_arr['torque'])) $series = $csvdata_arr['torque'];
-
-            $series            = $normalizeSeries($series);
-            $torque_converted  = array_map($convertTorque, $series);
-
-            $chart_info['y_val']        = $torque_converted;
-            $chart_info['max']          = max($torque_converted);
-            $chart_info['min']          = min($torque_converted);
-        }
-        elseif (in_array($chat_mode, [2,3,7], true)) {
-
-            $series = $normalizeSeries($csvdata_arr);
-
-            $chart_info['y_val'] = $series;
-            $chart_info['max']   = max($series);
-            $chart_info['min']   = min($series);
-        }
-
-        $chart_info['unit_name'] = $unit_name;
-
-        // ============================================
-        // X 軸處理
-        // ============================================
-        $x_norm = $normalizeSeries($x_val);
-
-        if ($chat_mode === 4 || $chat_mode === 6) {
-
-            $x_from_mode2 = $normalizeAngleAsX($angle_as_x);
-            $y_series     = $chart_info['y_val'] ?? [];
-
-            $len = min(count($x_from_mode2), count($y_series));
-
-            if ($len > 0) {
-                $chart_info['x_val'] = array_slice($x_from_mode2, 0, $len);
-                $chart_info['y_val'] = array_slice($y_series,     0, $len);
-            } else {
-                $chart_info['x_val'] = array_map(fn($v)=>($v==(int)$v)?(int)$v:(float)$v, $x_norm);
-            }
-        }
-        else {
-            // 🔥 chart_mode=1 使用 time → 修正後會完全正常
-            $chart_info['x_val'] = array_map(fn($v)=>($v==(int)$v)?(int)$v:(float)$v, $x_norm);
-        }
-
-        // ============================================
-        // chart_mode == 7 角度累加
-        // ============================================
-        if ($chat_mode === 7) {
-            $angle = $chart_info['y_val'] ?? [];
-
-            $acc = 0;
-            $prev = 0;
-            $fixed = [];
-
-            foreach ($angle as $v) {
-                if ($v < $prev) $acc += $prev;
-                $fixed[] = $v + $acc;
-                $prev = $v;
-            }
-
-            $chart_info['y_val'] = $fixed;
-            $chart_info['max']   = max($fixed);
-            $chart_info['min']   = min($fixed);
-        }
-
-        return $chart_info;
     }
+
+
+    
 
 
 
