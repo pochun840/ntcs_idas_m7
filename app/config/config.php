@@ -1,8 +1,10 @@
 <?php
 
 //sudo chmod -R 777 /var/www/html/ntcs_idas
+// sudo chmod -R 777  var/www/html/ntcs_idas/public/ftp
 //sudo chmod -R 777 /var/www/html/database
 //sudo rm -rf /var/www/html/extracted
+//sudo rm -rf /var/www/html/ntcs_idas  
 //sudo chown -R www-data:www-data /var/www/html/ntcs_idas/app/views/step
 //12345678rd
 // App 根目錄，這是引入 app 資料夾裡的資源用的

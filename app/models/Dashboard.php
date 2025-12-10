@@ -85,77 +85,64 @@ class Dashboard{
         return $rows;
     }
 
+    public function get_info($id) {
 
-    private static $csvCache = [];
-    private static $csvMeta  = []; // 記錄 filectime 避免讀到舊檔
-
-    public function get_info($chat_mode, $id){
-
-        $chat_mode = (int)$chat_mode;
-
-        // === 找最新 CSV ===
         $csv_folder = "/mnt/ramdisk/ftp/";
-        $pattern = $csv_folder . $id . "_*.csv";
-        $files = glob($pattern);
-        if (!$files) return [];
+        $files = glob($csv_folder . $id . "_*.csv");
+
+        if (!$files) {
+            return [
+                "x"      => [],
+                "torque" => [],
+                "rpm"    => [],
+                "angle"  => [],
+                "step"   => [],
+            ];
+        }
 
         usort($files, fn($a, $b) => filectime($b) - filectime($a));
         $file = $files[0];
 
-        // === 超高速 CSV parser（避免 str_getcsv + array_map）===
         $fp = fopen($file, "r");
         if (!$fp) return [];
 
-        fgetcsv($fp); // skip header
+        // 讀 header
+        $header = fgetcsv($fp);
 
-        $tor = [];
-        $ang = [];
-        $rpm = [];
-        $step = [];
+        $x      = [];
+        $torque = [];
+        $angle  = [];
+        $rpm    = [];
+        $step   = [];
 
+        $i = 0;
         while (($r = fgetcsv($fp)) !== false) {
 
-            // 避免 undefined index
-            $t  = isset($r[1]) ? (float)$r[1] : 0.0;
-            $a  = isset($r[2]) ? (float)$r[2] : 0.0;
-            $p  = isset($r[3]) ? (float)$r[3] : 0.0;
-            $st = isset($r[4]) ? (float)$r[4] : 1.0;
+            $t = isset($r[0]) ? floatval($r[0]) : $i;
+            $tor = isset($r[1]) ? floatval($r[1]) : 0;
+            $ang = isset($r[2]) ? floatval($r[2]) : 0;
+            $rp  = isset($r[3]) ? floatval($r[3]) : 0;
+            $st  = isset($r[4]) ? $r[4] : "1";
 
-            $tor[]  = $t;
-            $ang[]  = $a;
-            $rpm[]  = $p;
-            $step[] = $st;
+            $x[]      = $t;
+            $torque[] = $tor;
+            $angle[]  = $ang;
+            $rpm[]    = $rp;
+            $step[]   = $st;
+
+            $i++;
         }
         fclose($fp);
 
-        // === 因應 ChartData 的使用方式（保持 API 完全相容）===
-        switch ($chat_mode) {
-
-            // chart_mode 5 → torque + rpm
-            case 5:
-                return [
-                    'torque' => $tor,
-                    'rpm'    => $rpm
-                ];
-
-            case 1:
-            case 4:
-            case 6:
-                return $tor;
-
-            case 2:
-                return $ang;
-
-            case 3:
-                return $rpm;
-
-            case 7:
-                return $step;
-
-            default:
-                return $tor;
-        }
+        return [
+            "x"      => $x,
+            "torque" => $torque,
+            "rpm"    => $rpm,
+            "angle"  => $angle,
+            "step"   => $step,
+        ];
     }
+
 
 
 

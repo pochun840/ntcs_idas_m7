@@ -22,6 +22,7 @@ class Dashboards extends Controller
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
+        
 
 
 
@@ -52,7 +53,8 @@ class Dashboards extends Controller
 
    
     public function operation() {
-        
+
+      
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
@@ -64,12 +66,15 @@ class Dashboards extends Controller
         $decimals_arr       = $this->MiscellaneousModel->details('decimals');
         $res_device         = $this->SettingModel->GetControllerInfo();
 
+        // ⭐ 自動同步 CSV
+        $this->auto_fix_and_sync_csv();
+
+        $this->cleanCsvKeepLast10Core();
+
+
 
         $torque_unit = (int)($data_info['torque_unit'] ?? 1);
         $chart_unit_name    = $unit_arr[$torque_unit] ?? 'N.m';
-
-
-
 
         // 顯示用的最終鎖付值與單位
         if (!empty($data_info['fasten_status'])) {
@@ -509,10 +514,58 @@ class Dashboards extends Controller
     }
 
 
-    
+    public function get_latest_csv() {
 
+        $dir = "/var/www/html/ntcs_idas/public/ftp";
+        $files = glob($dir . "/*.csv");
 
+        if (!$files) {
+            echo json_encode(["status" => false, "msg" => "no csv"]);
+            return;
+        }
 
+        // 取最新文件
+        usort($files, fn($a,$b) => filemtime($b) - filemtime($a));
+        $file = $files[0];
+
+        // -------------------------
+        // ⭐ CSV STABILIZER（最終版）
+        // -------------------------
+        $stable = false;
+        $maxTry = 5;          // 最多 5 次（0.5 秒）
+        $interval = 100000;   // 每次睡眠 0.1 秒（微秒）
+        $lastHash = null;
+
+        for ($i = 0; $i < $maxTry; $i++) {
+
+            $text = @file_get_contents($file);
+            if ($text === false) break;
+
+            $hash = hash("crc32b", $text);
+
+            if ($lastHash === null) {
+                // 第一次讀
+                $lastHash = $hash;
+            }
+            else if ($hash === $lastHash) {
+                // 🎉 CSV 已穩定
+                $stable = true;
+                break;
+            }
+            else {
+                // CSV 還在寫入 → 更新 baseline
+                $lastHash = $hash;
+            }
+
+            usleep($interval);
+        }
+
+        echo json_encode([
+            "status" => true,
+            "csv"    => "/ntcs_idas/public/ftp/" . basename($file),
+            "stable" => $stable
+        ]);
+    }
 
     public function get_current_data(){
 
@@ -523,6 +576,156 @@ class Dashboards extends Controller
         return $current_data;
     
     }
+
+
+    public function auto_fix_and_sync_csv(){
+
+        $sourceDir = '/mnt/ramdisk/ftp';
+        $targetDir = '/var/www/html/ntcs_idas/public/ftp';
+
+        // Debug log
+        $logFile = $targetDir . '/sync_debug.log';
+        @mkdir($targetDir, 0777, true);
+        $fp = @fopen($logFile, "a");
+        $log = function($msg) use ($fp) {
+            if ($fp) fwrite($fp, "[".date('Y-m-d H:i:s')."] $msg\n");
+        };
+
+        $log("==== auto_fix_and_sync_csv START ====");
+
+        // ----------------------------
+        // Step 1：找來源 CSV
+        // ----------------------------
+        $files = glob($sourceDir . '/*.csv');
+        if (!$files) {
+            $log("No source CSV found");
+            return;
+        }
+
+        // 找最新的 CSV
+        usort($files, fn($a,$b) => filemtime($b) <=> filemtime($a));
+        $src = $files[0];
+        $name = basename($src);
+
+        $log("Latest CSV = $name");
+
+        // 目標檔案
+        $dest = $targetDir . "/" . $name;
+        $temp = $targetDir . "/." . $name . ".tmp";
+
+        // ----------------------------
+        // Step 2：**原子 copy**
+        // ----------------------------
+        if (!file_exists($dest) || filemtime($src) !== filemtime($dest)) {
+
+            $log("Copying using temp…");
+
+            // 先 copy 到 temp file
+            if (!@copy($src, $temp)) {
+                $log("ERROR: temp copy failed");
+                return;
+            }
+
+            // 設定與原檔一樣的時間
+            @touch($temp, filemtime($src));
+
+            // 原子操作 rename（決不會有「只有半份內容」的情況）
+            if (!@rename($temp, $dest)) {
+                $log("ERROR: rename failed");
+                return;
+            }
+
+            $log("Copied OK → $name");
+        } else {
+            $log("No change, skip copy");
+        }
+
+        // ----------------------------
+        // Step 3：只保留最新一個 CSV
+        // ----------------------------
+        $targetFiles = glob($targetDir . '/*.csv');
+        if ($targetFiles && count($targetFiles) > 1) {
+            usort($targetFiles, fn($a,$b) => filemtime($b) <=> filemtime($a));
+            $delete = array_slice($targetFiles, 1);
+
+            foreach ($delete as $del) {
+                @unlink($del);
+                $log("Deleted old CSV: " . basename($del));
+            }
+        }
+
+        $log("==== auto_fix_and_sync_csv END ====");
+        if ($fp) fclose($fp);
+    }
+
+
+
+
+
+
+
+
+
+
+    public function cleanCsvKeepLast10Core(){
+
+        $dir = '/var/www/html/ntcs_idas/public/ftp';
+
+        if (!is_dir($dir)) {
+            return [false, "目錄不存在：{$dir}"];
+        }
+
+        // 抓所有 .csv 檔
+        $pattern = rtrim($dir, '/') . '/*.csv';
+        $files = glob($pattern);
+
+        if (!$files || count($files) <= 1) {
+            // 沒有或少於等於 10 筆，不需要刪
+            return [true, "目前 CSV 數量 <= 10，無需刪除"];
+        }
+
+        // 依照「最後修改時間」由新到舊排序
+        usort($files, function ($a, $b) {
+            $ma = @filemtime($a) ?: 0;
+            $mb = @filemtime($b) ?: 0;
+            // 新的在前面
+            return $mb <=> $ma;
+        });
+
+        // 保留前 1 筆，其餘刪除
+        $keep   = array_slice($files, 0, 1);
+        $delete = array_slice($files, 1);
+
+        $deleted = [];
+        $failed  = [];
+
+        foreach ($delete as $file) {
+            if (@is_file($file)) {
+                if (@unlink($file)) {
+                    $deleted[] = basename($file);
+                } else {
+                    $failed[] = basename($file);
+                }
+            }
+        }
+
+        $msg = "總共檔案數：" . count($files) .
+            "，保留：" . count($keep) .
+            "，刪除：" . count($deleted);
+
+        if ($failed) {
+            $msg .= "，刪除失敗：" . implode(',', $failed);
+            return [false, $msg];
+        }
+
+        return [true, $msg];
+    }
+
+
+
+
+
+
 
 
 

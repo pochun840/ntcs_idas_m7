@@ -2168,15 +2168,15 @@
         const I18N = {
             'en-us': {
             title: 'Warning',
-            msg: `Threshold torque (${unit}) must be less than the upper torque limit`
+            msg: `Threshold torque (${unit}) must be less than the target torque`
             },
             'zh-tw': {
             title: '警告',
-            msg: `門檻點扭力（${unit}）需小於 扭力上限`
+            msg: `門檻點扭力（${unit}）需小於 目標扭力`
             },
             'zh-cn': {
             title: '警告',
-            msg: `门槛点扭力（${unit}）需小于扭力上限`
+            msg: `门槛点扭力（${unit}）需小于 目标扭力`
             }
         };
         const T = I18N[lang] || I18N['en-us'];
@@ -5299,9 +5299,9 @@ function getLangAndUnit() {
 
     // 多語對照表（依 code → 顯示字串）
     const UNIT_LABELS = {
-        0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤力·厘米' },
+        0: { 'en-us':'kgf·cm', 'zh-tw':'公斤·公分', 'zh-cn':'公斤·厘米' },
         1: { 'en-us':'N·m',    'zh-tw':'牛頓·公尺',     'zh-cn':'牛顿·米'     },
-        2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅力·英寸'   },
+        2: { 'en-us':'lbf·in', 'zh-tw':'磅·英吋',   'zh-cn':'磅·英寸'   },
         3: { 'en-us':'kgf·m',  'zh-tw':'公斤·公尺',   'zh-cn':'公斤·米'   },
         4: { 'en-us':'cN·m',   'zh-tw':'牛頓·釐米',   'zh-cn':'牛顿·厘米'   },
     };
