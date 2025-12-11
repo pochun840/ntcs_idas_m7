@@ -36,6 +36,13 @@ async function updateDataInfo() {
         document.getElementById("Torque_Result").innerText = json.text[json.data_info.fasten_status_text] ?? "";
         document.getElementById("Message").innerText = json.data_info.error_message || "";
 
+        // ⭐ 新增：即時更新扭力單位
+        if (json.chart_unit_label) {
+            const unitSpan = document.getElementById("Torque_Unit_Label");
+            if (unitSpan) unitSpan.innerText = json.chart_unit_label;
+        }
+
+
         if (json.data_info.result_status_color_text) {
             document.getElementById("fasten_status_color").style.backgroundColor =
                 json.data_info.result_status_color_text;
@@ -530,8 +537,10 @@ setInterval(() => {
 
                     <div class="item-target-torque w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red">
-                            <?php echo $data['text']['final_torque']; ?>
-                            (<?php echo $data['text'][$data['data_info']['final_torque_unit'] ?? ''] ?? ''; ?>)
+                           <?php echo $data['text']['final_torque']; ?>
+                            (<span id="Torque_Unit_Label">
+                                <?php echo $data['text'][$data['chart_unit_name'] ?? ''] ?? ''; ?>
+                            </span>)
                         </div>
                         <div id="Target_Torque" class="w3-display-middle" style="font-size: 4vmin">
                             <?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?>

@@ -134,6 +134,13 @@ async function updateDataInfo() {
         document.getElementById("Torque_Result").innerText = json.text[json.data_info.fasten_status_text] ?? "";
         document.getElementById("Message").innerText = json.data_info.error_message || "";
 
+        // ⭐ 新增：即時更新扭力單位
+        if (json.chart_unit_label) {
+            const unitSpan = document.getElementById("Torque_Unit_Label");
+            if (unitSpan) unitSpan.innerText = json.chart_unit_label;
+        }
+
+
         if (json.data_info.result_status_color_text) {
             document.getElementById("fasten_status_color").style.backgroundColor =
                 json.data_info.result_status_color_text;

@@ -1043,5 +1043,41 @@ class Controller
     }
 
 
+    public function get_torque_unit_from_controller() {
+
+        $srcDB = '/home/kls/NTCS7/ntcs_device.db';
+
+        if (!file_exists($srcDB)) {
+            error_log("⚠ ntcs_device.db 不存在");
+            return null;
+        }
+
+        try {
+            $src = new PDO("sqlite:" . $srcDB);
+            $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            $torque_unit = $src->query("
+                SELECT torque_unit 
+                FROM ntcs_device_test 
+                LIMIT 1
+            ")->fetchColumn();
+
+            $src = null;
+
+            if ($torque_unit === false) {
+                return null; // 查不到資料
+            }
+
+            return (int)$torque_unit;
+
+        } catch (PDOException $e) {
+            error_log("❌ 無法讀取 torque_unit：" . $e->getMessage());
+            return null;
+        }
+    }
+
+
+
+
 
 }
