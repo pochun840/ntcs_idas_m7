@@ -1,4 +1,5 @@
-<link rel="stylesheet" href="<?php echo URLROOT; ?>css/tcc_main.css" type="text/css">
+<?php $ver = date('YmdHis'); ?>
+<link rel="stylesheet" href="<?=URLROOT;?>css/tcc_main.css?v=<?=$ver;?>">
 
 <div class="container-ms">
     <div class="main-content">

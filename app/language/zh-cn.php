@@ -264,12 +264,12 @@ $text['Skip'] = '跳工序';
 
 
 
-$text['OK'] = 'OK';
-$text['NG'] = 'NG';
+$text['OK'] = '完成';
+$text['NG'] = '失敗';
 $text['NG-High'] = '超出上限';
 $text['NG-Low'] = '低于下限';
-$text['OK-Sequence'] = '工序完成信号';
-$text['OK-JOB'] = '工作任务完成信号';
+$text['OK-Sequence'] = '工序完成';
+$text['OK-JOB'] = '工作完成';
 $text['Tool Runing'] = '马达信号';
 $text['Tool Trigger'] = '启动信号';
 $text['Reverse'] = '反向';

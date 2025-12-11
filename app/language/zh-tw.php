@@ -263,12 +263,12 @@ $text['UserDefine5'] = '自定義5';
 $text['FreeRotate'] = '自由旋轉';
 $text['Skip'] = '跳工序';
 
-$text['OK'] = 'OK';
-$text['NG'] = 'NG';
+$text['OK'] = '完成';
+$text['NG'] = '失敗';
 $text['NG-High'] = '超出上限';
 $text['NG-Low'] = '低於下限';
-$text['OK-Sequence'] = '工序完成信號';
-$text['OK-JOB'] = '完工信號';
+$text['OK-Sequence'] = '工序完成';
+$text['OK-JOB'] = '工作完成';
 $text['Tool Runing'] = '馬達信號';
 $text['Tool Trigger'] = '啟動信號';
 $text['Reverse'] = '反向';

@@ -2117,7 +2117,6 @@
             }
         })();
 
-
         // ---- 交叉驗證：StepOption==2 && StepEnableThreshold==2 → StepTorqueTS < StepTorque（alertify + i18n + 單位）----
         (function enforceThresholdLessThanTorqueForOption2() {
         if (StepOption !== 2 || StepEnableThreshold !== "2") return;
@@ -2168,15 +2167,15 @@
         const I18N = {
             'en-us': {
             title: 'Warning',
-            msg: `Threshold torque (${unit}) must be less than the target torque`
+            msg: `Threshold torque must be less than the target torque`
             },
             'zh-tw': {
             title: '警告',
-            msg: `門檻點扭力（${unit}）需小於 目標扭力`
+            msg: `門檻點扭力 需小於 目標扭力`
             },
             'zh-cn': {
             title: '警告',
-            msg: `门槛点扭力（${unit}）需小于 目标扭力`
+            msg: `门槛点扭力 需小于 目标扭力`
             }
         };
         const T = I18N[lang] || I18N['en-us'];

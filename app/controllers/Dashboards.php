@@ -134,32 +134,9 @@ class Dashboards extends Controller
         $chart_mode    = (isset($_GET['chart']) && $_GET['chart'] >= 1 && $_GET['chart'] <= 7) ? (int)$_GET['chart'] : 1;
         $chat_mode_arr = $chart_mode;
 
-        // 第一欄 X（多半是時間；去表頭後轉數字）
-        $x_val = [];
-        $x_val_raw = $this->DashboardModel->get_csv_first_column($id);
-        if (is_array($x_val_raw)) {
-            $x_val = $x_val_raw;
-            if (!empty($x_val) && !is_numeric(reset($x_val))) array_shift($x_val);
-            $x_val = array_values($x_val);
-            $x_val = array_map(function($v){ return ($v == (int)$v) ? (int)$v : (float)$v; }, $x_val);
-        }
+      
 
-        // chart=4/6 的「角度 X」來源：取 chart=2（angle 或 y_val）
-        $angle_as_x = [];
-        $angle_as_x_raw = $this->DashboardModel->get_info(2, $id);
-        if (is_array($angle_as_x_raw)) {
-            if (isset($angle_as_x_raw['angle']) && is_array($angle_as_x_raw['angle'])) {
-                $angle_as_x = $angle_as_x_raw['angle'];
-            } elseif (isset($angle_as_x_raw['y_val']) && is_array($angle_as_x_raw['y_val'])) {
-                $angle_as_x = $angle_as_x_raw['y_val'];
-            } else {
-                $angle_as_x = $angle_as_x_raw;
-            }
-            if (!empty($angle_as_x) && !is_numeric(reset($angle_as_x))) array_shift($angle_as_x);
-            $angle_as_x = array_values($angle_as_x);
-            $angle_as_x = array_map('floatval', $angle_as_x);
-        }
-
+   
         // 選單文字
         $chart_menu_arr = $this->MiscellaneousModel->details('chart_menu');
         $chart_mode_arr = $this->MiscellaneousModel->details('chart_mode');
@@ -173,7 +150,7 @@ class Dashboards extends Controller
         $step_only = $this->DashboardModel->get_step_only($id);
 
         // ★ 取資料：chart=7 時改抓 2 的資料
-        $fetch_mode  = ($chart_mode === 7 ? 2 : $chart_mode);
+        /*$fetch_mode  = ($chart_mode === 7 ? 2 : $chart_mode);
         $csvdata_arr = $this->DashboardModel->get_info($fetch_mode, $id);
 
         // 用 mode5 原始扭力（轉單位後）得出統一扭力範圍
@@ -201,10 +178,10 @@ class Dashboards extends Controller
                 $unified_min_rpm = min($rpm_vals);
                 $unified_max_rpm = max($rpm_vals);
             }
-        }
+        }*/
 
         // 組 chart payload
-        $temp_chart = null;
+        /*$temp_chart = null;
         if (!empty($csvdata_arr)) {
             if ($chart_mode !== 5) {
                 $csvdata_arr = array_slice($csvdata_arr, 1); // 去表頭
@@ -281,14 +258,14 @@ class Dashboards extends Controller
 
                 $temp_chart['chart_unit_name'] = $chart_unit_name;
             }
-        }
+        }*/
 
 
 
         // 組回傳
         $data = [
             'isMobile'       => $isMobile,
-            'chart_info'     => $temp_chart,
+            //'chart_info'     => $temp_chart,
             'echart_name'    => $echart_name,
             'chart_mode'     => $chart_mode,
             'chart_menu_arr' => $chart_menu_arr,
