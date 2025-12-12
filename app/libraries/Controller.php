@@ -115,9 +115,9 @@ class Controller
     
 
     //取得tcscon device table資訊
-    public function Device_Info()
-    {
-        try {
+    public function Device_Info(){
+
+        /*try {
             if (PHP_OS_FAMILY === 'Linux') {
                 $db_path = '/var/www/html/database/data_device.db';
             } else {
@@ -148,17 +148,16 @@ class Controller
             error_log($e->getMessage());
             echo $e->getMessage(); // 或回傳空陣列 return [];
             return null;
-        }
+        }*/
     }
-
 
 
     public function ntcs_device_db_sysnc($forceRefresh = false){
 
         // 路徑集中放這裡
-        $srcController = '/home/kls/NTCS7/ntcs_device.db';            // 控制器端 ntcs_device.db
-        $tempDbPath    = '/var/www/html/database/ntcs_device_temp.db';// iDAS 暫存
-        $idasDbPath    = '/var/www/html/database/ntcs_device_IDAS.db';// iDAS 正式用的 device DB
+        $srcController = '/home/kls/NTCS7/ntcs_device.db';            
+        $tempDbPath    = '/var/www/html/database/ntcs_device_temp.db';
+        $idasDbPath    = '/var/www/html/database/ntcs_device_IDAS.db';
 
         // === 0) 先用 cookie 快取，避免每次都重跑整個流程 ===
         $cacheTtl = 10; // 秒
@@ -171,16 +170,15 @@ class Controller
             $ts  = (int)$_COOKIE['temp_device_id_ts'];
 
             if ($cid >= 1 && $cid <= 255 && $ts > 0 && (time() - $ts) < $cacheTtl) {
-                // 在快取有效時間內 → 直接回傳，完全不打 DB / Modbus
-                return $cid;
+                return $cid; // 快取有效 → 不打 DB、不打 Modbus
             }
         }
 
-        $finalDeviceId = null;   // 最後決定「實際 Modbus 通訊的 device_id」
-        $modbusOk      = false;  // 有沒有成功打到 Modbus
+        $finalDeviceId = null;
+        $modbusOk      = false;
 
         // -------------------------------------------------------
-        // 1) 先用「目前 iDAS DB」裡的 device_id 試著打 Modbus（不先 sync）
+        // 1) 先用 iDAS DB 的 device_id 試著打 Modbus（不先 sync）
         // -------------------------------------------------------
         $deviceIdFromIdas = $this->readDeviceIdFromDb($idasDbPath);
 
@@ -194,36 +192,40 @@ class Controller
         }
 
         // -------------------------------------------------------
-        // 2) 若第一步 Modbus 失敗 → 才執行 sync_db + 用 temp DB 再試一次
+        // 2) 如果 Modbus 失敗 → 才會使用 temp DB（正常情況不會跑到這）
         // -------------------------------------------------------
         if (!$modbusOk) {
-            // 2-1) 控制器 → temp（這邊才做 sync，平常有通就不會跑到這裡）
+
+            // 2-1) 控制器 → temp DB
             $this->sync_db($srcController, $tempDbPath);
 
-            // 2-2) 從 temp DB 讀 device_id
-            $deviceIdFromTemp = $this->readDeviceIdFromDb($tempDbPath);
+            // 只有 temp DB 存在時才讀，避免出現「不存在」log
+            if (file_exists($tempDbPath)) {
 
-            if ($deviceIdFromTemp !== null) {
-                $check2 = $this->idas_check($deviceIdFromTemp);
+                $deviceIdFromTemp = $this->readDeviceIdFromDb($tempDbPath);
 
-                if (empty($check2['error']) && $check2['result'] !== null) {
-                    $modbusOk      = true;
-                    $finalDeviceId = $deviceIdFromTemp;
+                if ($deviceIdFromTemp !== null) {
+                    $check2 = $this->idas_check($deviceIdFromTemp);
 
-                    // 2-3) ✅ 不再整個 copy DB
-                    //      改成只同步 ntcs_device_test 這張表的內容
-                    $this->syncTempDeviceIdToIdas();  // ★ 關鍵在這行
+                    if (empty($check2['error']) && $check2['result'] !== null) {
+                        $modbusOk      = true;
+                        $finalDeviceId = $deviceIdFromTemp;
+
+                        // 2-3) 只同步 device_id 欄位，不整個 copy DB
+                        $this->syncTempDeviceIdToIdas();
+                    }
                 }
             }
         }
 
         // -------------------------------------------------------
-        // 3) 將「實際 Modbus 通訊的 device_id」寫入 cookie（如果有找到）
+        // 3) 成功取得 device_id → 寫 cookie 快取
         // -------------------------------------------------------
         if ($finalDeviceId !== null) {
             $exp = time() + 86400 * 30; // 30 天
-            setcookie('temp_device_id', (string)$finalDeviceId, $exp, '/', '', false, true);
-            setcookie('temp_device_id_ts', (string)time(), $exp, '/', '', false, true);
+
+            setcookie('temp_device_id',    (string)$finalDeviceId, $exp, '/', '', false, true);
+            setcookie('temp_device_id_ts', (string)time(),         $exp, '/', '', false, true);
 
             $_COOKIE['temp_device_id']    = (string)$finalDeviceId;
             $_COOKIE['temp_device_id_ts'] = (string)time();
@@ -241,8 +243,6 @@ class Controller
     private function readDeviceIdFromDb($dbPath){
 
         if (!file_exists($dbPath)) {
-            // 不寫 log 也可以，看你要不要
-            // error_log('[readDeviceIdFromDb] DB file not found: ' . $dbPath);
             return null;
         }
 
@@ -289,11 +289,9 @@ class Controller
 
         // 1) 基本檔案存在檢查
         if (!file_exists($tempDbPath)) {
-            error_log('[syncTempDeviceIdToIdas] temp DB not found: ' . $tempDbPath);
             return null;
         }
         if (!file_exists($idasDbPath)) {
-            error_log('[syncTempDeviceIdToIdas] IDAS DB not found: ' . $idasDbPath);
             return null;
         }
 
