@@ -54,55 +54,112 @@ class Dashboards extends Controller
 
     }
 
-   
     public function operation() {
 
-      
+        // ========================
+        // 語系載入
+        // ========================
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
-        $isMobile           = $this->isMobileCheck();
-        //鎖附紀錄裡面的資料
-        $data_info          = $this->DashboardModel->get_Data() ?? [];
-        $controller_info    = $this->SettingModel->GetControllerInfo();
-        $status_arr         = $this->MiscellaneousModel->details('status');
-        $unit_arr           = $this->MiscellaneousModel->details('modbus_torque_unit');
-        $unit_arr_device    = $this->MiscellaneousModel->details('torque_unit');
-        $decimals_arr       = $this->MiscellaneousModel->details('decimals');
-        $res_device         = $this->SettingModel->GetControllerInfo();
+        $isMobile = $this->isMobileCheck();
 
+        // ========================
+        // 最新鎖附紀錄
+        // ========================
+        $data_info       = $this->DashboardModel->get_Data() ?? [];
+        $controller_info = $this->SettingModel->GetControllerInfo();
+        $status_arr      = $this->MiscellaneousModel->details('status');
+        $unit_arr        = $this->MiscellaneousModel->details('modbus_torque_unit');
+        $unit_arr_device = $this->MiscellaneousModel->details('torque_unit');
+        $decimals_arr    = $this->MiscellaneousModel->details('decimals');
 
-
-
-        // ⭐ 自動同步 CSV
+        // ========================
+        // CSV 自動同步
+        // ========================
         $this->auto_fix_and_sync_csv();
-
         $this->cleanCsvKeepLast10Core();
 
-        $new_unit = $this->device_torque_unit;
+        // ================================
+        // ⭐ 只有在 get_Data() 出現「新紀錄」時
+        //    才去讀控制器的 torque_unit
+        // ================================
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-       
-        $torque_unit = (int)($controller_info['torque_unit'] ?? 1);
+        $currentDataId = $data_info['id'] ?? null;
+
+        // 上一次處理的紀錄 id & 扭力單位 (存 Session)
+        $lastDataId       = $_SESSION['last_data_id_for_torque_unit'] ?? null;
+        $cachedTorqueUnit = isset($_SESSION['last_device_torque_unit'])
+            ? (int)$_SESSION['last_device_torque_unit']
+            : null;
+
+        $deviceTorqueUnit = null;
+
+        // 1) 有「新紀錄」→ 才重讀控制器 torque_unit
+        if (!empty($currentDataId) && $currentDataId !== $lastDataId) {
+
+            $unitFromController = $this->get_torque_unit_from_controller();
+
+            if ($unitFromController !== null) {
+                $deviceTorqueUnit = (int)$unitFromController;
+
+                // 更新 Session：記住這次用到的紀錄 id & 扭力單位
+                $_SESSION['last_data_id_for_torque_unit'] = $currentDataId;
+                $_SESSION['last_device_torque_unit']      = $deviceTorqueUnit;
+
+            } else {
+                // 讀控制器失敗 → 用快取
+                if ($cachedTorqueUnit !== null) {
+                    $deviceTorqueUnit = $cachedTorqueUnit;
+                }
+            }
+
+        // 2) 沒有新紀錄 → 直接用快取（完全不打控制器 DB）
+        } else {
+
+            if ($cachedTorqueUnit !== null) {
+                $deviceTorqueUnit = $cachedTorqueUnit;
+            }
+        }
+
+        // 3) 若前兩種方式都失敗 → fallback 用控制器設定值
+        if ($deviceTorqueUnit === null) {
+            $deviceTorqueUnit = (int)($controller_info['torque_unit'] ?? 1);
+        }
+
+        // 設回成員變數供後續使用
+        $this->device_torque_unit = $deviceTorqueUnit;
 
 
-        $chart_unit_name    = $unit_arr_device[$new_unit] ?? 'N.m';
-        // 多語系顯示（如 kgf.cm → 公斤.公分）
+        // ================================
+        // 扭力單位處理（顯示）
+        // ================================
+        $new_unit = $deviceTorqueUnit;
+
+        $chart_unit_name  = $unit_arr_device[$new_unit] ?? 'N.m';
         $chart_unit_label = $text[$chart_unit_name] ?? $chart_unit_name;
 
 
-        // 顯示用的最終鎖付值與單位
+        // ================================
+        // final_fasten_torque 顯示處理
+        // ================================
         if (!empty($data_info['fasten_status'])) {
-            $data_info['error_message'] = $error_message['ERR_' . $data_info['error_message']] ?? $data_info['error_message'];
+
+            $data_info['error_message'] =
+                $error_message['ERR_' . $data_info['error_message']]
+                ?? $data_info['error_message'];
+
             $fastenStatus = (string)$data_info['fasten_status'];
             $color = 'green';
 
-            if (in_array($fastenStatus, ['5'])) {
-                $controller_info = $this->SettingModel->GetControllerInfo();
+            if ($fastenStatus === '5') {
                 $color = ($controller_info['okseqcolor'] ?? 0) == 0 ? 'green' : 'yellow';
-            } elseif (in_array($fastenStatus, ['6'])) {
-                $controller_info = $this->SettingModel->GetControllerInfo();
+            } elseif ($fastenStatus === '6') {
                 $color = ($controller_info['okjobcolor'] ?? 0) == 0 ? 'green' : 'yellow';
-            } elseif (in_array($fastenStatus, ['7','8'])) {
+            } elseif (in_array($fastenStatus, ['7', '8'])) {
                 $color = 'red';
             }
 
@@ -110,78 +167,56 @@ class Dashboards extends Controller
             $data_info['result_status_color_text'] = $color;
             $data_info['torque_unit']              = (int)($data_info['torque_unit'] ?? 1);
 
-            
-            $data_info['final_fasten_torque'] = $data_info['final_fasten_torque'];
-            $data_info['final_torque_unit']   = $chart_unit_name;
+            // 直接使用控制器單位（不再換算）
+            $data_info['final_fasten_torque']      = $data_info['final_fasten_torque'];
             $data_info['final_fasten_torque_temp'] = $data_info['final_fasten_torque'];
-
-
-            
-            /*if ($device_torque_unit != $data_info['torque_unit']) {
-      
-                $conv = $this->MiscellaneousModel->convert_all_torque_units(
-                    $data_info['final_fasten_torque'], $data_info['torque_unit'], $device_torque_unit
-                );
-                $data_info['final_fasten_torque_temp'] = $conv[$unit_arr[$device_torque_unit]] ?? $data_info['final_fasten_torque'];
-            } else {
-                
-               
-                $data_info['final_fasten_torque_temp'] = $data_info['final_fasten_torque'];
-            }
-
-            $data_info['final_fasten_torque'] = $data_info['final_fasten_torque_temp'];
-            $data_info['final_torque_unit']   = $chart_unit_name;*/
+            $data_info['final_torque_unit']        = $chart_unit_name;
         }
 
-        //$decimal_places = $decimals_arr[$torque_unit] ?? 3;
-        /*if (!empty($data_info)) {
-            $data_info['final_fasten_torque'] = number_format((float)$data_info['final_fasten_torque'], $decimal_places);
-        }*/
 
-        // 目前資料 id
+        // ================================
+        //找目前資料 id
+        // ================================
         $id = null;
         $first_data = $this->get_current_data();
-        // $get_operation_id = $this->get_operation_id();
         if (!empty($first_data)) $id = $first_data['id'];
 
-        // ★ 允許 chart 到 7
-        $chart_mode    = (isset($_GET['chart']) && $_GET['chart'] >= 1 && $_GET['chart'] <= 7) ? (int)$_GET['chart'] : 1;
-        $chat_mode_arr = $chart_mode;
+        // chart mode 1~7
+        $chart_mode = (isset($_GET['chart']) && $_GET['chart'] >= 1 && $_GET['chart'] <= 7)
+            ? (int)$_GET['chart']
+            : 1;
 
-      
-
-   
-        // 選單文字
         $chart_menu_arr = $this->MiscellaneousModel->details('chart_menu');
         $chart_mode_arr = $this->MiscellaneousModel->details('chart_mode');
 
-        // ★ label 也用 2 的文本（chart=7 等同 2）
+        // chart=7 用 chart=2 的 label
         $label_mode  = ($chart_mode === 7 ? 2 : $chart_mode);
         $label_text  = $chart_mode_arr[$label_mode] ?? ($chart_mode_arr[2] ?? '');
         $echart_name = explode(" v.s ", $label_text);
 
-        // steps（後面會裁長度）
-        $step_only = $this->DashboardModel->get_step_only($id);
 
-
-        // 組回傳
+        // ================================
+        // VIEW DATA
+        // ================================
         $data = [
-            'isMobile'       => $isMobile,
-            //'chart_info'     => $temp_chart,
-            'echart_name'    => $echart_name,
-            'chart_mode'     => $chart_mode,
-            'chart_menu_arr' => $chart_menu_arr,
-            'data_info'      => $data_info,
-            'status_arr'     => $status_arr,
-            'chart_unit_name' =>$chart_unit_name,
-            'text'           => $text ?? [],
+            'isMobile'         => $isMobile,
+            'echart_name'      => $echart_name,
+            'chart_mode'       => $chart_mode,
+            'chart_menu_arr'   => $chart_menu_arr,
+            'data_info'        => $data_info,
+            'status_arr'       => $status_arr,
+            'chart_unit_name'  => $chart_unit_name,
             'chart_unit_label' => $chart_unit_label,
+            'text'             => $text ?? [],
         ];
 
 
-        // AJAX 或一般頁面
+        // ================================
+        // AJAX 回傳 JSON
+        // ================================
         if (
-            (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
+            (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
             isset($_GET['ajax'])
         ) {
             header('Content-Type: application/json');
@@ -189,19 +224,16 @@ class Dashboards extends Controller
             return;
         }
 
-    
-  
 
-
-
+        // ================================
+        // VIEW 載入
+        // ================================
         if ($isMobile) {
             $this->view('dashboards/operation_m', $data);
         } else {
             $this->view('dashboards/operation', $data);
         }
     }
-
-
 
 
 
