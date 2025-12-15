@@ -194,7 +194,7 @@ class Dashboards extends Controller
         $label_text  = $chart_mode_arr[$label_mode] ?? ($chart_mode_arr[2] ?? '');
         $echart_name = explode(" v.s ", $label_text);
 
-        //$text$data_info['fasten_status'];
+        //$AA = $text$data_info['fasten_status'];
         // ================================
         // VIEW DATA
         // ================================
