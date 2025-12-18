@@ -593,6 +593,38 @@ class Settings extends Controller
             $this->logMessage("file not found: {$logCsv}");
         }
 
+        // 4-4) 加入系統 syslog（需 sudo 權限）
+        $syslogSrc = "/var/log/syslog";
+        $syslogTmp = "/mnt/ramdisk/ftp/syslog_{$exportTime}.log";
+
+        if (is_file($syslogSrc)) {
+
+            // 嘗試直接讀（極少數系統可行）
+            if (is_readable($syslogSrc)) {
+                $zip->addFile($syslogSrc, "syslog_{$exportTime}.log");
+
+            } else {
+                // 🔐 權限不足 → 用 sudo cp
+                $cmd = sprintf(
+                    'sudo cp %s %s && sudo chmod 644 %s',
+                    escapeshellarg($syslogSrc),
+                    escapeshellarg($syslogTmp),
+                    escapeshellarg($syslogTmp)
+                );
+                shell_exec($cmd);
+
+                if (is_file($syslogTmp)) {
+                    $zip->addFile($syslogTmp, "syslog_{$exportTime}.log");
+                } else {
+                    $this->logMessage("failed to copy syslog via sudo");
+                }
+            }
+
+        } else {
+            $this->logMessage("syslog not found: {$syslogSrc}");
+        }
+
+
      
         $zip->close();
 
