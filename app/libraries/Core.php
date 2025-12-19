@@ -64,10 +64,15 @@ class Core
 
         // $url[1] 視為 Controller 中的方法
         // 所以先要檢查是否有值，若有，檢查該值是否有對應的方法
-        if(isset($url[1]))
-            if(method_exists($this->currentController, $url[1]))
+        if (isset($url[1])) {
+            if (method_exists($this->currentController, $url[1])) {
                 $this->currentMethod = $url[1];
-
+            } else {
+                http_response_code(404);
+                require_once '../app/views/errors/404.php';
+                exit;
+            }
+        }
         // $url 陣列中的第三個值開始，視為帶入方法中的參數
         // 用 $params 陣列儲存所有剩下的值
             $temp_array = array();

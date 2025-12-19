@@ -11,34 +11,45 @@ class Controller
 
     // 載入 view
     // 其中 view 可能有需要從 Controller 帶過去的資料，故多了 $data 陣列作為第二個參數
-    public function view($view, array $data = [])
-    {
-        $this->language_auto(); //從瀏覽器帶入語系
-        //multi language
-        $language = array("language"=>$_SESSION['language']);
-        $data = array_merge($data,$language);
+    public function view($view, array $data = []){
         
-        //權限
-        $privilege = array("privilege"=>$_SESSION['privilege']);
-        $data = array_merge($data,$privilege);
-
-        // 如果檔案存在就引入它
-        if(file_exists('../app/views/' . $view . '.php')){
-
-            if(file_exists('../app/language/' . $data['language'] . '.php')){
-                require_once '../app/language/' . $data['language'] . '.php';
-            } else { //預設採用英文
-                require_once '../app/language/en-us.php';
-            }
-
-            require_once '../app/views/inc/header.php';
-            require_once '../app/views/' . $view . '.php';
-            require_once '../app/views/inc/footer.php';
-            
-        } else {
-            die('View does not exist');
+        // ✅ 防 session 炸裂
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
         }
+
+        // ✅ 防 Errors Controller 沒 language_auto
+        if (method_exists($this, 'language_auto')) {
+            $this->language_auto();
+        }
+
+        // 語系
+        $language = ["language" => $_SESSION['language'] ?? 'en-us'];
+        $data = array_merge($data, $language);
+
+        // 權限
+        $privilege = ["privilege" => $_SESSION['privilege'] ?? 0];
+        $data = array_merge($data, $privilege);
+
+        $viewFile = '../app/views/' . $view . '.php';
+
+        if (!file_exists($viewFile)) {
+            header("HTTP/1.1 404 Not Found");
+            echo "View not found: {$view}";
+            exit;
+        }
+
+        if (file_exists('../app/language/' . $data['language'] . '.php')) {
+            require_once '../app/language/' . $data['language'] . '.php';
+        } else {
+            require_once '../app/language/en-us.php';
+        }
+
+        require_once '../app/views/inc/header.php';
+        require_once $viewFile;
+        require_once '../app/views/inc/footer.php';
     }
+
 
     public function language_auto($value='')
     {
