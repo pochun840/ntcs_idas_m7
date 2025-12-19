@@ -201,7 +201,7 @@ class Miscellaneous{
                 2 => 'RUNNING',
                 3 => 'REVERSE',
                 4 => 'OK',
-                5 => 'OK-Sequence',
+                5 => 'OK-SEQ',
                 6 => 'OK-JOB',
                 7 => 'NG',
                 8 => 'NS',
@@ -698,7 +698,7 @@ class Miscellaneous{
 
         // 檔案不存在就直接回傳 null
         if (!file_exists($dbPath)) {
-            error_log("ntcs_device.db not found at: " . $dbPath);
+            error_log("ntcs_device_temp.db not found at: " . $dbPath);
             return null;
         }
 
