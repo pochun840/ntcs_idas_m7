@@ -1118,6 +1118,180 @@ class Controller
         return $sql;
     }
 
+    protected function runOnceWithFlag(string $flagDir, string $flagName, callable $callback): void{
+
+        $flagFile = rtrim($flagDir, '/') . '/' . $flagName;
+        $lockFile = $flagFile . '.lock';
+
+        // 確保目錄存在
+        if (!is_dir($flagDir)) {
+            @mkdir($flagDir, 0777, true);
+        }
+
+        // 開啟鎖檔
+        $lockFp = @fopen($lockFile, 'c');
+        if (!$lockFp) {
+            error_log('[runOnceWithFlag] cannot open lock file: ' . $lockFile);
+            return;
+        }
+
+        try {
+            // 取得排他鎖
+            if (!flock($lockFp, LOCK_EX)) return;
+
+            // 只在第一次執行
+            if (!file_exists($flagFile)) {
+                $callback(); // 真正要做的事
+
+                // 寫入旗標
+                @file_put_contents($flagFile, date('c') . PHP_EOL, LOCK_EX);
+            }
+
+        } catch (Throwable $e) {
+            error_log('[runOnceWithFlag] callback failed: ' . $e->getMessage());
+        } finally {
+            @flock($lockFp, LOCK_UN);
+            @fclose($lockFp);
+        }
+    }
+
+    public function check_tools_info(){
+
+        if (PHP_OS_FAMILY !== 'Linux') {
+            return;
+        }
+
+        $srcDb  = '/home/kls/NTCS7/KLS_NTCS.Lin';
+        $destDb = '/var/www/html/database/ntcs_device_IDAS.db';
+
+        if (!is_file($srcDb) || !is_file($destDb)) {
+            return;
+        }
+
+        try {
+            // 1) 讀 controller DB（tools_info）
+            $srcPdo = new PDO('sqlite:' . $srcDb, null, null, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+
+            $toolInfo = $srcPdo->query("
+                SELECT max_rpm, min_rpm, max_torq, min_torq
+                FROM tools_info
+                LIMIT 1
+            ")->fetch();
+
+            if (!$toolInfo) {
+                return;
+            }
+
+            // 要更新的值
+            $new = [
+                ':max_rpm'     => (float)$toolInfo['max_rpm'],
+                ':min_rpm'     => (float)$toolInfo['min_rpm'],
+                ':max_torque'  => (float)$toolInfo['max_torq'],
+                ':min_torque'  => (float)$toolInfo['min_torq'],
+            ];
+
+            // 2) 連線 iDAS DB（ntcs_tool_test）
+            $destPdo = new PDO('sqlite:' . $destDb, null, null, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+
+            // 確認是否已有資料
+            $count = (int)$destPdo->query("SELECT COUNT(*) FROM ntcs_tool_test")->fetchColumn();
+
+            if ($count === 0) {
+                // 空表就 insert（理論上不會發生，但保險）
+                $destPdo->prepare("
+                    INSERT INTO ntcs_tool_test (max_rpm, min_rpm, max_torque, min_torque)
+                    VALUES (:max_rpm, :min_rpm, :max_torque, :min_torque)
+                ")->execute($new);
+                return;
+            }
+
+            // 3) 取出第一筆 tool_type（你要用它當 WHERE）
+            $row = $destPdo->query("
+                SELECT tool_type
+                FROM ntcs_tool_test
+                LIMIT 1
+            ")->fetch();
+
+            $toolType = trim((string)($row['tool_type'] ?? ''));
+
+            // 4) 優先用 tool_type 來更新（更精準）
+            if ($toolType !== '') {
+                $sql = "
+                    UPDATE ntcs_tool_test
+                    SET
+                        max_rpm     = :max_rpm,
+                        min_rpm     = :min_rpm,
+                        max_torque  = :max_torque,
+                        min_torque  = :min_torque
+                    WHERE tool_type = :tool_type
+                ";
+
+
+                $params = $new + [':tool_type' => $toolType];
+                $stmt = $destPdo->prepare($sql);
+                $stmt->execute($params);
+
+                $before = $destPdo->prepare("
+                    SELECT max_rpm, min_rpm, max_torque, min_torque
+                    FROM ntcs_tool_test
+                    WHERE tool_type = :tool_type
+                ");
+                $before->execute([':tool_type' => $toolType]);
+                //var_dump(['before' => $before->fetch()]);
+
+                $stmt = $destPdo->prepare($sql);
+                $stmt->execute($params);
+
+                $after = $destPdo->prepare("
+                    SELECT max_rpm, min_rpm, max_torque, min_torque
+                    FROM ntcs_tool_test
+                    WHERE tool_type = :tool_type
+                ");
+                $after->execute([':tool_type' => $toolType]);
+                //var_dump(['after' => $after->fetch()]);
+                //die();
+
+
+
+                // ⚠️ SQLite rowCount 可能因為值相同=0，所以這裡不拿它判斷成功/失敗
+                // 但如果 tool_type 不存在導致完全沒匹配，仍要保險更新第一筆
+                $chk = $destPdo->prepare("SELECT COUNT(*) FROM ntcs_tool_test WHERE tool_type = :tool_type");
+                $chk->execute([':tool_type' => $toolType]);
+                $hasMatch = (int)$chk->fetchColumn();
+                //var_dump($hasMatch);
+                if ($hasMatch > 0) {
+                    return; // tool_type 有匹配就視為已同步完成
+                }
+            }
+
+            // 5) fallback：tool_type 空或不匹配 → 更新第一筆（rowid）
+            $destPdo->prepare("
+                UPDATE ntcs_tool_test
+                SET
+                    max_rpm     = :max_rpm,
+                    min_rpm     = :min_rpm,
+                    max_torque  = :max_torque,
+                    min_torque  = :min_torque
+                WHERE rowid = (SELECT rowid FROM ntcs_tool_test LIMIT 1)
+            ")->execute($new);
+
+        } catch (Throwable $e) {
+            // error_log('[check_tools_info] ' . $e->getMessage());
+            return;
+        }
+
+
+    }
+
+
+
+
 
 
 

@@ -44,7 +44,7 @@ class Jobs extends Controller
         
         // 只在第一次初始化時執行工具規格同步（RPM / Torque）
         // 使用旗標檔避免每次進入 Tools 頁面都重複寫入資料庫
-        $this->ToolModel->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->ToolModel->check_tools_info());
+        $this->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->check_tools_info());
 
         //$this->ntcs_device_db_load();
 
