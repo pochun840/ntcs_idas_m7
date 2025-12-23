@@ -9,35 +9,46 @@ class Controller
         return new $model();
     }
 
+
     // 載入 view
     // 其中 view 可能有需要從 Controller 帶過去的資料，故多了 $data 陣列作為第二個參數
-    public function view($view, array $data = [])
-    {
-        $this->language_auto(); //從瀏覽器帶入語系
-        //multi language
-        $language = array("language"=>$_SESSION['language']);
-        $data = array_merge($data,$language);
+    public function view($view, array $data = []){
         
-        //權限
-        $privilege = array("privilege"=>$_SESSION['privilege']);
-        $data = array_merge($data,$privilege);
-
-        // 如果檔案存在就引入它
-        if(file_exists('../app/views/' . $view . '.php')){
-
-            if(file_exists('../app/language/' . $data['language'] . '.php')){
-                require_once '../app/language/' . $data['language'] . '.php';
-            } else { //預設採用英文
-                require_once '../app/language/en-us.php';
-            }
-
-            require_once '../app/views/inc/header.php';
-            require_once '../app/views/' . $view . '.php';
-            require_once '../app/views/inc/footer.php';
-            
-        } else {
-            die('View does not exist');
+        // ✅ 防 session 炸裂
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
         }
+
+        // ✅ 防 Errors Controller 沒 language_auto
+        if (method_exists($this, 'language_auto')) {
+            $this->language_auto();
+        }
+
+        // 語系
+        $language = ["language" => $_SESSION['language'] ?? 'en-us'];
+        $data = array_merge($data, $language);
+
+        // 權限
+        $privilege = ["privilege" => $_SESSION['privilege'] ?? 0];
+        $data = array_merge($data, $privilege);
+
+        $viewFile = '../app/views/' . $view . '.php';
+
+        if (!file_exists($viewFile)) {
+            header("HTTP/1.1 404 Not Found");
+            echo "View not found: {$view}";
+            exit;
+        }
+
+        if (file_exists('../app/language/' . $data['language'] . '.php')) {
+            require_once '../app/language/' . $data['language'] . '.php';
+        } else {
+            require_once '../app/language/en-us.php';
+        }
+
+        require_once '../app/views/inc/header.php';
+        require_once $viewFile;
+        require_once '../app/views/inc/footer.php';
     }
 
     public function language_auto($value='')
@@ -94,6 +105,7 @@ class Controller
     }
 
 
+
     //權限驗證function
     public function LoginCheck($value='')
     {
@@ -117,7 +129,7 @@ class Controller
     //取得tcscon device table資訊
     public function Device_Info()
     {
-        try {
+        /*try {
             if (PHP_OS_FAMILY === 'Linux') {
                 $db_path = '/var/www/html/database/data_device.db';
             } else {
@@ -148,7 +160,7 @@ class Controller
             error_log($e->getMessage());
             echo $e->getMessage(); // 或回傳空陣列 return [];
             return null;
-        }
+        }*/
     }
 
 
@@ -1075,6 +1087,41 @@ class Controller
             return null;
         }
     }
+
+
+
+    private function pdoDebugSql(string $sql, array $params = []): string{
+
+        // 依 key 長度排序，避免 :id 被 :id2 先替換造成錯誤
+        uksort($params, function ($a, $b) {
+            return strlen((string)$b) <=> strlen((string)$a);
+        });
+
+        foreach ($params as $key => $val) {
+            $ph = (strpos((string)$key, ':') === 0) ? (string)$key : ':' . (string)$key;
+
+            if ($val === null) {
+                $rep = 'NULL';
+            } elseif (is_bool($val)) {
+                $rep = $val ? '1' : '0';
+            } elseif (is_int($val) || is_float($val)) {
+                $rep = (string)$val; // 數字不加引號
+            } else {
+                // 字串：單引號 escape
+                $rep = "'" . str_replace("'", "''", (string)$val) . "'";
+            }
+
+            // 用 word boundary 方式替換，避免替到相似字串
+            $sql = preg_replace('/' . preg_quote($ph, '/') . '\b/', $rep, $sql);
+        }
+
+        return $sql;
+    }
+
+
+
+
+
 
 
 

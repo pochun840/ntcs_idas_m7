@@ -9,33 +9,34 @@ class Dashboards extends Controller
     private $SettingModel;
     Private $deviceId;
     private $device_torque_unit;
+    private $ToolModel;
 
     // 在建構子中將 Post 物件（Model）實例化
-    public function __construct()
-    {
-
+    public function __construct(){
 
         $this->DashboardModel = $this->model('Dashboard');
         $this->AdminModel = $this->model('Admin');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
         $this->SettingModel = $this->model('Setting');
+        $this->ToolModel = $this->model('Tool');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
         $this->device_torque_unit = $this->get_torque_unit_from_controller();
         
-
-
-
-
     }
 
     // 取得所有Jobs
     public function index(){
 
+        // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
+        
+        // 只在第一次初始化時執行工具規格同步（RPM / Torque）
+        // 使用旗標檔避免每次進入 Tools 頁面都重複寫入資料庫
+        $this->ToolModel->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->ToolModel->check_tools_info());
         
         $isMobile = $this->isMobileCheck();
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');

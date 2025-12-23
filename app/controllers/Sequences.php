@@ -46,8 +46,16 @@ class Sequences extends Controller
             $next_seq_id = $seq_id;
         }
 
+            
+        // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
-        $this->ntcs_device_db_load();
+        
+        // 只在第一次初始化時執行工具規格同步（RPM / Torque）
+        // 使用旗標檔避免每次進入 Tools 頁面都重複寫入資料庫
+        $this->ToolModel->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->ToolModel->check_tools_info());
+        
+        
+        //$this->ntcs_device_db_load();
 
         $isMobile = $this->isMobileCheck();
      

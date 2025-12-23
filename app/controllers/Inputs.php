@@ -8,6 +8,7 @@ class Inputs extends Controller
     private $jobModel;
     Private $deviceId;
     private $res_agent;
+   
     
 
     // 在建構子中將 Post 物件（Model）實例化

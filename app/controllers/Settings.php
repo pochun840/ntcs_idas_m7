@@ -31,7 +31,13 @@ class Settings extends Controller
     public function index(){
 
 
+        // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
+        
+        // 只在第一次初始化時執行工具規格同步（RPM / Torque）
+        // 使用旗標檔避免每次進入 Tools 頁面都重複寫入資料庫
+        $this->ToolModel->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->ToolModel->check_tools_info());
+        
         $isMobile = $this->isMobileCheck();
 
         $lang = $this->MiscellaneousModel->details('lang');
@@ -592,6 +598,40 @@ class Settings extends Controller
         } else {
             $this->logMessage("file not found: {$logCsv}");
         }
+
+
+        
+        // 4-4) 加入系統 syslog（需 sudo 權限）
+        $syslogSrc = "/var/log/syslog";
+        $syslogTmp = "/mnt/ramdisk/ftp/syslog_{$exportTime}.log";
+
+        if (is_file($syslogSrc)) {
+
+            // 嘗試直接讀（極少數系統可行）
+            if (is_readable($syslogSrc)) {
+                $zip->addFile($syslogSrc, "syslog_{$exportTime}.log");
+
+            } else {
+                // 🔐 權限不足 → 用 sudo cp
+                $cmd = sprintf(
+                    'sudo cp %s %s && sudo chmod 644 %s',
+                    escapeshellarg($syslogSrc),
+                    escapeshellarg($syslogTmp),
+                    escapeshellarg($syslogTmp)
+                );
+                shell_exec($cmd);
+
+                if (is_file($syslogTmp)) {
+                    $zip->addFile($syslogTmp, "syslog_{$exportTime}.log");
+                } else {
+                    $this->logMessage("failed to copy syslog via sudo");
+                }
+            }
+
+        } else {
+            $this->logMessage("syslog not found: {$syslogSrc}");
+        }
+        
 
      
         $zip->close();

@@ -30,8 +30,6 @@ class Logins extends Controller
         $authToken = '';
         $account = $this->LoginModel->get_account();
 
-        //複製所附紀錄的db
-        $this->ntcs_data_db_sysnc();
 
         $targetDir = '/var/www/html/extracted';
         $this->deleteDirectory($targetDir);
@@ -313,3 +311,4 @@ class Logins extends Controller
 
 
 }
+

@@ -6,6 +6,7 @@ class Remotes extends Controller
     private $SettingModel;
     private $MiscellaneousModel;
     Private $deviceId;
+    private $ToolModel;
     
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct(){
@@ -13,6 +14,7 @@ class Remotes extends Controller
         $this->DataModel = $this->model('Datas');
         $this->SettingModel = $this->model('Setting');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->ToolModel = $this->model('Tool');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
@@ -24,7 +26,12 @@ class Remotes extends Controller
     public function index(){
 
    
+        // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
+        
+        // 只在第一次初始化時執行工具規格同步（RPM / Torque）
+        // 使用旗標檔避免每次進入 Tools 頁面都重複寫入資料庫
+        $this->ToolModel->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->ToolModel->check_tools_info());
 
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();
