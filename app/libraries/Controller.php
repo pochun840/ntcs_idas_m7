@@ -1120,63 +1120,49 @@ class Controller
 
     /**
      * runOnceWithFlag
-     * 但行為改為：來源檔案有更新才執行 callback
-     * flagFile 內容會存「上次已同步的 srcMtime」
+     * - 只負責「鎖」
+     * - callback 自己決定要不要同步
+     * - callback 成功才寫狀態
      */
-    protected function runOnceWithFlag(string $flagDir, string $flagName, callable $callback): void{
+    protected function runOnceWithFlag(
+        string $flagDir,
+        string $flagName,
+        callable $callback
+    ): void {
 
-        // 只在 Linux 
-        if (PHP_OS_FAMILY !== 'Linux') return;
-
-        // 來源檔：固定為 controller DB（不改呼叫參數）
-        $srcFile = '/home/kls/NTCS7/ntcs_device.db';
-
-        // 來源不存在就不處理
-        $srcMtime = @filemtime($srcFile);
-        if (!$srcMtime) return;
-
-        $flagFile = rtrim($flagDir, '/') . '/' . $flagName;
-        $lockFile = $flagFile . '.lock';
-
-        // 確保目錄存在
-        if (!is_dir($flagDir)) {
-            @mkdir($flagDir, 0777, true);
+        if (PHP_OS_FAMILY !== 'Linux') {
+            return;
         }
 
-        // 開啟鎖檔
-        $lockFp = @fopen($lockFile, 'c');
-        if (!$lockFp) {
+        $flagDir  = rtrim($flagDir, '/');
+        $lockFile = $flagDir . '/' . $flagName . '.lock';
+
+        if (!is_dir($flagDir)) {
+            if (!@mkdir($flagDir, 0777, true) && !is_dir($flagDir)) {
+                error_log('[runOnceWithFlag] cannot create dir: ' . $flagDir);
+                return;
+            }
+        }
+
+        $fp = @fopen($lockFile, 'c');
+        if (!$fp) {
             error_log('[runOnceWithFlag] cannot open lock file: ' . $lockFile);
             return;
         }
 
         try {
-            // 取得排他鎖
-            if (!flock($lockFp, LOCK_EX)) return;
-
-            // 讀取上次同步的 mtime（沒有就視為 0）
-            $last = 0;
-            if (is_file($flagFile)) {
-                $raw = trim((string)@file_get_contents($flagFile));
-                // 允許原本你寫的 date('c') 內容：讀不到數字就當 0，觸發一次重新寫入 mtime
-                if ($raw !== '' && ctype_digit($raw)) {
-                    $last = (int)$raw;
-                }
+            // 非阻塞，避免卡死
+            if (!flock($fp, LOCK_EX | LOCK_NB)) {
+                return;
             }
 
-            //  只有「來源檔案比較新」才跑 callback
-            if ((int)$srcMtime > $last) {
-                $callback();
-
-                // 寫入最新 mtime 當旗標（之後靠這個判斷有沒有更新）
-                @file_put_contents($flagFile, (string)(int)$srcMtime . PHP_EOL, LOCK_EX);
-            }
+            $callback();
 
         } catch (Throwable $e) {
             error_log('[runOnceWithFlag] callback failed: ' . $e->getMessage());
         } finally {
-            @flock($lockFp, LOCK_UN);
-            @fclose($lockFp);
+            @flock($fp, LOCK_UN);
+            @fclose($fp);
         }
     }
 
@@ -1188,140 +1174,173 @@ class Controller
             return;
         }
 
-        $srcDb  = '/home/kls/NTCS7/ntcs_device.db';
-        $destDb = '/var/www/html/database/ntcs_device_IDAS.db';
+        $srcDb   = '/home/kls/NTCS7/ntcs_device.db';
+        $destDb  = '/var/www/html/database/ntcs_device_IDAS.db';
+        $stateFn = '/var/www/html/database/.tool_spec_sync.json';
 
         if (!is_file($srcDb) || !is_file($destDb)) {
             return;
         }
 
         try {
-            // 1) 讀 controller DB（tools_info）
+            /* ===============================
+            * 1) 讀 controller DB（來源）
+            * =============================== */
             $srcPdo = new PDO('sqlite:' . $srcDb, null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
-            $toolInfo = $srcPdo->query("
+            $src = $srcPdo->query("
                 SELECT max_rpm, min_rpm, max_torque, min_torque
                 FROM ntcs_tool_test
                 LIMIT 1
             ")->fetch();
 
-            if (!$toolInfo) {
+            if (!$src) {
                 return;
             }
 
-            // 要更新的值
-            $new = [
-                ':max_rpm'     => (float)$toolInfo['max_rpm'],
-                ':min_rpm'     => (float)$toolInfo['min_rpm'],
-                ':max_torque'  => (float)$toolInfo['max_torque'],
-                ':min_torque'  => (float)$toolInfo['min_torque'],
+            $srcVal = [
+                'max_rpm'    => (float)$src['max_rpm'],
+                'min_rpm'    => (float)$src['min_rpm'],
+                'max_torque' => (float)$src['max_torque'],
+                'min_torque' => (float)$src['min_torque'],
             ];
 
-            // 2) 連線 iDAS DB（ntcs_tool_test）
+            /* ===============================
+            * 2) 讀上次同步狀態（JSON）
+            * =============================== */
+            if (is_file($stateFn)) {
+                $state = json_decode((string)@file_get_contents($stateFn), true);
+                if (is_array($state) && isset($state['last_values'])) {
+                    // 與上次同步值完全相同 → 直接結束
+                    if ($state['last_values'] == $srcVal) {
+                        return;
+                    }
+                }
+            }
+
+            /* ===============================
+            * 3) 連線 iDAS DB（目的）
+            * =============================== */
             $destPdo = new PDO('sqlite:' . $destDb, null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
-            // 確認是否已有資料
-            $count = (int)$destPdo->query("SELECT COUNT(*) FROM ntcs_tool_test")->fetchColumn();
-
-            if ($count === 0) {
-                // 空表就 insert（理論上不會發生，但保險）
-                $destPdo->prepare("
-                    INSERT INTO ntcs_tool_test (max_rpm, min_rpm, max_torque, min_torque)
-                    VALUES (:max_rpm, :min_rpm, :max_torque, :min_torque)
-                ")->execute($new);
-                return;
-            }
-
-            // 3) 取出第一筆 tool_type（你要用它當 WHERE）
-            $row = $destPdo->query("
-                SELECT tool_type
+            $dest = $destPdo->query("
+                SELECT rowid, tool_type, max_rpm, min_rpm, max_torque, min_torque
                 FROM ntcs_tool_test
                 LIMIT 1
             ")->fetch();
 
-            $toolType = trim((string)($row['tool_type'] ?? ''));
+            // 空表 → insert
+            if (!$dest) {
+                $destPdo->prepare("
+                    INSERT INTO ntcs_tool_test (max_rpm, min_rpm, max_torque, min_torque)
+                    VALUES (:max_rpm, :min_rpm, :max_torque, :min_torque)
+                ")->execute($srcVal);
+            } else {
+                // 值一樣 → 不更新
+                $needUpdate =
+                    (float)$dest['max_rpm']    !== $srcVal['max_rpm'] ||
+                    (float)$dest['min_rpm']    !== $srcVal['min_rpm'] ||
+                    (float)$dest['max_torque'] !== $srcVal['max_torque'] ||
+                    (float)$dest['min_torque'] !== $srcVal['min_torque'];
 
-            // 4) 優先用 tool_type 來更新（更精準）
-            if ($toolType !== '') {
-                $sql = "
-                    UPDATE ntcs_tool_test
-                    SET
-                        max_rpm     = :max_rpm,
-                        min_rpm     = :min_rpm,
-                        max_torque  = :max_torque,
-                        min_torque  = :min_torque
-                    WHERE tool_type = :tool_type
-                ";
+                if (!$needUpdate) {
+                    return;
+                }
 
-
-                $params = $new + [':tool_type' => $toolType];
-                $stmt = $destPdo->prepare($sql);
-                $stmt->execute($params);
-
-                $before = $destPdo->prepare("
-                    SELECT max_rpm, min_rpm, max_torque, min_torque
-                    FROM ntcs_tool_test
-                    WHERE tool_type = :tool_type
-                ");
-                $before->execute([':tool_type' => $toolType]);
-                //var_dump(['before' => $before->fetch()]);
-
-                $stmt = $destPdo->prepare($sql);
-                $stmt->execute($params);
-
-                $after = $destPdo->prepare("
-                    SELECT max_rpm, min_rpm, max_torque, min_torque
-                    FROM ntcs_tool_test
-                    WHERE tool_type = :tool_type
-                ");
-                $after->execute([':tool_type' => $toolType]);
-                //var_dump(['after' => $after->fetch()]);
-                //die();
-
-
-
-                // ⚠️ SQLite rowCount 可能因為值相同=0，所以這裡不拿它判斷成功/失敗
-                // 但如果 tool_type 不存在導致完全沒匹配，仍要保險更新第一筆
-                $chk = $destPdo->prepare("SELECT COUNT(*) FROM ntcs_tool_test WHERE tool_type = :tool_type");
-                $chk->execute([':tool_type' => $toolType]);
-                $hasMatch = (int)$chk->fetchColumn();
-                //var_dump($hasMatch);
-                if ($hasMatch > 0) {
-                    return; // tool_type 有匹配就視為已同步完成
+                if (!empty($dest['tool_type'])) {
+                    $stmt = $destPdo->prepare("
+                        UPDATE ntcs_tool_test
+                        SET
+                            max_rpm     = :max_rpm,
+                            min_rpm     = :min_rpm,
+                            max_torque  = :max_torque,
+                            min_torque  = :min_torque
+                        WHERE tool_type = :tool_type
+                    ");
+                    $stmt->execute($srcVal + [':tool_type' => $dest['tool_type']]);
+                } else {
+                    // fallback
+                    $destPdo->prepare("
+                        UPDATE ntcs_tool_test
+                        SET
+                            max_rpm     = :max_rpm,
+                            min_rpm     = :min_rpm,
+                            max_torque  = :max_torque,
+                            min_torque  = :min_torque
+                        WHERE rowid = :rowid
+                    ")->execute($srcVal + [':rowid' => $dest['rowid']]);
                 }
             }
 
-            // 5) fallback：tool_type 空或不匹配 → 更新第一筆（rowid）
-            $destPdo->prepare("
-                UPDATE ntcs_tool_test
-                SET
-                    max_rpm     = :max_rpm,
-                    min_rpm     = :min_rpm,
-                    max_torque  = :max_torque,
-                    min_torque  = :min_torque
-                WHERE rowid = (SELECT rowid FROM ntcs_tool_test LIMIT 1)
-            ")->execute($new);
+            /* ===============================
+            * 4) 同步成功 → 寫 JSON 狀態
+            * =============================== */
+            @file_put_contents(
+                $stateFn,
+                json_encode([
+                    'source'        => $srcDb,
+                    'table'         => 'ntcs_tool_test',
+                    'last_sync_at'  => time(),
+                    'last_values'   => $srcVal,
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+                LOCK_EX
+            );
 
         } catch (Throwable $e) {
-            // error_log('[check_tools_info] ' . $e->getMessage());
-            return;
+            error_log('[check_tools_info] ' . $e->getMessage());
         }
-
-
     }
 
+    /**
+     * shouldRunToolSpecSync
+     *
+     * Web-only 使用的輕量 Gate：
+     * - 限制同步觸發頻率（避免每個 request 都跑）
+     * - 不影響 runOnceWithFlag 的鎖定邏輯
+     *
+     * @param int $minIntervalSec 最短間隔秒數（例如 10）
+     * @return bool 是否允許觸發同步
+     */
+    protected function shouldRunToolSpecSync(int $minIntervalSec = 10): bool
+    {
+        // 只在 Linux 啟用
+        if (PHP_OS_FAMILY !== 'Linux') {
+            return false;
+        }
 
+        $stateFn = '/var/www/html/database/.tool_spec_sync.json';
 
+        // 從未同步過 → 允許
+        if (!is_file($stateFn)) {
+            return true;
+        }
 
+        $raw = @file_get_contents($stateFn);
+        if ($raw === false) {
+            // 讀不到狀態檔，為保險起見允許
+            return true;
+        }
 
+        $state = json_decode($raw, true);
+        if (!is_array($state)) {
+            // JSON 損壞，允許重新同步
+            return true;
+        }
 
+        $last = (int)($state['last_sync_at'] ?? 0);
+        if ($last <= 0) {
+            return true;
+        }
 
+        // 是否已超過最短間隔
+        return (time() - $last) >= $minIntervalSec;
+    }
 
 
 

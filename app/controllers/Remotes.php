@@ -29,9 +29,7 @@ class Remotes extends Controller
         // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
         
-        // 只在第一次初始化時執行工具規格同步（RPM / Torque）
-        // 使用旗標檔避免每次進入 Tools 頁面都重複寫入資料庫
-    $this->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->check_tools_info());
+
 
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();

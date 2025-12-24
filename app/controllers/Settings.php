@@ -33,10 +33,24 @@ class Settings extends Controller
 
         // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
+
+        // ------------------------------
+        // Tool Spec Sync (Web-triggered)
+        // ------------------------------
+        // Gate(10s): 限制同步檢查頻率，避免每個 request 都打 DB
+        // Lock:     使用 flock 防止多 request 同步造成重複/競態
+        // Sync:     只在來源(controller)與目的(iDAS)值不同時才更新
+        // Note:     非 cron；沒有 request 就不會自動同步
+        if ($this->shouldRunToolSpecSync(10)) {
+            $this->runOnceWithFlag(
+                '/var/www/html/database',        // lock / state 檔案目錄
+                '.tool_spec_sync',               // 任務鎖名稱（key）
+                fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
+            );
+        }
+
         
-        // 只在第一次初始化時執行工具規格同步（RPM / Torque）
-        // 使用旗標檔避免每次進入 Tools 頁面都重複寫入資料庫
-        $this->runOnceWithFlag('/var/www/html/database', '.tool_spec_synced', fn() => $this->check_tools_info());
+
 
         $isMobile = $this->isMobileCheck();
 

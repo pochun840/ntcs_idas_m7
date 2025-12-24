@@ -47,8 +47,6 @@ class Inputs extends Controller
         }
 
 
-
-
         $data = array();
         $data = array(
             'isMobile'      => $isMobile,
