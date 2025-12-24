@@ -1118,6 +1118,30 @@ class Controller
         return $sql;
     }
 
+
+    // --------------------------------------------------
+    // Debug flag: Tool Spec Sync
+    // --------------------------------------------------
+    // true  = 啟用 debug log
+    // false = 關閉（正式環境建議 false）
+    protected const DEBUG_TOOL_SPEC_SYNC = false;
+
+    private function toolSpecDebug(string $reason, array $context = []): void{
+
+        if (!self::DEBUG_TOOL_SPEC_SYNC) {
+            return;
+        }
+
+        $msg = '[ToolSpecSync] ' . $reason;
+
+        if (!empty($context)) {
+            $msg .= ' | ' . json_encode($context, JSON_UNESCAPED_SLASHES);
+        }
+
+        error_log($msg);
+    }
+
+
     /**
      * runOnceWithFlag
      * - 只負責「鎖」
@@ -1137,29 +1161,29 @@ class Controller
         $flagDir  = rtrim($flagDir, '/');
         $lockFile = $flagDir . '/' . $flagName . '.lock';
 
-        if (!is_dir($flagDir)) {
-            if (!@mkdir($flagDir, 0777, true) && !is_dir($flagDir)) {
-                error_log('[runOnceWithFlag] cannot create dir: ' . $flagDir);
-                return;
-            }
-        }
-
         $fp = @fopen($lockFile, 'c');
         if (!$fp) {
-            error_log('[runOnceWithFlag] cannot open lock file: ' . $lockFile);
+            $this->toolSpecDebug('lock_open_failed', ['file' => $lockFile]);
             return;
         }
 
         try {
-            // 非阻塞，避免卡死
             if (!flock($fp, LOCK_EX | LOCK_NB)) {
+                $this->toolSpecDebug('lock_busy');
                 return;
             }
 
-            $callback();
+            $ok = $callback();
+
+            if ($ok !== true) {
+                $this->toolSpecDebug('callback_return_false');
+                return;
+            }
+
+            $this->toolSpecDebug('sync_success');
 
         } catch (Throwable $e) {
-            error_log('[runOnceWithFlag] callback failed: ' . $e->getMessage());
+            $this->toolSpecDebug('exception', ['msg' => $e->getMessage()]);
         } finally {
             @flock($fp, LOCK_UN);
             @fclose($fp);
@@ -1168,24 +1192,31 @@ class Controller
 
 
 
-    public function check_tools_info(){
-
+    public function check_tools_info(): bool{
+        
+        // 只允許在 Linux 執行
         if (PHP_OS_FAMILY !== 'Linux') {
-            return;
+            $this->toolSpecDebug('skip_non_linux');
+            return false;
         }
 
         $srcDb   = '/home/kls/NTCS7/ntcs_device.db';
         $destDb  = '/var/www/html/database/ntcs_device_IDAS.db';
         $stateFn = '/var/www/html/database/.tool_spec_sync.json';
 
+        // DB 不存在 → 不同步
         if (!is_file($srcDb) || !is_file($destDb)) {
-            return;
+            $this->toolSpecDebug('db_file_missing', [
+                'src_exists'  => is_file($srcDb),
+                'dest_exists' => is_file($destDb),
+            ]);
+            return false;
         }
 
         try {
-            /* ===============================
-            * 1) 讀 controller DB（來源）
-            * =============================== */
+            /* =====================================================
+            * 1) 讀取 controller DB（來源）
+            * ===================================================== */
             $srcPdo = new PDO('sqlite:' . $srcDb, null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -1198,7 +1229,8 @@ class Controller
             ")->fetch();
 
             if (!$src) {
-                return;
+                $this->toolSpecDebug('src_empty');
+                return false;
             }
 
             $srcVal = [
@@ -1208,22 +1240,22 @@ class Controller
                 'min_torque' => (float)$src['min_torque'],
             ];
 
-            /* ===============================
-            * 2) 讀上次同步狀態（JSON）
-            * =============================== */
+            /* =====================================================
+            * 2) 與上次同步值比對（完全相同 → 不同步）
+            * ===================================================== */
             if (is_file($stateFn)) {
                 $state = json_decode((string)@file_get_contents($stateFn), true);
                 if (is_array($state) && isset($state['last_values'])) {
-                    // 與上次同步值完全相同 → 直接結束
-                    if ($state['last_values'] == $srcVal) {
-                        return;
+                    if ($state['last_values'] === $srcVal) {
+                        $this->toolSpecDebug('same_value_skip', $srcVal);
+                        return false;
                     }
                 }
             }
 
-            /* ===============================
-            * 3) 連線 iDAS DB（目的）
-            * =============================== */
+            /* =====================================================
+            * 3) 讀取 iDAS DB（目的）
+            * ===================================================== */
             $destPdo = new PDO('sqlite:' . $destDb, null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -1235,14 +1267,21 @@ class Controller
                 LIMIT 1
             ")->fetch();
 
+            $destPdo->beginTransaction();
+
             // 空表 → insert
             if (!$dest) {
                 $destPdo->prepare("
-                    INSERT INTO ntcs_tool_test (max_rpm, min_rpm, max_torque, min_torque)
-                    VALUES (:max_rpm, :min_rpm, :max_torque, :min_torque)
+                    INSERT INTO ntcs_tool_test
+                        (max_rpm, min_rpm, max_torque, min_torque)
+                    VALUES
+                        (:max_rpm, :min_rpm, :max_torque, :min_torque)
                 ")->execute($srcVal);
+
+                $this->toolSpecDebug('insert_new_row', $srcVal);
+
             } else {
-                // 值一樣 → 不更新
+                // 比對目的 DB 是否真的需要更新
                 $needUpdate =
                     (float)$dest['max_rpm']    !== $srcVal['max_rpm'] ||
                     (float)$dest['min_rpm']    !== $srcVal['min_rpm'] ||
@@ -1250,37 +1289,46 @@ class Controller
                     (float)$dest['min_torque'] !== $srcVal['min_torque'];
 
                 if (!$needUpdate) {
-                    return;
+                    $destPdo->rollBack();
+                    $this->toolSpecDebug('dest_already_same');
+                    return false;
                 }
 
                 if (!empty($dest['tool_type'])) {
-                    $stmt = $destPdo->prepare("
-                        UPDATE ntcs_tool_test
-                        SET
-                            max_rpm     = :max_rpm,
-                            min_rpm     = :min_rpm,
-                            max_torque  = :max_torque,
-                            min_torque  = :min_torque
-                        WHERE tool_type = :tool_type
-                    ");
-                    $stmt->execute($srcVal + [':tool_type' => $dest['tool_type']]);
-                } else {
-                    // fallback
                     $destPdo->prepare("
                         UPDATE ntcs_tool_test
                         SET
-                            max_rpm     = :max_rpm,
-                            min_rpm     = :min_rpm,
-                            max_torque  = :max_torque,
-                            min_torque  = :min_torque
+                            max_rpm    = :max_rpm,
+                            min_rpm    = :min_rpm,
+                            max_torque = :max_torque,
+                            min_torque = :min_torque
+                        WHERE tool_type = :tool_type
+                    ")->execute($srcVal + [
+                        ':tool_type' => $dest['tool_type']
+                    ]);
+                } else {
+                    // fallback 用 rowid
+                    $destPdo->prepare("
+                        UPDATE ntcs_tool_test
+                        SET
+                            max_rpm    = :max_rpm,
+                            min_rpm    = :min_rpm,
+                            max_torque = :max_torque,
+                            min_torque = :min_torque
                         WHERE rowid = :rowid
-                    ")->execute($srcVal + [':rowid' => $dest['rowid']]);
+                    ")->execute($srcVal + [
+                        ':rowid' => $dest['rowid']
+                    ]);
                 }
+
+                $this->toolSpecDebug('update_existing_row', $srcVal);
             }
 
-            /* ===============================
-            * 4) 同步成功 → 寫 JSON 狀態
-            * =============================== */
+            $destPdo->commit();
+
+            /* =====================================================
+            * 4) ⭐ 僅在「實際寫入成功」後才更新狀態
+            * ===================================================== */
             @file_put_contents(
                 $stateFn,
                 json_encode([
@@ -1292,10 +1340,21 @@ class Controller
                 LOCK_EX
             );
 
+            $this->toolSpecDebug('sync_success', $srcVal);
+
+            return true; // ⭐ Gate 關閉
+
         } catch (Throwable $e) {
-            error_log('[check_tools_info] ' . $e->getMessage());
+            $this->toolSpecDebug('exception', [
+                'message' => $e->getMessage()
+            ]);
+            return false;
         }
     }
+
+    
+
+
 
     /**
      * shouldRunToolSpecSync
