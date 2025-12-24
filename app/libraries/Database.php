@@ -5,7 +5,6 @@ class Database
     private $db_data;
     private $db_iDas;
     private $db_iDas_login;
-    private $db_iDas_device;
     private $db_barcode;
     private $db_iDas_tools;
     private $db_iDas_agent;
@@ -46,7 +45,6 @@ class Database
                                 : '../ntcs_data.db',
             'iDas'        => BASE_PATH . 'KLS_NTCS_IDAS.Lin',
             'iDas_login'  => BASE_PATH . 'das.db',
-            'iDas_device' => BASE_PATH . 'data_device.db',
             'iDas_tools'  => BASE_PATH . 'ntcs_device_IDAS.db',
             'iDas_agent'  => BASE_PATH . 'ntcs_device_temp.db',
             'barcode'     => BASE_PATH . 'ntcs_barcode_IDAS.db',
@@ -78,7 +76,6 @@ class Database
     public function getDb_data()        { return $this->db_data ?? null; }
     public function getDb_das()         { return $this->db_iDas ?? null; }
     public function getDb_das_login()   { return $this->db_iDas_login ?? null; }
-    public function getDb_das_device()  { return $this->db_iDas_device ?? null; }
     public function getDb_das_tools()   { return $this->db_iDas_tools ?? null; }
     public function getDb_das_barcode() { return $this->db_barcode ?? null; }
     public function getDb()             { return $this->db_con ?? null; }

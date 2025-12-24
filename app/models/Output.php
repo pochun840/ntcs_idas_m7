@@ -3,17 +3,11 @@
 class Output{
 
     private $db_iDas;
-    private $db_iDas_device;
     // 在建構子將 Database 物件實例化
     public function __construct(){
         
         $this->db_iDas = new Database;
         $this->db_iDas = $this->db_iDas->getDb_das();
-
-        $this->db_iDas_device = new Database;
-        $this->db_iDas_device = $this->db_iDas_device->getDb_das_device();
-
-
     }
 
     //get_input_by_job_id

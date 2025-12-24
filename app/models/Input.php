@@ -2,14 +2,12 @@
 
 class Input{   
     private $db_iDas;
-    private $db_iDas_device;
 
     // 在建構子將 Database 物件實例化
     public function __construct(){
         
         $db_instance = new Database();             
         $this->db_iDas = $db_instance->getDb_das();       
-        $this->db_iDas_device = $db_instance->getDb_das_device();
 
     }
 
@@ -21,33 +19,6 @@ class Input{
         $results = $statement->execute([$job_id]);
         $row = $statement->fetchall(PDO::FETCH_ASSOC);
 
-        return $row;
-    }
-
-    //get device_input_alljob
-    public function get_input_alljob()
-    {
-        $sql = "SELECT * FROM device";
-
-        // 檢查資料庫連線
-        if (!($this->db_iDas_device instanceof PDO)) {
-            error_log("❌ db_iDas_device is not a valid PDO instance");
-            die("❌ 無效的資料庫連線 (db_iDas_device)");
-        }
-
-        $statement = $this->db_iDas_device->prepare($sql);
-
-        // 檢查 prepare 是否成功
-        if (!$statement) {
-            $errorInfo = $this->db_iDas_device->errorInfo();
-            error_log("❌ SQL Prepare Failed: $sql");
-            error_log("❌ Error Info: " . print_r($errorInfo, true));
-            die("❌ SQL 準備失敗: 請檢查資料表 device 是否存在");
-        }
-
-        $statement->execute();
-
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
         return $row;
     }
 

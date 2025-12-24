@@ -1118,7 +1118,22 @@ class Controller
         return $sql;
     }
 
+    /**
+     * runOnceWithFlag
+     * 但行為改為：來源檔案有更新才執行 callback
+     * flagFile 內容會存「上次已同步的 srcMtime」
+     */
     protected function runOnceWithFlag(string $flagDir, string $flagName, callable $callback): void{
+
+        // 只在 Linux 
+        if (PHP_OS_FAMILY !== 'Linux') return;
+
+        // 來源檔：固定為 controller DB（不改呼叫參數）
+        $srcFile = '/home/kls/NTCS7/ntcs_device.db';
+
+        // 來源不存在就不處理
+        $srcMtime = @filemtime($srcFile);
+        if (!$srcMtime) return;
 
         $flagFile = rtrim($flagDir, '/') . '/' . $flagName;
         $lockFile = $flagFile . '.lock';
@@ -1139,12 +1154,22 @@ class Controller
             // 取得排他鎖
             if (!flock($lockFp, LOCK_EX)) return;
 
-            // 只在第一次執行
-            if (!file_exists($flagFile)) {
-                $callback(); // 真正要做的事
+            // 讀取上次同步的 mtime（沒有就視為 0）
+            $last = 0;
+            if (is_file($flagFile)) {
+                $raw = trim((string)@file_get_contents($flagFile));
+                // 允許原本你寫的 date('c') 內容：讀不到數字就當 0，觸發一次重新寫入 mtime
+                if ($raw !== '' && ctype_digit($raw)) {
+                    $last = (int)$raw;
+                }
+            }
 
-                // 寫入旗標
-                @file_put_contents($flagFile, date('c') . PHP_EOL, LOCK_EX);
+            //  只有「來源檔案比較新」才跑 callback
+            if ((int)$srcMtime > $last) {
+                $callback();
+
+                // 寫入最新 mtime 當旗標（之後靠這個判斷有沒有更新）
+                @file_put_contents($flagFile, (string)(int)$srcMtime . PHP_EOL, LOCK_EX);
             }
 
         } catch (Throwable $e) {
@@ -1155,13 +1180,15 @@ class Controller
         }
     }
 
+
+
     public function check_tools_info(){
 
         if (PHP_OS_FAMILY !== 'Linux') {
             return;
         }
 
-        $srcDb  = '/home/kls/NTCS7/KLS_NTCS.Lin';
+        $srcDb  = '/home/kls/NTCS7/ntcs_device.db';
         $destDb = '/var/www/html/database/ntcs_device_IDAS.db';
 
         if (!is_file($srcDb) || !is_file($destDb)) {
@@ -1176,8 +1203,8 @@ class Controller
             ]);
 
             $toolInfo = $srcPdo->query("
-                SELECT max_rpm, min_rpm, max_torq, min_torq
-                FROM tools_info
+                SELECT max_rpm, min_rpm, max_torque, min_torque
+                FROM ntcs_tool_test
                 LIMIT 1
             ")->fetch();
 
@@ -1189,8 +1216,8 @@ class Controller
             $new = [
                 ':max_rpm'     => (float)$toolInfo['max_rpm'],
                 ':min_rpm'     => (float)$toolInfo['min_rpm'],
-                ':max_torque'  => (float)$toolInfo['max_torq'],
-                ':min_torque'  => (float)$toolInfo['min_torq'],
+                ':max_torque'  => (float)$toolInfo['max_torque'],
+                ':min_torque'  => (float)$toolInfo['min_torque'],
             ];
 
             // 2) 連線 iDAS DB（ntcs_tool_test）
