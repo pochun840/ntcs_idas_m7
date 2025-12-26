@@ -1193,18 +1193,21 @@ class Controller
 
 
     public function check_tools_info(): bool{
-        
-        // 只允許在 Linux 執行
+        // ========= 可調參數 =========
+        $STABLE_REQUIRED = 1;   // 只需要 1 次穩定
+        $MIN_STABLE_SEC  = 5;   // ⭐ 至少穩定存在 5 秒（避免半初始化）
+        // ===========================
+
         if (PHP_OS_FAMILY !== 'Linux') {
             $this->toolSpecDebug('skip_non_linux');
             return false;
         }
 
-        $srcDb   = '/home/kls/NTCS7/ntcs_device.db';
-        $destDb  = '/var/www/html/database/ntcs_device_IDAS.db';
-        $stateFn = '/var/www/html/database/.tool_spec_sync.json';
+        $srcDb    = '/home/kls/NTCS7/ntcs_device.db';
+        $destDb   = '/var/www/html/database/ntcs_device_IDAS.db';
+        $stateFn  = '/var/www/html/database/.tool_spec_sync.json';
+        $stableFn = '/var/www/html/database/.tool_spec_stable.json';
 
-        // DB 不存在 → 不同步
         if (!is_file($srcDb) || !is_file($destDb)) {
             $this->toolSpecDebug('db_file_missing', [
                 'src_exists'  => is_file($srcDb),
@@ -1215,7 +1218,7 @@ class Controller
 
         try {
             /* =====================================================
-            * 1) 讀取 controller DB（來源）
+            * 1) 讀取 controller DB
             * ===================================================== */
             $srcPdo = new PDO('sqlite:' . $srcDb, null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -1241,20 +1244,52 @@ class Controller
             ];
 
             /* =====================================================
-            * 2) 與上次同步值比對（完全相同 → 不同步）
+            * 2) ⭐ 穩定判斷（1 次 + 最短等待秒數）
+            * ===================================================== */
+            $now = time();
+            $stable = [
+                'values'          => $srcVal,
+                'count'           => 1,
+                'first_seen_ts'   => $now,
+                'last_seen_ts'    => $now,
+            ];
+
+            if (is_file($stableFn)) {
+                $prev = json_decode((string)@file_get_contents($stableFn), true);
+                if (is_array($prev) && ($prev['values'] ?? null) === $srcVal) {
+                    $stable['count']         = (int)($prev['count'] ?? 0) + 1;
+                    $stable['first_seen_ts'] = (int)($prev['first_seen_ts'] ?? $now);
+                }
+            }
+
+            @file_put_contents($stableFn, json_encode($stable, JSON_PRETTY_PRINT), LOCK_EX);
+
+            // ⭐ 關鍵：至少存在 MIN_STABLE_SEC 秒
+            if (
+                $stable['count'] < $STABLE_REQUIRED ||
+                ($now - $stable['first_seen_ts']) < $MIN_STABLE_SEC
+            ) {
+                $this->toolSpecDebug('not_stable_yet', [
+                    'count' => $stable['count'],
+                    'age'   => $now - $stable['first_seen_ts'],
+                    'need'  => $MIN_STABLE_SEC,
+                ]);
+                return false;
+            }
+
+            /* =====================================================
+            * 3) 與上次「成功同步」值比對
             * ===================================================== */
             if (is_file($stateFn)) {
                 $state = json_decode((string)@file_get_contents($stateFn), true);
-                if (is_array($state) && isset($state['last_values'])) {
-                    if ($state['last_values'] === $srcVal) {
-                        $this->toolSpecDebug('same_value_skip', $srcVal);
-                        return false;
-                    }
+                if (is_array($state) && ($state['last_values'] ?? null) === $srcVal) {
+                    $this->toolSpecDebug('same_as_last_synced', $srcVal);
+                    return false;
                 }
             }
 
             /* =====================================================
-            * 3) 讀取 iDAS DB（目的）
+            * 4) 更新 iDAS DB
             * ===================================================== */
             $destPdo = new PDO('sqlite:' . $destDb, null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -1269,7 +1304,6 @@ class Controller
 
             $destPdo->beginTransaction();
 
-            // 空表 → insert
             if (!$dest) {
                 $destPdo->prepare("
                     INSERT INTO ntcs_tool_test
@@ -1281,7 +1315,6 @@ class Controller
                 $this->toolSpecDebug('insert_new_row', $srcVal);
 
             } else {
-                // 比對目的 DB 是否真的需要更新
                 $needUpdate =
                     (float)$dest['max_rpm']    !== $srcVal['max_rpm'] ||
                     (float)$dest['min_rpm']    !== $srcVal['min_rpm'] ||
@@ -1307,7 +1340,6 @@ class Controller
                         ':tool_type' => $dest['tool_type']
                     ]);
                 } else {
-                    // fallback 用 rowid
                     $destPdo->prepare("
                         UPDATE ntcs_tool_test
                         SET
@@ -1327,7 +1359,7 @@ class Controller
             $destPdo->commit();
 
             /* =====================================================
-            * 4) ⭐ 僅在「實際寫入成功」後才更新狀態
+            * 5) 成功寫入後才更新同步狀態
             * ===================================================== */
             @file_put_contents(
                 $stateFn,
@@ -1342,7 +1374,7 @@ class Controller
 
             $this->toolSpecDebug('sync_success', $srcVal);
 
-            return true; // ⭐ Gate 關閉
+            return true;
 
         } catch (Throwable $e) {
             $this->toolSpecDebug('exception', [
@@ -1351,6 +1383,9 @@ class Controller
             return false;
         }
     }
+
+
+
 
     
 

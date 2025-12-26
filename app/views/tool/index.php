@@ -1,3 +1,4 @@
+<?php $tool_sync_state = $tool_sync_state ?? ($data['tool_sync_state'] ?? 'synced');?>
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table>
@@ -113,3 +114,6 @@
         </div>
     </div>
 </div>
+
+</body>
+

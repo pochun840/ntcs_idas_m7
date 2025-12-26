@@ -52,15 +52,15 @@ function include_css() {
     // 特例處理 - Dashboards 模組
     if ($controller === 'Dashboards') {
         if ($action === 'index') {
-            $cssFile = 'tcc_main.css';
+            $cssFile = 'main.css';
         } elseif ($action === 'operation') {
             $cssFile = $isMobile ? 'operation_m.css' : 'operation.css';
         } else {
-            $cssFile = 'operation.css'; // fallback
+            $cssFile = 'tcc_main.css'; // fallback
         }
 
     // 特例處理 - In 模組
-    } elseif ($controller === 'In') {
+    } elseif ($controller === 'In' || $controller === 'Logins' ||  $controller === 'Login') {
         $cssFile = 'main.css';
 
     // 一般對應

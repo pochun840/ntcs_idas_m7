@@ -40,6 +40,26 @@ class Tools extends Controller
             );
         }
 
+        // ===== Tool Spec Sync UI Status =====
+        $tool_sync_state = 'synced'; // 預設：已套用
+
+        $stateFn = '/var/www/html/database/.tool_spec_sync.json';
+        if (is_file($stateFn)) {
+            $state = json_decode((string)@file_get_contents($stateFn), true);
+            if (is_array($state)) {
+                // controller 與 iDAS 規格不同 → 套用中
+                if (($state['last_values'] ?? null) !== null) {
+                    // 用 last_sync_at 判斷是否剛更新過 controller 但尚未同步
+                    if ((time() - (int)($state['last_sync_at'] ?? 0)) < 30) {
+                        $tool_sync_state = 'applying';
+                    }
+                }
+            }
+        }
+
+        $data['tool_sync_state'] = $tool_sync_state;
+
+
         $isMobile = $this->isMobileCheck();
         $Tool_Info = $this->ToolModel->GetToolInfo();
         $Tool_Info = end($Tool_Info);
