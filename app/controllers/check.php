@@ -30,28 +30,42 @@ class Check extends Controller
 
     
     public function ajax_check_device_id(){
+
         header('Content-Type: application/json; charset=utf-8');
 
-        // 前端傳來目前畫面認知的 device_id（從 cookie 或 JS 變數帶）
-        $current = isset($_POST['current_device_id']) ? (int)$_POST['current_device_id'] : null;
+        // 前端目前認知的 device_id
+        $current = isset($_POST['current_device_id']) && $_POST['current_device_id'] !== ''
+            ? (int)$_POST['current_device_id']
+            : null;
 
-        // 這邊可以視情況決定要不要強制 refresh
-        // - true  → 每次都重新偵測（最保險，但稍微重）
-        // - false → 使用你之前加的快取機制（比較省）
+        // 是否強制重新同步 
         $new = $this->ntcs_device_db_sysnc(false);
 
+        // 預設回傳
         $changed = false;
-        if ($new !== null && $current !== null && $new !== $current) {
+        $initialized = false;
+
+        // 判斷是否初始化完成
+        if ($current === null && $new !== null) {
+            $initialized = true; // 第一次取得 device_id
+        }
+
+        // 正常情境：兩邊都有值才比較
+        if ($current !== null && $new !== null && $new !== $current) {
             $changed = true;
         }
 
         echo json_encode([
-            'res_type'   => 'OK',
-            'device_id'  => $new,
-            'changed'    => $changed,
-        ]);
+            'res_type'    => 'OK',
+            'device_id'   => $new,          // 最新 device_id（可能為 null）
+            'changed'     => $changed,      // 是否真的變更
+            'initialized' => $initialized,  // 是否為首次初始化
+            'server_time' => date('Y-m-d H:i:s'),
+        ], JSON_UNESCAPED_UNICODE);
+
         exit;
     }
+
 
     public function runAgentInitial() {
 

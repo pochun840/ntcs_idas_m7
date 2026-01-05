@@ -210,77 +210,80 @@ var deviceReloadDialogShown = false; // 避免狂跳 alert 視窗
 // 6) 主輪詢函式
 // -----------------------------
 function pollDeviceId() {
+
     $.ajax({
         url: "?url=Check/ajax_check_device_id",
         type: "POST",
         dataType: "json",
+        timeout: 3000, // ⏱️ 避免卡死
         data: {
             current_device_id: currentDeviceId
         },
+
         success: function (res) {
             if (!res || res.res_type !== "OK") return;
 
-            var newId =
+            let newId =
                 res.device_id !== null && res.device_id !== undefined
                     ? parseInt(res.device_id, 10)
                     : null;
 
             if (!Number.isFinite(newId)) newId = null;
 
-            var changed = !!res.changed; // 完全依後端判斷
+            const changed = !!res.changed;
 
-            // 初始化 currentDeviceId
+            // 第一次初始化
             if (newId !== null && currentDeviceId === null) {
                 currentDeviceId = newId;
-                return; // 第一次不彈窗
+                return;
             }
 
-            // 若後端說 changed = true → 就跳 alertify（只能按「確定」，不能關）
+            // 裝置變更 → 強制 reload
             if (newId !== null && changed) {
 
-                if (typeof alertify === "undefined" || !alertify.alert) {
-                    console.warn("Alertify not loaded -- cannot show popup.");
+                if (!window.alertify?.alert) {
+                    console.warn("Alertify not loaded");
+                    location.reload();
                     return;
                 }
 
                 if (deviceReloadDialogShown) return;
                 deviceReloadDialogShown = true;
 
-                var msg = getDeviceReloadMessage(newId);
-                var ui  = getAlertifyUiText();
+                const msg = getDeviceReloadMessage(newId);
+                const ui  = getAlertifyUiText();
 
-                // 使用 alertify.alert：只有一顆 OK 按鈕，關閉時強制 reload
                 alertify
-                    .alert(
-                        ui.title,
-                        msg,
-                        function () {
-                            // 使用者一定要按「確定」才能關閉 → 這裡直接 reload
-                            location.reload();
-                        }
-                    )
+                    .alert(ui.title, msg, function () {
+                        location.reload();
+                    })
                     .set({
-                        labels: { ok: ui.ok }, // 只顯示「確定 / OK」
-                        closable: false,       // 關掉右上角 X
-                        movable: false,        // 可選：不要讓使用者拖動
+                        labels: { ok: ui.ok },
+                        closable: false,
+                        movable: false,
                         onshow: function () {
-                            // 只給這個 dialog 加一個特殊 class
                             this.elements.root.classList.add('device-reload-alert');
                         }
-
-                        // 若你的 alertify 支援，可以再加：
-                        // closableByDimmer: false
                     });
             }
 
-            // 更新 currentDeviceId
             if (newId !== null) currentDeviceId = newId;
         },
+
+        error: function (xhr, status) {
+            // ❗ 網路斷線 / controller reboot / Apache reload 都會進來
+            if (status !== 'abort') {
+                console.warn('[pollDeviceId] temporarily unavailable:', status);
+            }
+        },
+
         complete: function () {
-            setTimeout(pollDeviceId, 2000); // 每2秒檢查一次
+            // ⏳ 無論成功或失敗，都延遲再 poll
+            setTimeout(pollDeviceId, 2000);
         }
     });
 }
+
 
 // -----------------------------
 // 7) 初始化

@@ -102,6 +102,15 @@ $(document).on('change', 'input[name="barcode_check"]', function () {
     const isChecked = $(this).is(':checked');
     const $row = $(this).closest('tr');
 
+    
+   // === 勾選時帶入 JOB / SEQ ===
+   if (isChecked) {
+       const jobId = $(this).data('job-id');
+       const seqId = $(this).data('seq-id');
+       fetchSeqList(jobId, seqId);
+   }
+
+
     // 切換背景顏色
     if (isChecked) {
         $row.find('td').css('background-color', '#9AC0CD');

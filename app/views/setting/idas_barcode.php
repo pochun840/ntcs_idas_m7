@@ -284,7 +284,7 @@
         // 依模式顯示/隱藏 SEQ，下拉選單載入與預選
         toggleBarcodeSeq();
         if (modeRequiresSeq(modeVal)) {
-        //fetchSeqList(jobId, seqId);
+            fetchSeqList(jobId, seqId);
         }
     } else if ($('.barcode-check:checked').length === 0) {
         resetBarcodeForm();
