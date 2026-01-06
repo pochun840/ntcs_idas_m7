@@ -1132,6 +1132,20 @@ function update_barcode() {
             method: "GET",
             success: function (html) {
               $('#total_barcodes').html(html);
+
+              // 刷新後，重新選取該 job 的 checkbox
+              if (barcode_job) {
+                  const $cb = $('.barcode-check[data-job-id="' + barcode_job + '"]').first();
+                if ($cb.length) {
+                  // 先清掉其他
+                  $('.barcode-check').prop('checked', false);
+                  // 勾選這一筆
+                  $cb.prop('checked', true);
+                  // ⭐ 主動觸發，讓下方表單更新
+                  $cb.trigger('click');
+                }
+              }
+
               if (typeof OpenButton === 'function') {
                 OpenButton('Barcode');
               }
@@ -1330,3 +1344,81 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+(function bindBarcodeCheckboxDelegateOnce() {
+  if (window.__barcodeDelegateBound) return;
+  window.__barcodeDelegateBound = true;
+
+  $(document).on('change', '.barcode-check, input[name="barcode_check"], #barcode_check', function () {
+    const cb = this;
+
+    let jobId = cb.dataset?.jobId || cb.getAttribute('data-job-id');
+    if (!jobId) {
+      const m = (cb.id || '').match(/^barcode_check_(\d+)_/);
+      if (m) jobId = m[1];
+    }
+
+    console.log('barcode checked jobId=', jobId, 'checked=', cb.checked, cb.dataset);
+  });
+})();
+
+(function bindBarcodeSingleSelectOnce() {
+  if (window.__barcodeSingleSelectBound) return;
+  window.__barcodeSingleSelectBound = true;
+
+  document.addEventListener('change', function (e) {
+    const cb = e.target;
+    if (!cb.matches('.barcode-check')) return;
+
+    // ① 單選：取消其他 checkbox
+    if (cb.checked) {
+      document.querySelectorAll('.barcode-check').forEach(other => {
+        if (other !== cb) other.checked = false;
+      });
+    } else {
+      return; // 取消勾選時不處理
+    }
+
+    // ② ⭐ 關鍵：每次都用 data-* 覆寫下方表單
+    const ds = cb.dataset;
+
+    // 條碼
+    const barcodeEl = document.getElementById('barcode_name');
+    if (barcodeEl) barcodeEl.value = ds.barcode ?? '';
+
+    // 從
+    const fromEl = document.getElementById('barcode_from');
+    if (fromEl) fromEl.value = ds.rangeFrom ?? '';
+
+    // 個數
+    const countEl = document.getElementById('barcode_count');
+    if (countEl) countEl.value = ds.rangeCount ?? '';
+
+    // 條碼模式
+    const modeEl = document.querySelector("select[name='barcode_mode']");
+    if (modeEl && ds.barcodeMode !== undefined) {
+      modeEl.value = ds.barcodeMode;
+    }
+
+    // 工作
+    const jobEl = document.querySelector("select[name='barcode_job']");
+    if (jobEl && ds.jobId) {
+      jobEl.value = ds.jobId;
+    }
+
+    // 工序
+    const seqEl = document.querySelector("select[name='barcode_seq']");
+    if (seqEl) {
+      seqEl.value = (ds.seqId !== undefined && ds.seqId !== '-1') ? ds.seqId : '-1';
+    }
+
+    // （選用）如果你有 hidden barcode_id
+    const idEl = document.getElementById('barcode_id');
+    if (idEl && ds.jobId) {
+      idEl.value = ds.jobId; // 若你用 job_id 當識別
+    }
+
+    // Debug
+    console.log('[Barcode switch]', ds.jobId, ds);
+  });
+})();

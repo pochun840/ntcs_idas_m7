@@ -251,46 +251,56 @@
         });
 
 
-    // 勾選列 → 單選 + 高亮 + 帶入表單（最後點選的為準）
-    $(document).on('change', '.barcode-check', function () {
-    const isChecked = this.checked;
-    const $row = $(this).closest('tr');
+    // ✅ 條碼清單：點選（單選）→ 強制同步下方表單（AJAX 刷新後也有效）
+    $(document).off('click.barcodePick').on('click.barcodePick', '.barcode-check', function () {
 
-    // 單選：勾到自己時，取消其他
-    if (isChecked) {
-        $('.barcode-check').not(this).each(function () {
-        this.checked = false;
-        $(this).closest('tr').find('td').css('background-color', '');
+        const $cb  = $(this);
+        const $row = $cb.closest('tr');
+
+        // ① 強制單選：只保留目前這一個 checked
+        //（用 prop 直接改，避免舊狀態干擾）
+        $('.barcode-check').not(this).prop('checked', false).each(function () {
+            $(this).closest('tr').find('td').css('background-color', '');
         });
-    }
 
-    // 高亮/還原
-    $row.find('td').css('background-color', isChecked ? '#9AC0CD' : '');
+        // ② 若使用者把目前這個取消勾選 → 視為「沒有選取」
+        const isChecked = $cb.prop('checked');
+        $row.find('td').css('background-color', isChecked ? '#9AC0CD' : '');
 
-    if (isChecked) {
-        const jobId      = String($(this).data('job-id'));
-        const barcode    = String($(this).data('barcode'));
-        const rangeFrom  = String($(this).data('range-from'));
-        const rangeCount = String($(this).data('range-count'));
-        const modeVal    = String($(this).data('barcode-mode'));
-        const seqId      = String($(this).data('seq-id'));
+        if (!isChecked) {
+            if ($('.barcode-check:checked').length === 0 && typeof resetBarcodeForm === 'function') {
+                resetBarcodeForm();
+            }
+            return;
+        }
 
-        // 帶入基本欄位
+        // ③ ⭐ 每次點選都「強制用 data-* 覆寫表單」
+        const jobId      = String($cb.data('job-id') ?? '');
+        const barcode    = String($cb.data('barcode') ?? '');
+        const rangeFrom  = String($cb.data('range-from') ?? '');
+        const rangeCount = String($cb.data('range-count') ?? '');
+        const modeVal    = String($cb.data('barcode-mode') ?? '');
+        const seqId      = String($cb.data('seq-id') ?? '-1');
+
         $('#barcode_name').val(barcode);
         $('#barcode_from').val(rangeFrom);
         $('#barcode_count').val(rangeCount);
         $('#barcode_mode').val(modeVal);
         $('#barcode_job').val(jobId);
 
-        // 依模式顯示/隱藏 SEQ，下拉選單載入與預選
-        toggleBarcodeSeq();
-        if (modeRequiresSeq(modeVal)) {
-            fetchSeqList(jobId, seqId);
+        // ④ 模式/SEQ 連動（沿用你原本的機制）
+        try { toggleBarcodeSeq(); } catch (_) {}
+
+        if (typeof modeRequiresSeq === 'function' && modeRequiresSeq(modeVal)) {
+            if (typeof fetchSeqList === 'function') {
+                fetchSeqList(jobId, seqId);
+            }
+        } else {
+            $('#barcode_seq').val('-1');
         }
-    } else if ($('.barcode-check:checked').length === 0) {
-        resetBarcodeForm();
-    }
     });
+
+
 
     // 手動改 Job / Mode 也連動
     $('#barcode_job').on('change', function() {
@@ -316,6 +326,12 @@
             method: "GET",
             success: function (html) {
             $('#total_barcodes').html(html);
+            
+            console.log('after refresh .barcode-check =', document.querySelectorAll('#total_barcodes .barcode-check').length);
+            console.log('after refresh any checkbox =', document.querySelectorAll('#total_barcodes input[type=checkbox]').length);
+
+
+
             if (keepScroll && container) container.scrollTop = prevScroll;
 
             // 事件委已用 $(document).on('change', '.barcode-check', ...) 不需重綁

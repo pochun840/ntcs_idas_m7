@@ -1055,51 +1055,49 @@ class Settings extends Controller
         return $barcodes;
     }
 
-    public function show_Barcodes(){
 
-        $isMobile = $this->isMobileCheck();
-        $barcode_list = '';
+    public function show_Barcodes(){
+        
         $barcodes = $this->SettingModel->GetAllBarcodes();
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
-        if(!empty($barcodes)){
-            
-            if(!$isMobile){
 
-                foreach($barcodes as $kk =>$vv){
-                    $barcode_list = '<tr style="text-align: center; vertical-align: middle;" >';
-                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['job_id']."'></td>";
-                    $barcode_list .= '<td>'.$vv['job_id'].'</td>';
-                    $barcode_list .= '<td>'.$vv['JOBname'].'</td>';
-                    $barcode_list .= '<td>'.$vv['barcode'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_from'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_count'].'</td>';
-                    $barcode_list .= '<td>'.$barcode_mode[$vv['barcode_mode']].'</td>';
-                    $barcode_list .= '<tr>';
-    
-                    echo $barcode_list;
-                }
-
-            }else{
-                foreach($barcodes as $kk =>$vv){
-                    $barcode_list = '<tr style="text-align: center; vertical-align: middle;" >';
-                    $barcode_list .= "<td><input class='form-check-input' type='checkbox' name='barcode_check' id='barcode_check' style='zoom:1.2' value='".$vv['job_id']."'></td>";
-                    $barcode_list .= '<td>'.$vv['job_id'].'</td>';
-                    $barcode_list .= '<td>'.$vv['JOBname'].'</td>';
-                    $barcode_list .= '<td>'.$vv['barcode'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_from'].'</td>';
-                    $barcode_list .= '<td>'.$vv['range_count'].'</td>';
-                    $barcode_list .= '<td>'.$barcode_mode[$vv['barcode_mode']].'</td>';
-                    $barcode_list .= '<tr>';
-    
-                    echo $barcode_list;
-                }
-
-            }
-          
-
+        if (empty($barcodes)) {
+            return;
         }
 
+        foreach ($barcodes as $k => $v) {
+
+            echo '<tr style="text-align:center; vertical-align:middle;">';
+
+            echo '<td>
+                <input
+                    class="form-check-input barcode-check"
+                    type="checkbox"
+                    name="barcode_check"
+                    id="barcode_check_' . (int)$v['job_id'] . '_' . $k . '"
+                    value="1"
+                    data-job-id="' . (int)$v['job_id'] . '"
+                    data-job-name="' . htmlspecialchars($v['JOBname'], ENT_QUOTES) . '"
+                    data-barcode="' . htmlspecialchars($v['barcode'], ENT_QUOTES) . '"
+                    data-range-from="' . (int)$v['range_from'] . '"
+                    data-range-count="' . (int)$v['range_count'] . '"
+                    data-barcode-mode="' . (int)$v['barcode_mode'] . '"
+                    data-seq-id="' . (isset($v['seq_id']) ? (int)$v['seq_id'] : -1) . '"
+                    style="zoom:1.2">
+            </td>';
+
+            echo '<td>' . (int)$v['job_id'] . '</td>';
+            echo '<td>' . htmlspecialchars($v['JOBname'], ENT_QUOTES) . '</td>';
+            echo '<td>' . htmlspecialchars($v['barcode'], ENT_QUOTES) . '</td>';
+            echo '<td>' . (int)$v['range_from'] . '</td>';
+            echo '<td>' . (int)$v['range_count'] . '</td>';
+            echo '<td>' . htmlspecialchars($barcode_mode[$v['barcode_mode']] ?? '', ENT_QUOTES) . '</td>';
+
+            echo '</tr>';
+        }
     }
+
+
 
 
     public function Update_Barcode(){
@@ -1278,7 +1276,7 @@ class Settings extends Controller
     }
 
     public function delete_barcodes(){
-        
+
         /* ===============================
         * 語系載入
         * =============================== */
