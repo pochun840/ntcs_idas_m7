@@ -589,6 +589,15 @@ $text['system_barcode_notice_3'] = '匹配個數超出範圍';//Match To Error
 $text['system_barcode_notice_4'] = '請掃描條碼';//Match To Error
 $text['system_barcode_del_notice2'] = '是否刪除此條碼';
 $text['cancel'] = '取消';
+$text['barcode_add_success']  = '條碼「%s」新增成功';
+$text['barcode_add_fail']     = '條碼「%s」新增失敗';
+$text['barcode_edit_success'] = '條碼「%s」更新成功';
+$text['barcode_edit_fail']    = '條碼「%s」更新失敗';
+$text['barcode_delete_no_select'] = '請先勾選要刪除的條碼';
+$text['barcode_delete_success']   = '已成功刪除 %d 筆條碼';
+$text['barcode_delete_not_found'] = '找不到可刪除的條碼';
+$text['barcode_delete_fail']      = '刪除條碼失敗，請稍後再試';
+
 
 //admin setting
 $text['system_connect_setting'] = '連線設定';

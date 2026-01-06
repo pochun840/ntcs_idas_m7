@@ -597,6 +597,16 @@ $text['system_barcode_notice_3'] = '条码有效位数超出范围';//Match To E
 $text['system_barcode_notice_4'] = '请扫描条码';//Match To Error
 $text['system_barcode_del_notice2'] = '条码删除确认';
 $text['cancel'] = '取消';
+$text['barcode_add_success']  = '条码「%s」新增成功';
+$text['barcode_add_fail']     = '条码「%s」新增失败';
+$text['barcode_edit_success'] = '条码「%s」更新成功';
+$text['barcode_edit_fail']    = '条码「%s」更新失败';
+$text['barcode_delete_no_select'] = '请先勾选要删除的条码';
+$text['barcode_delete_success']   = '已成功删除 %d 条条码';
+$text['barcode_delete_not_found'] = '未找到可删除的条码';
+$text['barcode_delete_fail']      = '删除条码失败，请稍后再试';
+
+
 
 //admin setting
 $text['system_connect_setting'] = '连线设定';

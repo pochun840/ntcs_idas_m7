@@ -6,49 +6,61 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // 如果你一定要固定用 UTC+8，而不是用瀏覽器時區：
+
     function getNowPlus8() {
         const now = new Date();
-        // 取得 UTC 毫秒 + 8 小時
         const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
         return new Date(utc + 8 * 60 * 60 * 1000);
     }
 
     function pad2(n) {
-        return n.toString().padStart(2, '0');
+        return String(n).padStart(2, '0');
     }
 
-    function updateDateTime() {
-        const now = getNowPlus8(); // 如果要用瀏覽器自己的時區，可改成 new Date()
-
+    function renderTime(now) {
         const year  = now.getFullYear();
         const month = pad2(now.getMonth() + 1);
         const day   = pad2(now.getDate());
 
         const hour   = pad2(now.getHours());
         const minute = pad2(now.getMinutes());
+        const second = pad2(now.getSeconds());
 
-        const dateStr = `${year}/${month}/${day}`;
-        const timeStr = `${hour} : ${minute}`;
+        const dayEl  = document.getElementById('agent-day');
+        const timeEl = document.getElementById('agent-time');
 
-        const dayEl  = document.getElementById('day');
-        const timeEl = document.getElementById('time');
-
-        if (dayEl)  dayEl.textContent  = 'Date: ' + dateStr;
-        if (timeEl) timeEl.textContent = 'Time: ' + timeStr;
+        if (dayEl)  dayEl.textContent  = `Date: ${year}/${month}/${day}`;
+        if (timeEl) timeEl.textContent = `Time: ${hour} : ${minute}:${second}`;
     }
 
-    // 先立刻更新一次
-    updateDateTime();
-    // 之後每 1 分鐘更新一次（要每秒改成 1000 也可以）
-    setInterval(updateDateTime, 60 * 1000);
+    // ✅ 用 rAF 確保「每秒一定更新一次」，且不會被 setInterval 節流影響
+    let lastSec = -1;
+    function tick() {
+        const now = getNowPlus8();
+        const sec = now.getSeconds();
+        if (sec !== lastSec) {
+            lastSec = sec;
+            renderTime(now);
+        }
+        requestAnimationFrame(tick);
+    }
+
+    // 初始顯示 + 啟動
+    renderTime(getNowPlus8());
+    requestAnimationFrame(tick);
 });
 </script>
 
+
+
+
+
+
+
 <div class="container">
     <div class="header">
-        <div id="day" class="w3-right-align" style="font-size: 14px; margin: 10px">Date:</div>
-        <div id="time" class="w3-right-align" style="font-size: 14px; margin: 0px 10px;">Time:</div>
+        <div id="agent-day" class="w3-right-align" style="font-size: 14px; margin: 10px">Date:</div>
+        <div id="agent-time" class="w3-right-align" style="font-size: 14px; margin: 0px 10px;">Time:</div>
         <div style="margin-top: 1%">
             <h1><?php echo TITLE_AGENT; ?></h1>
         </div>
@@ -541,3 +553,4 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 })();
 </script>
+

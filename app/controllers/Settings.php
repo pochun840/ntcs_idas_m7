@@ -1101,24 +1101,29 @@ class Settings extends Controller
 
     }
 
-    //update barcode
+
     public function Update_Barcode(){
 
-
-        // 語系載入
+        /* ===============================
+        * 語系載入
+        * =============================== */
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) {
             include $file;
         }
 
-        // 欄位定義（key 對應 + 是否必填）
+        header('Content-Type: application/json; charset=utf-8');
+
+        /* ===============================
+        * 欄位定義
+        * =============================== */
         $fields = [
-            'barcode_name'  => ['key' => 'barcode_name',         'required' => true],
-            'barcode_from'  => ['key' => 'barcode_range_from',   'required' => true],
-            'barcode_count' => ['key' => 'barcode_range_count',  'required' => true],
-            'barcode_job'   => ['key' => 'barcode_job',          'required' => true],
-            'barcode_mode'  => ['key' => 'barcode_mode',         'required' => true],
-            'barcode_seq'   => ['key' => 'barcode_seq',          'required' => false],
+            'barcode_name'  => ['key' => 'barcode_name',        'required' => true],
+            'barcode_from'  => ['key' => 'barcode_range_from',  'required' => true],
+            'barcode_count' => ['key' => 'barcode_range_count', 'required' => true],
+            'barcode_job'   => ['key' => 'barcode_job',         'required' => true],
+            'barcode_mode'  => ['key' => 'barcode_mode',        'required' => true],
+            'barcode_seq'   => ['key' => 'barcode_seq',         'required' => false],
         ];
 
         $barcode = [];
@@ -1130,28 +1135,73 @@ class Settings extends Controller
             } elseif ($map['required']) {
                 $input_check = false;
             } else {
-                $barcode[$map['key']] = ""; // 非必填欄位預設值
+                $barcode[$map['key']] = '';
             }
         }
 
-
-
-        if($barcode['barcode_seq'] == "-1"){
-            $barcode['barcode_seq'] = "";
+        // 正規化
+        if (($barcode['barcode_seq'] ?? '') === '-1') {
+            $barcode['barcode_seq'] = '';
         }
 
+        /* ===============================
+        * 欄位驗證失敗
+        * =============================== */
+        if (!$input_check) {
+            echo json_encode([
+                'res_type' => 'error',
+                'res_msg'  => $text['input_error'] ?? 'Required fields missing.'
+            ]);
+            exit;
+        }
 
-        if ($input_check) {
-            $barcode_result = $this->SettingModel->Update_Barcode($barcode);
+        /* =================================================
+        * ⭐ 關鍵：先判斷這次是「新增」還是「更新」
+        * 與 Model 的判斷條件完全一致
+        * ================================================= */
+        $isEdit = $this->SettingModel->check_barcode_conflict($barcode['barcode_job']);
 
-            $res_type = $barcode_result ? 'Success' : 'Error';
-            $res_msg = ($barcode_result ? 'edit barcode :' : 'edit barcode :') . $barcode['barcode_name'] . ($barcode_result ? ' success' : ' fail');
-            $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+        /* ===============================
+        * 儲存（Model 內部自動 INSERT / UPDATE）
+        * =============================== */
+        $ok = $this->SettingModel->Update_Barcode($barcode);
+
+        if ($ok) {
+            $msg = $isEdit
+                ? sprintf(
+                    $text['barcode_edit_success'] ?? 'Barcode "%s" updated successfully.',
+                    $barcode['barcode_name']
+                )
+                : sprintf(
+                    $text['barcode_add_success']  ?? 'Barcode "%s" created successfully.',
+                    $barcode['barcode_name']
+                );
+
+            echo json_encode([
+                'res_type' => 'info',
+                'res_msg'  => $msg
+            ]);
         } else {
-            $res_msg = $text['input_error'] ?? 'Required fields missing.';
-            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+            $msg = $isEdit
+                ? sprintf(
+                    $text['barcode_edit_fail'] ?? 'Failed to update barcode "%s".',
+                    $barcode['barcode_name']
+                )
+                : sprintf(
+                    $text['barcode_add_fail']  ?? 'Failed to create barcode "%s".',
+                    $barcode['barcode_name']
+                );
+
+            echo json_encode([
+                'res_type' => 'error',
+                'res_msg'  => $msg
+            ]);
         }
+
+        exit;
     }
+
+
 
 
 
@@ -1227,41 +1277,50 @@ class Settings extends Controller
         }
     }
 
-  
     public function delete_barcodes(){
-
-        //header('Content-Type: application/json; charset=utf-8');
-
-        // 只支援 job_id
-        $jobId = isset($_POST['job_id']) ? (int)$_POST['job_id'] : 0;
-        if ($jobId <= 0) {
-            echo  $this->MiscellaneousModel->generateErrorResponse('Error', 'No job_id provided.');
+        
+        /* ===============================
+        * 語系載入
+        * =============================== */
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) {
+            include $file;
         }
 
-        try {
-            // Model 實作：delete_barcodes_by_job(int $jobId): int
-            // 回傳受影響筆數 (affected rows)
-            $affected = (int)($this->SettingModel->delete_barcodes_by_job($jobId) ?? 0);
+        header('Content-Type: application/json; charset=utf-8');
 
-            if ($affected > 0) {
-                echo  $this->MiscellaneousModel->generateErrorResponse(
-                    'Success',
-                    "Job #{$jobId} barcodes deleted, affected: {$affected}"
-                );
-            }
+        // 前端傳 array
+        $jobIds = $_POST['job_id'] ?? [];
 
-            echo  $this->MiscellaneousModel->generateErrorResponse(
-                'Error',
-                "No barcodes found for job #{$jobId}."
-            );
-
-        } catch (Throwable $e) {
-            echo  $this->MiscellaneousModel->generateErrorResponse(
-                'Error',
-                'Delete by job failed: ' . $e->getMessage()
-            );
+        if (!is_array($jobIds) || empty($jobIds)) {
+            echo json_encode([
+                'res_type' => 'error',
+                'res_msg'  => $text['barcode_delete_no_select'] ?? 'Please select at least one barcode.'
+            ]);
+            exit;
         }
+
+        // ⭐ 一次刪（交給 Model 處理正規化）
+        $affectedTotal = (int)$this->SettingModel->delete_barcodes_by_jobs($jobIds);
+
+        if ($affectedTotal > 0) {
+            echo json_encode([
+                'res_type' => 'info',
+                'res_msg'  => sprintf(
+                    $text['barcode_delete_success'] ?? 'Deleted %d barcode(s).',
+                    $affectedTotal
+                )
+            ]);
+            exit;
+        }
+
+        echo json_encode([
+            'res_type' => 'error',
+            'res_msg'  => $text['barcode_delete_not_found'] ?? 'No barcode found to delete.'
+        ]);
+        exit;
     }
+
 
 
     #IDAS上傳 20250624 修改

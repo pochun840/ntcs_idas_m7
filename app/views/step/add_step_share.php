@@ -2841,19 +2841,39 @@
 
         // =====================================================
         // 交叉驗證：
-        // StepOption == 2 或 目標扭力(target_opt == 0) 時
+        // StepOption == 2 或 目標扭力 (target_opt == 0) 時
         // StepLoTorque 必須 < StepHiTorque
         // =====================================================
         (function enforceLoTorqueLessThanHiTorque() {
 
-            // === 驗證條件（你問的那段就在這裡）===
-            const needCheckLoHi =
-                (StepOption === 2) ||
-                (String(target_opt) === "0");
+            // -------------------------------------------------
+            // ✅ 安全取得 StepOption（避免吃到不存在的全域）
+            // -------------------------------------------------
+            const stepOptEl = document.getElementById('StepOption');
+            const StepOption = Number(stepOptEl?.value ?? 0);
 
+            // -------------------------------------------------
+            // ✅ 安全取得 target_opt（你系統常見的幾種 id 都兼容）
+            // -------------------------------------------------
+            const targetOptEl =
+                document.getElementById('target_opt') ||
+                document.getElementById('edit_target_opt') ||
+                document.getElementById('StepTargetOpt') ||
+                document.getElementById('StepTargetOption');
+
+            const target_opt = String(targetOptEl?.value ?? '');
+
+            // -------------------------------------------------
+            // ✅ 驗證條件
+            // -------------------------------------------------
+            const isTargetAngle = (target_opt !== "0");
+
+            const needCheckLoHi =  (StepOption === 2) || isTargetAngle;
             if (!needCheckLoHi) return;
 
-            // === 取得欄位 ===
+            // -------------------------------------------------
+            // 取得欄位
+            // -------------------------------------------------
             const loEl = document.getElementById('StepLoTorque');
             const hiEl = document.getElementById('StepHiTorque');
             if (!loEl || !hiEl) return;
@@ -2862,11 +2882,15 @@
             const hi = Number(hiEl.value);
             if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
 
-            // === 依 precision 四捨五入後比較 ===
+            // -------------------------------------------------
+            // 依 precision 四捨五入後比較
+            // -------------------------------------------------
             const loRounded = roundTo(lo, precision);
             const hiRounded = roundTo(hi, precision);
 
-            // === 合法 ===
+            // -------------------------------------------------
+            // 合法：Lo < Hi
+            // -------------------------------------------------
             if (loRounded < hiRounded) {
                 loEl.classList.remove('is-invalid');
                 hiEl.classList.remove('is-invalid');
@@ -2880,30 +2904,51 @@
                 return;
             }
 
-            // === 不合法：Lo >= Hi ===
+            // -------------------------------------------------
+            // 不合法：Lo >= Hi
+            // -------------------------------------------------
             loEl.classList.add('is-invalid');
             hiEl.classList.add('is-invalid');
 
-            // === 語系 ===
+            // -------------------------------------------------
+            // 語系
+            // -------------------------------------------------
             const lu = (typeof getLangAndUnit === 'function') ? (getLangAndUnit() || {}) : {};
             const lang = normalizeLang(lu.lang || 'en-us');
+
+            // 取扭力單位（優先從 getLangAndUnit 拿，其次從 DOM）
+            const unitKey =
+                String(
+                    lu.unit ||
+                    lu.torque_unit ||
+                    document.getElementById('StepTorqueUnit')?.value ||
+                    document.getElementById('step_tor_unit')?.value ||
+                    document.getElementById('torque_unit')?.value ||
+                    'N.m'
+                );
+
+            // 依語系顯示單位文字（你之前提供的 unitLabels）
+            const unitText =
+                (typeof unitLabels === 'object' && unitLabels?.[unitKey])
+                    ? (unitLabels[unitKey][lang] || unitLabels[unitKey].default || unitKey)
+                    : unitKey;
 
             const I18N = {
                 'en-us': {
                     title: 'Warning',
-                    msg: 'Torque low limit must be less than torque high limit'
+                    msg: `Torque low limit (${unitText}) must be less than torque high limit`
                 },
                 'zh-tw': {
                     title: '警告',
-                    msg: '扭力下限需小於扭力上限'
+                    msg: `扭力下限（${unitText}）需小於扭力上限`
                 },
                 'zh-cn': {
                     title: '警告',
-                    msg: '扭力下限需小于扭力上限'
+                    msg: `扭力下限（${unitText}）需小于扭力上限`
                 }
             };
             const T = I18N[lang] || I18N['en-us'];
-
+            
             // 關閉 inline invalid-feedback（統一用彈窗）
             const fb = loEl.nextElementSibling;
             if (fb?.classList.contains('invalid-feedback')) {
@@ -2912,7 +2957,9 @@
                 fb.style.display = 'none';
             }
 
-            // === 避免重複彈窗 ===
+            // -------------------------------------------------
+            // 避免重複彈窗
+            // -------------------------------------------------
             if (window._alertingLoLtHi) {
                 isValid = false;
                 if (!errorList.includes('StepLoTorque')) {
@@ -2922,7 +2969,9 @@
             }
             window._alertingLoLtHi = true;
 
-            // === 彈窗 ===
+            // -------------------------------------------------
+            // 彈窗
+            // -------------------------------------------------
             alertify
                 .alert(T.title, T.msg, function () {
                     try { loEl.focus(); loEl.select?.(); } catch {}
@@ -2932,7 +2981,9 @@
                     ok: (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定'))
                 });
 
-            // === 阻擋送出 ===
+            // -------------------------------------------------
+            // 阻擋送出
+            // -------------------------------------------------
             isValid = false;
             if (!errorList.includes('StepLoTorque')) {
                 errorList.push('StepLoTorque');

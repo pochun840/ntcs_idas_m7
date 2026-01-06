@@ -967,7 +967,26 @@ function validateInput(element, pattern, min, max) {
 
 
 function update_barcode() {
-  // ---- 語系與字典 ----
+
+  /* =====================================================
+   * 讀取表單欄位（⚠ 一定要放最前面，避免 TDZ）
+   * ===================================================== */
+  const barcode_id    = document.getElementById("barcode_id")?.value ?? '';
+  const barcode_name  = document.getElementById("barcode_name")?.value?.trim() ?? '';
+  const barcode_from  = document.getElementById("barcode_from")?.value ?? '';
+  const barcode_count = document.getElementById("barcode_count")?.value ?? '';
+  const barcode_mode  = document.querySelector("select[name='barcode_mode']")?.value ?? '-1';
+  const barcode_job   = document.querySelector("select[name='barcode_job']")?.value ?? '-1';
+  const barcode_seq   = document.querySelector("select[name='barcode_seq']")?.value ?? '-1';
+
+  const isEdit = Number(barcode_id) > 0;
+
+  // 🔎 debug（需要時保留，不要可刪）
+  console.log('[barcode]', isEdit ? 'EDIT' : 'ADD', barcode_id);
+
+  /* =====================================================
+   * 語系偵測
+   * ===================================================== */
   const getLang = () => {
     try {
       if (typeof getCookie === 'function' && getCookie('language')) {
@@ -979,11 +998,15 @@ function update_barcode() {
     return 'en-us';
   };
 
-  const lang = getLang().includes('zh-tw') || getLang().includes('hant') || getLang().includes('tw') || getLang().includes('hk') || getLang().includes('mo')
-    ? 'zh-tw'
-    : (getLang().includes('zh-cn') || getLang().includes('hans') || getLang().includes('cn') || getLang().includes('sg'))
-      ? 'zh-cn'
-      : 'en-us';
+  const rawLang = getLang();
+  const lang =
+    rawLang.includes('zh-tw') || rawLang.includes('hant') || rawLang.includes('tw') ||
+    rawLang.includes('hk') || rawLang.includes('mo')
+      ? 'zh-tw'
+      : rawLang.includes('zh-cn') || rawLang.includes('hans') ||
+        rawLang.includes('cn') || rawLang.includes('sg')
+          ? 'zh-cn'
+          : 'en-us';
 
   const i18n = {
     'en-us': {
@@ -1021,48 +1044,53 @@ function update_barcode() {
     }
   }[lang];
 
-  // ---- 統一 alertify 的按鈕語系（支援新版與舊版 API）----
+  /* =====================================================
+   * alertify 語系
+   * ===================================================== */
   try {
     if (alertify?.defaults?.glossary) {
       alertify.defaults.glossary.ok = i18n.ok;
       alertify.defaults.glossary.cancel = i18n.cancel;
-      // 也可以設定預設標題（alert 用得到）
       alertify.defaults.glossary.title = i18n.titleInfo;
-    } else if (typeof alertify.okBtn === 'function' && typeof alertify.cancelBtn === 'function') {
+    } else if (typeof alertify.okBtn === 'function') {
       alertify.okBtn(i18n.ok).cancelBtn(i18n.cancel);
     }
   } catch (_) {}
 
-  const $ = window.jQuery;
-
-  const barcode_name  = document.getElementById("barcode_name")?.value?.trim() ?? '';
-  const barcode_from  = document.getElementById("barcode_from")?.value ?? '';
-  const barcode_count = document.getElementById("barcode_count")?.value ?? '';
-  const barcode_mode  = document.querySelector("select[name='barcode_mode']")?.value ?? '-1';
-  const barcode_job   = document.querySelector("select[name='barcode_job']")?.value ?? '-1';
-  const barcode_seq   = document.querySelector("select[name='barcode_seq']")?.value ?? '-1';
-
-  // ---- 表單驗證（用語系彈窗）----
+  /* =====================================================
+   * 表單驗證
+   * ===================================================== */
   if (barcode_job === "-1") {
-    alertify.alert(i18n.titleInfo, i18n.v_job, () => setTimeout(() => alertify.closeAll(), 2000));
-    return;
-  }
-  if (barcode_mode === "3" && barcode_seq === "-1") {
-    alertify.alert(i18n.titleInfo, i18n.v_seq, () => setTimeout(() => alertify.closeAll(), 2000));
-    return;
-  }
-  if (!barcode_name) {
-    alertify.alert(i18n.titleInfo, i18n.v_name, () => setTimeout(() => alertify.closeAll(), 2000));
+    alertify.alert(i18n.titleInfo, i18n.v_job);
     return;
   }
 
+  if (barcode_mode === "3" && barcode_seq === "-1") {
+    alertify.alert(i18n.titleInfo, i18n.v_seq);
+    return;
+  }
+
+  if (!barcode_name) {
+    alertify.alert(i18n.titleInfo, i18n.v_name);
+    return;
+  }
+
+  /* =====================================================
+   * Spinner
+   * ===================================================== */
   const spinner = document.getElementById('spinner');
   if (spinner) spinner.style.display = 'block';
 
+  const $ = window.jQuery;
+
+  /* =====================================================
+   * AJAX
+   * ===================================================== */
   $.ajax({
     url: "?url=Settings/Update_Barcode",
     method: "POST",
     data: {
+      barcode_id:    barcode_id,   // ⭐ 新增 / 修改 判斷關鍵
       barcode_name:  barcode_name,
       barcode_from:  barcode_from,
       barcode_count: barcode_count,
@@ -1071,32 +1099,32 @@ function update_barcode() {
       barcode_mode:  barcode_mode
     },
     success: function (response) {
+
       let responseData;
       try {
-        responseData = typeof response === 'object' ? response : JSON.parse(response);
+        responseData = (typeof response === 'object') ? response : JSON.parse(response);
       } catch (e) {
-        // JSON 解析失敗
         if (spinner) spinner.style.display = 'none';
-        alertify.alert(i18n.titleError, i18n.ajaxParseFail, () => setTimeout(() => alertify.closeAll(), 3000));
+        alertify.alert(i18n.titleError, i18n.ajaxParseFail);
         return;
       }
 
-      // 1 秒後關 spinner → 顯示 alert
-      setTimeout(function () {
-        document.querySelector(".main-content")?.classList?.remove("overlay-active");
+      setTimeout(() => {
         if (spinner) spinner.style.display = 'none';
 
-        const resType = responseData?.res_type || i18n.titleInfo;
-        const resMsg  = responseData?.res_msg  || '';
+        const resType = responseData?.res_type === 'error'
+          ? i18n.titleError
+          : i18n.titleInfo;
 
-        alertify.alert(resType, resMsg, function () {
-          // 設定頁籤顯示狀態
+        const resMsg = responseData?.res_msg ?? '';
+
+        alertify.alert(resType, resMsg, () => {
           sessionStorage.setItem('Barcode_Setting', 'block');
           sessionStorage.setItem('Controller_Setting', 'none');
         });
 
-        // 3 秒後自動關閉並刷新列表
-        setTimeout(function () {
+        // 自動刷新列表
+        setTimeout(() => {
           alertify.closeAll();
 
           $.ajax({
@@ -1104,30 +1132,28 @@ function update_barcode() {
             method: "GET",
             success: function (html) {
               $('#total_barcodes').html(html);
-              // 你原本的刷新邏輯
               if (typeof OpenButton === 'function') {
                 OpenButton('Barcode');
-              } else {
-                // 備援：沒有 OpenButton 時，做輕量刷新
-                try { location.reload(); } catch (_){}
               }
             },
-            error: function (xhr, status, error) {
-              console.error("刷新條碼失敗:", error);
-              alertify.alert(i18n.titleError, i18n.ajaxFail, () => setTimeout(() => alertify.closeAll(), 3000));
+            error: function () {
+              alertify.alert(i18n.titleError, i18n.ajaxFail);
             }
           });
 
         }, 3000);
-      }, 1000);
+
+      }, 800);
     },
     error: function (xhr, status, error) {
       if (spinner) spinner.style.display = 'none';
-      console.error("Update_Barcode AJAX error:", status, error, xhr?.responseText);
-      alertify.alert(i18n.titleError, i18n.ajaxFail, () => setTimeout(() => alertify.closeAll(), 3000));
+      console.error('[Update_Barcode]', status, error, xhr?.responseText);
+      alertify.alert(i18n.titleError, i18n.ajaxFail);
     }
   });
 }
+
+
 
 
 

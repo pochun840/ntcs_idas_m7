@@ -91,6 +91,7 @@
         </div>    
                 
         <div style="text-align: center;margin-top: 30px;">
+            <input type="hidden" id="barcode_id" value="">
             <button class="all-btn w3-button w3-border w3-round-large" onclick="update_barcode()" ><?php echo $text['save'];?></button>&nbsp;&nbsp;
             <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode()" ><?php echo $text['delete_text'];?></button>
         </div>               
@@ -322,8 +323,7 @@ function delete_barcode_item() {
             $.ajax({
                 url: "?url=Settings/delete_barcodes",
                 method: "POST",
-                data: { job_id: jobIds },
-                traditional: true,
+                data: { job_id: jobIds }, // jQuery 會自動用 job_id[]
                 dataType: 'json',
                 success: function(response) {
                     if (spinner) spinner.style.display = 'none';

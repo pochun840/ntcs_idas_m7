@@ -599,6 +599,16 @@ $text['system_barcode_notice_4'] = 'Please scan barcode';//Match To Error
 $text['system_barcode_del_notice2'] = 'Are you sure you want to delete this barcode';
 $text['cancel'] = 'Cancel';
 
+$text['barcode_add_success']  = 'Barcode "%s" created successfully';
+$text['barcode_add_fail']     = 'Failed to create barcode "%s"';
+$text['barcode_edit_success'] = 'Barcode "%s" updated successfully';
+$text['barcode_edit_fail']    = 'Failed to update barcode "%s"';
+$text['barcode_delete_no_select'] = 'Please select at least one barcode';
+$text['barcode_delete_success']   = 'Successfully deleted %d barcode(s)';
+$text['barcode_delete_not_found'] = 'No barcode found to delete';
+$text['barcode_delete_fail']      = 'Failed to delete barcode. Please try again';
+
+
 //admin setting
 $text['system_connect_setting'] = 'Connection Setting';
 $text['system_connect_number'] = 'Number of connections';
