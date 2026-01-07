@@ -136,25 +136,70 @@ class Admins extends Controller
     }
 
     //
-    public function SetAgentType()
-    {
+    public function SetAgentType(){
+        
+        // ------------------------------
+        // Language
+        // ------------------------------
+        $lang = $_SESSION['language'] ?? 'zh-tw';
+        $lang = strtolower((string)$lang);
+        if ($lang === 'en') $lang = 'en-us';
+        if (!in_array($lang, ['en-us', 'zh-tw', 'zh-cn'], true)) $lang = 'zh-tw';
+
+        // ------------------------------
+        // i18n messages
+        // ------------------------------
+        $MSG = [
+            'success' => [
+                'zh-tw' => 'Agent 類型更新成功',
+                'zh-cn' => 'Agent 类型更新成功',
+                'en-us' => 'Agent type updated successfully',
+            ],
+            'fail' => [
+                'zh-tw' => 'Agent 類型更新失敗',
+                'zh-cn' => 'Agent 类型更新失败',
+                'en-us' => 'Failed to update agent type',
+            ],
+            'invalid' => [
+                'zh-tw' => '參數錯誤：agent_type 必須為 0~2',
+                'zh-cn' => '参数错误：agent_type 必须为 0~2',
+                'en-us' => 'Invalid parameter: agent_type must be 0~2',
+            ],
+        ];
+
+        // ------------------------------
+        // Validate
+        // ------------------------------
         $result = false;
-        if (isset($_POST['agent_type']) && $_POST['agent_type']>=0 && $_POST['agent_type'] <=2 ) {
-            $agent_type = $_POST['agent_type'];
-            $result = $this->AdminModel->Set_Das_Config('agent_type',$agent_type);
-        }
-        
-        
-        if($result){
-            $res_msg = 'Edit: AgentType  success';
-            $this->MiscellaneousModel->generateErrorResponse('Succes', $res_msg);
 
-        }else{
-            $res_msg = 'Edit: AgentType  fail';
-            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg);
+        if (isset($_POST['agent_type']) && is_numeric($_POST['agent_type'])) {
+
+            $agent_type = (int)$_POST['agent_type'];
+
+            if ($agent_type >= 0 && $agent_type <= 2) {
+                $result = $this->AdminModel->Set_Das_Config('agent_type', $agent_type);
+            } else {
+                // invalid range
+                $this->MiscellaneousModel->generateErrorResponse('Error', $MSG['invalid'][$lang]);
+                return;
+            }
+
+        } else {
+            // missing / non-numeric
+            $this->MiscellaneousModel->generateErrorResponse('Error', $MSG['invalid'][$lang]);
+            return;
         }
 
+        // ------------------------------
+        // Response
+        // ------------------------------
+        if ($result) {
+            $this->MiscellaneousModel->generateErrorResponse('Success', $MSG['success'][$lang]);
+        } else {
+            $this->MiscellaneousModel->generateErrorResponse('Error', $MSG['fail'][$lang]);
+        }
     }
+
 
     public function AgentTest()
     {

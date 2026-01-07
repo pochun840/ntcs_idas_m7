@@ -474,6 +474,7 @@ class Jobs extends Controller
     }
 
 
+    
     public function set_input_unified() {
         $jobid = $_POST['jobid'] ?? null;
         $val   = isset($_POST['val']) ? (int)$_POST['val'] : null; // 0 or 1
