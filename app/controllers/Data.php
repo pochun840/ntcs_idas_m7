@@ -119,175 +119,259 @@ class Data extends Controller
         $this->view('data/index', $data);
     }
 
+    
+    /**
+     * Torque unit key -> localized display text
+     */
+    public function unitText(string $unitKey, ?string $lang = null): string
+    {
+        // language
+        $lang = strtolower(trim(
+            $lang
+            ?? ($_SESSION['language'] ?? $_COOKIE['language'] ?? 'zh-tw')
+        ));
+        $lang = ($lang === 'en') ? 'en-us' : (($lang === 'zh') ? 'zh-tw' : $lang);
+        if (!in_array($lang, ['en-us','zh-tw','zh-cn'], true)) {
+            $lang = 'en-us';
+        }
+
+        if ($unitKey === '') return '';
+
+        // normalize unit key
+        $key = strtolower(trim($unitKey));
+        $key = str_replace(['·','*','-','/','／'], '.', $key);
+        $key = preg_replace('/\.+/', '.', $key);
+
+        // i18n map
+        static $MAP = [
+            'n.m'    => ['en-us'=>'N.m',   'zh-tw'=>'N.m',   'zh-cn'=>'N.m'],
+            'cn.m'   => ['en-us'=>'cN.m',  'zh-tw'=>'cN.m',  'zh-cn'=>'cN.m'],
+            'kgf.m'  => ['en-us'=>'kgf.m', 'zh-tw'=>'kgf.m', 'zh-cn'=>'kgf.m'],
+            'kgf.cm' => ['en-us'=>'kgf.cm','zh-tw'=>'kgf.cm','zh-cn'=>'kgf.cm'],
+            'lbf.in' => ['en-us'=>'lbf.in','zh-tw'=>'lbf.in','zh-cn'=>'lbf.in'],
+        ];
+
+        if (isset($MAP[$key])) {
+            return $MAP[$key][$lang];
+        }
+
+        // fallback: dot → ·
+        return str_replace('.', '·', $unitKey);
+    }
 
 
-    public function exportData() {
 
 
+
+    private function normalizeHeader(string $h): string{
+        // 將全形空白、非斷行空白都轉成一般空白
+        $h = preg_replace('/[\x{00A0}\x{3000}]/u', ' ', $h);
+
+        return strtolower(
+            preg_replace('/\s+/', '_', trim($h))
+        );
+    }
+
+
+    /**
+     * Modbus torque unit code -> localized text
+     * @param mixed  $code  0~4
+     * @return string
+     */
+    private function torqueUnitFromModbus($code): string{
+        // 來源統一用 MiscellaneousModel
+        $unitMap = $this->MiscellaneousModel->details('modbus_torque_unit');
+
+        // 防呆
+        if (!is_array($unitMap)) {
+            return (string)$code;
+        }
+
+        $key = $unitMap[(int)$code] ?? '';
+
+        if ($key === '') {
+            return (string)$code;
+        }
+
+        // 套語系顯示
+        return $this->unitText($key);
+    }
+
+
+    public function exportData(){
+        
+        /* =====================================================
+        * Load language
+        * ===================================================== */
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) {
             include $file;
         }
 
-        $input_check = true;
-
-        // 取得控制器資訊（含序號）
-        $controller_info = $this->SettingModel->GetControllerInfo();
-
-        // 檢查開始/結束日期（補上秒）
-        if (!empty($_POST['start_date']) && isset($_POST['start_date'])) {
-            $start_date = $_POST['start_date'] . ":00";
-        } else {
-            $input_check = false;
-        }
-
-        if (!empty($_POST['end_date']) && isset($_POST['end_date'])) {
-            $end_date = $_POST['end_date'] . ":00";
-        } else {
-            $input_check = false;
-        }
-
-        // 匯出格式：0=CSV, 1=ZIP(內含CSV)
-        $expert_val = $_POST['expert_val'] ?? "0";
-
-        if (!$input_check) {
+        /* =====================================================
+        * Input check
+        * ===================================================== */
+        if (empty($_POST['start_date']) || empty($_POST['end_date'])) {
             echo json_encode(["error" => "輸入參數不正確"]);
-            exit();
+            exit;
         }
 
-        // 撈資料
+        $start_date = $_POST['start_date'] . ':00';
+        $end_date   = $_POST['end_date'] . ':00';
+        $expert_val = $_POST['expert_val'] ?? '0';
+
+        /* =====================================================
+        * Fetch data
+        * ===================================================== */
         $dataset = $this->DataModel->get_range_data($start_date, $end_date);
-        if (count($dataset) === 0) {
+        if (empty($dataset)) {
             echo json_encode(["error" => "無法找到符合條件的資料"]);
-            exit();
+            exit;
         }
 
-        // 限制最多 10,000 筆
-        $dataset       = array_slice($dataset, 0, 10000);
-        $csv_headers   = array_keys($dataset[0]); // 取欄位鍵名（用來決定輸出順序）
-        $csv_headers_temp = $csv_headers;         // 這是要「顯示」的表頭
+        $dataset = array_slice($dataset, 0, 10000);
+
+        /* =====================================================
+        * Headers
+        * ===================================================== */
+        $csv_headers      = array_keys($dataset[0]);
+        $csv_headers_temp = $csv_headers;
 
         if (!empty($text) && is_array($text)) {
-            foreach ($csv_headers as $key => $val) {
-                // 將顯示用表頭改成中文（找不到翻譯就用原鍵名）
-                $csv_headers_temp[$key] = $text[$val] ?? $val;
+            foreach ($csv_headers as $i => $key) {
+                $csv_headers_temp[$i] = $text[$key] ?? $key;
             }
         }
 
-        // ---- 取得系統時區並設定 PHP 時區（只有在未設定時才設定）----
-        $system_timezone = trim(@exec('timedatectl show -p Timezone --value 2>/dev/null'));
-        if (empty($system_timezone)) {
-            // 抓不到完整名稱，用縮寫（可能像 CST）
-            $system_timezone = trim(@exec('date +%Z'));
-        }
-        if (empty(ini_get('date.timezone'))) {
-            @date_default_timezone_set(!empty($system_timezone) ? $system_timezone : 'Asia/Taipei');
-        }
+        /* =====================================================
+        * Filename
+        * ===================================================== */
+        $controller_info = $this->SettingModel->GetControllerInfo();
+        $device_sn_safe  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
+        $timestamp       = date('YmdHis');
 
-        // ---- 取得時間字串（到秒）。先嘗試使用系統 date；失敗就用 PHP 時間 ----
-        $timestamp_str = null;
-        if (function_exists('shell_exec')) {
-            $timestamp_str = trim(@shell_exec("date '+%Y%m%d%H%M%S'"));
-        }
-        if (empty($timestamp_str)) {
-            // Fallback：用 PHP 的時間（已設時區）
-            $timestamp_str = date('YmdHis');
-        }
+        $csv_filename = "data_{$device_sn_safe}_{$timestamp}.csv";
+        $zip_filename = "data_{$device_sn_safe}_{$timestamp}.zip";
 
-        // ---- 安全處理 device_sn（避免非法字元進入檔名）----
-        $device_sn_safe = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
+        /* =====================================================
+        * Mapping
+        * ===================================================== */
+        // Torque unit (MODBUS)
+        $unitMap = $this->MiscellaneousModel->details('modbus_torque_unit');
+        // Status code
+        $status_arr = $this->MiscellaneousModel->details('status');
+        $status_arr = is_array($status_arr) ? $status_arr : [];
 
-        // ---- 組檔名 ----
-        $csv_filename = "data_{$device_sn_safe}_{$timestamp_str}.csv";
-        $zip_filename = "data_{$device_sn_safe}_{$timestamp_str}.zip";
-
-        // 清掉可能的既有輸出緩衝，避免 header 被吃掉
-        if (function_exists('ob_get_length') && ob_get_length()) {
-            @ob_end_clean();
+        /* =====================================================
+        * Clear output buffer
+        * ===================================================== */
+        while (ob_get_level()) {
+            ob_end_clean();
         }
 
-        if ($expert_val === "0") {
-            // ---------------- CSV 直接下載 ----------------
+        /* =====================================================
+        * CSV DIRECT DOWNLOAD
+        * ===================================================== */
+        if ($expert_val === '0') {
+
             header('Content-Type: text/csv; charset=utf-8');
             header("Content-Disposition: attachment; filename={$csv_filename}");
 
-            $output = fopen('php://output', 'w');
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
 
-            // 需要 Excel 友善可視需求加入 BOM：
-            fwrite($output, "\xEF\xBB\xBF");
+            // header row
+            fputcsv($out, $csv_headers_temp);
 
-            // 表頭
-
-            fputcsv($output, $csv_headers_temp);
-
-            // 資料列仍依「鍵名順序」輸出
             foreach ($dataset as $row) {
                 $ordered = [];
-                foreach ($csv_headers as $h) {
-                    $ordered[] = $row[$h] ?? '';
+
+                foreach ($csv_headers as $idx => $key) {
+
+                    // O 欄（index 14）Torque Unit
+                    if ($idx === 14) {
+                        $code     = (int)($row[$key] ?? -1);
+                        $unitKey  = $unitMap[$code] ?? '';
+                        $ordered[] = $this->unitText($unitKey);
+
+                    // AA 欄（index 26）Status
+                    } elseif ($idx === 26) {
+                        $code = (int)($row[$key] ?? -1);
+                        $ordered[] = $status_arr[$code] ?? $code;
+
+                    } else {
+                        $ordered[] = $row[$key] ?? '';
+                    }
                 }
-                fputcsv($output, $ordered);
+
+                fputcsv($out, $ordered);
             }
-            fclose($output);
-            exit();
 
-        } elseif ($expert_val === "1") {
-            // ---------------- 產 CSV 字串 -> 打包成 ZIP 再下載 ----------------
-            // 用 fputcsv 正確產生 CSV 內容（避免逗號/引號/換行破壞）
+            fclose($out);
+            exit;
+        }
+
+        /* =====================================================
+        * ZIP (CSV inside)
+        * ===================================================== */
+        if ($expert_val === '1') {
+
             $fh = fopen('php://temp', 'w+');
-
-            // 需要 Excel 友善可選擇寫入 BOM：
             fwrite($fh, "\xEF\xBB\xBF");
-
             fputcsv($fh, $csv_headers_temp);
+
             foreach ($dataset as $row) {
                 $ordered = [];
-                foreach ($csv_headers as $h) {
-                    $ordered[] = $row[$h] ?? '';
+
+                foreach ($csv_headers as $idx => $key) {
+
+                    /*if ($idx === 14) {
+                        $code     = (int)($row[$key] ?? -1);
+                        $unitKey  = $unitMap[$code] ?? '';
+                        $ordered[] = $this->unitText($unitKey);
+
+                    } elseif ($idx === 26) {
+                        $code = (int)($row[$key] ?? -1);
+                        $ordered[] = $status_arr[$code] ?? $code;
+
+                    } else {
+                        $ordered[] = $row[$key] ?? '';
+                    }*/
+                    $ordered[] = $row[$key] ?? '';
                 }
+
                 fputcsv($fh, $ordered);
             }
+
             rewind($fh);
             $csv_content = stream_get_contents($fh);
             fclose($fh);
 
-            // 準備 ZIP 暫存檔
-            if (!class_exists('ZipArchive')) {
-                echo json_encode(["error" => "伺服器未啟用 ZipArchive 模組"]);
-                exit();
-            }
-
             $zip = new ZipArchive();
-            $temp_zip_path = tempnam(sys_get_temp_dir(), 'ntcs_zip');
-            // Windows 上 tempnam 已含副檔名，另建 .zip 檔避免某些系統無副檔名問題
-            $temp_zip_final = $temp_zip_path . '.zip';
+            $tmp = tempnam(sys_get_temp_dir(), 'ntcs_') . '.zip';
 
-            if ($zip->open($temp_zip_final, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-                // 將 CSV 內容加到 ZIP，內部檔名使用 $csv_filename
-                $zip->addFromString($csv_filename, $csv_content);
-                $zip->close();
-
-                header('Content-Type: application/zip');
-                header("Content-Disposition: attachment; filename={$zip_filename}");
-                header('Content-Length: ' . filesize($temp_zip_final));
-                readfile($temp_zip_final);
-
-                @unlink($temp_zip_final);
-                // 某些系統也需要刪除 tempnam 原檔
-                @unlink($temp_zip_path);
-                exit();
-            } else {
-                echo json_encode(["error" => "無法建立 ZIP 檔案"]);
-                // 清理殘留
-                @unlink($temp_zip_final);
-                @unlink($temp_zip_path);
-                exit();
+            if ($zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                echo json_encode(["error" => "無法建立 ZIP"]);
+                exit;
             }
-        } else {
-            echo json_encode(["error" => "未知的匯出格式參數"]);
-            exit();
+
+            $zip->addFromString($csv_filename, $csv_content);
+            $zip->close();
+
+            header('Content-Type: application/zip');
+            header("Content-Disposition: attachment; filename={$zip_filename}");
+            header('Content-Length: ' . filesize($tmp));
+
+            readfile($tmp);
+            @unlink($tmp);
+            exit;
         }
+
+        echo json_encode(["error" => "未知的匯出格式"]);
+        exit;
     }
+
+
 
 
 

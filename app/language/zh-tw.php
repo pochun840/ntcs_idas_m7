@@ -436,7 +436,7 @@ $text['step15_last_times']       = '鎖附步驟15時間';
 $text['step15_last_angle']       = '鎖附步驟15角度';
 $text['step15_last_torque']      = '鎖附步驟15扭力';
 $text['step15_last_threadshold'] = '鎖附步驟15門檻';
-
+$text['tool_status'] = '工具狀態';
 
 
 //fasten_status

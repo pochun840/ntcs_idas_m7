@@ -439,7 +439,7 @@ $text['step15_last_times']       = '锁附步骤15时间';
 $text['step15_last_angle']       = '锁附步骤15角度';
 $text['step15_last_torque']      = '锁附步骤15扭力';
 $text['step15_last_threadshold'] = '锁附步骤15门槛';
-
+$text['tool_status'] = '工具状态';
 
 
 

@@ -511,154 +511,118 @@ class Settings extends Controller
 
         return $result;
     }
-
-
-    public function export_sysytem_config() {
     
+    public function export_sysytem_config(){
+
         if (PHP_OS_FAMILY !== 'Linux') {
             http_response_code(400);
             echo json_encode(['error' => 'Only supported on Linux']);
             return;
         }
 
-        // 取得控制器的 id
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1; 
-        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
+        /* =====================================================
+        * Browser timestamp (client side preferred)
+        * - expect: YYYYMMDDHHMMSS (e.g. 20260120132259)
+        * ===================================================== */
+        $clientTs = (isset($_GET['client_ts']) && $_GET['client_ts'] !== '')
+            ? preg_replace('/[^0-9]/', '', $_GET['client_ts'])
+            : date('YmdHis');
 
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        // 1) 觸發控制器產檔
-        try {
-            $modbus = new ModbusMaster("127.0.0.1", "TCP");
-            $modbus->port = 502;
-            $data = [1];
-            $dataTypes = ["INT"]; // 長度與 data 一致
-            $modbus->writeMultipleRegister($unitId, 505, $data, $dataTypes);
-            $this->logMessage('modbus write 505 ok');
-        } catch (Exception $e) {
-            $this->logMessage('modbus write 505 fail: ' . $e->getMessage());
-            echo json_encode(['error' => 'modbus error']);
-            return;
+        // 防呆：如果不是 14 碼，改用 server time
+        if (strlen($clientTs) !== 14) {
+            $clientTs = date('YmdHis');
         }
 
-        // 2) 基本資訊
+        /* =====================================================
+        * Basic info
+        * ===================================================== */
         $controller_info = $this->SettingModel->GetControllerInfo();
         $sn = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
 
-        // Lin 檔名用原本格式（YmdHis）
-        $system_date = trim(shell_exec("date '+%Y%m%d%H%M%S'")) ?: date('YmdHis');
-        $linNameInZip = "con_{$sn}_{$system_date}.Lin";
+        /* =====================================================
+        * ZIP name (include SN + browser time)
+        * ===================================================== */
+        $zipFileName = "NTCS_Config_{$sn}_{$clientTs}.zip";
+        $zipPath     = "/mnt/ramdisk/ftp/" . $zipFileName;
 
-        // 其他檔案共用同一個時間戳（Y-m-d_His）
-        $exportTime = date('Y-m-d_His');  // ex: 2025-11-18_091704
+        /* =====================================================
+        * File names in ZIP (ALL use browser timestamp)
+        * ===================================================== */
+        $linNameInZip      = "con_{$sn}_{$clientTs}.Lin";
+        $barcodeNameInZip  = "bc_{$sn}_{$clientTs}.db";     // bc_KLS20251211_20260120132259.db
+        $logNameInZip      = "ntcs_log_{$clientTs}.csv";    // ntcs_log_20260120132259.csv
+        $syslogNameInZip   = "syslog_{$clientTs}";          // syslog_20260120132259 (no extension)
 
-        // 3) 等候檔案出現（並確認大小穩定）
-        $candidates = [
-            "/mnt/ramdisk/ftp/KLS_NTCS.Lin",
-            "/home/kls/NTCS7/KLS_NTCS.Lin",
-            "/var/www/html/database/KLS_NTCS_IDAS.Lin",
-        ];
-        $srcLin = null;
-        $deadline = microtime(true) + 8.0; // 最多 8 秒
-        while (microtime(true) < $deadline && !$srcLin) {
-            foreach ($candidates as $p) {
-                if (is_file($p)) {
-                    clearstatcache(true, $p);
-                    $s1 = filesize($p);
-                    usleep(200000); // 200ms
-                    clearstatcache(true, $p);
-                    $s2 = filesize($p);
-                    if ($s1 > 0 && $s1 === $s2) { // 大小穩定才使用
-                        $srcLin = $p;
-                        break;
-                    }
-                }
-            }
-            if (!$srcLin) usleep(200000);
-        }
+        /* =====================================================
+        * Fixed LIN source (NO Modbus)
+        * ===================================================== */
+        $srcLin = "/home/kls/NTCS7/KLS_NTCS.Lin";
 
-        // 4) 打包
-        $zipPath = "/mnt/ramdisk/ftp/NTCS_Config.zip";
+        /* =====================================================
+        * Create ZIP
+        * ===================================================== */
         $zip = new ZipArchive();
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             $this->logMessage("Cannot create zip: {$zipPath}");
             echo json_encode(['error' => 'cannot create zip']);
             return;
         }
 
-        // 4-1) 加入 KLS_NTCS / KLS_NTCS_IDAS 檔
-        if ($srcLin) {
+        // 1) LIN
+        if (is_file($srcLin)) {
             $zip->addFile($srcLin, $linNameInZip);
         } else {
-            $this->logMessage('KLS_NTCS.Lin not found or not stable — skipped');
+            $this->logMessage("LIN file not found: {$srcLin}");
         }
 
-        // 4-2) 加入條碼資料庫（帶時間戳，與 exportTime 共用）
+        // 2) Barcode DB
         $barcode = "/var/www/html/database/ntcs_barcode_IDAS.db";
         if (is_file($barcode)) {
-            // ex: ntcs_barcode_2025-11-18_091704.db
-            $barcodeZipName = "ntcs_barcode_{$exportTime}.db";
-            $zip->addFile($barcode, $barcodeZipName);
+            $zip->addFile($barcode, $barcodeNameInZip);
         } else {
-            $this->logMessage("file not found: {$barcode}"); 
+            $this->logMessage("Barcode DB not found: {$barcode}");
         }
 
-        // 4-3) 加入 log 檔 /home/kls/NTCS7/ntcs_log.csv（帶時間戳，與 exportTime 共用）
+        // 3) Log CSV
         $logCsv = "/home/kls/NTCS7/ntcs_log.csv";
         if (is_file($logCsv)) {
-            // ex: ntcs_log_2025-11-18_091704.csv
-            $logZipName = "ntcs_log_{$exportTime}.csv";
-            $zip->addFile($logCsv, $logZipName);
+            $zip->addFile($logCsv, $logNameInZip);
         } else {
-            $this->logMessage("file not found: {$logCsv}");
+            $this->logMessage("Log CSV not found: {$logCsv}");
         }
 
-
-        
-        // 4-4) 加入系統 syslog（需 sudo 權限）
+        // 4) Syslog（可讀才加）
         $syslogSrc = "/var/log/syslog";
-        $syslogTmp = "/mnt/ramdisk/ftp/syslog_{$exportTime}.log";
-
-        if (is_file($syslogSrc)) {
-
-            // 嘗試直接讀（極少數系統可行）
-            if (is_readable($syslogSrc)) {
-                $zip->addFile($syslogSrc, "syslog_{$exportTime}.log");
-
-            } else {
-                // 🔐 權限不足 → 用 sudo cp
-                $cmd = sprintf(
-                    'sudo cp %s %s && sudo chmod 644 %s',
-                    escapeshellarg($syslogSrc),
-                    escapeshellarg($syslogTmp),
-                    escapeshellarg($syslogTmp)
-                );
-                shell_exec($cmd);
-
-                if (is_file($syslogTmp)) {
-                    $zip->addFile($syslogTmp, "syslog_{$exportTime}.log");
-                } else {
-                    $this->logMessage("failed to copy syslog via sudo");
-                }
-            }
-
+        if (is_file($syslogSrc) && is_readable($syslogSrc)) {
+            $zip->addFile($syslogSrc, $syslogNameInZip);
         } else {
-            $this->logMessage("syslog not found: {$syslogSrc}");
+            $this->logMessage("Syslog not readable or not found: {$syslogSrc}");
         }
-        
 
-     
         $zip->close();
 
-        // 5) 送下載
+        /* =====================================================
+        * Send ZIP
+        * ===================================================== */
+        if (!is_file($zipPath) || filesize($zipPath) === 0) {
+            http_response_code(500);
+            echo json_encode(['error' => 'zip not generated']);
+            return;
+        }
+
         header("Content-Type: application/zip");
-        header('Content-Disposition: attachment; filename=NTCS_Config_Pack.zip');
+        // ✅ 下載檔名也用同一個（含 SN + clientTs）
+        header('Content-Disposition: attachment; filename="' . rawurlencode($zipFileName) . '"');
         header("Content-Length: " . filesize($zipPath));
         header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
         header("Pragma: no-cache");
+
         readfile($zipPath);
         exit;
     }
+
+
 
 
     public function get_file_list($value='')
@@ -858,100 +822,133 @@ class Settings extends Controller
 
         $argument = $_POST['argument'] ?? '';
 
-        $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
-        $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
-
-        $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
-        $finalPath2   = '/mnt/ramdisk/ftp/11.db';
-        $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
-
-        $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
-        $dst3         = '/home/kls/NTCS7/ntcs_device.db';
-
-
-        // 取得 正確的 Modbus id
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
-
-
-
-        // 只處理 Linux + D2C，其它情況直接回錯誤
+        // 只允許 Linux + D2C
         if (PHP_OS_FAMILY !== 'Linux' || $argument !== 'D2C') {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
-        }
-
-        // ✅ 先同步 device.db (src3 → dst3)
-        if (file_exists($src3)) {
-            if (!copy($src3, $dst3)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
-            }
-            @chmod($dst3, 0777);
-
-            // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
-            $this->get_db_sync($unitId);
-        }
-
-        //  檢查原始檔案是否存在
-        if (!file_exists($src1) || !file_exists($src2)) {
-            $missingFiles = [];
-            if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
-            if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
-
-            $this->MiscellaneousModel->generateErrorResponse(
+            return $this->MiscellaneousModel->generateErrorResponse(
                 'Error',
-                'Source file(s) missing: ' . implode(', ', $missingFiles)
+                'Invalid sync argument or unsupported OS'
             );
         }
 
-        // 初始化 Modbus
+        /* =====================================================
+        * Paths
+        * ===================================================== */
+        $identityFlag = '/var/www/html/database/.identity_synced';
+
+        $controllerDb = '/home/kls/NTCS7/ntcs_device.db';
+        $idasDb       = '/var/www/html/database/ntcs_device_IDAS.db';
+
+        $srcLin       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $srcBarcode   = '/var/www/html/database/ntcs_barcode_IDAS.db';
+
+        $tmpLin       = '/mnt/ramdisk/ftp/11.Lin';
+        $tmpLinFinal  = '/mnt/ramdisk/ftp/11_tmp.Lin';
+
+        $tmpDb        = '/mnt/ramdisk/ftp/11.db';
+        $tmpDbFinal   = '/mnt/ramdisk/ftp/11_db_temp.db';
+
+        /* =====================================================
+        * 0️⃣ 一次性 Identity Sync（只跑一次）
+        * ===================================================== */
+        if (!file_exists($identityFlag)) {
+
+            try {
+                $this->syncIdentityFromControllerToIDAS(
+                    $controllerDb,
+                    $idasDb
+                );
+
+                // 建立旗標，之後永遠不再跑
+                file_put_contents($identityFlag, date('c'));
+
+                $this->logMessage('[IdentitySync] completed and locked');
+
+            } catch (Exception $e) {
+
+                $this->logMessage('[IdentitySync] failed: ' . $e->getMessage());
+
+                return $this->MiscellaneousModel->generateErrorResponse(
+                    'Error',
+                    'Identity sync failed'
+                );
+            }
+        }
+
+        /* =====================================================
+        * 1️⃣ 基本檢查
+        * ===================================================== */
+        if (!file_exists($srcLin) || !file_exists($srcBarcode)) {
+
+            $missing = [];
+            if (!file_exists($srcLin))     $missing[] = 'KLS_NTCS_IDAS.Lin';
+            if (!file_exists($srcBarcode)) $missing[] = 'ntcs_barcode_IDAS.db';
+
+            return $this->MiscellaneousModel->generateErrorResponse(
+                'Error',
+                'Source file(s) missing: ' . implode(', ', $missing)
+            );
+        }
+
+        /* =====================================================
+        * 2️⃣ Modbus Init
+        * ===================================================== */
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $deviceId = isset($this->deviceId) ? (int)$this->deviceId : 1;
+        $unitId   = ($deviceId >= 1 && $deviceId <= 255) ? $deviceId : 1;
+
         $modbus = new ModbusMaster("127.0.0.1", "TCP");
         $modbus->port        = 502;
-        $modbus->timeout_sec = 2;   // 原本 10 → 3，這裡直接壓到 2 秒
+        $modbus->timeout_sec = 2;
 
         try {
-            // ----------- Sync LIN File（簡化：直接 src → final → rename）-----------
-            if (!$this->safeCopy($src1, $finalPath1)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1 to $finalPath1");
+
+            /* =================================================
+            * 3️⃣ Sync LIN
+            * ================================================= */
+            if (!$this->safeCopy($srcLin, $tmpLin)) {
+                throw new Exception('Copy LIN failed');
             }
-            @chmod($finalPath1, 0777);
-            $this->logMessage("$src1 copied to $finalPath1");
 
-            // 通知控制器有新 LIN
-            $this->notifyModbus($modbus, [1, 12593], "LIN");
+            @chmod($tmpLin, 0777);
+            $this->notifyModbus($modbus, [1, 12593], 'LIN');
 
-            if (!$this->safeCopy($finalPath1, $renamedPath1)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
+            if (!$this->safeCopy($tmpLin, $tmpLinFinal)) {
+                throw new Exception('Rename LIN failed');
             }
-            @unlink($finalPath1);
-            $this->logMessage("$finalPath1 renamed to $renamedPath1");
+            @unlink($tmpLin);
 
-            // 🔥 拿掉 usleep(1_000_000) 不再強制多等 1 秒
-            // usleep(1_000_000);
-
-            // ----------- Sync DB File (barcode)（一樣簡化）-----------
-            if (!$this->safeCopy($src2, $finalPath2)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2 to $finalPath2");
+            /* =================================================
+            * 4️⃣ Sync Barcode DB
+            * ================================================= */
+            if (!$this->safeCopy($srcBarcode, $tmpDb)) {
+                throw new Exception('Copy barcode DB failed');
             }
-            @chmod($finalPath2, 0777);
-            $this->logMessage("$src2 copied to $finalPath2");
 
-            // 通知控制器有新 DB
-            $this->notifyModbus($modbus, [1, 12593], "DB");
+            @chmod($tmpDb, 0777);
+            $this->notifyModbus($modbus, [1, 12593], 'DB');
 
-            if (!$this->safeCopy($finalPath2, $renamedPath2)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
+            if (!$this->safeCopy($tmpDb, $tmpDbFinal)) {
+                throw new Exception('Rename barcode DB failed');
             }
-            @unlink($finalPath2);
-            $this->logMessage("$finalPath2 renamed to $renamedPath2");
+            @unlink($tmpDb);
 
-            // ✅ 最後回傳成功訊息（純 JSON）
-            $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+            /* =================================================
+            * ✅ Done
+            * ================================================= */
+            return $this->MiscellaneousModel->generateErrorResponse(
+                'Success',
+                'SYNC ' . ($text['success'] ?? 'success')
+            );
 
         } catch (Exception $e) {
-            $this->logMessage('Modbus write fail: ' . $e->getMessage());
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
+
+            $this->logMessage('[Sync_check_db] failed: ' . $e->getMessage());
+
+            return $this->MiscellaneousModel->generateErrorResponse(
+                'Error',
+                'Modbus communication failed'
+            );
         }
     }
 
@@ -2026,6 +2023,128 @@ class Settings extends Controller
 
         // $this->ntcs_data_db_sysnc(); // 這段永遠不會被執行到，如果要用另開一個 action
     }
+
+
+
+    /**
+     * 同步識別資料（Controller → iDAS）
+     *
+     * - ntcs_device_test.device_sn
+     * - ntcs_tool_test.tool_type
+     * - ntcs_tool_test.tool_sn
+     *
+     * ⚠️ 單向同步，禁止反向
+     */
+    private function syncIdentityFromControllerToIDAS(
+        string $controllerDbPath,
+        string $idasDbPath
+    ): void {
+
+        if (!is_file($controllerDbPath)) {
+            throw new Exception("Controller DB not found");
+        }
+        if (!is_file($idasDbPath)) {
+            throw new Exception("iDAS DB not found");
+        }
+
+        $cDb = new PDO('sqlite:' . $controllerDbPath);
+        $cDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $iDb = new PDO('sqlite:' . $idasDbPath);
+        $iDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        /* ---------- 讀 Controller ---------- */
+        $device = $cDb->query(
+            "SELECT device_sn FROM ntcs_device_test LIMIT 1"
+        )->fetch(PDO::FETCH_ASSOC);
+
+        if (!$device || empty($device['device_sn'])) {
+            throw new Exception('device_sn not found');
+        }
+
+        $tool = $cDb->query(
+            "SELECT tool_type, tool_sn FROM ntcs_tool_test LIMIT 1"
+        )->fetch(PDO::FETCH_ASSOC);
+
+        if (!$tool) {
+            throw new Exception('tool data not found');
+        }
+
+        /* ---------- 寫 iDAS（transaction） ---------- */
+        $iDb->beginTransaction();
+
+        try {
+            // device
+            if ((int)$iDb->query("SELECT COUNT(*) FROM ntcs_device_test")->fetchColumn() === 0) {
+                $iDb->exec("INSERT INTO ntcs_device_test (device_sn) VALUES ('')");
+            }
+
+            $stmt = $iDb->prepare(
+                "UPDATE ntcs_device_test SET device_sn = :sn"
+            );
+            $stmt->execute([':sn' => $device['device_sn']]);
+
+            // tool
+            if ((int)$iDb->query("SELECT COUNT(*) FROM ntcs_tool_test")->fetchColumn() === 0) {
+                $iDb->exec("INSERT INTO ntcs_tool_test (tool_type, tool_sn) VALUES (NULL, NULL)");
+            }
+
+            $stmt = $iDb->prepare(
+                "UPDATE ntcs_tool_test
+                SET tool_type = :type,
+                    tool_sn   = :sn"
+            );
+            $stmt->execute([
+                ':type' => $tool['tool_type'],
+                ':sn'   => $tool['tool_sn'],
+            ]);
+
+            $iDb->commit();
+
+        } catch (Exception $e) {
+            $iDb->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * 同步「非識別資料」到 Controller
+     * ⚠️ 不碰 device_sn / tool_sn
+     */
+    private function syncData_IDASToController(int $unitId): void {
+
+        // 只處理 job / seq / step / data
+        // 你的原本 get_db_sync 就放這裡
+        $this->get_db_sync($unitId);
+    }
+
+    private function syncFilesToController(ModbusMaster $modbus): void {
+
+        // LIN
+        $this->safeCopy(
+            '/var/www/html/database/KLS_NTCS_IDAS.Lin',
+            '/mnt/ramdisk/ftp/11.Lin'
+        );
+        $this->notifyModbus($modbus, [1, 12593], 'LIN');
+
+        // Barcode
+        $this->safeCopy(
+            '/var/www/html/database/ntcs_barcode_IDAS.db',
+            '/mnt/ramdisk/ftp/11.db'
+        );
+        $this->notifyModbus($modbus, [1, 12593], 'DB');
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

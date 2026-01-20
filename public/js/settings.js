@@ -501,19 +501,97 @@ function toggleBarcodeSeq() {
 
 
 function Export_SystemConfig() {
+
+    // ⭐ 取得瀏覽器時間 YYYYMMDDHHmmss
+    function getBrowserTimestamp() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return (
+            d.getFullYear() +
+            pad(d.getMonth() + 1) +
+            pad(d.getDate()) +
+            pad(d.getHours()) +
+            pad(d.getMinutes()) +
+            pad(d.getSeconds())
+        );
+    }
+
+    const client_ts = getBrowserTimestamp();
+
     var xhr = new XMLHttpRequest();
     xhr.responseType = "blob";
+
     xhr.onload = function () {
-        if (xhr.status === 200) {
-            var a = document.createElement("a");
-            a.href = window.URL.createObjectURL(xhr.response);
-            a.download = "NTCS_Config_Pack.zip";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+
+        /* ===============================
+         * 1) HTTP status check
+         * =============================== */
+        if (xhr.status !== 200) {
+            alert("Export failed (HTTP " + xhr.status + "). Please check controller / Modbus.");
+            return;
         }
+
+        /* ===============================
+         * 2) Content-Type check
+         * =============================== */
+        var ct = (xhr.getResponseHeader("Content-Type") || "").toLowerCase();
+        if (!ct.includes("application/zip")) {
+            try {
+                xhr.response.text().then(function (msg) {
+                    alert("Export failed: " + (msg || "response is not a ZIP file"));
+                });
+            } catch (e) {
+                alert("Export failed: response is not a ZIP file.");
+            }
+            return;
+        }
+
+        /* ===============================
+         * 3) Size sanity check
+         * =============================== */
+        if (!xhr.response || xhr.response.size < 50) {
+            alert("Export failed: ZIP is too small.");
+            return;
+        }
+
+        /* ===============================
+         * 4) Get filename from header
+         * =============================== */
+        let filename = "NTCS_Config.zip"; // fallback
+        const disposition = xhr.getResponseHeader("Content-Disposition");
+
+        if (disposition) {
+            const match = disposition.match(/filename\*=UTF-8''(.+)|filename="?([^"]+)"?/);
+            if (match) {
+                filename = decodeURIComponent(match[1] || match[2]);
+            }
+        }
+
+        /* ===============================
+         * 5) Download
+         * =============================== */
+        const blobUrl = window.URL.createObjectURL(xhr.response);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
     };
-    xhr.open("GET", "?url=Settings/export_sysytem_config", true);
+
+    xhr.onerror = function () {
+        alert("Export failed: network error.");
+    };
+
+    /* ===============================
+     * Send request
+     * =============================== */
+    xhr.open(
+        "GET",
+        "?url=Settings/export_sysytem_config&client_ts=" + client_ts,
+        true
+    );
     xhr.send();
 }
 

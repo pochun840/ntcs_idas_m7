@@ -116,11 +116,12 @@ class Logins extends Controller
                     }
                 }
 
-                //$result = shell_exec('sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php 2>&1');
 
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
-                return true;
+
+                header('Location: /ntcs_idas/public/?url=Dashboards');
+                exit;
             }else{
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
                 $this->logout();

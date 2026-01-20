@@ -17,60 +17,76 @@ function exportData() {
     }
 
     var start_date = document.getElementById('start_date').value;
-    var end_date = document.getElementById('end_date').value;
-
-    var valid_flag = true;
+    var end_date   = document.getElementById('end_date').value;
 
     if (start_date === '' || end_date === '') {
         alertify.alert("請選擇開始日期與結束日期");
-        valid_flag = false;
+        return;
     }
 
     if (start_date > end_date) {
         alertify.alert("開始日期必須小於結束日期");
-        valid_flag = false;
+        return;
     }
 
-    if (valid_flag) {
-        $.ajax({
-            url: "?url=Data/exportData",
-            method: "POST",
-            data: {
-                start_date: start_date,
-                end_date: end_date,
-                expert_val: expert_val
-            },
-            xhrFields: {
-                responseType: 'blob'
-            },
-            success: function(response, status, xhr) {
-                const disposition = xhr.getResponseHeader('Content-Disposition');
-                let filename = 'downloaded_file';
+    // =====================================
+    // ⭐ 取得瀏覽器當前時間（YYYYMMDDHHmmss）
+    // =====================================
+    function getBrowserTimestamp() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
 
-                if (disposition && disposition.indexOf('filename=') !== -1) {
-                    const matches = disposition.match(/filename="?([^"]+)"?/);
-                    if (matches && matches.length > 1) {
-                        filename = matches[1];
-                    }
+        return (
+            d.getFullYear() +
+            pad(d.getMonth() + 1) +
+            pad(d.getDate()) +
+            pad(d.getHours()) +
+            pad(d.getMinutes()) +
+            pad(d.getSeconds())
+        );
+    }
+
+    $.ajax({
+        url: "?url=Data/exportData",
+        method: "POST",
+        data: {
+            start_date: start_date,
+            end_date: end_date,
+            expert_val: expert_val,
+            client_ts: getBrowserTimestamp() // ⭐⭐⭐ 關鍵新增
+        },
+        xhrFields: {
+            responseType: 'blob'
+        },
+        success: function(response, status, xhr) {
+            const disposition = xhr.getResponseHeader('Content-Disposition');
+            let filename = 'downloaded_file';
+
+            if (disposition && disposition.indexOf('filename=') !== -1) {
+                const matches = disposition.match(/filename="?([^"]+)"?/);
+                if (matches && matches.length > 1) {
+                    filename = matches[1];
                 }
-
-                const contentType = xhr.getResponseHeader('Content-Type');
-                const blob = new Blob([response], { type: contentType });
-
-                const link = document.createElement('a');
-                link.href = window.URL.createObjectURL(blob);
-                link.setAttribute('download', filename);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX 請求失敗:", status, error);
-                alertify.alert("發生錯誤，無法導出資料");
             }
-        });
-    }
+
+            const contentType = xhr.getResponseHeader('Content-Type');
+            const blob = new Blob([response], { type: contentType });
+
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX 請求失敗:", status, error);
+            alertify.alert("發生錯誤，無法導出資料");
+        }
+    });
 }
+
+
 
 
 function downloadCSVZip() {

@@ -450,7 +450,7 @@ $text['step15_last_times']       = 'Step 15 Time';
 $text['step15_last_angle']       = 'Step 15 Angle';
 $text['step15_last_torque']      = 'Step 15 Torque';
 $text['step15_last_threadshold'] = 'Step 15 Threshold';
-
+$text['tool_status'] = 'tool_status';
 
 
 

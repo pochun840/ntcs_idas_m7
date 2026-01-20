@@ -1436,6 +1436,52 @@ class Controller
         return (time() - $last) >= $minIntervalSec;
     }
 
+    /**
+     * DB Sanity Check
+     * 確保 ntcs_device / ntcs_tool table 結構與資料正確
+     *
+     * @throws Exception
+     */
+    private function sanityCheckIdentityDB(string $dbPath, string $side): void
+    {
+        if (!is_file($dbPath)) {
+            throw new Exception("{$side} DB not found: {$dbPath}");
+        }
+
+        $db = new PDO('sqlite:' . $dbPath);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // ---------- ntcs_device_test ----------
+        $cols = $db->query("PRAGMA table_info(ntcs_device_test)")->fetchAll(PDO::FETCH_ASSOC);
+        $colNames = array_column($cols, 'name');
+
+        if (!in_array('device_sn', $colNames, true)) {
+            throw new Exception("{$side} ntcs_device_test.device_sn missing");
+        }
+
+        $cnt = (int)$db->query("SELECT COUNT(*) FROM ntcs_device_test")->fetchColumn();
+        if ($cnt !== 1) {
+            throw new Exception("{$side} ntcs_device_test row count invalid: {$cnt}");
+        }
+
+        // ---------- ntcs_tool_test ----------
+        $cols = $db->query("PRAGMA table_info(ntcs_tool_test)")->fetchAll(PDO::FETCH_ASSOC);
+        $colNames = array_column($cols, 'name');
+
+        foreach (['tool_type', 'tool_sn'] as $col) {
+            if (!in_array($col, $colNames, true)) {
+                throw new Exception("{$side} ntcs_tool_test.{$col} missing");
+            }
+        }
+
+        $cnt = (int)$db->query("SELECT COUNT(*) FROM ntcs_tool_test")->fetchColumn();
+        if ($cnt !== 1) {
+            throw new Exception("{$side} ntcs_tool_test row count invalid: {$cnt}");
+        }
+    }
+
+
+
 
 
 
