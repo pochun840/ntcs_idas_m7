@@ -511,9 +511,14 @@ class Settings extends Controller
 
         return $result;
     }
-    
+
+
+
     public function export_sysytem_config(){
 
+        /* =====================================================
+        * Platform check
+        * ===================================================== */
         if (PHP_OS_FAMILY !== 'Linux') {
             http_response_code(400);
             echo json_encode(['error' => 'Only supported on Linux']);
@@ -522,13 +527,11 @@ class Settings extends Controller
 
         /* =====================================================
         * Browser timestamp (client side preferred)
-        * - expect: YYYYMMDDHHMMSS (e.g. 20260120132259)
         * ===================================================== */
         $clientTs = (isset($_GET['client_ts']) && $_GET['client_ts'] !== '')
             ? preg_replace('/[^0-9]/', '', $_GET['client_ts'])
             : date('YmdHis');
 
-        // 防呆：如果不是 14 碼，改用 server time
         if (strlen($clientTs) !== 14) {
             $clientTs = date('YmdHis');
         }
@@ -540,23 +543,29 @@ class Settings extends Controller
         $sn = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
 
         /* =====================================================
-        * ZIP name (include SN + browser time)
+        * ZIP name
         * ===================================================== */
         $zipFileName = "NTCS_Config_{$sn}_{$clientTs}.zip";
-        $zipPath     = "/mnt/ramdisk/ftp/" . $zipFileName;
+        $zipPath     = "/mnt/ramdisk/ftp/{$zipFileName}";
 
         /* =====================================================
-        * File names in ZIP (ALL use browser timestamp)
+        * File names in ZIP
         * ===================================================== */
-        $linNameInZip      = "con_{$sn}_{$clientTs}.Lin";
-        $barcodeNameInZip  = "bc_{$sn}_{$clientTs}.db";     // bc_KLS20251211_20260120132259.db
-        $logNameInZip      = "ntcs_log_{$clientTs}.csv";    // ntcs_log_20260120132259.csv
-        $syslogNameInZip   = "syslog_{$clientTs}";          // syslog_20260120132259 (no extension)
+        $linNameInZip     = "con_{$sn}_{$clientTs}.Lin";
+        $barcodeNameInZip = "bc_{$sn}_{$clientTs}.db";
+        $logNameInZip     = "ntcs_log_{$clientTs}.csv";
+        $syslogNameInZip  = "syslog_{$clientTs}.log";
 
         /* =====================================================
-        * Fixed LIN source (NO Modbus)
+        * Source paths
         * ===================================================== */
-        $srcLin = "/home/kls/NTCS7/KLS_NTCS.Lin";
+        $srcLin     = "/home/kls/NTCS7/KLS_NTCS.Lin";
+        $barcodeDb = "/var/www/html/database/ntcs_barcode_IDAS.db";
+        $logCsv    = "/home/kls/NTCS7/ntcs_log.csv";
+
+        // syslog（需 sudo）
+        $syslogSrc = "/var/log/syslog";
+        $syslogTmp = "/mnt/ramdisk/ftp/syslog_snapshot_{$clientTs}.log";
 
         /* =====================================================
         * Create ZIP
@@ -569,6 +578,10 @@ class Settings extends Controller
             return;
         }
 
+        /* =====================================================
+        * Add files (best effort)
+        * ===================================================== */
+
         // 1) LIN
         if (is_file($srcLin)) {
             $zip->addFile($srcLin, $linNameInZip);
@@ -577,27 +590,36 @@ class Settings extends Controller
         }
 
         // 2) Barcode DB
-        $barcode = "/var/www/html/database/ntcs_barcode_IDAS.db";
-        if (is_file($barcode)) {
-            $zip->addFile($barcode, $barcodeNameInZip);
+        if (is_file($barcodeDb)) {
+            $zip->addFile($barcodeDb, $barcodeNameInZip);
         } else {
-            $this->logMessage("Barcode DB not found: {$barcode}");
+            $this->logMessage("Barcode DB not found: {$barcodeDb}");
         }
 
         // 3) Log CSV
-        $logCsv = "/home/kls/NTCS7/ntcs_log.csv";
         if (is_file($logCsv)) {
             $zip->addFile($logCsv, $logNameInZip);
         } else {
             $this->logMessage("Log CSV not found: {$logCsv}");
         }
 
-        // 4) Syslog（可讀才加）
-        $syslogSrc = "/var/log/syslog";
-        if (is_file($syslogSrc) && is_readable($syslogSrc)) {
-            $zip->addFile($syslogSrc, $syslogNameInZip);
-        } else {
-            $this->logMessage("Syslog not readable or not found: {$syslogSrc}");
+        // 4) Syslog（整份抓下來，sudo cp + chmod）
+        if (is_file($syslogSrc)) {
+
+            $cmd = sprintf(
+                'sudo /bin/cp %s %s && sudo /bin/chmod 644 %s 2>/dev/null',
+                escapeshellarg($syslogSrc),
+                escapeshellarg($syslogTmp),
+                escapeshellarg($syslogTmp)
+            );
+
+            exec($cmd, $out, $ret);
+
+            if ($ret === 0 && is_file($syslogTmp) && filesize($syslogTmp) > 0) {
+                $zip->addFile($syslogTmp, $syslogNameInZip);
+            } else {
+                $this->logMessage("Syslog copy failed (sudo permission)");
+            }
         }
 
         $zip->close();
@@ -605,24 +627,27 @@ class Settings extends Controller
         /* =====================================================
         * Send ZIP
         * ===================================================== */
-        if (!is_file($zipPath) || filesize($zipPath) === 0) {
-            http_response_code(500);
+        if (!is_file($zipPath)) {
             echo json_encode(['error' => 'zip not generated']);
             return;
         }
 
         header("Content-Type: application/zip");
-        // ✅ 下載檔名也用同一個（含 SN + clientTs）
         header('Content-Disposition: attachment; filename="' . rawurlencode($zipFileName) . '"');
         header("Content-Length: " . filesize($zipPath));
         header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
         header("Pragma: no-cache");
 
         readfile($zipPath);
+
+        /* =====================================================
+        * Cleanup
+        * ===================================================== */
+        @unlink($syslogTmp);
+        @unlink($zipPath);
+
         exit;
     }
-
-
 
 
     public function get_file_list($value='')

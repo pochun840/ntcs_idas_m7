@@ -74,7 +74,7 @@ switch ( ICONMODE ) {
 		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
 		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');  // apple icon
 		define('TITLE_INDEX',       'KILEWS');              // 首頁title
-		define('SUBTITLE_INDEX',    'iDAS FOR KILEWS');     // 首頁subtitle
+		define('SUBTITLE_INDEX',    'iDAS FOR KL-NTCS-M7');     // 首頁subtitle
 		define('TITLE_AGENT',       'KILEWS IoT Agent');    // Agent頁title
 		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
 		break;
@@ -141,7 +141,7 @@ switch ( ICONMODE ) {
 		define('ICON_AGENT',        URLROOT.'img/192.png');
 		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');
 		define('TITLE_INDEX',       'KILEWS');
-		define('SUBTITLE_INDEX',    'iDAS for NTCS-M7');
+		define('SUBTITLE_INDEX',    'iDAS FOR KL-NTCS-M7');
 		define('TITLE_AGENT',       'KILEWS IoT Agent');
 		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
 		break;
