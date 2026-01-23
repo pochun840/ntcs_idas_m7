@@ -22,13 +22,8 @@ class Check extends Controller
     // 取得所有Jobs
     public function index(){
 
-        
-
-     
-
     }
 
-    
     public function ajax_check_device_id(){
 
         header('Content-Type: application/json; charset=utf-8');
