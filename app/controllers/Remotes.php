@@ -28,8 +28,6 @@ class Remotes extends Controller
    
         // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
-        
-
 
         $isMobile = $this->isMobileCheck();
         $job_list = $this->SettingModel->get_job_list();
@@ -70,7 +68,7 @@ class Remotes extends Controller
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
             try {
-                $modbus->port = 502;
+                $modbus->port = $this->get_modbus_port();
                 $modbus->timeout_sec = 10;
                 $data = array($job_id,$seq_id);
                 $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
@@ -106,7 +104,7 @@ class Remotes extends Controller
             require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
             $modbus = new ModbusMaster("127.0.0.1", "TCP");
             try {
-                $modbus->port = 502;
+                $modbus->port = $this->get_modbus_port();
                 $modbus->timeout_sec = 10;
                 $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
 

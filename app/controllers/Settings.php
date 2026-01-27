@@ -453,7 +453,7 @@ class Settings extends Controller
                 require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
                 $modbus = new ModbusMaster("127.0.0.1", "TCP");
                 try {
-                    $modbus->port = 502;
+                    $modbus->port = $this->get_modbus_port();
                     $modbus->timeout_sec = 10;
                     $data = array(1, $name_int16[0], $name_int16[1], $name_int16[2], $name_int16[3], $name_int16[4], $name_int16[5], $name_int16[6], $name_int16[7], $name_int16[8], $name_int16[9], $name_int16[10], $name_int16[11]);
                     $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
@@ -729,7 +729,7 @@ class Settings extends Controller
         $modbus = new ModbusMaster($controller_ip, "TCP");
 
         try {
-            $modbus->port = 502;
+            $modbus->port = $this->get_modbus_port();
             $modbus->timeout_sec = 10;
             $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
 
@@ -923,7 +923,7 @@ class Settings extends Controller
         $unitId   = ($deviceId >= 1 && $deviceId <= 255) ? $deviceId : 1;
 
         $modbus = new ModbusMaster("127.0.0.1", "TCP");
-        $modbus->port        = 502;
+        $modbus->port        = $this->get_modbus_port();
         $modbus->timeout_sec = 2;
 
         try {
@@ -1388,6 +1388,14 @@ class Settings extends Controller
                 return $this->sendResponse('Error', $this->t('ERR_EXT', ['filename' => $uploaded_filename]));
             }
 
+            // 7-1. 檔名格式驗證（支援 _SAxxxx）
+            $packNamePattern = '/^ntcs_idas_\d{8}-\d+(?:\.\d+)?(?:_SA\d+)?\.pack$/i';
+
+            if (!preg_match($packNamePattern, $uploaded_filename)) {
+                return $this->sendResponse('Error', $this->t('ERR_BAD_INFO'));
+            }
+
+
             // 8. 解壓縮
             $zip = new ZipArchive();
             if ($zip->open($_FILES['file']['tmp_name']) !== TRUE) {
@@ -1424,19 +1432,31 @@ class Settings extends Controller
                 return $this->sendResponse('Error', $this->t('ERR_MISSING_INFO'));
             }
 
-            $verify_data = json_decode(@file_get_contents($info_json_url), true);
-            if (!$verify_data || !isset($verify_data['idas_version'])) {
+            $verify_data = json_decode(file_get_contents($info_json_url), true);
+
+            // JSON 結構與必要欄位檢查
+            if (
+                !is_array($verify_data) ||
+                !isset($verify_data['idas_version']) ||
+                !isset($verify_data['IDAS'])
+            ) {
+                return $this->sendResponse('Error', $this->t('ERR_BAD_INFO'));
+            }
+
+            // IDAS 機型驗證（關鍵新增）
+            if ($verify_data['IDAS'] !== 'KL-NTCS-M7') {
                 return $this->sendResponse('Error', $this->t('ERR_BAD_INFO'));
             }
 
             // 11. 比對版本
-            $match_tcc_version = $verify_data['idas_version'];
+            $match_tcc_version = (string)$verify_data['idas_version'];
             if (version_compare($match_tcc_version, $iDas_Version, '<')) {
                 return $this->sendResponse('Error', $this->t('ERR_VERSION_LOW', [
                     'current' => (string)$iDas_Version,
                     'update'  => (string)$match_tcc_version,
                 ]));
             }
+
 
             // 12. 寫入 config 表
             $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);
@@ -1525,11 +1545,7 @@ class Settings extends Controller
                 'zh-tw' => '缺少 info.json，無法驗證更新檔。',
                 'zh-cn' => '缺少 info.json，无法验证更新包。',
             ],
-            'ERR_BAD_INFO'      => [
-                'en-us' => 'Invalid info.json or missing "idas_version".',
-                'zh-tw' => 'info.json 格式錯誤或缺少 idas_version。',
-                'zh-cn' => 'info.json 格式错误或缺少 idas_version。',
-            ],
+
             'ERR_VERSION_LOW'   => [
                 'en-us' => 'Update version is lower than current (current: {current}, update: {update}).',
                 'zh-tw' => '更新檔版本低於目前版本，無法更新（目前：{current}，更新：{update}）。',
@@ -1545,6 +1561,12 @@ class Settings extends Controller
                 'zh-tw' => '更新成功，已將檔案移動至 ntcs_idas 目錄。',
                 'zh-cn' => '更新成功，已将文件移动至 ntcs_idas 目录。',
             ],
+            'ERR_BAD_INFO' => [
+                'en-us' => 'Invalid info.json (missing required fields or incompatible IDAS model).',
+                'zh-tw' => 'info.json 格式錯誤、缺少必要欄位，或 IDAS 機型不相容。',
+                'zh-cn' => 'info.json 格式错误、缺少必要字段，或 IDAS 机型不兼容。',
+            ],
+
         ];
 
         $lang = $this->currentLang();
@@ -1828,7 +1850,7 @@ class Settings extends Controller
         $modbus = new ModbusMaster("127.0.0.1", "TCP");
 
         try {
-            $modbus->port = 502;
+            $modbus->port = $this->get_modbus_port();
             $modbus->timeout_sec = 10;
             $data = [1, 26948, 24947]; // iDas
             $dataTypes = array_fill(0, 16, "INT");

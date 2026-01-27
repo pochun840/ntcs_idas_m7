@@ -377,7 +377,7 @@ class Controller
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
 
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         $startAddress = 29002;
         $quantity = 1;
 
@@ -412,7 +412,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         //$unitId = 0;
         $startAddress = 29003;
         $quantity = 1;
@@ -443,7 +443,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         //$unitId = 0;
         $startAddress = 29004;
         $quantity = 1;
@@ -474,7 +474,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         //$unitId = 0;
         $startAddress = 29006;
         $quantity = 1;
@@ -508,7 +508,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         $unitId = 0;
         $startAddress = 4165;
         $quantity = 2;
@@ -539,7 +539,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         $unitId = 0;
         $startAddress = 4097;
         $quantity = 64;
@@ -571,7 +571,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         //$unitId = 0;
         $startAddress = 4122;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
@@ -647,7 +647,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         $unitId = 0;
         $startAddress = 4102;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
@@ -724,7 +724,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
-        $port = 502;
+        $modbus->port = $this->get_modbus_port();
         //$unitId = 0;
         $startAddress = 4112;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
@@ -1479,6 +1479,70 @@ class Controller
             throw new Exception("{$side} ntcs_tool_test row count invalid: {$cnt}");
         }
     }
+
+
+    public function get_modbus_port(): ?int{
+        $destDb = '/home/kls/NTCS7/ntcs_device.db';
+        if (!is_file($destDb)) {
+            return null;
+        }
+
+        try {
+            $db = new PDO('sqlite:' . $destDb);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            $stmt = $db->query("SELECT wifi FROM ntcs_device_test LIMIT 1");
+            $wifi = $stmt->fetchColumn();
+
+            if (!is_string($wifi)) {
+                return null;
+            }
+
+            // 清理空白與換行
+            $wifi = trim($wifi);
+            if ($wifi === '') {
+                return null;
+            }
+
+            // 用底線切欄位（最穩）
+            $parts = explode('_', $wifi);
+
+            /**
+             * 預期結構（最少 4 段）：
+             * 0 => flag
+             * 1 => ip
+             * 2 => port   ← 我們只關心這個
+             * 3 => mask
+             * 4+ => 未來擴充（忽略）
+             */
+            if (count($parts) < 3) {
+                return null;
+            }
+
+            $portStr = $parts[2];
+
+            // 必須是純數字
+            if (!ctype_digit($portStr)) {
+                return null;
+            }
+
+            $port = (int)$portStr;
+
+            // 合法 port 範圍
+            if ($port < 1 || $port > 65535) {
+                return null;
+            }
+
+            return $port;
+
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+
+
+
 
 
 
