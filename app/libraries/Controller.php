@@ -364,47 +364,60 @@ class Controller
         }
     }
 
-
-
-
-
-
-    //判斷控制器的登入登出
-    public function idas_check($device_id){
-
-        require_once '../app/config/config.php';  // 載入常數
+    // 判斷控制器的登入 / 登出狀態
+    public function idas_check($device_id)
+    {
+        require_once '../app/config/config.php';
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
-        $ip = CONTROLLER_IP;  // 使用定義的常數
+        $response = [
+            'result' => null,
+            'error'  => '',
+        ];
 
-        $modbus->port = $this->get_modbus_port();
-        $startAddress = 29002;
-        $quantity = 1;
+        $ip = CONTROLLER_IP;
 
-        $response = ['result' => null, 'error' => ''];
-
-        // 驗證 IP 格式
+        // ---------- IP 檢查 ----------
         if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-            $response['error'] = "無效的 IP 位址：$ip";
-            return $response; 
+            $response['error'] = "無效的 IP 位址：{$ip}";
+            return $response;
         }
 
+        // ---------- 取得 Modbus port ----------
+        $port = $this->get_modbus_port();
+        if ($port === null) {
+            $port = 502; // ⚠️ fallback
+        }
+
+        $startAddress = 29002;
+        $quantity     = 1;
+
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
+            // ---------- 建立 Modbus client ----------
+            $modbus = new ModbusMaster($ip, 'TCP');
+            $modbus->port        = (int)$port;
             $modbus->timeout_sec = 10;
 
-            // 功能碼 FC3: 讀取保持暫存器
+            // ---------- FC3: Read Holding Registers ----------
             $data = $modbus->readMultipleRegisters($device_id, $startAddress, $quantity);
 
-            $response['result'] = $data[1] ?? null;
+            /**
+             * quantity = 1 → 回傳 2 bytes
+             * 正確值在 $data[0]
+             */
+            $response['result'] = $data[0] ?? null;
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $this->logMessage(
+                'idas_check fail, ip=' . $ip . ', port=' . $port . ', msg=' . $e->getMessage()
+            );
         }
 
         return $response;
     }
+
+
 
 
     public function get_tools_version($unitId){
@@ -648,7 +661,7 @@ class Controller
 
         $ip = CONTROLLER_IP;
         $modbus->port = $this->get_modbus_port();
-        $unitId = 0;
+        //$unitId = 0;
         $startAddress = 4102;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
 
