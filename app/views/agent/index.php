@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         <div class="footer">
             <div class="w3-center">
-                <button type="button" class="custom-btn btn-13" onclick="open_das()"><span style="font-size: 24px">&#8629;</span><span><?php echo $text['open'];?></span></button>
+                <!--<button type="button" class="custom-btn btn-13" onclick="open_das()"><span style="font-size: 24px">&#8629;</span><span><?php //echo $text['open'];?></span></button>-->
                 <button class="custom-btn btn-15" onclick="window.location.href='?url=Dashboards'"><span style="font-size: 24px">&#8678;</span><span><?php echo $text['return'];?></span></button>
             </div>
         </div>

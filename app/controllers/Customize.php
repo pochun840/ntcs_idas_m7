@@ -513,13 +513,13 @@ class Customize extends Controller
         }
 
         $ip = CONTROLLER_IP;
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         $startAddress = $a;
         $quantity = $b;  // 每個「暫存器」= 16-bit (= 2 bytes)
 
         try {
             $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $this->get_modbus_port();
+            $modbus->port = $port;
             $modbus->timeout_sec = 10;
 
             $raw = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);

@@ -7,6 +7,8 @@
 //sudo rm -rf /var/www/html/ntcs_idas  
 //sudo chown -R www-data:www-data /var/www/html/ntcs_idas/app/views/step
 //12345678rd
+//
+
 // App 根目錄，這是引入 app 資料夾裡的資源用的
 define('APPROOT', dirname(dirname(__FILE__)) . '/');
 
@@ -28,6 +30,8 @@ $language = array(
 define('LANGUAGE',$language);
 
 
+
+
 define('CONTROLLER_IP', '127.0.0.1');
 
 // 每次刷新都取最新時間，避免快取
@@ -46,7 +50,7 @@ define('TABLE_NTCS_DEVICE', 'ntcs_device_test');
 
 // 抓取APP的檔案名稱，判斷是哪一個品牌
 //$brand_code = get_brand_code();
-$brand = '5';//預設值帶kilews
+$brand = 0;//預設值帶kilews
 
 /*if($brand_code == false || $brand_code == 'BF01'){ //Kilews or Windows
 	$brand = '0';
@@ -68,7 +72,7 @@ define('ICONMODE', $brand);
 
 
 switch ( ICONMODE ) {
-	case '0': // Kilews
+	case 0: // Kilews
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
 		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
 		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
@@ -78,7 +82,7 @@ switch ( ICONMODE ) {
 		define('TITLE_AGENT',       'KILEWS IoT Agent');    // Agent頁title
 		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
 	break;
-	case '4': // MyTorque
+	case 4: // MyTorque
 		define('ICON_NORMAL',       URLROOT.'img/MY-icon/yellow-192x192.png');
 		define('ICON_NORMAL_APPLE', URLROOT.'img/MY-icon/yellow-60x60.png');
 		define('ICON_AGENT',        URLROOT.'img/MY-icon/blue-192x192.png');
@@ -88,7 +92,7 @@ switch ( ICONMODE ) {
 		define('TITLE_AGENT',       'MYTORQ IoT Agent');
 		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
 	break;
-	case '2': // 上海 shanhai
+	case 2: // 上海 shanhai
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
 		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
 		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
@@ -98,17 +102,17 @@ switch ( ICONMODE ) {
 		define('TITLE_AGENT',       'EPNC IoT Agent');    // Agent頁title
 		define('DEVICE_TYPE_11',    'NTCS-M7');    // Agent頁title
 	break;
-	case '5': // 晶元SUMAKE
-		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
-		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
-		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
-		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');  // apple icon
+	case 5: // 晶元SUMAKE
+		define('ICON_NORMAL',       URLROOT.'img/Sumake_icon/192.png'); // normal icon
+		define('ICON_NORMAL_APPLE', URLROOT.'img/Sumake_icon/60.png');  // apple icon
+		define('ICON_AGENT',        URLROOT.'img/Sumake_icon/192.png'); // normal icon
+		define('ICON_AGENT_APPLE',  URLROOT.'img/Sumake_icon/60.png');  // apple icon
 		define('TITLE_INDEX',       'SUMAKE');              // 首頁title
 		define('SUBTITLE_INDEX',    'iDAS FOR SMT-C3');     // 首頁subtitle
 		define('TITLE_AGENT',       'SUMAKE IoT Agent');    // Agent頁title
 		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
 	break;
-	case '6': // DELTA
+	case 6: // DELTA
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
 		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
 		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
@@ -118,7 +122,7 @@ switch ( ICONMODE ) {
 		define('TITLE_AGENT',       'DELTA IoT Agent');    // Agent頁title
 		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
 	break;
-	case '7': // 白牌
+	case 7: // 白牌
 		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
 		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
 		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
@@ -135,7 +139,7 @@ switch ( ICONMODE ) {
 	// 	// code...
 	// 	break;
 	
-	default:
+	/*default:
 		define('ICON_NORMAL',       URLROOT.'img/192.png');
 		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');
 		define('ICON_AGENT',        URLROOT.'img/192.png');
@@ -144,7 +148,7 @@ switch ( ICONMODE ) {
 		define('SUBTITLE_INDEX',    'iDAS FOR KL-NTCS-M7');
 		define('TITLE_AGENT',       'KILEWS IoT Agent');
 		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
-	break;
+	break;*/
 }
 
 

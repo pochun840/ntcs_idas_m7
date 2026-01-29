@@ -26,7 +26,7 @@
                         </div>
                          <div class="row border-bottom">
                             <div class="col-6" style="font-size: 18px; margin: 5px 10px 5px"><?php echo $text['tool_sn'];?>:</div>
-                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['tool_sn'];?></div>
+                            <div class="col" style="font-size: 18px; margin: 5px 5px 5px"><?php echo $data['Tool_Info']['tool_type'];?></div>
                         </div>
                         
                   
@@ -102,10 +102,10 @@
 
                         <div class="row border-bottom" style="display: flex; justify-content: center; align-items: center; height: 150px;">
                             <img 
-                                    src="img/qr_code.jpeg" 
+                                    src="<?php echo $data['qr_code_img']?>" 
                                     alt="QR Code" 
                                     style="width: 150px; height: 150px; cursor: pointer;" 
-                                    onclick="window.open('https://www.kilews.com.tw/tc/', '_blank');"
+                                    onclick="window.open('<?php echo htmlspecialchars($data['qr_code_url'], ENT_QUOTES, 'UTF-8'); ?>', '_blank');"
                             >
                         </div>
                     </div>
@@ -116,4 +116,3 @@
 </div>
 
 </body>
-

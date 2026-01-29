@@ -655,6 +655,32 @@ $text['img_agent_hover'] = '../public/img/home_m_agent_en.png';
 $text['img_remote'] = '../public/img/home_command_en.png';
 $text['img_remote_hover'] = '../public/img/home_m_command_en.png';
 
+if (ICONMODE  === 5){
+	$text['img_job'] = '../public/img/Sumake_icon/home_job_en.png';
+	$text['img_job_hover'] = '../public/img/Sumake_icon/home_m_job_en.png';
+	$text['img_io_input'] = '../public/img/Sumake_icon/home_input_en.png';
+	$text['img_io_input_hover'] = '../public/img/Sumake_icon/home_m_input_en.png';
+	$text['img_io_output'] = '../public/img/Sumake_icon/home_output_en.png';
+	$text['img_io_output_hover'] = '../public/img/Sumake_icon/home_m_output_en.png';
+	$text['img_operation'] = '../public/img/Sumake_icon/home_operation_en.png';
+	$text['img_operation_hover'] = '../public/img/Sumake_icon/home_m_operation_en.png';
+	$text['img_data'] = '../public/img/Sumake_icon/home_data_en.png';
+	$text['img_data_hover'] = '../public/img/Sumake_icon/home_m_data_en.png';
+	$text['img_tool'] = '../public/img/Sumake_icon/home_tool_en.png';
+	$text['img_tool_hover'] = '../public/img/Sumake_icon/home_m_tool_en.png';
+	$text['img_setting'] = '../public/img/Sumake_icon/home_setting_en.png';
+	$text['img_setting_hover'] = '../public/img/Sumake_icon/home_m_setting_en.png';
+	$text['img_load'] = '../public/img/Sumake_icon/home_load_en.png';
+	$text['img_load_hover'] = '../public/img/Sumake_icon/home_m_load_en.png';
+	$text['img_save'] = '../public/img/Sumake_icon/home_save_en.png';
+	$text['img_save_hover'] = '../public/img/Sumake_icon/home_m_save_en.png';
+	$text['img_agent'] = '../public/img/Sumake_icon/home_agent_en.png';
+	$text['img_agent_hover'] = '../public/img/Sumake_icon/home_m_agent_en.png';
+	$text['img_remote'] = '../public/img/Sumake_icon/home_command_en.png';
+	$text['img_remote_hover'] = '../public/img/Sumake_icon/home_m_command_en.png';
+
+}
+
 $text['unfasten_force'] = 'Out of range 1 - 10';
 $text['error_job_name'] = 'JOB name input error';
 $text['error_seq_name'] = 'SEQ name input error';

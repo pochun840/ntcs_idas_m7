@@ -646,6 +646,34 @@ $text['img_agent_hover'] = '../public/img/home_m_agent_tw.png';
 $text['img_remote'] = '../public/img/home_command_tw.png';
 $text['img_remote_hover'] = '../public/img/home_m_command_tw.png';
 
+if(ICONMODE  === 5){
+	$text['img_job'] = '../public/img/Sumake_icon/home_job_tw.png';
+	$text['img_job_hover'] = '../public/img/Sumake_icon/home_m_job_tw.png';
+	$text['img_io_input'] = '../public/img/Sumake_icon/home_input_tw.png';
+	$text['img_io_input_hover'] = '../public/img/Sumake_icon/home_m_input_tw.png';
+	$text['img_io_output'] = '../public/img/Sumake_icon/home_output_tw.png';
+	$text['img_io_output_hover'] = '../public/img/Sumake_icon/home_m_output_tw.png';
+	$text['img_operation'] = '../public/img/Sumake_icon/home_operation_tw.png';
+	$text['img_operation_hover'] = '../public/img/Sumake_icon/home_m_operation_tw.png';
+	$text['img_data'] = '../public/img/Sumake_icon/home_data_tw.png';
+	$text['img_data_hover'] = '../public/img/Sumake_icon/home_m_data_tw.png';
+	$text['img_tool'] = '../public/img/Sumake_icon/home_tool_cn.png';
+	$text['img_tool_hover'] = '../public/img/Sumake_icon/home_m_tool_cn.png';
+	$text['img_setting'] = '../public/img/Sumake_icon/home_setting_tw.png';
+	$text['img_setting_hover'] = '../public/img/Sumake_icon/home_m_setting_tw.png';
+	$text['img_load'] = '../public/img/Sumake_icon/home_load_tw.png';
+	$text['img_load_hover'] = '../public/img/Sumake_icon/home_m_load_tw.png';
+	$text['img_save'] = '../public/img/Sumake_icon/home_save_tw.png';
+	$text['img_save_hover'] = '../public/img/Sumake_icon/home_m_save_tw.png';
+	$text['img_agent'] = '../public/img/Sumake_icon/home_agent_tw.png';
+	$text['img_agent_hover'] = '../public/img/Sumake_icon/home_m_agent_tw.png';
+	$text['img_remote'] = '../public/img/Sumake_icon/home_command_tw.png';
+	$text['img_remote_hover'] = '../public/img/Sumake_icon/home_m_command_tw.png';
+
+}
+
+
+
 $text['unfasten_force'] = '超出範圍 1 - 10';
 $text['error_job_name'] = 'JOB名稱輸入有誤';
 $text['error_seq_name'] = 'SEQ名稱輸入有誤';

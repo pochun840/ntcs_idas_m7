@@ -364,60 +364,47 @@ class Controller
         }
     }
 
-    // 判斷控制器的登入 / 登出狀態
-    public function idas_check($device_id)
-    {
-        require_once '../app/config/config.php';
+
+
+
+
+
+    //判斷控制器的登入登出
+    public function idas_check($device_id){
+
+        require_once '../app/config/config.php';  // 載入常數
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
-        $response = [
-            'result' => null,
-            'error'  => '',
-        ];
+        $ip = CONTROLLER_IP;  // 使用定義的常數
 
-        $ip = CONTROLLER_IP;
-
-        // ---------- IP 檢查 ----------
-        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-            $response['error'] = "無效的 IP 位址：{$ip}";
-            return $response;
-        }
-
-        // ---------- 取得 Modbus port ----------
-        $port = $this->get_modbus_port();
-        if ($port === null) {
-            $port = 502; // ⚠️ fallback
-        }
-
+        $port = 502;
         $startAddress = 29002;
-        $quantity     = 1;
+        $quantity = 1;
+
+        $response = ['result' => null, 'error' => ''];
+
+        // 驗證 IP 格式
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $response['error'] = "無效的 IP 位址：$ip";
+            return $response; 
+        }
 
         try {
-            // ---------- 建立 Modbus client ----------
-            $modbus = new ModbusMaster($ip, 'TCP');
-            $modbus->port        = (int)$port;
+            $modbus = new ModbusMaster($ip, "TCP");
+            $modbus->port = $port;
             $modbus->timeout_sec = 10;
 
-            // ---------- FC3: Read Holding Registers ----------
+            // 功能碼 FC3: 讀取保持暫存器
             $data = $modbus->readMultipleRegisters($device_id, $startAddress, $quantity);
 
-            /**
-             * quantity = 1 → 回傳 2 bytes
-             * 正確值在 $data[0]
-             */
-            $response['result'] = $data[0] ?? null;
+            $response['result'] = $data[1] ?? null;
 
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
-            $this->logMessage(
-                'idas_check fail, ip=' . $ip . ', port=' . $port . ', msg=' . $e->getMessage()
-            );
         }
 
         return $response;
     }
-
-
 
 
     public function get_tools_version($unitId){
@@ -425,7 +412,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         //$unitId = 0;
         $startAddress = 29003;
         $quantity = 1;
@@ -456,7 +443,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         //$unitId = 0;
         $startAddress = 29004;
         $quantity = 1;
@@ -487,7 +474,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         //$unitId = 0;
         $startAddress = 29006;
         $quantity = 1;
@@ -521,7 +508,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         $unitId = 0;
         $startAddress = 4165;
         $quantity = 2;
@@ -552,7 +539,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;  // 使用定義的常數
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         $unitId = 0;
         $startAddress = 4097;
         $quantity = 64;
@@ -584,7 +571,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         //$unitId = 0;
         $startAddress = 4122;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
@@ -660,8 +647,8 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
-        $modbus->port = $this->get_modbus_port();
-        //$unitId = 0;
+        $port = 502;
+        $unitId = 0;
         $startAddress = 4102;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
 
@@ -737,7 +724,7 @@ class Controller
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
         $ip = CONTROLLER_IP;
-        $modbus->port = $this->get_modbus_port();
+        $port = 502;
         //$unitId = 0;
         $startAddress = 4112;  // 字串起始暫存器
         $quantity = 10;        // 讀 10 格＝20 bytes
@@ -1493,8 +1480,9 @@ class Controller
         }
     }
 
+    
+    public function get_tools_temp(): ?array{
 
-    public function get_modbus_port(): ?int{
         $destDb = '/home/kls/NTCS7/ntcs_device.db';
         if (!is_file($destDb)) {
             return null;
@@ -1504,49 +1492,25 @@ class Controller
             $db = new PDO('sqlite:' . $destDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            $stmt = $db->query("SELECT wifi FROM ntcs_device_test LIMIT 1");
-            $wifi = $stmt->fetchColumn();
+            // ⚠️ 明確指定欄位，不用 LIMIT 1 也可視情況加
+            $stmt = $db->query("
+                SELECT tool_type, tool_sn
+                FROM ntcs_device_test
+                LIMIT 1
+            ");
 
-            if (!is_string($wifi)) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
                 return null;
             }
 
-            // 清理空白與換行
-            $wifi = trim($wifi);
-            if ($wifi === '') {
-                return null;
-            }
+        
 
-            // 用底線切欄位（最穩）
-            $parts = explode('_', $wifi);
-
-            /**
-             * 預期結構（最少 4 段）：
-             * 0 => flag
-             * 1 => ip
-             * 2 => port   ← 我們只關心這個
-             * 3 => mask
-             * 4+ => 未來擴充（忽略）
-             */
-            if (count($parts) < 3) {
-                return null;
-            }
-
-            $portStr = $parts[2];
-
-            // 必須是純數字
-            if (!ctype_digit($portStr)) {
-                return null;
-            }
-
-            $port = (int)$portStr;
-
-            // 合法 port 範圍
-            if ($port < 1 || $port > 65535) {
-                return null;
-            }
-
-            return $port;
+            // ✅ 直接回傳結構化資料
+            return [
+                'tool_type'   => $row['tool_type'] ?? null,
+                'tool_sn'     => $row['tool_sn'] ?? null,
+            ];
 
         } catch (Throwable $e) {
             return null;

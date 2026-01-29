@@ -126,19 +126,16 @@ class Tools extends Controller
         $upgrade_ver      = $this->get_upgrade_version();
 
         // 起子型號
-        $tools_type_temp = $this->get_tools_type($unitId);
+        $tools_type_temp = $this->get_tools_temp();
+
         if (!empty($tools_type_temp)){
             $this->ToolModel->update_tools($tools_type_temp);
-            $Tool_Info['tool_type'] = $tools_type_temp['model'];
+            $this->ToolModel->update_tools_sn($tools_type_temp);
+
+            $Tool_Info['tool_type'] = $tools_type_temp['tool_type'];
+            $Tool_Info['tool_sn']   = $tools_type_temp['tool_sn'];
         }
 
-        // 起子序號
-        $tools_type_tmp = $this->get_tools_sn($unitId); 
-
-        if (!empty($tools_type_tmp)){
-            $this->ToolModel->update_tools_sn($tools_type_tmp);
-            $Tool_Info['tool_sn'] = $tools_type_tmp['model'];
-        }
 
         // 轉換扭力單位（補預設值）
         $unit_name = 'N·m';
@@ -168,6 +165,20 @@ class Tools extends Controller
             $gw_display = $this->getBroadcast('eth0');
         }
 
+        // 取得當前的代理商
+        if (ICONMODE  === 0){
+            $qr_code_img = 'img/qr_code_tw.png';
+            $qr_code_url = 'https://www.kilews.com.tw/tc/download-list.php';
+
+        }else if( ICONMODE  === 2){
+            $qr_code_img = 'img/qr_code_cn.png';
+            $qr_code_url = 'https://www.kilews.com.cn/?_l=zh_CN';
+        }else{
+            $qr_code_img = 'img/Sumake_icon/qr_code.jpeg';
+            $qr_code_url = 'https://www.sumake.com/';
+        }
+
+
         // 組資料（確保 gateway/broadcast 映射正確）
         $data = [
             'isMobile'        => $isMobile,
@@ -186,6 +197,9 @@ class Tools extends Controller
             'upgrade_ver'     => $upgrade_ver,
             'ipv4_method'     => $net_method,
             'ipv4_method_meta'=> $method_info,
+            'qr_code_img'     => $qr_code_img,
+            'qr_code_url'     => $qr_code_url,
+          
         ];
 
 
