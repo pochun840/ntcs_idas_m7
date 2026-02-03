@@ -174,8 +174,8 @@ class Tools extends Controller
             $qr_code_img = 'img/qr_code_cn.png';
             $qr_code_url = 'https://www.kilews.com.cn/?_l=zh_CN';
         }else{
-            $qr_code_img = 'img/Sumake_icon/qr_code.jpeg';
-            $qr_code_url = 'https://www.sumake.com/';
+            $qr_code_img = 'img/Sumake_icon/qr_code.jpg';
+            $qr_code_url = 'https://s3.hicloud.net.tw/electric-tools/transducer/SMT-C3%20DIR-K2.pdf';
         }
 
 

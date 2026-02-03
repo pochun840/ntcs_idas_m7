@@ -49,8 +49,10 @@ define('TABLE_NTCS_DEVICE', 'ntcs_device_test');
 
 
 // 抓取APP的檔案名稱，判斷是哪一個品牌
-//$brand_code = get_brand_code();
-$brand = 0;//預設值帶kilews
+$brand = get_iconmode_from_ver();
+//var_dump($brand_code);
+//if()
+//$brand = 0;//預設值帶kilews
 
 /*if($brand_code == false || $brand_code == 'BF01'){ //Kilews or Windows
 	$brand = '0';
@@ -153,24 +155,39 @@ switch ( ICONMODE ) {
 
 
 
-/*function get_brand_code()
+function get_iconmode_from_ver()
 {
-	if( PHP_OS_FAMILY == 'Linux'){
-		$directory = '/home/kls/project/system/ltver'; // 指定目錄路徑
+    // 非 Linux 直接回預設
+    if (!defined('PHP_OS_FAMILY') || PHP_OS_FAMILY !== 'Linux') {
+        return 0; // 預設 Kilews
+    }
 
-		// 取得目錄中的檔案和子目錄列表
-		$fileList = scandir($directory);
+    $verFile = '/home/kls/NTCS7/version';
+    if (!is_file($verFile) || !is_readable($verFile)) {
+        return 0;
+    }
 
-		// 移除 "." 和 ".." 兩個特殊條目
-		$fileList = array_diff($fileList, array('.', '..'));
+    $content = file_get_contents($verFile);
+    if ($content === false) {
+        return 0;
+    }
 
-		// 輸出檔案和子目錄列表
-		$explode_result = explode("-",$fileList[2]);
+    // 取第一行
+    $lines = preg_split("/\r\n|\n|\r/", trim($content));
+    $firstLine = isset($lines[0]) ? trim((string)$lines[0]) : '';
+    if ($firstLine === '') {
+        return 0;
+    }
 
-		$brand_code = $explode_result[0];
+    //只取空格前面的識別碼(第一個)
+    $brandKey = explode(' ', $firstLine, 2)[0];
 
-		return $brand_code;
-	}else{
-		return false;
-	}
-}*/
+    // 品牌對照
+    $map = [
+        'NTCS7'  => 0, // Kilews
+        'EPNC7'  => 2, // 上海
+        'SMT-C3' => 5, // SUMAKE
+    ];
+
+    return $map[$brandKey] ?? 0;
+}
