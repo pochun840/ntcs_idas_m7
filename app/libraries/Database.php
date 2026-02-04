@@ -31,7 +31,7 @@ class Database
             if (!file_exists($destPath) && file_exists($srcPath)) {
                 @copy($srcPath, $destPath);
                 @chmod($destPath, 0777);
-                error_log("✅ Copied: $srcPath -> $destPath");
+                //("✅ Copied: $srcPath -> $destPath");
             }
         }
 
@@ -52,11 +52,11 @@ class Database
 
         foreach ($db_paths as $key => $path) {
             if (!file_exists($path)) {
-                error_log("❌ Database file not found: $path");
+                //error_log("❌ Database file not found: $path");
                 continue;
             }
             if (!is_readable($path)) {
-                error_log("❌ Database file not readable: $path");
+                //error_log("❌ Database file not readable: $path");
                 continue;
             }
             try {
@@ -64,7 +64,7 @@ class Database
                 $this->setUtf8Encoding($pdo);
                 $this->{'db_' . $key} = $pdo;
             } catch (PDOException $e) {
-                error_log("❌ Failed to connect to DB [$key]: " . $e->getMessage());
+                //error_log("❌ Failed to connect to DB [$key]: " . $e->getMessage());
             }
         }
     }

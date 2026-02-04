@@ -92,6 +92,7 @@
                 
         <div style="text-align: center;margin-top: 30px;">
             <input type="hidden" id="barcode_id" value="">
+            <input type="hidden" id="barcode_job_old" value="">
             <button class="all-btn w3-button w3-border w3-round-large" onclick="update_barcode()" ><?php echo $text['save'];?></button>&nbsp;&nbsp;
             <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode()" ><?php echo $text['delete_text'];?></button>
         </div>               

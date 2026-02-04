@@ -1121,9 +1121,8 @@ class Settings extends Controller
 
 
 
-
     public function Update_Barcode(){
-
+        
         /* ===============================
         * 語系載入
         * =============================== */
@@ -1138,12 +1137,13 @@ class Settings extends Controller
         * 欄位定義
         * =============================== */
         $fields = [
-            'barcode_name'  => ['key' => 'barcode_name',        'required' => true],
-            'barcode_from'  => ['key' => 'barcode_range_from',  'required' => true],
-            'barcode_count' => ['key' => 'barcode_range_count', 'required' => true],
-            'barcode_job'   => ['key' => 'barcode_job',         'required' => true],
-            'barcode_mode'  => ['key' => 'barcode_mode',        'required' => true],
-            'barcode_seq'   => ['key' => 'barcode_seq',         'required' => false],
+            'barcode_name'      => ['key' => 'barcode_name',        'required' => true],
+            'barcode_from'      => ['key' => 'barcode_range_from',  'required' => true],
+            'barcode_count'     => ['key' => 'barcode_range_count', 'required' => true],
+            'barcode_job'       => ['key' => 'barcode_job',         'required' => true],
+            'barcode_job_old'   => ['key' => 'barcode_job_old',     'required' => false], // ⭐ 判斷編輯用
+            'barcode_mode'      => ['key' => 'barcode_mode',        'required' => true],
+            'barcode_seq'       => ['key' => 'barcode_seq',         'required' => false],
         ];
 
         $barcode = [];
@@ -1159,9 +1159,15 @@ class Settings extends Controller
             }
         }
 
-        // 正規化
+        /* ===============================
+        * 正規化欄位
+        * =============================== */
         if (($barcode['barcode_seq'] ?? '') === '-1') {
             $barcode['barcode_seq'] = '';
+        }
+
+        if (($barcode['barcode_job_old'] ?? '') === '') {
+            $barcode['barcode_job_old'] = '';
         }
 
         /* ===============================
@@ -1176,16 +1182,20 @@ class Settings extends Controller
         }
 
         /* =================================================
-        * ⭐ 關鍵：先判斷這次是「新增」還是「更新」
-        * 與 Model 的判斷條件完全一致
+        * ⭐ 是否為編輯模式（重點）
+        * - 只看是否有 barcode_job_old
+        * - 不再用 job_id 查 DB（避免改 job 造成誤判）
         * ================================================= */
-        $isEdit = $this->SettingModel->check_barcode_conflict($barcode['barcode_job']);
+        $isEdit = !empty($barcode['barcode_job_old']);
 
         /* ===============================
-        * 儲存（Model 內部自動 INSERT / UPDATE）
+        * 儲存（Model 內部處理 delete + insert）
         * =============================== */
         $ok = $this->SettingModel->Update_Barcode($barcode);
 
+        /* ===============================
+        * 回傳結果
+        * =============================== */
         if ($ok) {
             $msg = $isEdit
                 ? sprintf(
@@ -1193,7 +1203,7 @@ class Settings extends Controller
                     $barcode['barcode_name']
                 )
                 : sprintf(
-                    $text['barcode_add_success']  ?? 'Barcode "%s" created successfully.',
+                    $text['barcode_add_success'] ?? 'Barcode "%s" created successfully.',
                     $barcode['barcode_name']
                 );
 
@@ -1208,7 +1218,7 @@ class Settings extends Controller
                     $barcode['barcode_name']
                 )
                 : sprintf(
-                    $text['barcode_add_fail']  ?? 'Failed to create barcode "%s".',
+                    $text['barcode_add_fail'] ?? 'Failed to create barcode "%s".',
                     $barcode['barcode_name']
                 );
 
@@ -1220,6 +1230,8 @@ class Settings extends Controller
 
         exit;
     }
+
+
 
 
 

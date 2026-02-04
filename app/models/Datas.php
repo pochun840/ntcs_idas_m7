@@ -58,7 +58,7 @@ class Datas{
             $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
             return $rows;
         } else {
-            error_log("❌ prepare SQL 失敗: $sql");
+            //error_log("❌ prepare SQL 失敗: $sql");
             return [];
         }
     }

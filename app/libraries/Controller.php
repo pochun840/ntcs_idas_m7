@@ -273,7 +273,7 @@ class Controller
                 }
             }
         } catch (Exception $e) {
-            error_log('[readDeviceIdFromDb] Read device_id failed: ' . $e->getMessage());
+            //error_log('[readDeviceIdFromDb] Read device_id failed: ' . $e->getMessage());
         }
 
         return null;
@@ -301,11 +301,11 @@ class Controller
 
         // 1) 基本檔案存在檢查
         if (!file_exists($tempDbPath)) {
-            error_log('[syncTempDeviceIdToIdas] temp DB not found: ' . $tempDbPath);
+            //error_log('[syncTempDeviceIdToIdas] temp DB not found: ' . $tempDbPath);
             return null;
         }
         if (!file_exists($idasDbPath)) {
-            error_log('[syncTempDeviceIdToIdas] IDAS DB not found: ' . $idasDbPath);
+            //error_log('[syncTempDeviceIdToIdas] IDAS DB not found: ' . $idasDbPath);
             return null;
         }
 
@@ -313,13 +313,13 @@ class Controller
         $deviceId = $this->readDeviceIdFromDb($tempDbPath);
 
         if ($deviceId === null) {
-            error_log('[syncTempDeviceIdToIdas] No valid device_id found in temp DB.');
+            //error_log('[syncTempDeviceIdToIdas] No valid device_id found in temp DB.');
             return null;
         }
 
         // 保險：限制在 1~255
         if ($deviceId < 1 || $deviceId > 255) {
-            error_log('[syncTempDeviceIdToIdas] Invalid device_id range: ' . $deviceId);
+            //error_log('[syncTempDeviceIdToIdas] Invalid device_id range: ' . $deviceId);
             return null;
         }
 
@@ -342,7 +342,7 @@ class Controller
 
                 // 若超過一筆，寫個 log 提醒（理論上只應有一筆）
                 if ($rowCount > 1) {
-                    error_log('[syncTempDeviceIdToIdas] Warning: ntcs_device_test has ' . $rowCount . ' rows, all device_id updated.');
+                    //error_log('[syncTempDeviceIdToIdas] Warning: ntcs_device_test has ' . $rowCount . ' rows, all device_id updated.');
                 }
 
             } else {
@@ -354,12 +354,12 @@ class Controller
 
             @chmod($idasDbPath, 0777);
 
-            error_log('[syncTempDeviceIdToIdas] Synced device_id=' . $deviceId . ' from temp DB to IDAS DB (update-only for existing row).');
+            //error_log('[syncTempDeviceIdToIdas] Synced device_id=' . $deviceId . ' from temp DB to IDAS DB (update-only for existing row).');
 
             return $deviceId;
 
         } catch (Exception $e) {
-            error_log('[syncTempDeviceIdToIdas] Write to IDAS DB failed: ' . $e->getMessage());
+           //error_log('[syncTempDeviceIdToIdas] Write to IDAS DB failed: ' . $e->getMessage());
             return null;
         }
     }
@@ -888,7 +888,7 @@ class Controller
             $dst = null;
 
         } catch (PDOException $e) {
-            error_log("❌ 資料同步失敗: " . $e->getMessage());
+            //error_log("❌ 資料同步失敗: " . $e->getMessage());
             echo "❌ 資料同步失敗: " . $e->getMessage();
         }
     }
@@ -924,7 +924,7 @@ class Controller
 
             return $row;
         } catch (Exception $e) {
-            error_log($e->getMessage());
+            //error_log($e->getMessage());
             echo $e->getMessage(); // 或回傳空陣列 return [];
             return null;
         }
@@ -966,7 +966,7 @@ class Controller
             // echo "✅ ntcs_tool_test 更新完成";
 
         } catch (Exception $e) {
-            error_log($e->getMessage());
+            //error_log($e->getMessage());
             echo $e->getMessage();
         }
     }
@@ -1060,7 +1060,7 @@ class Controller
         $srcDB = '/home/kls/NTCS7/ntcs_device.db';
 
         if (!file_exists($srcDB)) {
-            error_log("⚠ ntcs_device.db 不存在");
+            //error_log("⚠ ntcs_device.db 不存在");
             return null;
         }
 
@@ -1083,7 +1083,7 @@ class Controller
             return (int)$torque_unit;
 
         } catch (PDOException $e) {
-            error_log("❌ 無法讀取 torque_unit：" . $e->getMessage());
+            //error_log("❌ 無法讀取 torque_unit：" . $e->getMessage());
             return null;
         }
     }
@@ -1138,7 +1138,7 @@ class Controller
             $msg .= ' | ' . json_encode($context, JSON_UNESCAPED_SLASHES);
         }
 
-        error_log($msg);
+        //error_log($msg);
     }
 
 

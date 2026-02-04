@@ -5,88 +5,97 @@ class Check extends Controller
     private $DataModel;
     private $SettingModel;
     private $MiscellaneousModel;
-    Private $deviceId;
-    
-    // 在建構子中將 Post 物件（Model）實例化
+    private $deviceId = null;
+
     public function __construct()
     {
         $this->DataModel = $this->model('Datas');
         $this->SettingModel = $this->model('Setting');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
 
-        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        // ❗ constructor 絕對不能做 sync
+    }
+
+    // 頁面入口（只有這裡才 sync）
+    public function index()
+    {
+        // 使用者真正進頁 / reload 時才同步
         $this->deviceId = $this->ntcs_device_db_sysnc();
-
     }
 
-    // 取得所有Jobs
-    public function index(){
-
-        
-
-     
-
-    }
-
-    
-    public function ajax_check_device_id(){
-
+    // =========================
+    // AJAX：只檢查，不同步
+    // =========================
+    public function ajax_check_device_id()
+    {
         header('Content-Type: application/json; charset=utf-8');
 
-        // 前端目前認知的 device_id
         $current = isset($_POST['current_device_id']) && $_POST['current_device_id'] !== ''
             ? (int)$_POST['current_device_id']
             : null;
 
-        // 是否強制重新同步 
-        $new = $this->ntcs_device_db_sysnc(false);
+        // ❗ 只讀 controller DB
+        $new = $this->getControllerDeviceIdOnly();
 
-        // 預設回傳
-        $changed = false;
-        $initialized = false;
-
-        // 判斷是否初始化完成
+        // 初始化（第一次知道 ID）
         if ($current === null && $new !== null) {
-            $initialized = true; // 第一次取得 device_id
+            echo json_encode([
+                'res_type'    => 'OK',
+                'device_id'   => $new,
+                'changed'     => false,
+                'initialized' => true,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
 
-        // 正常情境：兩邊都有值才比較
-        if ($current !== null && $new !== null && $new !== $current) {
-            $changed = true;
+        // 真正變更（這一段現在「一定會進來」）
+        if ($current !== null && $new !== null && $current !== $new) {
+            echo json_encode([
+                'res_type'    => 'OK',
+                'device_id'   => $new,
+                'changed'     => true,
+                'initialized' => false,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
 
+        // 無變化
         echo json_encode([
             'res_type'    => 'OK',
-            'device_id'   => $new,          // 最新 device_id（可能為 null）
-            'changed'     => $changed,      // 是否真的變更
-            'initialized' => $initialized,  // 是否為首次初始化
-            'server_time' => date('Y-m-d H:i:s'),
+            'device_id'   => $new,
+            'changed'     => false,
+            'initialized' => false,
         ], JSON_UNESCAPED_UNICODE);
-
         exit;
     }
 
+    // =========================
+    // 只讀 controller ID
+    // =========================
+    private function getControllerDeviceIdOnly(): ?int
+    {
+        try {
+            $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+            if (!is_file($dbPath)) {
+                return null;
+            }
 
-    public function runAgentInitial() {
+            $db = new PDO('sqlite:' . $dbPath);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // & 表示背景執行，立即結束
-        $cmd = 'sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php > /dev/null 2>&1 &';
+            $stmt = $db->query("
+                SELECT modbus_id
+                FROM ntcs_device
+                LIMIT 1
+            ");
 
-        // 只要執行指令，不等待結果
-        shell_exec($cmd);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row && isset($row['modbus_id'])
+                ? (int)$row['modbus_id']
+                : null;
 
-        // 回傳 JSON 給前端（避免畫面有多餘輸出）
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode([
-            'success' => true,
-            'output'  => 'Agent start triggered (background mode)'
-        ]);
-        exit;
+        } catch (Throwable $e) {
+            return null;
+        }
     }
-
-    
-
-  
-
-    
 }

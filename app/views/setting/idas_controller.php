@@ -4,7 +4,7 @@
         <div class="col-3 t1"><?php echo $text['system_id'];?>:</div>
         <div class="col-3 t2">
             <input type="hidden" id="control_id_old" value="<?php echo htmlspecialchars($data['controller_info']['device_id'] ?? '', ENT_QUOTES); ?>">
-            <input id="control_id" name="control_id" type="number" max=255  min=1 maxlength="3" value="<?php echo isset($data['controller_info']['device_id']) ? $data['controller_info']['device_id'] : ''; ?>" class="t3 form-control"  required >
+            <input id="control_id" name="control_id" type="number" max=255  min=1 maxlength="3" value="<?php echo isset($data['controller_info']['device_id']) ? $data['controller_info']['device_id'] : ''; ?>" class="t3 form-control"  required  disabled>
         </div>
     </div>    
     <div class="row t2">

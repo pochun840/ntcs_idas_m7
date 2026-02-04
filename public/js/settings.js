@@ -1049,18 +1049,23 @@ function update_barcode() {
   /* =====================================================
    * 讀取表單欄位（⚠ 一定要放最前面，避免 TDZ）
    * ===================================================== */
-  const barcode_id    = document.getElementById("barcode_id")?.value ?? '';
-  const barcode_name  = document.getElementById("barcode_name")?.value?.trim() ?? '';
-  const barcode_from  = document.getElementById("barcode_from")?.value ?? '';
-  const barcode_count = document.getElementById("barcode_count")?.value ?? '';
-  const barcode_mode  = document.querySelector("select[name='barcode_mode']")?.value ?? '-1';
-  const barcode_job   = document.querySelector("select[name='barcode_job']")?.value ?? '-1';
-  const barcode_seq   = document.querySelector("select[name='barcode_seq']")?.value ?? '-1';
+  const barcode_id       = document.getElementById("barcode_id")?.value ?? '';
+  const barcode_job_old  = document.getElementById("barcode_job_old")?.value ?? ''; // ⭐ 關鍵
+  const barcode_name     = document.getElementById("barcode_name")?.value?.trim() ?? '';
+  const barcode_from     = document.getElementById("barcode_from")?.value ?? '';
+  const barcode_count    = document.getElementById("barcode_count")?.value ?? '';
+  const barcode_mode     = document.querySelector("select[name='barcode_mode']")?.value ?? '-1';
+  const barcode_job      = document.querySelector("select[name='barcode_job']")?.value ?? '-1';
+  const barcode_seq      = document.querySelector("select[name='barcode_seq']")?.value ?? '-1';
 
   const isEdit = Number(barcode_id) > 0;
 
-  // 🔎 debug（需要時保留，不要可刪）
-  console.log('[barcode]', isEdit ? 'EDIT' : 'ADD', barcode_id);
+  // 🔎 debug（需要時保留）
+  console.log('[barcode]', isEdit ? 'EDIT' : 'ADD', {
+    barcode_id,
+    barcode_job_old,
+    barcode_job
+  });
 
   /* =====================================================
    * 語系偵測
@@ -1168,13 +1173,14 @@ function update_barcode() {
     url: "?url=Settings/Update_Barcode",
     method: "POST",
     data: {
-      barcode_id:    barcode_id,   // ⭐ 新增 / 修改 判斷關鍵
-      barcode_name:  barcode_name,
-      barcode_from:  barcode_from,
-      barcode_count: barcode_count,
-      barcode_job:   barcode_job,
-      barcode_seq:   barcode_seq,
-      barcode_mode:  barcode_mode
+      barcode_id:       barcode_id,
+      barcode_name:     barcode_name,
+      barcode_from:     barcode_from,
+      barcode_count:    barcode_count,
+      barcode_job:      barcode_job,
+      barcode_job_old:  barcode_job_old, // ⭐⭐⭐ 核心
+      barcode_seq:      barcode_seq,
+      barcode_mode:     barcode_mode
     },
     success: function (response) {
 
@@ -1213,13 +1219,10 @@ function update_barcode() {
 
               // 刷新後，重新選取該 job 的 checkbox
               if (barcode_job) {
-                  const $cb = $('.barcode-check[data-job-id="' + barcode_job + '"]').first();
+                const $cb = $('.barcode-check[data-job-id="' + barcode_job + '"]').first();
                 if ($cb.length) {
-                  // 先清掉其他
                   $('.barcode-check').prop('checked', false);
-                  // 勾選這一筆
                   $cb.prop('checked', true);
-                  // ⭐ 主動觸發，讓下方表單更新
                   $cb.trigger('click');
                 }
               }
@@ -1244,7 +1247,6 @@ function update_barcode() {
     }
   });
 }
-
 
 
 

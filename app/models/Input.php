@@ -78,7 +78,7 @@ class Input{
             return true;
 
         } catch (Exception $e) {
-            error_log("check_input_event error: " . $e->getMessage());
+            //error_log("check_input_event error: " . $e->getMessage());
             return false;
         }
     }
@@ -182,7 +182,7 @@ class Input{
             if ($this->db_iDas->inTransaction()) {
                 $this->db_iDas->rollBack();
             }
-            error_log("Error in set_input_alljob: " . $e->getMessage());
+            //error_log("Error in set_input_alljob: " . $e->getMessage());
             return false;
         }
     }

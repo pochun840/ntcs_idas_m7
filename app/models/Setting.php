@@ -317,47 +317,57 @@ class Setting{
     }
 
 
-    public function Update_Barcode($barcode)
+    public function Update_Barcode(array $barcode): bool
     {
-        if( $this->check_barcode_conflict($barcode['barcode_job']) ){ 
-
-        
-            $sql = "UPDATE ".TABLE_NTCS_BARCODE." 
-                    SET barcode = :barcode,
-                        range_from  = :range_from,
-                        range_count = :range_count,
-                        barcode_mode = :barcode_mode,
-                        seq_id =:seq_id
-                    WHERE job_id = :job_id ";
-            $statement = $this->db_barcode->prepare($sql);
-            $statement->bindValue(':barcode', $barcode['barcode_name']);
-            $statement->bindValue(':range_from', $barcode['barcode_range_from']);
-            $statement->bindValue(':range_count', $barcode['barcode_range_count']);
-            $statement->bindValue(':job_id',$barcode['barcode_job']);
-            $statement->bindValue(':seq_id',$barcode['barcode_seq']);
-            $statement->bindValue(':barcode_mode',$barcode['barcode_mode']);
-            $results = $statement->execute();
-
-
-        }else{ //不存在，用insert
-
-            $sql = "INSERT INTO ".TABLE_NTCS_BARCODE." (job_id, barcode, range_from, range_count, barcode_mode, seq_id) 
-            VALUES (:job_id, :barcode, :range_from, :range_count, :barcode_mode, :seq_id)";
-    
-            $statement = $this->db_barcode->prepare($sql);
-            $statement->bindValue(':job_id', $barcode['barcode_job']); 
-            $statement->bindValue(':barcode', $barcode['barcode_name']);
-            $statement->bindValue(':range_from', $barcode['barcode_range_from']);
-            $statement->bindValue(':range_count', $barcode['barcode_range_count']);
-            $statement->bindValue(':barcode_mode', $barcode['barcode_mode']); 
-            $statement->bindValue(':seq_id', $barcode['barcode_seq']); 
-            $results = $statement->execute();
-
-
+        if (!isset($barcode['barcode_job']) || !is_numeric($barcode['barcode_job'])) {
+            return false;
         }
 
-        return $results;
+        $newJobId = (int)$barcode['barcode_job'];
+        $oldJobId = isset($barcode['barcode_job_old']) && is_numeric($barcode['barcode_job_old'])
+            ? (int)$barcode['barcode_job_old']
+            : $newJobId; // 新增模式時，兩者相同
+
+        try {
+            $this->db_barcode->beginTransaction();
+
+            // ✅ 刪「舊 job_id」那筆
+            $sqlDel = "DELETE FROM " . TABLE_NTCS_BARCODE . " WHERE job_id = :job_id";
+            $stmtDel = $this->db_barcode->prepare($sqlDel);
+            $stmtDel->bindValue(':job_id', $oldJobId, PDO::PARAM_INT);
+            $stmtDel->execute();
+
+            // ✅ 插入「新 job_id」
+            $sqlIns = "
+                INSERT INTO " . TABLE_NTCS_BARCODE . 
+                " (job_id, barcode, range_from, range_count, barcode_mode, seq_id)
+                VALUES
+                (:job_id, :barcode, :range_from, :range_count, :barcode_mode, :seq_id)
+            ";
+
+            $stmtIns = $this->db_barcode->prepare($sqlIns);
+            $stmtIns->bindValue(':job_id', $newJobId, PDO::PARAM_INT);
+            $stmtIns->bindValue(':barcode', (string)($barcode['barcode_name'] ?? ''), PDO::PARAM_STR);
+            $stmtIns->bindValue(':range_from', (int)($barcode['barcode_range_from'] ?? 1), PDO::PARAM_INT);
+            $stmtIns->bindValue(':range_count', (int)($barcode['barcode_range_count'] ?? 0), PDO::PARAM_INT);
+            $stmtIns->bindValue(':barcode_mode', (int)($barcode['barcode_mode'] ?? -1), PDO::PARAM_INT);
+            $stmtIns->bindValue(':seq_id', (int)($barcode['barcode_seq'] ?? -1), PDO::PARAM_INT);
+
+            $ok = $stmtIns->execute();
+
+            $this->db_barcode->commit();
+            return (bool)$ok;
+
+        } catch (Throwable $e) {
+            if ($this->db_barcode->inTransaction()) {
+                $this->db_barcode->rollBack();
+            }
+            return false;
+        }
     }
+
+
+
 
     public function check_barcode_conflict($job_id){
         

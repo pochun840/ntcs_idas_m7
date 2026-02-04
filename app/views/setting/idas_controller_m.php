@@ -5,7 +5,7 @@
             <div class="row t2">
                 <div class="col-6 t1"><?php echo $text['system_id'];?>:</div>
                 <div class="col t2">
-                    <input id="control_id" name="control_id" type="number" max=255 min=1 maxlength="3" value="<?php echo $data['controller_info']['device_id'];?>" class="t3 form-control"  required>
+                    <input id="control_id" name="control_id" type="number" max=255 min=1 maxlength="3" value="<?php echo $data['controller_info']['device_id'];?>" class="t3 form-control"  required disabled>
                 </div>
             </div>    
             <div class="row t2">

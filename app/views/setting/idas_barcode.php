@@ -116,6 +116,7 @@
 
             <div style="text-align: center;margin-top: 30px; margin-bottom:10px">
                 <input type="hidden" id="barcode_id" value="">
+                <input type="hidden" id="barcode_job_old" value="">
                 <button class="all-btn w3-button w3-border w3-round-large" onclick="update_barcode()" ><?php echo $text['save'];?></button>&nbsp;&nbsp;
                 <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode_item()" ><?php echo $text['delete_text'];?></button>
             </div>               
@@ -281,6 +282,11 @@
         const rangeCount = String($cb.data('range-count') ?? '');
         const modeVal    = String($cb.data('barcode-mode') ?? '');
         const seqId      = String($cb.data('seq-id') ?? '-1');
+        const barcodeId  = String($cb.data('id') ?? '');
+
+        $('#barcode_id').val(barcodeId);
+        $('#barcode_job_old').val(jobId);
+
 
         $('#barcode_name').val(barcode);
         $('#barcode_from').val(rangeFrom);
