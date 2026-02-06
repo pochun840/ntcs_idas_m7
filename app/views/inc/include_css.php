@@ -138,166 +138,162 @@ function include_css() {
 
     <!-- ================== 其他工具 JS ================== -->
 
-<script>
+   <script>
 /* ============================================================
-   Device ID 自動偵測 + alertify 語系提示
+   Device ID 自動偵測 + 5秒延遲跳視窗 (FINAL)
    ============================================================ */
 
-// -----------------------------
-// 1) 安全取得 cookie
-// -----------------------------
-function getCookieSafe(name) {
-    try {
-        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-        return m ? decodeURIComponent(m[1]) : null;
-    } catch (e) {
-        return null;
-    }
+const WAIT_MS = 5000; // ⭐ 等待5秒再跳視窗
+
+/* ---------------- cookie ---------------- */
+function getCookieSafe(name){
+    try{
+        const m=document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+        return m?decodeURIComponent(m[1]):null;
+    }catch(e){return null;}
 }
 
-// -----------------------------
-// 2) 取得語系 (en-us / zh-tw / zh-cn)
-// -----------------------------
-function getLangCode() {
-    let lang =
-        (typeof getCookie === "function" && getCookie("language")) ||
-        getCookieSafe("language") ||
-        "zh-tw";
-
-    lang = String(lang).toLowerCase();
-    if (lang === "en") lang = "en-us";
-    if (!["en-us", "zh-tw", "zh-cn"].includes(lang)) lang = "en-us";
+/* ---------------- 語系 ---------------- */
+function getLangCode(){
+    let lang=(getCookieSafe("language")||"zh-tw").toLowerCase();
+    if(lang==="en") lang="en-us";
+    if(!["en-us","zh-tw","zh-cn"].includes(lang)) lang="en-us";
     return lang;
 }
 
-// -----------------------------
-// 3) 語系提示訊息
-// -----------------------------
-function getDeviceReloadMessage(newId) {
-    const lang = getLangCode();
-
-    if (lang === "zh-tw") {
-        return "控制器裝置編號已變更為 " + newId + "，是否重新整理畫面";
-    }
-    if (lang === "zh-cn") {
-        return "控制器设备编号已变更为 " + newId + "，是否重新刷新页面";
-    }
-    return "Controller device ID has changed to " + newId + ". Reload the page now";
+function getDeviceReloadMessage(newId){
+    const lang=getLangCode();
+    if(lang==="zh-tw") return "控制器裝置編號已變更為 "+newId+"，是否重新整理畫面";
+    if(lang==="zh-cn") return "控制器设备编号已变更为 "+newId+"，是否重新刷新页面";
+    return "Controller device ID has changed to "+newId+". Reload now?";
 }
 
-// -----------------------------
-// 4) alertify 語系 UI
-// -----------------------------
-function getAlertifyUiText() {
-    const lang = getLangCode();
-
-    if (lang === "zh-tw") {
-        return { title: "提示", ok: "確定", cancel: "取消" };
-    }
-    if (lang === "zh-cn") {
-        return { title: "提示", ok: "确定", cancel: "取消" };
-    }
-    return { title: "Notice", ok: "OK", cancel: "Cancel" };
+function getAlertifyUiText(){
+    const lang=getLangCode();
+    if(lang==="zh-tw") return {title:"提示",ok:"確定"};
+    if(lang==="zh-cn") return {title:"提示",ok:"确定"};
+    return {title:"Notice",ok:"OK"};
 }
 
-// -----------------------------
-// 5) 全域變數
-// -----------------------------
-var currentDeviceId = null;
-var deviceReloadDialogShown = false; // 避免狂跳 alert 視窗
+/* ---------------- 倒數狀態 (跨刷新保存) ---------------- */
+function markDeviceChanged(id){
+    const prev=localStorage.getItem("device_changed_value");
 
-// -----------------------------
-// 6) 主輪詢函式
-// -----------------------------
-function pollDeviceId() {
+    // ⭐ ID不同 → 重新開始倒數
+    if(prev!==String(id)){
+        localStorage.setItem("device_changed_value",id);
+        localStorage.setItem("device_changed_time",Date.now());
+    }
+}
+
+function clearDeviceChanged(){
+    localStorage.removeItem("device_changed_time");
+    localStorage.removeItem("device_changed_value");
+}
+
+function getCountdownRemaining(){
+    const t=localStorage.getItem("device_changed_time");
+    if(!t) return null;
+    return WAIT_MS-(Date.now()-parseInt(t));
+}
+
+/* ---------------- 主狀態 ---------------- */
+var currentDeviceId=null;
+var deviceReloadDialogShown=false;
+
+/* ---------------- 跳視窗 ---------------- */
+function showReloadPopup(id){
+    if(deviceReloadDialogShown) return;
+    deviceReloadDialogShown=true;
+    clearDeviceChanged();
+
+    const msg=getDeviceReloadMessage(id);
+    const ui=getAlertifyUiText();
+
+    if(!window.alertify?.alert){
+        location.reload();
+        return;
+    }
+
+    alertify.alert(ui.title,msg,function(){
+        location.reload();
+    }).set({
+        labels:{ok:ui.ok},
+        closable:false,
+        movable:false
+    });
+}
+
+/* ---------------- 檢查是否到達倒數時間 ---------------- */
+function checkCountdown(id){
+    const remain=getCountdownRemaining();
+    if(remain===null) return;
+
+    if(remain<=0){
+        showReloadPopup(id);
+    }
+}
+
+/* ---------------- 輪詢 ---------------- */
+function pollDeviceId(){
 
     $.ajax({
-        url: "?url=Check/ajax_check_device_id",
-        type: "POST",
-        dataType: "json",
-        timeout: 3000, // ⏱️ 避免卡死
-        data: {
-            current_device_id: currentDeviceId
-        },
+        url:"?url=Check/ajax_check_device_id",
+        type:"POST",
+        dataType:"json",
+        timeout:3000,
 
-        success: function (res) {
-            if (!res || res.res_type !== "OK") return;
+        success:function(res){
+            if(!res || res.res_type!=="OK") return;
 
-            let newId =
-                res.device_id !== null && res.device_id !== undefined
-                    ? parseInt(res.device_id, 10)
-                    : null;
+            let newId=parseInt(res.device_id);
+            if(!Number.isFinite(newId)) return;
 
-            if (!Number.isFinite(newId)) newId = null;
-
-            const changed = !!res.changed;
-
-            // 第一次初始化
-            if (newId !== null && currentDeviceId === null) {
+            /* ⭐ 第一次初始化 */
+            if(currentDeviceId === null){
                 currentDeviceId = newId;
                 return;
             }
 
-            // 裝置變更 → 強制 reload
-            if (newId !== null && changed) {
+            /* ⭐⭐⭐ 真正偵測 ID 變化 ⭐⭐⭐ */
+            if(newId !== currentDeviceId){
+                console.log("Device ID changed:", currentDeviceId, "→", newId);
 
-                if (!window.alertify?.alert) {
-                    console.warn("Alertify not loaded");
-                    location.reload();
-                    return;
+                // ⭐ 如果還沒在倒數 → 才開始倒數
+                if(getCountdownRemaining() === null){
+                    markDeviceChanged(newId);
                 }
-
-                if (deviceReloadDialogShown) return;
-                deviceReloadDialogShown = true;
-
-                const msg = getDeviceReloadMessage(newId);
-                const ui  = getAlertifyUiText();
-
-                alertify
-                    .alert(ui.title, msg, function () {
-                        location.reload();
-                    })
-                    .set({
-                        labels: { ok: ui.ok },
-                        closable: false,
-                        movable: false,
-                        onshow: function () {
-                            this.elements.root.classList.add('device-reload-alert');
-                        }
-                    });
             }
 
-            if (newId !== null) currentDeviceId = newId;
+            /* ⭐ 檢查倒數是否結束 */
+            checkCountdown(newId);
+
+            currentDeviceId = newId;
         },
 
-        error: function (xhr, status) {
-            // ❗ 網路斷線 / controller reboot / Apache reload 都會進來
-            if (status !== 'abort') {
-                console.warn('[pollDeviceId] temporarily unavailable:', status);
-            }
-        },
-
-        complete: function () {
-            // ⏳ 無論成功或失敗，都延遲再 poll
-            setTimeout(pollDeviceId, 2000);
+        complete:function(){
+            setTimeout(pollDeviceId,2000);
         }
     });
 }
 
 
-// -----------------------------
-// 7) 初始化
-// -----------------------------
-$(function () {
-    var cookieVal = getCookieSafe("temp_device_id");
-    if (cookieVal !== null && cookieVal !== "") {
-        currentDeviceId = parseInt(cookieVal, 10);
-        if (!Number.isFinite(currentDeviceId)) currentDeviceId = null;
+/* ---------------- 啟動 ---------------- */
+$(function(){
+    const cookieVal=getCookieSafe("temp_device_id");
+    if(cookieVal){
+        currentDeviceId=parseInt(cookieVal);
+        if(!Number.isFinite(currentDeviceId)) currentDeviceId=null;
     }
-
-    pollDeviceId(); // 啟動輪詢
+    pollDeviceId();
 });
 </script>
+
+
+
+
+
+
 
 
 <style>

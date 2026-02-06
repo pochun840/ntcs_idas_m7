@@ -972,30 +972,6 @@ class Controller
     }
 
 
-    public function ajax_check_device_id(){
-        header('Content-Type: application/json; charset=utf-8');
-
-        // 前端傳來目前畫面認知的 device_id（從 cookie 或 JS 變數帶）
-        $current = isset($_POST['current_device_id']) ? (int)$_POST['current_device_id'] : null;
-
-        // 這邊可以視情況決定要不要強制 refresh
-        // - true  → 每次都重新偵測（最保險，但稍微重）
-        // - false → 使用你之前加的快取機制（比較省）
-        $new = $this->ntcs_device_db_sysnc(false);
-
-        $changed = false;
-        if ($new !== null && $current !== null && $new !== $current) {
-            $changed = true;
-        }
-
-        echo json_encode([
-            'res_type'   => 'OK',
-            'device_id'  => $new,
-            'changed'    => $changed,
-        ]);
-        exit;
-    }
-
     public function runAgentInitial()
     {
         // 先檢查 agent 是否有在跑（2 秒 timeout）
@@ -1513,6 +1489,46 @@ class Controller
             ];
 
         } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+
+    public function getControllerDeviceSN(): ?string
+    {
+        $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+
+        // ---------- 基本檢查 ----------
+        if (!is_file($dbPath) || !is_readable($dbPath)) {
+            return null;
+        }
+
+        try {
+            // ---------- 開啟 SQLite ----------
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // ---------- 查詢 	device_id ----------
+            $sql = "
+                SELECT 	device_id
+                FROM ntcs_device_test
+                LIMIT 1
+            ";
+
+            $stmt = $pdo->query($sql);
+            $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row || !isset($row['device_id'])) {
+                return null;
+            }
+
+            $deviceSN = trim((string)$row['device_id']);
+
+            return $deviceSN !== '' ? $deviceSN : null;
+
+        } catch (Throwable $e) {
+            // 不要 echo，避免破壞 JSON
+            error_log('[getControllerdevice_id] ' . $e->getMessage());
             return null;
         }
     }

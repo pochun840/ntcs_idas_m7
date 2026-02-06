@@ -839,7 +839,92 @@ class Settings extends Controller
 
     }
 
+    /**
+     * 將來源 DB 安全覆蓋到目的 DB（temp → atomic rename）
+     * - 同目錄 temp 檔，rename 原子替換
+     * - 自動備份舊檔 .bak_YYYYmmdd_HHMMSS
+     * - 基本檢查：檔案存在、目錄可寫、size、sqlite integrity_check
+     */
+    private function replaceSqliteDbFile(
+        string $srcDb,
+        string $dstDb,
+        bool $doBackup = true
+    ): void {
 
+        if (!is_file($srcDb) || !is_readable($srcDb)) {
+            throw new Exception("Source DB not found or unreadable: {$srcDb}");
+        }
+
+        $dstDir = dirname($dstDb);
+        if (!is_dir($dstDir) || !is_writable($dstDir)) {
+            throw new Exception("Destination dir not writable: {$dstDir}");
+        }
+
+        // temp 必須在「同一個目的地資料夾」才能 atomic rename
+        $tmpDb = $dstDir . '/.' . basename($dstDb) . '.tmp';
+
+        // 1) copy → temp
+        if (!@copy($srcDb, $tmpDb)) {
+            $err = error_get_last();
+            throw new Exception("Copy failed: " . ($err['message'] ?? 'unknown'));
+        }
+
+        @chmod($tmpDb, 0666);
+
+        // 2) size sanity check（避免空檔）
+        $srcSize = @filesize($srcDb);
+        $tmpSize = @filesize($tmpDb);
+
+        if ($srcSize === false || $tmpSize === false || $tmpSize < 1024 || $tmpSize !== $srcSize) {
+            @unlink($tmpDb);
+            throw new Exception("Size mismatch or too small (src={$srcSize}, tmp={$tmpSize})");
+        }
+
+        // 3) sqlite integrity_check（可抓到 copy 失敗/壞檔）
+        $this->assertSqliteHealthy($tmpDb);
+
+        // 4) 備份舊檔（可選，但我強烈建議開）
+        if ($doBackup && is_file($dstDb)) {
+            $bak = $dstDb . '.bak_' . date('Ymd_His');
+            if (!@copy($dstDb, $bak)) {
+                // 備份失敗不一定要中止，但建議中止以免無法回復
+                @unlink($tmpDb);
+                throw new Exception("Backup failed: {$bak}");
+            }
+            @chmod($bak, 0666);
+        }
+
+        // 5) atomic replace
+        // rename 在同一個 filesystem 上通常是原子替換
+        if (!@rename($tmpDb, $dstDb)) {
+            $err = error_get_last();
+            @unlink($tmpDb);
+            throw new Exception("Rename failed: " . ($err['message'] ?? 'unknown'));
+        }
+
+        @chmod($dstDb, 0666);
+    }
+
+    /**
+     * 檢查 sqlite 檔案是否健康（integrity_check）
+     */
+    private function assertSqliteHealthy(string $dbPath): void
+    {
+        try {
+            $db = new PDO('sqlite:' . $dbPath);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // PRAGMA integrity_check 會回傳 'ok' 或錯誤描述
+            $res = $db->query("PRAGMA integrity_check;")->fetchColumn();
+            if (strtolower((string)$res) !== 'ok') {
+                throw new Exception("SQLite integrity_check failed: " . (string)$res);
+            }
+        } catch (Exception $e) {
+            throw new Exception("SQLite health check failed: " . $e->getMessage());
+        }
+    }
+
+    
     public function Sync_check_db(){
         
         $file = $this->MiscellaneousModel->lang_load();
@@ -847,135 +932,107 @@ class Settings extends Controller
 
         $argument = $_POST['argument'] ?? '';
 
-        // 只允許 Linux + D2C
+        $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
+        $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
+
+        $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
+        $finalPath2   = '/mnt/ramdisk/ftp/11.db';
+        $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
+
+        $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
+        $dst3         = '/home/kls/NTCS7/ntcs_device.db';
+
+
+        // 取得 正確的 Modbus id
+        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
+        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
+
+
+
+        // 只處理 Linux + D2C，其它情況直接回錯誤
         if (PHP_OS_FAMILY !== 'Linux' || $argument !== 'D2C') {
-            return $this->MiscellaneousModel->generateErrorResponse(
-                'Error',
-                'Invalid sync argument or unsupported OS'
-            );
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
         }
 
-        /* =====================================================
-        * Paths
-        * ===================================================== */
-        $identityFlag = '/var/www/html/database/.identity_synced';
-
-        $controllerDb = '/home/kls/NTCS7/ntcs_device.db';
-        $idasDb       = '/var/www/html/database/ntcs_device_IDAS.db';
-
-        $srcLin       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        $srcBarcode   = '/var/www/html/database/ntcs_barcode_IDAS.db';
-
-        $tmpLin       = '/mnt/ramdisk/ftp/11.Lin';
-        $tmpLinFinal  = '/mnt/ramdisk/ftp/11_tmp.Lin';
-
-        $tmpDb        = '/mnt/ramdisk/ftp/11.db';
-        $tmpDbFinal   = '/mnt/ramdisk/ftp/11_db_temp.db';
-
-        /* =====================================================
-        * 0️⃣ 一次性 Identity Sync（只跑一次）
-        * ===================================================== */
-        if (!file_exists($identityFlag)) {
-
-            try {
-                $this->syncIdentityFromControllerToIDAS(
-                    $controllerDb,
-                    $idasDb
-                );
-
-                // 建立旗標，之後永遠不再跑
-                file_put_contents($identityFlag, date('c'));
-
-                $this->logMessage('[IdentitySync] completed and locked');
-
-            } catch (Exception $e) {
-
-                $this->logMessage('[IdentitySync] failed: ' . $e->getMessage());
-
-                return $this->MiscellaneousModel->generateErrorResponse(
-                    'Error',
-                    'Identity sync failed'
-                );
+        // ✅ 先同步 device.db (src3 → dst3)
+        if (file_exists($src3)) {
+            if (!copy($src3, $dst3)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
             }
+            @chmod($dst3, 0777);
+
+            // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
+            $this->get_db_sync($unitId);
         }
 
-        /* =====================================================
-        * 1️⃣ 基本檢查
-        * ===================================================== */
-        if (!file_exists($srcLin) || !file_exists($srcBarcode)) {
+        //  檢查原始檔案是否存在
+        if (!file_exists($src1) || !file_exists($src2)) {
+            $missingFiles = [];
+            if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
+            if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
 
-            $missing = [];
-            if (!file_exists($srcLin))     $missing[] = 'KLS_NTCS_IDAS.Lin';
-            if (!file_exists($srcBarcode)) $missing[] = 'ntcs_barcode_IDAS.db';
-
-            return $this->MiscellaneousModel->generateErrorResponse(
+            $this->MiscellaneousModel->generateErrorResponse(
                 'Error',
-                'Source file(s) missing: ' . implode(', ', $missing)
+                'Source file(s) missing: ' . implode(', ', $missingFiles)
             );
         }
 
-        /* =====================================================
-        * 2️⃣ Modbus Init
-        * ===================================================== */
+        // 初始化 Modbus
         require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $deviceId = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId   = ($deviceId >= 1 && $deviceId <= 255) ? $deviceId : 1;
-
         $modbus = new ModbusMaster("127.0.0.1", "TCP");
         $modbus->port        = 502;
-        $modbus->timeout_sec = 2;
+        $modbus->timeout_sec = 2;   // 原本 10 → 3，這裡直接壓到 2 秒
 
         try {
-
-            /* =================================================
-            * 3️⃣ Sync LIN
-            * ================================================= */
-            if (!$this->safeCopy($srcLin, $tmpLin)) {
-                throw new Exception('Copy LIN failed');
+            // ----------- Sync LIN File（簡化：直接 src → final → rename）-----------
+            if (!$this->safeCopy($src1, $finalPath1)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1 to $finalPath1");
             }
+            @chmod($finalPath1, 0777);
+            $this->logMessage("$src1 copied to $finalPath1");
 
-            @chmod($tmpLin, 0777);
-            $this->notifyModbus($modbus, [1, 12593], 'LIN');
+            // 通知控制器有新 LIN
+            $this->notifyModbus($modbus, [1, 12593], "LIN");
 
-            if (!$this->safeCopy($tmpLin, $tmpLinFinal)) {
-                throw new Exception('Rename LIN failed');
+            if (!$this->safeCopy($finalPath1, $renamedPath1)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
             }
-            @unlink($tmpLin);
+            @unlink($finalPath1);
+            $this->logMessage("$finalPath1 renamed to $renamedPath1");
 
-            /* =================================================
-            * 4️⃣ Sync Barcode DB
-            * ================================================= */
-            if (!$this->safeCopy($srcBarcode, $tmpDb)) {
-                throw new Exception('Copy barcode DB failed');
+            // 🔥 拿掉 usleep(1_000_000) 不再強制多等 1 秒
+            // usleep(1_000_000);
+
+            // ----------- Sync DB File (barcode)（一樣簡化）-----------
+            if (!$this->safeCopy($src2, $finalPath2)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2 to $finalPath2");
             }
+            @chmod($finalPath2, 0777);
+            $this->logMessage("$src2 copied to $finalPath2");
 
-            @chmod($tmpDb, 0777);
-            $this->notifyModbus($modbus, [1, 12593], 'DB');
+            // 通知控制器有新 DB
+            $this->notifyModbus($modbus, [1, 12593], "DB");
 
-            if (!$this->safeCopy($tmpDb, $tmpDbFinal)) {
-                throw new Exception('Rename barcode DB failed');
+            if (!$this->safeCopy($finalPath2, $renamedPath2)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
             }
-            @unlink($tmpDb);
+            @unlink($finalPath2);
+            $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
-            /* =================================================
-            * ✅ Done
-            * ================================================= */
-            return $this->MiscellaneousModel->generateErrorResponse(
-                'Success',
-                'SYNC ' . ($text['success'] ?? 'success')
-            );
+            // ✅ 最後回傳成功訊息（純 JSON）
+            $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
 
         } catch (Exception $e) {
-
-            $this->logMessage('[Sync_check_db] failed: ' . $e->getMessage());
-
-            return $this->MiscellaneousModel->generateErrorResponse(
-                'Error',
-                'Modbus communication failed'
-            );
+            $this->logMessage('Modbus write fail: ' . $e->getMessage());
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
         }
     }
+
+
+
+
+
 
 
 
@@ -1453,10 +1510,42 @@ class Settings extends Controller
             // 12. 寫入 config 表
             $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);
 
-            // 13. 部署
-            $target_directory = $_SERVER['DOCUMENT_ROOT'] . '/ntcs_idas/';
-            if (!is_dir($target_directory)) mkdir($target_directory, 0777, true);
-            $this->copyDirectory($main_folder, $target_directory);
+            /* =====================================================
+            ⭐ 安全原子部署（無備份版）
+            不會 0KB、不會 ghost file、不會半更新
+            ===================================================== */
+
+            $root = $_SERVER['DOCUMENT_ROOT'] . '/';
+            $target_directory = $root . 'ntcs_idas/';
+            $staging_directory = $root . 'ntcs_idas_new/';
+            $old_directory = $root . 'ntcs_idas_old/';
+
+            // 1️⃣ 清 staging
+            if (is_dir($staging_directory)) {
+                $this->deleteDirectory($staging_directory);
+            }
+
+            // 2️⃣ 複製新版本到 staging（安全區）
+            $this->copyDirectory($main_folder, $staging_directory);
+
+            // 3️⃣ 刪舊 old（避免堆積）
+            if (is_dir($old_directory)) {
+                $this->deleteDirectory($old_directory);
+            }
+
+            // 4️⃣ 舊版 → old（瞬間完成，不會影響正在執行的 Apache）
+            if (is_dir($target_directory)) {
+                rename($target_directory, $old_directory);
+            }
+
+            // 5️⃣ 新版 → 正式上線（瞬間完成）
+            rename($staging_directory, $target_directory);
+
+            // 6️⃣ 現在才刪 old（此時 Apache 已完全切換）
+            if (is_dir($old_directory)) {
+                $this->deleteDirectory($old_directory);
+            }
+
 
             // 14. 登出使用者
             $this->setting_logout();
@@ -1476,6 +1565,19 @@ class Settings extends Controller
             }
         }
     }
+
+
+    private function cleanupOldBackups($root){
+        
+        $dirs = glob($root . 'ntcs_idas_backup_*', GLOB_ONLYDIR);
+        if (!$dirs) return;
+
+        foreach ($dirs as $dir) {
+            $this->deleteDirectory($dir);
+        }
+    }
+
+
 
 
     // === 語系工具（改用 en-us） ===
