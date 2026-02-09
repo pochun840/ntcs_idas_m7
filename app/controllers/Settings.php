@@ -418,99 +418,141 @@ class Settings extends Controller
         echo trim($output);
     }
 
-    
+   
+
 
     public function FirmwareUpdate(){
-        $file_location = '';
-        $result = '';
 
-        if(empty($_FILES)){
-            echo json_encode(["Error" => 'no file']);
+        header('Content-Type: application/json; charset=utf-8');
+
+        /* =============================
+        * 1️⃣ 基本檢查
+        * ============================= */
+        if (empty($_FILES) || empty($_FILES['file'])) {
+            echo json_encode(["error" => "no file"]);
             exit();
         }
 
-        // 取得控制器的id
+        if (PHP_OS_FAMILY !== 'Linux') {
+            echo json_encode(["error" => "not for windows"]);
+            exit();
+        }
+
+        // 取得控制器 device id → Modbus unitId
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
-        if( PHP_OS_FAMILY == 'Linux'){
-            $this->logMessage('firmware update start');
+        $this->logMessage('firmware update start');
 
-            // $destination = "/mnt/ramdisk/FTP/iDas.cfg";
-            // 固定檔名（副檔名從上傳檔案抓取）
-            $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
-            $fixedName = "iDAS." . $extension;
+        /* =============================
+        * 上傳檔案到 FTP 資料夾
+        * ============================= */
+        $originalName = basename((string)$_FILES['file']['name']);
 
-            $destination = "/mnt/ramdisk/ftp/" . $fixedName;
-
-            // 固定給 Modbus 的檔名字串
-            $filenameWithoutExtension = "iDAS";
-            //將檔案移到指定位置
-            $result =  move_uploaded_file($_FILES['file']['tmp_name'], $destination);
-            $name_int16 = $this->asciiToHexToInt($filenameWithoutExtension);
-
-            if ($result) {
-                require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-                $modbus = new ModbusMaster("127.0.0.1", "TCP");
-                try {
-                    $modbus->port = 502;
-                    $modbus->timeout_sec = 10;
-                    $data = array(1, $name_int16[0], $name_int16[1], $name_int16[2], $name_int16[3], $name_int16[4], $name_int16[5], $name_int16[6], $name_int16[7], $name_int16[8], $name_int16[9], $name_int16[10], $name_int16[11]);
-                    $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
-
-                    // FC 16
-                    $modbus->writeMultipleRegister( $unitId , 480, $data, $dataTypes);
-                    $this->logMessage('modbus write 480 ,array = '.implode("','", $data));
-                    $this->logMessage('modbus status:'.$modbus->status);
-                    $this->logMessage('firmware update end');
-                    //自動重新啟動控制器
-                    $modbus->writeMultipleRegister( $unitId , 462, array(1), $dataTypes);
-
-                    echo json_encode(array('error' => ''));
-                    exit();
-
-                } catch (Exception $e) {
-                    // Print error information if any
-                    // echo $modbus;
-                    // echo $e;
-                    $this->logMessage('modbus write 480 fail');
-                    $this->logMessage('modbus status:'.$modbus->status);
-                    $this->logMessage('firmware update end');
-                    echo json_encode(array('error' => 'modbus error'));
-                    exit();
-                }
-            } else {
-                $this->logMessage('copy db error');
-                $this->logMessage('firmware update end');
-                echo json_encode(array('error' => 'copy db error'));
-                exit();
-            }
-
-        }else{//windows暫不考慮升級，可能整包升級
-            // $this->logMessage('Import config start');
-            $file_location = $_SERVER['DOCUMENT_ROOT'].'/';
-            echo json_encode(["Error" => 'not for windows']);
+        if ($originalName === '') {
+            echo json_encode(["error" => "invalid filename"]);
             exit();
         }
 
-        echo json_encode(["message" => $result]);
+        $destination = "/mnt/ramdisk/ftp/" . $originalName;
+
+        if (!move_uploaded_file($_FILES['file']['tmp_name'], $destination)) {
+            $this->logMessage('upload fail');
+            echo json_encode(["error" => "upload fail"]);
+            exit();
+        }
+
+        /* =============================
+        *  取檔名（去副檔名）→ ASCII 限制
+        * ============================= */
+        $filenameWithoutExtension = pathinfo($originalName, PATHINFO_FILENAME);
+
+        // 只允許 ASCII（控制器限制）
+        if ($filenameWithoutExtension === '' || preg_match('/[^\x20-\x7E]/', $filenameWithoutExtension)) {
+            echo json_encode(["error" => "filename must be ASCII"]);
+            exit();
+        }
+
+        // 最多 20 bytes = 10 registers
+        if (strlen($filenameWithoutExtension) > 20) {
+            echo json_encode(["error" => "filename too long (max 20 chars)"]);
+            exit();
+        }
+
+        /* =============================
+        * ASCII → INT16 registers
+        * ============================= */
+        $name_int16 = $this->asciiToHexToInt_temp($filenameWithoutExtension);
+
+        // 固定 10 registers（不足補0）
+        $name_int16 = array_pad($name_int16, 10, 0);
+        $name_int16 = array_slice($name_int16, 0, 10);
+
+        /* =============================
+        * 一次寫入 R480~R490 
+        * ============================= */
+        require_once __DIR__ . '/../../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $modbus = new ModbusMaster("127.0.0.1", "TCP");
+        $modbus->port = 502;
+        $modbus->timeout_sec = 10;
+
+        try {
+
+            // R480=1 + R481~R490 filename
+            $data = array_merge([1], $name_int16);
+            $types = array_fill(0, count($data), "INT");
+
+            $modbus->writeMultipleRegister(
+                $unitId,
+                480,
+                $data,
+                $types
+            );
+
+            $this->logMessage(
+                "write R480~R490 OK, filename={$filenameWithoutExtension}, unitId={$unitId}"
+            );
+
+            $this->logMessage('firmware update end');
+
+            echo json_encode(["error" => ""]);
+            exit();
+
+        } catch (Exception $e) {
+            $this->logMessage('modbus error status: ' . $modbus->status);
+            $this->logMessage('firmware update end');
+            echo json_encode(["error" => "modbus error"]);
+            exit();
+        }
     }
 
-    function asciiToHexToInt($input) {
-        // 將 ASCII 字元轉換為十六進位
-        $hex = bin2hex($input);
 
-        // 將十六進位字串以每 4 個字元為一組進行分割
-        $chunks = str_split($hex, 4);
 
-        $result = array();
-        foreach ($chunks as $chunk) {
-            // 將每組 4 個字元的十六進位轉換為整數
-            $result[] = hexdec($chunk);
+
+    public function asciiToHexToInt_temp(string $input): array{
+
+        // ASCII → byte array
+        $bytes = array_values(unpack('C*', $input));
+
+        // 奇數 byte 補 0x00
+        if (count($bytes) % 2 !== 0) {
+            $bytes[] = 0;
+        }
+
+        $result = [];
+
+        // 每兩個 byte → 一個 Modbus register
+        for ($i = 0; $i < count($bytes); $i += 2) {
+            $hi = $bytes[$i];
+            $lo = $bytes[$i + 1];
+            $result[] = ($hi << 8) | $lo;
         }
 
         return $result;
     }
+
+
 
 
 

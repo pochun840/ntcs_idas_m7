@@ -1,8 +1,0 @@
-[Fri Feb 06 00:00:03.445556 2026] [mpm_prefork:notice] [pid 493] AH00163: Apache/2.4.52 (Ubuntu) configured -- resuming normal operations
-[Fri Feb 06 00:00:03.445676 2026] [core:notice] [pid 493] AH00094: Command line: '/usr/sbin/apache2'
-[Fri Feb 06 00:16:18.045752 2026] [php7:notice] [pid 1463] [client 192.168.0.37:59564] PHP Notice:  Undefined variable: filePath in /var/www/html/idas_update.php on line 233, referer: http://192.168.0.138/
-[Fri Feb 06 08:16:36.369121 2026] [php7:notice] [pid 1464] [client 192.168.0.37:50086] PHP Notice:  Undefined variable: filePath in /var/www/html/idas_update.php on line 233
-[Fri Feb 06 08:17:31.742388 2026] [mpm_prefork:notice] [pid 493] AH00163: Apache/2.4.52 (Ubuntu) configured -- resuming normal operations
-[Fri Feb 06 08:17:31.744719 2026] [core:notice] [pid 493] AH00094: Command line: '/usr/sbin/apache2'
-[Fri Feb 06 08:43:00.913293 2026] [mpm_prefork:notice] [pid 494] AH00163: Apache/2.4.52 (Ubuntu) configured -- resuming normal operations
-[Fri Feb 06 08:43:00.925047 2026] [core:notice] [pid 494] AH00094: Command line: '/usr/sbin/apache2'

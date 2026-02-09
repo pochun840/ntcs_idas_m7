@@ -28,6 +28,31 @@ class Check extends Controller
         //$this->deviceId = $this->ntcs_device_db_sysnc();
     }
 
+    public function sync_device_identity(){
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+
+            $result = $this->ntcs_device_db_sysnc();
+
+            echo json_encode([
+                'res_type' => 'OK',
+                'msg' => 'device synced',
+                'result' => $result
+            ], JSON_UNESCAPED_UNICODE);
+
+        } catch (Throwable $e) {
+
+            echo json_encode([
+                'res_type' => 'ERROR',
+                'msg' => 'sync failed'
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+
+
     
     public function ajax_check_device_id(){
         

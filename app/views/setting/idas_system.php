@@ -27,7 +27,7 @@
     <div class="row t2">
         <div class="col-3 t1"><?php echo $text['system_firmware_update'];?>:</div>
         <div class="col t2">
-            <input type="file" id="firmware-file-uploader" data-target="firmware-file-uploader" accept=".cfg" class="t3 w3-submit w3-border w3-round">
+            <input type="file" id="firmware-file-uploader" data-target="firmware-file-uploader" accept=".zip" class="t3 w3-submit w3-border w3-round">
             <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="Firmware_Update();"><?php echo $text['system_firmware_update'];?></button>
         </div>        
     </div>  

@@ -659,14 +659,14 @@ function Import_SystemConfig() {
 }
 
 function Firmware_Update() {
+
     var bb_file = document.getElementById("firmware-file-uploader").files[0];
-    if (bb_file == undefined) {
-        return;
-    }
+    if (!bb_file) return;
+
+    firmwareUploading = true;   // ⭐ 停止 polling
 
     var form = new FormData();
     form.append("file", bb_file);
-    var url = '?url=Settings/FirmwareUpdate';
 
     $.ajax({
         type: "POST",
@@ -675,13 +675,15 @@ function Firmware_Update() {
         contentType: false,
         data: form,
         dataType: "json",
-        url: url,
-        beforeSend: function() {
-            //$('#overlay').removeClass('hidden');
-        },
-    }).done(function(result) {
-        //$('#overlay').addClass('hidden');
+        url: '?url=Settings/FirmwareUpdate',
+    })
+    .done(function(result) {
+        firmwareUploading = false; // ⭐ 恢復 polling
         document.getElementById("firmware-file-uploader").value = '';
+    })
+    .fail(function(xhr){
+        firmwareUploading = false; // ⭐ 恢復 polling
+        console.log('www:',xhr.responseText);
     });
 }
 

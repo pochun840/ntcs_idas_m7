@@ -138,156 +138,217 @@ function include_css() {
 
     <!-- ================== 其他工具 JS ================== -->
 
-   <script>
+
+    <script>
 /* ============================================================
-   Device ID 自動偵測 + 5秒延遲跳視窗 (FINAL)
-   ============================================================ */
-
-const WAIT_MS = 5000; // ⭐ 等待5秒再跳視窗
-
-/* ---------------- cookie ---------------- */
+   🌐 Language helper
+============================================================ */
 function getCookieSafe(name){
     try{
         const m=document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
         return m?decodeURIComponent(m[1]):null;
     }catch(e){return null;}
 }
-
-/* ---------------- 語系 ---------------- */
 function getLangCode(){
     let lang=(getCookieSafe("language")||"zh-tw").toLowerCase();
     if(lang==="en") lang="en-us";
     if(!["en-us","zh-tw","zh-cn"].includes(lang)) lang="en-us";
     return lang;
 }
+const TEXT = {
+    rebootBanner:{
+        "zh-tw":"控制器裝置編號已變更，請重新啟動控制器以完成套用。",
+        "zh-cn":"控制器设备编号已变更，请重新启动控制器以完成应用。",
+        "en-us":"Controller device ID changed. Please reboot the controller."
+    },
+    reloadTitle:{ "zh-tw":"提示","zh-cn":"提示","en-us":"Notice" },
+    reloadMsg:(id)=>({
+        "zh-tw":"偵測到新的控制器 (ID:"+id+")，是否重新整理畫面？",
+        "zh-cn":"检测到新的控制器 (ID:"+id+")，是否重新刷新页面？",
+        "en-us":"New controller detected (ID:"+id+"). Reload now?"
+    }),
+    ok:{ "zh-tw":"確定","zh-cn":"确定","en-us":"OK" }
+};
+function t(obj){ return obj[getLangCode()] || obj["en-us"]; }
 
-function getDeviceReloadMessage(newId){
-    const lang=getLangCode();
-    if(lang==="zh-tw") return "控制器裝置編號已變更為 "+newId+"，是否重新整理畫面";
-    if(lang==="zh-cn") return "控制器设备编号已变更为 "+newId+"，是否重新刷新页面";
-    return "Controller device ID has changed to "+newId+". Reload now?";
+/* ============================================================
+   ⭐ Boot grace（controller reboot）
+============================================================ */
+var bootGraceStart=null;
+const BOOT_GRACE_MS=30000;
+var lastOnlineState=null;
+
+function startBootGrace(){ bootGraceStart=Date.now(); }
+function inBootGrace(){
+    if(!bootGraceStart) return false;
+    return (Date.now()-bootGraceStart)<BOOT_GRACE_MS;
 }
 
-function getAlertifyUiText(){
-    const lang=getLangCode();
-    if(lang==="zh-tw") return {title:"提示",ok:"確定"};
-    if(lang==="zh-cn") return {title:"提示",ok:"确定"};
-    return {title:"Notice",ok:"OK"};
+/* ============================================================
+   🔴 Banner（改ID用）
+============================================================ */
+function showRebootBanner(){
+    if(document.getElementById("rebootBanner")) return;
+
+    const banner=document.createElement("div");
+    banner.id="rebootBanner";
+    banner.innerHTML="🔴 "+t(TEXT.rebootBanner);
+
+    Object.assign(banner.style,{
+        position:"fixed",top:"0",left:"0",width:"100%",
+        background:"#c0392b",color:"#fff",padding:"12px",
+        textAlign:"center",fontSize:"15px",zIndex:"99999",fontWeight:"bold"
+    });
+    document.body.appendChild(banner);
 }
+function hideRebootBanner(){ document.getElementById("rebootBanner")?.remove(); }
 
-/* ---------------- 倒數狀態 (跨刷新保存) ---------------- */
-function markDeviceChanged(id){
-    const prev=localStorage.getItem("device_changed_value");
-
-    // ⭐ ID不同 → 重新開始倒數
-    if(prev!==String(id)){
-        localStorage.setItem("device_changed_value",id);
-        localStorage.setItem("device_changed_time",Date.now());
-    }
-}
-
-function clearDeviceChanged(){
-    localStorage.removeItem("device_changed_time");
-    localStorage.removeItem("device_changed_value");
-}
-
-function getCountdownRemaining(){
-    const t=localStorage.getItem("device_changed_time");
-    if(!t) return null;
-    return WAIT_MS-(Date.now()-parseInt(t));
-}
-
-/* ---------------- 主狀態 ---------------- */
+/* ============================================================
+   🔵 Popup（換控制器用）
+============================================================ */
 var currentDeviceId=null;
 var deviceReloadDialogShown=false;
 
-/* ---------------- 跳視窗 ---------------- */
 function showReloadPopup(id){
     if(deviceReloadDialogShown) return;
     deviceReloadDialogShown=true;
-    clearDeviceChanged();
+    hideRebootBanner();
 
-    const msg=getDeviceReloadMessage(id);
-    const ui=getAlertifyUiText();
-
-    if(!window.alertify?.alert){
-        location.reload();
-        return;
-    }
-
-    alertify.alert(ui.title,msg,function(){
-        location.reload();
-    }).set({
-        labels:{ok:ui.ok},
-        closable:false,
-        movable:false
+    alertify.alert(
+        t(TEXT.reloadTitle),
+        t(TEXT.reloadMsg(id))
+    ).set({
+        labels:{ ok:t(TEXT.ok) },
+        closable:false,movable:false,pinnable:false,resizable:false,
+        onok:function(){ location.reload(); }
     });
 }
 
-/* ---------------- 檢查是否到達倒數時間 ---------------- */
-function checkCountdown(id){
-    const remain=getCountdownRemaining();
-    if(remain===null) return;
+/* ============================================================
+   ⭐ 同步 + Banner 控制（最終完整版）
+============================================================ */
+var lastChangedState = null; // ⭐ 新增：記錄上一輪 changed 狀態
 
-    if(remain<=0){
-        showReloadPopup(id);
-    }
+function autoSyncDeviceAfterReload(){
+
+    $.post("?url=Check/ajax_check_device_id",function(res){
+
+        if(!res || res.res_type!=="OK") return;
+        const changed = (res.changed===true || res.changed==="true" || res.changed==1);
+
+        /* ⭐⭐⭐ 同步完成偵測（最關鍵）⭐⭐⭐
+           changed：true → false = 後端剛同步完成
+           → UI 必須 reload
+        */
+        if(lastChangedState === true && changed === false){
+            console.log("Device sync finished → show reload popup");
+            showReloadPopup(res.device_id);
+            lastChangedState = changed;
+            return;
+        }
+
+        /* 更新狀態紀錄 */
+        lastChangedState = changed;
+
+        /* ⭐ reboot期間：只顯示 Banner */
+        if(inBootGrace()){
+            if(changed) showRebootBanner();
+            else hideRebootBanner();
+            return;
+        }
+
+        /* ⭐ ID已一致 */
+        if(!changed){
+            hideRebootBanner();
+            localStorage.removeItem("device_sync_lock");
+            return;
+        }
+
+        /* ⭐ 同一台控制器改ID → 顯示 Banner */
+        showRebootBanner();
+
+        /* ⭐ 同步只做一次 */
+        if(localStorage.getItem("device_sync_lock")==="1") return;
+        localStorage.setItem("device_sync_lock","1");
+
+        console.log("Start backend sync...");
+        $.post("?url=Check/sync_device_identity");
+
+    },"json");
 }
 
-/* ---------------- 輪詢 ---------------- */
-function pollDeviceId(){
 
+/* ============================================================
+   ⭐ 輪詢 Controller（最重要）
+============================================================ */
+function pollDeviceId(){
     $.ajax({
         url:"?url=Check/ajax_check_device_id",
         type:"POST",
         dataType:"json",
-        timeout:3000,
-
         success:function(res){
+
             if(!res || res.res_type!=="OK") return;
 
-            let newId=parseInt(res.device_id);
+            const newId=parseInt(res.device_id);
             if(!Number.isFinite(newId)) return;
 
-            /* ⭐ 第一次初始化 */
-            if(currentDeviceId === null){
-                currentDeviceId = newId;
+            const changed = (res.changed===true || res.changed==="true" || res.changed==1);
+
+            /* reboot偵測 */
+            if(lastOnlineState===false && res.online===true)
+                startBootGrace();
+            lastOnlineState=res.online;
+
+            /* 初始化 */
+            if(currentDeviceId===null){
+                currentDeviceId=newId;
                 return;
             }
 
-            /* ⭐⭐⭐ 真正偵測 ID 變化 ⭐⭐⭐ */
-            if(newId !== currentDeviceId){
-                console.log("Device ID changed:", currentDeviceId, "→", newId);
+            /* ⭐⭐⭐ 核心判斷 ⭐⭐⭐ */
+            if(newId!==currentDeviceId){
 
-                // ⭐ 如果還沒在倒數 → 才開始倒數
-                if(getCountdownRemaining() === null){
-                    markDeviceChanged(newId);
+                if(inBootGrace()){
+                    currentDeviceId=newId;
+                    return;
+                }
+
+                if(changed){
+                    /* 改ID（同一台）→ Banner */
+                    showRebootBanner();
+                    currentDeviceId=newId;
+                    return;
+                }else{
+                    /* 換控制器 → Popup */
+                    showReloadPopup(newId);
+                    return;
                 }
             }
 
-            /* ⭐ 檢查倒數是否結束 */
-            checkCountdown(newId);
-
-            currentDeviceId = newId;
+            currentDeviceId=newId;
+            autoSyncDeviceAfterReload();
         },
-
-        complete:function(){
-            setTimeout(pollDeviceId,2000);
-        }
+        complete:function(){ setTimeout(pollDeviceId,2000); }
     });
 }
 
-
-/* ---------------- 啟動 ---------------- */
+/* ============================================================
+   啟動
+============================================================ */
 $(function(){
     const cookieVal=getCookieSafe("temp_device_id");
-    if(cookieVal){
-        currentDeviceId=parseInt(cookieVal);
-        if(!Number.isFinite(currentDeviceId)) currentDeviceId=null;
-    }
+    if(cookieVal) currentDeviceId=parseInt(cookieVal);
+
+    autoSyncDeviceAfterReload();
     pollDeviceId();
 });
 </script>
+
+
+
+
+
 
 
 
