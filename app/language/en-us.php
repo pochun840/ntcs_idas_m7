@@ -260,6 +260,7 @@ $text['NG'] = 'NG';
 $text['NG-High'] = 'NG-High';
 $text['NG-Low'] = 'NG-Low';
 $text['OK-Sequence'] = 'OK-Sequence';
+$text['OK-SEQ'] = 'OK-SEQ';
 $text['OK-JOB'] = 'OK-JOB';
 $text['Tool Runing'] = 'Tool Running';
 $text['Tool Trigger'] = 'Tool Trigger';

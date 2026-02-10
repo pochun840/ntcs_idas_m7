@@ -269,6 +269,7 @@ $text['NG'] = '失敗';
 $text['NG-High'] = '超出上限';
 $text['NG-Low'] = '低于下限';
 $text['OK-Sequence'] = '工序完成';
+$text['OK-SEQ'] = '工序完成';
 $text['OK-JOB'] = '工作完成';
 $text['Tool Runing'] = '马达信号';
 $text['Tool Trigger'] = '启动信号';
