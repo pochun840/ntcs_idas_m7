@@ -1,14 +1,12 @@
-﻿.container-ms
-{
+﻿.container-ms {
     margin: 0 auto;
-    padding: 0px;
+    padding: 0;
     overflow: hidden;
     position: static;
 }
 
 /* Header */
-#header
-{
+#header {
     min-height: 40px;
     background-color: hsl(0, 60%, 50%);
     font-size: 30px;
@@ -21,69 +19,62 @@
     z-index: 1000;
 }
 
-.no-border
-{
+.no-border {
     border: none;
 }
 
-.no-border td
-{
+.no-border td {
     border: none;
 }
 
-body
-{
+body {
     padding-top: 55px;
     margin: 0;
 }
 
-.main-content
-{
+.main-content {
     display: flex;
 }
 
-.center-content
-{
+.center-content {
     width: 100%;
     padding: 3px 5px;
+    box-sizing: border-box;
 }
 
-.topnav
-{
+.topnav {
     width: 100%;
     min-height: 40px;
     font-size: 3vmin;
     overflow: hidden;
     background-color: #838588;
-    border: 0px solid #B5B5B5;
+    border: 0;
     padding: 2px;
+    box-sizing: border-box;
 }
 
-.topnav input
-{
-    min-height:28px; 
+.topnav input {
+    min-height: 28px;
     font-size: 3vmin;
-    text-align: center; 
-    background-color:#D9D9D9 ; 
-    border:0; 
-    margin: 3px;    
+    text-align: center;
+    background-color: #D9D9D9;
+    border: 0;
+    margin: 3px;
 }
 
-.operation-setting 
-{
+.operation-setting {
     overflow-y: auto;
     display: flex;
     justify-content: center;
     align-items: center;
-    border-spacing: 30px;}
+    border-spacing: 30px;
+}
 
-.column 
-{
+.column {
     flex: 1;
 }
 
-.item-target-torque 
-{
+.item-target-torque {
     background-color: #D3CDCD;
     height: 17vh;
     font-size: 3vmin;
@@ -91,17 +82,14 @@ body
     text-align: center;
 }
 
-.item-result
-{
-    /*background-color: #FFEF62;*/
+.item-result {
     height: 17vh;
     font-size: 3vmin;
     margin: 5px;
     text-align: center;
 }
 
-.item-targer-angle
-{
+.item-targer-angle {
     background-color: #BABABA;
     height: 17vh;
     font-size: 3vmin;
@@ -109,8 +97,7 @@ body
     text-align: center;
 }
 
-.item-message
-{
+.item-message {
     background-color: #D3CDCD;
     height: 17vh;
     font-size: 3vmin;
@@ -118,18 +105,16 @@ body
     text-align: center;
 }
 
-.w3-display-topmiddle
-{
+.w3-display-topmiddle {
     margin-top: 5px;
 }
 
-.w3-border-top
-{
+.w3-border-top {
     width: 50%;
 }
 
-.chart-setting 
-{
+/* chart 區 */
+.chart-setting {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -137,31 +122,36 @@ body
     box-sizing: border-box;
     position: relative;
     z-index: 1;
-    clear: both; /* nếu dùng float trong các phần khác */
+    clear: both;
 }
 
+/* 按鈕區 */
 .button-chart {
     display: flex;
-    flex-wrap: wrap;             /* Cho phép xuống dòng */
-    justify-content: center;     /* Căn giữa cả cụm nút */
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
     gap: 6px;
     padding: 5px;
     background-color: #f9f9f9;
     box-sizing: border-box;
+    width: 100%;
+    position: relative;
+    z-index: 5;
 }
 
-/* Cài đặt mặc định: 1 hàng 5 nút (ngang) */
+/* 預設 5 顆 */
 .btn-chart {
-    flex: 0 0 calc((100% - 24px) / 5);  /* 5 nút chia đều (4 khoảng cách 6px = 24px) */
+    flex: 0 0 calc((100% - 24px) / 5);
     max-width: 120px;
     font-size: clamp(10px, 3vw, 14px);
     height: 30px;
     padding: 5px 4px;
     background-color: #6E8085;
-    color: white;
+    color: #fff;
     border: none;
     border-radius: 5px;
-    white-space: normal;         /* Cho phép xuống dòng nếu cần */
+    white-space: normal;
     text-align: center;
     line-height: 1.2;
     cursor: pointer;
@@ -169,37 +159,119 @@ body
     word-break: break-word;
 }
 
-/* Khi màn hình nhỏ (quay dọc), chia 2 hàng: 3 nút + 2 nút */
-@media (max-width: 500px) {
-    .btn-chart {
-        flex: 0 0 calc((100% - 12px) / 3); /* Mỗi hàng có 3 nút max (2 khoảng cách = 12px) */
-    }
-    .button-chart button:nth-child(4),
-    .button-chart button:nth-child(5) {
-        flex: 0 0 calc((100% - 6px) / 2); /* 2 nút hàng dưới chia đều */
-    }
-}
-
-
 .btn-chart.active,
 .btn-chart:hover {
     background-color: #007bff;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-/* Biểu đồ hiển thị */
+/* radio 區 */
+.angle-switch-wrap {
+    display: none;
+    width: 100%;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+    color: #222 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+.angle-radio-label {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 10px;
+    white-space: nowrap;
+    vertical-align: middle;
+    color: #222 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.angle-radio-text {
+    all: unset;
+    display: inline-block !important;
+    color: #222 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-indent: 0 !important;
+    letter-spacing: normal !important;
+}
+
+.angle-switch-wrap input[type="radio"] {
+    transform: scale(1.05);
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+/* 圖表區 */
 .display-chart {
     width: 100%;
     flex-grow: 1;
     background-color: #fff;
-    padding: 0px;
+    padding: 0;
     box-sizing: border-box;
     overflow: auto;
 }
 
-input:disabled 
-{
-    opacity: 1; /* Giữ độ rõ nét */
-    color: #000; /* Đảm bảo chữ vẫn có màu đen rõ ràng */
+#graph {
+    position: relative;
+    width: 100%;
+    min-height: 290px;
 }
 
+#chart {
+    position: relative;
+    z-index: 1;
+    width: 100% !important;
+    height: 290px !important;
+}
+
+input:disabled {
+    opacity: 1;
+    color: #000;
+}
+
+/* 小螢幕：3+2 */
+@media (max-width: 500px) {
+    .btn-chart {
+        flex: 0 0 calc((100% - 12px) / 3);
+    }
+
+    .button-chart button:nth-child(4),
+    .button-chart button:nth-child(5) {
+        flex: 0 0 calc((100% - 6px) / 2);
+    }
+}
+
+@media screen and (max-width: 768px) {
+    #graph {
+        min-height: 260px;
+    }
+
+    #chart {
+        height: 260px !important;
+    }
+
+    .angle-switch-wrap {
+        font-size: 12px !important;
+    }
+
+    .angle-radio-label {
+        margin: 0 8px;
+    }
+
+    .angle-radio-text {
+        font-size: 12px !important;
+    }
+}

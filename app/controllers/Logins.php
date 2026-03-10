@@ -22,6 +22,8 @@ class Logins extends Controller
 
     public function index($url){
 
+        //先做資料庫檔案完整性檢查
+        $repairResult = $this->checkAndRepairDatabaseFiles();
 
         session_start();
         $_SESSION['sessionid'] = session_id();
@@ -326,6 +328,68 @@ class Logins extends Controller
         $iDas_Version = $this->AdminModel->Get_Das_Config('idas_version');
         $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);  
     }
+
+
+    /**
+     * 檢查 database 目錄底下 IDAS 檔案是否為 0KB
+     * 若為 0KB 或不存在，則從 controller 端複製來源檔案覆蓋
+     */
+    private function checkAndRepairDatabaseFiles(): array
+    {
+        $baseDir = '/var/www/html/database/';
+        $srcDir  = '/home/kls/NTCS7/';
+
+        $files = [
+            'KLS_NTCS_IDAS.Lin'     => 'KLS_NTCS.Lin',
+            'ntcs_barcode_IDAS.db'  => 'ntcs_barcode.db',
+            'ntcs_device_IDAS.db'   => 'ntcs_device.db',
+        ];
+
+        $result = [];
+
+        // 確保目標目錄存在
+        if (!is_dir($baseDir)) {
+            mkdir($baseDir, 0777, true);
+        }
+
+        foreach ($files as $targetName => $sourceName) {
+
+            $targetPath = $baseDir . $targetName;
+            $sourcePath = $srcDir  . $sourceName;
+
+            $needsRepair = false;
+
+            // 檔案不存在
+            if (!file_exists($targetPath)) {
+                $needsRepair = true;
+            }
+            // 檔案大小為 0
+            elseif (filesize($targetPath) === 0) {
+                $needsRepair = true;
+            }
+
+            if ($needsRepair) {
+
+                if (file_exists($sourcePath) && filesize($sourcePath) > 0) {
+
+                    if (copy($sourcePath, $targetPath)) {
+                        $result[$targetName] = 'repaired';
+                    } else {
+                        $result[$targetName] = 'copy_failed';
+                    }
+
+                } else {
+                    $result[$targetName] = 'source_missing';
+                }
+
+            } else {
+                $result[$targetName] = 'ok';
+            }
+        }
+
+        return $result;
+    }
+
 
 
 }

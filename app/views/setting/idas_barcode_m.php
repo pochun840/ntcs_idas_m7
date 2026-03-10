@@ -1,131 +1,95 @@
 <div id="Barcode_Setting" class="divMode" style="display: none">
-        <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['system_barcode_setting'] ;?></div>
-        <div class="barcode-scrollbar" id="style-barcode">
-            <div class="barcode-force-overflow">  
-                <div style="position: relative; max-width: 100%;">                
-                    <div class="table-container" id="tableContainer">
-                        <table id="job_table" class="setting-table w3-table w3-hoverable">
-                            <thead style="font-size: 3vmin;">
-                                <tr class="w3-dark-grey">
-                                    <th></th>
-                                    <th><?php echo $text['job_id'];?></th>
-                                    <th><?php echo $text['job_name'];?></th>
-                                    <th><?php echo $text['system_barcode'];?></th>
-                                    <th><?php echo $text['system_barcode_from'];?></th>
-                                    <th>to</th>
-                                    <th>barcode mode</th>
-                                    <th>Count</th>
-                                </tr>
-                            </thead>
-
-                            <tbody style="font-size: 3vmin;" id='total_barcodes'>
-                                <?php foreach ($data['barcodes'] as $k_b =>$v_b){?>
-                                    <tr>
-                                        <td style="text-align: center; vertical-align: middle;" >
-                                            <input class="form-check-input" type="checkbox" name="barcode_check" id="barcode_check" value="<?php echo $v_b['barcode_selected_job'];?>" style="zoom:1.2">
-                                        </td>
-                                        <td><?php echo $v_b['barcode_selected_job'];?></td>
-                                        <td><?php echo $v_b['job_name'];?></td>
-                                        <td><?php echo $v_b['barcode'];?></td>
-                                        <td><?php echo $v_b['barcode_range_from'];?></td>
-                                        <td><?php echo $v_b['barcode_range_to'];?></td>
-                                        <td><?php echo $data['barcode_mode'][$v_b['barcode_enable']];?></td>
-                                        <td><?php echo $v_b['barcode_range_count'];?></td>
-                                    </tr>
-                                <?php } ?>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="bacode-btn-container">
-                        <button class="bacode-btn" onclick="changePage('job_table', -1)">&#60;</button>
-                        <button class="bacode-btn" onclick="changePage('job_table', 1)">&#62;</button>
-                    </div>
-                </div>    
-                    
-                <hr>
-                                
-                <div class="row t2">
-                    <div class="col-5 t1"><?php echo $text['system_barcode'];?>:</div>
-                    <div class="col-7 t2">
-                        <input id="barcode_name" name="barcode_name" style="height: 32px" type="text" value="" maxlength="100" class="form-control" required>
-                    </div>
-                </div>
-                <div class="row t2">
-                    <div class="col-5 t1"><?php echo $text['system_barcode_match_from'];?>:</div>
-                    <div class="col-7 t2">
-                        <input id="barcode_from" name="barcode_from" style="height: 32px" type="text" value="" class="form-control">
-                    </div>
-                </div>
-                <div class="row t2">
-                    <div class="col-5 t1"><?php echo $text['system_barcode_match_to'];?>:</div>
-                    <div class="col-7 t2">
-                        <input id="barcode_count" name="barcode_count" style="height: 32px" type="text" value="" class="form-control">
-                    </div>
-                </div>
-                <div class="row t2">
-                    <div class="col-5 t1"><?php echo $text['select_job'];?>:</div>
-                    <div class="col t2">
-                    <select id="barcode_job" name="barcode_job" onchange="fetchSeqList()" >
-                        <option value="-1" disabled selected ><?php echo $text['system_barcode_select_job_m'];?></option>
-                            <?php
-                            foreach ($data['job_list'] as $key => $value) {?>
-                                <option value='<?php echo $value['job_id'];?>'><?php echo $value['job_id']." ".$value['job_name'];?></option>
-                            <?php }?>
-                            
-                    </select>
-                    </div>
-                </div>
-
-                <div id="barcode_select_seq" style="display:none;">
-                    <div class="row t2">
-                        <div class="col-5 t1"><?php echo $text['system_barcode_select_seq'];?>:</div>
-                        <div class="col t2">
-                            <select id="barcode_seq" name="barcode_seq">
-                                <option value="-1"><?php echo $text['system_barcode_select_seq_m'];?></option>   
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>    
-                
-        <div style="text-align: center;margin-top: 30px;">
-            <input type="hidden" id="barcode_id" value="">
-            <input type="hidden" id="barcode_job_old" value="">
-            <button class="all-btn w3-button w3-border w3-round-large" onclick="update_barcode()" ><?php echo $text['save'];?></button>&nbsp;&nbsp;
-            <button class="all-btn w3-button w3-border w3-round-large" onclick="delete_barcode()" ><?php echo $text['delete_text'];?></button>
-        </div>               
+    <div class="col t1" style="padding-left: 3%; font-weight: bold; padding-top: 1%;">
+        <?php echo $text['system_barcode_setting']; ?>
     </div>
 
-<script>
+    <div class="barcode-scrollbar" id="style-barcode">
+        <div class="barcode-force-overflow">
+            <div style="position: relative; max-width: 100%;">
+                <div class="table-container" id="tableContainer">
+                    <table id="job_table" class="setting-table w3-table w3-hoverable">
+                        <thead style="font-size: 3vmin;">
+                            <tr class="w3-dark-grey">
+                                <th></th>
+                                <th><?php echo $text['job_id']; ?></th>
+                                <th><?php echo $text['job_name']; ?></th>
+                                <th><?php echo $text['system_barcode']; ?></th>
+                                <th><?php echo $text['system_barcode_from']; ?></th>
+                                <th>to</th>
+                                <th>barcode mode</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
 
+                        <tbody style="font-size: 3vmin;" id="total_barcodes">
+                            <?php foreach (($data['barcodes'] ?? []) as $k_b => $v_b){ ?>
+                                <tr>
+                                    <td style="text-align: center; vertical-align: middle;">
+                                        <input class="form-check-input barcode-check"
+                                               type="checkbox"
+                                               name="barcode_check"
+                                               id="barcode_check_<?php echo $k_b; ?>"
+                                               value="<?php echo htmlspecialchars($v_b['barcode_selected_job'] ?? '', ENT_QUOTES); ?>"
+                                               data-job-id="<?php echo htmlspecialchars($v_b['barcode_selected_job'] ?? '', ENT_QUOTES); ?>"
+                                               data-seq-id="<?php echo htmlspecialchars($v_b['seq_id'] ?? '-1', ENT_QUOTES); ?>"
+                                               style="zoom:1.2">
+                                    </td>
+                                    <td><?php echo htmlspecialchars($v_b['barcode_selected_job'] ?? ''); ?></td>
+                                    <td><?php echo htmlspecialchars($v_b['job_name'] ?? ''); ?></td>
+                                    <td><?php echo htmlspecialchars($v_b['barcode'] ?? ''); ?></td>
+                                    <td><?php echo htmlspecialchars($v_b['barcode_range_from'] ?? ''); ?></td>
+                                    <td><?php echo htmlspecialchars($v_b['barcode_range_to'] ?? ''); ?></td>
+                                    <td>
+                                        <?php
+                                            $barcodeEnable = $v_b['barcode_enable'] ?? null;
+                                            echo ($barcodeEnable !== null && isset($data['barcode_mode'][$barcodeEnable]))
+                                                ? htmlspecialchars($data['barcode_mode'][$barcodeEnable], ENT_QUOTES)
+                                                : '';
+                                        ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($v_b['barcode_range_count'] ?? ''); ?></td>
+                                </tr>
+                            <?php } ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bacode-btn-container">
+                    <button class="bacode-btn" type="button" onclick="changePage('job_table', -1)">&#60;</button>
+                    <button class="bacode-btn" type="button" onclick="changePage('job_table', 1)">&#62;</button>
+                </div>
+            </div>
+
+            <hr>
+        </div>
+    </div>
+</div>
+
+<script>
 $(document).on('change', 'input[name="barcode_check"]', function () {
     const isChecked = $(this).is(':checked');
     const $row = $(this).closest('tr');
 
-    
-   // === 勾選時帶入 JOB / SEQ ===
-   if (isChecked) {
-       const jobId = $(this).data('job-id');
-       const seqId = $(this).data('seq-id');
-       fetchSeqList(jobId, seqId);
-   }
+    if (isChecked) {
+        const jobId = $(this).data('job-id');
+        const seqId = $(this).data('seq-id');
 
+        if (jobId) {
+            $('#barcode_job').val(String(jobId));
+            fetchSeqList(jobId, seqId);
+        }
+    }
 
-    // 切換背景顏色
     if (isChecked) {
         $row.find('td').css('background-color', '#9AC0CD');
     } else {
-        $row.find('td').css('background-color', ''); // 清空回到預設
+        $row.find('td').css('background-color', '');
     }
 
-    // 欄位啟用/禁用
     $row.find('input, select, textarea')
-        .not(this) // 排除自己
+        .not(this)
         .prop('disabled', !isChecked);
 
-    // 勾選時自動 focus 第一個可輸入欄位
     if (isChecked) {
         $row.find('input, select, textarea')
             .not(this)
@@ -134,62 +98,69 @@ $(document).on('change', 'input[name="barcode_check"]', function () {
     }
 });
 
-
 function removeDuplicateOptions(selectId) {
     const select = document.getElementById(selectId);
+    if (!select) return;
+
     const seen = new Set();
     const options = Array.from(select.options);
 
     options.forEach(option => {
         if (seen.has(option.value) && option.value !== "-1") {
-            option.remove(); // 移除重複
+            option.remove();
         } else {
             seen.add(option.value);
         }
     });
 }
 
+let _fetchSeqXhr = null;
+let _fetchSeqReqId = 0;
 
-    // 升級版：透過 JOBID 載入 SEQ，支援「預選 seqId」，並自動去除重複
-    // ---- 全域保險變數 ----
-    let _fetchSeqXhr = null;   
-    let _fetchSeqReqId = 0;   
+function fetchSeqList(jobId = null, selectedSeqId = null) {
+    const jobSelect = document.getElementById('barcode_job');
+    const barcodeSeq = document.getElementById('barcode_seq');
+    const barcodeSeqWrap = document.getElementById('barcode_select_seq');
 
-    function fetchSeqList(jobId = null, selectedSeqId = null) {
-        const jobSelect  = document.getElementById('barcode_job');
-        const barcodeSeq = document.getElementById('barcode_seq');
-        if (!jobSelect || !barcodeSeq) return;
+    if (!jobSelect || !barcodeSeq) return;
 
-        if (!jobId) jobId = jobSelect.value;
+    if (!jobId) jobId = jobSelect.value;
 
-        // 先取消舊請求（若有）
-        if (_fetchSeqXhr) { try { _fetchSeqXhr.abort(); } catch(e){} _fetchSeqXhr = null; }
+    if (_fetchSeqXhr) {
+        try { _fetchSeqXhr.abort(); } catch(e){}
+        _fetchSeqXhr = null;
+    }
 
-        // 重設下拉
-        barcodeSeq.innerHTML = '';
-        const opt0 = document.createElement('option');
-        opt0.value = '-1';
-        opt0.textContent = "<?php echo $text['system_barcode_select_seq_m'];?>";
-        barcodeSeq.appendChild(opt0);
+    barcodeSeq.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = '-1';
+    opt0.textContent = "<?php echo $text['system_barcode_select_seq_m']; ?>";
+    barcodeSeq.appendChild(opt0);
 
-        if (jobId === '-1') return;
+    if (jobId === '-1' || !jobId) {
+        if (barcodeSeqWrap) barcodeSeqWrap.style.display = 'none';
+        return;
+    }
 
-        // 標記這次請求的編號
-        const myReqId = ++_fetchSeqReqId;
+    if (barcodeSeqWrap) barcodeSeqWrap.style.display = 'block';
 
-        _fetchSeqXhr = $.ajax({
-            url: '?url=Settings/GetJobSeq',
-            type: 'POST',
-            data: { job_id: jobId },
-            success: function(response) {
-            // 只處理「最後一個」請求的回應
+    const myReqId = ++_fetchSeqReqId;
+
+    _fetchSeqXhr = $.ajax({
+        url: '?url=Settings/GetJobSeq',
+        type: 'POST',
+        data: { job_id: jobId },
+        success: function(response) {
             if (myReqId !== _fetchSeqReqId) return;
 
             let seqList = [];
-            try { seqList = JSON.parse(response) || []; }
-            catch (e) { console.error('Invalid JSON:', response); return; }
+            try {
+                seqList = JSON.parse(response) || [];
+            } catch (e) {
+                console.error('Invalid JSON:', response);
+                return;
+            }
 
-            // 去重 + 批次 append（用 fragment）
             const seen = new Set();
             const frag = document.createDocumentFragment();
 
@@ -206,38 +177,31 @@ function removeDuplicateOptions(selectId) {
 
             barcodeSeq.appendChild(frag);
 
-            // 預選（若有）
             if (selectedSeqId != null && selectedSeqId !== '-1') {
                 barcodeSeq.value = String(selectedSeqId);
                 if (barcodeSeq.value !== String(selectedSeqId)) {
-                barcodeSeq.value = '-1';
+                    barcodeSeq.value = '-1';
                 }
             }
-            },
-            error: function(xhr, status, err) {
+        },
+        error: function(xhr, status, err) {
             if (status !== 'abort') console.error('GetJobSeq error:', err);
-            },
-            complete: function() {
-            // 只有「最後一個請求」完成時，才清掉指標
+        },
+        complete: function() {
             if (myReqId === _fetchSeqReqId) _fetchSeqXhr = null;
-            }
-        });
         }
+    });
+}
 
-        // ---- 建議的事件綁定（避免重複）----
-        $(function () {
-        // 先解綁再綁，避免多重初始化導致執行兩次
-        $('#barcode_job').off('change.fetchSeq').on('change.fetchSeq', function () {
-            fetchSeqList(this.value, null);
-        });
+$(function () {
+    $('#barcode_job').off('change.fetchSeq').on('change.fetchSeq', function () {
+        fetchSeqList(this.value, null);
+    });
 
-        // 首次載入
-        fetchSeqList();
-        });
-
+    fetchSeqList();
+});
 
 function delete_barcode_item() {
-    // ---- 語系處理 ----
     const getLang = () => {
         try {
             if (typeof getCookie === 'function' && getCookie('language')) {
@@ -249,9 +213,10 @@ function delete_barcode_item() {
         return 'en-us';
     };
 
-    const langKey = getLang().includes('zh-tw') || getLang().includes('hant') || getLang().includes('tw') || getLang().includes('hk') || getLang().includes('mo')
+    const lang = getLang();
+    const langKey = lang.includes('zh-tw') || lang.includes('hant') || lang.includes('tw') || lang.includes('hk') || lang.includes('mo')
         ? 'zh-tw'
-        : (getLang().includes('zh-cn') || getLang().includes('hans') || getLang().includes('cn') || getLang().includes('sg'))
+        : (lang.includes('zh-cn') || lang.includes('hans') || lang.includes('cn') || lang.includes('sg'))
             ? 'zh-cn'
             : 'en-us';
 
@@ -291,14 +256,11 @@ function delete_barcode_item() {
         }
     }[langKey];
 
-    // 套用到 alertify 的按鈕
     try {
         if (alertify?.defaults?.glossary) {
             alertify.defaults.glossary.ok = i18n.ok;
             alertify.defaults.glossary.cancel = i18n.cancel;
             alertify.defaults.glossary.title = i18n.info;
-        } else if (typeof alertify.okBtn === 'function' && typeof alertify.cancelBtn === 'function') {
-            alertify.okBtn(i18n.ok).cancelBtn(i18n.cancel);
         }
     } catch (_) {}
 
@@ -324,13 +286,13 @@ function delete_barcode_item() {
             $.ajax({
                 url: "?url=Settings/delete_barcodes",
                 method: "POST",
-                data: { job_id: jobIds }, // jQuery 會自動用 job_id[]
+                data: { job_id: jobIds },
                 dataType: 'json',
                 success: function(response) {
                     if (spinner) spinner.style.display = 'none';
 
                     const res_type = response?.res_type || i18n.info;
-                    const res_msg  = response?.res_msg  || '';
+                    const res_msg = response?.res_msg || '';
 
                     alertify.alert(res_type, res_msg, function () {
                         sessionStorage.setItem('Barcode_Setting', 'block');
@@ -363,11 +325,7 @@ function delete_barcode_item() {
                 }
             });
         },
-        function onCancel() { /* 使用者取消 */ }
+        function onCancel() {}
     );
 }
-
-
-
-    
 </script>

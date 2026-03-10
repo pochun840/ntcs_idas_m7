@@ -53,7 +53,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <button id="bnt1" name="History_Display" class="button active" onclick="OpenButton('History')"><?php echo $text['data_history'];?></button>
                 <button id="bnt2" name="Export_Data_Display" class="button" onclick="OpenButton('Exportdata')"><?php echo $text['data_export'];?></button>
                 <button id="bnt3" name="Export_Data_download" class="button" onclick="OpenButton('Export_Data_download')"><?php echo $text['download_chart'];?></button>
-                <button id="bnt4" name="Customize" class="button" onclick="OpenButton('Customize')"><?php echo $text['customize'];?></button>
+                <button id="bnt4" name="Customize" class="button hide-mobile"   onclick="OpenButton('Customize')"><?php echo $text['customize'];?></button>
 
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
@@ -318,4 +318,11 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+@media (max-width: 768px){
+  .hide-mobile{
+    display:none !important;
+  }
+}
+
 </style>

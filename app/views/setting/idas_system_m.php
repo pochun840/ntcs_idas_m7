@@ -3,18 +3,7 @@
                 <div class="col t1" style="font-weight: bold; padding-top: 1%;"><?php echo $text['system_setting'];?></div>
                 <div class="setting_scrollbar" id="style-setting">
                     <div class="setting_force-overflow">
-                        <!--
-                        <div class="col t1"><//?php echo $text['system_password'];?>:</div>
-                        <div class="row t2 border-bottom">
-                            <div class="col t2">
-                                <form id="edit_password" method="get" style="margin: 3px 0px; margin-left: 15%">
-                                    <input type="password" id="new_password" size="18" placeholder="<//?php echo $text['system_new_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round"><br>
-                                    <input type="password" id="comfirm_password" size="18" placeholder="<//?php echo $text['system_confirm_password'];?>" maxlength="10" required class="t3 w3-submit w3-border w3-round">
-                                    <input type="button" value="<//?php echo $text['save'];?>"  onclick="edit_password()"  class="all-btn w3-submit w3-border w3-round-large" style="float: right">
-                                </form>
-                            </div>        
-                        </div>          
-                        -->
+                 
                         <div class="col t1"><?php echo $text['system_sys_date'];?>(UTC):</div>
                         <div class="row t2">
                             <div class="col t2">
@@ -26,70 +15,6 @@
                             </div>        
                         </div>  
                         <hr class="hr">        
-                        <div class="row t2">
-                            <div class="col t1"><?php echo $text['system_export_config'];?>:</div>
-                            <div class="col t2">
-                                <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="Export_SystemConfig();"><?php echo $text['system_export_config'];?></button>
-                            </div>        
-                        </div> 
-                        <hr class="hr">
-                                
-                        <div class="col t1"><?php echo $text['system_import_config'];?>:</div>         
-                        <div class="row t2">
-                            <div class="col t2" style="margin-left: 10%">
-                                <input type="file" id="import-file-uploader" data-target="import-file-uploader" accept=".cfg" class="t3 w3-submit w3-border w3-round" style="width: 250px">
-                            </div>        
-                            <div class="col t2">
-                                <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="Import_SystemConfig();"><?php echo $text['system_import_config'];?></button>
-                            </div>
-                        </div>  
-                        <hr class="hr">                
-                        
-                        <div class="col t1"><?php echo $text['system_firmware_update'];?>:</div>
-                        <div class="row t2">
-                            <div class="col t2" style="margin-left: 10%">
-                                <input type="file" id="firmware-file-uploader" data-target="firmware-file-uploader" accept=".zip" class="t3 w3-submit w3-border w3-round" style="width: 250px">
-                            </div>        
-                            <div class="col t2">
-                                <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="Firmware_Update();" ><?php echo $text['system_firmware_update'];?></button>
-                            </div>
-                        </div>  
-                        <hr class="hr">   
-
-                        <div class="row t2">
-                            <div class="col-6 t1"><?php echo $text['system_diskfull_warning']; ?>:</div>
-                            <div class="col t2">
-                                <div class="progress custom-bg" style="height: 25px; width: 100%; border-radius: 10px;">
-                                    <div id="disk-usage-bar" class="progress-bar custom-bar" style="border-radius: 10px; text-align: center; color: white;font-weight: bold;">0%</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row t2">
-                            <div class="col-6 t1"><?php echo $text['system_delete_database']; ?></div>
-                            <div class="col t2">
-                                <?php 
-                                    if (!empty($data['history_year_arr'])) {
-                                        foreach ($data['history_year_arr']['year'] as $key => $val) { ?>
-                                            <label class="year-item">
-                                            <input type="checkbox" 
-                                                class="year-checkbox zoom form-check-input"
-                                                name="year[]"
-                                                value="<?php echo htmlspecialchars($val); ?>"
-                                                onclick="onlyOne(this)"
-                                                <?php echo ($key === 0) ? 'checked' : ''; ?>>
-                                            <?php echo htmlspecialchars($val); ?>&nbsp;&nbsp;
-                                            </label>
-                                        <?php }
-                                    }
-                                ?>
-                            </div>  
-                        </div>
-                        <div class="row t2">
-                            <div class="col t2" style="margin-bottom:10px">
-                                <button class="all-btn w3-button w3-border w3-round-large" style="float: right" onclick="deleteSelectedFiles();"><?php echo $text['delete_text']; ?></button>
-                            </div>   
-                        </div>
                     </div>    
                 </div>
             </div>

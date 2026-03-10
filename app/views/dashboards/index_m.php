@@ -30,7 +30,6 @@
                     <button class="menu-item lightblue" id="data" onclick="window.location.href='?url=Data/index'"></button>
                     <button class="menu-item pink" id="tool" onclick="window.location.href='?url=Tools/index'"></button>
                     <button class="menu-item PaleGreen" id="setting" onclick="window.location.href='?url=Settings/index'"></button>
-                    <button class="menu-item lime" id="agent" onclick="window.location.href='?url=Agents'"></button>
                     <button class="menu-item indigo" id="load"      onclick="DB_sync_idas('C2D')"></button>
                     <button class="menu-item deep-orange" id="save" onclick="DB_sync_idas('D2C')"></button>
                     <button class="menu-item lime" id="remote" onclick="window.location.href='?url=Remotes'"></button>

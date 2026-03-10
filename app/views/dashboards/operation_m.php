@@ -1,5 +1,11 @@
-
-<link rel="stylesheet" href="<?php echo URLROOT; ?>css/operation_m.css?v=".<?php echo  date('YmdHi'); ?> type="text/css">
+<?php
+    // chart=6 視覺上歸到 chart=4 的按鈕
+    // chart=7 視覺上歸到 chart=2 的按鈕
+    $cm  = (string)($data['chart_mode'] ?? '');
+    $map = ['6' => '4', '7' => '2'];
+    $effective_mode = $map[$cm] ?? $cm;
+?>
+<link rel="stylesheet" href="<?php echo URLROOT; ?>css/operation_m.css?v=<?php echo date('YmdHi'); ?>" type="text/css">
 
 <body>
 <div class="container-ms">
@@ -7,35 +13,51 @@
         <table class="no-border">
             <tr id="header">
                 <td width="100%">
-                    <h3><?php echo  $data['text']['operation_result'];?></h3>
+                    <h3><?php echo $data['text']['operation_result'] ?? 'Operation Result'; ?></h3>
                 </td>
                 <td>
-                    <img id="back_home" src="./img/btn_home.png" style="margin-right: 10px"  onclick="window.location.href = '?url=In';">
+                    <img id="back_home"
+                         src="./img/btn_home.png"
+                         style="margin-right: 10px"
+                         onclick="window.location.href='?url=In';">
                 </td>
             </tr>
         </table>
     </div>
+
     <div class="main-content">
         <div class="center-content">
             <div class="topnav">
-                <label style="color: #fff;" for="job_name"><?php echo  $data['text']['job'];?>:</label>
-                <input type="text" id="Job_Name" name="Job_Name" size="10" maxlength="20"  disabled>
+                <label style="color: #fff;" for="Job_Name">
+                    <?php echo $data['text']['job_name'] ?? ($data['text']['job'] ?? 'Job'); ?>:
+                </label>
+                <input type="text" id="Job_Name" name="Job_Name" size="10" maxlength="20" disabled>
 
-                <label style="color: #fff;" for="seq_name"><?php echo  $data['text']['sequence'];?>:</label>
-                <input type="text" id="Seq_Name" name="Seq_Name" size="10" maxlength="20"    disabled>
+                <label style="color: #fff;" for="Seq_Name">
+                    <?php echo $data['text']['seq_name'] ?? ($data['text']['sequence'] ?? 'Sequence'); ?>:
+                </label>
+                <input type="text" id="Seq_Name" name="Seq_Name" size="10" maxlength="20" disabled>
 
-                <label style="color: #fff;" for="screw"><?php echo  $data['text']['screws'];?>:</label>
-                <input type="text" id="Screws" name="Screws" size="4" maxlength="20"    disabled>
+                <label style="color: #fff;" for="Screws">
+                    <?php echo $data['text']['screws'] ?? 'Screws'; ?>:
+                </label>
+                <input type="text" id="Screws" name="Screws" size="4" maxlength="20" disabled>
             </div>
-            
+
             <div class="operation-setting">
                 <div class="column">
                     <div class="item-target-torque w3-display-container">
                         <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red">
-                             <?php echo $data['text']['final_torque']; ?>
-                            (<?php echo $data['text'][$data['data_info']['final_torque_unit'] ?? ''] ?? ''; ?>)
+                            <?php echo $data['text']['final_torque'] ?? 'Final Torque'; ?>
+                            (
+                            <span id="Torque_Unit_Label">
+                                <?php echo $data['text'][$data['chart_unit_name'] ?? ($data['data_info']['final_torque_unit'] ?? '')] ?? ''; ?>
+                            </span>
+                            )
                         </div>
-                        <div id="Target_Torque" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0;"><?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?></div>
+                        <div id="Target_Torque" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0;">
+                            <?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?>
+                        </div>
                     </div>
 
                     <?php
@@ -43,116 +65,165 @@
                         $bgStyle = $color ? "background-color: {$color}; color: black;" : '';
                     ?>
 
-
-                    <div class="item-result w3-display-container" id='fasten_status_color'  style="<?php echo $bgStyle; ?>"  >
-                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-black"><?php echo  $data['text']['final_result'];?></div>
-                        <div id="Torque_Result" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0">     
-                            <?php if(!empty($data['data_info'])){?>
-                                <?php echo $data['text'][$data['data_info']['fasten_status_text']];?>
-                            <?php }?>
-                        </div>            
+                    <div class="item-result w3-display-container" id="fasten_status_color" style="<?php echo $bgStyle; ?>">
+                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-black">
+                            <?php echo $data['text']['final_result'] ?? 'Final Result'; ?>
+                        </div>
+                        <div id="Torque_Result" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0;">
+                            <?php if (!empty($data['data_info'])): ?>
+                                <?php echo $data['text'][$data['data_info']['fasten_status_text'] ?? ''] ?? ''; ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
+
                 <div class="column">
                     <div class="item-targer-angle w3-display-container">
-                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_angle'];?></div>
-                        <div id="Target_Angle" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0"><?php echo $data['data_info']['total_fasten_angle'] ?? '-'; ?></div>                        
+                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red">
+                            <?php echo $data['text']['final_angle'] ?? 'Final Angle'; ?>
+                        </div>
+                        <div id="Target_Angle" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0;">
+                            <?php echo $data['data_info']['total_fasten_angle'] ?? '-'; ?>
+                        </div>
                     </div>
+
                     <div class="item-message w3-display-container">
-                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red"><?php echo  $data['text']['final_message'];?></div>
-                        <div id="Message" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0">  
-                            <?php if(!empty($data['data_info'])){?>
-                                <?php if ($data['data_info']['error_message']){?>
-                                    <?php echo $data['data_info']['error_message']; ?>
-                                <?php }?>
-                            <?php }?>
-                        </div>                                    
+                        <div class="w3-display-topmiddle w3-border-top w3-border-bottom w3-border-red">
+                            <?php echo $data['text']['final_message'] ?? 'Final Message'; ?>
+                        </div>
+                        <div id="Message" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0;">
+                            <?php echo $data['data_info']['error_message'] ?? ''; ?>
+                        </div>
                     </div>
                 </div>
             </div>
+
             <div class="chart-setting">
                 <div class="button-chart">
-                    <?php foreach($data['chart_menu_arr'] as $k_menu => $v_menu) {
-                        $isActive = ($data['chart_mode'] == $k_menu) ? 'btn-chart active' : 'btn-chart';
-                    ?>
+                    <?php foreach (($data['chart_menu_arr'] ?? []) as $k_menu => $v_menu): ?>
                         <button type="button"
-                                class="<?php echo $isActive; ?>"
+                                class="btn-chart <?php echo ((string)$effective_mode === (string)$k_menu) ? 'active' : ''; ?>"
                                 id="<?php echo $v_menu['id']; ?>"
                                 onclick="chart_type('<?php echo $v_menu['id']; ?>')">
-                            <?php echo $data['text'][$v_menu['name']]; ?>
+                            <?php echo $data['text'][$v_menu['name']] ?? $v_menu['name']; ?>
                         </button>
-                    <?php } ?>
+                    <?php endforeach; ?>
+
+                    <div id="angleMode46" class="angle-switch-wrap" style="display:none;">
+                        <label class="angle-radio-label">
+                            <input type="radio" name="chartType46" value="4" onclick="selectAngleMode46(4)">
+                            <em class="angle-radio-text"><?php echo $data['text']['Total_angle'] ?? 'Total Angle'; ?></em>
+                        </label>
+
+                        <label class="angle-radio-label">
+                            <input type="radio" name="chartType46" value="6" onclick="selectAngleMode46(6)">
+                            <em class="angle-radio-text"><?php echo $data['text']['Step_angle'] ?? 'Step Angle'; ?></em>
+                        </label>
+                    </div>
+
+                    <div id="angleSwitch" class="angle-switch-wrap" style="display:none;">
+                        <label class="angle-radio-label">
+                            <input type="radio" name="chartType" value="7" onclick="chart_type('total_angle')">
+                            <em class="angle-radio-text"><?php echo $data['text']['Total_angle'] ?? 'Total Angle'; ?></em>
+                        </label>
+
+                        <label class="angle-radio-label">
+                            <input type="radio" name="chartType" value="2" onclick="chart_type('angle_time')">
+                            <em class="angle-radio-text"><?php echo $data['text']['Step_angle'] ?? 'Step Angle'; ?></em>
+                        </label>
+                    </div>
+
                 </div>
 
-                    <?php if(!empty($data['chart_info'])){?>
-                        <div id="graph" class="display-chart">
-                            <div id="chart" style="max-width: 100%; height: 290px;"></div>
-                        </div> 
-                    <?php }?>
-              
+                <div id="graph" class="display-chart">
+                    <div id="chart"></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-
 <script>
-// -----------------------------
-// 全域變數初始化
-// -----------------------------
 let chartMode = Number(<?php echo json_encode((int)($data['chart_mode'] ?? 1)); ?>);
 let myChart = null;
+let lastCsvSignature = null;
+let lastChartData = null;
 
-let lastCsvSignature = null;   // CSV 內容 Hash
-let lastChartData = null;      // 快取圖表資料（防重抓）
+const palette = ['#0066ff', '#cc0000', '#009933', '#ff9900', '#6600cc', '#00cccc', '#cc00cc'];
 
-// -----------------------------
-// 初始化 ECharts
-// -----------------------------
-window.addEventListener("load", function () {
+function colorForStep(step) {
+    return palette[(Math.max(1, step) - 1) % palette.length];
+}
+
+function getEffectiveMode(mode) {
+    mode = Number(mode);
+    if (mode === 6) return 4;
+    if (mode === 7) return 2;
+    return mode;
+}
+
+function initChart() {
     const dom = document.getElementById("chart");
+    if (!dom) return;
+
     if (!myChart) {
         myChart = echarts.init(dom);
+    } else {
+        myChart.resize();
     }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    initChart();
+    updateDataInfo();
+    updateChartFromCSV();
+    updateChartMenuActive();
     updateAngleSwitchUI();
 });
 
-// ================================
-// 更新上方資訊
-// ================================
+window.addEventListener("resize", function () {
+    if (myChart) myChart.resize();
+});
+
+function setValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value || "";
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = value ?? "";
+}
+
 async function updateDataInfo() {
     try {
         const res = await fetch("?url=Dashboards/operation&ajax=1&t=" + Date.now());
         const json = await res.json();
         if (!json || !json.data_info) return;
 
-        document.getElementById("Job_Name").value = json.data_info.job_name || "";
-        document.getElementById("Seq_Name").value = json.data_info.sequence_name || "";
-        document.getElementById("Screws").value = json.data_info.total_screw_count || "";
-        document.getElementById("Target_Torque").innerText = json.data_info.final_fasten_torque ?? "-";
-        document.getElementById("Target_Angle").innerText = json.data_info.total_fasten_angle ?? "-";
-        document.getElementById("Torque_Result").innerText = json.text[json.data_info.fasten_status_text] ?? "";
-        document.getElementById("Message").innerText = json.data_info.error_message || "";
+        setValue("Job_Name", json.data_info.job_name || "");
+        setValue("Seq_Name", json.data_info.sequence_name || "");
+        setValue("Screws", json.data_info.total_screw_count || "");
 
-        // ⭐ 新增：即時更新扭力單位
+        setText("Target_Torque", json.data_info.final_fasten_torque ?? "-");
+        setText("Target_Angle", json.data_info.total_fasten_angle ?? "-");
+        setText("Torque_Result", json.text?.[json.data_info.fasten_status_text] ?? "");
+        setText("Message", json.data_info.error_message || "");
+
         if (json.chart_unit_label) {
-            const unitSpan = document.getElementById("Torque_Unit_Label");
-            if (unitSpan) unitSpan.innerText = json.chart_unit_label;
+            setText("Torque_Unit_Label", json.chart_unit_label);
         }
 
-
-        if (json.data_info.result_status_color_text) {
-            document.getElementById("fasten_status_color").style.backgroundColor =
-                json.data_info.result_status_color_text;
+        const statusBox = document.getElementById("fasten_status_color");
+        if (statusBox && json.data_info.result_status_color_text) {
+            statusBox.style.backgroundColor = json.data_info.result_status_color_text;
+            statusBox.style.color = "black";
         }
     } catch (e) {
         console.warn("updateDataInfo error", e);
     }
 }
 
-// ================================
-// FNV-1a Hash：避免重畫
-// ================================
 function hashString(str) {
     let hash = 0x811c9dc5;
     for (let i = 0; i < str.length; i++) {
@@ -162,11 +233,8 @@ function hashString(str) {
     return hash.toString(16);
 }
 
-// ================================
-// CSV Parser
-// ================================
 function parseCSV(text) {
-    const lines = text.trim().split("\n");
+    const lines = text.trim().split(/\r?\n/);
     if (!lines.length) return [];
 
     const header = lines[0].split(",").map(s => s.trim());
@@ -178,14 +246,14 @@ function parseCSV(text) {
         step: header.indexOf("step"),
     };
 
-    return lines.slice(1).map(line => {
+    return lines.slice(1).filter(line => line.trim() !== '').map(line => {
         const col = line.split(",");
         return {
-            time: Number(col[idx.time]   ?? 0),
+            time: Number(col[idx.time] ?? 0),
             torque: Number(col[idx.torque] ?? 0),
-            angle: Number(col[idx.angle]  ?? 0),
-            rpm: Number(col[idx.rpm]    ?? 0),
-            step: Number(col[idx.step]   ?? 1)
+            angle: Number(col[idx.angle] ?? 0),
+            rpm: Number(col[idx.rpm] ?? 0),
+            step: Number(col[idx.step] ?? 1),
         };
     });
 }
@@ -200,11 +268,21 @@ function buildChartData(rows) {
     };
 }
 
-// ================================
-// CSV 穩定器 + 圖更新
-// ================================
+function groupByStep(xarr, yarr, stepArr) {
+    const map = new Map();
+    for (let i = 0; i < xarr.length; i++) {
+        const s = stepArr[i] || 1;
+        if (!map.has(s)) map.set(s, []);
+        map.get(s).push([xarr[i], yarr[i]]);
+    }
+    return map;
+}
+
 async function updateChartFromCSV() {
     try {
+        initChart();
+        if (!myChart) return;
+
         const resInfo = await fetch("?url=Dashboards/get_latest_csv&t=" + Date.now());
         const info = await resInfo.json();
 
@@ -219,10 +297,12 @@ async function updateChartFromCSV() {
         if (!text.trim()) return;
 
         const sig = hashString(text);
-        if (sig === lastCsvSignature) return;
+        if (sig === lastCsvSignature && lastChartData) return;
         lastCsvSignature = sig;
 
         const rows = parseCSV(text);
+        if (!rows.length) return;
+
         const chartData = buildChartData(rows);
         lastChartData = chartData;
 
@@ -232,29 +312,19 @@ async function updateChartFromCSV() {
     }
 }
 
-// ================================
-// Step Color + 分組工具
-// ================================
-const palette = ['#0066ff','#cc0000','#009933','#ff9900','#6600cc','#00cccc','#cc00cc'];
-const colorForStep = s => palette[(s - 1) % palette.length];
-
-function groupByStep(xarr, yarr, stepArr) {
-    const map = new Map();
-    for (let i = 0; i < xarr.length; i++) {
-        const s = stepArr[i] || 1;
-        if (!map.has(s)) map.set(s, []);
-        map.get(s).push([xarr[i], yarr[i]]);
-    }
-    return map;
-}
-
-// ================================
-// ⭐ 核心：renderChart（所有模式）
-// ================================
 function renderChart(mode, data) {
+    initChart();
+    if (!myChart || !data) return;
 
     chartMode = Number(mode);
-    const time = data.time, tor = data.torque, ang = data.angle, rpm = data.rpm, step = data.step;
+
+    const time = data.time || [];
+    const tor  = data.torque || [];
+    const ang  = data.angle || [];
+    const rpm  = data.rpm || [];
+    const step = data.step || [];
+
+    if (!time.length) return;
 
     let timeX = [...time];
     if (timeX.length && Math.max(...timeX) <= 5) {
@@ -263,13 +333,12 @@ function renderChart(mode, data) {
 
     let option = {};
 
-    // ========== mode 1 ==========
     if (chartMode === 1) {
         const group = groupByStep(timeX, tor, step);
-
         option = {
             animation: false,
             tooltip: { trigger: "axis" },
+            grid: { left: 45, right: 20, top: 30, bottom: 45, containLabel: true },
             xAxis: { type: "value", name: "Time" },
             yAxis: { type: "value", name: "Torque" },
             series: [...group.entries()].map(([s, arr]) => ({
@@ -283,7 +352,6 @@ function renderChart(mode, data) {
         };
     }
 
-    // ========== mode 2 ==========
     else if (chartMode === 2) {
         const BREAK = 300;
         let series = [];
@@ -292,12 +360,13 @@ function renderChart(mode, data) {
         let prevAngle = ang[0];
 
         for (let i = 0; i < timeX.length; i++) {
-            const s = step[i], a = ang[i];
+            const s = step[i];
+            const a = ang[i];
 
-            if (s !== prevStep) {
+            if (i > 0 && s !== prevStep) {
                 if (buf.length) series.push({ step: prevStep, data: buf });
                 buf = [];
-            } else if (Math.abs(a - prevAngle) > BREAK) {
+            } else if (i > 0 && Math.abs(a - prevAngle) > BREAK) {
                 buf.push([timeX[i], null]);
             }
 
@@ -305,11 +374,13 @@ function renderChart(mode, data) {
             prevStep = s;
             prevAngle = a;
         }
+
         if (buf.length) series.push({ step: prevStep, data: buf });
 
         option = {
             animation: false,
             tooltip: { trigger: "axis" },
+            grid: { left: 45, right: 20, top: 30, bottom: 45, containLabel: true },
             xAxis: { type: "value", name: "Time" },
             yAxis: { type: "value", name: "Angle" },
             series: series.map(seg => ({
@@ -323,7 +394,6 @@ function renderChart(mode, data) {
         };
     }
 
-    // ========== mode 3 ==========
     else if (chartMode === 3) {
         const BREAK = 200;
         let series = [];
@@ -333,12 +403,13 @@ function renderChart(mode, data) {
         const lastStep = [...new Set(step)].pop();
 
         for (let i = 0; i < timeX.length; i++) {
-            const s = step[i], r = rpm[i];
+            const s = step[i];
+            const r = rpm[i];
 
-            if (s !== prevStep) {
+            if (i > 0 && s !== prevStep) {
                 if (buf.length) series.push({ step: prevStep, data: buf });
                 buf = [];
-            } else if (s !== lastStep && Math.abs(r - prevRPM) > BREAK) {
+            } else if (i > 0 && s !== lastStep && Math.abs(r - prevRPM) > BREAK) {
                 buf.push([timeX[i], null]);
             }
 
@@ -352,6 +423,7 @@ function renderChart(mode, data) {
         option = {
             animation: false,
             tooltip: { trigger: "axis" },
+            grid: { left: 45, right: 20, top: 30, bottom: 45, containLabel: true },
             xAxis: { type: "value", name: "Time" },
             yAxis: { type: "value", name: "RPM" },
             series: series.map(seg => ({
@@ -365,7 +437,6 @@ function renderChart(mode, data) {
         };
     }
 
-    // ========== mode 4 ==========
     else if (chartMode === 4) {
         let offset = 0;
         let prev = step[0];
@@ -375,10 +446,12 @@ function renderChart(mode, data) {
             total[i] = offset + ang[i];
             prev = step[i];
         }
+
         const group = groupByStep(total, tor, step);
         option = {
             animation: false,
             tooltip: { trigger: "axis" },
+            grid: { left: 45, right: 20, top: 30, bottom: 45, containLabel: true },
             xAxis: { type: "value", name: "Angle" },
             yAxis: { type: "value", name: "Torque" },
             series: [...group.entries()].map(([s, arr]) => ({
@@ -392,16 +465,16 @@ function renderChart(mode, data) {
         };
     }
 
-    // ========== mode 5 ==========
     else if (chartMode === 5) {
         const group = groupByStep(timeX, tor, step);
         option = {
             animation: false,
             tooltip: { trigger: "axis" },
+            grid: { left: 45, right: 45, top: 30, bottom: 45, containLabel: true },
             xAxis: { type: "value", name: "Time" },
             yAxis: [
                 { type: "value", name: "Torque" },
-                { type: "value", name: "RPM", min: 0, max: 700 },
+                { type: "value", name: "RPM", min: 0, max: 700 }
             ],
             series: [
                 ...[...group.entries()].map(([s, arr]) => ({
@@ -426,12 +499,12 @@ function renderChart(mode, data) {
         };
     }
 
-    // ========== mode 6 ==========
     else if (chartMode === 6) {
         const group = groupByStep(ang, tor, step);
         option = {
             animation: false,
             tooltip: { trigger: "axis" },
+            grid: { left: 45, right: 20, top: 30, bottom: 45, containLabel: true },
             xAxis: { type: "value", name: "Angle" },
             yAxis: { type: "value", name: "Torque" },
             series: [...group.entries()].map(([s, arr]) => ({
@@ -445,7 +518,6 @@ function renderChart(mode, data) {
         };
     }
 
-    // ========== mode 7 ==========
     else if (chartMode === 7) {
         let offset = 0;
         let prev = step[0];
@@ -455,10 +527,12 @@ function renderChart(mode, data) {
             total[i] = offset + ang[i];
             prev = step[i];
         }
+
         const group = groupByStep(timeX, total, step);
         option = {
             animation: false,
             tooltip: { trigger: "axis" },
+            grid: { left: 45, right: 20, top: 30, bottom: 45, containLabel: true },
             xAxis: { type: "value", name: "Time" },
             yAxis: { type: "value", name: "Angle" },
             series: [...group.entries()].map(([s, arr]) => ({
@@ -473,13 +547,10 @@ function renderChart(mode, data) {
     }
 
     myChart.setOption(option, true);
+    myChart.resize();
 }
 
-// ================================
-// ⭐ 強化版 chart_type（v4）
-// ================================
 function chart_type(argument) {
-
     const chartMap = {
         "torque_time": 1,
         "angle_time": 2,
@@ -494,105 +565,173 @@ function chart_type(argument) {
 
     chartMode = chartMap[argument];
 
-    const newUrl = new URL(window.location);
+    const newUrl = new URL(window.location.href);
     newUrl.searchParams.set("chart", chartMode);
     window.history.replaceState({}, '', newUrl);
 
     updateChartMenuActive();
     updateAngleSwitchUI();
 
-    // ⭐ 切換模式必須強制畫圖，不依賴 CSV 變化
     if (lastChartData) {
         renderChart(chartMode, lastChartData);
-        return;
+    } else {
+        updateChartFromCSV();
     }
-
-    updateChartFromCSV();
-}
-
-function chart_type_id(mode) {
-    const reverse = {
-        1:"torque_time",
-        2:"angle_time",
-        3:"rpm_time",
-        4:"torque_angle",
-        5:"torque_speed",
-        6:"step_angle",
-        7:"total_angle"
-    };
-    return reverse[Number(mode)];
 }
 
 function updateChartMenuActive() {
+    const effectiveMode = getEffectiveMode(chartMode);
+
     document.querySelectorAll('.btn-chart').forEach(btn => {
-        btn.classList.toggle('active',
-            chart_type_id(chartMode) === btn.id
-        );
+        btn.classList.remove('active');
     });
+
+    const activeIdMap = {
+        1: "torque_time",
+        2: "angle_time",
+        3: "rpm_time",
+        4: "torque_angle",
+        5: "torque_speed"
+    };
+
+    const activeBtnId = activeIdMap[effectiveMode];
+    if (activeBtnId) {
+        const activeBtn = document.getElementById(activeBtnId);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
 }
 
-// ================================
-// ⭐ Angle Switch UI
-// ================================
 function selectAngleMode46(mode) {
     if (mode === 4) chart_type("torque_angle");
     else if (mode === 6) chart_type("step_angle");
 }
 
 function updateAngleSwitchUI() {
-
     const div46 = document.getElementById("angleMode46");
     const div27 = document.getElementById("angleSwitch");
 
-    div46.style.display = "none";
-    div27.style.display = "none";
+    if (div46) div46.style.display = "none";
+    if (div27) div27.style.display = "none";
 
-    // chart_mode 4 / 6 → 顯示 angleMode46
-    if (chartMode === 4 || chartMode === 6) {
-        div46.style.display = "block";
+    const effectiveMode = getEffectiveMode(chartMode);
 
-        const want = (chartMode === 4 ? "4" : "6");
-        const input = document.querySelector(`input[name="chartType46"][value="${want}"]`);
-        if (input) input.checked = true;
+    if (effectiveMode === 4) {
+        if (div46) {
+            div46.style.display = "block";
+            const want = String(chartMode === 6 ? 6 : 4);
+            const input = document.querySelector(`input[name="chartType46"][value="${want}"]`);
+            if (input) input.checked = true;
+        }
     }
 
-    // chart_mode 2 / 7 → 顯示 angleSwitch
-    if (chartMode === 2 || chartMode === 7) {
-        div27.style.display = "block";
-
-        const want = (chartMode === 7 ? "7" : "2");
-        const input = document.querySelector(`input[name="chartType"][value="${want}"]`);
-        if (input) input.checked = true;
+    if (effectiveMode === 2) {
+        if (div27) {
+            div27.style.display = "block";
+            const want = String(chartMode === 7 ? 7 : 2);
+            const input = document.querySelector(`input[name="chartType"][value="${want}"]`);
+            if (input) input.checked = true;
+        }
     }
 }
-
-// ================================
-// 啟動
-// ================================
-window.onload = function () {
-    updateDataInfo();
-    updateChartFromCSV();
-    updateAngleSwitchUI();
-};
 
 setInterval(() => {
     updateDataInfo();
     updateChartFromCSV();
 }, 1000);
-
 </script>
 
-
 <style>
-#graph { position: relative; }
-#chart { position: relative; z-index: 1; } /* 圖 */
-#chart-note {
-  display: block !important;   /* 防外部把 <p> 隱藏 */
-  margin: 4px 0 8px;
-  position: relative;
-  z-index: 2;                  /* 比圖還高 */
-  color: #000 !important;      /* 防父層強制白字或透明 */
-  font-size: 14px !important;  /* 防 font-size:0 */
-  line-height: 1.2;
+#graph {
+    position: relative;
+    width: 100%;
+    min-height: 290px;
+}
+
+#chart {
+    position: relative;
+    z-index: 1;
+    width: 100% !important;
+    height: 290px !important;
+}
+
+.display-chart {
+    width: 100%;
+    overflow: hidden;
+}
+
+.button-chart {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    position: relative;
+    z-index: 5;
+}
+
+.angle-switch-wrap {
+    display: none;
+    width: 100%;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    text-align: center;
+    color: #fff !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    position: relative;
+    z-index: 10;
+}
+
+.angle-radio-label {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 10px;
+    color: #fff !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.angle-radio-label span {
+    display: inline-block !important;
+    color: #fff !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.angle-switch-wrap input[type="radio"] {
+    transform: scale(1.05);
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+@media screen and (max-width: 768px) {
+    #graph {
+        min-height: 260px;
+    }
+
+    #chart {
+        height: 260px !important;
+    }
+
+    .angle-switch-wrap {
+        font-size: 12px !important;
+    }
+
+    .angle-radio-label {
+        font-size: 12px !important;
+        margin: 0 8px;
+    }
+
+    .angle-radio-label span {
+        font-size: 12px !important;
+    }
 }
 </style>
