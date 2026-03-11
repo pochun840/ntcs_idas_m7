@@ -9,6 +9,8 @@
 //12345678rd
 //
 
+date_default_timezone_set(trim(shell_exec('cat /etc/timezone')));
+
 // App 根目錄，這是引入 app 資料夾裡的資源用的
 define('APPROOT', dirname(dirname(__FILE__)) . '/');
 

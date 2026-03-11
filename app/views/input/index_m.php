@@ -275,57 +275,70 @@
             <!-- Copy Input -->
             <div id="copyinput" class="modal">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
-                    <div class="modal-content w3-animate-zoom" style="width: auto">
+                    <div class="modal-content w3-animate-zoom" style="width: 90%">
                         <header class="w3-container modal-header">
                             <span onclick="closebutton('copyinput')"
                                 class="w3-button w3-red w3-display-topright" style="width: 50px; margin: 3px;">&times;</span>
-                            <h3 id='modal_title'><?php echo $text['copy_input'];?></h3>
+                            <h3 id="modal_title"><?php echo $text['copy_input']; ?></h3>
                         </header>
 
                         <div class="modal-body">
-                            <form id="new_seq_form">
-                	            <label for="from_job_id" class="col col-form-label" style="font-weight: bold;padding-left: 5%;"><?php echo $text['copy_from'];?></label>
-                	            <div style="padding-left: 10%;">
-                		            <div class="row">
-                				        <label for="from_job_id" class="t1 col-4 col-form-label"><?php echo $text['job_id'];?> :</label>
-                				        <div class="col-5 t2 ">
-                				            <input type="number" class="form-control" id="from_job_id" disabled>
-                				        </div>
+                            <form id="copy_input_form">
+                                <label class="col col-form-label" style="font-weight:bold; padding-left:5%;">
+                                    <?php echo $text['copy_from']; ?>
+                                </label>
 
-                				        <label for="from_job_name" class="t1 col-4 col-form-label"><?php echo $text['job_name'];?> :</label>
-                				        <div class="col-5 t2 ">
-                				            <input type="text" class="form-control" id="from_job_name"  disabled>
-                				        </div>
-                				    </div>
-                			    </div>
+                                <div style="padding-left: 10%;">
+                                    <div class="row">
+                                        <label for="from_job_id" class="t1 col-4 col-form-label">
+                                            <?php echo $text['job_id']; ?> :
+                                        </label>
+                                        <div class="col-6 t2">
+                                            <input type="number" class="form-control" id="from_job_id" disabled>
+                                        </div>
+                                    </div>
 
-                			    <label for="from_job_id" class="col col-form-label" style="font-weight: bold;padding-left: 5%;"><?php echo $text['copy_to'];?></label>
-                			    <div style="padding-left: 10%">
-                				    <div class="row">
-                				        <label for="to_step_id" class="t1 col-4 col-form-label"><?php echo $text['job'];?> :</label>
-                				        <div class="t2 col-6">
-                                            <select id="JobSelect1" class="col custom-file" style="margin: center; width: 153px">
-                                            <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
-                                                <?php foreach($data['job_list'] as $kk => $vv){?>
-                                                    <option id ='job_list_option' value="<?php echo $vv['job_id']; ?>">
-                                                        <?php echo $vv['job_id'] . " - " . $vv['job_name']; ?>
+                                    <div class="row" style="margin-top: 8px;">
+                                        <label for="from_job_name" class="t1 col-4 col-form-label">
+                                            <?php echo $text['job_name']; ?> :
+                                        </label>
+                                        <div class="col-6 t2">
+                                            <input type="text" class="form-control" id="from_job_name" disabled>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="col col-form-label" style="font-weight:bold; padding-left:5%; margin-top:12px;">
+                                    <?php echo $text['copy_to']; ?>
+                                </label>
+
+                                <div style="padding-left: 10%;">
+                                    <div class="row">
+                                        <label for="JobSelect1" class="t1 col-4 col-form-label">
+                                            <?php echo $text['job']; ?> :
+                                        </label>
+                                        <div class="t2 col-6">
+                                            <select id="JobSelect1" class="col custom-file" style="width: 100%; max-width: 220px;">
+                                                <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>
+                                                <?php foreach($data['job_list'] as $kk => $vv){ ?>
+                                                    <option value="<?php echo $vv['JOBID']; ?>">
+                                                        <?php echo $vv['JOBID'] . ' - ' . $vv['JOBname']; ?>
                                                     </option>
                                                 <?php } ?>
-                                             </select>
-                				        </div>
-                				    </div>
-                			    </div>
-                			  </form>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
 
                         <div class="modal-footer justify-content-center">
-                            <button id="" class="button-modal" onclick="copy_input_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="closebutton('copyinput')" class="closebtn"><?php echo $text['close'];?></button>
+                            <button class="button-modal" onclick="copy_input_id()"><?php echo $text['save']; ?></button>
+                            <button class="button-modal" onclick="closebutton('copyinput')" class="closebtn"><?php echo $text['close']; ?></button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
     </div>
 
     <!-- 加载動畫 OP -->

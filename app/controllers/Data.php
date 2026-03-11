@@ -248,7 +248,7 @@ class Data extends Controller
         * ===================================================== */
         $controller_info = $this->SettingModel->GetControllerInfo();
         $device_sn_safe  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
-        $timestamp       = date('YmdHis');
+        $timestamp = trim(shell_exec('date +%Y%m%d%H%M%S'));
 
         $csv_filename = "data_{$device_sn_safe}_{$timestamp}.csv";
         $zip_filename = "data_{$device_sn_safe}_{$timestamp}.zip";

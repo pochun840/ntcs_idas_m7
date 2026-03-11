@@ -3,8 +3,6 @@
   $focusedJobId = isset($data['focused_jobid']) ? $data['focused_jobid'] : null;
 ?> 
 
-
-
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -22,7 +20,8 @@
                 <input type="text" id="job_id" name="job_id" size="8" maxlength="20" value="" disabled
                     style="height:30px; font-size:2.5vmin; text-align: center; background-color: #DDDDDD; border:0; line-height:30px;">
 
-                <button id="Button_Select" type="button" 
+                <button id="Button_Select" type="button"
+                        onclick="document.getElementById('JobSelect').style.display='block'"
                         style="height:30px;width:100px; font-size:2.5vmin; line-height:30px; padding: 0; vertical-align: middle; margin-top: -10px;">
                     <?php echo $text['select'];?>
                 </button>
@@ -49,7 +48,7 @@
                         </table>
                     </div>
                     <div class="modal-footer justify-content-center w3-dark-grey" style="height: 48px">
-                        <button id="select_confirm" type="button" class="btn btn-primary" onclick='job_confirm()'><?php echo $text['confirm'];?></button>
+                        <button id="select_confirm" type="button" class="btn btn-primary" onclick="job_confirm()"><?php echo $text['confirm'];?></button>
                         <button id="select_close" type="button" class="btn btn-secondary" onclick="document.getElementById('JobSelect').style.display='none'"><?php echo $text['close'];?></button>
                     </div>
                 </form>
@@ -70,7 +69,6 @@
                                         <?php $io = 1; for($io = 1; $io <= 11;$io++){?>
                                             <th><?php echo $io;?></th>
                                         <?php } ?>
-                                        
                                         <th><?php echo $text['time'];?></th>
                                     </tr>
                                 </thead>
@@ -83,11 +81,11 @@
 
                 <div class="footer">
                     <div class="buttonbox">
-                        <input id="S1" name="New_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1"       onclick="crud_job_event('new')">
-                        <input id="S2" name="Edit_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1"     onclick="crud_job_event('edit')">
-                        <input id="S3" name="Copy_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1"     onclick="crud_job_event('copy')">
+                        <input id="S1" name="New_Submit" type="button" value="<?php echo $text['New'];?>" tabindex="1" onclick="crud_job_event('new')">
+                        <input id="S2" name="Edit_Submit" type="button" value="<?php echo $text['Edit'];?>" tabindex="1" onclick="crud_job_event('edit')">
+                        <input id="S3" name="Copy_Submit" type="button" value="<?php echo $text['Copy'];?>" tabindex="1" onclick="crud_job_event('copy')">
                         <input id="S4" name="Delete_Submit" type="button" value="<?php echo $text['Delete'];?>" tabindex="1" onclick="crud_job_event('del')">
-                        <input id="S6" name="Align_Submit" type="button" value="<?php echo $text['Align'];?>" tabindex="1"   onclick="crud_job_event('unified')">
+                        <input id="S6" name="Align_Submit" type="button" value="<?php echo $text['Align'];?>" tabindex="1" onclick="crud_job_event('unified')">
                     </div>
                 </div>
             </div>
@@ -141,8 +139,8 @@
                         </div>
 
                         <div class="modal-footer justify-content-center">
-                            <button id="" class="button-modal" onclick="create_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="closebutton('new_output')" class="closebtn"><?php echo $text['close'];?></button>
+                            <button class="button-modal" onclick="create_output_id()"><?php echo $text['save'];?></button>
+                            <button class="button-modal" onclick="closebutton('new_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -172,26 +170,25 @@
                                 </div>
 
 								<?php for ($i = 1; $i <= 11; $i++) {?>
-										<div class="row output-pin">
-											<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
-											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_0', this.checked,'1')" >
-												<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
-											</div>
-											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'2')">
-												<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
-											</div>
-											<div class="col-sm-2 t2 form-check form-check-inline">
-												<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'3')">
-												<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
-											</div>
-											<div class="col-sm-2 t2">
-												<input type="text" class="form-control" id="edit_time<?php echo $i; ?>" placeholder="ms" style="height: 28px; text-align: center;">
-											</div>
+									<div class="row output-pin">
+										<div class="col-sm-2 t1"><?php echo $i; ?>:</div>
+										<div class="col-sm-2 t2 form-check form-check-inline">
+											<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_0" value="0" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_0', this.checked,'1')">
+											<label class="form-check-label" for="pin<?php echo $i; ?>_signal01"><img src="./img/signal01.png"></label>
 										</div>
+										<div class="col-sm-2 t2 form-check form-check-inline">
+											<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_1" value="1" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_1', this.checked,'2')">
+											<label class="form-check-label" for="pin<?php echo $i; ?>_signal02"><img src="./img/signal02.png"></label>
+										</div>
+										<div class="col-sm-2 t2 form-check form-check-inline">
+											<input class="form-check-input" type="radio" name="edit_pin_option" id="edit_pin<?php echo $i; ?>_2" value="2" onclick="toggleOnputTime_edit('edit_pin<?php echo $i; ?>_2', this.checked,'3')">
+											<label class="form-check-label" for="pin<?php echo $i; ?>_trigger"><img src="./img/trigger.png"></label>
+										</div>
+										<div class="col-sm-2 t2">
+											<input type="text" class="form-control" id="edit_time<?php echo $i; ?>" placeholder="ms" style="height: 28px; text-align: center;">
+										</div>
+									</div>
 						        <?php } ?>
-
 
                             </form>
                         </div>
@@ -199,8 +196,8 @@
                         <div class="modal-footer justify-content-center">
                             <input type="hidden" id="old_output_event">
                             <input type="hidden" id="old_output_pin">
-                            <button id="" class="button-modal" onclick="edit_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="closebutton('edit_output')" class="closebtn"><?php echo $text['close'];?></button>
+                            <button class="button-modal" onclick="edit_output_id()"><?php echo $text['save'];?></button>
+                            <button class="button-modal" onclick="closebutton('edit_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -239,7 +236,7 @@
                 				        <label for="to_step_id" class="t1 col-4 col-form-label"><?php echo $text['job'];?> :</label>
                 				        <div class="t2 col-6">
                                             <select id="JobSelect1" class="col custom-file" style="margin: center; width: 160px">
-                                            <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>    
+                                                <option value="-1" disabled selected><?php echo $text['Choose_option']; ?></option>    
                                                 <?php foreach($data['job_list'] as $kk => $vv){?>
                                                     <option id ='job_list_option' value="<?php echo $vv['JOBID']; ?>">
                                                         <?php echo $vv['JOBID'] . " - " . $vv['JOBname']; ?>
@@ -253,8 +250,8 @@
                         </div>
 
                         <div class="modal-footer justify-content-center">
-                            <button id="" class="button-modal" onclick="copy_output_id()"><?php echo $text['save'];?></button>
-                            <button id="" class="button-modal" onclick="closebutton('copy_output')" class="closebtn"><?php echo $text['close'];?></button>
+                            <button class="button-modal" onclick="copy_output_id()"><?php echo $text['save'];?></button>
+                            <button class="button-modal" onclick="closebutton('copy_output')" class="closebtn"><?php echo $text['close'];?></button>
                         </div>
                     </div>
                 </div>
@@ -262,28 +259,25 @@
         </div>
     </div>
 
-    
     <!-- 加载動畫 OP -->
-        <?php require_once '../app/views/inc/include_spinner.php';?>
+    <?php require_once '../app/views/inc/include_spinner.php';?>
     <!-- 加载動畫 ED -->
 
     <div id="modal-overlay"></div>
-
 </div>
 
 <?php require_once '../app/views/output/output_share.php';?>
 
-
 <style>
 #modal-overlay {
-  display: none; /* 預設隱藏 */
+  display: none;
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5); /* 灰色半透明 */
-  z-index: 1040; /* 必須比主畫面內容高，但比 modal 低 */
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
 }
 
 .grey-disabled[disabled] {
@@ -294,57 +288,49 @@
   opacity: 1;
 }
 
-/* 避免任何顏色過渡造成閃動 */
 #job_id { transition: none !important; }
 
-/* 統一把黃色狀態寫一次就夠了 */
 #job_id.bg-yellow { 
   background-color: yellow !important;
 }
 
-/* disabled 時瀏覽器會套用灰文字與透明度，這裡強制還原 */
 #job_id.bg-yellow:disabled {
   -webkit-text-fill-color: #000;
   opacity: 1;
 }
+
+#Button_Select.is-disabled {
+  opacity: .6;
+  pointer-events: none;
+}
 </style>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    // 從 PHP 帶值
+document.addEventListener('DOMContentLoaded', function () {
     var focusedJobId = <?php echo json_encode($focusedJobId); ?>;
-
     var el  = document.getElementById('job_id');
     var btn = document.getElementById('Button_Select');
+
     if (!el) return;
 
-    // 有值 → 顯示數值、套黃底、鎖住 Select
     if (focusedJobId !== null && String(focusedJobId).length > 0) {
-      el.value = String(focusedJobId);
-      el.classList.add('bg-yellow');
-      if (btn) btn.disabled = true;   // ← 已加上
-    } else {
-      // 沒值 → 清空、恢復灰底、放開 Select
-      el.value = '';
-      el.classList.remove('bg-yellow');
-      if (btn) btn.disabled = false;  // ← 已加上
-    }
-  });
-</script>
+        // 黃色：不可按
+        el.value = String(focusedJobId);
+        el.classList.add('bg-yellow');
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const jobIdInput = document.getElementById('job_id');
-    const focusedJobId = <?php echo json_encode($focusedJobId); ?>;
-
-    if (focusedJobId) {
-        // 有值 → 背景改黃色，並填入 JOBID
-        jobIdInput.style.backgroundColor = 'yellow';
-        jobIdInput.value = focusedJobId;
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('is-disabled');
+        }
     } else {
-        // 沒值 → 恢復灰色
-        jobIdInput.style.backgroundColor = '#DDDDDD';
-        jobIdInput.value = '';
+        // 灰色：可按
+        el.value = '';
+        el.classList.remove('bg-yellow');
+
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('is-disabled');
+        }
     }
 });
 </script>

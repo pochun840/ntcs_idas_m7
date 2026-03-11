@@ -118,22 +118,22 @@ if ($data['type'] == 'edit') {
                             <div class="row" >
                                 <div class="col-5 t1"><?php echo $text['DT_Time'];?> (<?php echo $text['Second'];?>):</div>
                                 <div class="col-4 t2">
-                                    <input id="dt_time" class="t2 form-control small-input" value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">
+                                    <input id="dt_time" class="t2 form-control small-input" value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['dt_time'] : ''; ?>">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col t2" style="padding-left: 0;">
-                                    <label style="margin-left: -10px;">(0-60)</label>
+                                    <label style="margin-left: -10px;">(0-99)</label>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-5 t1"><?php echo $text['TT_Time'];?> (<?php echo $text['Second'];?>):</div>
                                 <div class="col-4 t2">
-                                    <input id="tt_time" class="t2 form-control small-input" value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['timeout'] : ''; ?>">
+                                    <input id="tt_time" class="t2 form-control small-input" value ="<?php echo ($data['type'] == 'edit') ? $data['sequences']['tt_time'] : ''; ?>">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col t2" style="padding-left: 0;">
-                                    <label style="margin-left: -10px;">(0-60)</label>
+                                    <label style="margin-left: -10px;">(0-6000)</label>
                                 </div>
                             </div>
 
