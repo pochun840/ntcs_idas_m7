@@ -264,77 +264,113 @@
 <?php require_once '../app/views/output/output_share.php';?>
 
 <style>
-#modal-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1040;
-}
+    #modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    }
 
-.grey-disabled[disabled] {
-    background-color: #d6d6d6;
-    color: #8a8a8a;
-    border: 1px solid #b5b5b5;
-    cursor: not-allowed;
-    opacity: 1;
-}
+    .grey-disabled[disabled] {
+        background-color: #d6d6d6;
+        color: #8a8a8a;
+        border: 1px solid #b5b5b5;
+        cursor: not-allowed;
+        opacity: 1;
+    }
 
-#job_id.bg-yellow {
-  background-color: yellow !important;
-}
+    #job_id.bg-yellow {
+    background-color: yellow !important;
+    }
 
-#job_id {
-  transition: none !important;
-}
+    #job_id {
+    transition: none !important;
+    }
 
-#job_id:-webkit-autofill,
-#job_id:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-  box-shadow: inset 0 0 0 1000px white !important;
-}
+    #job_id:-webkit-autofill,
+    #job_id:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+    box-shadow: inset 0 0 0 1000px white !important;
+    }
 
-#output_table td,
-#output_table th {
-    width: 100px; 
-    padding: 10px;
-}
+    #output_table td,
+    #output_table th {
+        width: 100px; 
+        padding: 10px;
+    }
 
-#Button_Select.is-disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
+    #Button_Select.is-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var focusedJobId = <?php echo json_encode($focusedJobId); ?>;
-    var jobIdInput   = document.getElementById('job_id');
-    var selectBtn    = document.getElementById('Button_Select');
+    var el  = document.getElementById('job_id');
+    var btn = document.getElementById('Button_Select');
+    var jobSelectModal = document.getElementById('JobSelect');
 
-    if (!jobIdInput) return;
+    console.log('[mobile page] focusedJobId =', focusedJobId);
 
-    if (focusedJobId !== null && String(focusedJobId).length > 0) {
-        // 鎖附工作編號：黃色 + 不可選
-        jobIdInput.value = String(focusedJobId);
-        jobIdInput.classList.add('bg-yellow');
+    if (!el) return;
 
-        if (selectBtn) {
-            selectBtn.disabled = true;
-            selectBtn.classList.add('is-disabled');
-        }
-    } else {
-        // 未鎖附：灰色 + 可選
-        jobIdInput.value = '';
-        jobIdInput.classList.remove('bg-yellow');
+    var jobId = (focusedJobId === null || focusedJobId === undefined)
+        ? ''
+        : String(focusedJobId).trim();
 
-        if (selectBtn) {
-            selectBtn.disabled = false;
-            selectBtn.classList.remove('is-disabled');
+    console.log('[mobile page] normalized jobId =', jobId);
+
+    function lockJobSelect() {
+        el.classList.add('bg-yellow');
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('is-disabled');
         }
     }
+
+    function unlockJobSelect() {
+        el.classList.remove('bg-yellow');
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('is-disabled');
+        }
+    }
+
+    if (jobId !== '') {
+        el.value = jobId;
+        lockJobSelect();
+        console.log('[mobile page] lock by focusedJobId');
+    } else {
+        el.value = '';
+        unlockJobSelect();
+        console.log('[mobile page] unlock by focusedJobId');
+    }
+
+    // 防呆：若按鈕已被鎖住，不允許打開 JobSelect
+    if (btn) {
+        btn.addEventListener('click', function (e) {
+            if (btn.disabled) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+    }
+
+    // 防呆：若已鎖定，強制不顯示 JobSelect
+    if (jobId !== '' && jobSelectModal) {
+        jobSelectModal.style.display = 'none';
+    }
+
+    setTimeout(function () {
+        console.log('[mobile page] final btn.disabled =', btn ? btn.disabled : 'no btn');
+        console.log('[mobile page] final job_id value =', el ? el.value : 'no input');
+    }, 300);
 });
 </script>

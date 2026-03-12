@@ -269,68 +269,82 @@
 <?php require_once '../app/views/output/output_share.php';?>
 
 <style>
-#modal-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1040;
-}
+    #modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    }
 
-.grey-disabled[disabled] {
-  background-color: #d6d6d6;
-  color: #8a8a8a;
-  border: 1px solid #b5b5b5;
-  cursor: not-allowed;
-  opacity: 1;
-}
+    .grey-disabled[disabled] {
+    background-color: #d6d6d6;
+    color: #8a8a8a;
+    border: 1px solid #b5b5b5;
+    cursor: not-allowed;
+    opacity: 1;
+    }
 
-#job_id { transition: none !important; }
+    #job_id { transition: none !important; }
 
-#job_id.bg-yellow { 
-  background-color: yellow !important;
-}
+    #job_id.bg-yellow { 
+    background-color: yellow !important;
+    }
 
-#job_id.bg-yellow:disabled {
-  -webkit-text-fill-color: #000;
-  opacity: 1;
-}
+    #job_id.bg-yellow:disabled {
+    -webkit-text-fill-color: #000;
+    opacity: 1;
+    }
 
-#Button_Select.is-disabled {
-  opacity: .6;
-  pointer-events: none;
-}
+    #Button_Select.is-disabled {
+    opacity: .6;
+    pointer-events: none;
+    }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
     var focusedJobId = <?php echo json_encode($focusedJobId); ?>;
     var el  = document.getElementById('job_id');
     var btn = document.getElementById('Button_Select');
 
+    console.log('[desktop page] focusedJobId =', focusedJobId);
+
     if (!el) return;
 
-    if (focusedJobId !== null && String(focusedJobId).length > 0) {
-        // 黃色：不可按
-        el.value = String(focusedJobId);
+    var jobId = (focusedJobId === null || focusedJobId === undefined)
+        ? ''
+        : String(focusedJobId).trim();
+
+    console.log('[desktop page] normalized jobId =', jobId);
+
+    if (jobId !== '') {
+        el.value = jobId;
         el.classList.add('bg-yellow');
 
         if (btn) {
             btn.disabled = true;
             btn.classList.add('is-disabled');
+            console.log('[desktop page] lock by focusedJobId');
         }
     } else {
-        // 灰色：可按
         el.value = '';
         el.classList.remove('bg-yellow');
 
         if (btn) {
             btn.disabled = false;
             btn.classList.remove('is-disabled');
+            console.log('[desktop page] unlock by focusedJobId');
         }
     }
+
+    setTimeout(function () {
+        console.log('[desktop page] final btn.disabled =', btn ? btn.disabled : 'no btn');
+        console.log('[desktop page] final job_id value =', el ? el.value : 'no input');
+    }, 300);
 });
 </script>

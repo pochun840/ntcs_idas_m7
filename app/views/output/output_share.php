@@ -2,28 +2,44 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // 先套用你原本的 UI 邏輯（若有）
+  // 只以 focused_jobid 為準，不再用 localStorage 殘留狀態決定是否鎖定
+  const focusedJobId = <?php echo json_encode($data['focused_jobid'] ?? null); ?>;
+  const normalizedFocusedJobId = (focusedJobId === null || focusedJobId === undefined)
+    ? ''
+    : String(focusedJobId).trim();
+
+  const shouldLock = normalizedFocusedJobId !== '';
+
+  // 若有 job_id 欄位，順便同步顯示
+  const jobIdEl = document.getElementById('job_id');
+  if (jobIdEl) {
+    if (shouldLock) {
+      jobIdEl.value = normalizedFocusedJobId;
+      jobIdEl.classList.add('bg-yellow');
+    } else {
+      jobIdEl.classList.remove('bg-yellow');
+    }
+  }
+
+  // 套用按鈕狀態
+  try {
+    if (typeof syncButtonSelect === 'function') {
+      syncButtonSelect(shouldLock);
+    } else {
+      const btn = document.getElementById('Button_Select');
+      if (btn) {
+        btn.disabled = shouldLock;
+        btn.classList.toggle('is-disabled', shouldLock);
+      }
+    }
+  } catch (e) {
+    console.error('[output_share] syncButtonSelect error:', e);
+  }
+
+  // 若有 unified UI 樣式，只做視覺同步，不要再覆蓋 shouldLock
   try {
     if (typeof applyUnifiedUIFromStore === 'function') {
       applyUnifiedUIFromStore();
-    }
-  } catch (e) {
-    // noop
-  }
-
-  // 再依 localStorage 狀態初始化 Button_Select
-  let locked = false;
-  try {
-    locked = (typeof isUnifiedLockedStored === 'function')
-      ? !!isUnifiedLockedStored()
-      : false;
-  } catch (e) {
-    locked = false;
-  }
-
-  try {
-    if (typeof syncButtonSelect === 'function') {
-      syncButtonSelect(locked);
     }
   } catch (e) {
     // noop
@@ -61,19 +77,28 @@ var temp_event;
 $(document).ready(function () {
   highlight_row_input('output_table');
 
-  var all_output_job = BOOT_FOCUSED_JOBID;      // 從全域帶入
-  job_id = all_output_job ? String(all_output_job) : '';
+  var all_output_job = BOOT_FOCUSED_JOBID;
+  job_id = (all_output_job === null || all_output_job === undefined)
+    ? ''
+    : String(all_output_job).trim();
+
   output_job = job_id;
 
-  // 先依 boot 狀態鎖按鈕（可選，但推薦）
   const btn = document.getElementById('Button_Select');
-  if (btn) btn.disabled = !!(BOOT_FOCUSED_JOBID !== null && String(BOOT_FOCUSED_JOBID).length > 0);
+  if (btn) {
+    const shouldLock = job_id !== '';
+    if (typeof syncButtonSelect === 'function') {
+      syncButtonSelect(shouldLock);
+    } else {
+      btn.disabled = shouldLock;
+      btn.classList.toggle('is-disabled', shouldLock);
+    }
+  }
 
-  if (job_id) {
-    get_output_by_job_id(job_id); // 內部會依 boot 狀態自動上黃、鎖按鈕
+  if (job_id !== '') {
+    get_output_by_job_id(job_id);
   }
 });
-
 
 document.addEventListener('DOMContentLoaded', function() {
   var observer = new MutationObserver(function(mutations) {
@@ -344,8 +369,15 @@ function setUnifiedLockedStored(locked, jobId) {
     localStorage.removeItem(UNIFIED_JOB_KEY);
   }
 }
+
 function applyUnifiedUIFromStore() {
-  const locked = isUnifiedLockedStored();
+  const focusedJobId = <?php echo json_encode($data['focused_jobid'] ?? null); ?>;
+  const normalizedFocusedJobId = (focusedJobId === null || focusedJobId === undefined)
+    ? ''
+    : String(focusedJobId).trim();
+
+  const locked = normalizedFocusedJobId !== '';
+
   setSelectBtnDisabled(locked);
   setJobPickerDisabled(locked);
 }
@@ -1239,6 +1271,7 @@ function normalizeLang(raw) {
   return ['en-us', 'zh-tw', 'zh-cn'].includes(l) ? l : 'en-us';
 }
 
+
 function get_output_by_job_id(job_id) {
   const reqId = ++_getOutputReqId;
 
@@ -1259,20 +1292,25 @@ function get_output_by_job_id(job_id) {
       // 防止舊回應覆蓋新狀態
       if (reqId !== _getOutputReqId) return;
 
-      const job_outputlist = (data && typeof data.job_outputlist === 'string') ? data.job_outputlist : '';
-      // ★ 寫回全域，別用區域 const
+      const job_outputlist = (data && typeof data.job_outputlist === 'string')
+        ? data.job_outputlist
+        : '';
+
+      // ★ 寫回全域
       temp  = Array.isArray(data?.temp)  ? data.temp  : [];
       tempA = Array.isArray(data?.tempA) ? data.tempA : [];
 
-      // 從 API 取出此 job 的「是否 unified」與聚焦 job（若有）
+      // 從 API 取出此 job 的 unified 狀態
       const apiUnified = (typeof data?.check_jobid_unified !== 'undefined')
         ? !!data.check_jobid_unified
-        : null; // 未帶此欄位就維持現有規則
+        : null;
 
+      // 若後端有帶 focused_jobid，更新 boot 狀態
       if (typeof data?.focused_jobid !== 'undefined') {
-        window.BOOT_FOCUSED_JOBID = String(data.focused_jobid ?? '');
+        window.BOOT_FOCUSED_JOBID = (data.focused_jobid === null || data.focused_jobid === undefined)
+          ? ''
+          : String(data.focused_jobid).trim();
       }
-
 
       // 渲染表格
       const listEl = document.getElementById('output_jobid_select');
@@ -1281,73 +1319,78 @@ function get_output_by_job_id(job_id) {
       const jobSelectWrap = document.getElementById('JobSelect');
       if (jobSelectWrap) jobSelectWrap.style.display = 'none';
 
-      // === 決定是否上黃底 ===
-      const listEmpty  = (job_outputlist.trim() === '');
-      const hasAnyData = !(listEmpty && temp.length === 0 && tempA.length === 0);
+      // === 統一判斷來源：目前這筆是否就是 focused job ===
+      const normalizedBootFocusedJobId =
+        (window.BOOT_FOCUSED_JOBID === null || window.BOOT_FOCUSED_JOBID === undefined)
+          ? ''
+          : String(window.BOOT_FOCUSED_JOBID).trim();
 
-      const shouldYellowByUnified = (unifiedFlag !== 0);
-      const isBootFocused = (
-        BOOT_FOCUSED_JOBID !== null &&
-        String(BOOT_FOCUSED_JOBID).length > 0 &&
-        String(job_id) === String(BOOT_FOCUSED_JOBID)
-      );
+      const isFocusedCurrentJob =
+        normalizedBootFocusedJobId !== '' &&
+        String(job_id) === normalizedBootFocusedJobId;
 
-      // 尊重一次性抑制旗標
-      const allowYellow = (apiUnified === false) ? false: (!_suppressYellowOnce && (shouldYellowByUnified || isBootFocused));
+      // === 黃底狀態 ===
+      const allowYellow = (apiUnified === false)
+        ? false
+        : (!_suppressYellowOnce && (isFocusedCurrentJob || (unifiedFlag !== 0)));
 
       if (jobIdEl) {
         jobIdEl.classList.remove('bg-yellow');
         jobIdEl.style.backgroundColor = '';
-        if (allowYellow) jobIdEl.classList.add('bg-yellow');
+
+        if (allowYellow) {
+          jobIdEl.classList.add('bg-yellow');
+        }
 
         _suppressYellowOnce = false;
-
-        //if (!hasAnyData && !isBootFocused && unifiedFlag === 0) {
-          //jobIdEl.value = '';
-        //}
       }
 
       // === Button_Select 狀態 ===
       const btn = document.getElementById('Button_Select');
       if (btn) {
-          // 以 localStorage 的鎖定狀態為準；若使用者已「套用解除」，就應該可點
-          
-          // 3) 讀 per-job 鎖定；伺服器若明確回 false → 應可點
-          const lockedByStore = (typeof isUnifiedLockedStored === 'function')
-            ? !!isUnifiedLockedStored(job_id)   // ★ 帶 job_id（per-job）
-            : false;
+        const shouldDisable = (apiUnified === false)
+          ? false
+          : (isFocusedCurrentJob || (unifiedFlag !== 0));
 
-          const shouldDisable = (apiUnified === false)
-            ? false
-            : (lockedByStore || (unifiedFlag !== 0));
-
-            
-
-
-          if (typeof syncButtonSelect === 'function') {
-            syncButtonSelect(shouldDisable);
-          } else {
-            // 保底：環境若沒有 syncButtonSelect，沿用原邏輯避免壞掉
-            btn.disabled = shouldDisable;
-            btn.classList.toggle('disabled', shouldDisable);
-            btn.classList.toggle('disabled_input', shouldDisable);
-            btn.setAttribute('aria-disabled', String(shouldDisable));
-          }
+        if (typeof syncButtonSelect === 'function') {
+          syncButtonSelect(shouldDisable);
+        } else {
+          btn.disabled = shouldDisable;
+          btn.classList.toggle('disabled', shouldDisable);
+          btn.classList.toggle('disabled_input', shouldDisable);
+          btn.classList.toggle('is-disabled', shouldDisable);
+          btn.setAttribute('aria-disabled', String(shouldDisable));
+        }
       }
 
       // ===== 語系套用（1~16）=====
       const labels = {
-        'en-us': {1:'OK',2:'NG',3:'NG - High',4:'NG - Low',5:'OK - Sequence',6:'OK - Job',7:'Tool Running',8:'Tool Trigger',9:'Reverse',10:'BS',11:'Barcode',12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'},
-        'zh-tw': {1:'OK',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'完工信號',7:'馬達信號',8:'啟動信號',9:'反向',10:'條碼停止',11:'條碼',12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'},
-        'zh-cn': {1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作任务完成信号',7:'马达信号',8:'启动信号',9:'反向',10:'条码停止',11:'条码',12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'}
+        'en-us': {
+          1:'OK',2:'NG',3:'NG - High',4:'NG - Low',5:'OK - Sequence',6:'OK - Job',
+          7:'Tool Running',8:'Tool Trigger',9:'Reverse',10:'BS',11:'Barcode',
+          12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'
+        },
+        'zh-tw': {
+          1:'OK',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'完工信號',
+          7:'馬達信號',8:'啟動信號',9:'反向',10:'條碼停止',11:'條碼',
+          12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'
+        },
+        'zh-cn': {
+          1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作任务完成信号',
+          7:'马达信号',8:'启动信号',9:'反向',10:'条码停止',11:'条码',
+          12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'
+        }
       };
+
       const lang = normalizeLang(data?.language || getCookie('language') || 'en-us');
       const L = labels[lang];
 
       if (listEl) {
         listEl.querySelectorAll('.evt-label[data-eid]').forEach(el => {
           const eid = parseInt(el.getAttribute('data-eid'), 10);
-          if (Number.isFinite(eid) && L[eid]) el.textContent = L[eid];
+          if (Number.isFinite(eid) && L[eid]) {
+            el.textContent = L[eid];
+          }
         });
 
         // 重置選取狀態
@@ -1360,11 +1403,14 @@ function get_output_by_job_id(job_id) {
           listEl.addEventListener('click', function (e) {
             const row = e.target.closest('tr[data-event]');
             if (!row) return;
+
             listEl.querySelectorAll('tr.selected').forEach(r => r.classList.remove('selected'));
             row.classList.add('selected');
+
             window.output_event  = row.getAttribute('data-event');
             window.output_pinval = row.querySelector('[data-outputpin]')?.getAttribute('data-outputpin') || null;
           });
+
           listEl._boundClick = true;
         }
       }
@@ -1378,6 +1424,7 @@ function get_output_by_job_id(job_id) {
     }
   });
 }
+
 
 
 
