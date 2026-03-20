@@ -1558,9 +1558,9 @@ class Settings extends Controller
             ===================================================== */
 
             $root = $_SERVER['DOCUMENT_ROOT'] . '/';
-            $target_directory = $root . 'ntcs_idas/';
-            $staging_directory = $root . 'ntcs_idas_new/';
-            $old_directory = $root . 'ntcs_idas_old/';
+            $target_directory = $root . 'idas/';
+            $staging_directory = $root . 'idas_new/';
+            $old_directory = $root . 'idas_old/';
 
             // 1️⃣ 清 staging
             if (is_dir($staging_directory)) {
@@ -1587,6 +1587,12 @@ class Settings extends Controller
             if (is_dir($old_directory)) {
                 $this->deleteDirectory($old_directory);
             }
+
+
+            sleep(1);
+            exec("sync");//強制將ram寫回硬碟，避免控制器馬上關機時會遺失資料
+            sleep(1);
+ 
 
 
             // 14. 登出使用者

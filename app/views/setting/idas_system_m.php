@@ -7,10 +7,12 @@
                         <div class="col t1"><?php echo $text['system_sys_date'];?>(UTC):</div>
                         <div class="row t2">
                             <div class="col t2">
-                                <form style="margin-left: 10%">
+                                <form style="margin-left: 10%" onsubmit="change_datetime(); return false;">
                                     <span id="currentSystemTime"></span><br>
-                                    <input type="datetime-local" id="newTime" value="" required class="t3 w3-submit w3-border w3-round" style="width: 200px">
-                                    <input type="button" value="<?php echo $text['save'];?>" class="all-btn w3-submit w3-border w3-round-large" style="float: right" onclick="time_save()">
+                                    <input type="datetime-local" id="newTime" required class="t3 w3-submit w3-border w3-round" style="width: 200px">
+                                    <button type="submit" class="all-btn w3-submit w3-border w3-round-large" style="float: right">
+                                        <?php echo $text['save']; ?>
+                                    </button>
                                 </form>
                             </div>        
                         </div>  

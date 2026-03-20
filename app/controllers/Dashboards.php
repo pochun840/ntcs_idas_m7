@@ -280,7 +280,7 @@ class Dashboards extends Controller
 
     public function get_latest_csv() {
 
-        $dir = "/var/www/html/ntcs_idas/public/ftp";
+        $dir = "/var/www/html/idas/public/ftp";
         $files = glob($dir . "/*.csv");
 
         if (!$files) {
@@ -326,7 +326,7 @@ class Dashboards extends Controller
 
         echo json_encode([
             "status" => true,
-            "csv"    => "/ntcs_idas/public/ftp/" . basename($file),
+            "csv"    => "/idas/public/ftp/" . basename($file),
             "stable" => $stable
         ]);
     }
@@ -348,7 +348,7 @@ class Dashboards extends Controller
     public function auto_fix_and_sync_csv(){
 
         $sourceDir = '/mnt/ramdisk/ftp';
-        $targetDir = '/var/www/html/ntcs_idas/public/ftp';
+        $targetDir = '/var/www/html/idas/public/ftp';
 
         // Debug log
         @mkdir($targetDir, 0777, true);
@@ -457,7 +457,7 @@ class Dashboards extends Controller
 
     public function cleanCsvKeepLast10Core(){
 
-        $dir = '/var/www/html/ntcs_idas/public/ftp';
+        $dir = '/var/www/html/idas/public/ftp';
 
         if (!is_dir($dir)) {
             return [false, "目錄不存在：{$dir}"];

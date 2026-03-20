@@ -1,11 +1,11 @@
 <?php
 
-//sudo chmod -R 777 /var/www/html/ntcs_idas
-// sudo chmod -R 777  var/www/html/ntcs_idas/public/ftp
+//sudo chmod -R 777 /var/www/html/idas
+// sudo chmod -R 777  var/www/html/idas/public/ftp
 //sudo chmod -R 777 /var/www/html/database
 //sudo rm -rf /var/www/html/extracted
-//sudo rm -rf /var/www/html/ntcs_idas  
-//sudo chown -R www-data:www-data /var/www/html/ntcs_idas/app/views/step
+//sudo rm -rf /var/www/html/idas  
+//sudo chown -R www-data:www-data /var/www/html/idas/app/views/step
 //12345678rd
 //
 
@@ -71,88 +71,86 @@ $brand = get_iconmode_from_ver();
 }*/
 
 
-// iDAS出貨版本 0:Kilews 2:上海 shanhai 4:MyTorque 5:晶元SUMAKE 6:DELTA 7:白牌 6:
-define('ICONMODE', $brand);
+// iDAS出貨版本 0:Kilews 2:上海 shanhai 4:MyTorque 5:晶元SUMAKE 6:DELTA 7:白牌
+define('ICONMODE', (int)$brand);
 
-
-switch ( ICONMODE ) {
+switch (ICONMODE) {
 	case 0: // Kilews
-		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
-		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
-		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
-		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');  // apple icon
-		define('TITLE_INDEX',       'KILEWS');              // 首頁title
-		define('SUBTITLE_INDEX',    'iDAS FOR KL-NTCS-M7');     // 首頁subtitle
-		define('TITLE_AGENT',       'KILEWS IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
-	break;
-	case 4: // MyTorque
-		define('ICON_NORMAL',       URLROOT.'img/MY-icon/yellow-192x192.png');
-		define('ICON_NORMAL_APPLE', URLROOT.'img/MY-icon/yellow-60x60.png');
-		define('ICON_AGENT',        URLROOT.'img/MY-icon/blue-192x192.png');
-		define('ICON_AGENT_APPLE',  URLROOT.'img/MY-icon/blue-60x60.png');
-		define('TITLE_INDEX',       'MYTORQ');
-		define('SUBTITLE_INDEX',    'iDAS FOR MY-SIRIUS');
-		define('TITLE_AGENT',       'MYTORQ IoT Agent');
-		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
-	break;
-	case 2: // 上海 shanhai
-		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
-		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
-		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
-		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');  // apple icon
-		define('TITLE_INDEX',       'KILEWS');              // 首頁title
-		define('SUBTITLE_INDEX',    'iDAS FOR KL-EPNC-M7');     // 首頁subtitle
-		define('TITLE_AGENT',       'EPNC IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_11',    'NTCS-M7');    // Agent頁title
-	break;
-	case 5: // 晶元SUMAKE
-		define('ICON_NORMAL',       URLROOT.'img/Sumake_icon/192.png'); // normal icon
-		define('ICON_NORMAL_APPLE', URLROOT.'img/Sumake_icon/60.png');  // apple icon
-		define('ICON_AGENT',        URLROOT.'img/Sumake_icon/192.png'); // normal icon
-		define('ICON_AGENT_APPLE',  URLROOT.'img/Sumake_icon/60.png');  // apple icon
-		define('TITLE_INDEX',       'SUMAKE');              // 首頁title
-		define('SUBTITLE_INDEX',    'iDAS FOR SMT-C3');     // 首頁subtitle
-		define('TITLE_AGENT',       'SUMAKE IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
-	break;
-	case 6: // DELTA
-		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
-		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
-		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
-		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');  // apple icon
-		define('TITLE_INDEX',       'DELTA');              // 首頁title
-		define('SUBTITLE_INDEX',    'iDAS FOR XTCA1');     // 首頁subtitle
-		define('TITLE_AGENT',       'DELTA IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
-	break;
-	case 7: // 白牌
-		define('ICON_NORMAL',       URLROOT.'img/192.png'); // normal icon
-		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');  // apple icon
-		define('ICON_AGENT',        URLROOT.'img/192.png'); // normal icon
-		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');  // apple icon
-		define('TITLE_INDEX',       '');              // 首頁title
-		define('SUBTITLE_INDEX',    'iDAS FOR OPT-GK TRS1');     // 首頁subtitle
-		define('TITLE_AGENT',       'IoT Agent');    // Agent頁title
-		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
-	break;
-	// case '8':
-	// 	// code...
-	// 	break;
-	// case '7':
-	// 	// code...
-	// 	break;
-	
-	/*default:
-		define('ICON_NORMAL',       URLROOT.'img/192.png');
-		define('ICON_NORMAL_APPLE', URLROOT.'img/60.png');
-		define('ICON_AGENT',        URLROOT.'img/192.png');
-		define('ICON_AGENT_APPLE',  URLROOT.'img/60.png');
+		define('ICON_NORMAL',       URLROOT . 'img/192.png');
+		define('ICON_NORMAL_APPLE', URLROOT . 'img/60.png');
+		define('ICON_AGENT',        URLROOT . 'img/192.png');
+		define('ICON_AGENT_APPLE',  URLROOT . 'img/60.png');
 		define('TITLE_INDEX',       'KILEWS');
 		define('SUBTITLE_INDEX',    'iDAS FOR KL-NTCS-M7');
 		define('TITLE_AGENT',       'KILEWS IoT Agent');
-		define('DEVICE_TYPE_11',     'NTCS-M7');    // Agent頁title
-	break;*/
+		define('DEVICE_TYPE_11',    'KL-NTCS-M7');
+	break;
+
+	case 2: // 上海 shanhai
+		define('ICON_NORMAL',       URLROOT . 'img/192.png');
+		define('ICON_NORMAL_APPLE', URLROOT . 'img/60.png');
+		define('ICON_AGENT',        URLROOT . 'img/192.png');
+		define('ICON_AGENT_APPLE',  URLROOT . 'img/60.png');
+		define('TITLE_INDEX',       'KILEWS');
+		define('SUBTITLE_INDEX',    'iDAS FOR KL-EPNC-M7');
+		define('TITLE_AGENT',       'EPNC IoT Agent');
+		define('DEVICE_TYPE_11',    'KL-EPNC-M7');
+	break;
+
+	case 4: // MyTorque
+		define('ICON_NORMAL',       URLROOT . 'img/MY-icon/yellow-192x192.png');
+		define('ICON_NORMAL_APPLE', URLROOT . 'img/MY-icon/yellow-60x60.png');
+		define('ICON_AGENT',        URLROOT . 'img/MY-icon/blue-192x192.png');
+		define('ICON_AGENT_APPLE',  URLROOT . 'img/MY-icon/blue-60x60.png');
+		define('TITLE_INDEX',       'MYTORQ');
+		define('SUBTITLE_INDEX',    'iDAS FOR MY-SIRIUS');
+		define('TITLE_AGENT',       'MYTORQ IoT Agent');
+		define('DEVICE_TYPE_11',    'NTCS-M7');
+	break;
+
+	case 5: // 晶元 SUMAKE
+		define('ICON_NORMAL',       URLROOT . 'img/Sumake_icon/192.png');
+		define('ICON_NORMAL_APPLE', URLROOT . 'img/Sumake_icon/60.png');
+		define('ICON_AGENT',        URLROOT . 'img/Sumake_icon/192.png');
+		define('ICON_AGENT_APPLE',  URLROOT . 'img/Sumake_icon/60.png');
+		define('TITLE_INDEX',       'SUMAKE');
+		define('SUBTITLE_INDEX',    'iDAS FOR SMT-C3');
+		define('TITLE_AGENT',       'SUMAKE IoT Agent');
+		define('DEVICE_TYPE_11',    'SMT-C3');
+	break;
+
+	case 6: // DELTA
+		define('ICON_NORMAL',       URLROOT . 'img/192.png');
+		define('ICON_NORMAL_APPLE', URLROOT . 'img/60.png');
+		define('ICON_AGENT',        URLROOT . 'img/192.png');
+		define('ICON_AGENT_APPLE',  URLROOT . 'img/60.png');
+		define('TITLE_INDEX',       'DELTA');
+		define('SUBTITLE_INDEX',    'iDAS FOR XTCA1');
+		define('TITLE_AGENT',       'DELTA IoT Agent');
+		define('DEVICE_TYPE_11',    'NTCS-M7');
+	break;
+
+	case 7: // 白牌
+		define('ICON_NORMAL',       URLROOT . 'img/192.png');
+		define('ICON_NORMAL_APPLE', URLROOT . 'img/60.png');
+		define('ICON_AGENT',        URLROOT . 'img/192.png');
+		define('ICON_AGENT_APPLE',  URLROOT . 'img/60.png');
+		define('TITLE_INDEX',       '');
+		define('SUBTITLE_INDEX',    'iDAS FOR OPT-GK TRS1');
+		define('TITLE_AGENT',       'IoT Agent');
+		define('DEVICE_TYPE_11',    'NTCS-M7');
+	break;
+
+	default:
+		define('ICON_NORMAL',       URLROOT . 'img/192.png');
+		define('ICON_NORMAL_APPLE', URLROOT . 'img/60.png');
+		define('ICON_AGENT',        URLROOT . 'img/192.png');
+		define('ICON_AGENT_APPLE',  URLROOT . 'img/60.png');
+		define('TITLE_INDEX',       'KILEWS');
+		define('SUBTITLE_INDEX',    'iDAS FOR KL-NTCS-M7');
+		define('TITLE_AGENT',       'KILEWS IoT Agent');
+		define('DEVICE_TYPE_11',    'NTCS-M7');
+	break;
 }
 
 

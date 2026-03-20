@@ -122,7 +122,7 @@ class Logins extends Controller
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
 
-                header('Location: /ntcs_idas/public/?url=Dashboards');
+                header('Location: /idas/public/?url=Dashboards');
                 exit;
             }else{
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
@@ -322,7 +322,7 @@ class Logins extends Controller
     // #IDAS上傳 20250624 修改：僅保留步驟 10 與 12
     public function set_ver($debug = false) {
 
-        $info_json_url ='/var/www/html/ntcs_idas/info.json';
+        $info_json_url ='/var/www/html/idas/info.json';
         $verify_data = json_decode(@file_get_contents($info_json_url), true);
 
         $iDas_Version = $this->AdminModel->Get_Das_Config('idas_version');

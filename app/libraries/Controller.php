@@ -983,7 +983,7 @@ class Controller
         }
 
         // 超過 2 秒還沒連上 / 連線失敗 → 啟動 agent
-        $cmd = 'sudo /usr/bin/php /var/www/html/ntcs_idas/service/agent_initial.php > /dev/null 2>&1 &';
+        $cmd = 'sudo /usr/bin/php /var/www/html/idas/service/agent_initial.php > /dev/null 2>&1 &';
         shell_exec($cmd);
 
         return [

@@ -26,6 +26,16 @@ $stepTorqueTS         = $stepData['StepTorqueTS'] ?? '';
 $stepEnableDownShift  = (string)($stepData['StepEnableDownShift'] ?? '0');
 $stepTorqueDownShift  = $stepData['StepTorqueDownShift'] ?? '';
 $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
+
+// ===== Downshift 初始顯示（不動 JS，只靠 HTML/PHP 控制）=====
+$isDownshiftOff       = ($stepEnableDownShift === '0');
+$isDownshiftTorque    = ($stepEnableDownShift === '2');
+$isDownshiftAngle     = ($stepEnableDownShift === '1');
+
+$downshiftBlockStyle  = $isDownshiftOff ? 'display:none !important;' : 'display:flex !important;';
+$downshiftSpeedStyle  = $isDownshiftOff ? 'display:none !important;' : 'display:flex !important;';
+$downshiftTorqueStyle = $isDownshiftTorque ? 'display:block !important;' : 'display:none !important;';
+$downshiftAngleStyle  = $isDownshiftAngle ? 'display:block !important;' : 'display:none !important;';
 ?>
 
 <link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/add_seq_step_m.css">
@@ -382,28 +392,28 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
                                 <div class="col-6 t1 option-title"><?php echo $text['Downshift']; ?>:</div>
                                 <div class="col-6 t2 radio-group pretty-radio-group">
                                     <label class="form-check pretty-check" for="downshift_mode_off">
-                                        <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_off" value="0" onclick="toggleDownShift()" <?php echo ($stepEnableDownShift === '0') ? 'checked' : ''; ?>>
+                                        <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_off" value="0" onclick="toggleDownShift()" <?php echo $isDownshiftOff ? 'checked' : ''; ?>>
                                         <span class="form-check-label"><?php echo $text['switch_off']; ?></span>
                                     </label>
 
                                     <label class="form-check pretty-check" for="downshift_mode_torque">
-                                        <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_torque" value="2" onclick="toggleDownShift()" <?php echo ($stepEnableDownShift === '2') ? 'checked' : ''; ?>>
+                                        <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_torque" value="2" onclick="toggleDownShift()" <?php echo $isDownshiftTorque ? 'checked' : ''; ?>>
                                         <span class="form-check-label"><?php echo $text['torque']; ?></span>
                                     </label>
 
                                     <label class="form-check pretty-check" for="downshift_mode_angle">
-                                        <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_angle" value="1" onclick="toggleDownShift()" <?php echo ($stepEnableDownShift === '1') ? 'checked' : ''; ?>>
+                                        <input class="form-check-input" type="radio" name="StepEnableDownShift" id="downshift_mode_angle" value="1" onclick="toggleDownShift()" <?php echo $isDownshiftAngle ? 'checked' : ''; ?>>
                                         <span class="form-check-label"><?php echo $text['angle']; ?></span>
                                     </label>
                                 </div>
                             </div>
 
-                            <div class="row form-row" id="downshift_block">
-                                <div class="form-label-col t1" id="show_downshift_torque" style="display:block;">
+                            <div class="row form-row" id="downshift_block" style="<?php echo $downshiftBlockStyle; ?>">
+                                <div class="form-label-col t1" id="show_downshift_torque" style="<?php echo $downshiftTorqueStyle; ?>">
                                     <?php echo $text['Downshift_Torque']; ?> (<?php echo $text[$data['torque_unit']]; ?>):
                                 </div>
 
-                                <div class="form-label-col t1" id="show_downshift_angle" style="display:none;">
+                                <div class="form-label-col t1" id="show_downshift_angle" style="<?php echo $downshiftAngleStyle; ?>">
                                     <?php echo $text['Downshift_Angle']; ?>:
                                 </div>
 
@@ -415,7 +425,7 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
                                 </div>
                             </div>
 
-                            <div class="row form-row speed-inline-row" id="downshift_speed_block" style="display:none;">
+                            <div class="row form-row speed-inline-row" id="downshift_speed_block" style="<?php echo $downshiftSpeedStyle; ?>">
                                 <div class="form-label-col t1">
                                     <?php echo $text['Downshift_Speed']; ?>:
                                 </div>
@@ -460,7 +470,6 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
 <?php require APPROOT . 'views/inc/footer.php'; ?>
 
 <style>
-/* ===== 基本輸入框 ===== */
 .form-control {
   width: 100% !important;
   display: block !important;
@@ -476,12 +485,10 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
   display: block !important;
 }
 
-/* ===== 頁面容器 ===== */
 .container-ms {
   padding: 8px;
 }
 
-/* ===== top nav ===== */
 .topnav {
   display: flex;
   flex-wrap: wrap;
@@ -510,7 +517,6 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
   font-size: 14px;
 }
 
-/* ===== Scroll 區 ===== */
 .new-container {
   padding-bottom: 16px;
 }
@@ -522,7 +528,6 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
   padding-bottom: 8px;
 }
 
-/* ===== Save Button ===== */
 #button1 {
   display: inline-block !important;
   visibility: visible !important;
@@ -533,7 +538,6 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
   font-size: 20px;
 }
 
-/* ===== 小輸入框 ===== */
 #step_limit_hi_tor,
 #step_limit_lo_tor,
 #step_limit_hi_ang,
@@ -543,7 +547,6 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
   text-align: center;
 }
 
-/* ===== window monitor row ===== */
 #show_tor .ps-0,
 #show_ang .ps-0 {
   display: flex !important;
@@ -553,7 +556,6 @@ $stepRPMDownShift     = $stepData['StepRPMDownShift'] ?? '';
   padding-left: 0 !important;
 }
 
-/* ===== 避免文字拆字 ===== */
 label, .col-3, .col-4, .col-6 {
   word-break: break-word;
   white-space: normal;
@@ -564,7 +566,6 @@ label, .col-3, .col-4, .col-6 {
   white-space: nowrap;
 }
 
-/* ===== Radio Group ===== */
 .radio-group {
   display: flex;
   flex-wrap: wrap !important;
@@ -576,7 +577,6 @@ label, .col-3, .col-4, .col-6 {
   max-width: 100%;
 }
 
-/* ===== Option 區塊 ===== */
 .option-row {
   margin-top: 6px;
   margin-bottom: 10px;
@@ -594,7 +594,6 @@ label, .col-3, .col-4, .col-6 {
   padding-right: 0 !important;
 }
 
-/* ===== 極簡 radio ===== */
 .pretty-radio-group {
   display: flex;
   flex-wrap: wrap !important;
@@ -642,7 +641,6 @@ label, .col-3, .col-4, .col-6 {
   overflow-wrap: normal !important;
 }
 
-/* ===== 表單左右對齊樣式 ===== */
 .form-row {
   display: flex;
   align-items: center;
@@ -667,7 +665,6 @@ label, .col-3, .col-4, .col-6 {
   max-width: 130px;
 }
 
-/* ===== Speed 同一行 ===== */
 .speed-inline-row {
   display: flex !important;
   align-items: center !important;
@@ -689,7 +686,6 @@ label, .col-3, .col-4, .col-6 {
   max-width: 130px;
 }
 
-/* ===== Threshold 同一行 ===== */
 #threshold_block {
   display: flex !important;
   align-items: center !important;
@@ -711,7 +707,6 @@ label, .col-3, .col-4, .col-6 {
   max-width: 130px !important;
 }
 
-/* ===== Downshift 同一行 ===== */
 #downshift_block {
   display: flex !important;
   align-items: center !important;
@@ -733,7 +728,6 @@ label, .col-3, .col-4, .col-6 {
   max-width: 130px !important;
 }
 
-/* ===== Joint Offset ===== */
 .joint-offset-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -758,7 +752,6 @@ label, .col-3, .col-4, .col-6 {
   max-width: 70px !important;
 }
 
-/* ===== 手機版 ===== */
 @media (max-width: 767px) {
   .form-row {
     align-items: flex-start;
@@ -816,7 +809,6 @@ label, .col-3, .col-4, .col-6 {
     max-width: 126px;
   }
 
-  /* threshold 同一行 */
   #threshold_block {
     display: flex !important;
     align-items: center !important;
@@ -839,7 +831,6 @@ label, .col-3, .col-4, .col-6 {
     max-width: 126px !important;
   }
 
-  /* downshift 同一行 */
   #downshift_block {
     display: flex !important;
     align-items: center !important;
@@ -862,14 +853,12 @@ label, .col-3, .col-4, .col-6 {
     max-width: 126px !important;
   }
 
-  /* threshold 不要下推 */
   #show_torque,
   #show_angle {
     margin-bottom: 0 !important;
     font-weight: 500;
   }
 
-  /* downshift 不要下推 */
   #show_downshift_torque,
   #show_downshift_angle {
     margin-bottom: 0 !important;
@@ -877,7 +866,6 @@ label, .col-3, .col-4, .col-6 {
   }
 }
 
-/* ===== Desktop ===== */
 @media (min-width: 768px) {
   .topnav {
     gap: 12px 16px;
@@ -890,7 +878,6 @@ label, .col-3, .col-4, .col-6 {
     width: 56px !important;
   }
 
-  /* threshold 保持 flex，同一行 */
   #threshold_block {
     display: flex !important;
     align-items: center !important;
@@ -913,7 +900,6 @@ label, .col-3, .col-4, .col-6 {
     max-width: 130px !important;
   }
 
-  /* downshift 保持 flex，同一行 */
   #downshift_block {
     display: flex !important;
     align-items: center !important;
@@ -941,4 +927,42 @@ label, .col-3, .col-4, .col-6 {
     font-size: 22px;
   }
 }
+
+/* Downshift = OFF 時，強制隱藏 Downshift Speed */
+@media (max-width: 767px) {
+  .newStep-force-overflow:has(#downshift_mode_off:checked) #downshift_speed_block {
+    display: none !important;
+  }
+
+  .newStep-force-overflow:has(#downshift_mode_off:checked) #downshift_block {
+    display: none !important;
+  }
+
+  .newStep-force-overflow:has(#downshift_mode_torque:checked) #downshift_block,
+  .newStep-force-overflow:has(#downshift_mode_torque:checked) #downshift_speed_block {
+    display: flex !important;
+  }
+
+  .newStep-force-overflow:has(#downshift_mode_torque:checked) #show_downshift_torque {
+    display: block !important;
+  }
+
+  .newStep-force-overflow:has(#downshift_mode_torque:checked) #show_downshift_angle {
+    display: none !important;
+  }
+
+  .newStep-force-overflow:has(#downshift_mode_angle:checked) #downshift_block,
+  .newStep-force-overflow:has(#downshift_mode_angle:checked) #downshift_speed_block {
+    display: flex !important;
+  }
+
+  .newStep-force-overflow:has(#downshift_mode_angle:checked) #show_downshift_torque {
+    display: none !important;
+  }
+
+  .newStep-force-overflow:has(#downshift_mode_angle:checked) #show_downshift_angle {
+    display: block !important;
+  }
+}
+
 </style>

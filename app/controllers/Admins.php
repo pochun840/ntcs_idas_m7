@@ -239,13 +239,13 @@ class Admins extends Controller
         $agent_type = (int)$agent_type;
 
         if ($agent_type == 1) {
-            $this->StartService("/var/www/html/ntcs_idas/service/agent_client.php");
+            $this->StartService("/var/www/html/idas/service/agent_client.php");
         }
 
         if ($agent_type == 2) {
-            $this->StartService("/var/www/html/ntcs_idas/service/agent_server.php");
+            $this->StartService("/var/www/html/idas/service/agent_server.php");
             sleep(1);
-            $this->StartService("/var/www/html/ntcs_idas/service/agent_client.php");
+            $this->StartService("/var/www/html/idas/service/agent_client.php");
         }
 
         $message['server_status'] = $this->ProcessCheck('agent_server.php');//1.檢測server.php

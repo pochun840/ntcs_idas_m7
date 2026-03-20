@@ -1,5 +1,5 @@
 <?php
-//http://192.168.0.97/ntcs_idas/api/get_operation_api.php?type=json
+//http://192.168.0.97/idas/api/get_operation_api.php?type=json
 #==================================
 #   匯出鎖附記錄API
 #   get_operation_api.php

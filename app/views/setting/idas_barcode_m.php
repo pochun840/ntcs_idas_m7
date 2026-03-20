@@ -8,48 +8,28 @@
             <div style="position: relative; max-width: 100%;">
                 <div class="table-container" id="tableContainer">
                     <table id="job_table" class="setting-table w3-table w3-hoverable">
-                        <thead style="font-size: 3vmin;">
-                            <tr class="w3-dark-grey">
-                                <th></th>
-                                <th><?php echo $text['job_id']; ?></th>
-                                <th><?php echo $text['job_name']; ?></th>
-                                <th><?php echo $text['system_barcode']; ?></th>
-                                <th><?php echo $text['system_barcode_from']; ?></th>
-                                <th>to</th>
-                                <th>barcode mode</th>
-                                <th>Count</th>
-                            </tr>
-                        </thead>
-
-                        <tbody style="font-size: 3vmin;" id="total_barcodes">
-                            <?php foreach (($data['barcodes'] ?? []) as $k_b => $v_b){ ?>
-                                <tr>
-                                    <td style="text-align: center; vertical-align: middle;">
-                                        <input class="form-check-input barcode-check"
-                                               type="checkbox"
-                                               name="barcode_check"
-                                               id="barcode_check_<?php echo $k_b; ?>"
-                                               value="<?php echo htmlspecialchars($v_b['barcode_selected_job'] ?? '', ENT_QUOTES); ?>"
-                                               data-job-id="<?php echo htmlspecialchars($v_b['barcode_selected_job'] ?? '', ENT_QUOTES); ?>"
-                                               data-seq-id="<?php echo htmlspecialchars($v_b['seq_id'] ?? '-1', ENT_QUOTES); ?>"
-                                               style="zoom:1.2">
-                                    </td>
-                                    <td><?php echo htmlspecialchars($v_b['barcode_selected_job'] ?? ''); ?></td>
-                                    <td><?php echo htmlspecialchars($v_b['job_name'] ?? ''); ?></td>
-                                    <td><?php echo htmlspecialchars($v_b['barcode'] ?? ''); ?></td>
-                                    <td><?php echo htmlspecialchars($v_b['barcode_range_from'] ?? ''); ?></td>
-                                    <td><?php echo htmlspecialchars($v_b['barcode_range_to'] ?? ''); ?></td>
-                                    <td>
-                                        <?php
-                                            $barcodeEnable = $v_b['barcode_enable'] ?? null;
-                                            echo ($barcodeEnable !== null && isset($data['barcode_mode'][$barcodeEnable]))
-                                                ? htmlspecialchars($data['barcode_mode'][$barcodeEnable], ENT_QUOTES)
-                                                : '';
-                                        ?>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($v_b['barcode_range_count'] ?? ''); ?></td>
+                        <thead id="header-table">
+                                <tr class="w3-dark-grey">
+                                    <th><?php echo $text['job_id'];?></th>
+                                    <th><?php echo $text['job_name'];?></th>
+                                    <th><?php echo $text['system_barcode'];?></th>
+                                    <th><?php echo $text['system_barcode_from'];?></th>
+                                    <th><?php echo $text['system_barcode_to'];?></th>
+                                    <th><?php echo $text['system_barcode_mode'];?></th>
                                 </tr>
-                            <?php } ?>
+                        </thead>
+                        <tbody style="font-size: 1.8vmin;text-align: center;" id='total_barcodes'>
+                                
+                                <?php foreach ($data['barcodes'] as $k_b =>$v_b){?>
+                                    <tr>
+                                        <td><?php echo $v_b['job_id'];?></td>
+                                        <td><?php echo $v_b['JOBname'];?></td>
+                                        <td><?php echo $v_b['barcode'];?></td>
+                                        <td><?php echo $v_b['range_from'];?></td>
+                                        <td><?php echo $v_b['range_count'];?></td>
+                                        <td><?php echo $data['barcode_mode'][$v_b['barcode_mode']];?></td>
+                                    </tr>
+                                <?php } ?>
                         </tbody>
                     </table>
                 </div>
