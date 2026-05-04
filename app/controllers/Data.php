@@ -714,12 +714,188 @@ class Data extends Controller
         $this->view('data/qa_check', $data);
     }
 
+    /**
+     * 折線圖資料格式整理：
+     * - final_fasten_torque：給表格顯示，保留單位小數位
+     * - final_fasten_torque_raw：給 ECharts 畫圖使用，保持 numeric
+     * - chart_label：X 軸顯示文字
+     */
+    private function normalizeDrawLineRows(array $rows, array $decimals_arr, array $color_arr): array {
+
+        foreach ($rows as $i => &$row) {
+            $status = (int)($row['fasten_status'] ?? 0);
+
+            if ($status === 5) {
+                $row['row_color'] = $color_arr['okseqcolor_text'] ?? 'status-ok';
+            } elseif ($status === 6) {
+                $row['row_color'] = $color_arr['okjobcolor_text'] ?? 'status-ok';
+            } elseif ($status === 4) {
+                $row['row_color'] = 'status-ok';
+            } else {
+                $row['row_color'] = 'status-ng';
+            }
+
+            $torque_raw = $row['final_fasten_torque'] ?? 0;
+            $torque_raw = is_numeric($torque_raw) ? (float)$torque_raw : (float)str_replace(',', '', (string)$torque_raw);
+
+            $torque_unit = (int)($row['torque_unit'] ?? 1);
+            $precision   = $decimals_arr[$torque_unit] ?? 3;
+
+            $row['final_fasten_torque_raw'] = $torque_raw;
+            $row['final_fasten_torque']     = number_format($torque_raw, (int)$precision, '.', '');
+            $row['chart_index']             = $i + 1;
+            $row['chart_label']             = !empty($row['data_time']) ? (string)$row['data_time'] : (string)($i + 1);
+        }
+        unset($row);
+
+        return $rows;
+    }
 
 
+    /**
+     * 取得目前資料單位文字，給折線圖 Y 軸顯示。
+     */
+    private function getDrawLineUnitLabel(array $rows, array $unit_arr): string {
+
+        if (empty($rows)) {
+            return '';
+        }
+
+        $last = end($rows);
+        $code = (int)($last['torque_unit'] ?? 1);
+        $unitKey = $unit_arr[$code] ?? '';
+
+        if ($unitKey === '') {
+            return '';
+        }
+
+        return $this->unitText($unitKey);
+    }
 
 
+    /**
+     * 折線圖頁面：只負責載入初始 25 筆資料與 view。
+     */
+    public function drawLineChart(){
+
+        // 同步控制器資料庫（ntcs_data.db）至 iDAS
+        $this->ntcs_data_db_sysnc();
+
+        $isMobile     = $this->isMobileCheck();
+        $decimals_arr = $this->MiscellaneousModel->details('decimals');
+        $unit_arr     = $this->MiscellaneousModel->details('modbus_torque_unit');
+        $status_arr   = $this->MiscellaneousModel->details('status');
+        $color_arr    = $this->get_color_type();
+
+        $db_exists = true;
+        $db_path   = '';
+
+        if (PHP_OS_FAMILY === 'Linux') {
+            $db_path = '/var/www/html/database/data' . date('Y') . '.db';
+            $db_exists = file_exists($db_path);
+        }
+
+        if ($db_exists && method_exists($this->DataModel, 'getLineChartData')) {
+            $res_data     = $this->DataModel->getLineChartData('ALL', 25);
+            $res_data_ok  = $this->DataModel->getLineChartData('OK', 25);
+            $res_data_nok = $this->DataModel->getLineChartData('NOK', 25);
+        } else {
+            $res_data     = [];
+            $res_data_ok  = [];
+            $res_data_nok = [];
+        }
+
+        $res_data     = $this->normalizeDrawLineRows($res_data, $decimals_arr, $color_arr);
+        $res_data_ok  = $this->normalizeDrawLineRows($res_data_ok, $decimals_arr, $color_arr);
+        $res_data_nok = $this->normalizeDrawLineRows($res_data_nok, $decimals_arr, $color_arr);
+
+        $data = array(
+            'isMobile'         => $isMobile,
+            'res_data'         => $res_data,
+            'res_data_ok'      => $res_data_ok,
+            'res_data_nok'     => $res_data_nok,
+            'unit_arr'         => $unit_arr,
+            'status_arr'       => $status_arr,
+            'db_exists'        => $db_exists,
+            'db_path'          => $db_path,
+            'color_arr'        => $color_arr,
+            'chart_limit'      => 25,
+            'chart_unit_label' => $this->getDrawLineUnitLabel($res_data, $unit_arr)
+        );
+
+        $this->view('data/drawline_chart_index', $data);
+    }
 
 
+    /**
+     * 折線圖 AJAX API：每 2 秒回傳最新 25 筆扭力資料。
+     * URL: ?url=Data/get_drawline_chart_data
+     */
+    public function get_drawline_chart_data(){
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        $mode  = $_POST['mode']  ?? $_GET['mode']  ?? 'ALL';
+        $limit = $_POST['limit'] ?? $_GET['limit'] ?? 25;
+
+        $mode = strtoupper(trim((string)$mode));
+        if (!in_array($mode, ['ALL', 'OK', 'NOK'], true)) {
+            $mode = 'ALL';
+        }
+
+        $limit = (int)$limit;
+        if ($limit <= 0) {
+            $limit = 25;
+        }
+        if ($limit > 100) {
+            $limit = 100;
+        }
+
+        try {
+            $this->ntcs_data_db_sysnc();
+        } catch (Throwable $e) {
+            // 同步失敗不直接中斷，仍嘗試讀取 iDAS 目前資料。
+        }
+
+        $decimals_arr = $this->MiscellaneousModel->details('decimals');
+        $unit_arr     = $this->MiscellaneousModel->details('modbus_torque_unit');
+        $status_arr   = $this->MiscellaneousModel->details('status');
+        $color_arr    = $this->get_color_type();
+
+        if (method_exists($this->DataModel, 'getLineChartData')) {
+            $rows = $this->DataModel->getLineChartData($mode, $limit);
+        } else {
+            // 舊版 fallback：避免 model 尚未更新時前端完全無資料。
+            $rows = array_reverse(array_slice($this->DataModel->getData($mode), 0, $limit));
+        }
+
+        $rows = $this->normalizeDrawLineRows($rows, $decimals_arr, $color_arr);
+        $unitLabel = $this->getDrawLineUnitLabel($rows, $unit_arr);
+
+        echo json_encode([
+            'success'          => true,
+            'mode'             => $mode,
+            'limit'            => $limit,
+            'count'            => count($rows),
+            'records'          => $rows,
+            'unit_arr'         => $unit_arr,
+            'status_arr'       => $status_arr,
+            'color_arr'        => $color_arr,
+            'chart_unit_label' => $unitLabel,
+            'chart'            => [
+                'labels' => array_map(function($row) {
+                    return $row['chart_label'] ?? '';
+                }, $rows),
+                'torque' => array_map(function($row) {
+                    return (float)($row['final_fasten_torque_raw'] ?? 0);
+                }, $rows)
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
 
 }

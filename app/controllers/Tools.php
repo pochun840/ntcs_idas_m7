@@ -173,10 +173,15 @@ class Tools extends Controller
         }else if( ICONMODE  === 2){
             $qr_code_img = 'img/qr_code_cn.png';
             $qr_code_url = 'https://www.kilews.com.cn/?_l=zh_CN';
+        }else if(ICONMODE  === 4) {
+            //C:\web\mywebsite.com\ntcs_idas\public\img\MY-icon
+            $qr_code_img = 'img/MY-icon/qr_code_mytorq.jpg';
+            $qr_code_url = 'https://www.mytorqtools.com/Download_Class.aspx';
         }else{
             $qr_code_img = 'img/Sumake_icon/qr_code.jpg';
             $qr_code_url = 'https://s3.hicloud.net.tw/electric-tools/transducer/SMT-C3%20DIR-K2.pdf';
         }
+
 
 
         // 組資料（確保 gateway/broadcast 映射正確）

@@ -1,3 +1,22 @@
+window.addEventListener('storage', function (event) {
+    if (event.key === 'idas_force_logout') {
+        try {
+            localStorage.clear();
+            sessionStorage.clear();
+
+            document.cookie = 'username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            document.cookie = 'username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + location.hostname;
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + location.hostname;
+        } catch (e) {
+            console.warn('storage logout failed:', e);
+        }
+
+        window.location.replace('/idas/public/?url=In');
+    }
+});
+
+
 function hideElementById(elementId) {
     var element = document.getElementById(elementId);
     if (element){
@@ -200,6 +219,27 @@ function language_change(language) {
             }
         });
     }
+}
+
+function forceLogoutAllTabs(redirectUrl) {
+    try {
+        // 清 storage
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // 清常見 cookie（前端可刪的）
+        document.cookie = 'username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        document.cookie = 'username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + location.hostname;
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + location.hostname;
+
+        // 通知其他分頁
+        localStorage.setItem('idas_force_logout', String(Date.now()));
+    } catch (e) {
+        console.warn('force logout failed:', e);
+    }
+
+    window.location.replace(redirectUrl || '/idas/public/?url=In');
 }
 
 

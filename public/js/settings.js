@@ -689,77 +689,56 @@ function Firmware_Update() {
 
 
 
-function OpenButton(ButtonMode){
+function OpenButton(ButtonMode) {
+    const sections = {
+        "Controller": "Controller_Setting",
+        "System": "System_Setting",
+        "Barcode": "Barcode_Setting",
+        "Connect": "Connect_Setting",
+        "Account": "AccountDisplay",
+        "Update": "iDas-Update_Setting"
+    };
 
-    if (ButtonMode == "Controller")
-    {
-        document.getElementById('Controller_Setting').style.display = "";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt1').classList.add("active");
-        document.getElementById('bnt2').classList.remove("active");   
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
-    }
-    else if (ButtonMode == "System")
-    {
-        document.getElementById('System_Setting').style.display = "";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt2').classList.add("active");
-        document.getElementById('bnt1').classList.remove("active");
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
+    const buttons = {
+        "Controller": "bnt1",
+        "System": "bnt2",
+        "Barcode": "bnt3",
+        "Connect": "bnt4",
+        "Account": "bnt5",
+        "Update": "bnt6"
+    };
 
+    Object.keys(sections).forEach(function(key) {
+        const sectionEl = document.getElementById(sections[key]);
+        const buttonEl = document.getElementById(buttons[key]);
+
+        if (sectionEl) sectionEl.style.display = "none";
+        if (buttonEl) buttonEl.classList.remove("active");
+    });
+
+    const targetSectionId = sections[ButtonMode];
+    const targetButtonId = buttons[ButtonMode];
+
+    if (!targetSectionId || !targetButtonId) {
+        console.warn("Unknown ButtonMode:", ButtonMode);
+        return;
     }
-    else if (ButtonMode == "Barcode")
-    {
-        document.getElementById('Barcode_Setting').style.display = "";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt3').classList.add("active");
-        document.getElementById('bnt2').classList.remove("active");
-        document.getElementById('bnt1').classList.remove("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
-    }
-    else if (ButtonMode == "Connect")
-    {
-        document.getElementById('Connect_Setting').style.display = "";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('iDas-Update_Setting').style.display = "none";
-        document.getElementById('bnt4').classList.add("active");
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt2').classList.remove("active");
-        document.getElementById('bnt1').classList.remove("active");
-        document.getElementById('bnt5').classList.remove("active");
-    }
-    else if (ButtonMode == "Update")
-    {
-        document.getElementById('iDas-Update_Setting').style.display = "";
-        document.getElementById('Connect_Setting').style.display = "none";
-        document.getElementById('Barcode_Setting').style.display = "none";
-        document.getElementById('System_Setting').style.display = "none";
-        document.getElementById('Controller_Setting').style.display = "none";
-        document.getElementById('bnt5').classList.add("active");
-        document.getElementById('bnt4').classList.remove("active");
-        document.getElementById('bnt3').classList.remove("active");
-        document.getElementById('bnt2').classList.remove("active");
-        document.getElementById('bnt1').classList.remove("active");
+
+    const targetSection = document.getElementById(targetSectionId);
+    const targetButton = document.getElementById(targetButtonId);
+
+    if (targetSection) targetSection.style.display = "block";
+    if (targetButton) targetButton.classList.add("active");
+
+    if (ButtonMode === "Account" && typeof loadSettingAccountUsers === "function") {
+        loadSettingAccountUsers();
     }
 }
 
-
+// Setting page final tab switch alias.
+// Account is bnt5, iDAS Update is bnt6.
+window.SettingOpenButtonFinal = OpenButton;
+window.OpenButton = OpenButton;
 
 function getCookie(name) 
 {
@@ -933,57 +912,73 @@ function idas_update() {
     form.append("file", import_file);
     var url = '?url=Settings/iDas_Update';
 
-    // 語言設定
     var language = getCookie('language') || 'en-us';
-    var title, confirm_text, empty_file_text;
+    var title, confirm_text, empty_file_text, upload_error_text;
+    var login_redirect_url = '/idas/public/?url=In';
 
     if (language === "zh-cn" || language === "zh-tw") {
         title = 'IDAS 更新';
         confirm_text = '您確定要導入 IDAS 更新包嗎？';
         empty_file_text = '請先選擇要上傳的更新檔。';
+        upload_error_text = '上傳檔案時發生錯誤。';
     } else {
         title = 'IDAS UPDATE';
         confirm_text = 'Are you sure you want to import the IDAS update package?';
         empty_file_text = 'Please select a file to upload.';
+        upload_error_text = 'An error occurred while uploading the file.';
     }
 
-    // 未選擇檔案
     if (!import_file) {
         alertify.alert(title, empty_file_text);
         return;
     }
 
     alertify.confirm(confirm_text, function (result) {
-        if (result) {
-            document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
+        if (!result) return;
 
-            $.ajax({
-                url: url,
-                method: "POST",
-                data: form,
-                processData: false,
-                contentType: false,
-                dataType: 'json', // ✅ jQuery 自動解析為物件
-                success: function (responseData) {
-                    // ✅ responseData 已是物件，無需 JSON.parse()
-                    setTimeout(function () {
-                        document.getElementById('spinner').style.display = 'none';
-                        alertify.alert(responseData.res_type, responseData.res_msg, function () {
-                            history.go(0); // 重新整理頁面
-                        });
+        document.getElementById('spinner').style.display = 'block';
 
-                        setTimeout(function () {
-                            alertify.closeAll();
-                        }, 3000);
-                    }, 1000);
-                },
-                error: function (xhr, status, error) {
-                    document.getElementById('spinner').style.display = 'none';
-                    alertify.alert('Error', 'An error occurred while uploading the file.');
-                    console.error("上傳錯誤：", status, error);
+        $.ajax({
+            url: url,
+            method: "POST",
+            data: form,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            cache: false,
+
+            success: function (responseData) {
+                document.getElementById('spinner').style.display = 'none';
+
+                var resType = responseData?.res_type || 'Error';
+                var resMsg  = responseData?.res_msg || upload_error_text;
+
+                alertify.alert(resType, resMsg, function () {
+                    if (String(resType).toLowerCase() === 'success') {
+                        forceLogoutAllTabs(login_redirect_url);
+                    }
+                });
+            },
+
+            error: function (xhr, status, error) {
+                document.getElementById('spinner').style.display = 'none';
+
+                var msg = upload_error_text;
+
+                try {
+                    if (xhr.responseJSON && xhr.responseJSON.res_msg) {
+                        msg = xhr.responseJSON.res_msg;
+                    } else if (xhr.responseText) {
+                        msg = xhr.responseText;
+                    }
+                } catch (e) {
+                    console.warn('parse xhr failed:', e);
                 }
-            });
-        }
+
+                alertify.alert('Error', msg);
+                console.error("上傳錯誤：", status, error, xhr.responseText);
+            }
+        });
     });
 }
 

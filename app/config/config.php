@@ -4,7 +4,7 @@
 // sudo chmod -R 777  var/www/html/idas/public/ftp
 //sudo chmod -R 777 /var/www/html/database
 //sudo rm -rf /var/www/html/extracted
-//sudo rm -rf /var/www/html/idas  
+//sudo rm -rf /var/www/html/database/KLS_NTCS_IDAS.Lin
 //sudo chown -R www-data:www-data /var/www/html/idas/app/views/step
 //12345678rd
 //
@@ -25,8 +25,8 @@ define('IDASMODE', '1');
 
 // 設定語言狀態
 $language = array(
-	0=>array('简中','zh-cn'),
-	1=>array('繁中','zh-tw'),
+	//0=>array('简中','zh-cn'),
+	//1=>array('繁中','zh-tw'),
 	2=>array('English','en-us'),
 );
 define('LANGUAGE',$language);
@@ -103,9 +103,9 @@ switch (ICONMODE) {
 		define('ICON_AGENT',        URLROOT . 'img/MY-icon/blue-192x192.png');
 		define('ICON_AGENT_APPLE',  URLROOT . 'img/MY-icon/blue-60x60.png');
 		define('TITLE_INDEX',       'MYTORQ');
-		define('SUBTITLE_INDEX',    'iDAS FOR MY-SIRIUS');
+		define('SUBTITLE_INDEX',    'iDAS FOR MY-EVO-M7');
 		define('TITLE_AGENT',       'MYTORQ IoT Agent');
-		define('DEVICE_TYPE_11',    'NTCS-M7');
+		define('DEVICE_TYPE_11',    'MY-EVO-M7');
 	break;
 
 	case 5: // 晶元 SUMAKE
@@ -187,6 +187,7 @@ function get_iconmode_from_ver()
         'NTCS7'  => 0, // Kilews
         'EPNC7'  => 2, // 上海
         'SMT-C3' => 5, // SUMAKE
+		'MY-EVO' =>4, //MYTORQ
     ];
 
     return $map[$brandKey] ?? 0;

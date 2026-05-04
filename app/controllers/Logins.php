@@ -19,13 +19,46 @@ class Logins extends Controller
 
     }
 
+    private function isAccountUserApiRequest($url): bool
+    {
+        return isset($url[0], $url[1])
+            && $url[0] === 'Settings'
+            && in_array($url[1], [
+                'account_user_list',
+                'account_user_create',
+                'account_user_update',
+                'account_user_delete'
+            ], true);
+    }
+
+    private function sendLoginJson(bool $ok, string $msg, array $extra = []): void
+    {
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        echo json_encode(array_merge([
+            'success'  => $ok,
+            'res_type' => $ok ? 'Success' : 'Error',
+            'res_msg'  => $msg,
+        ], $extra), JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
 
     public function index($url){
 
         //先做資料庫檔案完整性檢查
         $repairResult = $this->checkAndRepairDatabaseFiles();
 
-        session_start();
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
         $_SESSION['sessionid'] = session_id();
         $_SESSION['privilege'] = '';
         $error_message = '';
@@ -48,6 +81,14 @@ class Logins extends Controller
             if($url[0] == 'Dashboards' && $url[1] == 'change_language' ){
                 $exception = true;
             }
+        }
+
+        // Account API 必須回 JSON，不可以回登入頁 HTML，否則前端 JSON.parse 會失敗
+        if ($this->isAccountUserApiRequest($url)) {
+            if ($this->isAuthenticated()) {
+                return true;
+            }
+            $this->sendLoginJson(false, 'Login expired. Please login again.');
         }
 
         //判斷有沒有post password
@@ -173,29 +214,29 @@ class Logins extends Controller
     }
 
     // 验证用户提交的用户名和密码
-    public function verifyCredentials($username,$authToken) {
-        // 自定義的身份驗證邏輯，根據實際情況進行驗證
-        // 返回 true 表示驗證成功，false 表示驗證失敗
-        // 可以與數據庫或其他存儲進行比對驗證
-        $pwd = $this->LoginModel->getpwd($username); //控制器密碼
-        // $pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
-        $input = $authToken;
-        $output = hash('sha256', $pwd['passwd']);
-        // $output2 = hash('sha256', $pwd2['password']);
+    public function verifyCredentials($username, $authToken) {
+        $pwd = $this->LoginModel->getpwd($username);
 
-        if($input == $output){
-            //登入成功寫入 active_sessions 資料庫
-            $reslut = $this->active_sessions('admin');
-
-            if($reslut){
-                $_SESSION['privilege'] = 'admin';
-                return true;
-            }else{
-                return false;
-            }
-        }else{
+        // 找不到帳號或 DB 讀取失敗時，直接驗證失敗，不輸出 Notice。
+        if (!$pwd || !is_array($pwd) || !isset($pwd['passwd'])) {
             return false;
         }
+
+        $input  = $authToken;
+        $output = hash('sha256', $pwd['passwd']);
+
+        if ($input == $output) {
+            // 登入成功寫入 active_sessions 資料庫
+            $reslut = $this->active_sessions('admin');
+
+            if ($reslut) {
+                $_SESSION['privilege'] = 'admin';
+                return true;
+            }
+            return false;
+        }
+
+        return false;
     }
 
     public function logLoginAttempt()

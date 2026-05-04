@@ -1592,6 +1592,24 @@ class Settings extends Controller
             sleep(1);
             exec("sync");//強制將ram寫回硬碟，避免控制器馬上關機時會遺失資料
             sleep(1);
+
+
+            // 13. 清除舊 ntcs_idas 資料夾（若存在）
+            $legacy_directory = $root . 'ntcs_idas/';
+
+            if (is_dir($legacy_directory)) {
+                $this->deleteDirectory($legacy_directory);
+                clearstatcache(true, $legacy_directory);
+
+                if (is_dir($legacy_directory)) {
+                    error_log("[iDAS UPDATE] remove legacy folder failed: {$legacy_directory}");
+                    return $this->sendResponse('Error', "Remove old folder failed: ntcs_idas");
+                }
+
+                error_log("[iDAS UPDATE] legacy folder removed: {$legacy_directory}");
+            }
+
+
  
 
 
@@ -1703,9 +1721,9 @@ class Settings extends Controller
                 'zh-cn' => '更新成功（调试模式：保留 extracted 文件夹）。',
             ],
             'SUC_OK'            => [
-                'en-us' => 'Update successful. Files have been moved to the "ntcs_idas" directory.',
-                'zh-tw' => '更新成功，已將檔案移動至 ntcs_idas 目錄。',
-                'zh-cn' => '更新成功，已将文件移动至 ntcs_idas 目录。',
+                'en-us' => 'Update successful. Files have been moved to the "idas" directory.',
+                'zh-tw' => '更新成功，已將檔案移動至 idas 目錄。',
+                'zh-cn' => '更新成功，已将文件移动至 idas 目录。',
             ],
         ];
 
@@ -2125,12 +2143,66 @@ class Settings extends Controller
          return true;
     } 
 
-
     public function setting_logout() {
-        foreach ($_COOKIE as $key => $value) {
-            setcookie($key, '', time() - 3600, '/');
+
+        // 1. 啟動 session（若尚未啟動）
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
+
+        // 2. 清空 session 資料
+        $_SESSION = [];
+
+        // 3. 取得 session cookie 參數
+        $params = session_get_cookie_params();
+
+        // 4. 刪除 session cookie
+        if (ini_get('session.use_cookies')) {
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params['path'] ?? '/',
+                $params['domain'] ?? '',
+                $params['secure'] ?? false,
+                $params['httponly'] ?? true
+            );
+
+            // 補一組通用刪除
+            setcookie(session_name(), '', time() - 42000, '/');
+        }
+
+        // 5. 刪除其他 cookie
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $host = preg_replace('/:\d+$/', '', $host); // 移除 port
+
+        foreach ($_COOKIE as $key => $value) {
+            // 基本刪除
+            setcookie($key, '', time() - 3600, '/');
+
+            // 帶 host 刪除
+            if (!empty($host)) {
+                setcookie($key, '', time() - 3600, '/', $host);
+            }
+
+            // 空 domain 再補一次
+            setcookie($key, '', time() - 3600, '/', '', false, false);
+
+            // 當前請求中同步移除
+            unset($_COOKIE[$key]);
+        }
+
+        // 6. 銷毀 session
+        session_destroy();
+        session_write_close();
+
+        // 7. 禁止快取
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+
+        error_log('[iDAS UPDATE] user session destroyed and cookies cleared');
     }
+
 
     
     public function get_controller_login() {
@@ -2334,5 +2406,431 @@ class Settings extends Controller
 
 
 
+
+    /* =====================================================
+     * Setting Account / table user
+     * Rule: only English letters and numbers are allowed.
+     *       Regex uses 0-9 because existing examples like steve01/admin0734 need 0.
+     * ===================================================== */
+
+    private function accountUserDb(): PDO
+    {
+        // 統一使用 Database.php 內的：'iDas' => BASE_PATH . 'KLS_NTCS_IDAS.Lin'
+        $database = new Database();
+        $db = $database->getDb_das();
+
+        if (!$db instanceof PDO) {
+            throw new Exception('Account DB connect failed: iDas / KLS_NTCS_IDAS.Lin');
+        }
+
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        return $db;
+    }
+
+    private function accountUserJson(bool $ok, string $msg, array $extra = []): void
+    {
+        // 防止 Notice / Warning / login HTML 混入 JSON，造成前端 JSON.parse 失敗。
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        echo json_encode(array_merge([
+            'success'  => $ok,
+            'res_type' => $ok ? 'Success' : 'Error',
+            'res_msg'  => $msg,
+        ], $extra), JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    private function accountUserClean(string $value): string
+    {
+        return trim($value);
+    }
+
+    private function accountUserValidateText(string $value, string $label): void
+    {
+        if ($value === '') {
+            throw new Exception($label . ' cannot be empty.');
+        }
+
+        // A-Z / a-z / 0-9 only
+        if (!preg_match('/^[A-Za-z0-9]+$/', $value)) {
+            throw new Exception($label . ' only allows A-Z, a-z, 0-9.');
+        }
+    }
+
+    private function accountUserAssertTable(PDO $db): void
+    {
+        $exists = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")->fetchColumn();
+        if (!$exists) {
+            throw new Exception('table user not found.');
+        }
+    }
+
+    public function account_user_list(): void
+    {
+        try {
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            // 隱藏內建帳號 Kls / kls，不刪除 DB 資料
+            $rows = $db->query("
+                SELECT sn, name, passwd, law
+                FROM `user`
+                WHERE LOWER(name) <> 'kls'
+                ORDER BY sn ASC
+            ")->fetchAll();
+
+            $this->accountUserJson(true, 'OK', [
+                'records' => $rows,
+                'count'   => count($rows),
+            ]);
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
+
+
+
+    private function accountUserCsvText(string $value): string
+    {
+        $value = trim($value);
+
+        // Excel formula-text style from export, e.g. ="0000".
+        if (preg_match('/^="(.*)"$/s', $value, $m)) {
+            return str_replace('""', '"', $m[1]);
+        }
+
+        // Remove UTF-8 BOM if present.
+        $value = preg_replace('/^\xEF\xBB\xBF/', '', $value);
+        return trim((string)$value);
+    }
+
+    private function accountUserExcelText(string $value): string
+    {
+        // Force Excel to treat password as text, so 0000 will not become 0.
+        return '="' . str_replace('"', '""', $value) . '"';
+    }
+
+    public function account_user_export(): void
+    {
+        try {
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            // Export follows Account list rule: hide built-in Kls / kls account.
+            $rows = $db->query("
+                SELECT sn, name, passwd, law
+                FROM `user`
+                WHERE LOWER(name) <> 'kls'
+                ORDER BY sn ASC
+            ")->fetchAll();
+
+            // Clean all previous output to avoid corrupting CSV download.
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+
+            $filename = 'account_password_export_' . date('Ymd_His') . '.csv';
+
+            if (!headers_sent()) {
+                header('Content-Type: text/csv; charset=utf-8');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Cache-Control: no-store, no-cache, must-revalidate');
+                header('Pragma: no-cache');
+            }
+
+            // UTF-8 BOM for Excel compatibility.
+            echo "\xEF\xBB\xBF";
+
+            $fp = fopen('php://output', 'w');
+            fputcsv($fp, ['No', 'User Name', 'Password', 'Law']);
+
+            $no = 1;
+            foreach ($rows as $row) {
+                fputcsv($fp, [
+                    $no++,
+                    $row['name'] ?? '',
+                    $this->accountUserExcelText((string)($row['passwd'] ?? '')),
+                    $row['law'] ?? '',
+                ]);
+            }
+
+            fclose($fp);
+            exit();
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, 'Export account failed: ' . $e->getMessage());
+        }
+    }
+
+    public function account_user_import(): void
+    {
+        try {
+            if (empty($_FILES['account_file']) || !isset($_FILES['account_file']['tmp_name'])) {
+                throw new Exception('Please select a CSV file.');
+            }
+
+            if ((int)($_FILES['account_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                throw new Exception('Upload failed. Error code: ' . (int)$_FILES['account_file']['error']);
+            }
+
+            $tmpName = (string)$_FILES['account_file']['tmp_name'];
+            $originalName = (string)($_FILES['account_file']['name'] ?? '');
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+            if ($ext !== 'csv') {
+                throw new Exception('Only CSV file is allowed.');
+            }
+
+            if (!is_uploaded_file($tmpName) && !is_file($tmpName)) {
+                throw new Exception('Uploaded file not found.');
+            }
+
+            $fp = fopen($tmpName, 'r');
+            if (!$fp) {
+                throw new Exception('Cannot open uploaded CSV file.');
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $header = fgetcsv($fp);
+            if (!$header || count($header) < 3) {
+                fclose($fp);
+                throw new Exception('CSV format invalid. Header must include User Name and Password.');
+            }
+
+            // Normalize header names from export: No, User Name, Password, Law.
+            $headerMap = [];
+            foreach ($header as $idx => $col) {
+                $key = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string)$col)));
+                $key = str_replace([' ', '_', '-'], '', $key);
+                $headerMap[$key] = $idx;
+            }
+
+            $nameIndex = $headerMap['username'] ?? $headerMap['name'] ?? 1;
+            $passIndex = $headerMap['password'] ?? $headerMap['passwd'] ?? 2;
+            $lawIndex  = $headerMap['law'] ?? 3;
+
+            $inserted = 0;
+            $updated  = 0;
+            $skipped  = 0;
+            $lineNo   = 1;
+            $errors   = [];
+
+            $db->beginTransaction();
+
+            while (($row = fgetcsv($fp)) !== false) {
+                $lineNo++;
+
+                // Skip blank lines.
+                if (count(array_filter($row, function($v) { return trim((string)$v) !== ''; })) === 0) {
+                    continue;
+                }
+
+                $name = $this->accountUserCsvText((string)($row[$nameIndex] ?? ''));
+                $password = $this->accountUserCsvText((string)($row[$passIndex] ?? ''));
+                $lawRaw = $this->accountUserCsvText((string)($row[$lawIndex] ?? '1'));
+                $law = ($lawRaw !== '' && is_numeric($lawRaw)) ? (int)$lawRaw : 1;
+
+                // Built-in Kls is protected and will not be imported or modified.
+                if (strtolower($name) === 'kls') {
+                    $skipped++;
+                    continue;
+                }
+
+                try {
+                    $this->accountUserValidateText($name, 'Username');
+                    $this->accountUserValidateText($password, 'Password');
+                } catch (Throwable $e) {
+                    $errors[] = 'Line ' . $lineNo . ': ' . $e->getMessage();
+                    $skipped++;
+                    continue;
+                }
+
+                $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE name = :name');
+                $stmt->execute([':name' => $name]);
+                $exists = (int)$stmt->fetchColumn() > 0;
+
+                if ($exists) {
+                    $stmt = $db->prepare('UPDATE `user` SET passwd = :passwd, law = :law WHERE name = :name');
+                    $stmt->execute([
+                        ':passwd' => $password,
+                        ':law'    => $law,
+                        ':name'   => $name,
+                    ]);
+                    $updated++;
+                } else {
+                    $nextSn = (int)$db->query('SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`')->fetchColumn();
+                    $stmt = $db->prepare('INSERT INTO `user` (sn, name, passwd, law) VALUES (:sn, :name, :passwd, :law)');
+                    $stmt->execute([
+                        ':sn'     => $nextSn,
+                        ':name'   => $name,
+                        ':passwd' => $password,
+                        ':law'    => $law,
+                    ]);
+                    $inserted++;
+                }
+            }
+
+            fclose($fp);
+            $db->commit();
+
+            $message = 'Import success. Inserted: ' . $inserted . ', Updated: ' . $updated . ', Skipped: ' . $skipped . '.';
+            if (!empty($errors)) {
+                $message .= ' Some rows were skipped.';
+            }
+
+            $this->accountUserJson(true, $message, [
+                'inserted' => $inserted,
+                'updated'  => $updated,
+                'skipped'  => $skipped,
+                'errors'   => array_slice($errors, 0, 10),
+            ]);
+        } catch (Throwable $e) {
+            if (isset($db) && $db instanceof PDO && $db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            if (isset($fp) && is_resource($fp)) {
+                fclose($fp);
+            }
+
+            $this->accountUserJson(false, 'Import account failed: ' . $e->getMessage());
+        }
+    }
+
+    public function account_user_create(): void
+    {
+        try {
+            $name     = $this->accountUserClean($_POST['username'] ?? '');
+            $password = $this->accountUserClean($_POST['password'] ?? '');
+            $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
+            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
+
+            $this->accountUserValidateText($name, 'Username');
+            $this->accountUserValidateText($password, 'Password');
+
+            if ($password !== $confirm) {
+                throw new Exception('Confirm password is different.');
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
+            $stmt->execute([':name' => $name]);
+            if ((int)$stmt->fetchColumn() > 0) {
+                throw new Exception('Username already exists.');
+            }
+
+            $nextSn = (int)$db->query("SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`")->fetchColumn();
+
+            $stmt = $db->prepare("INSERT INTO `user` (sn, name, passwd, law) VALUES (:sn, :name, :passwd, :law)");
+            $stmt->execute([
+                ':sn'     => $nextSn,
+                ':name'   => $name,
+                ':passwd' => $password,
+                ':law'    => $law,
+            ]);
+
+            $this->accountUserJson(true, 'New Account success.');
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
+
+    public function account_user_update(): void
+    {
+        try {
+            $oldName  = $this->accountUserClean($_POST['old_username'] ?? '');
+            $name     = $this->accountUserClean($_POST['username'] ?? '');
+            $password = $this->accountUserClean($_POST['password'] ?? '');
+            $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
+            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
+
+            $this->accountUserValidateText($oldName, 'Old username');
+            $this->accountUserValidateText($name, 'Username');
+
+            if ($password !== '') {
+                $this->accountUserValidateText($password, 'Password');
+                if ($password !== $confirm) {
+                    throw new Exception('Confirm password is different.');
+                }
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
+            $stmt->execute([':name' => $oldName]);
+            if ((int)$stmt->fetchColumn() === 0) {
+                throw new Exception('Account not found.');
+            }
+
+            if ($oldName !== $name) {
+                $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
+                $stmt->execute([':name' => $name]);
+                if ((int)$stmt->fetchColumn() > 0) {
+                    throw new Exception('Username already exists.');
+                }
+            }
+
+            if ($password === '') {
+                $stmt = $db->prepare("UPDATE `user` SET name = :name, law = :law WHERE name = :old_name");
+                $stmt->execute([
+                    ':name'     => $name,
+                    ':law'      => $law,
+                    ':old_name' => $oldName,
+                ]);
+            } else {
+                $stmt = $db->prepare("UPDATE `user` SET name = :name, passwd = :passwd, law = :law WHERE name = :old_name");
+                $stmt->execute([
+                    ':name'     => $name,
+                    ':passwd'   => $password,
+                    ':law'      => $law,
+                    ':old_name' => $oldName,
+                ]);
+            }
+
+            $this->accountUserJson(true, 'Edit Account success.');
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
+
+    public function account_user_delete(): void
+    {
+        try {
+            $name = $this->accountUserClean($_POST['username'] ?? '');
+            $this->accountUserValidateText($name, 'Username');
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $count = (int)$db->query("SELECT COUNT(*) FROM `user`")->fetchColumn();
+            if ($count <= 1) {
+                throw new Exception('Cannot delete the last account.');
+            }
+
+            $stmt = $db->prepare("DELETE FROM `user` WHERE name = :name");
+            $stmt->execute([':name' => $name]);
+
+            if ($stmt->rowCount() <= 0) {
+                throw new Exception('Account not found.');
+            }
+
+            $this->accountUserJson(true, 'Delete Account success.');
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
 
 }

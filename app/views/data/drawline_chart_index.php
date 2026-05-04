@@ -1,0 +1,579 @@
+<?php
+// =====================================================
+// drawline_chart_index.php
+// 持續顯示最新 25 筆扭力資料 + ECharts 折線圖
+// =====================================================
+
+$textMap = $text ?? [];
+
+$labelTitle      = htmlspecialchars($textMap['data'] ?? 'Data', ENT_QUOTES, 'UTF-8');
+$labelTorque     = htmlspecialchars($textMap['torque'] ?? 'Torque', ENT_QUOTES, 'UTF-8');
+$labelLineChart  = htmlspecialchars($textMap['line_chart'] ?? 'Line Chart', ENT_QUOTES, 'UTF-8');
+$labelLatest25   = htmlspecialchars($textMap['latest_25_records'] ?? 'Latest 25 Records', ENT_QUOTES, 'UTF-8');
+$labelAll        = htmlspecialchars($textMap['all'] ?? 'ALL', ENT_QUOTES, 'UTF-8');
+$labelOK         = htmlspecialchars($textMap['ok'] ?? 'OK', ENT_QUOTES, 'UTF-8');
+$labelNOK        = htmlspecialchars($textMap['ng'] ?? ($textMap['nok'] ?? 'NOK'), ENT_QUOTES, 'UTF-8');
+$labelTime       = htmlspecialchars($textMap['data_time'] ?? 'Time', ENT_QUOTES, 'UTF-8');
+$labelNo         = htmlspecialchars($textMap['no'] ?? 'No.', ENT_QUOTES, 'UTF-8');
+$chartUnitLabel  = htmlspecialchars($data['chart_unit_label'] ?? '', ENT_QUOTES, 'UTF-8');
+$chartLimit      = (int)($data['chart_limit'] ?? 25);
+
+function drawline_h($value) {
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function renderLineChartTableRows($records) {
+    if (empty($records)) {
+        echo "<tr><td colspan='3' class='empty-row'>No Data</td></tr>";
+        return;
+    }
+
+    foreach ($records as $i => $row) {
+        $class = preg_replace('/[^a-zA-Z0-9_\-]/', '', $row['row_color'] ?? '');
+        $no    = $i + 1;
+        $torque = drawline_h($row['final_fasten_torque'] ?? '0');
+        $time   = drawline_h($row['data_time'] ?? ($row['chart_label'] ?? ''));
+
+        echo "<tr class='{$class}'>";
+        echo "<td>{$no}</td>";
+        echo "<td class='td-torque'>{$torque}</td>";
+        echo "<td class='td-time'>{$time}</td>";
+        echo "</tr>";
+    }
+}
+?>
+
+<div class="container-ms drawline-page">
+    <div class="w3-text-white w3-center">
+        <table class="no-border">
+            <tr id="header">
+                <td width="100%"><h3><?php echo $labelTitle; ?> - <?php echo $labelLineChart; ?></h3></td>
+                <td><img src="./img/btn_home.png" style="margin-right: 10px" onclick="back()"></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="main-content">
+        <div class="center-content drawline-content">
+
+            <div class="drawline-toolbar">
+                <div class="drawline-title">
+                    <span><?php echo $labelLatest25; ?></span>
+                    <small id="lineChartStatus">Loading...</small>
+                </div>
+
+                <div class="drawline-actions">
+                    <label for="data_select">Mode</label>
+                    <select id="data_select" class="drawline-select">
+                        <option value="ALL" selected><?php echo $labelAll; ?></option>
+                        <option value="OK"><?php echo $labelOK; ?></option>
+                        <option value="NG"><?php echo $labelNOK; ?></option>
+                    </select>
+                </div>
+            </div>
+
+
+            <div class="drawline-layout">
+                <section class="chart-panel">
+                    <div class="panel-header">
+                        <strong><?php echo $labelLineChart; ?></strong>
+                        <span>Auto refresh / <?php echo $chartLimit; ?> records</span>
+                    </div>
+                    <div id="lineChart" class="line-chart-box"></div>
+                </section>
+
+                <section class="table-panel">
+                    <div class="drawline-table-scroll">
+                        <table class="table w3-table w3-hoverable drawline-table">
+                            <thead>
+                                <tr>
+                                    <th><?php echo $labelNo; ?></th>
+                                    <th><?php echo $labelTorque; ?></th>
+                                    <th><?php echo $labelTime; ?></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineChartTableBody">
+                                <?php renderLineChartTableRows($data['res_data'] ?? []); ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// =====================================================
+// 持續顯示最新 25 筆扭力折線圖
+// 參考 operation.php 的 ECharts 架構：echarts.init + setOption
+// =====================================================
+let lineChartInstance = null;
+let lineChartTimer = null;
+let lastLineChartSignature = '';
+let currentMode = 'ALL';
+const CHART_LIMIT = <?php echo $chartLimit; ?>;
+
+function getApiUrl(path) {
+    return `${window.location.protocol}//${window.location.hostname}/idas/public/?url=${path}`;
+}
+
+function safeNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(String(value).replace(/,/g, ''));
+    return Number.isFinite(num) ? num : null;
+}
+
+function initLineChart() {
+    const chartDom = document.getElementById('lineChart');
+    if (!chartDom) return;
+
+    if (typeof echarts === 'undefined') {
+        chartDom.innerHTML = '<div class="chart-message">ECharts not loaded. Please check operation.php chart package.</div>';
+        return;
+    }
+
+    if (!lineChartInstance) {
+        lineChartInstance = echarts.init(chartDom);
+    }
+}
+
+function buildSignature(records) {
+    return records.map(row => {
+        return [
+            row.rid || row.rowid || '',
+            row.data_time || '',
+            row.final_fasten_torque_raw ?? row.final_fasten_torque ?? '',
+            row.fasten_status || ''
+        ].join('|');
+    }).join('@@');
+}
+
+function normalizeChartRecords(result, isFallback) {
+    let records = Array.isArray(result.records) ? result.records.slice() : [];
+
+    // 舊 getreal_time_data 是 DESC，fallback 時轉成舊 → 新，折線圖才會由左往右走。
+    if (isFallback) {
+        records = records.slice(0, CHART_LIMIT).reverse();
+    }
+
+    return records.slice(-CHART_LIMIT).map((row, index) => {
+        const rawTorque = safeNumber(row.final_fasten_torque_raw ?? row.final_fasten_torque);
+        return {
+            ...row,
+            chart_index: index + 1,
+            chart_label: row.chart_label || row.data_time || String(index + 1),
+            final_fasten_torque_raw: rawTorque,
+            final_fasten_torque: row.final_fasten_torque ?? (rawTorque === null ? '' : String(rawTorque))
+        };
+    });
+}
+
+async function fetchLineChartData(mode = 'ALL') {
+    const formData = new FormData();
+    formData.append('mode', mode);
+    formData.append('limit', CHART_LIMIT);
+
+    const endpoints = [
+        { url: getApiUrl('Data/get_drawline_chart_data'), fallback: false },
+        { url: getApiUrl('Data/getreal_time_data'), fallback: true }
+    ];
+
+    for (const endpoint of endpoints) {
+        try {
+            const res = await fetch(endpoint.url + `&t=${Date.now()}`, {
+                method: 'POST',
+                body: formData,
+                cache: 'no-store'
+            });
+
+            const text = await res.text();
+            const result = JSON.parse(text);
+
+            if (result && result.success) {
+                const records = normalizeChartRecords(result, endpoint.fallback);
+                renderLineChartPage(records, result);
+                return;
+            }
+        } catch (e) {
+            console.warn('fetchLineChartData failed:', endpoint.url, e);
+        }
+    }
+
+    setLineChartStatus('Load failed');
+}
+
+function renderLineChartPage(records, result) {
+    const signature = buildSignature(records);
+
+    updateLineChartSummary(records, result);
+    updateLineChartTable(records);
+
+    // 資料沒變時，不重畫圖，減少控制器負擔。
+    if (signature === lastLineChartSignature) {
+        return;
+    }
+    lastLineChartSignature = signature;
+
+    drawLineChart(records, result.chart_unit_label || '');
+}
+
+function drawLineChart(records, unitLabel = '') {
+    initLineChart();
+    if (!lineChartInstance) return;
+
+    // X 軸固定顯示 NO：1 ~ 25，不再顯示時間，避免 X 軸擠壓破圖。
+    const labels = records.map((row, index) => String(index + 1));
+
+    // 時間保留在 tooltip，不放在 X 軸。
+    const times = records.map(row => row.data_time || row.chart_label || '');
+
+    const values = records.map(row => safeNumber(row.final_fasten_torque_raw ?? row.final_fasten_torque));
+    const latestUnit = unitLabel || <?php echo json_encode($chartUnitLabel, JSON_UNESCAPED_UNICODE); ?> || '';
+
+    const option = {
+        animation: false,
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                const p = params && params[0] ? params[0] : null;
+                if (!p) return '';
+
+                const idx = p.dataIndex;
+                const no = labels[idx] || '-';
+                const time = times[idx] || '-';
+                const torque = p.data ?? '-';
+
+                return `NO: ${no}<br/>Time: ${time}<br/>Torque: ${torque} ${latestUnit}`;
+            }
+        },
+        grid: {
+            left: 60,
+            right: 42,
+            top: 42,
+            bottom: 58,
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: true,
+            name: 'NO',
+            nameLocation: 'middle',
+            nameGap: 32,
+            data: labels,
+            axisLabel: {
+                rotate: 0,
+                interval: 0
+            },
+            axisTick: {
+                alignWithLabel: true
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: latestUnit ? `Torque (${latestUnit})` : 'Torque',
+            scale: true
+        },
+        series: [{
+            name: 'Torque',
+            type: 'line',
+            data: values,
+            smooth: true,
+            showSymbol: true,
+            symbolSize: 5,
+            connectNulls: false,
+            lineStyle: {
+                width: 3
+            },
+            areaStyle: {
+                opacity: 0.08
+            }
+        }]
+    };
+
+    lineChartInstance.setOption(option, true);
+}
+
+function updateLineChartSummary(records, result) {
+    // 上方 Count / Torque / Unit 摘要卡片已移除，只保留更新狀態。
+    setLineChartStatus(`Updated: ${new Date().toLocaleTimeString()}`);
+}
+
+function updateLineChartTable(records) {
+    const tbody = document.getElementById('lineChartTableBody');
+    if (!tbody) return;
+
+    if (!records.length) {
+        tbody.innerHTML = `<tr><td colspan="3" class="empty-row">No Data</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = records.map((row, index) => {
+        const rowClass = String(row.row_color || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        const torque = row.final_fasten_torque ?? '';
+        const time = row.data_time || row.chart_label || '';
+        return `
+            <tr class="${rowClass}">
+                <td>${index + 1}</td>
+                <td class="td-torque">${escapeHtml(torque)}</td>
+                <td class="td-time">${escapeHtml(time)}</td>
+            </tr>`;
+    }).join('');
+}
+
+function setLineChartStatus(text) {
+    const el = document.getElementById('lineChartStatus');
+    if (el) el.innerText = text;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initLineChart();
+
+    const select = document.getElementById('data_select');
+    if (select) {
+        select.addEventListener('change', function() {
+            currentMode = this.value || 'ALL';
+            lastLineChartSignature = '';
+            fetchLineChartData(currentMode);
+        });
+    }
+
+    fetchLineChartData(currentMode);
+
+    if (lineChartTimer) {
+        clearInterval(lineChartTimer);
+    }
+    lineChartTimer = setInterval(function() {
+        fetchLineChartData(currentMode);
+    }, 2000);
+});
+
+window.addEventListener('resize', function() {
+    if (lineChartInstance) {
+        lineChartInstance.resize();
+    }
+});
+</script>
+
+<style>
+.drawline-page .drawline-content {
+    width: 96%;
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+.drawline-toolbar,
+.drawline-layout {
+    box-sizing: border-box;
+}
+
+.drawline-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 10px 0;
+    padding: 12px 16px;
+    background: #f5efe4;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+
+.drawline-title span {
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    color: #4b3422;
+}
+
+.drawline-title small {
+    display: block;
+    margin-top: 4px;
+    color: #7a6657;
+    font-size: 13px;
+}
+
+.drawline-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #4b3422;
+}
+
+.drawline-select {
+    min-width: 120px;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid #b79b80;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+
+
+
+
+.drawline-layout {
+    display: grid;
+    /* 右側表格加寬，讓 Fastening Time 可以完整顯示 */
+    grid-template-columns: minmax(0, 1.75fr) minmax(420px, 1fr);
+    gap: 12px;
+}
+
+.chart-panel,
+.table-panel {
+    min-height: 0;
+    background: #fffaf2;
+    border: 1px solid #e1cdb8;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.12);
+    overflow: hidden;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, #8c6748, #60442f);
+    color: #fff;
+}
+
+.panel-header strong {
+    font-size: 18px;
+}
+
+.panel-header span {
+    font-size: 13px;
+    opacity: .9;
+}
+
+.line-chart-box {
+    width: 100%;
+    height: 360px;
+    background: #fff;
+}
+
+.chart-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #9b2c2c;
+    font-weight: 800;
+    text-align: center;
+    padding: 20px;
+}
+
+.drawline-table-scroll {
+    height: 360px;
+    overflow-y: auto;
+    background: #fff;
+}
+
+/* 右側表格 header 已移除，所以高度補齊，讓表格高度接近左側圖表卡片。 */
+.table-panel .drawline-table-scroll {
+    height: 402px;
+}
+
+.drawline-table {
+    width: 100%;
+    margin: 0;
+    table-layout: auto;
+}
+
+.drawline-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #4d3a2c;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.drawline-table td {
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.drawline-table .td-torque {
+    font-weight: 900;
+}
+
+.drawline-table .td-time {
+    min-width: 190px;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 14px;
+}
+
+.drawline-table th:nth-child(1),
+.drawline-table td:nth-child(1) {
+    width: 58px;
+}
+
+.drawline-table th:nth-child(2),
+.drawline-table td:nth-child(2) {
+    width: 92px;
+}
+
+.drawline-table th:nth-child(3),
+.drawline-table td:nth-child(3) {
+    min-width: 190px;
+}
+
+.empty-row {
+    padding: 24px !important;
+    color: #777;
+    font-weight: 700;
+}
+
+.status-ok td {
+    background: #e9f8e9;
+}
+
+.status-ng td {
+    background: #fdeaea;
+}
+
+.status-warn td {
+    background: #fff4d8;
+}
+
+@media (max-width: 900px) {
+    .drawline-layout {
+        grid-template-columns: 1fr;
+    }
+
+
+    .drawline-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .line-chart-box,
+    .drawline-table-scroll,
+    .table-panel .drawline-table-scroll {
+        height: 320px;
+    }
+}
+</style>

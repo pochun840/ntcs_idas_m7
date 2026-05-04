@@ -193,7 +193,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         const formData = new FormData();
         formData.append('mode', mode);
 
-        const baseURL = `${window.location.protocol}//${window.location.hostname}/ntcs_idas/public/?url=Data/getreal_time_data`;
+        const baseURL = `${window.location.protocol}//${window.location.hostname}/idas/public/?url=Data/getreal_time_data`;
 
         fetch(baseURL, {
             method: 'POST',
@@ -217,7 +217,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
     }
 
     function syncNtcsDataDb() {
-      const url = `${window.location.protocol}//${window.location.hostname}/ntcs_idas/public/?url=Data/ntcs_data_db_sysnc`;
+      const url = `${window.location.protocol}//${window.location.hostname}/idas/public/?url=Data/ntcs_data_db_sysnc`;
 
       fetch(url, {
         method: 'POST'
