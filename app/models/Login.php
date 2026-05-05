@@ -55,9 +55,10 @@ class Login{
         }
 
         try {
-            $sql = 'SELECT * FROM "user" WHERE name = :name';
+            // QR scanner 有時會把帳號英文字母轉成大寫；這裡改成大小寫不敏感查詢。
+            $sql = 'SELECT * FROM "user" WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name)) LIMIT 1';
             $statement = $this->db_iDas->prepare($sql);
-            $statement->bindValue(':name', $username);
+            $statement->bindValue(':name', trim((string)$username));
             $statement->execute();
             return $statement->fetch(PDO::FETCH_ASSOC);
         } catch (Throwable $e) {

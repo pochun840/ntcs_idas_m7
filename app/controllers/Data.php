@@ -828,6 +828,92 @@ class Data extends Controller
 
 
     /**
+     * Toruqe_line_chart 匯出最新 25 筆 CSV。
+     * 只輸出 CSV，不提供 ZIP。
+     * URL: ?url=Data/export_drawline_chart_csv
+     */
+    public function export_drawline_chart_csv(){
+
+        $start_date = trim((string)($_POST['start_date'] ?? $_GET['start_date'] ?? ''));
+        $end_date   = trim((string)($_POST['end_date']   ?? $_GET['end_date']   ?? ''));
+
+        // 前端會送 YYYY-MM-DD HH:MM:SS；這裡再做一次格式防呆。
+        $datePattern = '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/';
+        if (!preg_match($datePattern, $start_date) || !preg_match($datePattern, $end_date)) {
+            if (!headers_sent()) {
+                header('Content-Type: application/json; charset=utf-8');
+            }
+            echo json_encode([
+                'success'  => false,
+                'res_type' => 'Error',
+                'res_msg'  => 'Invalid date range.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        try {
+            $this->ntcs_data_db_sysnc();
+        } catch (Throwable $e) {
+            // 同步失敗不直接中斷，仍嘗試匯出目前 iDAS DB 內的資料。
+        }
+
+        if (method_exists($this->DataModel, 'getLineChartCsvExportData')) {
+            $dataset = $this->DataModel->getLineChartCsvExportData($start_date, $end_date, 25);
+        } else {
+            $dataset = [];
+        }
+
+        if (empty($dataset)) {
+            if (!headers_sent()) {
+                header('Content-Type: application/json; charset=utf-8');
+            }
+            echo json_encode([
+                'success'  => false,
+                'res_type' => 'Info',
+                'res_msg'  => 'No data to export.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $controller_info = $this->SettingModel->GetControllerInfo();
+        $device_sn_safe  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
+
+        $timestamp = trim((string)@shell_exec('date +%Y%m%d%H%M%S 2>/dev/null'));
+        if (!preg_match('/^\d{14}$/', $timestamp)) {
+            $timestamp = date('YmdHis');
+        }
+
+        $csv_filename = "25_data_{$device_sn_safe}_{$timestamp}.csv";
+
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $csv_filename . '"');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
+
+        $csv_headers = array_keys($dataset[0]);
+        fputcsv($out, $csv_headers);
+
+        foreach ($dataset as $row) {
+            $ordered = [];
+            foreach ($csv_headers as $key) {
+                $ordered[] = $row[$key] ?? '';
+            }
+            fputcsv($out, $ordered);
+        }
+
+        fclose($out);
+        exit;
+    }
+
+
+    /**
      * 折線圖 AJAX API：每 2 秒回傳最新 25 筆扭力資料。
      * URL: ?url=Data/get_drawline_chart_data
      */

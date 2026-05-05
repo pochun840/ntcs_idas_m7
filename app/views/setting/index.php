@@ -1,4 +1,7 @@
 <div class="container-ms">
+    <?php
+        $is_admin_login = (isset($_COOKIE['username']) && strtolower(trim((string)$_COOKIE['username'])) === 'admin');
+    ?>
     <!-- Setting Account V5: fixed AccountDisplay show/hide -->
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -15,8 +18,13 @@
                 <button id="bnt2" name="System_Display" class="button" onclick="SettingOpenButtonFinal('System')"><?php echo $text['system_setting'];?></button>
                 <button id="bnt3" name="Barcode_Display" class="button" onclick="SettingOpenButtonFinal('Barcode')"><?php echo $text['system_barcode_setting'] ;?></button>
                 <button id="bnt4" name="Connect_Display" class="button" onclick="SettingOpenButtonFinal('Connect')"><?php echo $text['system_connect_setting'];?></button>
-                <button id="bnt5" name="Account_Display" class="button" onclick="SettingOpenButtonFinal('Account')"><?php echo $text['account'] ?? 'Account'; ?></button>
+                <?php if ($is_admin_login) { ?>
+                    <button id="bnt5" name="Account_Display" class="button" onclick="SettingOpenButtonFinal('Account')"><?php echo $text['account'] ?? 'Account'; ?></button>
+                <?php } ?>
                 <button id="bnt6" name="iDas_Display" class="button" onclick="SettingOpenButtonFinal('Update')">iDAS</button>
+                <?php if ($is_admin_login) { ?>
+                    <button id="bnt7" name="Operation_Audit_Log_Display" class="button operation-audit-top-button" onclick="SettingOpenButtonFinal('AuditLog')">operation_audit_log</button>
+                <?php } ?>
             </div>
         
             <!-- idas_controller OP -->
@@ -48,11 +56,10 @@
                                     <tr class="w3-dark-grey">
                                         <th>No</th>
                                         <th>User Name</th>
-                                        <th>Law</th>
                                     </tr>
                                 </thead>
                                 <tbody id="accountUserTbody" style="font-size: 1.8vmin;text-align: center;">
-                                    <tr><td colspan="3">Please select Account tab</td></tr>
+                                    <tr><td colspan="2">Please select Account tab</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -66,6 +73,7 @@
                         <input id="account_delete_btn" type="button" value="Delete" onclick="settingAccountAction('delete')">
                         <input id="account_import_btn" type="button" value="Import" onclick="settingAccountAction('import')">
                         <input id="account_export_btn" type="button" value="Export" onclick="settingAccountAction('export')">
+                        <input id="account_upload_controller_btn" type="button" value="Upload" onclick="settingAccountAction('upload_controller')">
                     </div>
                     <input id="account_import_file" type="file" accept=".csv,text/csv" style="display:none" onchange="importSettingAccountFile(this)">
                 </div>
@@ -85,7 +93,7 @@
                                 <div class="row account-form-row">
                                     <div class="col-5 t1">Username :</div>
                                     <div class="col-5 t2">
-                                        <input type="text" class="form-control input-ms" id="account_username" maxlength="20" autocomplete="off">
+                                        <input type="text" class="form-control input-ms" id="account_username" maxlength="8" minlength="6" pattern="[A-Za-z0-9]{6,8}" autocomplete="off" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'').slice(0,8)">
                                     </div>
                                 </div>
 
@@ -93,7 +101,7 @@
                                     <div class="col-5 t1">Password :</div>
                                     <div class="col-5 t2">
                                         <div class="account-password-wrap">
-                                            <input type="password" class="form-control input-ms" id="account_password" maxlength="20" autocomplete="new-password">
+                                            <input type="password" class="form-control input-ms" id="account_password" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" autocomplete="new-password" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
                                             <button type="button" class="password-eye-btn" onclick="toggleSettingAccountPassword('account_password', this)" title="Show password" aria-label="Show password">
                                                 <span class="eye-symbol">&#128065;</span>
                                             </button>
@@ -105,7 +113,7 @@
                                     <div class="col-5 t1">Confirm Password :</div>
                                     <div class="col-5 t2">
                                         <div class="account-password-wrap">
-                                            <input type="password" class="form-control input-ms" id="account_confirm_password" maxlength="20" autocomplete="new-password">
+                                            <input type="password" class="form-control input-ms" id="account_confirm_password" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" autocomplete="new-password" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
                                             <button type="button" class="password-eye-btn" onclick="toggleSettingAccountPassword('account_confirm_password', this)" title="Show password" aria-label="Show password">
                                                 <span class="eye-symbol">&#128065;</span>
                                             </button>
@@ -123,6 +131,11 @@
                 </div>
             </div>
             <!-- setting_account ED -->
+
+
+            <!-- operation_audit_log OP -->
+                <?php require_once '../app/views/setting/operation_audit_log.php';?>
+            <!-- operation_audit_log ED -->
 
 
             <!-- idas_update OP -->
@@ -218,13 +231,75 @@ function idas_update() {
 
 
 
+
+// =====================================================
+// Account tab permission
+// Only cookie username=admin can see/use Account tab.
+// =====================================================
+function getSettingCookie(name) {
+    var target = name + '=';
+    var parts = (document.cookie || '').split(';');
+
+    for (var i = 0; i < parts.length; i++) {
+        var item = parts[i].trim();
+        if (item.indexOf(target) === 0) {
+            try {
+                return decodeURIComponent(item.substring(target.length));
+            } catch (e) {
+                return item.substring(target.length);
+            }
+        }
+    }
+
+    return '';
+}
+
+function isSettingAdminUser() {
+    return String(getSettingCookie('username') || '').trim().toLowerCase() === 'admin';
+}
+
+function applySettingAccountVisibility() {
+    var canUseAccount = isSettingAdminUser();
+    var accountBtn = document.getElementById('bnt5');
+    var accountDisplay = document.getElementById('AccountDisplay');
+    var auditBtn = document.getElementById('bnt7');
+    var auditDisplay = document.getElementById('OperationAuditLogDisplay');
+
+    if (accountBtn) {
+        accountBtn.style.display = canUseAccount ? '' : 'none';
+        accountBtn.disabled = !canUseAccount;
+    }
+
+    if (auditBtn) {
+        auditBtn.style.display = canUseAccount ? '' : 'none';
+        auditBtn.disabled = !canUseAccount;
+    }
+
+    if (!canUseAccount && accountDisplay) {
+        accountDisplay.style.display = 'none';
+    }
+
+    if (!canUseAccount && auditDisplay) {
+        auditDisplay.style.display = 'none';
+    }
+
+    return canUseAccount;
+}
+
 function SettingOpenButtonFinal(ButtonMode) {
+    // 非 admin：禁止開啟 Account / operation_audit_log，避免直接呼叫 JS 進入。
+    if ((ButtonMode === 'Account' || ButtonMode === 'AuditLog') && !isSettingAdminUser()) {
+        applySettingAccountVisibility();
+        ButtonMode = 'Controller';
+    }
+
     const sections = {
         "Controller": "Controller_Setting",
         "System": "System_Setting",
         "Barcode": "Barcode_Setting",
         "Connect": "Connect_Setting",
         "Account": "AccountDisplay",
+        "AuditLog": "OperationAuditLogDisplay",
         "Update": "iDas-Update_Setting"
     };
 
@@ -234,6 +309,7 @@ function SettingOpenButtonFinal(ButtonMode) {
         "Barcode": "bnt3",
         "Connect": "bnt4",
         "Account": "bnt5",
+        "AuditLog": "bnt7",
         "Update": "bnt6"
     };
 
@@ -259,6 +335,10 @@ function SettingOpenButtonFinal(ButtonMode) {
         if (ButtonMode === "Account") {
             loadSettingAccountUsers();
         }
+
+        if (ButtonMode === "AuditLog" && typeof loadSettingOperationAuditLogs === "function") {
+            loadSettingOperationAuditLogs();
+        }
     } else {
         console.warn("Unknown ButtonMode:", ButtonMode);
     }
@@ -272,7 +352,10 @@ window.OpenButton = SettingOpenButtonFinal;
 
 // =====================================================
 // Setting Account / table user
-// Rule: A-Z / a-z / 0-9
+// Rule:
+// 1) User List hides Law column.
+// 2) Username: A-Z / a-z / 0-9, 6~8 chars.
+// 3) Password: exactly 4 digits, 0~9.
 // =====================================================
 var selectedAccountUser = null;
 var settingAccountMode = 'new';
@@ -282,7 +365,19 @@ function settingAccountApi(path) {
     return '?url=Settings/' + path;
 }
 
+function configureSettingAccountAlertifyNoTitle() {
+    if (!window.alertify) return;
+
+    try {
+        // AlertifyJS v1：清掉預設標題 AlertifyJS
+        if (alertify.defaults && alertify.defaults.glossary) {
+            alertify.defaults.glossary.title = '';
+        }
+    } catch (e) {}
+}
+
 function settingAccountAlert(message) {
+    configureSettingAccountAlertifyNoTitle();
     if (window.alertify && typeof alertify.alert === 'function') {
         alertify.alert(message);
     } else {
@@ -291,6 +386,8 @@ function settingAccountAlert(message) {
 }
 
 function settingAccountConfirm(message, onOk, onCancel) {
+    configureSettingAccountAlertifyNoTitle();
+
     if (window.alertify && typeof alertify.confirm === 'function') {
         alertify.confirm(
             message,
@@ -315,8 +412,18 @@ function settingAccountConfirm(message, onOk, onCancel) {
 }
 
 function settingAccountValidText(value) {
-    // 允許 A-Z / a-z / 0-9，支援既有帳號密碼如 guest / 0000。
+    // 既有帳號 key 檢查：允許 A-Z / a-z / 0-9。
     return /^[A-Za-z0-9]+$/.test(value);
+}
+
+function settingAccountValidUsername(value) {
+    // 新帳號 / 改名：6~8 字元，只允許 A-Z / a-z / 0-9。
+    return /^[A-Za-z0-9]{6,8}$/.test(value);
+}
+
+function settingAccountValidPassword(value) {
+    // 密碼固定 4 碼數字，允許 0000。
+    return /^[0-9]{4}$/.test(value);
 }
 
 function settingAccountEscape(value) {
@@ -375,20 +482,20 @@ function settingAccountPost(path, data) {
 
 function loadSettingAccountUsers() {
     var tbody = document.getElementById('accountUserTbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
 
     settingAccountPost('account_user_list', {}).then(function(json) {
         settingAccountLoaded = true;
 
         if (!json.success) {
-            if (tbody) tbody.innerHTML = '<tr><td colspan="3">Load failed</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="2">Load failed</td></tr>';
             settingAccountAlert(json.res_msg || 'Load account failed.');
             return;
         }
 
         renderSettingAccountUsers(json.records || []);
     }).catch(function(err) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="3">Load failed</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="2">Load failed</td></tr>';
         settingAccountAlert(err.message || 'Load account failed.');
     });
 }
@@ -405,18 +512,16 @@ function renderSettingAccountUsers(records) {
     });
 
     if (!records.length) {
-        tbody.innerHTML = '<tr><td colspan="3">No Data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="2">No Data</td></tr>';
         return;
     }
 
     tbody.innerHTML = records.map(function(row, index) {
         var name = settingAccountEscape(row.name || '');
-        var law = settingAccountEscape(row.law === undefined ? '' : row.law);
 
         return '<tr class="account-user-row" data-name="' + name + '" onclick="selectSettingAccountUser(this)">' +
             '<td>' + (index + 1) + '</td>' +
             '<td>' + name + '</td>' +
-            '<td>' + law + '</td>' +
             '</tr>';
     }).join('');
 }
@@ -435,6 +540,17 @@ function selectSettingAccountUser(row) {
 function exportSettingAccounts() {
     // Export account/password CSV. Browser will download directly.
     window.location.href = settingAccountApi('account_user_export') + '&t=' + Date.now();
+}
+
+function uploadSettingAccountsToController() {
+    settingAccountPost('account_user_upload_controller', {}).then(function(json) {
+        settingAccountAlert(json.res_msg || (json.success ? 'Upload success.' : 'Upload failed.'));
+        if (json.success) {
+            loadSettingAccountUsers();
+        }
+    }).catch(function(err) {
+        settingAccountAlert(err.message || 'Upload failed.');
+    });
 }
 
 function importSettingAccounts() {
@@ -531,6 +647,16 @@ function settingAccountAction(mode) {
         return;
     }
 
+    if (mode === 'upload_controller') {
+        settingAccountConfirm(
+            'Upload user list to controller DB?<br><br>Target: /home/kls/NTCS7/KLS_NTCS.Lin<br>Only table user will be modified.<br>Other tables will not be changed.',
+            function() {
+                uploadSettingAccountsToController();
+            }
+        );
+        return;
+    }
+
     if (!selectedAccountUser) {
         settingAccountAlert('Please select one account.');
         return;
@@ -621,7 +747,14 @@ function saveSettingAccount() {
         return;
     }
 
-    if (!settingAccountValidText(username)) {
+    // New 或 Edit 改名時，Username 必須符合 6~8 字元規則。
+    // Edit 未改名時允許既有 guest/admin/user1 等舊帳號繼續修改密碼或刪除。
+    if (settingAccountMode === 'new' || username !== oldUsername) {
+        if (!settingAccountValidUsername(username)) {
+            settingAccountAlert('Username must be 6 to 8 characters and only allows A-Z, a-z, 0-9.');
+            return;
+        }
+    } else if (!settingAccountValidText(username)) {
         settingAccountAlert('Username only allows A-Z, a-z, 0-9.');
         return;
     }
@@ -632,8 +765,8 @@ function saveSettingAccount() {
     }
 
     if (password !== '') {
-        if (!settingAccountValidText(password)) {
-            settingAccountAlert('Password only allows A-Z, a-z, 0-9.');
+        if (!settingAccountValidPassword(password)) {
+            settingAccountAlert('Password must be exactly 4 digits, 0-9.');
             return;
         }
 
@@ -665,9 +798,15 @@ function saveSettingAccount() {
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 預設顯示 Controller，避免所有區塊都被隱藏時畫面空白
+    configureSettingAccountAlertifyNoTitle();
+
+    // 依 cookie username 控制 Account tab 顯示。
+    applySettingAccountVisibility();
+
+    // 預設顯示 Controller，避免所有區塊都被隱藏時畫面空白。
+    // 只有 admin 才允許預設進 Account。
     const activeBtn = document.querySelector('.w3-center .button.active');
-    if (activeBtn && activeBtn.id === 'bnt5') {
+    if (activeBtn && activeBtn.id === 'bnt5' && isSettingAdminUser()) {
         SettingOpenButtonFinal('Account');
     } else {
         SettingOpenButtonFinal('Controller');
@@ -713,6 +852,17 @@ document.addEventListener('DOMContentLoaded', function() {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
+}
+
+/* User List 隱藏 Law 後，No 欄縮小、User Name 欄放大 */
+#AccountDisplay #account_user_table th:first-child,
+#AccountDisplay #account_user_table td:first-child {
+    width: 25%;
+}
+
+#AccountDisplay #account_user_table th:nth-child(2),
+#AccountDisplay #account_user_table td:nth-child(2) {
+    width: 75%;
 }
 
 #AccountDisplay #account_user_table thead th {
@@ -990,6 +1140,27 @@ document.addEventListener('DOMContentLoaded', function() {
     color: white;
 }
 
+
+
+/* operation_audit_log top tab button */
+.operation-audit-top-button {
+    min-width: 168px;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+}
+
+/* AlertifyJS：移除彈跳視窗預設 title/header（例如 AlertifyJS） */
+.alertify .ajs-header,
+.alertifyjs .ajs-header,
+.ajs-dialog .ajs-header {
+    display: none !important;
+}
+
+.alertify .ajs-dialog,
+.alertifyjs .ajs-dialog {
+    padding-top: 0 !important;
+}
+
 @media (max-width: 900px) {
     #AccountDisplay .account-footer .buttonbox {
         gap: 14px;
@@ -1027,12 +1198,21 @@ document.addEventListener('DOMContentLoaded', function() {
             bnt3: 'Barcode',
             bnt4: 'Connect',
             bnt5: 'Account',
-            bnt6: 'Update'
+            bnt6: 'Update',
+            bnt7: 'AuditLog'
         };
 
         Object.keys(map).forEach(function(id) {
             var btn = document.getElementById(id);
             if (!btn) return;
+
+            // 非 admin 不綁 Account / operation_audit_log 按鈕，並保持隱藏。
+            if ((id === 'bnt5' || id === 'bnt7') && !isSettingAdminUser()) {
+                btn.style.display = 'none';
+                btn.disabled = true;
+                btn.onclick = null;
+                return;
+            }
 
             btn.onclick = function(e) {
                 if (e && typeof e.preventDefault === 'function') e.preventDefault();
@@ -1046,6 +1226,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 最後再綁一次，避免外部舊 settings.js 蓋掉 onclick。
     window.addEventListener('load', function(){
+        applySettingAccountVisibility();
+
         if (typeof window.SettingOpenButtonFinal === 'function') {
             window.OpenButton = window.SettingOpenButtonFinal;
         } else if (typeof window.OpenButton === 'function') {

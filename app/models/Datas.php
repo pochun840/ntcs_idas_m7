@@ -127,6 +127,53 @@ class Datas{
     }
 
 
+    /**
+     * Toruqe_line_chart 匯出 CSV：依時間區間抓最新 25 筆。
+     * SQL 規則：
+     * SELECT * FROM ntcs_data
+     * WHERE data_time BETWEEN ...
+     * ORDER BY data_time DESC LIMIT 25
+     */
+    public function getLineChartCsvExportData($start_date, $end_date, $limit = 25) {
+
+        if (is_null($this->db_data)) {
+            return [];
+        }
+
+        $limit = (int)$limit;
+        if ($limit <= 0) {
+            $limit = 25;
+        }
+        if ($limit > 25) {
+            $limit = 25;
+        }
+
+        $sql = "
+            SELECT *
+            FROM ntcs_data
+            WHERE data_time BETWEEN :start_date AND :end_date
+            ORDER BY data_time DESC
+            LIMIT :limit
+        ";
+
+        try {
+            $statement = $this->db_data->prepare($sql);
+            if ($statement === false) {
+                return [];
+            }
+
+            $statement->bindValue(':start_date', $start_date, PDO::PARAM_STR);
+            $statement->bindValue(':end_date', $end_date, PDO::PARAM_STR);
+            $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $statement->execute();
+
+            return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+
     public function get_range_data($start_date,$end_date){
 
         $sql = "SELECT * FROM ntcs_data 

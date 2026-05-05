@@ -686,4 +686,286 @@ class Setting{
 
 
 
+
+    private function operationAuditTableExists(): bool
+    {
+        $stmt = $this->db_iDas_login->prepare("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'operation_audit_log'");
+        $stmt->execute();
+        return ((int)$stmt->fetchColumn()) > 0;
+    }
+
+    public function getOperationAuditLogs(int $limit = 100): array
+    {
+        if (!$this->operationAuditTableExists()) {
+            return [];
+        }
+
+        if ($limit <= 0 || $limit > 500) {
+            $limit = 100;
+        }
+
+        $sql = "
+            SELECT
+                log_id,
+                created_at,
+                user_id,
+                operator,
+                client_ip,
+                device_id,
+                module,
+                action,
+                status,
+                job_id,
+                seq_id,
+                step_id,
+                source_job_id,
+                source_seq_id,
+                source_step_id,
+                target_job_id,
+                target_seq_id,
+                target_step_id,
+                title,
+                message
+            FROM operation_audit_log
+            ORDER BY log_id DESC
+            LIMIT :limit
+        ";
+
+        $stmt = $this->db_iDas_login->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+    private function operationAuditNormalizeCsvKey($key): string
+    {
+        $key = strtolower(trim((string)$key));
+        $key = preg_replace('/[^a-z0-9]+/', '_', $key) ?? $key;
+        return trim($key, '_');
+    }
+
+    private function operationAuditCsvLooksLikeHeader(array $row): bool
+    {
+        $known = [
+            'time', 'date', 'datetime', 'timestamp', 'created_at', 'log_time',
+            'user', 'username', 'operator', 'module', 'source', 'category',
+            'action', 'event', 'status', 'level', 'severity',
+            'message', 'msg', 'content', 'detail', 'description',
+            'job_id', 'jobid', 'seq_id', 'seqid', 'step_id', 'stepid'
+        ];
+
+        foreach ($row as $cell) {
+            $key = $this->operationAuditNormalizeCsvKey($cell);
+            if (in_array($key, $known, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function operationAuditIsDateLike($value): bool
+    {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return false;
+        }
+
+        return (bool)preg_match('/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}(?:[ T]\d{1,2}:\d{1,2}(?::\d{1,2})?)?/', $value);
+    }
+
+    private function operationAuditFirstValue(array $assoc, array $keys): string
+    {
+        foreach ($keys as $key) {
+            $normalized = $this->operationAuditNormalizeCsvKey($key);
+            if (isset($assoc[$normalized]) && trim((string)$assoc[$normalized]) !== '') {
+                return trim((string)$assoc[$normalized]);
+            }
+        }
+
+        return '';
+    }
+
+    private function operationAuditDetectStatus(string $text): string
+    {
+        $upper = strtoupper($text);
+
+        if (strpos($upper, 'ERROR') !== false || strpos($upper, 'FAIL') !== false || strpos($upper, 'NG') !== false) {
+            return 'ERROR';
+        }
+        if (strpos($upper, 'WARN') !== false || strpos($upper, 'WARNING') !== false) {
+            return 'WARNING';
+        }
+        if (strpos($upper, 'SUCCESS') !== false || strpos($upper, 'OK') !== false) {
+            return 'SUCCESS';
+        }
+
+        return 'INFO';
+    }
+
+    private function operationAuditBuildAppLogRow(array $cols, array $assoc, int $lineNo): array
+    {
+        $rawText = trim(implode(' | ', array_map('strval', $cols)));
+
+        $createdAt = $this->operationAuditFirstValue($assoc, [
+            'created_at', 'datetime', 'timestamp', 'time', 'date', 'log_time'
+        ]);
+
+        $message = $this->operationAuditFirstValue($assoc, [
+            'message', 'msg', 'content', 'detail', 'description', 'event_message'
+        ]);
+
+        // 無 header 或 header 沒有 message 時，第一欄是時間就把後面欄位合併成 message。
+        if ($message === '' && count($cols) > 1 && $this->operationAuditIsDateLike($cols[0] ?? '')) {
+            $message = trim(implode(' | ', array_slice($cols, 1)));
+        }
+
+        if ($message === '') {
+            $message = $rawText;
+        }
+
+        if ($createdAt === '' && isset($cols[0]) && $this->operationAuditIsDateLike($cols[0])) {
+            $createdAt = trim((string)$cols[0]);
+        }
+
+        $operator = $this->operationAuditFirstValue($assoc, [
+            'operator', 'user', 'username', 'account'
+        ]);
+
+        $module = $this->operationAuditFirstValue($assoc, [
+            'module', 'source', 'category', 'tag'
+        ]);
+        if ($module === '') {
+            $module = 'APP';
+        }
+
+        $action = $this->operationAuditFirstValue($assoc, [
+            'action', 'event', 'function', 'operation'
+        ]);
+        if ($action === '') {
+            $action = 'LOG';
+        }
+
+        $status = $this->operationAuditFirstValue($assoc, [
+            'status', 'level', 'severity', 'result'
+        ]);
+        if ($status === '') {
+            $status = $this->operationAuditDetectStatus($rawText);
+        }
+
+        $jobId = $this->operationAuditFirstValue($assoc, ['job_id', 'jobid', 'job']);
+        $seqId = $this->operationAuditFirstValue($assoc, ['seq_id', 'seqid', 'seq']);
+        $stepId = $this->operationAuditFirstValue($assoc, ['step_id', 'stepid', 'step']);
+
+        return [
+            'log_id' => $lineNo,
+            'created_at' => $createdAt,
+            'user_id' => $operator,
+            'operator' => $operator,
+            'client_ip' => '',
+            'device_id' => null,
+            'module' => $module,
+            'action' => $action,
+            'status' => $status,
+            'job_id' => is_numeric($jobId) ? (int)$jobId : null,
+            'seq_id' => is_numeric($seqId) ? (int)$seqId : null,
+            'step_id' => is_numeric($stepId) ? (int)$stepId : null,
+            'source_job_id' => null,
+            'source_seq_id' => null,
+            'source_step_id' => null,
+            'target_job_id' => null,
+            'target_seq_id' => null,
+            'target_step_id' => null,
+            'target' => 'APP #' . $lineNo,
+            'title' => 'APP Log',
+            'message' => $message,
+        ];
+    }
+
+    public function getAppOperationLogs(int $limit = 100): array
+    {
+        if ($limit <= 0 || $limit > 500) {
+            $limit = 100;
+        }
+
+        $csvPath = '/home/kls/NTCS7/ntcs_log.csv';
+        if (!is_file($csvPath) || !is_readable($csvPath)) {
+            return [];
+        }
+
+        $fp = @fopen($csvPath, 'r');
+        if (!$fp) {
+            return [];
+        }
+
+        $rows = [];
+        $header = null;
+        $lineNo = 0;
+
+        while (($cols = fgetcsv($fp)) !== false) {
+            $lineNo++;
+
+            // 空白列略過
+            $nonEmpty = false;
+            foreach ($cols as $cell) {
+                if (trim((string)$cell) !== '') {
+                    $nonEmpty = true;
+                    break;
+                }
+            }
+            if (!$nonEmpty) {
+                continue;
+            }
+
+            if ($header === null && $lineNo === 1 && $this->operationAuditCsvLooksLikeHeader($cols)) {
+                $header = array_map(function ($cell) {
+                    return $this->operationAuditNormalizeCsvKey($cell);
+                }, $cols);
+                continue;
+            }
+
+            $assoc = [];
+            if (is_array($header)) {
+                foreach ($header as $idx => $key) {
+                    if ($key !== '') {
+                        $assoc[$key] = $cols[$idx] ?? '';
+                    }
+                }
+            }
+
+            $rows[] = $this->operationAuditBuildAppLogRow($cols, $assoc, $lineNo);
+        }
+
+        fclose($fp);
+
+        usort($rows, function ($a, $b) {
+            $ta = !empty($a['created_at']) ? strtotime((string)$a['created_at']) : false;
+            $tb = !empty($b['created_at']) ? strtotime((string)$b['created_at']) : false;
+
+            if ($ta !== false && $tb !== false && $ta !== $tb) {
+                return $tb <=> $ta;
+            }
+
+            return ((int)($b['log_id'] ?? 0)) <=> ((int)($a['log_id'] ?? 0));
+        });
+
+        return array_slice($rows, 0, $limit);
+    }
+
+    public function getOperationAuditLogDetail(int $logId): ?array
+    {
+        if (!$this->operationAuditTableExists()) {
+            return null;
+        }
+
+        $stmt = $this->db_iDas_login->prepare("SELECT * FROM operation_audit_log WHERE log_id = :log_id LIMIT 1");
+        $stmt->bindValue(':log_id', $logId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
 }

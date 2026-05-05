@@ -8,6 +8,7 @@ class Sequences extends Controller
     private $SettingModel;
     private $ToolModel;
     private $stepModel;
+    private $AuditModel;
     Private $deviceId;
 
     public function __construct(){
@@ -17,10 +18,111 @@ class Sequences extends Controller
         $this->SettingModel = $this->model('Setting');
         $this->ToolModel = $this->model('Tool');
         $this->stepModel = $this->model('Steptcc');
+        $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
+    }
+
+    /**
+     * Seq Audit: 快照單筆 Seq + 底下 Step。
+     * 注意：Audit 寫入 das.db；實際資料快照仍從 KLS_NTCS_IDAS.Lin 讀取。
+     */
+    private function seqAuditSnapshot($jobid, $seqid = null): array
+    {
+        if ($seqid === null || $seqid === '') {
+            return [
+                'seqs' => $this->sequenceModel->getSequences_by_job_id($jobid),
+            ];
+        }
+
+        return [
+            'seq'   => $this->sequenceModel->search_seqinfo($jobid, $seqid),
+            'steps' => $this->sequenceModel->search_stepinfo($jobid, $seqid),
+        ];
+    }
+
+    /**
+     * Seq Audit: 取得目前排序。
+     * 用 SEQID 排序，但內容同時保留 SEQname，因為 UP/DOWN 後 SEQID 會被重新編號。
+     */
+    private function seqOrderSnapshot($jobid): array
+    {
+        $rows = $this->sequenceModel->getSequences_by_job_id($jobid);
+
+        usort($rows, function($a, $b) {
+            return ((int)($a['SEQID'] ?? 0)) <=> ((int)($b['SEQID'] ?? 0));
+        });
+
+        $order = [];
+        foreach ($rows as $row) {
+            $order[] = [
+                'SEQID'   => (int)($row['SEQID'] ?? 0),
+                'SEQname' => (string)($row['SEQname'] ?? ''),
+                'skip'    => isset($row['skip']) ? (int)$row['skip'] : null,
+            ];
+        }
+
+        return $order;
+    }
+
+    /**
+     * Seq Audit: 從排序前後判斷是 UP 或 DOWN。
+     * 以 SEQname 判斷 row identity；若無法判斷，預設回傳 EDIT。
+     */
+    private function detectSeqMoveAction(array $before, array $after): string
+    {
+        $beforeNames = array_map(function($row) {
+            return (string)($row['SEQname'] ?? '');
+        }, $before);
+
+        $afterNames = array_map(function($row) {
+            return (string)($row['SEQname'] ?? '');
+        }, $after);
+
+        foreach ($afterNames as $afterIndex => $name) {
+            if ($name === '') {
+                continue;
+            }
+
+            $beforeIndex = array_search($name, $beforeNames, true);
+            if ($beforeIndex !== false && $beforeIndex !== $afterIndex) {
+                return ($afterIndex < $beforeIndex) ? 'UP' : 'DOWN';
+            }
+        }
+
+        return 'EDIT';
+    }
+
+    /**
+     * Seq Audit: 寫入異動紀錄。
+     * user_id 依需求與 operator 存相同值。
+     * Audit 寫入失敗不能影響原本功能。
+     */
+    private function writeSeqAudit(array $data): void
+    {
+        try {
+            if (!isset($this->AuditModel)) {
+                return;
+            }
+
+            $operator = $_COOKIE['username'] ?? '';
+
+            $defaults = [
+                'user_id'      => $operator,
+                'operator'     => $operator,
+                'client_ip'    => $_SERVER['REMOTE_ADDR'] ?? '',
+                'device_id'    => $this->deviceId ?? null,
+                'module'       => 'SEQ',
+                'status'       => 'SUCCESS',
+                'request_json' => $_POST,
+            ];
+
+            $this->AuditModel->write(array_merge($defaults, $data));
+        } catch (Throwable $e) {
+            error_log('[SEQ AUDIT FAIL] ' . $e->getMessage());
+        }
     }
 
     // 取得所有Sequences
@@ -92,6 +194,8 @@ class Sequences extends Controller
     }
 
     #create 
+
+    #create 
     public function create_seq(){
 
 
@@ -109,7 +213,6 @@ class Sequences extends Controller
                 $_POST['unscrew_force'] = 0;
             }
 
-            
             // ---- 扭力單位 -> 小數位數對照（與前端一致）----
             $decimalsByUnit = [ 0=>2, 1=>3, 2=>2, 3=>4, 4=>1 ];
             $seqUnit = (int)($_POST['seq_unit'] ?? 1);
@@ -188,40 +291,67 @@ class Sequences extends Controller
                 exit;
             }
 
-
             $mode = "create";
             $res = $this->sequenceModel->create_seq($mode,$seq_data);
 
-
-            $res_device = $this->SettingModel->GetControllerInfo();
-            $device_torque_unit = (int)$res_device['torque_unit'];
-    
-            $tools_temp = $this->getConvertedToolInfo();
-            
-            if(!empty($tools_temp )){
-                $step_res = $this->stepModel->createDefaultStep($seq_data['job_id'],$seq_data['SEQID'],$tools_temp['torque'],$tools_temp['max_torque'],$tools_temp['min_torque'],$tools_temp['torque'],$device_torque_unit);
-            }
-
-
-            $result = array();
             if($res){
+                // 只有 Seq 建立成功後才建立預設 Step，避免產生孤兒 Step。
+                $res_device = $this->SettingModel->GetControllerInfo();
+                $device_torque_unit = (int)$res_device['torque_unit'];
+
+                $tools_temp = $this->getConvertedToolInfo();
+                if(!empty($tools_temp)){
+                    $this->stepModel->createDefaultStep(
+                        $seq_data['job_id'],
+                        $seq_data['SEQID'],
+                        $tools_temp['torque'],
+                        $tools_temp['max_torque'],
+                        $tools_temp['min_torque'],
+                        $tools_temp['torque'],
+                        $device_torque_unit
+                    );
+                }
+
+                $after = $this->seqAuditSnapshot($seq_data['job_id'], $seq_data['SEQID']);
+                $this->writeSeqAudit([
+                    'action'      => 'NEW',
+                    'status'      => 'SUCCESS',
+                    'job_id'      => (int)$seq_data['job_id'],
+                    'seq_id'      => (int)$seq_data['SEQID'],
+                    'title'       => 'New Sequence',
+                    'message'     => 'Create sequence id: ' . $seq_data['SEQID'],
+                    'before_json' => null,
+                    'after_json'  => $after,
+                ]);
+
                 $res_type = 'Success';
                 $res_msg  = $text['new_seq'].':'. $seq_data['SEQID']."  ".$text['success'];
-                 $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg);
+                $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg);
             }else{
+                $this->writeSeqAudit([
+                    'action'      => 'NEW',
+                    'status'      => 'FAIL',
+                    'job_id'      => (int)$seq_data['job_id'],
+                    'seq_id'      => (int)$seq_data['SEQID'],
+                    'title'       => 'New Sequence Fail',
+                    'message'     => 'Create sequence failed id: ' . $seq_data['SEQID'],
+                    'before_json' => null,
+                    'after_json'  => null,
+                ]);
+
                 $res_type = 'Error';
                 $res_msg  = $text['new_seq'].':'. $seq_data['SEQID']."  ".$text['fail'];
-                
             }
-            
+
             $result = array(
                 'res_type' => $res_type,
-                'res_msg'  => $res_msg 
+                'res_msg'  => $res_msg
             );
 
             echo json_encode($result);
 
         }
+
     
 
         public function getConvertedToolInfo() {
@@ -273,29 +403,55 @@ class Sequences extends Controller
         return $temp;
     }
 
-
-
-
     public function delete_seq(){
 
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
             include $file;
         }
-        
 
         $jobid = $_POST['jobid'] ?? null;
         $seqid = $_POST['seqid'] ?? null;
 
         if(!empty($jobid)){
             $result = array();
+            $before = (!empty($seqid)) ? $this->seqAuditSnapshot($jobid, $seqid) : null;
+            $orderBefore = $this->seqOrderSnapshot($jobid);
 
             $res = $this->sequenceModel->delete_seq_by_id($jobid,$seqid);
+            $orderAfter = $this->seqOrderSnapshot($jobid);
+
             if($res){
+                $this->writeSeqAudit([
+                    'action'            => 'DELETE',
+                    'status'            => 'SUCCESS',
+                    'job_id'            => (int)$jobid,
+                    'seq_id'            => !empty($seqid) ? (int)$seqid : null,
+                    'title'             => 'Delete Sequence',
+                    'message'           => 'Delete sequence id: ' . $seqid,
+                    'before_json'       => $before,
+                    'after_json'        => null,
+                    'order_before_json' => $orderBefore,
+                    'order_after_json'  => $orderAfter,
+                ]);
+
                 $res_type = $text['success'];
                 $res_msg  = $text['del_seq'].':'. $seqid."  ".$text['success'];
                 $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg );
             }else{
+                $this->writeSeqAudit([
+                    'action'            => 'DELETE',
+                    'status'            => 'FAIL',
+                    'job_id'            => (int)$jobid,
+                    'seq_id'            => !empty($seqid) ? (int)$seqid : null,
+                    'title'             => 'Delete Sequence Fail',
+                    'message'           => 'Delete sequence failed id: ' . $seqid,
+                    'before_json'       => $before,
+                    'after_json'        => null,
+                    'order_before_json' => $orderBefore,
+                    'order_after_json'  => $orderAfter,
+                ]);
+
                 $res_type = $text['fail'];
                 $res_msg  = $text['del_seq'].':'. $seqid."  ".$text['fail'];
                 $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg );
@@ -303,6 +459,7 @@ class Sequences extends Controller
 
         }
     }
+
 
     #查詢seq data
     public function search_seqinfo(){
@@ -337,8 +494,6 @@ class Sequences extends Controller
             $_POST['unscrew_force'] = 0;
         }
 
-
-              
         // ---- 扭力單位 -> 小數位數對照（與前端一致）----
         $decimalsByUnit = [ 0=>2, 1=>3, 2=>2, 3=>4, 4=>1 ];
         $seqUnit = (int)($_POST['seq_unit'] ?? 1);
@@ -374,7 +529,7 @@ class Sequences extends Controller
         $device_torque_unit = (int)$res_device['torque_unit'];
 
         if(isset($_POST['job_id'])){
-                          
+
             // 初始化數據陣列
             $seq_data = array(
                 'JOBID' => $_POST['job_id'] ?? null,
@@ -426,25 +581,49 @@ class Sequences extends Controller
                 exit;
             }
 
-
+            $before = $this->seqAuditSnapshot($seq_data['JOBID'], $seq_data['SEQID']);
             $res = $this->sequenceModel->update_seq_by_id($seq_data);
             $result = array();
             if($res){
+                $after = $this->seqAuditSnapshot($seq_data['JOBID'], $seq_data['SEQID']);
+                $this->writeSeqAudit([
+                    'action'      => 'EDIT',
+                    'status'      => 'SUCCESS',
+                    'job_id'      => (int)$seq_data['JOBID'],
+                    'seq_id'      => (int)$seq_data['SEQID'],
+                    'title'       => 'Edit Sequence',
+                    'message'     => 'Edit sequence id: ' . $seq_data['SEQID'],
+                    'before_json' => $before,
+                    'after_json'  => $after,
+                ]);
+
                 $res_type = 'Success';
                 $res_msg  = $text['edit_seq'].':'.$seq_data['SEQID']."  ".$text['success'];
             }else{
+                $this->writeSeqAudit([
+                    'action'      => 'EDIT',
+                    'status'      => 'FAIL',
+                    'job_id'      => (int)$seq_data['JOBID'],
+                    'seq_id'      => (int)$seq_data['SEQID'],
+                    'title'       => 'Edit Sequence Fail',
+                    'message'     => 'Edit sequence failed id: ' . $seq_data['SEQID'],
+                    'before_json' => $before,
+                    'after_json'  => null,
+                ]);
+
                 $res_type = 'Error';
                 $res_msg  = $text['edit_seq'].':'.$seq_data['SEQID']."  ".$text['fail'];
             }
 
             $result = array(
                 'res_type' => $res_type,
-                'res_msg'  => $res_msg 
+                'res_msg'  => $res_msg
             );
 
             echo json_encode($result);
         }
     }
+
 
     public function check_seq_type(){
         
@@ -473,8 +652,34 @@ class Sequences extends Controller
         }else{
             $input_check = false; 
         }
+
         if($input_check){
-            $this->sequenceModel->update_seq_type($seq_data);
+            $jobid = $seq_data['jobid'] ?? null;
+            $seqid = $seq_data['seqid'] ?? null;
+            $skip  = isset($seq_data['skip']) ? (int)$seq_data['skip'] : null;
+
+            $before = (!empty($jobid) && !empty($seqid))
+                ? $this->seqAuditSnapshot($jobid, $seqid)
+                : null;
+
+            $res = $this->sequenceModel->update_seq_type($seq_data);
+
+            /*$after = (!empty($jobid) && !empty($seqid) && $res)
+                ? $this->seqAuditSnapshot($jobid, $seqid)
+                : null;
+
+            $this->writeSeqAudit([
+                'action'      => 'EDIT',
+                'status'      => $res ? 'SUCCESS' : 'FAIL',
+                'job_id'      => !empty($jobid) ? (int)$jobid : null,
+                'seq_id'      => !empty($seqid) ? (int)$seqid : null,
+                'title'       => 'Sequence Enable Change',
+                'message'     => ($skip === 0)
+                                    ? 'Enable sequence id: ' . $seqid
+                                    : 'Disable sequence id: ' . $seqid,
+                'before_json' => $before,
+                'after_json'  => $after,
+            ]);*/
         }
     }
 
@@ -491,9 +696,14 @@ class Sequences extends Controller
         $oldseqname = $_POST['oldseqname'] ?? null;
         $newseqname = $_POST['newseqname'] ?? null;
 
+        $rows = false;
+        $rows_temp = 0;
+        $before = (!empty($jobid) && !empty($seqid)) ? $this->seqAuditSnapshot($jobid, $seqid) : null;
+        $targetBefore = (!empty($jobid) && !empty($newseqid)) ? $this->seqAuditSnapshot($jobid, $newseqid) : null;
+
         //用jobid 及 seqid 去找出 對應的資料
         $old_res = $this->sequenceModel->search_seqinfo($jobid,$seqid);
-           
+
         $this->sequenceModel->del_seq_type($jobid,$newseqid);
         $this->sequenceModel->del_step_type($jobid,$newseqid);
 
@@ -507,11 +717,11 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['time'] = $val['time'];
                 $new_temp_seq[$kk_seq]['type'] = $val['type'];
                 $new_temp_seq[$kk_seq]['act'] = $val['act'];
-                $new_temp_seq[$kk_seq]['skip'] = $val['skip']; 
-                $new_temp_seq[$kk_seq]['seq_repeat'] = $val['seq_repeat']; 
-                $new_temp_seq[$kk_seq]['timeout'] = $val['timeout']; 
-                $new_temp_seq[$kk_seq]['ok_seq'] = $val['ok_seq']; 
-                $new_temp_seq[$kk_seq]['ok_stop'] = $val['ok_stop']; 
+                $new_temp_seq[$kk_seq]['skip'] = $val['skip'];
+                $new_temp_seq[$kk_seq]['seq_repeat'] = $val['seq_repeat'];
+                $new_temp_seq[$kk_seq]['timeout'] = $val['timeout'];
+                $new_temp_seq[$kk_seq]['ok_seq'] = $val['ok_seq'];
+                $new_temp_seq[$kk_seq]['ok_stop'] = $val['ok_stop'];
                 $new_temp_seq[$kk_seq]['countType'] = $val['countType'];
                 $new_temp_seq[$kk_seq]['ok_screw'] = $val['ok_screw'];
                 $new_temp_seq[$kk_seq]['ng_stop'] = $val['ng_stop'];
@@ -540,12 +750,9 @@ class Sequences extends Controller
                 $new_temp_seq[$kk_seq]['tt_time'] = $val['tt_time'];
                 $new_temp_seq[$kk_seq]['total_angle_limit'] = $val['total_angle_limit'];
                 $new_temp_seq[$kk_seq]['total_angle_lower'] = $val['total_angle_lower'];
-           
-
-            }  
+            }
 
             $rows = $this->sequenceModel->copy_seq_by_seq_id($new_temp_seq);
-     
         }
         if(!empty($select_step)){
             $new_temp_step = array();
@@ -597,25 +804,58 @@ class Sequences extends Controller
             }
 
             $rows_temp = $this->sequenceModel->copy_step_by_seq_id($new_temp_step);
-        
         }
 
         if($rows){
+            $after = $this->seqAuditSnapshot($jobid, $newseqid);
+            $this->writeSeqAudit([
+                'action'        => 'COPY',
+                'status'        => 'SUCCESS',
+                'job_id'        => (int)$jobid,
+                'seq_id'        => (int)$newseqid,
+                'source_seq_id' => (int)$seqid,
+                'target_seq_id' => (int)$newseqid,
+                'title'         => 'Copy Sequence',
+                'message'       => 'Copy sequence from ' . $seqid . ' to ' . $newseqid,
+                'before_json'   => [
+                    'source' => $before,
+                    'target_before' => $targetBefore,
+                ],
+                'after_json'    => $after,
+            ]);
+
             $res_type = 'Success';
             $res_msg  = $text['Copy_Sequence'].':'.$newseqid."  ".$text['success'];
         }else{
+            $this->writeSeqAudit([
+                'action'        => 'COPY',
+                'status'        => 'FAIL',
+                'job_id'        => !empty($jobid) ? (int)$jobid : null,
+                'seq_id'        => !empty($newseqid) ? (int)$newseqid : null,
+                'source_seq_id' => !empty($seqid) ? (int)$seqid : null,
+                'target_seq_id' => !empty($newseqid) ? (int)$newseqid : null,
+                'title'         => 'Copy Sequence Fail',
+                'message'       => 'Copy sequence failed from ' . $seqid . ' to ' . $newseqid,
+                'before_json'   => [
+                    'source' => $before,
+                    'target_before' => $targetBefore,
+                ],
+                'after_json'    => null,
+            ]);
+
             $res_type = 'Error';
             $res_msg  = $text['Copy_Sequence'].':'.$newseqid."  ".$text['fail'];
         }
 
         $result = array(
             'res_type' => $res_type,
-            'res_msg'  => $res_msg 
+            'res_msg'  => $res_msg
         );
 
         echo json_encode($result);
-    
+
     }
+
    
     #seq 排序
     public function adjustment_order(){
@@ -623,7 +863,7 @@ class Sequences extends Controller
         if(isset($_POST['jobid'])){
 
             $jobid = $_POST['jobid'];
-            $rowInfoArray = $_POST['rowInfoArray'];
+            $rowInfoArray = $_POST['rowInfoArray'] ?? [];
             if(!empty($rowInfoArray)){
                 $new_info = array();
                 $index = 1;
@@ -632,7 +872,30 @@ class Sequences extends Controller
                     $index++;
                 }
 
-                $res = $this->sequenceModel->swapupdate($jobid,$rowInfoArray,$new_info);
+                $orderBefore = $this->seqOrderSnapshot($jobid);
+                $res = false;
+                $errorMessage = '';
+
+                try {
+                    $res = $this->sequenceModel->swapupdate($jobid,$rowInfoArray,$new_info);
+                } catch (Throwable $e) {
+                    $res = false;
+                    $errorMessage = $e->getMessage();
+                    error_log('[SEQ ORDER FAIL] ' . $errorMessage);
+                }
+
+                $orderAfter = $this->seqOrderSnapshot($jobid);
+                $moveAction = $res ? $this->detectSeqMoveAction($orderBefore, $orderAfter) : 'EDIT';
+
+                $this->writeSeqAudit([
+                    'action'            => $moveAction,
+                    'status'            => $res ? 'SUCCESS' : 'FAIL',
+                    'job_id'            => (int)$jobid,
+                    'title'             => 'Sequence ' . $moveAction,
+                    'message'           => $res ? 'Sequence order changed' : ('Sequence order change failed' . ($errorMessage !== '' ? ': ' . $errorMessage : '')),
+                    'order_before_json' => $orderBefore,
+                    'order_after_json'  => $orderAfter,
+                ]);
                 
                 if($res){
                     $res_msg = 'success';
@@ -643,6 +906,7 @@ class Sequences extends Controller
                 //die();
             }
             
+
 
 
         }

@@ -696,6 +696,7 @@ function OpenButton(ButtonMode) {
         "Barcode": "Barcode_Setting",
         "Connect": "Connect_Setting",
         "Account": "AccountDisplay",
+        "AuditLog": "OperationAuditLogDisplay",
         "Update": "iDas-Update_Setting"
     };
 
@@ -705,6 +706,7 @@ function OpenButton(ButtonMode) {
         "Barcode": "bnt3",
         "Connect": "bnt4",
         "Account": "bnt5",
+        "AuditLog": "bnt7",
         "Update": "bnt6"
     };
 
@@ -733,10 +735,14 @@ function OpenButton(ButtonMode) {
     if (ButtonMode === "Account" && typeof loadSettingAccountUsers === "function") {
         loadSettingAccountUsers();
     }
+
+    if (ButtonMode === "AuditLog" && typeof loadSettingOperationAuditLogs === "function") {
+        loadSettingOperationAuditLogs();
+    }
 }
 
 // Setting page final tab switch alias.
-// Account is bnt5, iDAS Update is bnt6.
+// Account is bnt5, iDAS Update is bnt6, operation_audit_log is bnt7.
 window.SettingOpenButtonFinal = OpenButton;
 window.OpenButton = OpenButton;
 

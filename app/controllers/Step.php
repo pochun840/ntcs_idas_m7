@@ -9,6 +9,7 @@ class Step extends Controller
     private $sequenceModel;
     private $SettingModel;
     private $ToolModel;
+    private $AuditModel;
     Private $deviceId;
 
     public function __construct(){
@@ -18,10 +19,119 @@ class Step extends Controller
         $this->sequenceModel = $this->model('Sequence');
         $this->SettingModel = $this->model('Setting');
         $this->ToolModel = $this->model('Tool');
+        $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
+    }
+
+
+
+    private function stepListSnapshot($jobid, $seqid): array
+    {
+        return [
+            'steps' => $this->stepModel->getStep($jobid, $seqid),
+        ];
+    }
+
+    private function stepAuditSnapshot($jobid, $seqid, $stepid = null): array
+    {
+        if ($stepid === null || $stepid === '') {
+            return $this->stepListSnapshot($jobid, $seqid);
+        }
+
+        return [
+            'step' => $this->stepModel->getStepNo($jobid, $seqid, $stepid),
+        ];
+    }
+
+    private function stepOrderSnapshot($jobid, $seqid): array
+    {
+        if ($jobid === null || $jobid === '' || $seqid === null || $seqid === '') {
+            return [];
+        }
+
+        $rows = $this->stepModel->getStep($jobid, $seqid);
+        $order = [];
+
+        foreach ($rows as $row) {
+            $order[] = [
+                'StepSelect' => isset($row['StepSelect']) ? (int)$row['StepSelect'] : null,
+                'STEPname'   => $row['STEPname'] ?? '',
+                'StepOption' => $row['StepOption'] ?? null,
+                'StepTorque' => $row['StepTorque'] ?? null,
+                'StepAngle'  => $row['StepAngle'] ?? null,
+            ];
+        }
+
+        return $order;
+    }
+
+    private function getSeqIdFromStepRows(array $rowInfoArray)
+    {
+        if (isset($_POST['SEQID']) && $_POST['SEQID'] !== '') {
+            return (int)$_POST['SEQID'];
+        }
+
+        if (isset($_POST['seqid']) && $_POST['seqid'] !== '') {
+            return (int)$_POST['seqid'];
+        }
+
+        foreach ($rowInfoArray as $row) {
+            if (isset($row['SEQID']) && $row['SEQID'] !== '') {
+                return (int)$row['SEQID'];
+            }
+        }
+
+        return null;
+    }
+
+    private function detectStepMoveAction(array $before, array $after, string $default = 'EDIT'): string
+    {
+        $beforeKeys = [];
+        foreach ($before as $row) {
+            $name = trim((string)($row['STEPname'] ?? ''));
+            $key = ($name !== '') ? ('name:' . $name) : ('step:' . (string)($row['StepSelect'] ?? ''));
+            $beforeKeys[] = $key;
+        }
+
+        foreach ($after as $afterIndex => $row) {
+            $name = trim((string)($row['STEPname'] ?? ''));
+            $key = ($name !== '') ? ('name:' . $name) : ('step:' . (string)($row['StepSelect'] ?? ''));
+            $beforeIndex = array_search($key, $beforeKeys, true);
+
+            if ($beforeIndex !== false && $beforeIndex !== $afterIndex) {
+                return ($afterIndex < $beforeIndex) ? 'UP' : 'DOWN';
+            }
+        }
+
+        return $default;
+    }
+
+    private function writeStepAudit(array $data): void
+    {
+        try {
+            if (!isset($this->AuditModel)) {
+                return;
+            }
+
+            $operator = $_COOKIE['username'] ?? '';
+            $defaults = [
+                'user_id'      => $operator,
+                'operator'     => $operator,
+                'client_ip'    => $_SERVER['REMOTE_ADDR'] ?? '',
+                'device_id'    => $this->deviceId ?? null,
+                'module'       => 'STEP',
+                'status'       => 'SUCCESS',
+                'request_json' => $_POST,
+            ];
+
+            $this->AuditModel->write(array_merge($defaults, $data));
+        } catch (Throwable $e) {
+            // Audit log 失敗不能影響原本 Step 功能
+            error_log('[STEP AUDIT FAIL] ' . $e->getMessage());
+        }
     }
 
     public function index($job_id,$seq_id){
@@ -118,12 +228,15 @@ class Step extends Controller
 
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
 
-
         if (isset($_POST['JOBID'])) {
             $JOBID = intval($_POST['JOBID'] ?? 0);
             $SEQID = intval($_POST['SEQID'] ?? 0);
             $StepEnableThreshold = intval($_POST['StepEnableThreshold'] ?? 0);
             $StepEnableDownShift = intval($_POST['StepEnableDownShift'] ?? 0);
+
+            // New Step 可能會重設其他 Step 的 threshold/downshift，所以先抓整個 seq 快照。
+            $before = $this->stepListSnapshot($JOBID, $SEQID);
+            $orderBefore = $this->stepOrderSnapshot($JOBID, $SEQID);
 
             // ✅ 若這個 step 啟用了 threshold（≠ 0），先重設前面所有 step 的 threshold 為 0
             if ($StepEnableThreshold !== 0) {
@@ -134,9 +247,6 @@ class Step extends Controller
             if ($StepEnableDownShift !== 0) {
                 $this->stepModel->resetAllDownShifts($JOBID, $SEQID);
             }
-
-
-
 
             // 🔽 繼續原本流程...
             $step_data = [
@@ -184,7 +294,6 @@ class Step extends Controller
                 'step_unit' => intval($_POST['step_unit'] ?? 0)
             ];
 
-
             if(!empty($step_data)){
                 $decimals_arr = $this->MiscellaneousModel->details("decimals");
                 $places = $decimals_arr[$_POST['step_unit'] ?? 2] ?? 2;
@@ -200,10 +309,26 @@ class Step extends Controller
                 if($step_data['StepEnableDownShift'] == 2){
                     $step_data['StepTorqueDownShift']   = number_format(round((float)($_POST['StepTorqueDownShift'] ?? 0),   $places), $places, '.', '');
                 }
-
             }
 
             $res = $this->stepModel->create_step($step_data);
+            $after = $res ? $this->stepListSnapshot($JOBID, $SEQID) : null;
+            $orderAfter = $res ? $this->stepOrderSnapshot($JOBID, $SEQID) : null;
+
+            $this->writeStepAudit([
+                'action'            => 'NEW',
+                'status'            => $res ? 'SUCCESS' : 'FAIL',
+                'job_id'            => (int)$JOBID,
+                'seq_id'            => (int)$SEQID,
+                'step_id'           => (int)$step_data['StepSelect'],
+                'title'             => $res ? 'New Step' : 'New Step Fail',
+                'message'           => ($res ? 'Create step id: ' : 'Create step failed id: ') . $step_data['StepSelect'],
+                'before_json'       => $before,
+                'after_json'        => $after,
+                'order_before_json' => $orderBefore,
+                'order_after_json'  => $orderAfter,
+            ]);
+
             $text = $text ?? [];
             $res_type = $res ? 'Success' : 'Error';
             $res_msg = $text['new_step'] . ':' . $step_data['StepSelect'] . ($res ? ' ' . $text['success'] : ' ' . $text['fail']);
@@ -224,16 +349,15 @@ class Step extends Controller
 
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
 
-
         if(isset($_POST['JOBID'])){
 
             $JOBID = isset($_POST['JOBID']) ? intval($_POST['JOBID']) : 0;
             $SEQID = isset($_POST['SEQID']) ? intval($_POST['SEQID']) : 0;
             $StepSelect = isset($_POST['StepSelect']) ? intval($_POST['StepSelect']) : 0;
+            $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0;
 
-            //$StepTorqueTS = isset($_POST['StepTorqueTS']) ? round(floatval($_POST['StepTorqueTS']), 1) : 0;
-            $StepEnableThreshold = isset($_POST['StepEnableThreshold']) ? intval($_POST['StepEnableThreshold']) : 0; 
-
+            // Edit Step 可能會清除其他 Step 的 threshold，所以先抓整個 seq 快照。
+            $before = $this->stepListSnapshot($JOBID, $SEQID);
 
             // 當前 step 有設定 Threshold
             if ($StepEnableThreshold > 0) {
@@ -246,54 +370,51 @@ class Step extends Controller
                 }
             }
 
-            
-
             $step_data = [
-                    'JOBID' => $JOBID,
-                    'SEQID' => $SEQID,
-                    'StepSelect' => intval($_POST['StepSelect'] ?? 0),
-                    'STEPname' => $_POST['STEPname'] ?? '',
-                    'type' => 0,
-                    'time' => $_POST['time'] ?? '',
-                    'act' => 0,
-                    'StepSwitch' => 1,
-                    'StepRPM' => intval($_POST['StepRPM'] ?? 0),
-                    'StepOption' => intval($_POST['StepOption'] ?? -1),
-                    'StepTime' => intval($_POST['StepTime'] ?? 1000),
-                    'StepAngle' => intval($_POST['StepAngle'] ?? 0),
-                    'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
-                    'StepDirection' => intval($_POST['StepDirection'] ?? 0),
-                    'StepDelay' => (int) round(((float)($_POST['StepDelay'] ?? 0)) * 1000, 0, PHP_ROUND_HALF_UP),
-                    'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
-                    'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
-                    'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
-                    'StepHiAngle' => intval($_POST['StepHiAngle'] ?? 0),
-                    'StepLoAngle' => intval($_POST['StepLoAngle'] ?? 0),
-                    'StepHiTorque' => floatval($_POST['StepHiTorque'] ?? 0),
-                    'StepLoTorque' => floatval($_POST['StepLoTorque'] ?? 0),
-                    'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 43),
-                    'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 0),
-                    'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
-                    'StepTorqueOffset' =>  round(floatval($_POST['StepTorqueOffset'] ?? 0),3),
-                    'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
-                    'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
-                    'StepTorqueDownShift' => number_format(round(floatval($_POST['StepTorqueDownShift'] ?? 0), 3), 3, '.', ''),
-                    'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
-                    'StepTorqueTS' => number_format(round(floatval($_POST['StepTorqueTS'] ?? 0), 3), 3, '.', ''),
-                    'StepEnableThreshold' => $StepEnableThreshold,
-                    'StepReTry' => 0,
-                    'StepUnScrew' => 1,
-                    'StepReTryTorq' => 0,
-                    'StepReTryAngl' => 0,
-                    'StepAngleRecord' => 0,
-                    'StepAutoDetectAngle' => 0,
-                    'InterruptAlarm' => intval($_POST['InterruptAlarm'] ?? 1),
-                    'OverAngleStop' => intval($_POST['OverAngleStop'] ?? 1),
-                    'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
-                    'step_unit' => intval($_POST['step_unit'] ?? 0)
-                ];
+                'JOBID' => $JOBID,
+                'SEQID' => $SEQID,
+                'StepSelect' => intval($_POST['StepSelect'] ?? 0),
+                'STEPname' => $_POST['STEPname'] ?? '',
+                'type' => 0,
+                'time' => $_POST['time'] ?? '',
+                'act' => 0,
+                'StepSwitch' => 1,
+                'StepRPM' => intval($_POST['StepRPM'] ?? 0),
+                'StepOption' => intval($_POST['StepOption'] ?? -1),
+                'StepTime' => intval($_POST['StepTime'] ?? 1000),
+                'StepAngle' => intval($_POST['StepAngle'] ?? 0),
+                'StepTorque' => floatval($_POST['StepTorque'] ?? 0),
+                'StepDirection' => intval($_POST['StepDirection'] ?? 0),
+                'StepDelay' => (int) round(((float)($_POST['StepDelay'] ?? 0)) * 1000, 0, PHP_ROUND_HALF_UP),
+                'StepMoniByWin' => intval($_POST['StepMoniByWin'] ?? 0),
+                'StepLimiHi' => intval($_POST['StepLimiHi'] ?? 0),
+                'StepLimiLo' => intval($_POST['StepLimiLo'] ?? 0),
+                'StepHiAngle' => intval($_POST['StepHiAngle'] ?? 0),
+                'StepLoAngle' => intval($_POST['StepLoAngle'] ?? 0),
+                'StepHiTorque' => floatval($_POST['StepHiTorque'] ?? 0),
+                'StepLoTorque' => floatval($_POST['StepLoTorque'] ?? 0),
+                'StepAccelerateOffset' => intval($_POST['StepAccelerateOffset'] ?? 43),
+                'StepAccelerateOffsetSign' => intval($_POST['StepAccelerateOffsetSign'] ?? 0),
+                'StepEnableTorqueOffset' => intval($_POST['StepEnableTorqueOffset'] ?? 0),
+                'StepTorqueOffset' =>  round(floatval($_POST['StepTorqueOffset'] ?? 0),3),
+                'StepTorqueOffsetSign' => intval($_POST['StepTorqueOffsetSign'] ?? 0),
+                'StepEnableDownShift' => intval($_POST['StepEnableDownShift'] ?? 0),
+                'StepTorqueDownShift' => number_format(round(floatval($_POST['StepTorqueDownShift'] ?? 0), 3), 3, '.', ''),
+                'StepRPMDownShift' => intval($_POST['StepRPMDownShift'] ?? 0),
+                'StepTorqueTS' => number_format(round(floatval($_POST['StepTorqueTS'] ?? 0), 3), 3, '.', ''),
+                'StepEnableThreshold' => $StepEnableThreshold,
+                'StepReTry' => 0,
+                'StepUnScrew' => 1,
+                'StepReTryTorq' => 0,
+                'StepReTryAngl' => 0,
+                'StepAngleRecord' => 0,
+                'StepAutoDetectAngle' => 0,
+                'InterruptAlarm' => intval($_POST['InterruptAlarm'] ?? 1),
+                'OverAngleStop' => intval($_POST['OverAngleStop'] ?? 1),
+                'KValue' => round(floatval($_POST['KValue'] ?? 0), 2),
+                'step_unit' => intval($_POST['step_unit'] ?? 0)
+            ];
 
-           
             if(!empty($step_data)){
                 $decimals_arr = $this->MiscellaneousModel->details("decimals");
                 $places = $decimals_arr[$_POST['step_unit'] ?? 2] ?? 2;
@@ -309,12 +430,22 @@ class Step extends Controller
                 if($step_data['StepEnableDownShift'] == 2){
                     $step_data['StepTorqueDownShift']   = number_format(round((float)($_POST['StepTorqueDownShift'] ?? 0),   $places), $places, '.', '');
                 }
-
-
             }
-      
 
             $res = $this->stepModel->update_step_by_id($step_data);
+            $after = $res ? $this->stepListSnapshot($JOBID, $SEQID) : null;
+
+            $this->writeStepAudit([
+                'action'      => 'EDIT',
+                'status'      => $res ? 'SUCCESS' : 'FAIL',
+                'job_id'      => (int)$JOBID,
+                'seq_id'      => (int)$SEQID,
+                'step_id'     => (int)$StepSelect,
+                'title'       => $res ? 'Edit Step' : 'Edit Step Fail',
+                'message'     => ($res ? 'Edit step id: ' : 'Edit step failed id: ') . $StepSelect,
+                'before_json' => $before,
+                'after_json'  => $after,
+            ]);
 
             $result = array(
                 'res_type' => $res ? 'Success' : 'Error',
@@ -327,22 +458,41 @@ class Step extends Controller
 
 
 
-    public function delete_step(){
+        public function delete_step(){
 
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
             include $file;
         }
-        
+
         if(isset($_POST['stepid'])){
-            
+
             $jobid = isset($_POST['jobid']) ? intval($_POST['jobid']) : '';
             $seqid = isset($_POST['seqid']) ? intval($_POST['seqid']) : '';
-            $stepid = isset($_POST['stepid']) ? intval($_POST['stepid']) : '';    
-            
+            $stepid = isset($_POST['stepid']) ? intval($_POST['stepid']) : '';
+
             if(!empty($stepid)){
+                $before = $this->stepListSnapshot($jobid, $seqid);
+                $orderBefore = $this->stepOrderSnapshot($jobid, $seqid);
+
                 $res = $this->stepModel->delete_step_id($jobid, $seqid, $stepid);
-                $result = array();
+                $after = $res ? $this->stepListSnapshot($jobid, $seqid) : null;
+                $orderAfter = $res ? $this->stepOrderSnapshot($jobid, $seqid) : null;
+
+                $this->writeStepAudit([
+                    'action'            => 'DELETE',
+                    'status'            => $res ? 'SUCCESS' : 'FAIL',
+                    'job_id'            => (int)$jobid,
+                    'seq_id'            => (int)$seqid,
+                    'step_id'           => (int)$stepid,
+                    'title'             => $res ? 'Delete Step' : 'Delete Step Fail',
+                    'message'           => ($res ? 'Delete step id: ' : 'Delete step failed id: ') . $stepid,
+                    'before_json'       => $before,
+                    'after_json'        => $after,
+                    'order_before_json' => $orderBefore,
+                    'order_after_json'  => $orderAfter,
+                ]);
+
                 if($res){
                     $res_type = 'Success';
                     $res_msg = $text['del_step'].':'. $stepid."  ".$text['success'];
@@ -352,14 +502,11 @@ class Step extends Controller
                     $res_msg = $text['del_step'].':'. $stepid."  ".$text['fail'];
                     $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
                 }
-
             }
-      
         }
-    
     }
 
-    public function copy_step(){
+        public function copy_step(){
 
         $file = $this->MiscellaneousModel->lang_load();
         if(!empty($file)){
@@ -376,9 +523,10 @@ class Step extends Controller
             $step_count = $this->stepModel->countstep($jobid, $seqid);
             $step_count = intval($step_count);
 
-              
+            $before = $this->stepAuditSnapshot($jobid, $seqid, $stepid);
+            $orderBefore = $this->stepOrderSnapshot($jobid, $seqid);
             $old_res= $this->stepModel->getStepNo($jobid,$seqid,$stepid);
-      
+
             if(!empty($old_res)){
 
                 $step_name = "STEP-".$stepid_new;
@@ -425,10 +573,28 @@ class Step extends Controller
                     'OverAngleStop'            => $old_res[0]['OverAngleStop'],
                     'KValue'                   => $old_res[0]['KValue'],
                     'step_unit'                => $old_res[0]['step_unit'],
-
                 );
 
                 $res = $this->stepModel->create_step($step_data);
+                $after = $res ? $this->stepAuditSnapshot($jobid, $seqid, $stepid_new) : null;
+                $orderAfter = $res ? $this->stepOrderSnapshot($jobid, $seqid) : null;
+
+                $this->writeStepAudit([
+                    'action'            => 'COPY',
+                    'status'            => $res ? 'SUCCESS' : 'FAIL',
+                    'job_id'            => (int)$jobid,
+                    'seq_id'            => (int)$seqid,
+                    'step_id'           => (int)$stepid_new,
+                    'source_step_id'    => (int)$stepid,
+                    'target_step_id'    => (int)$stepid_new,
+                    'title'             => $res ? 'Copy Step' : 'Copy Step Fail',
+                    'message'           => ($res ? 'Copy step from ' : 'Copy step failed from ') . $stepid . ' to ' . $stepid_new,
+                    'before_json'       => $before,
+                    'after_json'        => $after,
+                    'order_before_json' => $orderBefore,
+                    'order_after_json'  => $orderAfter,
+                ]);
+
                 if($res){
                     $res_type = $text['success'];
                     $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['success'];
@@ -438,12 +604,22 @@ class Step extends Controller
                     $res_msg  = $text['copy_step'].':'.$stepid_new."  ".$text['fail'];
                     $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
                 }
-
-
+            } else {
+                $this->writeStepAudit([
+                    'action'         => 'COPY',
+                    'status'         => 'FAIL',
+                    'job_id'         => (int)$jobid,
+                    'seq_id'         => (int)$seqid,
+                    'step_id'        => (int)$stepid_new,
+                    'source_step_id' => (int)$stepid,
+                    'target_step_id' => (int)$stepid_new,
+                    'title'          => 'Copy Step Fail',
+                    'message'        => 'Source step not found: ' . $stepid,
+                    'before_json'    => $before,
+                    'after_json'     => null,
+                ]);
             }
-          
         }
-
     }
 
     #查詢step data
@@ -482,17 +658,43 @@ class Step extends Controller
     }
         
     #排序step
-    public function adjustment_order(){
+        public function adjustment_order(){
 
         if (isset($_POST['JOBID']) && isset($_POST['rowInfoArray'])) {
             $JOBID = $_POST['JOBID'];
             $rowInfoArray = $_POST['rowInfoArray'];
+            $SEQID = $this->getSeqIdFromStepRows(is_array($rowInfoArray) ? $rowInfoArray : []);
 
-            $this->stepModel->swapupdate($JOBID,$rowInfoArray);
+            $orderBefore = $SEQID ? $this->stepOrderSnapshot($JOBID, $SEQID) : [];
+            $res = false;
+            $errorMessage = '';
+
+            try {
+                $res = $this->stepModel->swapupdate($JOBID,$rowInfoArray);
+            } catch (Throwable $e) {
+                $errorMessage = $e->getMessage();
+                error_log('[STEP ORDER FAIL] ' . $errorMessage);
+            }
+
+            $orderAfter = $SEQID ? $this->stepOrderSnapshot($JOBID, $SEQID) : [];
+            $moveAction = $this->detectStepMoveAction($orderBefore, $orderAfter, 'EDIT');
+
+            $this->writeStepAudit([
+                'action'            => $moveAction,
+                'status'            => $res ? 'SUCCESS' : 'FAIL',
+                'job_id'            => (int)$JOBID,
+                'seq_id'            => $SEQID !== null ? (int)$SEQID : null,
+                'title'             => $res ? ('Step ' . $moveAction) : 'Step Order Fail',
+                'message'           => $res ? 'Step order changed' : ('Step order change failed' . ($errorMessage !== '' ? ': ' . $errorMessage : '')),
+                'before_json'       => null,
+                'after_json'        => null,
+                'order_before_json' => $orderBefore,
+                'order_after_json'  => $orderAfter,
+            ]);
         } else {
-            
+
         }
-        
+
     }
 
     public function variation($job_id = null, $seq_id = null, $stepid = null){

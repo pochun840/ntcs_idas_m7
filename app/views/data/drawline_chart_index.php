@@ -15,6 +15,7 @@ $labelOK         = htmlspecialchars($textMap['ok'] ?? 'OK', ENT_QUOTES, 'UTF-8')
 $labelNOK        = htmlspecialchars($textMap['ng'] ?? ($textMap['nok'] ?? 'NOK'), ENT_QUOTES, 'UTF-8');
 $labelTime       = htmlspecialchars($textMap['data_time'] ?? 'Time', ENT_QUOTES, 'UTF-8');
 $labelNo         = htmlspecialchars($textMap['no'] ?? 'No.', ENT_QUOTES, 'UTF-8');
+$labelExportCsv  = htmlspecialchars($textMap['export_csv'] ?? 'Export CSV', ENT_QUOTES, 'UTF-8');
 $chartUnitLabel  = htmlspecialchars($data['chart_unit_label'] ?? '', ENT_QUOTES, 'UTF-8');
 $chartLimit      = (int)($data['chart_limit'] ?? 25);
 
@@ -28,7 +29,11 @@ function renderLineChartTableRows($records) {
         return;
     }
 
-    foreach ($records as $i => $row) {
+    // 表格顯示順序：最新資料排最上面。
+    // 注意：Controller / Model 仍維持舊 → 新給折線圖使用，避免折線圖時間軸反向。
+    $displayRecords = array_reverse(array_values($records));
+
+    foreach ($displayRecords as $i => $row) {
         $class = preg_replace('/[^a-zA-Z0-9_\-]/', '', $row['row_color'] ?? '');
         $no    = $i + 1;
         $torque = drawline_h($row['final_fasten_torque'] ?? '0');
@@ -77,7 +82,12 @@ function renderLineChartTableRows($records) {
                 <section class="chart-panel">
                     <div class="panel-header">
                         <strong><?php echo $labelLineChart; ?></strong>
-                        <span>Auto refresh / <?php echo $chartLimit; ?> records</span>
+                        <div class="panel-header-right">
+                            <span>Auto refresh / <?php echo $chartLimit; ?> records</span>
+                            <button type="button" id="lineChartExportCsvBtn" class="drawline-export-btn" onclick="exportLineChartCsv()">
+                                <?php echo $labelExportCsv; ?>
+                            </button>
+                        </div>
                     </div>
                     <div id="lineChart" class="line-chart-box"></div>
                 </section>
@@ -112,6 +122,7 @@ let lineChartInstance = null;
 let lineChartTimer = null;
 let lastLineChartSignature = '';
 let currentMode = 'ALL';
+let latestLineChartRecords = [];
 const CHART_LIMIT = <?php echo $chartLimit; ?>;
 
 function getApiUrl(path) {
@@ -152,12 +163,16 @@ function buildSignature(records) {
 function normalizeChartRecords(result, isFallback) {
     let records = Array.isArray(result.records) ? result.records.slice() : [];
 
-    // 舊 getreal_time_data 是 DESC，fallback 時轉成舊 → 新，折線圖才會由左往右走。
+    // 顯示規則：最新資料排最前面。
+    // Data/get_drawline_chart_data 目前回傳舊 → 新，所以要 reverse。
+    // getreal_time_data fallback 原本就是新 → 舊，所以只取前 CHART_LIMIT 筆。
     if (isFallback) {
-        records = records.slice(0, CHART_LIMIT).reverse();
+        records = records.slice(0, CHART_LIMIT);
+    } else {
+        records = records.slice(-CHART_LIMIT).reverse();
     }
 
-    return records.slice(-CHART_LIMIT).map((row, index) => {
+    return records.map((row, index) => {
         const rawTorque = safeNumber(row.final_fasten_torque_raw ?? row.final_fasten_torque);
         return {
             ...row,
@@ -204,6 +219,7 @@ async function fetchLineChartData(mode = 'ALL') {
 }
 
 function renderLineChartPage(records, result) {
+    latestLineChartRecords = Array.isArray(records) ? records.slice() : [];
     const signature = buildSignature(records);
 
     updateLineChartSummary(records, result);
@@ -222,7 +238,7 @@ function drawLineChart(records, unitLabel = '') {
     initLineChart();
     if (!lineChartInstance) return;
 
-    // X 軸固定顯示 NO：1 ~ 25，不再顯示時間，避免 X 軸擠壓破圖。
+    // X 軸固定顯示 NO：1 ~ 25；NO 1 代表最新一筆資料。
     const labels = records.map((row, index) => String(index + 1));
 
     // 時間保留在 tooltip，不放在 X 軸。
@@ -294,9 +310,15 @@ function drawLineChart(records, unitLabel = '') {
     lineChartInstance.setOption(option, true);
 }
 
+function formatLineChartUpdateTime24(dateObj) {
+    const pad2 = value => String(value).padStart(2, '0');
+    return `${pad2(dateObj.getHours())}:${pad2(dateObj.getMinutes())}:${pad2(dateObj.getSeconds())}`;
+}
+
 function updateLineChartSummary(records, result) {
     // 上方 Count / Torque / Unit 摘要卡片已移除，只保留更新狀態。
-    setLineChartStatus(`Updated: ${new Date().toLocaleTimeString()}`);
+    // 固定使用 24 小時制，避免瀏覽器語系顯示 上午 / 下午 或 AM / PM。
+    setLineChartStatus(`Updated: ${formatLineChartUpdateTime24(new Date())}`);
 }
 
 function updateLineChartTable(records) {
@@ -308,6 +330,7 @@ function updateLineChartTable(records) {
         return;
     }
 
+    // records 已經是最新 → 舊，表格直接依照同一順序顯示。
     tbody.innerHTML = records.map((row, index) => {
         const rowClass = String(row.row_color || '').replace(/[^a-zA-Z0-9_-]/g, '');
         const torque = row.final_fasten_torque ?? '';
@@ -333,6 +356,69 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+
+function formatLineChartDateTime(dateObj, endOfDay = false) {
+    const pad2 = value => String(value).padStart(2, '0');
+    const yyyy = dateObj.getFullYear();
+    const mm = pad2(dateObj.getMonth() + 1);
+    const dd = pad2(dateObj.getDate());
+
+    if (endOfDay) {
+        return `${yyyy}-${mm}-${dd} 23:59:59`;
+    }
+    return `${yyyy}-${mm}-${dd} 00:00:00`;
+}
+
+function getCurrentLineChartExportRange() {
+    const times = latestLineChartRecords
+        .map(row => String(row.data_time || row.chart_label || '').trim())
+        .filter(value => /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value))
+        .sort();
+
+    // records 目前顯示為最新 → 舊；排序後第 1 筆為最舊，最後 1 筆為最新。
+    if (times.length) {
+        return {
+            start: times[0],
+            end: times[times.length - 1]
+        };
+    }
+
+    // 沒有目前資料時，退回今天 00:00:00 ~ 23:59:59。
+    const now = new Date();
+    return {
+        start: formatLineChartDateTime(now, false),
+        end: formatLineChartDateTime(now, true)
+    };
+}
+
+function exportLineChartCsv() {
+    const range = getCurrentLineChartExportRange();
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = getApiUrl('Data/export_drawline_chart_csv');
+    form.style.display = 'none';
+
+    const appendHidden = (name, value) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+    };
+
+    appendHidden('start_date', range.start);
+    appendHidden('end_date', range.end);
+
+    document.body.appendChild(form);
+    form.submit();
+
+    setTimeout(() => {
+        if (form && form.parentNode) {
+            form.parentNode.removeChild(form);
+        }
+    }, 1000);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -452,6 +538,34 @@ window.addEventListener('resize', function() {
     background: linear-gradient(180deg, #8c6748, #60442f);
     color: #fff;
 }
+
+
+.panel-header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: nowrap;
+}
+
+.drawline-export-btn {
+    height: 34px;
+    min-width: 108px;
+    padding: 0 14px;
+    border: 1px solid rgba(255,255,255,.55);
+    border-radius: 8px;
+    background: #2f80ed;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,.18);
+}
+
+.drawline-export-btn:active {
+    transform: translateY(1px);
+}
+
 
 .panel-header strong {
     font-size: 18px;

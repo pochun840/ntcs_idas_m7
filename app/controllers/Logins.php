@@ -51,6 +51,133 @@ class Logins extends Controller
     }
 
 
+    /**
+     * QR Code login payload support.
+     * 支援 QR 內容：{"usr":"abcd123","pwd":"0734"}
+     * 也支援部分掃碼槍輸出格式：usr=abcd123,pwd=0734 / usr:abcd123,pwd:0734。
+     * 最後統一轉成既有 username / password 登入流程。
+     */
+    private function normalizeQrLoginPost(): void
+    {
+        $qrData = [];
+
+        if (!empty($_POST['qr_payload']) && is_string($_POST['qr_payload'])) {
+            $qrData = $this->parseQrLoginPayload((string)$_POST['qr_payload']);
+            if (is_array($qrData)) {
+                // 支援 QR key 大小寫不同，例如 USR/PWD、User/Pass。
+                $qrData = array_change_key_case($qrData, CASE_LOWER);
+            }
+        }
+
+        if (empty($_POST['username'])) {
+            if (!empty($qrData['usr'])) {
+                $_POST['username'] = $qrData['usr'];
+            } elseif (!empty($qrData['username'])) {
+                $_POST['username'] = $qrData['username'];
+            } elseif (!empty($qrData['user'])) {
+                $_POST['username'] = $qrData['user'];
+            } elseif (!empty($qrData['name'])) {
+                $_POST['username'] = $qrData['name'];
+            } elseif (!empty($qrData['account'])) {
+                $_POST['username'] = $qrData['account'];
+            } elseif (isset($_POST['usr'])) {
+                $_POST['username'] = $_POST['usr'];
+            } elseif (isset($_POST['USR'])) {
+                $_POST['username'] = $_POST['USR'];
+            }
+        }
+
+        if (empty($_POST['password'])) {
+            if (!empty($qrData['pwd'])) {
+                $_POST['password'] = $qrData['pwd'];
+            } elseif (!empty($qrData['password'])) {
+                $_POST['password'] = $qrData['password'];
+            } elseif (!empty($qrData['pass'])) {
+                $_POST['password'] = $qrData['pass'];
+            } elseif (isset($_POST['pwd'])) {
+                $_POST['password'] = $_POST['pwd'];
+            } elseif (isset($_POST['PWD'])) {
+                $_POST['password'] = $_POST['PWD'];
+            }
+        }
+    }
+
+    /**
+     * 掃碼槍內容容錯解析：
+     * 1. 標準 JSON：{"usr":"abcd123","pwd":"0734"}
+     * 2. 單引號：{'usr':'abcd123','pwd':'0734'}
+     * 3. key/value：usr=abcd123,pwd=0734 或 usr:abcd123,pwd:0734
+     * 4. URL encoded：%7B%22usr%22...
+     */
+    private function parseQrLoginPayload(string $raw): array
+    {
+        $payload = trim($raw);
+
+        // 移除 BOM / 控制字元，並把常見全形符號、智慧引號轉回標準符號。
+        $payload = preg_replace('/^\xEF\xBB\xBF/', '', $payload) ?? $payload;
+        $payload = preg_replace('/[\x00-\x1F\x7F]/u', '', $payload) ?? $payload;
+        $payload = strtr($payload, [
+            '“' => '"',
+            '”' => '"',
+            '＂' => '"',
+            '‘' => "'",
+            '’' => "'",
+            '｛' => '{',
+            '｝' => '}',
+            '：' => ':',
+            '，' => ',',
+        ]);
+        $payload = trim($payload);
+
+        // 部分掃碼槍/中介軟體會輸出 URL encoded 字串。
+        if (stripos($payload, '%7B') !== false || stripos($payload, '%22') !== false || stripos($payload, '%3A') !== false) {
+            $decoded = rawurldecode($payload);
+            if (is_string($decoded) && $decoded !== '') {
+                $payload = trim($decoded);
+            }
+        }
+
+        // 若前後帶入其他文字，只擷取 JSON 區段。
+        $jsonStart = strpos($payload, '{');
+        $jsonEnd   = strrpos($payload, '}');
+        $jsonPayload = $payload;
+        if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd >= $jsonStart) {
+            $jsonPayload = substr($payload, $jsonStart, $jsonEnd - $jsonStart + 1);
+        }
+
+        $json = json_decode($jsonPayload, true);
+        if (is_array($json)) {
+            return $json;
+        }
+
+        // 兼容單引號 JSON。
+        $singleQuoteJson = str_replace("'", '"', $jsonPayload);
+        $json = json_decode($singleQuoteJson, true);
+        if (is_array($json)) {
+            return $json;
+        }
+
+        // 兼容 usr=abcd123,pwd=0734 或 usr:abcd123,pwd:0734。
+        $usr = null;
+        $pwd = null;
+        if (preg_match('/(?:usr|username|user)\s*[:=]\s*["\']?([^"\',;\s}]+)/i', $payload, $m)) {
+            $usr = $m[1];
+        }
+        if (preg_match('/(?:pwd|password|pass)\s*[:=]\s*["\']?([^"\',;\s}]+)/i', $payload, $m)) {
+            $pwd = $m[1];
+        }
+
+        if ($usr !== null && $pwd !== null) {
+            return [
+                'usr' => $usr,
+                'pwd' => $pwd,
+            ];
+        }
+
+        return [];
+    }
+
+
     public function index($url){
 
         //先做資料庫檔案完整性檢查
@@ -83,6 +210,12 @@ class Logins extends Controller
             }
         }
 
+        // QR Code login: 先把 qr_payload / usr / pwd 正規化成 username / password。
+        $this->normalizeQrLoginPost();
+
+        // QR / 手動 Login 使用 AJAX 驗證成功後，前端顯示 3 秒成功動畫再跳頁。
+        $isAjaxLogin = !empty($_POST['ajax_login']) || !empty($_POST['qr_ajax_login']);
+
         // Account API 必須回 JSON，不可以回登入頁 HTML，否則前端 JSON.parse 會失敗
         if ($this->isAccountUserApiRequest($url)) {
             if ($this->isAuthenticated()) {
@@ -96,8 +229,8 @@ class Logins extends Controller
         //沒有就單純檢查cookies
         if( !empty($_POST['password']) && isset($_POST['password'])  ){
             //login attempt
-            $_POST['username'] = trim($_POST['username']);
-            $_POST['password'] = trim($_POST['password']);
+            $_POST['username'] = trim((string)($_POST['username'] ?? ''));
+            $_POST['password'] = trim((string)($_POST['password'] ?? ''));
         
             $this->logLoginAttempt();
 
@@ -133,10 +266,7 @@ class Logins extends Controller
                     $dir = '/mnt/ramdisk/ftp';
 
                     if (@chmod($dir, 0777)) {
-                        echo json_encode([
-                            "status" => "success",
-                            "message" => "✅ PHP chmod 成功"
-                        ]);
+                        // chmod 成功即可，不要在 redirect 前 echo，避免 headers already sent。
                     } else {
                         // 如果 PHP chmod 失敗 → 改用 sudo
                         $cmd = 'sudo chmod 777 ' . escapeshellarg($dir);
@@ -151,6 +281,10 @@ class Logins extends Controller
                                 "message" => "✅ sudo chmod 成功"
                             ]);*/
                         } else {
+                            if ($isAjaxLogin) {
+                                $this->sendLoginJson(false, "sudo chmod failed: " . (string)$output);
+                            }
+
                             echo json_encode([
                                 "status" => "error",
                                 "message" => "❌ sudo chmod 失敗，結果：" . $output
@@ -163,11 +297,22 @@ class Logins extends Controller
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
 
+                if ($isAjaxLogin) {
+                    $this->sendLoginJson(true, 'Login success.', [
+                        'redirect_url' => '/idas/public/?url=Dashboards'
+                    ]);
+                }
+
                 header('Location: /idas/public/?url=Dashboards');
                 exit;
             }else{
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
                 $this->logout();
+
+                if ($isAjaxLogin) {
+                    $this->sendLoginJson(false, 'Username or password is incorrect.');
+                }
+
                 $this->view('login/index', $data);
                 exit();
             }
@@ -223,17 +368,18 @@ class Logins extends Controller
         }
 
         $input  = $authToken;
-        $output = hash('sha256', $pwd['passwd']);
+        $output = hash('sha256', trim((string)$pwd['passwd']));
 
         if ($input == $output) {
-            // 登入成功寫入 active_sessions 資料庫
-            $reslut = $this->active_sessions('admin');
-
-            if ($reslut) {
-                $_SESSION['privilege'] = 'admin';
-                return true;
+            // 登入成功寫入 active_sessions 資料庫。
+            // 注意：active_sessions 寫入失敗不應被誤判為帳號密碼錯誤，避免 QR 登入顯示錯誤訊息。
+            $sessionOk = $this->active_sessions((string)$username);
+            if (!$sessionOk) {
+                error_log('[LOGIN] active_sessions write failed for user: ' . (string)$username);
             }
-            return false;
+
+            $_SESSION['privilege'] = 'admin';
+            return true;
         }
 
         return false;
