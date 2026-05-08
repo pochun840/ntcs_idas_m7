@@ -54,7 +54,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <button id="bnt2" name="Export_Data_Display" class="button" onclick="OpenButton('Exportdata')"><?php echo $text['data_export'];?></button>
                 <button id="bnt3" name="Export_Data_download" class="button" onclick="OpenButton('Export_Data_download')"><?php echo $text['download_chart'];?></button>
                 <button id="bnt4" name="Customize" class="button hide-mobile"   onclick="OpenButton('Customize')"><?php echo $text['customize'];?></button>
-                <button id="bnt5" name="Torque_line_chart" class="button hide-mobile"   onclick="OpenButton('Torque_line_chart')"><?php echo "Torque_line_chart";?></button>
+                <button id="bnt5" name="Torque_line_chart" class="button hide-mobile"   onclick="OpenButton('Torque_line_chart')"><?php echo $text['tor_line_chart'];?></button>
 
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
@@ -91,8 +91,10 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                             <th><?php echo $text['angle']; ?></th>
                                             <th><?php echo $text['column_count']; ?></th>
                                             <th><?php echo $text['column_total']; ?></th>
-                                            <th><?php echo $text['column_status']; ?></th>
                                             <th><?php echo $text['system_barcode']; ?></th>
+                                            <th><?php echo $text['user_id']; ?></th>
+                                            <th><?php echo $text['job_cycle_time']; ?></th>
+                                            <th><?php echo $text['column_status']; ?></th>
                                         </tr>
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">
@@ -286,8 +288,10 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.total_fasten_angle}</td>
                     <td>${row.last_screw_count}</td>
                     <td>${row.total_screw_count}</td>
+                    <td>${row.barcode}</td>
+                    <td>${row.user_id}</td>
+                    <td>${row.job_cycle_time}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>
-                    <td >${row.barcode}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
         });

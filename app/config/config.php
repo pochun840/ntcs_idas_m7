@@ -25,8 +25,8 @@ define('IDASMODE', '1');
 
 // 設定語言狀態
 $language = array(
-	//0=>array('简中','zh-cn'),
-	//1=>array('繁中','zh-tw'),
+	0=>array('简中','zh-cn'),
+	1=>array('繁中','zh-tw'),
 	2=>array('English','en-us'),
 );
 define('LANGUAGE',$language);
@@ -105,7 +105,7 @@ switch (ICONMODE) {
 		define('TITLE_INDEX',       'MYTORQ');
 		define('SUBTITLE_INDEX',    'iDAS FOR MY-EVO-M7');
 		define('TITLE_AGENT',       'MYTORQ IoT Agent');
-		define('DEVICE_TYPE_11',    'MY-EVO-M7');
+		define('DEVICE_TYPE_11',    'MY-EVO-3 mini');
 	break;
 
 	case 5: // 晶元 SUMAKE

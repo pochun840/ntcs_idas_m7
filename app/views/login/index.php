@@ -20,21 +20,19 @@
         <input id="login_password" type="password" name="password" placeholder="<?php echo $text['password_text']; ?>" required>
         <input id="qr_payload" type="hidden" name="qr_payload" value="">
         <button type="submit"><?php echo $text['login_text']; ?></button>
-        <button type="button" class="qr-login-btn" onclick="openQrLoginModal()">QR Code Login</button>
+        <button type="button" id="qrLoginOpenBtn" class="qr-login-btn" onclick="openQrLoginModal()">QR Code Login</button>
     </form>
 
     <!-- QR Code Login Modal：只支援掃碼槍 / USB QR Scanner，不使用相機、不上傳圖片 -->
     <div id="qrLoginModal" class="qr-modal" style="display:none;">
         <div class="qr-modal-card">
             <div class="qr-modal-header">
-                <span>QR Code Login</span>
+                <span id="qrLoginModalTitle">QR Code Login</span>
                 <button type="button" class="qr-close-btn" onclick="closeQrLoginModal()">&times;</button>
             </div>
 
             <div class="qr-modal-body">
-                <div class="qr-status" id="qrLoginStatus">
-                    Please scan QR Code
-                </div>
+                <div class="qr-status" id="qrLoginStatus"><span id="qrLoginStatusText">Please scan QR Code</span></div>
 
                 <textarea
                     id="qrScannerInput"
@@ -99,6 +97,77 @@
     let qrGlobalLastTime = 0;
     let loginSubmitting = false;
 
+
+    function qrLoginGetCookie(name) {
+        const parts = document.cookie ? document.cookie.split(';') : [];
+        const prefix = name + '=';
+        for (let i = 0; i < parts.length; i++) {
+            const item = parts[i].trim();
+            if (item.indexOf(prefix) === 0) {
+                try {
+                    return decodeURIComponent(item.substring(prefix.length));
+                } catch (e) {
+                    return item.substring(prefix.length);
+                }
+            }
+        }
+        return '';
+    }
+
+    function qrLoginGetLang() {
+        let lang = String(qrLoginGetCookie('language') || qrLoginGetCookie('lang') || 'en-us')
+            .trim()
+            .toLowerCase()
+            .replace('_', '-');
+
+        if (lang === 'zh-tw' || lang === 'tw' || lang === 'zh-hant') return 'zh-tw';
+        if (lang === 'zh-cn' || lang === 'cn' || lang === 'zh-hans') return 'zh-cn';
+        return 'en-us';
+    }
+
+    function qrLoginText(key) {
+        const lang = qrLoginGetLang();
+        const dict = {
+            'en-us': {
+                qr_login_btn: 'QR Code Login',
+                qr_modal_title: 'QR Code Login',
+                qr_status_scan: 'Please scan QR Code',
+                qr_placeholder: 'Place the cursor here and scan the QR Code'
+            },
+            'zh-tw': {
+                qr_login_btn: 'QR Code 登入',
+                qr_modal_title: 'QR Code 登入',
+                qr_status_scan: '請掃描 QR Code',
+                qr_placeholder: '請將游標停在這裡後掃描 QR Code'
+            },
+            'zh-cn': {
+                qr_login_btn: 'QR Code 登录',
+                qr_modal_title: 'QR Code 登录',
+                qr_status_scan: '请扫描 QR Code',
+                qr_placeholder: '请将光标停在这里后扫描 QR Code'
+            }
+        };
+
+        return (dict[lang] && dict[lang][key]) || (dict['en-us'] && dict['en-us'][key]) || key;
+    }
+
+    function applyQrLoginBlockI18n() {
+        const btn = document.getElementById('qrLoginOpenBtn');
+        const title = document.getElementById('qrLoginModalTitle');
+        const statusText = document.getElementById('qrLoginStatusText');
+        const statusBox = document.getElementById('qrLoginStatus');
+        const input = document.getElementById('qrScannerInput');
+
+        if (btn) btn.innerText = qrLoginText('qr_login_btn');
+        if (title) title.innerText = qrLoginText('qr_modal_title');
+        if (statusText) {
+            statusText.innerText = qrLoginText('qr_status_scan');
+        } else if (statusBox && !statusBox.dataset.keepDynamic) {
+            statusBox.innerText = qrLoginText('qr_status_scan');
+        }
+        if (input) input.placeholder = qrLoginText('qr_placeholder');
+    }
+
     function language_change() {
         var language = event.target.id;
         $.ajax({
@@ -116,6 +185,7 @@
     $(document).ready(function () {
         hideQrLoginLoading();
         bindManualLoginSuccessDelay();
+        applyQrLoginBlockI18n();
         <?php 
             if($data['error_message'] != ''){
                 echo "alert('",$data['error_message'],"')";
@@ -128,7 +198,8 @@
         const input = document.getElementById('qrScannerInput');
 
         if (modal) modal.style.display = 'flex';
-        setQrStatus('Please scan QR Code');
+        applyQrLoginBlockI18n();
+        setQrStatus(qrLoginText('qr_status_scan'));
 
         if (input) {
             input.value = '';
@@ -145,8 +216,14 @@
     }
 
     function setQrStatus(message) {
-        const el = document.getElementById('qrLoginStatus');
-        if (el) el.innerText = message;
+        const textEl = document.getElementById('qrLoginStatusText');
+        const boxEl = document.getElementById('qrLoginStatus');
+        if (textEl) {
+            textEl.innerText = message;
+        } else if (boxEl) {
+            boxEl.innerText = message;
+        }
+        if (boxEl) boxEl.dataset.keepDynamic = '1';
     }
 
     function showQrLoginLoading(title, message) {
@@ -435,10 +512,12 @@
         options = options || {};
         const isQrLogin = options.isQr === true;
         const actionUrl = form.getAttribute('action') || '?url=Logins';
+        const fetchUrl = actionUrl + (actionUrl.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
         const formData = new FormData(form);
 
         // 讓 Logins.php 回傳 JSON，而不是立即 redirect。
-        formData.append('ajax_login', '1');
+        formData.set('ajax_login', '1');
+        formData.set('force_json', '1');
         if (isQrLogin) {
             formData.append('qr_ajax_login', '1');
             setQrStatus('QR scan successful. Checking account...');
@@ -454,25 +533,57 @@
         );
 
         try {
-            const res = await fetch(actionUrl + '&t=' + Date.now(), {
+            const res = await fetch(fetchUrl, {
                 method: 'POST',
                 body: formData,
                 cache: 'no-store',
                 credentials: 'same-origin',
+                redirect: 'follow',
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json, text/plain, */*'
                 }
             });
 
-            const text = await res.text();
+            const responseText = await res.text();
             let json;
             try {
-                json = JSON.parse(text);
+                json = JSON.parse(responseText);
             } catch (e) {
-                throw new Error('Login response is not JSON.');
+                // 兼容舊版 Logins.php：成功後直接 redirect 到 Dashboards，fetch 會拿到 HTML。
+                // 這種情況視為登入成功，仍保留 3 秒動畫後跳頁。
+                const finalUrl = String(res.url || '');
+                const looksLikeDashboard =
+                    res.redirected === true ||
+                    finalUrl.indexOf('url=Dashboards') !== -1 ||
+                    finalUrl.indexOf('/Dashboards') !== -1 ||
+                    responseText.indexOf('url=Dashboards') !== -1 ||
+                    responseText.indexOf('Dashboard') !== -1 ||
+                    responseText.indexOf('Dashboards') !== -1;
+
+                if (looksLikeDashboard) {
+                    json = {
+                        success: true,
+                        res_type: 'Success',
+                        res_msg: 'Login success.',
+                        redirect_url: finalUrl.indexOf('url=Dashboards') !== -1 ? finalUrl : '/idas/public/?url=Dashboards'
+                    };
+                } else {
+                    console.error('[LOGIN] Non JSON response:', responseText.substring(0, 800));
+                    throw new Error('Login response is not JSON.');
+                }
             }
 
-            if (!json || !json.success) {
+            const loginSuccess =
+                json &&
+                (
+                    json.success === true ||
+                    String(json.status || '').toLowerCase() === 'success' ||
+                    String(json.res_type || '').toLowerCase() === 'success' ||
+                    String(json.res_type || '').toLowerCase() === 'ok'
+                );
+
+            if (!loginSuccess) {
                 loginSubmitting = false;
                 hideQrLoginLoading();
 

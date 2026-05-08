@@ -52,7 +52,7 @@ function renderLineChartTableRows($records) {
     <div class="w3-text-white w3-center">
         <table class="no-border">
             <tr id="header">
-                <td width="100%"><h3><?php echo $labelTitle; ?> - <?php echo $labelLineChart; ?></h3></td>
+                <td width="100%"><h3><?php echo $text['tor_line_chart']; ?></h3></td>
                 <td><img src="./img/btn_home.png" style="margin-right: 10px" onclick="back()"></td>
             </tr>
         </table>
@@ -63,12 +63,12 @@ function renderLineChartTableRows($records) {
 
             <div class="drawline-toolbar">
                 <div class="drawline-title">
-                    <span><?php echo $labelLatest25; ?></span>
+                    <span><?php echo $text['latest_25_fastening_data'];?></span>
                     <small id="lineChartStatus">Loading...</small>
                 </div>
 
                 <div class="drawline-actions">
-                    <label for="data_select">Mode</label>
+                    <label for="data_select"><?php echo $text['mode'];?></label>
                     <select id="data_select" class="drawline-select">
                         <option value="ALL" selected><?php echo $labelAll; ?></option>
                         <option value="OK"><?php echo $labelOK; ?></option>
@@ -81,11 +81,11 @@ function renderLineChartTableRows($records) {
             <div class="drawline-layout">
                 <section class="chart-panel">
                     <div class="panel-header">
-                        <strong><?php echo $labelLineChart; ?></strong>
+                       
                         <div class="panel-header-right">
-                            <span>Auto refresh / <?php echo $chartLimit; ?> records</span>
+                            <span><?php echo $text['auto_refresh_25_records'];?></span>
                             <button type="button" id="lineChartExportCsvBtn" class="drawline-export-btn" onclick="exportLineChartCsv()">
-                                <?php echo $labelExportCsv; ?>
+                                <?php echo $text['account_export']; ?>
                             </button>
                         </div>
                     </div>

@@ -2742,49 +2742,6 @@ class Settings extends Controller
         return '="' . str_replace('"', '""', $value) . '"';
     }
 
-
-    public function account_user_get_password(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-
-            $username = isset($_POST['username']) ? $this->accountUserClean((string)$_POST['username']) : '';
-            $this->accountUserValidateText($username, 'Username');
-
-            if (strtolower($username) === 'kls') {
-                throw new Exception('Built-in account is hidden.');
-            }
-
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            $statement = $db->prepare("
-                SELECT CAST(passwd AS TEXT) AS passwd
-                FROM `user`
-                WHERE LOWER(name) = LOWER(:name)
-                  AND LOWER(name) <> 'kls'
-                LIMIT 1
-            ");
-            $statement->execute([
-                ':name' => $username,
-            ]);
-
-            $row = $statement->fetch(PDO::FETCH_ASSOC);
-
-            if (!$row) {
-                throw new Exception('Account not found.');
-            }
-
-            $this->accountUserJson(true, 'OK', [
-                'username' => $username,
-                'passwd'   => (string)($row['passwd'] ?? ''),
-            ]);
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, $e->getMessage());
-        }
-    }
-
-
     public function account_user_export(): void
     {
         try {
@@ -3126,9 +3083,7 @@ class Settings extends Controller
             }
 
             if ($source === 'app') {
-                // APP 監控資料來源固定讀 ntcs_log.csv。
-                // CSV 欄位格式：date,time,user,action,module,target
-                $rows = $this->getAppOperationLogsFromCsv($limit);
+                $rows = $this->SettingModel->getAppOperationLogs($limit);
             } else {
                 $rows = $this->SettingModel->getOperationAuditLogs($limit);
             }
@@ -3141,125 +3096,6 @@ class Settings extends Controller
         } catch (Throwable $e) {
             $this->accountUserJson(false, 'Load operation log failed: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * 讀取 APP 操作紀錄 CSV。
-     *
-     * ntcs_log.csv 格式：
-     * 0 date   例：2026-05-07
-     * 1 time   例：05:29.39.9
-     * 2 user   例：guest
-     * 3 action 例：Add / Edit
-     * 4 module 例：Job Editor / Sequence Management
-     * 5 target 例：Job ID: 1; Seq ID: 2
-     */
-    private function getAppOperationLogsFromCsv(int $limit = 100): array
-    {
-        $csvPath = $this->getAppOperationLogCsvPath();
-        if ($csvPath === '' || !is_file($csvPath) || !is_readable($csvPath)) {
-            return [];
-        }
-
-        $rows = [];
-        $fp = fopen($csvPath, 'r');
-        if (!$fp) {
-            return [];
-        }
-
-        $lineNo = 0;
-        while (($cols = fgetcsv($fp)) !== false) {
-            $lineNo++;
-
-            // 跳過空行或欄位不足的資料
-            if (!is_array($cols) || count($cols) < 5) {
-                continue;
-            }
-
-            $date   = trim((string)($cols[0] ?? ''));
-            $time   = $this->normalizeAppLogTime(trim((string)($cols[1] ?? '')));
-            $user   = trim((string)($cols[2] ?? ''));
-            $action = trim((string)($cols[3] ?? ''));
-            $module = trim((string)($cols[4] ?? ''));
-            $target = trim((string)($cols[5] ?? ''));
-
-            // 避免完全空資料進入前端
-            if ($date === '' && $time === '' && $user === '' && $action === '' && $module === '' && $target === '') {
-                continue;
-            }
-
-            $createdAt = trim($date . ' ' . $time);
-            $messageParts = array_filter([$user, $action, $module, $target], function ($v) {
-                return trim((string)$v) !== '';
-            });
-
-            $rows[] = [
-                // 保留多組 key，避免前端目前用不同名稱取值時顯示空白
-                'id'         => $lineNo,
-                'log_id'     => $lineNo,
-                'source'     => 'app',
-                'created_at' => $createdAt,
-                'time'       => $createdAt,
-                'date'       => $date,
-                // 前端 operation_audit_log.php 主要讀 operator / user_id，
-                // 也保留 user_name / username / user，避免不同版本 View 顯示空白。
-                'operator'   => $user,
-                'user_id'    => $user,
-                'user_name'  => $user,
-                'username'   => $user,
-                'user'       => $user,
-                'module'     => $module,
-                'action'     => $action,
-                'target'     => $target,
-                'level'      => 'INFO',
-                // 用 INFO 交給前端依語系轉成「資訊 / INFO」，不要後端固定中文。
-                'status'     => 'INFO',
-                // Message 不再重複放 user，因為 user 已有獨立欄位。
-                'message'    => implode(' | ', array_filter([$action, $module, $target], function ($v) {
-                    return trim((string)$v) !== '';
-                })),
-                'raw'        => $cols,
-            ];
-        }
-        fclose($fp);
-
-        // CSV 通常舊資料在上、新資料在下；前端監控要顯示最新在最上面
-        $rows = array_reverse($rows);
-
-        return array_slice($rows, 0, $limit);
-    }
-
-    /**
-     * APP 操作紀錄檔路徑。
-     */
-    private function getAppOperationLogCsvPath(): string
-    {
-        $paths = [
-            '/home/kls/NTCS7/ntcs_log.csv',
-            '/mnt/ramdisk/ftp/ntcs_log.csv',
-            '/var/www/html/database/ntcs_log.csv',
-        ];
-
-        foreach ($paths as $path) {
-            if (is_file($path) && is_readable($path)) {
-                return $path;
-            }
-        }
-
-        // 回傳主要路徑，方便後續 debug 知道預期位置
-        return $paths[0];
-    }
-
-    /**
-     * 將 APP CSV 時間 05:29.39.9 轉成 05:29:39.9，顯示較清楚。
-     */
-    private function normalizeAppLogTime(string $time): string
-    {
-        if (preg_match('/^(\d{1,2}):(\d{2})\.(\d{2})(\.\d+)?$/', $time, $m)) {
-            return sprintf('%02d:%s:%s%s', (int)$m[1], $m[2], $m[3], $m[4] ?? '');
-        }
-
-        return $time;
     }
 
     public function operation_audit_log_detail(): void

@@ -1,4 +1,5 @@
 <?php
+/* Guest Login Fix V1 */
 
 class Logins extends Controller
 {
@@ -214,7 +215,18 @@ class Logins extends Controller
         $this->normalizeQrLoginPost();
 
         // QR / 手動 Login 使用 AJAX 驗證成功後，前端顯示 3 秒成功動畫再跳頁。
-        $isAjaxLogin = !empty($_POST['ajax_login']) || !empty($_POST['qr_ajax_login']);
+        // 也支援 force_json / X-Requested-With / Accept: application/json，避免回傳 HTML 造成前端 JSON.parse 失敗。
+        $isAjaxLogin = !empty($_POST['ajax_login'])
+            || !empty($_POST['qr_ajax_login'])
+            || !empty($_POST['force_json'])
+            || (
+                isset($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
+            )
+            || (
+                isset($_SERVER['HTTP_ACCEPT'])
+                && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false
+            );
 
         // Account API 必須回 JSON，不可以回登入頁 HTML，否則前端 JSON.parse 會失敗
         if ($this->isAccountUserApiRequest($url)) {
@@ -371,14 +383,22 @@ class Logins extends Controller
         $output = hash('sha256', trim((string)$pwd['passwd']));
 
         if ($input == $output) {
-            // 登入成功寫入 active_sessions 資料庫。
-            // 注意：active_sessions 寫入失敗不應被誤判為帳號密碼錯誤，避免 QR 登入顯示錯誤訊息。
+            /*
+             * Guest Login Fix V1
+             * 以前 guest 在 active_sessions() 內會直接呼叫 Users_Uplimit()，
+             * 造成 AJAX fetch 無法取得正常 JSON，畫面卡在 Verifying Login。
+             *
+             * 登入成功後，active_sessions 寫入失敗不應該變成密碼錯誤。
+             */
             $sessionOk = $this->active_sessions((string)$username);
             if (!$sessionOk) {
-                error_log('[LOGIN] active_sessions write failed for user: ' . (string)$username);
+                error_log('[LOGIN] active_sessions write failed or skipped for user: ' . (string)$username);
             }
 
-            $_SESSION['privilege'] = 'admin';
+            // 保留既有邏輯：admin 權限仍可由系統後續判斷。
+            // 若未來要依 DB 欄位 law 區分，可在這裡擴充。
+            $_SESSION['privilege'] = ((string)$username === 'guest') ? 'guest' : 'admin';
+
             return true;
         }
 
@@ -406,7 +426,6 @@ class Logins extends Controller
         //4.檢查session id是否存在
         //5.如果存在update time
         //6.如果不存在insert
-        //$max_concurrent_users = $this->Max_User();//連線數量限制
         $session_id = session_id();
 
         if (!empty($_SERVER["HTTP_CLIENT_IP"])){
@@ -417,19 +436,34 @@ class Logins extends Controller
             $ip = $_SERVER["REMOTE_ADDR"];
         }
 
-        //清理過期的session
-        $this->LoginModel->cleanExpiredSessions();
-        //確認目前連線數量，排除目前的session_id
-        $concurrent_users = $this->LoginModel->GetConcurrentUsers($session_id);
+        /*
+         * Guest Login Fix V1
+         * 原本程式：
+         * if ($username == 'guest') {
+         *     $this->Users_Uplimit();
+         *     return false;
+         * }
+         *
+         * Users_Uplimit() 會 logout + 輸出 login view + exit，
+         * 造成 guest 密碼正確也無法登入，前端 fetch 會得到錯誤/HTML。
+         *
+         * 新版：
+         * guest 也允許登入；active_sessions DB 寫入失敗只記 log，不中斷登入。
+         */
+        try {
+            $this->LoginModel->cleanExpiredSessions();
 
-        if( $username == 'guest'){
-            $this->Users_Uplimit();
-            return false;
-        }else{
-            $this->LoginModel->active_sessions($username,$session_id,$ip);
+            // guest 也寫入 active_sessions；如果 login DB 沒有 active_sessions，也不影響登入。
+            $ok = $this->LoginModel->active_sessions($username, $session_id, $ip);
+            if (!$ok) {
+                error_log('[LOGIN] active_sessions skipped/failed for user: ' . (string)$username);
+            }
+
+            return true;
+        } catch (Throwable $e) {
+            error_log('[LOGIN] active_sessions exception for user ' . (string)$username . ': ' . $e->getMessage());
             return true;
         }
-
     }
 
     //連線數達到上限時，直接從這邊跳回登入畫面，並帶error message

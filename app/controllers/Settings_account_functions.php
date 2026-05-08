@@ -290,6 +290,49 @@
         }
     }
 
+
+    public function account_user_get_password(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+
+            $username = isset($_POST['username']) ? $this->accountUserClean((string)$_POST['username']) : '';
+            $this->accountUserValidateText($username, 'Username');
+
+            if (strtolower($username) === 'kls') {
+                throw new Exception('Built-in account is hidden.');
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $statement = $db->prepare("
+                SELECT CAST(passwd AS TEXT) AS passwd
+                FROM `user`
+                WHERE LOWER(name) = LOWER(:name)
+                  AND LOWER(name) <> 'kls'
+                LIMIT 1
+            ");
+            $statement->execute([
+                ':name' => $username,
+            ]);
+
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                throw new Exception('Account not found.');
+            }
+
+            $this->accountUserJson(true, 'OK', [
+                'username' => $username,
+                'passwd'   => (string)($row['passwd'] ?? ''),
+            ]);
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
+
+
     public function account_user_create(): void
     {
         try {

@@ -313,6 +313,11 @@ $text['N.m'] = '牛頓.米';
 $text['kgf.cm'] = '公斤.公分';
 $text['Lbf.in'] = '磅.英吋';
 $text['cN.m'] = '牛頓.厘米';
+$text['tor_line_chart'] = '扭力折线图';
+$text['latest_25_fastening_data'] = '最新 25 笔锁附资料';
+$text['auto_refresh_25_records'] = '自动更新 / 25 笔资料';
+$text['user_id'] = '使用者 ID';
+$text['job_cycle_time'] = '工作节拍时间';
 
 //Customize 
 // zh-cn（简体中文）
@@ -860,3 +865,79 @@ $text['missing_info_json'] = '缺少 info.json，无法验证更新文件';
 $text['info_json_invalid'] = 'info.json 格式错误或缺少 Match_TCC_Version';
 $text['version_too_low'] = '更新文件版本低于当前版本，无法更新，当前版本：';
 $text['update_success'] = '更新成功，已将文件移动至 tccidas 目录';
+
+// Account QRCode force patch i18n
+$text['account_qrcode'] = 'QRCode';
+$text['account_qrcode_download'] = '下载';
+
+$text['account_no'] = '编号';
+
+$text['account_user_name'] = '使用者名称';
+
+$text['account_select_tab'] = '请选择账号分页';
+
+$text['account_username'] = '使用者名称';
+
+$text['account_password'] = '密码';
+
+$text['account_confirm_password'] = '确认密码';
+
+$text['account_import'] = '导入';
+
+$text['account_export'] = '导出';
+
+$text['account_upload'] = '上传';
+
+$text['account_new_title'] = '新增账号';
+
+$text['account_edit_title'] = '编辑账号';
+
+$text['account_show_password'] = '显示密码';
+
+$text['account_hide_password'] = '隐藏密码';
+
+$text['audit_button'] = '操作纪录';
+
+$text['audit_realtime_monitor'] = '即时监控';
+
+$text['audit_running'] = '监控中';
+
+$text['audit_paused'] = '已暂停';
+
+$text['audit_pause'] = '暂停';
+
+$text['audit_start'] = '开始';
+
+$text['audit_standby'] = '待命';
+
+$text['audit_error'] = '错误';
+
+$text['audit_monitor'] = '监控来源';
+
+$text['audit_updated'] = '更新时间';
+
+$text['audit_records'] = '笔数';
+
+$text['audit_no'] = '编号';
+
+$text['audit_time'] = '时间';
+
+$text['audit_user'] = '使用者';
+
+$text['audit_module'] = '模块';
+
+$text['audit_action'] = '动作';
+
+$text['audit_target'] = '目标';
+
+$text['audit_status'] = '状态';
+
+$text['audit_message'] = '信息';
+
+$text['audit_select_tab'] = '请选择操作纪录分页';
+
+$text['audit_no_data'] = '无资料';
+
+$text['audit_loading'] = '载入中...';
+
+$text['account_text'] = '账号';

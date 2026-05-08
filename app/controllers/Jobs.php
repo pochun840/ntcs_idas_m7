@@ -505,7 +505,7 @@ class Jobs extends Controller
                         $after = $this->jobAuditSnapshot($new_jobid);
 
                         $this->writeJobAudit([
-                            'action'        => 'COPY',
+                            'action'        => 'NEW',
                             'status'        => 'SUCCESS',
                             'job_id'        => (int)$new_jobid,
                             'source_job_id' => (int)$old_jobid,
@@ -520,7 +520,7 @@ class Jobs extends Controller
                         $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
                     }else{
                         $this->writeJobAudit([
-                            'action'        => 'COPY',
+                            'action'        => 'NEW',
                             'status'        => 'FAIL',
                             'job_id'        => (int)$new_jobid,
                             'source_job_id' => (int)$old_jobid,

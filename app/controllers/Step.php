@@ -580,7 +580,7 @@ class Step extends Controller
                 $orderAfter = $res ? $this->stepOrderSnapshot($jobid, $seqid) : null;
 
                 $this->writeStepAudit([
-                    'action'            => 'COPY',
+                    'action'            => 'NEW',
                     'status'            => $res ? 'SUCCESS' : 'FAIL',
                     'job_id'            => (int)$jobid,
                     'seq_id'            => (int)$seqid,
@@ -606,7 +606,7 @@ class Step extends Controller
                 }
             } else {
                 $this->writeStepAudit([
-                    'action'         => 'COPY',
+                    'action'         => 'NEW',
                     'status'         => 'FAIL',
                     'job_id'         => (int)$jobid,
                     'seq_id'         => (int)$seqid,

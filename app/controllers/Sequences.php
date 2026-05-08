@@ -809,7 +809,7 @@ class Sequences extends Controller
         if($rows){
             $after = $this->seqAuditSnapshot($jobid, $newseqid);
             $this->writeSeqAudit([
-                'action'        => 'COPY',
+                'action'        => 'NEW',
                 'status'        => 'SUCCESS',
                 'job_id'        => (int)$jobid,
                 'seq_id'        => (int)$newseqid,
@@ -828,7 +828,7 @@ class Sequences extends Controller
             $res_msg  = $text['Copy_Sequence'].':'.$newseqid."  ".$text['success'];
         }else{
             $this->writeSeqAudit([
-                'action'        => 'COPY',
+                'action'        => 'NEW',
                 'status'        => 'FAIL',
                 'job_id'        => !empty($jobid) ? (int)$jobid : null,
                 'seq_id'        => !empty($newseqid) ? (int)$newseqid : null,
