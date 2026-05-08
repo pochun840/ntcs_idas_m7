@@ -96,10 +96,93 @@ class Sequences extends Controller
     }
 
     /**
+     * Seq Audit: 取得排序異動的來源/目標 SEQID。
+     * 目的：讓操作紀錄「目標」可顯示成 Seq ID: [原本位置, 新位置]。
+     */
+    private function detectSeqMoveInfo(array $before, array $after): array
+    {
+        $info = [
+            'action'        => 'EDIT',
+            'source_seq_id' => null,
+            'target_seq_id' => null,
+        ];
+
+        $beforeMap = [];
+        foreach ($before as $beforeIndex => $row) {
+            $name = trim((string)($row['SEQname'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $beforeMap[$name] = [
+                'index'  => $beforeIndex,
+                'seq_id' => isset($row['SEQID']) ? (int)$row['SEQID'] : null,
+            ];
+        }
+
+        foreach ($after as $afterIndex => $row) {
+            $name = trim((string)($row['SEQname'] ?? ''));
+            if ($name === '' || !isset($beforeMap[$name])) {
+                continue;
+            }
+
+            $beforeRow = $beforeMap[$name];
+            if ((int)$beforeRow['index'] !== (int)$afterIndex) {
+                $info['action']        = ($afterIndex < $beforeRow['index']) ? 'UP' : 'DOWN';
+                $info['source_seq_id'] = $beforeRow['seq_id'];
+                $info['target_seq_id'] = isset($row['SEQID']) ? (int)$row['SEQID'] : null;
+                return $info;
+            }
+        }
+
+        return $info;
+    }
+
+    /**
      * Seq Audit: 寫入異動紀錄。
      * user_id 依需求與 operator 存相同值。
      * Audit 寫入失敗不能影響原本功能。
      */
+
+    private function auditValueFilled($value): bool
+    {
+        return $value !== null && $value !== '' && $value !== [];
+    }
+
+    /**
+     * Audit Target 統一格式。
+     * 與 APP 顯示一致：
+     * - Job ID: 2; Seq ID: 2
+     * - Job ID: 2; Seq ID: [1,2]  // 排序 UP / DOWN
+     */
+    private function buildSeqAuditTarget(array $payload): string
+    {
+        $parts = [];
+
+        $jobId = $payload['target_job_id'] ?? ($payload['job_id'] ?? null);
+        if ($this->auditValueFilled($jobId)) {
+            $parts[] = 'Job ID: ' . $jobId;
+        }
+
+        $action = strtoupper((string)($payload['action'] ?? ''));
+        $sourceSeqId = $payload['source_seq_id'] ?? null;
+        $targetSeqId = $payload['target_seq_id'] ?? null;
+        $seqId = $payload['seq_id'] ?? null;
+
+        if (($action === 'UP' || $action === 'DOWN')
+            && $this->auditValueFilled($sourceSeqId)
+            && $this->auditValueFilled($targetSeqId)) {
+            $parts[] = 'Seq ID: [' . $sourceSeqId . ',' . $targetSeqId . ']';
+        } else {
+            $displaySeqId = $this->auditValueFilled($targetSeqId) ? $targetSeqId : $seqId;
+            if ($this->auditValueFilled($displaySeqId)) {
+                $parts[] = 'Seq ID: ' . $displaySeqId;
+            }
+        }
+
+        return !empty($parts) ? implode('; ', $parts) : '-';
+    }
+
     private function writeSeqAudit(array $data): void
     {
         try {
@@ -119,7 +202,18 @@ class Sequences extends Controller
                 'request_json' => $_POST,
             ];
 
-            $this->AuditModel->write(array_merge($defaults, $data));
+            $payload = array_merge($defaults, $data);
+
+            if ((!isset($payload['target_seq_id']) || !$this->auditValueFilled($payload['target_seq_id']))
+                && isset($payload['seq_id']) && $this->auditValueFilled($payload['seq_id'])) {
+                $payload['target_seq_id'] = $payload['seq_id'];
+            }
+
+            if (!isset($payload['target']) || !$this->auditValueFilled($payload['target'])) {
+                $payload['target'] = $this->buildSeqAuditTarget($payload);
+            }
+
+            $this->AuditModel->write($payload);
         } catch (Throwable $e) {
             error_log('[SEQ AUDIT FAIL] ' . $e->getMessage());
         }
@@ -809,7 +903,7 @@ class Sequences extends Controller
         if($rows){
             $after = $this->seqAuditSnapshot($jobid, $newseqid);
             $this->writeSeqAudit([
-                'action'        => 'NEW',
+                'action'        => 'COPY',
                 'status'        => 'SUCCESS',
                 'job_id'        => (int)$jobid,
                 'seq_id'        => (int)$newseqid,
@@ -828,7 +922,7 @@ class Sequences extends Controller
             $res_msg  = $text['Copy_Sequence'].':'.$newseqid."  ".$text['success'];
         }else{
             $this->writeSeqAudit([
-                'action'        => 'NEW',
+                'action'        => 'COPY',
                 'status'        => 'FAIL',
                 'job_id'        => !empty($jobid) ? (int)$jobid : null,
                 'seq_id'        => !empty($newseqid) ? (int)$newseqid : null,
@@ -885,12 +979,23 @@ class Sequences extends Controller
                 }
 
                 $orderAfter = $this->seqOrderSnapshot($jobid);
-                $moveAction = $res ? $this->detectSeqMoveAction($orderBefore, $orderAfter) : 'EDIT';
+                $moveInfo = $res
+                    ? $this->detectSeqMoveInfo($orderBefore, $orderAfter)
+                    : [
+                        'action'        => 'EDIT',
+                        'source_seq_id' => null,
+                        'target_seq_id' => null,
+                    ];
+                $moveAction = $moveInfo['action'];
 
                 $this->writeSeqAudit([
                     'action'            => $moveAction,
                     'status'            => $res ? 'SUCCESS' : 'FAIL',
                     'job_id'            => (int)$jobid,
+                    // 排序時存 source/target，操作紀錄目標會顯示：Seq ID: [2,1]
+                    'seq_id'            => $moveInfo['target_seq_id'],
+                    'source_seq_id'     => $moveInfo['source_seq_id'],
+                    'target_seq_id'     => $moveInfo['target_seq_id'],
                     'title'             => 'Sequence ' . $moveAction,
                     'message'           => $res ? 'Sequence order changed' : ('Sequence order change failed' . ($errorMessage !== '' ? ': ' . $errorMessage : '')),
                     'order_before_json' => $orderBefore,

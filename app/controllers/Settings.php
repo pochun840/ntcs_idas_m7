@@ -1453,6 +1453,93 @@ class Settings extends Controller
     }
 
 
+    private function parseIdasVersionParts($version): array
+    {
+        $raw = trim((string)$version);
+
+        $result = [
+            'raw'    => $raw,
+            'base'   => '0',
+            'suffix' => '',
+        ];
+
+        if ($raw === '') {
+            return $result;
+        }
+
+        // 支援 11_20260508-0.72_SA349，抓最後的 0.72_SA349
+        if (preg_match('/(\d+(?:\.\d+)+(?:[_\-][A-Za-z]+\d*)?)$/', $raw, $m)) {
+            $raw = $m[1];
+        }
+
+        if (preg_match('/^v?(\d+(?:\.\d+)*)(?:[_\-]?(.+))?$/i', $raw, $m)) {
+            $result['base'] = $m[1];
+            $result['suffix'] = isset($m[2]) ? trim((string)$m[2]) : '';
+            return $result;
+        }
+
+        if (preg_match('/(\d+(?:\.\d+)*)/', $raw, $m)) {
+            $result['base'] = $m[1];
+        }
+
+        return $result;
+    }
+
+    private function compareIdasVersionSuffix($leftSuffix, $rightSuffix): int
+    {
+        $left = trim((string)$leftSuffix);
+        $right = trim((string)$rightSuffix);
+
+        if ($left === $right) {
+            return 0;
+        }
+
+        if ($left === '' && $right !== '') {
+            return -1;
+        }
+
+        if ($left !== '' && $right === '') {
+            return 1;
+        }
+
+        $leftParsed = [];
+        $rightParsed = [];
+
+        $leftOk = preg_match('/^([A-Za-z]+)(\d+)$/', $left, $leftParsed);
+        $rightOk = preg_match('/^([A-Za-z]+)(\d+)$/', $right, $rightParsed);
+
+        if ($leftOk && $rightOk) {
+            $leftPrefix = strtoupper($leftParsed[1]);
+            $rightPrefix = strtoupper($rightParsed[1]);
+
+            if ($leftPrefix === $rightPrefix) {
+                return ((int)$leftParsed[2]) <=> ((int)$rightParsed[2]);
+            }
+        }
+
+        return strnatcasecmp($left, $right);
+    }
+
+    private function isIdasUpdateVersionLower($updateVersion, $currentVersion): bool
+    {
+        $update = $this->parseIdasVersionParts($updateVersion);
+        $current = $this->parseIdasVersionParts($currentVersion);
+
+        $baseCompare = version_compare($update['base'], $current['base']);
+
+        if ($baseCompare < 0) {
+            return true;
+        }
+
+        if ($baseCompare > 0) {
+            return false;
+        }
+
+        return $this->compareIdasVersionSuffix($update['suffix'], $current['suffix']) < 0;
+    }
+
+
+
 
     #IDAS上傳 20250624 修改
     public function iDas_Update($debug = false) {
@@ -1540,12 +1627,18 @@ class Settings extends Controller
                 return $this->sendResponse('Error', $this->t('ERR_BAD_INFO'));
             }
 
+
             // 11. 比對版本
-            $match_tcc_version = $verify_data['idas_version'];
-            if (version_compare($match_tcc_version, $iDas_Version, '<')) {
+            // 注意：
+            // PHP version_compare() 會把 0.72_SA349 判斷成低於 0.72，
+            // 因此這裡改用 iDAS 專用版本比對，支援 0.72_SA349 / 0.72-SA349 這種格式。
+            $match_tcc_version = (string)$verify_data['idas_version'];
+            $current_idas_version = (string)$iDas_Version;
+
+            if ($this->isIdasUpdateVersionLower($match_tcc_version, $current_idas_version)) {
                 return $this->sendResponse('Error', $this->t('ERR_VERSION_LOW', [
-                    'current' => (string)$iDas_Version,
-                    'update'  => (string)$match_tcc_version,
+                    'current' => $current_idas_version,
+                    'update'  => $match_tcc_version,
                 ]));
             }
 

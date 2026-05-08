@@ -33,7 +33,7 @@
                             </tr>
                         </thead>
                         <tbody id="operationAuditLogTbody" style="font-size: 1.55vmin;text-align: center;">
-                            <tr><td colspan="8" data-i18n="audit_select_tab">Please select operation_audit_log tab</td></tr>
+                            <tr><td colspan="6" data-i18n="audit_select_tab">Please select operation_audit_log tab</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -117,9 +117,9 @@ function operationAuditText(key, vars) {
             module_SEQ: 'SEQ',
             module_STEP: 'STEP',
             module_APP: 'APP',
+            module_IDAS: 'iDAS',
 
             action_NEW: 'NEW',
-            action_ADD: 'ADD',
             action_EDIT: 'EDIT',
             action_DELETE: 'DELETE',
             action_COPY: 'COPY',
@@ -177,9 +177,9 @@ function operationAuditText(key, vars) {
             module_SEQ: '工序',
             module_STEP: '步驟',
             module_APP: 'APP',
+            module_IDAS: 'iDAS',
 
             action_NEW: '新增',
-            action_ADD: '新增',
             action_EDIT: '編輯',
             action_DELETE: '刪除',
             action_COPY: '複製',
@@ -237,9 +237,9 @@ function operationAuditText(key, vars) {
             module_SEQ: '工序',
             module_STEP: '步骤',
             module_APP: 'APP',
+            module_IDAS: 'iDAS',
 
             action_NEW: '新增',
-            action_ADD: '新增',
             action_EDIT: '编辑',
             action_DELETE: '删除',
             action_COPY: '复制',
@@ -277,14 +277,88 @@ function operationAuditText(key, vars) {
     return text;
 }
 
+function operationAuditNormalizeModuleKey(value) {
+    var raw = String(value === null || value === undefined ? '' : value).trim();
+    var normalized = raw.toUpperCase().replace(/[\s\-_]+/g, ' ');
+
+    var map = {
+        'JOB': 'JOB',
+        'JOBS': 'JOB',
+        'JOB EDITOR': 'JOB',
+        'JOB MANAGEMENT': 'JOB',
+        'JOB MANAGER': 'JOB',
+
+        'SEQ': 'SEQ',
+        'SEQUENCE': 'SEQ',
+        'SEQUENCE EDITOR': 'SEQ',
+        'SEQUENCE MANAGEMENT': 'SEQ',
+        'SEQUENCE MANAGER': 'SEQ',
+
+        'STEP': 'STEP',
+        'STEP EDITOR': 'STEP',
+        'STEP MANAGEMENT': 'STEP',
+        'STEP MANAGER': 'STEP',
+
+        'APP': 'APP',
+        'IDAS': 'IDAS'
+    };
+
+    return map[normalized] || raw.toUpperCase();
+}
+
+function operationAuditNormalizeActionKey(value) {
+    var raw = String(value === null || value === undefined ? '' : value).trim();
+    var normalized = raw.toUpperCase().replace(/[\s\-_]+/g, ' ');
+
+    var map = {
+        'NEW': 'NEW',
+        'ADD': 'NEW',
+        'CREATE': 'NEW',
+        'CREATED': 'NEW',
+        'INSERT': 'NEW',
+        'INSERTED': 'NEW',
+
+        'EDIT': 'EDIT',
+        'UPDATE': 'EDIT',
+        'UPDATED': 'EDIT',
+        'MODIFY': 'EDIT',
+        'MODIFIED': 'EDIT',
+
+        'DELETE': 'DELETE',
+        'DEL': 'DELETE',
+        'REMOVE': 'DELETE',
+        'REMOVED': 'DELETE',
+
+        'COPY': 'COPY',
+        'DUPLICATE': 'COPY',
+        'CLONE': 'COPY',
+
+        'UP': 'UP',
+        'MOVE UP': 'UP',
+        'DOWN': 'DOWN',
+        'MOVE DOWN': 'DOWN',
+
+        'LOG': 'LOG'
+    };
+
+    return map[normalized] || raw.toUpperCase();
+}
+
 function operationAuditTranslateValue(type, value) {
     var raw = String(value === null || value === undefined ? '' : value).trim();
     if (raw === '') return '';
 
-    var upper = raw.toUpperCase();
-    var key = type + '_' + upper;
+    var normalizedKey = raw.toUpperCase();
 
+    if (type === 'module') {
+        normalizedKey = operationAuditNormalizeModuleKey(raw);
+    } else if (type === 'action') {
+        normalizedKey = operationAuditNormalizeActionKey(raw);
+    }
+
+    var key = type + '_' + normalizedKey;
     var translated = operationAuditText(key);
+
     return translated === key ? raw : translated;
 }
 
@@ -370,6 +444,7 @@ var operationAuditLogLoaded = false;
 var operationAuditLogTimer = null;
 var operationAuditLogIntervalMs = 2000;
 var operationAuditLogLastLogId = 0;
+var operationAuditLogRenderSignature = '';
 var operationAuditLogIsLoading = false;
 var operationAuditLogMonitorPaused = false;
 
@@ -408,6 +483,7 @@ function operationAuditCurrentSource() {
 function resetSettingOperationAuditMonitorState() {
     operationAuditLogLoaded = false;
     operationAuditLogLastLogId = 0;
+    operationAuditLogRenderSignature = '';
     selectedOperationAuditLogId = null;
 }
 
@@ -532,7 +608,7 @@ function bindSettingOperationAuditButtons() {
             resetSettingOperationAuditMonitorState();
             setOperationAuditMonitorStatus('Running', true);
             var tbody = document.getElementById('operationAuditLogTbody');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="8">' + operationAuditText('audit_loading') + '</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6">' + operationAuditText('audit_loading') + '</td></tr>';
             fetchSettingOperationAuditLogs(true, false);
         };
     }
@@ -568,7 +644,7 @@ function fetchSettingOperationAuditLogs(forceReload, silent) {
     operationAuditLogIsLoading = true;
 
     if (tbody && operationAuditLogLoaded !== true && silent !== true) {
-        tbody.innerHTML = '<tr><td colspan="8">' + operationAuditText('audit_loading') + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">' + operationAuditText('audit_loading') + '</td></tr>';
     }
 
     operationAuditPost('operation_audit_log_list', {
@@ -579,7 +655,7 @@ function fetchSettingOperationAuditLogs(forceReload, silent) {
         operationAuditLogIsLoading = false;
 
         if (!json.success) {
-            if (tbody && silent !== true) tbody.innerHTML = '<tr><td colspan="8">Load failed</td></tr>';
+            if (tbody && silent !== true) tbody.innerHTML = '<tr><td colspan="6">Load failed</td></tr>';
             setOperationAuditMonitorStatus('Error', false);
             if (silent !== true) settingAccountAlert(json.res_msg || 'Load operation audit log failed.');
             return;
@@ -593,43 +669,165 @@ function fetchSettingOperationAuditLogs(forceReload, silent) {
         operationAuditLogIsLoading = false;
         setOperationAuditMonitorStatus('Error', false);
 
-        if (tbody && silent !== true) tbody.innerHTML = '<tr><td colspan="8">Load failed</td></tr>';
+        if (tbody && silent !== true) tbody.innerHTML = '<tr><td colspan="6">Load failed</td></tr>';
         if (silent !== true) settingAccountAlert(err.message || 'Load operation audit log failed.');
     });
 }
 
+/* =====================================================
+   Target Formatter
+   目的：
+   讓 iDAS / APP 操作紀錄「目標」欄位格式一致。
+   - Job ID: 2
+   - Job ID: 2; Seq ID: 2
+   - Job ID: 2; Seq ID: [1,2]
+   - Job ID: 1; Seq ID: 1; Step ID: [2,1]
+   ===================================================== */
+function operationAuditValueFilled(value) {
+    var text = String(value === null || value === undefined ? '' : value).trim();
 
-function operationAuditDisplayOperator(row) {
-    return row.operator || row.user_id || row.user_name || row.username || row.user || '';
+    return text !== '' &&
+           text.toLowerCase() !== 'null' &&
+           text.toLowerCase() !== 'undefined';
+}
+
+function operationAuditDisplayId(primaryValue, fallbackValue) {
+    if (operationAuditValueFilled(primaryValue)) return primaryValue;
+    if (operationAuditValueFilled(fallbackValue)) return fallbackValue;
+    return '';
+}
+
+function operationAuditMoveId(sourceValue, targetValue, fallbackValue) {
+    var sourceFilled = operationAuditValueFilled(sourceValue);
+    var targetFilled = operationAuditValueFilled(targetValue);
+
+    if (sourceFilled && targetFilled) {
+        return '[' + sourceValue + ',' + targetValue + ']';
+    }
+
+    if (targetFilled) return targetValue;
+    if (operationAuditValueFilled(fallbackValue)) return fallbackValue;
+    if (sourceFilled) return sourceValue;
+
+    return '';
+}
+
+function operationAuditNormalizeLegacyTarget(targetText) {
+    var raw = String(targetText === null || targetText === undefined ? '' : targetText).trim();
+
+    if (!raw) return '';
+
+    // 已經是新格式就直接保留
+    if (/Job\s*ID\s*:/i.test(raw) || /Seq\s*ID\s*:/i.test(raw) || /Step\s*ID\s*:/i.test(raw)) {
+        return raw;
+    }
+
+    // 舊格式：JOB 2 / SEQ 2 / STEP 1
+    var jobMatch = raw.match(/\bJOB\s*[:#-]?\s*(\[[^\]]+\]|\d+)/i);
+    var seqMatch = raw.match(/\bSEQ\s*[:#-]?\s*(\[[^\]]+\]|\d+)/i);
+    var stepMatch = raw.match(/\bSTEP\s*[:#-]?\s*(\[[^\]]+\]|\d+)/i);
+
+    var parts = [];
+
+    if (jobMatch && jobMatch[1]) parts.push('Job ID: ' + jobMatch[1]);
+    if (seqMatch && seqMatch[1]) parts.push('Seq ID: ' + seqMatch[1]);
+    if (stepMatch && stepMatch[1]) parts.push('Step ID: ' + stepMatch[1]);
+
+    return parts.length ? parts.join('; ') : raw;
 }
 
 function operationAuditBuildTarget(row) {
-    var target = [];
-    var source = String(row.source || operationAuditCurrentSource() || '').toLowerCase();
+    row = row || {};
 
-    // APP 的 ntcs_log.csv 已經有完整 target 欄位，例如：Job ID: 2; Seq ID: [1,2]
-    // 不要再額外補 JOB / SEQ / STEP，避免格式重複或對不起來。
-    if (row.target !== null && row.target !== '' && row.target !== undefined) {
-        target.push(row.target);
-        return target;
+    var moduleName = String(row.module || '').trim().toUpperCase();
+
+    var jobId  = operationAuditDisplayId(row.target_job_id, row.job_id);
+    var seqId  = operationAuditDisplayId(row.target_seq_id, row.seq_id);
+    var stepId = operationAuditDisplayId(row.target_step_id, row.step_id);
+
+    // 排序資料：只要 source/target 欄位存在，就顯示 [原ID,新ID]
+    // 不強制依賴 action，避免舊資料 action 仍是 EDIT 時無法顯示 [2,1]
+    if (moduleName === 'SEQ' && (operationAuditValueFilled(row.source_seq_id) || operationAuditValueFilled(row.target_seq_id))) {
+        seqId = operationAuditMoveId(row.source_seq_id, row.target_seq_id, row.seq_id);
     }
 
-    if (row.job_id !== null && row.job_id !== '' && row.job_id !== undefined) target.push('JOB ' + row.job_id);
-    if (row.seq_id !== null && row.seq_id !== '' && row.seq_id !== undefined) target.push('SEQ ' + row.seq_id);
-    if (row.step_id !== null && row.step_id !== '' && row.step_id !== undefined) target.push('STEP ' + row.step_id);
-    if (!target.length) target.push('-');
+    if (moduleName === 'STEP' && (operationAuditValueFilled(row.source_step_id) || operationAuditValueFilled(row.target_step_id))) {
+        stepId = operationAuditMoveId(row.source_step_id, row.target_step_id, row.step_id);
+    }
 
-    return target;
+    var parts = [];
+
+    if (operationAuditValueFilled(jobId)) {
+        parts.push('Job ID: ' + jobId);
+    }
+
+    if (operationAuditValueFilled(seqId)) {
+        parts.push('Seq ID: ' + seqId);
+    }
+
+    if (operationAuditValueFilled(stepId)) {
+        parts.push('Step ID: ' + stepId);
+    }
+
+    // APP 或舊 API 可能直接回 target，沒有拆 ID 欄位時才使用
+    if (!parts.length && operationAuditValueFilled(row.target)) {
+        return operationAuditNormalizeLegacyTarget(row.target);
+    }
+
+    return parts.length ? parts.join('; ') : '-';
+}
+
+function operationAuditNormalizeForSignature(value) {
+    return String(value === null || value === undefined ? '' : value);
+}
+
+function operationAuditBuildRenderSignature(records) {
+    if (!records || !records.length) {
+        return 'empty';
+    }
+
+    return records.map(function(row, index) {
+        return [
+            index,
+            operationAuditNormalizeForSignature(row.log_id),
+            operationAuditNormalizeForSignature(row.created_at),
+            operationAuditNormalizeForSignature(row.operator || row.user_id),
+            operationAuditNormalizeForSignature(row.module),
+            operationAuditNormalizeForSignature(row.action),
+            operationAuditNormalizeForSignature(row.job_id),
+            operationAuditNormalizeForSignature(row.seq_id),
+            operationAuditNormalizeForSignature(row.step_id),
+            operationAuditNormalizeForSignature(row.source_job_id),
+            operationAuditNormalizeForSignature(row.source_seq_id),
+            operationAuditNormalizeForSignature(row.source_step_id),
+            operationAuditNormalizeForSignature(row.target_job_id),
+            operationAuditNormalizeForSignature(row.target_seq_id),
+            operationAuditNormalizeForSignature(row.target_step_id),
+            operationAuditNormalizeForSignature(row.target),
+            operationAuditNormalizeForSignature(row.message || row.title)
+        ].join('|');
+    }).join('||');
 }
 
 function renderSettingOperationAuditLogs(records) {
     var tbody = document.getElementById('operationAuditLogTbody');
     if (!tbody) return;
 
+    records = records || [];
+
+    var newSignature = operationAuditBuildRenderSignature(records);
+
+    // 監控每 2 秒會抓資料，但資料沒變時不要重畫 tbody。
+    // 這樣可以避免表格閃爍、抖動、列高/scrollbar 重算造成的晃動。
+    if (operationAuditLogRenderSignature === newSignature) {
+        return;
+    }
+
+    operationAuditLogRenderSignature = newSignature;
     selectedOperationAuditLogId = null;
 
-    if (!records || !records.length) {
-        tbody.innerHTML = '<tr><td colspan="8">' + operationAuditText('audit_no_data') + '</td></tr>';
+    if (!records.length) {
+        tbody.innerHTML = '<tr><td colspan="6">' + operationAuditText('audit_no_data') + '</td></tr>';
         operationAuditLogLastLogId = 0;
         return;
     }
@@ -638,20 +836,20 @@ function renderSettingOperationAuditLogs(records) {
 
     tbody.innerHTML = records.map(function(row, index) {
         var logId = parseInt(row.log_id || 0, 10);
-        var target = operationAuditBuildTarget(row);
-        var operator = operationAuditDisplayOperator(row);
         var isNew = operationAuditLogLastLogId > 0 && logId > operationAuditLogLastLogId;
         var rowClass = 'operation-audit-row' + (isNew ? ' operation-audit-new' : '');
 
         if (logId > maxLogId) maxLogId = logId;
 
+        var targetText = operationAuditBuildTarget(row);
+
         return '<tr class="' + rowClass + '" data-log-id="' + logId + '">' +
             '<td>' + (index + 1) + '</td>' +
-            '<td title="' + operationAuditEscape(row.created_at || '') + '">' + operationAuditEscape(row.created_at || '') + '</td>' +
-            '<td title="' + operationAuditEscape(operator) + '">' + operationAuditEscape(operator) + '</td>' +
-            '<td title="' + operationAuditEscape(row.module || '') + '">' + operationAuditEscape(operationAuditTranslateValue('module', row.module || '')) + '</td>' +
-            '<td title="' + operationAuditEscape(row.action || '') + '">' + operationAuditEscape(operationAuditTranslateValue('action', row.action || '')) + '</td>' +
-            '<td title="' + operationAuditEscape(target.join(' / ')) + '">' + operationAuditEscape(target.join(' / ')) + '</td>' +
+            '<td>' + operationAuditEscape(row.created_at || '') + '</td>' +
+            '<td>' + operationAuditEscape(row.operator || row.user_id || '') + '</td>' +
+            '<td>' + operationAuditEscape(operationAuditTranslateValue('module', row.module || '')) + '</td>' +
+            '<td>' + operationAuditEscape(operationAuditTranslateValue('action', row.action || '')) + '</td>' +
+            '<td>' + operationAuditEscape(targetText) + '</td>' +
             '</tr>';
     }).join('');
 
@@ -782,6 +980,15 @@ document.addEventListener('DOMContentLoaded', function() {
     border-collapse: collapse;
 }
 
+#OperationAuditLogDisplay #operation_audit_log_table,
+#OperationAuditLogDisplay #operation_audit_log_table * {
+    transition: none !important;
+}
+
+#OperationAuditLogDisplay #operationAuditLogTbody {
+    min-height: 260px;
+}
+
 #OperationAuditLogDisplay #operation_audit_log_table thead th {
     position: sticky;
     top: 0;
@@ -810,17 +1017,17 @@ document.addEventListener('DOMContentLoaded', function() {
 #OperationAuditLogDisplay #operation_audit_log_table th:nth-child(2),
 #OperationAuditLogDisplay #operation_audit_log_table td:nth-child(2) { width: 17%; }
 #OperationAuditLogDisplay #operation_audit_log_table th:nth-child(3),
-#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(3) { width: 8%; }
+#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(3) { width: 10%; }
 #OperationAuditLogDisplay #operation_audit_log_table th:nth-child(4),
-#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(4) { width: 13%; }
+#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(4) { width: 9%; }
 #OperationAuditLogDisplay #operation_audit_log_table th:nth-child(5),
-#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(5) { width: 8%; }
+#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(5) { width: 9%; }
 #OperationAuditLogDisplay #operation_audit_log_table th:nth-child(6),
-#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(6) { width: 20%; }
+#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(6) { width: 16%; }
 #OperationAuditLogDisplay #operation_audit_log_table th:nth-child(7),
-#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(7) { width: 7%; }
+#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(7) { width: 9%; }
 #OperationAuditLogDisplay #operation_audit_log_table th:nth-child(8),
-#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(8) { width: 22%; }
+#OperationAuditLogDisplay #operation_audit_log_table td:nth-child(8) { width: 25%; }
 
 #OperationAuditLogDisplay #operation_audit_log_table tbody td {
     height: 36px;

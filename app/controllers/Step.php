@@ -109,6 +109,94 @@ class Step extends Controller
         return $default;
     }
 
+    /**
+     * Step Audit: 取得排序異動的來源/目標 StepSelect。
+     * 目的：讓操作紀錄「目標」可顯示成 Step ID: [原本位置, 新位置]。
+     */
+    private function detectStepMoveInfo(array $before, array $after, string $default = 'EDIT'): array
+    {
+        $info = [
+            'action'         => $default,
+            'source_step_id' => null,
+            'target_step_id' => null,
+        ];
+
+        $beforeMap = [];
+        foreach ($before as $beforeIndex => $row) {
+            $name = trim((string)($row['STEPname'] ?? ''));
+            $key = ($name !== '') ? ('name:' . $name) : ('step:' . (string)($row['StepSelect'] ?? ''));
+
+            $beforeMap[$key] = [
+                'index'   => $beforeIndex,
+                'step_id' => isset($row['StepSelect']) ? (int)$row['StepSelect'] : null,
+            ];
+        }
+
+        foreach ($after as $afterIndex => $row) {
+            $name = trim((string)($row['STEPname'] ?? ''));
+            $key = ($name !== '') ? ('name:' . $name) : ('step:' . (string)($row['StepSelect'] ?? ''));
+
+            if (!isset($beforeMap[$key])) {
+                continue;
+            }
+
+            $beforeRow = $beforeMap[$key];
+            if ((int)$beforeRow['index'] !== (int)$afterIndex) {
+                $info['action']         = ($afterIndex < $beforeRow['index']) ? 'UP' : 'DOWN';
+                $info['source_step_id'] = $beforeRow['step_id'];
+                $info['target_step_id'] = isset($row['StepSelect']) ? (int)$row['StepSelect'] : null;
+                return $info;
+            }
+        }
+
+        return $info;
+    }
+
+
+    private function auditValueFilled($value): bool
+    {
+        return $value !== null && $value !== '' && $value !== [];
+    }
+
+    /**
+     * Audit Target 統一格式。
+     * 與 APP 顯示一致：
+     * - Job ID: 1; Seq ID: 1; Step ID: 2
+     * - Job ID: 1; Seq ID: 1; Step ID: [2,1]  // 排序 UP / DOWN
+     */
+    private function buildStepAuditTarget(array $payload): string
+    {
+        $parts = [];
+
+        $jobId = $payload['target_job_id'] ?? ($payload['job_id'] ?? null);
+        if ($this->auditValueFilled($jobId)) {
+            $parts[] = 'Job ID: ' . $jobId;
+        }
+
+        $seqId = $payload['target_seq_id'] ?? ($payload['seq_id'] ?? null);
+        if ($this->auditValueFilled($seqId)) {
+            $parts[] = 'Seq ID: ' . $seqId;
+        }
+
+        $action = strtoupper((string)($payload['action'] ?? ''));
+        $sourceStepId = $payload['source_step_id'] ?? null;
+        $targetStepId = $payload['target_step_id'] ?? null;
+        $stepId = $payload['step_id'] ?? null;
+
+        if (($action === 'UP' || $action === 'DOWN')
+            && $this->auditValueFilled($sourceStepId)
+            && $this->auditValueFilled($targetStepId)) {
+            $parts[] = 'Step ID: [' . $sourceStepId . ',' . $targetStepId . ']';
+        } else {
+            $displayStepId = $this->auditValueFilled($targetStepId) ? $targetStepId : $stepId;
+            if ($this->auditValueFilled($displayStepId)) {
+                $parts[] = 'Step ID: ' . $displayStepId;
+            }
+        }
+
+        return !empty($parts) ? implode('; ', $parts) : '-';
+    }
+
     private function writeStepAudit(array $data): void
     {
         try {
@@ -127,7 +215,18 @@ class Step extends Controller
                 'request_json' => $_POST,
             ];
 
-            $this->AuditModel->write(array_merge($defaults, $data));
+            $payload = array_merge($defaults, $data);
+
+            if ((!isset($payload['target_step_id']) || !$this->auditValueFilled($payload['target_step_id']))
+                && isset($payload['step_id']) && $this->auditValueFilled($payload['step_id'])) {
+                $payload['target_step_id'] = $payload['step_id'];
+            }
+
+            if (!isset($payload['target']) || !$this->auditValueFilled($payload['target'])) {
+                $payload['target'] = $this->buildStepAuditTarget($payload);
+            }
+
+            $this->AuditModel->write($payload);
         } catch (Throwable $e) {
             // Audit log 失敗不能影響原本 Step 功能
             error_log('[STEP AUDIT FAIL] ' . $e->getMessage());
@@ -580,7 +679,7 @@ class Step extends Controller
                 $orderAfter = $res ? $this->stepOrderSnapshot($jobid, $seqid) : null;
 
                 $this->writeStepAudit([
-                    'action'            => 'NEW',
+                    'action'            => 'COPY',
                     'status'            => $res ? 'SUCCESS' : 'FAIL',
                     'job_id'            => (int)$jobid,
                     'seq_id'            => (int)$seqid,
@@ -606,7 +705,7 @@ class Step extends Controller
                 }
             } else {
                 $this->writeStepAudit([
-                    'action'         => 'NEW',
+                    'action'         => 'COPY',
                     'status'         => 'FAIL',
                     'job_id'         => (int)$jobid,
                     'seq_id'         => (int)$seqid,
@@ -677,13 +776,24 @@ class Step extends Controller
             }
 
             $orderAfter = $SEQID ? $this->stepOrderSnapshot($JOBID, $SEQID) : [];
-            $moveAction = $this->detectStepMoveAction($orderBefore, $orderAfter, 'EDIT');
+            $moveInfo = $res
+                ? $this->detectStepMoveInfo($orderBefore, $orderAfter, 'EDIT')
+                : [
+                    'action'         => 'EDIT',
+                    'source_step_id' => null,
+                    'target_step_id' => null,
+                ];
+            $moveAction = $moveInfo['action'];
 
             $this->writeStepAudit([
                 'action'            => $moveAction,
                 'status'            => $res ? 'SUCCESS' : 'FAIL',
                 'job_id'            => (int)$JOBID,
                 'seq_id'            => $SEQID !== null ? (int)$SEQID : null,
+                // 排序時存 source/target，操作紀錄目標會顯示：Step ID: [2,1]
+                'step_id'           => $moveInfo['target_step_id'],
+                'source_step_id'    => $moveInfo['source_step_id'],
+                'target_step_id'    => $moveInfo['target_step_id'],
                 'title'             => $res ? ('Step ' . $moveAction) : 'Step Order Fail',
                 'message'           => $res ? 'Step order changed' : ('Step order change failed' . ($errorMessage !== '' ? ': ' . $errorMessage : '')),
                 'before_json'       => null,

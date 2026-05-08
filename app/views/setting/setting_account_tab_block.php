@@ -1,3 +1,94 @@
+<?php
+if (!function_exists('settingAccountTabLocale')) {
+    function settingAccountTabLocale() {
+        $raw = '';
+        if (isset($_COOKIE['language'])) {
+            $raw = strtolower(trim((string)$_COOKIE['language']));
+        } elseif (isset($_COOKIE['lang'])) {
+            $raw = strtolower(trim((string)$_COOKIE['lang']));
+        }
+
+        $raw = str_replace('_', '-', $raw);
+
+        if ($raw === 'zh-tw' || $raw === 'zh-hant' || $raw === 'tw') return 'zh-tw';
+        if ($raw === 'zh-cn' || $raw === 'zh-hans' || $raw === 'cn') return 'zh-cn';
+        if ($raw === 'en' || $raw === 'en-us') return 'en-us';
+
+        return 'en-us';
+    }
+}
+
+if (!function_exists('settingAccountTabTextMap')) {
+    function settingAccountTabTextMap() {
+        $lang = settingAccountTabLocale();
+
+        $dict = [
+            'en-us' => [
+                'account_no' => 'No',
+                'account_user_name' => 'User Name',
+                'account_date' => 'Date',
+                'account_loading' => 'Loading...',
+                'account_new' => 'New',
+                'account_edit' => 'Edit',
+                'account_delete' => 'Delete',
+                'account_new_title' => 'New Account',
+                'account_edit_title' => 'Edit Account',
+                'account_username' => 'Username',
+                'account_password' => 'Password',
+                'account_confirm_password' => 'Confirm Password',
+                'account_save' => 'Save',
+                'account_close' => 'Close',
+            ],
+            'zh-tw' => [
+                'account_no' => '編號',
+                'account_user_name' => '使用者名稱',
+                'account_date' => '日期',
+                'account_loading' => '載入中...',
+                'account_new' => '新增',
+                'account_edit' => '編輯',
+                'account_delete' => '刪除',
+                'account_new_title' => '新增帳號',
+                'account_edit_title' => '編輯帳號',
+                'account_username' => '使用者名稱',
+                'account_password' => '密碼',
+                'account_confirm_password' => '確認密碼',
+                'account_save' => '儲存',
+                'account_close' => '關閉',
+            ],
+            'zh-cn' => [
+                'account_no' => '编号',
+                'account_user_name' => '使用者名称',
+                'account_date' => '日期',
+                'account_loading' => '载入中...',
+                'account_new' => '新增',
+                'account_edit' => '编辑',
+                'account_delete' => '删除',
+                'account_new_title' => '新增账号',
+                'account_edit_title' => '编辑账号',
+                'account_username' => '使用者名称',
+                'account_password' => '密码',
+                'account_confirm_password' => '确认密码',
+                'account_save' => '储存',
+                'account_close' => '关闭',
+            ],
+        ];
+
+        return $dict[$lang] ?? $dict['en-us'];
+    }
+}
+
+if (!function_exists('settingAccountTabT')) {
+    function settingAccountTabT($key) {
+        $map = settingAccountTabTextMap();
+        return htmlspecialchars($map[$key] ?? $key, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+$settingAccountTabLocale = settingAccountTabLocale();
+$settingAccountTabColon = ($settingAccountTabLocale === 'en-us') ? ' :' : '：';
+$settingAccountTabTextJson = json_encode(settingAccountTabTextMap(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+?>
+
 <!-- =====================================================
      Setting Account Tab / table user
      放在 setting/index.php 的 Account 分頁內容區塊
@@ -8,13 +99,13 @@
             <table id="account_user_table" class="table w3-table account-user-table">
                 <thead id="header-table">
                     <tr class="w3-dark-grey">
-                        <th>No</th>
-                        <th>User Name</th>
-                        <th>Date</th>
+                        <th id="accountUserNoHeader"><?php echo settingAccountTabT('account_no'); ?></th>
+                        <th id="accountUserNameHeader"><?php echo settingAccountTabT('account_user_name'); ?></th>
+                        <th id="accountUserDateHeader"><?php echo settingAccountTabT('account_date'); ?></th>
                     </tr>
                 </thead>
                 <tbody id="accountUserTbody" style="font-size: 1.8vmin;text-align: center;">
-                    <tr><td colspan="3">Loading...</td></tr>
+                    <tr><td colspan="3"><?php echo settingAccountTabT('account_loading'); ?></td></tr>
                 </tbody>
             </table>
         </div>
@@ -22,9 +113,9 @@
 
     <div class="footer account-footer">
         <div class="buttonbox">
-            <input type="button" value="New"    onclick="settingAccountAction('new')">
-            <input type="button" value="Edit"   onclick="settingAccountAction('edit')">
-            <input type="button" value="Delete" onclick="settingAccountAction('delete')">
+            <input type="button" id="account_new_btn" value="<?php echo settingAccountTabT('account_new'); ?>" onclick="settingAccountAction('new')">
+            <input type="button" id="account_edit_btn" value="<?php echo settingAccountTabT('account_edit'); ?>" onclick="settingAccountAction('edit')">
+            <input type="button" id="account_delete_btn" value="<?php echo settingAccountTabT('account_delete'); ?>" onclick="settingAccountAction('delete')">
         </div>
     </div>
 
@@ -34,28 +125,28 @@
             <div class="modal-content w3-animate-zoom setting-account-modal">
                 <header class="w3-container modal-header">
                     <span onclick="closeSettingAccountModal();" class="w3-button w3-red w3-display-topright account-modal-x">&times;</span>
-                    <h3 id="settingAccountModalTitle">New Account</h3>
+                    <h3 id="settingAccountModalTitle"><?php echo settingAccountTabT('account_new_title'); ?></h3>
                 </header>
 
                 <div class="modal-body account-modal-body">
                     <input type="hidden" id="account_old_username" value="">
 
                     <div class="row account-form-row">
-                        <div class="col-5 t1">Username :</div>
+                        <div class="col-5 t1" id="settingAccountUsernameLabel"><?php echo settingAccountTabT('account_username') . $settingAccountTabColon; ?></div>
                         <div class="col-5 t2">
                             <input type="text" class="form-control input-ms" id="account_username" maxlength="20" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="row account-form-row">
-                        <div class="col-5 t1">Password :</div>
+                        <div class="col-5 t1" id="settingAccountPasswordLabel"><?php echo settingAccountTabT('account_password') . $settingAccountTabColon; ?></div>
                         <div class="col-5 t2">
                             <input type="password" class="form-control input-ms" id="account_password" maxlength="20" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="row account-form-row">
-                        <div class="col-5 t1">Confirm Password :</div>
+                        <div class="col-5 t1" id="settingAccountConfirmPasswordLabel"><?php echo settingAccountTabT('account_confirm_password') . $settingAccountTabColon; ?></div>
                         <div class="col-5 t2">
                             <input type="password" class="form-control input-ms" id="account_confirm_password" maxlength="20" autocomplete="off">
                         </div>
@@ -63,8 +154,8 @@
                 </div>
 
                 <div class="modal-footer justify-content-center">
-                    <button class="button-modal" onclick="saveSettingAccount();">Save</button>
-                    <button class="button-modal closebtn" onclick="closeSettingAccountModal();">Close</button>
+                    <button class="button-modal" id="settingAccountSaveBtn" onclick="saveSettingAccount();"><?php echo settingAccountTabT('account_save'); ?></button>
+                    <button class="button-modal closebtn" id="settingAccountCloseBtn" onclick="closeSettingAccountModal();"><?php echo settingAccountTabT('account_close'); ?></button>
                 </div>
             </div>
         </div>
@@ -606,3 +697,130 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #666;
 }
 </style>
+
+
+<script>
+/* =====================================================
+   Account modal language force patch
+   目的：讓 Account New/Edit modal 的 label/button 跟 cookie language / lang 走同一套語系。
+   ===================================================== */
+(function() {
+    var accountText = <?php echo $settingAccountTabTextJson ?: '{}'; ?>;
+
+    function getAccountCookieLang() {
+        var lang = 'en-us';
+        try {
+            var m = (document.cookie || '').match(/(?:^|;\s*)(?:language|lang)=([^;]+)/i);
+            if (m && m[1]) lang = decodeURIComponent(m[1]).toLowerCase().replace('_', '-');
+        } catch (e) {}
+
+        if (lang === 'zh-tw' || lang === 'zh-hant' || lang === 'tw') return 'zh-tw';
+        if (lang === 'zh-cn' || lang === 'zh-hans' || lang === 'cn') return 'zh-cn';
+        return 'en-us';
+    }
+
+    function accountColon() {
+        return getAccountCookieLang() === 'en-us' ? ' :' : '：';
+    }
+
+    function at(key, fallback) {
+        if (typeof saT === 'function') {
+            try {
+                var v = saT(key, '');
+                if (v && v !== key) return v;
+            } catch (e) {}
+        }
+
+        var directMap = {
+            account_new: 'New',
+            account_edit: 'Edit',
+            account_delete: 'Delete',
+            account_save: 'save',
+            account_close: 'close'
+        };
+
+        if (typeof window.settingAccountApplyStaticI18nV6 === 'function') {
+            // V6 會另外處理，這裡仍保留本地字典避免 V6 未載入。
+        }
+
+        return accountText[key] || accountText[directMap[key]] || fallback || key;
+    }
+
+    function setTextById(id, text) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = text;
+    }
+
+    function setValueById(id, text) {
+        var el = document.getElementById(id);
+        if (el) el.value = text;
+    }
+
+    function applyAccountModalLanguage() {
+        setTextById('accountUserNoHeader', at('account_no', 'No'));
+        setTextById('accountUserNameHeader', at('account_user_name', 'User Name'));
+        setTextById('accountUserDateHeader', at('account_date', 'Date'));
+
+        setValueById('account_new_btn', at('account_new', 'New'));
+        setValueById('account_edit_btn', at('account_edit', 'Edit'));
+        setValueById('account_delete_btn', at('account_delete', 'Delete'));
+
+        setTextById('settingAccountUsernameLabel', at('account_username', 'Username') + accountColon());
+        setTextById('settingAccountPasswordLabel', at('account_password', 'Password') + accountColon());
+        setTextById('settingAccountConfirmPasswordLabel', at('account_confirm_password', 'Confirm Password') + accountColon());
+
+        setTextById('settingAccountSaveBtn', at('account_save', 'Save'));
+        setTextById('settingAccountCloseBtn', at('account_close', 'Close'));
+
+        var modalTitle = document.getElementById('settingAccountModalTitle');
+        if (modalTitle) {
+            var mode = window.settingAccountMode || 'new';
+            modalTitle.textContent = (mode === 'edit') ? at('account_edit_title', 'Edit Account') : at('account_new_title', 'New Account');
+        }
+    }
+
+    window.applySettingAccountModalLanguage = applyAccountModalLanguage;
+
+    function installAccountLanguageHooks() {
+        if (typeof window.settingAccountAction === 'function' && !window.settingAccountAction.__langWrapped) {
+            var oldAction = window.settingAccountAction;
+            window.settingAccountAction = function(mode) {
+                var ret = oldAction.apply(this, arguments);
+                setTimeout(applyAccountModalLanguage, 0);
+                setTimeout(applyAccountModalLanguage, 80);
+                return ret;
+            };
+            window.settingAccountAction.__langWrapped = true;
+        }
+
+        if (typeof window.openSettingAccountModal === 'function' && !window.openSettingAccountModal.__langWrapped) {
+            var oldOpen = window.openSettingAccountModal;
+            window.openSettingAccountModal = function() {
+                var ret = oldOpen.apply(this, arguments);
+                setTimeout(applyAccountModalLanguage, 0);
+                return ret;
+            };
+            window.openSettingAccountModal.__langWrapped = true;
+        }
+
+        applyAccountModalLanguage();
+
+        if (typeof window.settingAccountApplyStaticI18nV6 === 'function') {
+            try { window.settingAccountApplyStaticI18nV6(); } catch (e) {}
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        installAccountLanguageHooks();
+        setTimeout(installAccountLanguageHooks, 100);
+        setTimeout(installAccountLanguageHooks, 500);
+    });
+
+    window.addEventListener('load', function() {
+        installAccountLanguageHooks();
+        setTimeout(installAccountLanguageHooks, 300);
+    });
+
+    setTimeout(installAccountLanguageHooks, 800);
+})();
+</script>

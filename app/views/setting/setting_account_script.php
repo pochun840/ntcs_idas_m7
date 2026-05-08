@@ -60,6 +60,17 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_failed' => 'Import failed.',
                 'account_new_title' => 'New Account',
                 'account_edit_title' => 'Edit Account',
+                'account_no' => 'No',
+                'account_user_name' => 'User Name',
+                'account_date' => 'Date',
+                'account_username' => 'Username',
+                'account_password' => 'Password',
+                'account_confirm_password' => 'Confirm Password',
+                'account_new' => 'New',
+                'account_edit' => 'Edit',
+                'account_delete' => 'Delete',
+                'account_save' => 'Save',
+                'account_close' => 'Close',
                 'account_import_confirm' => 'Import accounts from CSV?',
                 'account_upload_confirm' => 'Upload user list to controller ?',
                 'account_select_one' => 'Please select one account.',
@@ -97,6 +108,17 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_failed' => '匯入失敗。',
                 'account_new_title' => '新增帳號',
                 'account_edit_title' => '編輯帳號',
+                'account_no' => '編號',
+                'account_user_name' => '使用者名稱',
+                'account_date' => '日期',
+                'account_username' => '使用者名稱',
+                'account_password' => '密碼',
+                'account_confirm_password' => '確認密碼',
+                'account_new' => '新增',
+                'account_edit' => '編輯',
+                'account_delete' => '刪除',
+                'account_save' => '儲存',
+                'account_close' => '關閉',
                 'account_import_confirm' => '是否要從 CSV 匯入帳號？',
                 'account_upload_confirm' => '是否要將 user list 上傳到控制器 ？',
                 'account_select_one' => '請選擇一個帳號。',
@@ -134,6 +156,17 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_failed' => '导入失败。',
                 'account_new_title' => '新增账号',
                 'account_edit_title' => '编辑账号',
+                'account_no' => '编号',
+                'account_user_name' => '使用者名称',
+                'account_date' => '日期',
+                'account_username' => '使用者名称',
+                'account_password' => '密码',
+                'account_confirm_password' => '确认密码',
+                'account_new' => '新增',
+                'account_edit' => '编辑',
+                'account_delete' => '删除',
+                'account_save' => '储存',
+                'account_close' => '关闭',
                 'account_import_confirm' => '是否要从 CSV 导入账号？。',
                 'account_upload_confirm' => '是否要将 user list 上传到控制器 ？',
                 'account_select_one' => '请选择一个账号。',
@@ -226,9 +259,38 @@ function applySettingAccountColonFix() {
     var passwordLabel = document.getElementById('settingAccountPasswordLabel');
     var confirmLabel = document.getElementById('settingAccountConfirmPasswordLabel');
 
+    // 舊版 tab block 沒有 label id 時，改抓 modal 裡前三個 .t1。
+    if (!usernameLabel || !passwordLabel || !confirmLabel) {
+        var labels = document.querySelectorAll('#settingAccountModal .account-form-row .t1');
+        usernameLabel = usernameLabel || labels[0];
+        passwordLabel = passwordLabel || labels[1];
+        confirmLabel = confirmLabel || labels[2];
+    }
+
     if (usernameLabel) usernameLabel.innerText = settingAccountLabelI18n('account_username', 'Username');
     if (passwordLabel) passwordLabel.innerText = settingAccountLabelI18n('account_password', 'Password');
     if (confirmLabel) confirmLabel.innerText = settingAccountLabelI18n('account_confirm_password', 'Confirm Password');
+
+    // 順手同步表頭與按鈕，避免 Account tab 有些區塊仍維持英文。
+    var table = document.getElementById('account_user_table');
+    if (table) {
+        var ths = table.querySelectorAll('thead th');
+        if (ths[0]) ths[0].innerText = saT('account_no', 'No');
+        if (ths[1]) ths[1].innerText = saT('account_user_name', 'User Name');
+        if (ths[2]) ths[2].innerText = saT('account_date', 'Date');
+    }
+
+    var newBtn = document.getElementById('account_new_btn');
+    var editBtn = document.getElementById('account_edit_btn');
+    var deleteBtn = document.getElementById('account_delete_btn');
+    var saveBtn = document.getElementById('settingAccountSaveBtn') || document.querySelector('#settingAccountModal .modal-footer .button-modal:not(.closebtn)');
+    var closeBtn = document.getElementById('settingAccountCloseBtn') || document.querySelector('#settingAccountModal .modal-footer .closebtn');
+
+    if (newBtn) newBtn.value = saT('account_new', 'New');
+    if (editBtn) editBtn.value = saT('account_edit', 'Edit');
+    if (deleteBtn) deleteBtn.value = saT('account_delete', 'Delete');
+    if (saveBtn) saveBtn.innerText = saT('account_save', 'Save');
+    if (closeBtn) closeBtn.innerText = saT('account_close', 'Close');
 }
 
 
@@ -2275,6 +2337,42 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
             clearInterval(finalMaskV11Timer);
         }
     }, 300);
+})();
+
+
+/* Account modal language final safety patch */
+(function() {
+    function safeApplyAccountI18n() {
+        try {
+            if (typeof applySettingAccountColonFix === 'function') {
+                applySettingAccountColonFix();
+            }
+            if (typeof settingAccountApplyStaticI18nV6 === 'function') {
+                settingAccountApplyStaticI18nV6();
+            }
+        } catch (e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        safeApplyAccountI18n();
+        setTimeout(safeApplyAccountI18n, 100);
+        setTimeout(safeApplyAccountI18n, 500);
+    });
+
+    window.addEventListener('load', function() {
+        safeApplyAccountI18n();
+        setTimeout(safeApplyAccountI18n, 300);
+    });
+
+    if (typeof window.openSettingAccountModal === 'function' && !window.openSettingAccountModal.__finalLangWrapped) {
+        var oldOpen = window.openSettingAccountModal;
+        window.openSettingAccountModal = function() {
+            var ret = oldOpen.apply(this, arguments);
+            setTimeout(safeApplyAccountI18n, 0);
+            return ret;
+        };
+        window.openSettingAccountModal.__finalLangWrapped = true;
+    }
 })();
 
 </script>

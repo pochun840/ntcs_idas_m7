@@ -46,6 +46,27 @@ class Jobs extends Controller
         ];
     }
 
+
+    private function auditValueFilled($value): bool
+    {
+        return $value !== null && $value !== '' && $value !== [];
+    }
+
+    /**
+     * Audit Target 統一格式。
+     * 與 APP 顯示一致：Job ID: 3
+     */
+    private function buildJobAuditTarget(array $payload): string
+    {
+        $jobId = $payload['target_job_id'] ?? ($payload['job_id'] ?? null);
+
+        if ($this->auditValueFilled($jobId)) {
+            return 'Job ID: ' . $jobId;
+        }
+
+        return '-';
+    }
+
     private function writeJobAudit(array $data): void
     {
         try {
@@ -53,8 +74,11 @@ class Jobs extends Controller
                 return;
             }
 
+            $operator = $_COOKIE['username'] ?? '';
+
             $defaults = [
-                'operator'     => $_COOKIE['username'] ?? '',
+                'user_id'      => $operator,
+                'operator'     => $operator,
                 'client_ip'    => $_SERVER['REMOTE_ADDR'] ?? '',
                 'device_id'    => $this->deviceId ?? null,
                 'module'       => 'JOB',
@@ -62,7 +86,18 @@ class Jobs extends Controller
                 'request_json' => $_POST,
             ];
 
-            $this->AuditModel->write(array_merge($defaults, $data));
+            $payload = array_merge($defaults, $data);
+
+            if ((!isset($payload['target_job_id']) || !$this->auditValueFilled($payload['target_job_id']))
+                && isset($payload['job_id']) && $this->auditValueFilled($payload['job_id'])) {
+                $payload['target_job_id'] = $payload['job_id'];
+            }
+
+            if (!isset($payload['target']) || !$this->auditValueFilled($payload['target'])) {
+                $payload['target'] = $this->buildJobAuditTarget($payload);
+            }
+
+            $this->AuditModel->write($payload);
         } catch (Throwable $e) {
             // Audit log 失敗不能影響原本 Job 功能
             error_log('[JOB AUDIT FAIL] ' . $e->getMessage());
@@ -505,7 +540,7 @@ class Jobs extends Controller
                         $after = $this->jobAuditSnapshot($new_jobid);
 
                         $this->writeJobAudit([
-                            'action'        => 'NEW',
+                            'action'        => 'COPY',
                             'status'        => 'SUCCESS',
                             'job_id'        => (int)$new_jobid,
                             'source_job_id' => (int)$old_jobid,
@@ -520,7 +555,7 @@ class Jobs extends Controller
                         $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
                     }else{
                         $this->writeJobAudit([
-                            'action'        => 'NEW',
+                            'action'        => 'COPY',
                             'status'        => 'FAIL',
                             'job_id'        => (int)$new_jobid,
                             'source_job_id' => (int)$old_jobid,
