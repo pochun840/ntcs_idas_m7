@@ -72,6 +72,10 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_save' => 'Save',
                 'account_close' => 'Close',
                 'account_import_confirm' => 'Import accounts from CSV?',
+                'account_import_mode_confirm' => 'Select import mode:',
+                'account_import_append' => 'Append',
+                'account_import_overwrite' => 'Overwrite',
+                'account_import_overwrite_confirm' => 'Overwrite will delete all accounts except kls, guest, and admin. Continue?',
                 'account_upload_confirm' => 'Upload user list to controller ?',
                 'account_select_one' => 'Please select one account.',
                 'account_delete_confirm_prefix' => 'Are you sure you want to delete this account?<br><br>Account: ',
@@ -120,6 +124,10 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_save' => '儲存',
                 'account_close' => '關閉',
                 'account_import_confirm' => '是否要從 CSV 匯入帳號？',
+                'account_import_mode_confirm' => '請選擇匯入方式：',
+                'account_import_append' => '新增',
+                'account_import_overwrite' => '覆蓋',
+                'account_import_overwrite_confirm' => '覆蓋會刪除除了 kls、guest、admin 以外的所有帳號，確定繼續？',
                 'account_upload_confirm' => '是否要將 user list 上傳到控制器 ？',
                 'account_select_one' => '請選擇一個帳號。',
                 'account_delete_confirm_prefix' => '是否確定刪除此帳號？<br><br>帳號：',
@@ -167,7 +175,11 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_delete' => '删除',
                 'account_save' => '储存',
                 'account_close' => '关闭',
-                'account_import_confirm' => '是否要从 CSV 导入账号？。',
+                'account_import_confirm' => '是否要从 CSV 导入账号？',
+                'account_import_mode_confirm' => '请选择导入方式：',
+                'account_import_append' => '新增',
+                'account_import_overwrite' => '覆盖',
+                'account_import_overwrite_confirm' => '覆盖会删除除了 kls、guest、admin 以外的所有账号，确定继续？',
                 'account_upload_confirm' => '是否要将 user list 上传到控制器 ？',
                 'account_select_one' => '请选择一个账号。',
                 'account_delete_confirm_prefix' => '是否确定删除此账号？<br><br>账号：',
@@ -378,6 +390,77 @@ function settingAccountConfirm(message, onOk, onCancel) {
         settingAccountAlert(saT('account_alertify_not_loaded', 'AlertifyJS confirm is not loaded.'));
         if (typeof onCancel === 'function') onCancel();
     }
+}
+
+function settingAccountImportModeDialog(onAppend, onOverwrite, onCancel) {
+    var oldOverlay = document.getElementById('settingAccountImportModeOverlay');
+    if (oldOverlay && oldOverlay.parentNode) {
+        oldOverlay.parentNode.removeChild(oldOverlay);
+    }
+
+    var overlay = document.createElement('div');
+    overlay.id = 'settingAccountImportModeOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.left = '0';
+    overlay.style.top = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'rgba(0,0,0,0.35)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+
+    var box = document.createElement('div');
+    box.style.width = '420px';
+    box.style.maxWidth = '90%';
+    box.style.background = '#fff';
+    box.style.boxShadow = '0 12px 30px rgba(0,0,0,0.35)';
+    box.style.borderRadius = '2px';
+    box.style.overflow = 'hidden';
+    box.style.fontSize = '16px';
+
+    var body = document.createElement('div');
+    body.style.padding = '28px 36px';
+    body.style.lineHeight = '1.8';
+    body.style.color = '#111';
+    body.innerHTML = settingAccountEscape(saT('account_import_mode_confirm', 'Select import mode:'));
+
+    var footer = document.createElement('div');
+    footer.style.display = 'flex';
+    footer.style.justifyContent = 'flex-end';
+    footer.style.gap = '18px';
+    footer.style.borderTop = '1px solid #eee';
+    footer.style.padding = '14px 22px';
+
+    function makeButton(text, handler, primary) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerText = text;
+        btn.style.minWidth = '72px';
+        btn.style.height = '34px';
+        btn.style.border = 'none';
+        btn.style.background = 'transparent';
+        btn.style.cursor = 'pointer';
+        btn.style.fontWeight = '700';
+        btn.style.color = primary ? '#1e88e5' : '#222';
+        btn.onclick = function() {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            if (typeof handler === 'function') handler();
+        };
+        return btn;
+    }
+
+    footer.appendChild(makeButton(saT('account_import_append', 'Append'), onAppend, true));
+    footer.appendChild(makeButton(saT('account_import_overwrite', 'Overwrite'), onOverwrite, true));
+    footer.appendChild(makeButton(saT('account_alertify_cancel', 'CANCEL'), onCancel, false));
+
+    box.appendChild(body);
+    box.appendChild(footer);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
 }
 
 function settingAccountValidText(value) {
@@ -644,11 +727,12 @@ function uploadSettingAccountsToController() {
     });
 }
 
-function importSettingAccounts() {
+function importSettingAccounts(importMode) {
     var fileInput = document.getElementById('account_import_file');
     if (!fileInput) return;
 
     fileInput.value = '';
+    fileInput.setAttribute('data-import-mode', importMode || 'append');
     fileInput.click();
 }
 
@@ -666,6 +750,7 @@ function importSettingAccountFile(input) {
 
     var formData = new FormData();
     formData.append('account_file', file);
+    formData.append('import_mode', input.getAttribute('data-import-mode') || 'append');
 
     fetch(settingAccountApi('account_user_import'), {
         method: 'POST',
@@ -858,10 +943,20 @@ function settingAccountAction(mode) {
     }
 
     if (mode === 'import') {
-        settingAccountConfirm(
-            saT('account_import_confirm', 'Import accounts from CSV?<br>Only table user in KLS_NTCS_IDAS.Lin will be modified.<br>Built-in Kls account will be skipped.'),
+        settingAccountImportModeDialog(
             function() {
-                importSettingAccounts();
+                importSettingAccounts('append');
+            },
+            function() {
+                settingAccountConfirm(
+                    saT('account_import_overwrite_confirm', 'Overwrite will delete all accounts except kls, guest, and admin. Continue?'),
+                    function() {
+                        importSettingAccounts('overwrite');
+                    }
+                );
+            },
+            function() {
+                // Cancel means cancel only. Do not import anything.
             }
         );
         return;

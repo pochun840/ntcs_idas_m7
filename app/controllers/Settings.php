@@ -3195,14 +3195,18 @@ class Settings extends Controller
             $passIndex = $headerMap['password'] ?? $headerMap['passwd'] ?? 2;
             $lawIndex  = $headerMap['law'] ?? 3;
 
+            $importMode = (string)($_POST['import_mode'] ?? 'append');
+            $importMode = ($importMode === 'overwrite') ? 'overwrite' : 'append';
+            $protectedUsers = ['kls', 'guest', 'admin'];
+
             $inserted = 0;
             $updated  = 0;
             $skipped  = 0;
             $lineNo   = 1;
             $errors   = [];
+            $rowsToImport = [];
 
-            $db->beginTransaction();
-
+            // First pass: validate the whole CSV before touching DB.
             while (($row = fgetcsv($fp)) !== false) {
                 $lineNo++;
 
@@ -3215,9 +3219,10 @@ class Settings extends Controller
                 $password = $this->accountUserCsvText((string)($row[$passIndex] ?? ''));
                 $lawRaw = $this->accountUserCsvText((string)($row[$lawIndex] ?? '1'));
                 $law = ($lawRaw !== '' && is_numeric($lawRaw)) ? (int)$lawRaw : 1;
+                $nameLower = strtolower($name);
 
-                // Built-in Kls is protected and will not be imported or modified.
-                if (strtolower($name) === 'kls') {
+                // Built-in accounts are protected and will not be imported or modified.
+                if (in_array($nameLower, $protectedUsers, true)) {
                     $skipped++;
                     continue;
                 }
@@ -3227,16 +3232,40 @@ class Settings extends Controller
                     $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
                 } catch (Throwable $e) {
                     $errors[] = 'Line ' . $lineNo . ': ' . $e->getMessage();
-                    $skipped++;
                     continue;
                 }
 
-                $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE name = :name');
+                $rowsToImport[] = [
+                    'name' => $name,
+                    'passwd' => $password,
+                    'law' => $law,
+                ];
+            }
+
+            fclose($fp);
+
+            if (!empty($errors)) {
+                throw new Exception($this->accountUserText('account_csv_validation_failed', 'CSV validation failed. No data was imported.') . ' ' . implode(' ', array_slice($errors, 0, 10)));
+            }
+
+            $db->beginTransaction();
+
+            if ($importMode === 'overwrite') {
+                // Only table user is modified. Built-in accounts are protected.
+                $db->exec("DELETE FROM `user` WHERE LOWER(name) NOT IN ('kls', 'guest', 'admin')");
+            }
+
+            foreach ($rowsToImport as $row) {
+                $name = $row['name'];
+                $password = $row['passwd'];
+                $law = $row['law'];
+
+                $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(name) = LOWER(:name)');
                 $stmt->execute([':name' => $name]);
                 $exists = (int)$stmt->fetchColumn() > 0;
 
                 if ($exists) {
-                    $stmt = $db->prepare('UPDATE `user` SET passwd = :passwd, law = :law WHERE name = :name');
+                    $stmt = $db->prepare('UPDATE `user` SET passwd = :passwd, law = :law WHERE LOWER(name) = LOWER(:name)');
                     $stmt->execute([
                         ':passwd' => $password,
                         ':law'    => $law,
@@ -3256,19 +3285,16 @@ class Settings extends Controller
                 }
             }
 
-            fclose($fp);
             $db->commit();
 
             $message = $this->accountUserFormatText('account_import_result', 'Import success. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.', ['inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped]);
-            if (!empty($errors)) {
-                $message .= ' ' . $this->accountUserText('account_some_rows_skipped', 'Some rows were skipped.');
-            }
 
             $this->accountUserJson(true, $message, [
+                'mode'     => $importMode,
                 'inserted' => $inserted,
                 'updated'  => $updated,
                 'skipped'  => $skipped,
-                'errors'   => array_slice($errors, 0, 10),
+                'errors'   => [],
             ]);
         } catch (Throwable $e) {
             if (isset($db) && $db instanceof PDO && $db->inTransaction()) {
