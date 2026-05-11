@@ -9,6 +9,7 @@ class Settings extends Controller
     private $DataModel;
     private $stepModel;
     Private $deviceId;
+    private $AuditModel;
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct(){
@@ -20,6 +21,7 @@ class Settings extends Controller
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
         $this->stepModel = $this->model('Steptcc');
+        $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
@@ -966,9 +968,67 @@ class Settings extends Controller
         }
     }
 
+    /**
+     * DB Sync 操作紀錄
+     * 跟 JOB create job 一樣寫入 operation_audit_log
+     */
+    private function writeDbSyncAudit($action, $status, $message, $extra = []){
+
+        try {
+            if (!isset($this->AuditModel)) {
+                $this->AuditModel = $this->model('OperationAudit');
+            }
+
+            $payload = [
+                'module'       => 'DB_SYNC',
+                'action'       => $action,
+                'status'       => $status,
+                'device_id'    => isset($this->deviceId) ? (int)$this->deviceId : 1,
+
+                // DB Sync 沒有 job / seq / step
+                'job_id'       => null,
+                'seq_id'       => null,
+                'step_id'      => null,
+
+                'title'        => 'DB Sync',
+                'message'      => $message,
+
+                'before_json'  => null,
+                'after_json'   => $extra,
+                'request_json' => $_POST,
+            ];
+
+            // 主要：照 JOB create job 的 OperationAudit 寫法
+            if (method_exists($this->AuditModel, 'write')) {
+                $this->AuditModel->write($payload);
+            } else {
+                error_log('[OperationAudit][DB_SYNC] OperationAudit::write() not found');
+            }
+
+        } catch (Throwable $e) {
+            // 寫 log 失敗不能影響同步功能
+            error_log('[OperationAudit][DB_SYNC] write failed: ' . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * DB Sync 統一回傳
+     * 回傳前先寫 operation_audit_log
+     */
+    private function syncDbAuditResponse($resType, $resMsg, $action, $extra = []){
+
+        $status = (strtolower((string)$resType) === 'success') ? 'SUCCESS' : 'FAIL';
+
+        $this->writeDbSyncAudit($action, $status, $resMsg, $extra);
+
+        return $this->MiscellaneousModel->generateErrorResponse($resType, $resMsg);
+    }
+
+
     
     public function Sync_check_db(){
-        
+
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
@@ -985,52 +1045,104 @@ class Settings extends Controller
         $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
         $dst3         = '/home/kls/NTCS7/ntcs_device.db';
 
-
-        // 取得 正確的 Modbus id
+        // 取得正確的 Modbus id
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
+        $auditExtra = [
+            'direction' => 'D2C',
+            'argument'  => $argument,
+            'device_id' => $device_id,
+            'unit_id'   => $unitId,
+            'files'     => [
+                'lin' => [
+                    'src'     => $src1,
+                    'final'   => $finalPath1,
+                    'renamed' => $renamedPath1,
+                ],
+                'barcode' => [
+                    'src'     => $src2,
+                    'final'   => $finalPath2,
+                    'renamed' => $renamedPath2,
+                ],
+                'device' => [
+                    'src' => $src3,
+                    'dst' => $dst3,
+                ],
+            ],
+        ];
 
-
-        // 只處理 Linux + D2C，其它情況直接回錯誤
+        // 只處理 Linux + D2C
         if (PHP_OS_FAMILY !== 'Linux' || $argument !== 'D2C') {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
-        }
-
-        // ✅ 先同步 device.db (src3 → dst3)
-        if (file_exists($src3)) {
-            if (!copy($src3, $dst3)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
-            }
-            @chmod($dst3, 0777);
-
-            // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
-            $this->get_db_sync($unitId);
-        }
-
-        //  檢查原始檔案是否存在
-        if (!file_exists($src1) || !file_exists($src2)) {
-            $missingFiles = [];
-            if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
-            if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
-
-            $this->MiscellaneousModel->generateErrorResponse(
+            return $this->syncDbAuditResponse(
                 'Error',
-                'Source file(s) missing: ' . implode(', ', $missingFiles)
+                'Invalid sync argument or unsupported OS',
+                'SYNC_D2C',
+                $auditExtra
             );
         }
 
-        // 初始化 Modbus
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-        $modbus = new ModbusMaster("127.0.0.1", "TCP");
-        $modbus->port        = 502;
-        $modbus->timeout_sec = 2;   // 原本 10 → 3，這裡直接壓到 2 秒
-
         try {
-            // ----------- Sync LIN File（簡化：直接 src → final → rename）-----------
-            if (!$this->safeCopy($src1, $finalPath1)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1 to $finalPath1");
+            // 先同步 device.db
+            if (file_exists($src3)) {
+                if (!copy($src3, $dst3)) {
+                    $auditExtra['failed_stage'] = 'copy_device_db';
+
+                    return $this->syncDbAuditResponse(
+                        'Error',
+                        "Failed to copy $src3 to $dst3",
+                        'SYNC_D2C',
+                        $auditExtra
+                    );
+                }
+
+                @chmod($dst3, 0777);
+
+                // 原本就有的同步動作
+                $this->get_db_sync($unitId);
+
+                $auditExtra['device_synced'] = true;
+            } else {
+                $auditExtra['device_synced'] = false;
+                $auditExtra['device_note'] = 'ntcs_device_IDAS.db not found, skipped';
             }
+
+            // 檢查原始檔案是否存在
+            if (!file_exists($src1) || !file_exists($src2)) {
+                $missingFiles = [];
+
+                if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
+                if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
+
+                $auditExtra['missing_files'] = $missingFiles;
+
+                return $this->syncDbAuditResponse(
+                    'Error',
+                    'Source file(s) missing: ' . implode(', ', $missingFiles),
+                    'SYNC_D2C',
+                    $auditExtra
+                );
+            }
+
+            // 初始化 Modbus
+            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+            $modbus = new ModbusMaster("127.0.0.1", "TCP");
+            $modbus->port        = 502;
+            $modbus->timeout_sec = 2;
+
+            // ----------- Sync LIN File -----------
+            if (!$this->safeCopy($src1, $finalPath1)) {
+                $auditExtra['failed_stage'] = 'copy_lin_to_ramdisk';
+
+                return $this->syncDbAuditResponse(
+                    'Error',
+                    "Failed to copy $src1 to $finalPath1",
+                    'SYNC_D2C',
+                    $auditExtra
+                );
+            }
+
             @chmod($finalPath1, 0777);
             $this->logMessage("$src1 copied to $finalPath1");
 
@@ -1038,18 +1150,31 @@ class Settings extends Controller
             $this->notifyModbus($modbus, [1, 12593], "LIN");
 
             if (!$this->safeCopy($finalPath1, $renamedPath1)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
+                $auditExtra['failed_stage'] = 'rename_lin_file';
+
+                return $this->syncDbAuditResponse(
+                    'Error',
+                    "Failed to rename LIN file",
+                    'SYNC_D2C',
+                    $auditExtra
+                );
             }
+
             @unlink($finalPath1);
             $this->logMessage("$finalPath1 renamed to $renamedPath1");
 
-            // 🔥 拿掉 usleep(1_000_000) 不再強制多等 1 秒
-            // usleep(1_000_000);
-
-            // ----------- Sync DB File (barcode)（一樣簡化）-----------
+            // ----------- Sync DB File barcode -----------
             if (!$this->safeCopy($src2, $finalPath2)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2 to $finalPath2");
+                $auditExtra['failed_stage'] = 'copy_barcode_db_to_ramdisk';
+
+                return $this->syncDbAuditResponse(
+                    'Error',
+                    "Failed to copy $src2 to $finalPath2",
+                    'SYNC_D2C',
+                    $auditExtra
+                );
             }
+
             @chmod($finalPath2, 0777);
             $this->logMessage("$src2 copied to $finalPath2");
 
@@ -1057,74 +1182,164 @@ class Settings extends Controller
             $this->notifyModbus($modbus, [1, 12593], "DB");
 
             if (!$this->safeCopy($finalPath2, $renamedPath2)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
+                $auditExtra['failed_stage'] = 'rename_barcode_db_file';
+
+                return $this->syncDbAuditResponse(
+                    'Error',
+                    "Failed to rename DB file",
+                    'SYNC_D2C',
+                    $auditExtra
+                );
             }
+
             @unlink($finalPath2);
             $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
-            // ✅ 最後回傳成功訊息（純 JSON）
-            $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+            $auditExtra['result'] = [
+                'lin_synced'     => true,
+                'barcode_synced' => true,
+                'device_synced'  => !empty($auditExtra['device_synced']),
+            ];
 
-        } catch (Exception $e) {
-            $this->logMessage('Modbus write fail: ' . $e->getMessage());
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
+            return $this->syncDbAuditResponse(
+                'Success',
+                'SYNC ' . ($text['success'] ?? 'success'),
+                'SYNC_D2C',
+                $auditExtra
+            );
+
+        } catch (Throwable $e) {
+            $this->logMessage('DB Sync D2C fail: ' . $e->getMessage());
+
+            $auditExtra['exception'] = $e->getMessage();
+
+            return $this->syncDbAuditResponse(
+                'Error',
+                'Modbus communication failed',
+                'SYNC_D2C',
+                $auditExtra
+            );
         }
     }
 
 
+    public function Sync_check_db_load(){
 
-
-
-
-
-
-
-    public function Sync_check_db_load() {
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
 
-        if (empty($argument) || PHP_OS_FAMILY !== 'Linux') {
-            return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
-        }
+        $auditExtra = [
+            'direction'         => 'C2D',
+            'argument'          => $argument,
+            'device_id'         => isset($this->deviceId) ? (int)$this->deviceId : 1,
 
-        // 定義來源與目的地檔案清單（Controller → iDAS）
-        $fileList = [
-            '/home/kls/NTCS7/KLS_NTCS.Lin'      => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/home/kls/NTCS7/ntcs_barcode.db'   => '/var/www/html/database/ntcs_barcode_IDAS.db',
-            '/home/kls/NTCS7/ntcs_device.db'    => '/var/www/html/database/ntcs_device_IDAS.db',
-            '/home/kls/NTCS7/ntcs_data.db'      => '/var/www/html/database/ntcs_data.db',
+            // ★ 明確指定這支是 Load / 載入
+            'audit_action'      => 'load',
+            'audit_action_name' => '載入',
         ];
 
-        if ($argument === 'C2D') {
-            $copiedCount = 0;
-            foreach ($fileList as $src => $dst) {
-                if (file_exists($src)) {
-                    if (copy($src, $dst)) {
-                        $copiedCount++;
-
-                        // 如果是特定檔案可額外執行後處理
-                        if (basename($src) === 'KLS_NTCS.Lin') {
-                            //$this->stepModel->get_success_data_by_step();
-                        }
-                    } else {
-                        return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy: $src → $dst");
-                    }
-                } else {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Source file not found: $src");
-                }
-            }
-
-            return $this->MiscellaneousModel->generateErrorResponse(
-                'Success',
-                "SYNC" . ($text['success'] ?? 'success')
+        if (empty($argument) || PHP_OS_FAMILY !== 'Linux') {
+            return $this->syncDbAuditResponse(
+                'Error',
+                'Invalid sync argument or unsupported OS',
+                'SYNC_C2D',
+                $auditExtra
             );
         }
 
-        // 預留其他參數（例如 D2C）
-        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument');
+        // Controller → iDAS
+        $fileList = [
+            '/home/kls/NTCS7/KLS_NTCS.Lin'    => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
+            '/home/kls/NTCS7/ntcs_barcode.db' => '/var/www/html/database/ntcs_barcode_IDAS.db',
+            '/home/kls/NTCS7/ntcs_device.db'  => '/var/www/html/database/ntcs_device_IDAS.db',
+            '/home/kls/NTCS7/ntcs_data.db'    => '/var/www/html/database/ntcs_data.db',
+        ];
+
+        $auditExtra['files'] = $fileList;
+
+        if ($argument !== 'C2D') {
+            return $this->syncDbAuditResponse(
+                'Error',
+                'Invalid sync argument',
+                'SYNC_C2D',
+                $auditExtra
+            );
+        }
+
+        try {
+            $copiedCount = 0;
+            $copiedFiles = [];
+
+            foreach ($fileList as $src => $dst) {
+                if (!file_exists($src)) {
+                    $auditExtra['failed_stage'] = 'source_file_missing';
+                    $auditExtra['missing_file'] = $src;
+
+                    return $this->syncDbAuditResponse(
+                        'Error',
+                        "Source file not found: $src",
+                        'SYNC_C2D',
+                        $auditExtra
+                    );
+                }
+
+                if (copy($src, $dst)) {
+                    $copiedCount++;
+
+                    @chmod($dst, 0777);
+
+                    $copiedFiles[] = [
+                        'src' => $src,
+                        'dst' => $dst,
+                    ];
+
+                    if (basename($src) === 'KLS_NTCS.Lin') {
+                        // $this->stepModel->get_success_data_by_step();
+                    }
+
+                } else {
+                    $auditExtra['failed_stage'] = 'copy_file_failed';
+                    $auditExtra['failed_file'] = [
+                        'src' => $src,
+                        'dst' => $dst,
+                    ];
+
+                    return $this->syncDbAuditResponse(
+                        'Error',
+                        "Failed to copy: $src → $dst",
+                        'SYNC_C2D',
+                        $auditExtra
+                    );
+                }
+            }
+
+            $auditExtra['result'] = [
+                'copied_count' => $copiedCount,
+                'copied_files' => $copiedFiles,
+            ];
+
+            return $this->syncDbAuditResponse(
+                'Success',
+                'SYNC' . ($text['success'] ?? 'success'),
+                'SYNC_C2D',
+                $auditExtra
+            );
+
+        } catch (Throwable $e) {
+            $auditExtra['exception'] = $e->getMessage();
+
+            return $this->syncDbAuditResponse(
+                'Error',
+                'SYNC failed: ' . $e->getMessage(),
+                'SYNC_C2D',
+                $auditExtra
+            );
+        }
     }
+
+
 
     /**
      * 安全複製檔案，若 copy 失敗會寫 log

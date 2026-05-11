@@ -118,6 +118,7 @@ function operationAuditText(key, vars) {
             module_STEP: 'STEP',
             module_APP: 'APP',
             module_IDAS: 'iDAS',
+            module_DB_SYNC: 'DB Sync',
 
             action_NEW: 'NEW',
             action_EDIT: 'EDIT',
@@ -126,6 +127,9 @@ function operationAuditText(key, vars) {
             action_UP: 'UP',
             action_DOWN: 'DOWN',
             action_LOG: 'LOG',
+            action_SAVE: 'SAVE',
+            action_SYNC_D2C: 'SAVE',
+            action_SYNC_C2D: 'LOAD',
 
             status_SUCCESS: 'SUCCESS',
             status_FAIL: 'FAIL',
@@ -178,6 +182,7 @@ function operationAuditText(key, vars) {
             module_STEP: '步驟',
             module_APP: 'APP',
             module_IDAS: 'iDAS',
+            module_DB_SYNC: '資料庫同步',
 
             action_NEW: '新增',
             action_EDIT: '編輯',
@@ -186,6 +191,9 @@ function operationAuditText(key, vars) {
             action_UP: '上移',
             action_DOWN: '下移',
             action_LOG: '紀錄',
+            action_SAVE: '儲存',
+            action_SYNC_D2C: '儲存',
+            action_SYNC_C2D: '上傳',
 
             status_SUCCESS: '成功',
             status_FAIL: '失敗',
@@ -238,6 +246,7 @@ function operationAuditText(key, vars) {
             module_STEP: '步骤',
             module_APP: 'APP',
             module_IDAS: 'iDAS',
+            module_DB_SYNC: '数据库同步',
 
             action_NEW: '新增',
             action_EDIT: '编辑',
@@ -246,6 +255,9 @@ function operationAuditText(key, vars) {
             action_UP: '上移',
             action_DOWN: '下移',
             action_LOG: '纪录',
+            action_SAVE: '保存',
+            action_SYNC_D2C: '保存',
+            action_SYNC_C2D: '载入',
 
             status_SUCCESS: '成功',
             status_FAIL: '失败',
@@ -300,7 +312,10 @@ function operationAuditNormalizeModuleKey(value) {
         'STEP MANAGER': 'STEP',
 
         'APP': 'APP',
-        'IDAS': 'IDAS'
+        'IDAS': 'IDAS',
+
+        'DB SYNC': 'DB_SYNC',
+        'DATABASE SYNC': 'DB_SYNC'
     };
 
     return map[normalized] || raw.toUpperCase();
@@ -338,7 +353,13 @@ function operationAuditNormalizeActionKey(value) {
         'DOWN': 'DOWN',
         'MOVE DOWN': 'DOWN',
 
-        'LOG': 'LOG'
+        'LOG': 'LOG',
+
+        'SAVE': 'SAVE',
+        'SYNC D2C': 'SAVE',
+        'SYNC C2D': 'SAVE',
+        'D2C': 'SAVE',
+        'C2D': 'SAVE'
     };
 
     return map[normalized] || raw.toUpperCase();
@@ -781,6 +802,17 @@ function operationAuditNormalizeForSignature(value) {
     return String(value === null || value === undefined ? '' : value);
 }
 
+function operationAuditIsDbSyncRow(row) {
+    row = row || {};
+
+    var moduleKey = operationAuditNormalizeModuleKey(row.module || '');
+    var actionRaw = String(row.action || '').trim().toUpperCase();
+
+    return moduleKey === 'DB_SYNC'
+        || actionRaw === 'SYNC_D2C'
+        || actionRaw === 'SYNC_C2D';
+}
+
 function operationAuditBuildRenderSignature(records) {
     if (!records || !records.length) {
         return 'empty';
@@ -837,7 +869,11 @@ function renderSettingOperationAuditLogs(records) {
     tbody.innerHTML = records.map(function(row, index) {
         var logId = parseInt(row.log_id || 0, 10);
         var isNew = operationAuditLogLastLogId > 0 && logId > operationAuditLogLastLogId;
-        var rowClass = 'operation-audit-row' + (isNew ? ' operation-audit-new' : '');
+        var isDbSync = operationAuditIsDbSyncRow(row);
+
+        var rowClass = 'operation-audit-row'
+            + (isNew ? ' operation-audit-new' : '')
+            + (isDbSync ? ' operation-audit-db-sync-row' : '');
 
         if (logId > maxLogId) maxLogId = logId;
 
@@ -1044,6 +1080,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 #OperationAuditLogDisplay #operation_audit_log_table tbody tr:nth-child(even) td {
     background-color: #ffffff;
+}
+
+/* DB_SYNC / SAVE 整列藍色 */
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-db-sync-row td {
+    background-color: #d8ecff !important;
+    color: #063b63 !important;
+    font-weight: 800 !important;
+}
+
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-db-sync-row:hover td {
+    background-color: #c4e2ff !important;
+}
+
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-db-sync-row.selected td {
+    background-color: #9acfff !important;
+    color: #002b4a !important;
 }
 
 #OperationAuditLogDisplay #operation_audit_log_table tbody tr.selected,
