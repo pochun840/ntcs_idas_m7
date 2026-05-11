@@ -9,7 +9,7 @@
                 <label class="operation-audit-source-label" for="operationAuditSourceSelect" data-i18n="audit_monitor">Monitor</label>
                 <select id="operationAuditSourceSelect" class="operation-audit-source-select">
                     <option value="idas" selected>iDAS</option>
-                    <option value="app">APP</option>
+                    <option value="app">Controller</option>
                 </select>
             </div>
             <div class="operation-audit-monitor-right">
@@ -323,7 +323,11 @@ function operationAuditNormalizeModuleKey(value) {
 
 function operationAuditNormalizeActionKey(value) {
     var raw = String(value === null || value === undefined ? '' : value).trim();
-    var normalized = raw.toUpperCase().replace(/[\s\-_]+/g, ' ');
+
+    var normalized = raw
+        .toUpperCase()
+        .replace(/[\s\-_]+/g, ' ')
+        .trim();
 
     var map = {
         'NEW': 'NEW',
@@ -354,16 +358,20 @@ function operationAuditNormalizeActionKey(value) {
         'MOVE DOWN': 'DOWN',
 
         'LOG': 'LOG',
-
         'SAVE': 'SAVE',
-        'SYNC D2C': 'SAVE',
-        'SYNC C2D': 'SAVE',
-        'D2C': 'SAVE',
-        'C2D': 'SAVE'
+        'LOAD': 'SYNC_C2D',
+
+        // ★ DB Sync 不要轉成 SAVE / LOAD
+        // ★ 要保留成語系 key：SYNC_D2C / SYNC_C2D
+        'SYNC D2C': 'SYNC_D2C',
+        'SYNC C2D': 'SYNC_C2D',
+        'D2C': 'SYNC_D2C',
+        'C2D': 'SYNC_C2D'
     };
 
     return map[normalized] || raw.toUpperCase();
 }
+
 
 function operationAuditTranslateValue(type, value) {
     var raw = String(value === null || value === undefined ? '' : value).trim();
