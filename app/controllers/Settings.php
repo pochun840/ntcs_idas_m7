@@ -2768,6 +2768,84 @@ class Settings extends Controller
     }
 
 
+    private function accountUserLocale(): string
+    {
+        $raw = '';
+        if (isset($_COOKIE['language'])) {
+            $raw = strtolower(trim((string)$_COOKIE['language']));
+        } elseif (isset($_COOKIE['lang'])) {
+            $raw = strtolower(trim((string)$_COOKIE['lang']));
+        }
+
+        $raw = str_replace('_', '-', $raw);
+
+        if ($raw === 'zh-tw' || $raw === 'zh-hant' || $raw === 'tw') {
+            return 'zh-tw';
+        }
+        if ($raw === 'zh-cn' || $raw === 'zh-hans' || $raw === 'cn' || $raw === 'zh') {
+            return 'zh-cn';
+        }
+        if ($raw === 'en' || $raw === 'en-us') {
+            return 'en-us';
+        }
+
+        return 'en-us';
+    }
+
+    private function accountUserFallbackText(string $key, string $default = ''): string
+    {
+        $dict = [
+            'en-us' => [
+                'account_upload_controller_success' => 'Sync to controller success. Rows: {rows}.',
+                'account_upload_controller_failed'  => 'Sync to controller failed: {error}',
+                'account_upload_controller_linux_only' => 'Sync to controller is only supported on Linux.',
+                'account_upload_controller_source_missing' => 'Source iDAS DB not found: {path}',
+                'account_upload_controller_target_missing' => 'Target controller DB not found: {path}',
+                'account_upload_controller_target_not_writable' => 'Target controller DB or folder is not writable: {path}',
+                'account_upload_controller_empty' => 'Source user table has no data. Sync aborted.',
+                'account_upload_controller_backup_failed' => 'Backup target DB failed: {path}',
+                'account_import_result' => 'Import success. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.',
+                'account_import_account_failed' => 'Import account failed: {error}',
+                'account_new_success' => 'New account created successfully.',
+                'account_edit_success' => 'Account updated successfully.',
+                'account_delete_account_success' => 'Account deleted successfully.',
+            ],
+            'zh-tw' => [
+                'account_upload_controller_success' => '同步到控制器成功。筆數：{rows}。',
+                'account_upload_controller_failed'  => '同步到控制器失敗：{error}',
+                'account_upload_controller_linux_only' => '同步到控制器僅支援 Linux。',
+                'account_upload_controller_source_missing' => '找不到 iDAS 來源資料庫：{path}',
+                'account_upload_controller_target_missing' => '找不到控制器目標資料庫：{path}',
+                'account_upload_controller_target_not_writable' => '控制器目標資料庫或資料夾不可寫入：{path}',
+                'account_upload_controller_empty' => 'iDAS user table 沒有資料，已取消同步。',
+                'account_upload_controller_backup_failed' => '備份控制器資料庫失敗：{path}',
+                'account_import_result' => '匯入成功。新增：{inserted}，更新：{updated}，跳過：{skipped}。',
+                'account_import_account_failed' => '匯入帳號失敗：{error}',
+                'account_new_success' => '新增帳號成功。',
+                'account_edit_success' => '編輯帳號成功。',
+                'account_delete_account_success' => '刪除帳號成功。',
+            ],
+            'zh-cn' => [
+                'account_upload_controller_success' => '同步到控制器成功。笔数：{rows}。',
+                'account_upload_controller_failed'  => '同步到控制器失败：{error}',
+                'account_upload_controller_linux_only' => '同步到控制器仅支持 Linux。',
+                'account_upload_controller_source_missing' => '找不到 iDAS 来源数据库：{path}',
+                'account_upload_controller_target_missing' => '找不到控制器目标数据库：{path}',
+                'account_upload_controller_target_not_writable' => '控制器目标数据库或文件夹不可写入：{path}',
+                'account_upload_controller_empty' => 'iDAS user table 没有数据，已取消同步。',
+                'account_upload_controller_backup_failed' => '备份控制器数据库失败：{path}',
+                'account_import_result' => '导入成功。新增：{inserted}，更新：{updated}，跳过：{skipped}。',
+                'account_import_account_failed' => '导入账号失败：{error}',
+                'account_new_success' => '新增账号成功。',
+                'account_edit_success' => '编辑账号成功。',
+                'account_delete_account_success' => '删除账号成功。',
+            ],
+        ];
+
+        $locale = $this->accountUserLocale();
+        return $dict[$locale][$key] ?? $dict['en-us'][$key] ?? $default;
+    }
+
     private function accountUserText(string $key, string $default = ''): string
     {
         static $accountText = null;
@@ -2788,7 +2866,11 @@ class Settings extends Controller
             }
         }
 
-        return isset($accountText[$key]) ? (string)$accountText[$key] : $default;
+        if (isset($accountText[$key]) && (string)$accountText[$key] !== '') {
+            return (string)$accountText[$key];
+        }
+
+        return $this->accountUserFallbackText($key, $default);
     }
 
     private function accountUserFormatText(string $key, string $default = '', array $vars = []): string
@@ -2798,6 +2880,16 @@ class Settings extends Controller
             $msg = str_replace('{' . $k . '}', (string)$v, $msg);
         }
         return $msg;
+    }
+
+    private function accountUserProtectedNames(): array
+    {
+        return ['kls', 'guest', 'admin'];
+    }
+
+    private function accountUserIsProtectedName(string $name): bool
+    {
+        return in_array(strtolower(trim($name)), $this->accountUserProtectedNames(), true);
     }
 
     private function accountUserRequireAdmin(): void
@@ -2917,20 +3009,20 @@ class Settings extends Controller
             $this->accountUserRequireAdmin();
 
             if (PHP_OS_FAMILY !== 'Linux') {
-                throw new Exception('Upload to controller DB is only supported on Linux.');
+                throw new Exception($this->accountUserText('account_upload_controller_linux_only', 'Sync to controller is only supported on Linux.'));
             }
 
             $sourcePath = $this->accountUserIdasDbPathStrict();
             $targetPath = $this->accountUserControllerDbPath();
 
             if (!is_file($sourcePath)) {
-                throw new Exception('Source iDAS DB not found: ' . $sourcePath);
+                throw new Exception($this->accountUserFormatText('account_upload_controller_source_missing', 'Source iDAS DB not found: {path}', ['path' => $sourcePath]));
             }
             if (!is_file($targetPath)) {
-                throw new Exception('Target controller DB not found: ' . $targetPath);
+                throw new Exception($this->accountUserFormatText('account_upload_controller_target_missing', 'Target controller DB not found: {path}', ['path' => $targetPath]));
             }
             if (!is_writable($targetPath) || !is_writable(dirname($targetPath))) {
-                throw new Exception('Target controller DB or folder is not writable: ' . $targetPath);
+                throw new Exception($this->accountUserFormatText('account_upload_controller_target_not_writable', 'Target controller DB or folder is not writable: {path}', ['path' => $targetPath]));
             }
 
             $sourceDb = $this->accountUserOpenSqliteFile($sourcePath);
@@ -2955,13 +3047,13 @@ class Settings extends Controller
 
             $rows = $sourceDb->query('SELECT ' . $columnSql . ' FROM "user"' . $orderSql)->fetchAll(PDO::FETCH_ASSOC);
             if (empty($rows)) {
-                throw new Exception('Source user table has no data. Upload aborted.');
+                throw new Exception($this->accountUserText('account_upload_controller_empty', 'Source user table has no data. Sync aborted.'));
             }
 
             // Backup target DB before touching table user only.
             $backupPath = $targetPath . '.user_backup_' . date('Ymd_His');
             if (!@copy($targetPath, $backupPath)) {
-                throw new Exception('Backup target DB failed: ' . $backupPath);
+                throw new Exception($this->accountUserFormatText('account_upload_controller_backup_failed', 'Backup target DB failed: {path}', ['path' => $backupPath]));
             }
             @chmod($backupPath, 0666);
 
@@ -3319,6 +3411,9 @@ class Settings extends Controller
             $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
 
             $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
+            if ($this->accountUserIsProtectedName($name)) {
+                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+            }
             $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
 
             if ($password !== $confirm) {
@@ -3361,10 +3456,28 @@ class Settings extends Controller
             $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
 
             $this->accountUserValidateText($oldName, $this->accountUserText('account_old_username', 'Old username'));
+
+            $oldNameLower = strtolower($oldName);
+            $nameLower = strtolower($name);
+
+            // admin is protected from delete/import/rename, but its password can be edited.
+            // guest/kls remain fully protected from editing.
+            if ($this->accountUserIsProtectedName($oldName)) {
+                if ($oldNameLower !== 'admin') {
+                    throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+                }
+
+                if ($nameLower !== 'admin') {
+                    throw new Exception($this->accountUserText('account_admin_rename_blocked', 'The admin account name cannot be changed.'));
+                }
+            } elseif ($this->accountUserIsProtectedName($name)) {
+                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+            }
+
             if ($oldName !== $name) {
                 $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
             } else {
-                // 允許既有 guest/admin/user1 等舊帳號在未改名時繼續修改密碼。
+                // 允許既有 admin/user1 等舊帳號在未改名時繼續修改密碼。
                 $this->accountUserValidateText($name, $this->accountUserText('account_username', 'Username'));
             }
 
@@ -3392,7 +3505,15 @@ class Settings extends Controller
                 }
             }
 
-            if ($password === '') {
+            if ($oldNameLower === 'admin') {
+                // admin cannot be renamed or deleted, but password editing is allowed.
+                if ($password !== '') {
+                    $stmt = $db->prepare("UPDATE `user` SET passwd = :passwd WHERE LOWER(name) = 'admin'");
+                    $stmt->execute([
+                        ':passwd' => $password,
+                    ]);
+                }
+            } elseif ($password === '') {
                 $stmt = $db->prepare("UPDATE `user` SET name = :name, law = :law WHERE name = :old_name");
                 $stmt->execute([
                     ':name'     => $name,
@@ -3421,6 +3542,9 @@ class Settings extends Controller
             $this->accountUserRequireAdmin();
             $name = $this->accountUserClean($_POST['username'] ?? '');
             $this->accountUserValidateText($name, $this->accountUserText('account_username', 'Username'));
+            if ($this->accountUserIsProtectedName($name)) {
+                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+            }
 
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);

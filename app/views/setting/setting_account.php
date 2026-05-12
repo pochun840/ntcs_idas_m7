@@ -60,7 +60,14 @@ if (!function_exists('settingAccountLocalFallback')) {
                 'account_confirm_password' => 'Confirm Password',
                 'account_import' => 'Import',
                 'account_export' => 'Export',
-                'account_upload' => 'Upload',
+                'account_upload' => 'Sync to Controller',
+                'account_csv_template' => 'CSV Template',
+                'account_total_accounts' => 'Accounts',
+                'account_last_sync_time' => 'Last sync',
+                'account_sync_status' => 'Sync status',
+                'account_sync_success' => 'Success',
+                'account_sync_failed' => 'Failed',
+                'account_search_placeholder' => 'Search account...',
                 'account_new_title' => 'New Account',
                 'account_edit_title' => 'Edit Account',
                 'account_show_password' => 'Show password',
@@ -80,7 +87,14 @@ if (!function_exists('settingAccountLocalFallback')) {
                 'account_confirm_password' => '確認密碼',
                 'account_import' => '匯入',
                 'account_export' => '匯出',
-                'account_upload' => '上傳',
+                'account_upload' => '同步到控制器',
+                'account_csv_template' => 'CSV 範本',
+                'account_total_accounts' => '帳號數',
+                'account_last_sync_time' => '最後同步時間',
+                'account_sync_status' => '同步狀態',
+                'account_sync_success' => '成功',
+                'account_sync_failed' => '失敗',
+                'account_search_placeholder' => '搜尋帳號...',
                 'account_new_title' => '新增帳號',
                 'account_edit_title' => '編輯帳號',
                 'account_show_password' => '顯示密碼',
@@ -100,7 +114,14 @@ if (!function_exists('settingAccountLocalFallback')) {
                 'account_confirm_password' => '确认密码',
                 'account_import' => '导入',
                 'account_export' => '导出',
-                'account_upload' => '上传',
+                'account_upload' => '同步到控制器',
+                'account_csv_template' => 'CSV 范本',
+                'account_total_accounts' => '账号数',
+                'account_last_sync_time' => '最后同步时间',
+                'account_sync_status' => '同步状态',
+                'account_sync_success' => '成功',
+                'account_sync_failed' => '失败',
+                'account_search_placeholder' => '搜寻账号...',
                 'account_new_title' => '新增账号',
                 'account_edit_title' => '编辑账号',
                 'account_show_password' => '显示密码',
@@ -146,6 +167,16 @@ if (!function_exists('settingAccountLabelText')) {
 
 ?>
             <div id="AccountDisplay" class="setting-account-page" style="display:none;">
+                <div class="account-summary-bar">
+                    <div class="account-summary-left">
+                        <span id="accountUserCountText"><?php echo settingAccountViewText('account_total_accounts', 'Accounts'); ?>: 0</span>
+                        <span id="accountLastSyncText"><?php echo settingAccountViewText('account_last_sync_time', 'Last sync'); ?>: -</span>
+                        <span id="accountSyncStatusText"><?php echo settingAccountViewText('account_sync_status', 'Sync status'); ?>: -</span>
+                    </div>
+                    <div class="account-summary-right">
+                        <input id="accountSearchInput" class="account-search-input" type="text" placeholder="<?php echo settingAccountViewText('account_search_placeholder', 'Search account...'); ?>" autocomplete="off">
+                    </div>
+                </div>
                 <div class="table-container account-table-container">
                     <div class="scrollbar" id="style-accounttable">
                         <div class="scrollbar-force-overflow">
@@ -171,7 +202,7 @@ if (!function_exists('settingAccountLabelText')) {
                         <input id="account_delete_btn" type="button" value="<?php echo settingAccountViewText('Delete', 'Delete'); ?>" onclick="settingAccountAction('delete')">
                         <input id="account_import_btn" type="button" value="<?php echo settingAccountViewText('account_import', 'Import'); ?>" onclick="settingAccountAction('import')">
                         <input id="account_export_btn" type="button" value="<?php echo settingAccountViewText('account_export', 'Export'); ?>" onclick="settingAccountAction('export')">
-                        <input id="account_upload_controller_btn" type="button" value="<?php echo settingAccountViewText('account_upload', 'Upload'); ?>" onclick="settingAccountAction('upload_controller')">
+                        <input id="account_upload_controller_btn" class="account-sync-controller-btn" type="button" value="<?php echo settingAccountViewText('account_upload', 'Sync to Controller'); ?>" onclick="settingAccountAction('upload_controller')">
                     </div>
                     <input id="account_import_file" type="file" accept=".csv,text/csv" style="display:none" onchange="importSettingAccountFile(this)">
                 </div>

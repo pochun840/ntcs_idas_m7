@@ -76,7 +76,22 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_append' => 'Append',
                 'account_import_overwrite' => 'Overwrite',
                 'account_import_overwrite_confirm' => 'Overwrite will delete all accounts except kls, guest, and admin. Continue?',
-                'account_upload_confirm' => 'Upload user list to controller ?',
+                'account_upload_confirm' => 'This will sync the iDAS user list to the controller and overwrite the controller user table. Continue?',
+                'account_upload_to_controller' => 'Sync to Controller',
+                'account_csv_template' => 'CSV Template',
+                'account_builtin_account' => 'Built-in',
+                'account_admin_account' => 'Admin',
+                'account_total_accounts' => 'Accounts',
+                'account_last_sync_time' => 'Last sync',
+                'account_never_synced' => '-' ,
+                'account_sync_status' => 'Sync status',
+                'account_sync_success' => 'Success',
+                'account_sync_failed' => 'Failed',
+                'account_sync_rows' => 'Rows',
+                'account_search_placeholder' => 'Search account...',
+                'account_processing' => 'Processing...',
+                'account_protected_action' => 'This account is protected and cannot be deleted.',
+                'account_admin_rename_blocked' => 'The admin account name cannot be changed.',
                 'account_select_one' => 'Please select one account.',
                 'account_delete_confirm_prefix' => 'Are you sure you want to delete this account?<br><br>Account: ',
                 'account_delete_confirm' => 'Are you sure you want to delete this account?<br><br>Account: {account}',
@@ -128,7 +143,22 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_append' => '新增',
                 'account_import_overwrite' => '覆蓋',
                 'account_import_overwrite_confirm' => '覆蓋會刪除除了 kls、guest、admin 以外的所有帳號，確定繼續？',
-                'account_upload_confirm' => '是否要將 user list 上傳到控制器 ？',
+                'account_upload_confirm' => '此動作會將 iDAS 使用者清單同步到控制器，並覆蓋控制器的 user table。確定繼續？',
+                'account_upload_to_controller' => '同步到控制器',
+                'account_csv_template' => 'CSV 範本',
+                'account_builtin_account' => '內建帳號',
+                'account_admin_account' => '管理員',
+                'account_total_accounts' => '帳號數',
+                'account_last_sync_time' => '最後同步時間',
+                'account_never_synced' => '-',
+                'account_sync_status' => '同步狀態',
+                'account_sync_success' => '成功',
+                'account_sync_failed' => '失敗',
+                'account_sync_rows' => '筆數',
+                'account_search_placeholder' => '搜尋帳號...',
+                'account_processing' => '處理中...',
+                'account_protected_action' => '此帳號受保護，無法刪除。',
+                'account_admin_rename_blocked' => 'admin 帳號名稱不可變更。',
                 'account_select_one' => '請選擇一個帳號。',
                 'account_delete_confirm_prefix' => '是否確定刪除此帳號？<br><br>帳號：',
                 'account_delete_confirm' => '是否確定刪除此帳號？<br><br>帳號：{account}',
@@ -180,7 +210,22 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_append' => '新增',
                 'account_import_overwrite' => '覆盖',
                 'account_import_overwrite_confirm' => '覆盖会删除除了 kls、guest、admin 以外的所有账号，确定继续？',
-                'account_upload_confirm' => '是否要将 user list 上传到控制器 ？',
+                'account_upload_confirm' => '此操作会将 iDAS 使用者清单同步到控制器，并覆盖控制器的 user table。确定继续？',
+                'account_upload_to_controller' => '同步到控制器',
+                'account_csv_template' => 'CSV 范本',
+                'account_builtin_account' => '内建账号',
+                'account_admin_account' => '管理员',
+                'account_total_accounts' => '账号数',
+                'account_last_sync_time' => '最后同步时间',
+                'account_never_synced' => '-',
+                'account_sync_status' => '同步状态',
+                'account_sync_success' => '成功',
+                'account_sync_failed' => '失败',
+                'account_sync_rows' => '笔数',
+                'account_search_placeholder' => '搜寻账号...',
+                'account_processing' => '处理中...',
+                'account_protected_action' => '此账号受保护，无法删除。',
+                'account_admin_rename_blocked' => 'admin 账号名称不可变更。',
                 'account_select_one' => '请选择一个账号。',
                 'account_delete_confirm_prefix' => '是否确定删除此账号？<br><br>账号：',
                 'account_delete_confirm' => '是否确定删除此账号？<br><br>账号：{account}',
@@ -318,6 +363,8 @@ var selectedAccountPassword = '';
 var settingAccountRecordMap = {};
 var settingAccountMode = 'new';
 var settingAccountLoaded = false;
+var settingAccountAllRecords = [];
+var settingAccountBusy = false;
 
 function settingAccountApi(path) {
     return '?url=Settings/' + path;
@@ -663,11 +710,116 @@ function loadSettingAccountUsers() {
             return;
         }
 
-        renderSettingAccountUsers(json.records || []);
+        settingAccountAllRecords = json.records || [];
+        renderSettingAccountUsers(settingAccountAllRecords);
     }).catch(function(err) {
         if (tbody) tbody.innerHTML = '<tr><td colspan="2">' + saT('account_load_failed', 'Load failed') + '</td></tr>';
         settingAccountAlert(err.message || saT('account_load_failed_full', 'Load account failed.'));
     });
+}
+
+
+function settingAccountIsProtectedUser(username) {
+    var name = String(username || '').trim().toLowerCase();
+    return name === 'guest' || name === 'admin' || name === 'kls';
+}
+
+function settingAccountProtectedBadge(username) {
+    var name = String(username || '').trim().toLowerCase();
+
+    // Protected status is still enforced for guest/admin/kls,
+    // but only admin shows a visible label in the user list.
+    if (name === 'admin') {
+        return ' <span class="account-protected-badge">' +
+            settingAccountEscape(saT('account_admin_account', 'Admin')) +
+            '</span>';
+    }
+
+    return '';
+}
+
+function updateSettingAccountSummary(count) {
+    var countEl = document.getElementById('accountUserCountText');
+    var syncEl = document.getElementById('accountLastSyncText');
+    var statusEl = document.getElementById('accountSyncStatusText');
+
+    if (countEl) {
+        countEl.innerText = saT('account_total_accounts', 'Accounts') + ': ' + (count || 0);
+    }
+
+    var lastSync = '';
+    var syncStatus = '';
+    var syncRows = '';
+    try {
+        lastSync = localStorage.getItem('accountLastSyncToController') || '';
+        syncStatus = localStorage.getItem('accountLastSyncStatus') || '';
+        syncRows = localStorage.getItem('accountLastSyncRows') || '';
+    } catch (e) {}
+
+    if (syncEl) {
+        syncEl.innerText = saT('account_last_sync_time', 'Last sync') + ': ' + (lastSync || saT('account_never_synced', '-'));
+    }
+
+    if (statusEl) {
+        var statusText = '-';
+        if (syncStatus === 'success') {
+            statusText = saT('account_sync_success', 'Success');
+            if (syncRows !== '') {
+                statusText += ' / ' + saT('account_sync_rows', 'Rows') + ': ' + syncRows;
+            }
+        } else if (syncStatus === 'failed') {
+            statusText = saT('account_sync_failed', 'Failed');
+        }
+        statusEl.innerText = saT('account_sync_status', 'Sync status') + ': ' + statusText;
+    }
+}
+
+function setSettingAccountBusy(isBusy) {
+    settingAccountBusy = !!isBusy;
+    var ids = [
+        'account_new_btn',
+        'account_edit_btn',
+        'account_delete_btn',
+        'account_import_btn',
+        'account_export_btn',
+        'account_template_btn',
+        'account_upload_controller_btn'
+    ];
+
+    ids.forEach(function(id) {
+        var btn = document.getElementById(id);
+        if (!btn) return;
+
+        if (isBusy) {
+            if (!btn.getAttribute('data-original-value')) {
+                btn.setAttribute('data-original-value', btn.value || btn.innerText || '');
+            }
+            btn.disabled = true;
+            btn.classList.add('account-action-busy');
+        } else {
+            var original = btn.getAttribute('data-original-value');
+            if (original !== null) {
+                if ('value' in btn) btn.value = original;
+                else btn.innerText = original;
+                btn.removeAttribute('data-original-value');
+            }
+            btn.disabled = false;
+            btn.classList.remove('account-action-busy');
+        }
+    });
+}
+
+function downloadSettingAccountTemplate() {
+    var csv = 'No,User Name,Password,Law\n1,user001,1234,1\n';
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'account_user_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 0);
 }
 
 function renderSettingAccountUsers(records) {
@@ -683,8 +835,17 @@ function renderSettingAccountUsers(records) {
         return String(row.name || '').toLowerCase() !== 'kls';
     });
 
+    var searchInput = document.getElementById('accountSearchInput');
+    var keyword = searchInput ? String(searchInput.value || '').trim().toLowerCase() : '';
+    if (keyword !== '') {
+        records = records.filter(function(row) {
+            return String(row.name || '').toLowerCase().indexOf(keyword) !== -1;
+        });
+    }
+
     if (!records.length) {
         tbody.innerHTML = '<tr><td colspan="2">' + saT('account_no_data', 'No Data') + '</td></tr>';
+        updateSettingAccountSummary(0);
         return;
     }
 
@@ -694,9 +855,10 @@ function renderSettingAccountUsers(records) {
 
         return '<tr class="account-user-row" data-name="' + name + '" data-passwd="' + passwd + '" onclick="selectSettingAccountUser(this)">' +
             '<td>' + (index + 1) + '</td>' +
-            '<td>' + name + '</td>' +
+            '<td>' + name + settingAccountProtectedBadge(row.name || '') + '</td>' +
             '</tr>';
     }).join('');
+    updateSettingAccountSummary(records.length);
 }
 
 function selectSettingAccountUser(row) {
@@ -717,13 +879,37 @@ function exportSettingAccounts() {
 }
 
 function uploadSettingAccountsToController() {
+    if (settingAccountBusy) return;
+    setSettingAccountBusy(true);
+
     settingAccountPost('account_user_upload_controller', {}).then(function(json) {
         settingAccountAlert(json.res_msg || (json.success ? saT('account_upload_success', 'Upload success.') : saT('account_upload_failed', 'Upload failed.')));
+
+        try {
+            var now = new Date();
+            var ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+            localStorage.setItem('accountLastSyncToController', ts);
+            localStorage.setItem('accountLastSyncStatus', json.success ? 'success' : 'failed');
+            localStorage.setItem('accountLastSyncRows', json.success ? String(json.rows || json.count || '') : '');
+        } catch (e) {}
+
         if (json.success) {
             loadSettingAccountUsers();
+        } else {
+            updateSettingAccountSummary((document.querySelectorAll('#AccountDisplay .account-user-row') || []).length);
         }
     }).catch(function(err) {
+        try {
+            var now = new Date();
+            var ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+            localStorage.setItem('accountLastSyncToController', ts);
+            localStorage.setItem('accountLastSyncStatus', 'failed');
+            localStorage.setItem('accountLastSyncRows', '');
+        } catch (e) {}
+        updateSettingAccountSummary((document.querySelectorAll('#AccountDisplay .account-user-row') || []).length);
         settingAccountAlert(err.message || saT('account_upload_failed', 'Upload failed.'));
+    }).finally(function() {
+        setSettingAccountBusy(false);
     });
 }
 
@@ -751,6 +937,9 @@ function importSettingAccountFile(input) {
     var formData = new FormData();
     formData.append('account_file', file);
     formData.append('import_mode', input.getAttribute('data-import-mode') || 'append');
+
+    if (settingAccountBusy) return;
+    setSettingAccountBusy(true);
 
     fetch(settingAccountApi('account_user_import'), {
         method: 'POST',
@@ -790,6 +979,7 @@ function importSettingAccountFile(input) {
     }).catch(function(err) {
         settingAccountAlert(err.message || saT('account_import_failed', 'Import failed.'));
     }).finally(function() {
+        setSettingAccountBusy(false);
         input.value = '';
     });
 }
@@ -920,12 +1110,15 @@ function settingAccountResolvePasswordForSave(inputId) {
 }
 
 function settingAccountAction(mode) {
+    if (settingAccountBusy) return;
     settingAccountMode = mode;
 
     if (mode === 'new') {
         document.getElementById('settingAccountModalTitle').innerText = saT('account_new_title', 'New Account');
         document.getElementById('account_old_username').value = '';
         document.getElementById('account_username').value = '';
+        document.getElementById('account_username').removeAttribute('readonly');
+        document.getElementById('account_username').classList.remove('account-username-readonly');
         document.getElementById('account_password').value = '';
         document.getElementById('account_confirm_password').value = '';
         document.getElementById('account_password').removeAttribute('data-real-password');
@@ -939,6 +1132,11 @@ function settingAccountAction(mode) {
 
     if (mode === 'export') {
         exportSettingAccounts();
+        return;
+    }
+
+    if (mode === 'template') {
+        downloadSettingAccountTemplate();
         return;
     }
 
@@ -964,7 +1162,7 @@ function settingAccountAction(mode) {
 
     if (mode === 'upload_controller') {
         settingAccountConfirm(
-            saT('account_upload_confirm', 'Upload user list to controller DB?<br><br>Target: /home/kls/NTCS7/KLS_NTCS.Lin<br>Only table user will be modified.<br>Other tables will not be changed.'),
+            saT('account_upload_confirm', 'This will sync the iDAS user list to the controller and overwrite the controller user table. Continue?'),
             function() {
                 uploadSettingAccountsToController();
             }
@@ -975,6 +1173,19 @@ function settingAccountAction(mode) {
     if (!selectedAccountUser) {
         settingAccountAlert(saT('account_select_one', 'Please select one account.'));
         return;
+    }
+
+    if (mode === 'delete' && settingAccountIsProtectedUser(selectedAccountUser)) {
+        settingAccountAlert(saT('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+        return;
+    }
+
+    if (mode === 'edit') {
+        var protectedEditUser = String(selectedAccountUser || '').trim().toLowerCase();
+        if (protectedEditUser === 'guest' || protectedEditUser === 'kls') {
+            settingAccountAlert(saT('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+            return;
+        }
     }
 
     if (mode === 'edit') {
@@ -1097,6 +1308,11 @@ function saveSettingAccount() {
 
     // New 或 Edit 改名時，Username 必須符合 6~8 字元規則。
     // Edit 未改名時允許既有 guest/admin/user1 等舊帳號繼續修改密碼或刪除。
+    if (settingAccountMode === 'edit' && String(oldUsername || '').toLowerCase() === 'admin' && String(username || '').toLowerCase() !== 'admin') {
+        settingAccountAlert(saT('account_admin_rename_blocked', 'The admin account name cannot be changed.'));
+        return;
+    }
+
     if (settingAccountMode === 'new' || username !== oldUsername) {
         if (!settingAccountValidUsername(username)) {
             settingAccountAlert(saT('account_username_rule', 'Username must be 6 to 8 characters and only allows A-Z, a-z, 0-9.'));
@@ -1798,8 +2014,17 @@ function downloadSettingAccountQrCode(username, password, event) {
             return String(row.name || '').toLowerCase() !== 'kls';
         });
 
+        var searchInput = document.getElementById('accountSearchInput');
+        var keyword = searchInput ? String(searchInput.value || '').trim().toLowerCase() : '';
+        if (keyword !== '') {
+            records = records.filter(function(row) {
+                return String(row.name || '').toLowerCase().indexOf(keyword) !== -1;
+            });
+        }
+
         if (!records.length) {
             tbody.innerHTML = '<tr><td colspan="3">' + accountQrPatchText('account_no_data', 'No Data') + '</td></tr>';
+            if (typeof updateSettingAccountSummary === 'function') updateSettingAccountSummary(0);
             return;
         }
 
@@ -1811,7 +2036,7 @@ function downloadSettingAccountQrCode(username, password, event) {
 
             return '<tr class="account-user-row" data-name="' + name + '" data-passwd="' + passwd + '" onclick="selectSettingAccountUser(this)">'
                 + '<td>' + (index + 1) + '</td>'
-                + '<td>' + name + '</td>'
+                + '<td>' + name + (typeof settingAccountProtectedBadge === 'function' ? settingAccountProtectedBadge(row.name || '') : '') + '</td>'
                 + '<td class="account-qrcode-cell">'
                     + '<button type="button" class="account-qrcode-btn" data-name="' + name + '" data-passwd="' + passwd + '" onclick="downloadSettingAccountQrCodeFromButton(this,event)">'
                         + accountQrPatchEscape(btnText)
@@ -1819,6 +2044,7 @@ function downloadSettingAccountQrCode(username, password, event) {
                 + '</td>'
                 + '</tr>';
         }).join('');
+        if (typeof updateSettingAccountSummary === 'function') updateSettingAccountSummary(records.length);
     }
 
     window.downloadSettingAccountQrCodeFromButton = function(btn, event) {
@@ -1932,19 +2158,19 @@ function downloadSettingAccountQrCode(username, password, event) {
             'en-us': {
                 account_no:'No', account_user_name:'User Name', account_new_title:'New Account', account_edit_title:'Edit Account',
                 account_username:'Username', account_password:'Password', account_confirm_password:'Confirm Password',
-                account_import:'Import', account_export:'Export', account_upload:'Upload', account_qrcode:'QRCode', account_qrcode_download:'Download',
+                account_import:'Import', account_export:'Export', account_upload:'Sync to Controller', account_csv_template:'CSV Template', account_qrcode:'QRCode', account_qrcode_download:'Download', account_search_placeholder:'Search account...', account_sync_status:'Sync status', account_last_sync_time:'Last sync', account_total_accounts:'Accounts',
                 account_show_password:'Show password', account_hide_password:'Hide password', save:'Save', close:'Close', New:'New', Edit:'Edit', Delete:'Delete'
             },
             'zh-tw': {
                 account_no:'編號', account_user_name:'使用者名稱', account_new_title:'新增帳號', account_edit_title:'編輯帳號',
                 account_username:'使用者名稱', account_password:'密碼', account_confirm_password:'確認密碼',
-                account_import:'匯入', account_export:'匯出', account_upload:'上傳', account_qrcode:'QRCode', account_qrcode_download:'下載',
+                account_import:'匯入', account_export:'匯出', account_upload:'同步到控制器', account_csv_template:'CSV 範本', account_qrcode:'QRCode', account_qrcode_download:'下載', account_search_placeholder:'搜尋帳號...', account_sync_status:'同步狀態', account_last_sync_time:'最後同步時間', account_total_accounts:'帳號數',
                 account_show_password:'顯示密碼', account_hide_password:'隱藏密碼', save:'儲存', close:'關閉', New:'新增', Edit:'編輯', Delete:'刪除'
             },
             'zh-cn': {
                 account_no:'编号', account_user_name:'使用者名称', account_new_title:'新增账号', account_edit_title:'编辑账号',
                 account_username:'使用者名称', account_password:'密码', account_confirm_password:'确认密码',
-                account_import:'导入', account_export:'导出', account_upload:'上传', account_qrcode:'QRCode', account_qrcode_download:'下载',
+                account_import:'导入', account_export:'导出', account_upload:'同步到控制器', account_csv_template:'CSV 范本', account_qrcode:'QRCode', account_qrcode_download:'下载', account_search_placeholder:'搜寻账号...', account_sync_status:'同步状态', account_last_sync_time:'最后同步时间', account_total_accounts:'账号数',
                 account_show_password:'显示密码', account_hide_password:'隐藏密码', save:'储存', close:'关闭', New:'新增', Edit:'编辑', Delete:'删除'
             }
         };
@@ -1982,12 +2208,21 @@ function downloadSettingAccountQrCode(username, password, event) {
                 var importBtn = document.getElementById('account_import_btn');
                 var exportBtn = document.getElementById('account_export_btn');
                 var uploadBtn = document.getElementById('account_upload_controller_btn');
+                var templateBtn = document.getElementById('account_template_btn');
                 if (newBtn) newBtn.value = saTextV6('New', 'New');
                 if (editBtn) editBtn.value = saTextV6('Edit', 'Edit');
                 if (delBtn) delBtn.value = saTextV6('Delete', 'Delete');
                 if (importBtn) importBtn.value = saTextV6('account_import', 'Import');
                 if (exportBtn) exportBtn.value = saTextV6('account_export', 'Export');
-                if (uploadBtn) uploadBtn.value = saTextV6('account_upload', 'Upload');
+                if (uploadBtn) uploadBtn.value = saTextV6('account_upload', 'Sync to Controller');
+                if (templateBtn) templateBtn.value = saTextV6('account_csv_template', 'CSV Template');
+            }
+
+            var searchInput = document.getElementById('accountSearchInput');
+            if (searchInput) searchInput.setAttribute('placeholder', saTextV6('account_search_placeholder', 'Search account...'));
+
+            if (typeof updateSettingAccountSummary === 'function') {
+                updateSettingAccountSummary((document.querySelectorAll('#AccountDisplay .account-user-row') || []).length);
             }
 
             document.querySelectorAll('#AccountDisplay .account-qrcode-btn').forEach(function(btn){
@@ -2136,6 +2371,33 @@ function downloadSettingAccountQrCode(username, password, event) {
 })();
 
 
+
+
+/* Account search filter + summary refresh */
+(function(){
+    function bindAccountSearchInput() {
+        var input = document.getElementById('accountSearchInput');
+        if (!input || input.getAttribute('data-bound') === '1') return;
+        input.setAttribute('data-bound', '1');
+        input.oninput = function() {
+            renderSettingAccountUsers(settingAccountAllRecords || []);
+        };
+        input.setAttribute('placeholder', saT('account_search_placeholder', 'Search account...'));
+        updateSettingAccountSummary((document.querySelectorAll('#AccountDisplay .account-user-row') || []).length);
+    }
+
+    document.addEventListener('DOMContentLoaded', bindAccountSearchInput);
+    window.addEventListener('load', bindAccountSearchInput);
+
+    var oldLoadSearch = window.loadSettingAccountUsers;
+    if (typeof oldLoadSearch === 'function' && !oldLoadSearch.__searchWrap) {
+        window.loadSettingAccountUsers = function(){
+            bindAccountSearchInput();
+            return oldLoadSearch.apply(this, arguments);
+        };
+        window.loadSettingAccountUsers.__searchWrap = true;
+    }
+})();
 
 // Account Password Mask DOM hook
 document.addEventListener('DOMContentLoaded', function() { applySettingAccountColonFix(); resetSettingAccountPasswordMask(); });
@@ -2294,6 +2556,13 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
 
         if (usernameInput) {
             usernameInput.value = username;
+            if (String(username || '').toLowerCase() === 'admin') {
+                usernameInput.setAttribute('readonly', 'readonly');
+                usernameInput.classList.add('account-username-readonly');
+            } else {
+                usernameInput.removeAttribute('readonly');
+                usernameInput.classList.remove('account-username-readonly');
+            }
         }
 
         if (typeof openSettingAccountModal === 'function') {

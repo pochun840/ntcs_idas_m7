@@ -375,6 +375,25 @@ class Data extends Controller
 
 
 
+
+
+    /**
+     * Data page shortcut for Operation Audit Log.
+     * URL: ?url=Data/AuditLog
+     * Keeps the Data header/buttons and shows the same audit log widget.
+     */
+    public function AuditLog(){
+
+        $isMobile = $this->isMobileCheck();
+
+        $data = array(
+            'isMobile' => $isMobile
+        );
+
+        $this->view('data/audit_log', $data);
+    }
+
+
     public function getreal_time_data() {
 
         $mode = $_POST['mode'] ?? 'ALL';

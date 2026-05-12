@@ -9,10 +9,22 @@
 /* Header */
 #header
 {
-    min-height:50px;
-    background-color:hsl(0, 60%, 50%);
-    margin: 10px;
+    min-height: 40px;
+    background-color: hsl(0, 60%, 50%);
     font-size: 30px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    width: 100%;
+    z-index: 1000;
+}
+
+body
+{
+    padding-top: 55px;
+    margin: 0;
 }
 
 .no-border
@@ -40,17 +52,18 @@
 
 .button
 {
-    background-color: #888888; /* Green */
+    background-color: #888888;
+    height: 45px;
     border:  1px outset #CCFFFF;
-    border-radius: 8px;;
+    border-radius: 5px;
     color: white;
     padding: 5px;
     text-align: center;
     text-decoration: none;
     display: inline-block;
     font-size: 18px;
-    cursor: pointer;
     margin: 4px 10px;
+    cursor: pointer;
 }
 
 .all-btn
@@ -74,13 +87,13 @@
 .button:hover
 {
     cursor: pointer;
-    background:#0d6efd;
+    background:#336699;
     color: white;
 }
 
 .active
 {
-    background-color: #0d6efd;
+    background:#336699;
 }
 
 .divMode 

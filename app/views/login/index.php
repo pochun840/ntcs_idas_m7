@@ -17,10 +17,14 @@
                 <option value="<?php echo $accountName; ?>"><?php echo $accountName; ?></option>
             <?php } ?>
         </select>
-        <input id="login_password" type="password" name="password" placeholder="<?php echo $text['password_text']; ?>" required>
+        <div class="login-password-wrap">
+            <input id="login_password" type="password" name="password" placeholder="<?php echo $text['password_text']; ?>" required oninput="syncLoginPasswordMirrorFromPassword()">
+            <input id="login_password_plain" type="text" class="login-password-plain" placeholder="<?php echo $text['password_text']; ?>" autocomplete="off" style="display:none;" oninput="syncLoginPasswordMirrorFromPlain()">
+        </div>
         <input id="qr_payload" type="hidden" name="qr_payload" value="">
-        <button type="submit"><?php echo $text['login_text']; ?></button>
+        <button type="submit" id="manualLoginBtn"><?php echo $text['login_text']; ?></button>
         <button type="button" id="qrLoginOpenBtn" class="qr-login-btn" onclick="openQrLoginModal()">QR Code Login</button>
+        <div id="loginPageError" class="login-page-error" style="display:none;"></div>
     </form>
 
     <!-- QR Code Login Modal：只支援掃碼槍 / USB QR Scanner，不使用相機、不上傳圖片 -->
@@ -151,6 +155,10 @@
                 qr_login_btn: 'QR Code Login',
                 qr_modal_title: 'QR Code Login',
                 qr_status_scan: 'Please scan QR Code',
+                qr_waiting_scan: 'Waiting for scan... Please scan QR Code now.',
+                login_show_password: 'Show password',
+                login_hide_password: 'Hide password',
+                login_submitting: 'Logging in...',
                 qr_placeholder: 'Place the cursor here and scan the QR Code',
                 qr_keyboard_note: 'When using QRCode login, switch the keyboard to lowercase alphanumeric input mode.',
 
@@ -165,16 +173,21 @@
                 qr_empty: 'QR text is empty.',
                 qr_format_error_status: 'QR format error.',
                 qr_format_error_title: 'QR Format Error',
-                qr_format_error_msg: 'The QR Code text could not be parsed.\\nPlease check the keyboard input method, Caps Lock, and scanner keyboard layout.',
+                qr_format_error_msg: 'The QR Code text could not be parsed.\nPlease check the keyboard input method, Caps Lock, and scanner keyboard layout.',
                 qr_missing_status: 'QR missing usr or pwd.',
                 qr_missing_title: 'QR Missing Account or Password',
-                qr_missing_msg: 'The QR Code was read, but usr / pwd was not found.\\nPlease confirm the QR format and scanner keyboard setting.',
+                qr_missing_msg: 'The QR Code was read, but usr / pwd was not found.\nPlease confirm the QR format and scanner keyboard setting.',
                 qr_login_failed_title: 'QR Login Failed',
-                qr_login_failed_msg_suffix: '\\nPlease check the account/password in DB, keyboard input method, Caps Lock, and scanner keyboard layout.',
+                qr_login_failed_msg_suffix: '\nPlease check the account/password in DB, keyboard input method, Caps Lock, and scanner keyboard layout.',
                 qr_login_error_title: 'QR Login Error',
-                qr_login_error_msg_suffix: '\\nPlease check the scanner input and try again.',
+                qr_login_error_msg_suffix: '\nPlease check the scanner input and try again.',
                 qr_form_not_found: 'Login form not found.',
                 login_failed: 'Login failed.',
+                login_error_USER_NOT_FOUND: 'Account does not exist.',
+                login_error_PASSWORD_ERROR: 'Incorrect password.',
+                login_error_LOGIN_EXPIRED: 'Login expired. Please login again.',
+                qr_account_not_found_suffix: '\nPlease confirm the QR account exists in the iDAS user list.',
+                qr_password_error_suffix: '\nPlease confirm the password in the QR Code or user table.',
                 login_response_not_json: 'Login response is not JSON.',
                 login_success_msg: 'Login success.',
 
@@ -191,6 +204,10 @@
                 qr_login_btn: 'QR Code 登入',
                 qr_modal_title: 'QR Code 登入',
                 qr_status_scan: '請掃描 QR Code',
+                qr_waiting_scan: '等待掃描中...請立即掃描 QR Code。',
+                login_show_password: '顯示密碼',
+                login_hide_password: '隱藏密碼',
+                login_submitting: '登入中...',
                 qr_placeholder: '請將游標停在這裡後掃描 QR Code',
                 qr_keyboard_note: '使用 QRCode 登入時，鍵盤需切換為小寫英數輸入模式。',
 
@@ -205,16 +222,21 @@
                 qr_empty: 'QR Code 內容是空的。',
                 qr_format_error_status: 'QR Code 格式錯誤。',
                 qr_format_error_title: 'QR Code 格式錯誤',
-                qr_format_error_msg: '無法解析 QR Code 文字。\\n請確認輸入法、Caps Lock 與掃碼槍鍵盤配置。',
+                qr_format_error_msg: '無法解析 QR Code 文字。\n請確認輸入法、Caps Lock 與掃碼槍鍵盤配置。',
                 qr_missing_status: 'QR Code 缺少 usr 或 pwd。',
                 qr_missing_title: 'QR Code 缺少帳號或密碼',
-                qr_missing_msg: '已讀取 QR Code，但找不到 usr / pwd。\\n請確認 QR Code 格式與掃碼槍鍵盤設定。',
+                qr_missing_msg: '已讀取 QR Code，但找不到 usr / pwd。\n請確認 QR Code 格式與掃碼槍鍵盤設定。',
                 qr_login_failed_title: 'QR Code 登入失敗',
-                qr_login_failed_msg_suffix: '\\n請確認資料庫帳號密碼、輸入法、Caps Lock 與掃碼槍鍵盤配置。',
+                qr_login_failed_msg_suffix: '\n請確認資料庫帳號密碼、輸入法、Caps Lock 與掃碼槍鍵盤配置。',
                 qr_login_error_title: 'QR Code 登入錯誤',
-                qr_login_error_msg_suffix: '\\n請確認掃描內容後再試一次。',
+                qr_login_error_msg_suffix: '\n請確認掃描內容後再試一次。',
                 qr_form_not_found: '找不到登入表單。',
                 login_failed: '登入失敗。',
+                login_error_USER_NOT_FOUND: '帳號不存在。',
+                login_error_PASSWORD_ERROR: '密碼錯誤。',
+                login_error_LOGIN_EXPIRED: '登入已逾時，請重新登入。',
+                qr_account_not_found_suffix: '\n請確認 QR Code 帳號是否存在於 iDAS 使用者清單。',
+                qr_password_error_suffix: '\n請確認 QR Code 內的密碼或 user table 密碼。',
                 login_response_not_json: '登入回應不是 JSON。',
                 login_success_msg: '登入成功。',
 
@@ -231,6 +253,10 @@
                 qr_login_btn: 'QR Code 登录',
                 qr_modal_title: 'QR Code 登录',
                 qr_status_scan: '请扫描 QR Code',
+                qr_waiting_scan: '等待扫描中...请立即扫描 QR Code。',
+                login_show_password: '显示密码',
+                login_hide_password: '隐藏密码',
+                login_submitting: '登录中...',
                 qr_placeholder: '请将光标停在这里后扫描 QR Code',
                 qr_keyboard_note: '使用 QRCode 登录时，键盘需切换为小写英数输入模式。',
 
@@ -245,16 +271,21 @@
                 qr_empty: 'QR Code 内容是空的。',
                 qr_format_error_status: 'QR Code 格式错误。',
                 qr_format_error_title: 'QR Code 格式错误',
-                qr_format_error_msg: '无法解析 QR Code 文字。\\n请确认输入法、Caps Lock 与扫码枪键盘配置。',
+                qr_format_error_msg: '无法解析 QR Code 文字。\n请确认输入法、Caps Lock 与扫码枪键盘配置。',
                 qr_missing_status: 'QR Code 缺少 usr 或 pwd。',
                 qr_missing_title: 'QR Code 缺少帐号或密码',
-                qr_missing_msg: '已读取 QR Code，但找不到 usr / pwd。\\n请确认 QR Code 格式与扫码枪键盘设置。',
+                qr_missing_msg: '已读取 QR Code，但找不到 usr / pwd。\n请确认 QR Code 格式与扫码枪键盘设置。',
                 qr_login_failed_title: 'QR Code 登录失败',
-                qr_login_failed_msg_suffix: '\\n请确认数据库帐号密码、输入法、Caps Lock 与扫码枪键盘配置。',
+                qr_login_failed_msg_suffix: '\n请确认数据库帐号密码、输入法、Caps Lock 与扫码枪键盘配置。',
                 qr_login_error_title: 'QR Code 登录错误',
-                qr_login_error_msg_suffix: '\\n请确认扫描内容后再试一次。',
+                qr_login_error_msg_suffix: '\n请确认扫描内容后再试一次。',
                 qr_form_not_found: '找不到登录表单。',
                 login_failed: '登录失败。',
+                login_error_USER_NOT_FOUND: '账号不存在。',
+                login_error_PASSWORD_ERROR: '密码错误。',
+                login_error_LOGIN_EXPIRED: '登录已逾时，请重新登录。',
+                qr_account_not_found_suffix: '\n请确认 QR Code 账号是否存在于 iDAS 使用者清单。',
+                qr_password_error_suffix: '\n请确认 QR Code 内的密码或 user table 密码。',
                 login_response_not_json: '登录回应不是 JSON。',
                 login_success_msg: '登录成功。',
 
@@ -279,6 +310,7 @@
         const statusBox = document.getElementById('qrLoginStatus');
         const input = document.getElementById('qrScannerInput');
         const keyboardNote = document.getElementById('qrKeyboardNote');
+        const passwordToggleBtn = document.getElementById('loginPasswordToggleBtn');
 
         const hintTitle = document.getElementById('qrHintTitle');
         const hintStep1 = document.getElementById('qrHintStep1');
@@ -298,6 +330,12 @@
         }
         if (input) input.placeholder = qrLoginText('qr_placeholder');
         if (keyboardNote) keyboardNote.innerText = qrLoginText('qr_keyboard_note');
+        if (passwordToggleBtn) {
+            var passwordInput = document.getElementById('login_password');
+            var showText = passwordToggleBtn.classList.contains('is-visible') ? qrLoginText('login_hide_password') : qrLoginText('login_show_password');
+            passwordToggleBtn.setAttribute('aria-label', showText);
+            passwordToggleBtn.setAttribute('title', showText);
+        }
 
         if (hintTitle) hintTitle.innerText = qrLoginText('qr_hint_title');
         if (hintStep1) hintStep1.innerHTML = qrLoginText('qr_hint_step_1');
@@ -329,7 +367,7 @@
         applyQrLoginBlockI18n();
         <?php 
             if($data['error_message'] != ''){
-                echo "alert('",$data['error_message'],"')";
+                echo "showLoginPageError('", htmlspecialchars((string)$data['error_message'], ENT_QUOTES, 'UTF-8'), "')";
             }
         ?>
     });
@@ -340,7 +378,7 @@
 
         if (modal) modal.style.display = 'flex';
         applyQrLoginBlockI18n();
-        setQrStatus(qrLoginText('qr_status_scan'));
+        setQrStatus(qrLoginText('qr_waiting_scan'));
 
         if (input) {
             input.value = '';
@@ -403,6 +441,119 @@
         if (overlay) overlay.style.display = 'none';
     }
 
+    function setLoginButtonsDisabled(disabled) {
+        const manualBtn = document.getElementById('manualLoginBtn');
+        const qrBtn = document.getElementById('qrLoginOpenBtn');
+        const langButtons = document.querySelectorAll('.buttonbox input');
+
+        if (manualBtn) {
+            if (disabled) {
+                manualBtn.dataset.originalText = manualBtn.dataset.originalText || manualBtn.innerText;
+                manualBtn.innerText = qrLoginText('login_submitting');
+            } else if (manualBtn.dataset.originalText) {
+                manualBtn.innerText = manualBtn.dataset.originalText;
+            }
+            manualBtn.disabled = !!disabled;
+            manualBtn.classList.toggle('is-disabled', !!disabled);
+        }
+
+        if (qrBtn) {
+            qrBtn.disabled = !!disabled;
+            qrBtn.classList.toggle('is-disabled', !!disabled);
+        }
+
+        Array.prototype.forEach.call(langButtons, function(btn) {
+            btn.disabled = !!disabled;
+            btn.classList.toggle('is-disabled', !!disabled);
+        });
+    }
+
+    function showLoginPageError(message) {
+        const box = document.getElementById('loginPageError');
+        if (!box) return;
+        box.innerHTML = escapeHtml(message || qrLoginText('login_failed')).replace(/\n/g, '<br>');
+        box.style.display = 'block';
+    }
+
+    function clearLoginPageError() {
+        const box = document.getElementById('loginPageError');
+        if (!box) return;
+        box.innerHTML = '';
+        box.style.display = 'none';
+    }
+
+    function getLoginErrorMessage(json) {
+        const code = json && json.code ? String(json.code) : '';
+        if (code) {
+            const translated = qrLoginText('login_error_' + code);
+            if (translated !== 'login_error_' + code) return translated;
+        }
+        return json && json.res_msg ? json.res_msg : qrLoginText('login_failed');
+    }
+
+    function getQrLoginFailureSuffix(json) {
+        const code = json && json.code ? String(json.code) : '';
+        if (code === 'USER_NOT_FOUND') return qrLoginText('qr_account_not_found_suffix');
+        if (code === 'PASSWORD_ERROR') return qrLoginText('qr_password_error_suffix');
+        return qrLoginText('qr_login_failed_msg_suffix');
+    }
+
+
+    function syncLoginPasswordMirrorFromPassword() {
+        const passwordInput = document.getElementById('login_password');
+        const plainInput = document.getElementById('login_password_plain');
+        if (passwordInput && plainInput) {
+            plainInput.value = passwordInput.value;
+        }
+    }
+
+    function syncLoginPasswordMirrorFromPlain() {
+        const passwordInput = document.getElementById('login_password');
+        const plainInput = document.getElementById('login_password_plain');
+        if (passwordInput && plainInput) {
+            passwordInput.value = plainInput.value;
+        }
+    }
+
+    function setLoginPasswordVisible(visible) {
+        const passwordInput = document.getElementById('login_password');
+        const plainInput = document.getElementById('login_password_plain');
+        const btn = document.getElementById('loginPasswordToggleBtn');
+        if (!passwordInput) return;
+
+        if (plainInput) {
+            if (visible) {
+                plainInput.value = passwordInput.value;
+                passwordInput.style.display = 'none';
+                plainInput.style.display = 'block';
+                plainInput.focus();
+                try { plainInput.setSelectionRange(plainInput.value.length, plainInput.value.length); } catch (e) {}
+            } else {
+                passwordInput.value = plainInput.value;
+                plainInput.style.display = 'none';
+                passwordInput.style.display = 'block';
+                passwordInput.focus();
+                try { passwordInput.setSelectionRange(passwordInput.value.length, passwordInput.value.length); } catch (e) {}
+            }
+        } else {
+            passwordInput.type = visible ? 'text' : 'password';
+            passwordInput.style.webkitTextSecurity = visible ? 'none' : '';
+            passwordInput.focus();
+        }
+
+        const label = visible ? qrLoginText('login_hide_password') : qrLoginText('login_show_password');
+        if (btn) {
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('title', label);
+            btn.classList.toggle('is-visible', !!visible);
+        }
+    }
+
+    function toggleLoginPasswordVisibility() {
+        const btn = document.getElementById('loginPasswordToggleBtn');
+        setLoginPasswordVisible(!(btn && btn.classList.contains('is-visible')));
+    }
+
     function escapeHtml(text) {
         return String(text || '')
             .replace(/&/g, '&amp;')
@@ -455,6 +606,7 @@
 
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            clearLoginPageError();
 
             if (loginSubmitting) return;
 
@@ -658,6 +810,7 @@
 
         usernameEl.value = finalUsername;
         passwordEl.value = password;
+        if (typeof syncLoginPasswordMirrorFromPassword === 'function') syncLoginPasswordMirrorFromPassword();
         if (qrPayloadEl) qrPayloadEl.value = rawPayload || JSON.stringify({usr: finalUsername, pwd: password});
 
         submitLoginWithSuccessDelay(form, {
@@ -670,11 +823,14 @@
     async function submitLoginWithSuccessDelay(form, options) {
         if (loginSubmitting) return;
         loginSubmitting = true;
+        setLoginButtonsDisabled(true);
+        clearLoginPageError();
 
         options = options || {};
         const isQrLogin = options.isQr === true;
         const actionUrl = form.getAttribute('action') || '?url=Logins';
         const fetchUrl = actionUrl + (actionUrl.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
+        if (typeof syncLoginPasswordMirrorFromPlain === 'function') syncLoginPasswordMirrorFromPlain();
         const formData = new FormData(form);
 
         // 讓 Logins.php 回傳 JSON，而不是立即 redirect。
@@ -748,19 +904,20 @@
 
             if (!loginSuccess) {
                 loginSubmitting = false;
+                setLoginButtonsDisabled(false);
                 hideQrLoginLoading();
 
-                const msg = json && json.res_msg ? json.res_msg : qrLoginText('login_failed');
+                const msg = getLoginErrorMessage(json);
                 if (isQrLogin) {
                     setQrStatus(msg);
                     showQrHintModal(
                         qrLoginText('qr_login_failed_title'),
-                        msg + qrLoginText('qr_login_failed_msg_suffix'),
+                        msg + getQrLoginFailureSuffix(json),
                         document.getElementById('qr_payload') ? document.getElementById('qr_payload').value : ''
                     );
                     refocusQrInput();
                 } else {
-                    alert(msg);
+                    showLoginPageError(msg);
                 }
                 return;
             }
@@ -775,6 +932,7 @@
 
         } catch (e) {
             loginSubmitting = false;
+            setLoginButtonsDisabled(false);
             hideQrLoginLoading();
 
             const msg = e.message || qrLoginText('login_failed');
@@ -787,7 +945,7 @@
                 );
                 refocusQrInput();
             } else {
-                alert(msg);
+                showLoginPageError(msg);
             }
         }
     }
@@ -924,6 +1082,88 @@ input[type=password]
     transition: all .2s ease-in-out;
 }
 
+.login-password-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.login-password-wrap input[type=password],
+.login-password-wrap input[type=text],
+.login-password-wrap .login-password-plain {
+    padding-right: 68px;
+    box-sizing: border-box;
+}
+
+.login-password-wrap .login-password-plain {
+    background: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 25px;
+    font-family: 'Raleway', sans-serif;
+    height: 72px;
+    width: 100%;
+    margin-bottom: 10px;
+    opacity: 1;
+    text-indent: 20px;
+    transition: all .2s ease-in-out;
+}
+
+.login-password-toggle {
+    display: none !important;
+}
+
+.login-password-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 64px;
+    height: 72px;
+    line-height: 72px;
+    margin: 0;
+    border-radius: 0 8px 8px 0;
+    background: transparent;
+    color: #333;
+    font-size: 0;
+    border-left: 1px solid #e1e1e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-password-toggle:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.login-password-eye {
+    font-size: 26px;
+    line-height: 1;
+}
+
+.login-password-toggle.is-visible::after {
+    content: "";
+    position: absolute;
+    width: 30px;
+    height: 3px;
+    border-radius: 3px;
+    background: #333;
+    transform: rotate(-45deg);
+}
+
+.login-page-error {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(190, 30, 45, 0.92);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.45;
+    text-align: center;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+}
+
 button
 {
     background: #079BCF;
@@ -952,6 +1192,16 @@ button
 button:hover
 {
     background: #007BA5;
+}
+
+button:disabled,
+button.is-disabled,
+.buttonbox input:disabled,
+.buttonbox input.is-disabled {
+    cursor: not-allowed !important;
+    opacity: .62;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 .qr-login-btn {
@@ -1047,6 +1297,18 @@ button:hover
     color: #333;
     font-size: 17px;
     font-weight: 700;
+}
+
+.qr-status::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: #22aa55;
+    box-shadow: 0 0 0 0 rgba(34,170,85,.55);
+    animation: qrWaitingPulse 1.2s infinite;
 }
 
 .qr-scanner-input {
@@ -1503,6 +1765,12 @@ button:hover
 @keyframes qrLoginCardIn {
     from { opacity: 0; transform: translateY(14px) scale(.96); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes qrWaitingPulse {
+    0% { box-shadow: 0 0 0 0 rgba(34,170,85,.55); }
+    70% { box-shadow: 0 0 0 9px rgba(34,170,85,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,170,85,0); }
 }
 
 @keyframes qrLoginSuccessPop {

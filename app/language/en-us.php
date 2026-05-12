@@ -507,8 +507,8 @@ $text['refresh'] = 'Refresh';
 $text['db_version'] = 'DB Version';
 
 //Setting
-$text['controller_setting'] = 'Controller Setting';
-$text['system_setting'] = 'System Setting';
+$text['controller_setting'] = 'Controller';
+$text['system_setting'] = 'System';
 $text['system_id'] = 'ID';
 $text['system_name'] = 'Name';
 $text['system_unit'] = 'Unit';
@@ -583,7 +583,7 @@ $text['system_client_status'] = 'Client Status';
 $text['system_server_status'] = 'Server Status';
 
 //barcode setting
-$text['system_barcode_setting'] = 'Barcode Setting';
+$text['system_barcode_setting'] = 'Barcode';
 $text['system_barcode_from'] = 'From';
 $text['system_barcode_to'] = 'To';
 $text['system_barcode_match_from'] = 'Match From';
@@ -615,7 +615,7 @@ $text['barcode_delete_fail']      = 'Failed to delete barcode. Please try again'
 
 
 //admin setting
-$text['system_connect_setting'] = 'Connection Setting';
+$text['system_connect_setting'] = 'Connection';
 $text['system_connect_number'] = 'Number of connections';
 $text['system_connect_max_number'] = 'maximum number of connect';
 $text['system_connect_guest_pwd'] = 'Guest password';

@@ -498,8 +498,8 @@ $text['refresh'] = '刷新';
 $text['db_version'] = '数据库版本';
 
 //Setting
-$text['controller_setting'] = '控制器设定';
-$text['system_setting'] = '系统设定';
+$text['controller_setting'] = '控制器';
+$text['system_setting'] = '系统';
 $text['system_id'] = '编号';
 $text['system_name'] = '名称';
 $text['system_unit'] = '单位';
@@ -583,7 +583,7 @@ $text['system_sync_warning_title'] = 'iDas更新时间较控制器旧，是否�
 $text['system_sync_warning_login'] = '控制器已登入';
 
 //barcode setting
-$text['system_barcode_setting'] = '条码设定';
+$text['system_barcode_setting'] = '条码';
 $text['system_barcode_from'] = '起始位';
 $text['system_barcode_to'] = '位数';
 $text['system_barcode_match_from'] = '条码有效起始位';
@@ -615,7 +615,7 @@ $text['barcode_delete_fail']      = '删除条码失败，请稍后再试';
 
 
 //admin setting
-$text['system_connect_setting'] = '连线设定';
+$text['system_connect_setting'] = '连线';
 $text['system_connect_number'] = '连线数量';
 $text['system_connect_max_number'] = '目前最大连线人数';
 $text['system_connect_guest_pwd'] = '访客密码';

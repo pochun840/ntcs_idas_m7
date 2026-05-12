@@ -52,6 +52,63 @@ class Logins extends Controller
     }
 
 
+    private function loginCurrentLang(): string
+    {
+        $raw = strtolower(trim((string)($_COOKIE['language'] ?? ($_COOKIE['lang'] ?? 'en-us'))));
+        $raw = str_replace('_', '-', $raw);
+
+        if ($raw === 'zh-tw' || $raw === 'zh-hant' || $raw === 'tw') return 'zh-tw';
+        if ($raw === 'zh-cn' || $raw === 'zh-hans' || $raw === 'cn') return 'zh-cn';
+        return 'en-us';
+    }
+
+    private function loginText(string $key): string
+    {
+        $dict = [
+            'en-us' => [
+                'LOGIN_EXPIRED' => 'Login expired. Please login again.',
+                'USER_NOT_FOUND' => 'Account does not exist.',
+                'PASSWORD_ERROR' => 'Incorrect password.',
+                'LOGIN_FAILED' => 'Login failed.',
+            ],
+            'zh-tw' => [
+                'LOGIN_EXPIRED' => '登入已逾時，請重新登入。',
+                'USER_NOT_FOUND' => '帳號不存在。',
+                'PASSWORD_ERROR' => '密碼錯誤。',
+                'LOGIN_FAILED' => '登入失敗。',
+            ],
+            'zh-cn' => [
+                'LOGIN_EXPIRED' => '登录已逾时，请重新登录。',
+                'USER_NOT_FOUND' => '账号不存在。',
+                'PASSWORD_ERROR' => '密码错误。',
+                'LOGIN_FAILED' => '登录失败。',
+            ],
+        ];
+
+        $lang = $this->loginCurrentLang();
+        return $dict[$lang][$key] ?? $dict['en-us'][$key] ?? $key;
+    }
+
+    private function getCredentialFailureCode(string $username): string
+    {
+        $username = trim($username);
+        if ($username === '') {
+            return 'USER_NOT_FOUND';
+        }
+
+        try {
+            $row = $this->LoginModel->getpwd($username);
+            if (!$row || !is_array($row) || !isset($row['passwd'])) {
+                return 'USER_NOT_FOUND';
+            }
+        } catch (Throwable $e) {
+            return 'LOGIN_FAILED';
+        }
+
+        return 'PASSWORD_ERROR';
+    }
+
+
     /**
      * QR Code login payload support.
      * 支援 QR 內容：{"usr":"abcd123","pwd":"0734"}
@@ -233,7 +290,7 @@ class Logins extends Controller
             if ($this->isAuthenticated()) {
                 return true;
             }
-            $this->sendLoginJson(false, 'Login expired. Please login again.');
+            $this->sendLoginJson(false, $this->loginText('LOGIN_EXPIRED'), ['code' => 'LOGIN_EXPIRED']);
         }
 
         //判斷有沒有post password
@@ -321,10 +378,14 @@ class Logins extends Controller
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
                 $this->logout();
 
+                $failureCode = $this->getCredentialFailureCode($username);
+                $failureMsg = $this->loginText($failureCode);
+
                 if ($isAjaxLogin) {
-                    $this->sendLoginJson(false, 'Username or password is incorrect.');
+                    $this->sendLoginJson(false, $failureMsg, ['code' => $failureCode]);
                 }
 
+                $data['error_message'] = $failureMsg;
                 $this->view('login/index', $data);
                 exit();
             }

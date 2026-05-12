@@ -16,8 +16,8 @@ function OpenButton(ButtonMode) {
         document.getElementById('HistoryDisplay').setAttribute("style", "display:block");
         document.getElementById('ExportdataDisplay').setAttribute("style", "display:none");
 
-        document.getElementById('bnt1').classList.add("active");
-        document.getElementById('bnt2').classList.remove("active");
+        document.getElementById('data_bnt1').classList.add("active");
+        document.getElementById('data_bnt2').classList.remove("active");
 
         document.getElementById('data_select').setAttribute("style", "display:block");
 
@@ -25,8 +25,8 @@ function OpenButton(ButtonMode) {
         document.getElementById('ExportdataDisplay').setAttribute("style", "display:block");
         document.getElementById('HistoryDisplay').setAttribute("style", "display:none");
 
-        document.getElementById('bnt2').classList.add("active");
-        document.getElementById('bnt1').classList.remove("active");
+        document.getElementById('data_bnt2').classList.add("active");
+        document.getElementById('data_bnt1').classList.remove("active");
 
         document.getElementById('data_select').setAttribute("style", "display:none");
 

@@ -494,8 +494,8 @@ $text['refresh'] = '刷新';
 $text['db_version'] = '資料庫版本';
 
 //Setting
-$text['controller_setting'] = '控制器設定';
-$text['system_setting'] = '系統設定';
+$text['controller_setting'] = '控制器';
+$text['system_setting'] = '系統';
 $text['system_id'] = 'ID';
 $text['system_name'] = '名稱';
 $text['system_unit'] = '單位';
@@ -576,7 +576,7 @@ $text['system_sync_warning_login'] = '控制器已登入';
 
 
 //barcode setting
-$text['system_barcode_setting'] = '條碼設定';
+$text['system_barcode_setting'] = '條碼';
 $text['system_barcode_from'] = '從';
 $text['system_barcode_to'] = '個數';
 $text['system_barcode_match_from'] = '匹配從';
@@ -607,7 +607,7 @@ $text['barcode_delete_fail']      = '刪除條碼失敗，請稍後再試';
 
 
 //admin setting
-$text['system_connect_setting'] = '連線設定';
+$text['system_connect_setting'] = '連線';
 $text['system_connect_number'] = '連線數量';
 $text['system_connect_max_number'] = '目前最大連線人數';
 $text['system_connect_guest_pwd'] = '訪客密碼';

@@ -1,4 +1,7 @@
 <div class="container-ms">
+
+
+
     <?php
         $is_admin_login = (isset($_COOKIE['username']) && strtolower(trim((string)$_COOKIE['username'])) === 'admin');
     ?>
@@ -22,9 +25,7 @@
                     <button id="bnt5" name="Account_Display" class="button" onclick="SettingOpenButtonFinal('Account')"><?php echo $text['account_text']; ?></button>
                 <?php } ?>
                 <button id="bnt6" name="iDas_Display" class="button" onclick="SettingOpenButtonFinal('Update')">iDAS</button>
-                <?php if ($is_admin_login) { ?>
-                    <button id="bnt7" name="Operation_Audit_Log_Display" class="button operation-audit-top-button" onclick="SettingOpenButtonFinal('AuditLog')"><?php echo htmlspecialchars($text['audit_button'] ?? 'operation_audit_log', ENT_QUOTES, 'UTF-8'); ?></button>
-                <?php } ?>
+                
             </div>
         
             <!-- idas_controller OP -->
@@ -274,12 +275,21 @@ window.OpenButton = SettingOpenButtonFinal;
 document.addEventListener('DOMContentLoaded', function() {
     configureSettingAccountAlertifyNoTitle();
 
-    // 依 cookie username 控制 Account tab 顯示。
+    // 依 cookie username 控制 Account / AuditLog tab 顯示。
     applySettingAccountVisibility();
 
+    // 支援從 Data 頁導入：?url=Settings/index&tab=AuditLog / Account / Update ...
+    var params = new URLSearchParams(window.location.search);
+    var tab = params.get('tab');
+    var allowTabs = ['Controller', 'System', 'Barcode', 'Connect', 'Account', 'AuditLog', 'Update'];
+
+    if (tab && allowTabs.indexOf(tab) !== -1) {
+        SettingOpenButtonFinal(tab);
+        return;
+    }
+
     // 預設顯示 Controller，避免所有區塊都被隱藏時畫面空白。
-    // 只有 admin 才允許預設進 Account。
-    const activeBtn = document.querySelector('.w3-center .button.active');
+    var activeBtn = document.querySelector('.w3-center .button.active');
     if (activeBtn && activeBtn.id === 'bnt5' && isSettingAdminUser()) {
         SettingOpenButtonFinal('Account');
     } else {
