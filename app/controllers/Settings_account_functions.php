@@ -68,6 +68,36 @@
         return strtolower(trim((string)($_COOKIE['username'] ?? '')));
     }
 
+    private function accountUserProtectedName(string $name): bool
+    {
+        return in_array(strtolower(trim($name)), ['kls', 'guest', 'admin'], true);
+    }
+
+    private function accountUserProtectedMessage(string $type = 'delete'): string
+    {
+        $lang = strtolower(str_replace('_', '-', (string)($_COOKIE['language'] ?? $_COOKIE['lang'] ?? $_SESSION['language'] ?? '')));
+        if ($lang === 'zh-tw' || $lang === 'zh-hant' || $lang === 'tw') {
+            return $type === 'edit' ? '此帳號受保護，無法編輯。' : '此帳號受保護，無法刪除。';
+        }
+        if ($lang === 'zh-cn' || $lang === 'zh-hans' || $lang === 'cn' || $lang === 'zh') {
+            return $type === 'edit' ? '此账号受保护，无法编辑。' : '此账号受保护，无法删除。';
+        }
+        return $type === 'edit' ? 'This account is protected and cannot be edited.' : 'This account is protected and cannot be deleted.';
+    }
+
+    private function accountUserProtectedRenameMessage(string $name): string
+    {
+        $lower = strtolower(trim($name));
+        $lang = strtolower(str_replace('_', '-', (string)($_COOKIE['language'] ?? $_COOKIE['lang'] ?? $_SESSION['language'] ?? '')));
+        if ($lang === 'zh-tw' || $lang === 'zh-hant' || $lang === 'tw') {
+            return $lower . ' 帳號名稱不可變更。';
+        }
+        if ($lang === 'zh-cn' || $lang === 'zh-hans' || $lang === 'cn' || $lang === 'zh') {
+            return $lower . ' 账号名称不可变更。';
+        }
+        return $lower . ' account name cannot be changed.';
+    }
+
     private function accountUserRequireAdmin(): void
     {
         // Account 管理功能只允許 cookie username=admin 使用。
@@ -177,6 +207,89 @@
         return $columns;
     }
 
+
+    /**
+     * Ensure a default protected account exists in the opened account user table.
+     * If the account already exists, keep the existing password/law unchanged.
+     */
+    private function accountUserEnsureDefaultAccount(PDO $db, string $accountName, string $password, int $law = 1): bool
+    {
+        $this->accountUserAssertTable($db);
+
+        $accountName = trim($accountName);
+        $password = trim($password);
+
+        if ($accountName === '') {
+            throw new Exception('Default account name cannot be empty.');
+        }
+        if ($password === '') {
+            throw new Exception('Default account password cannot be empty.');
+        }
+
+        $columns = $this->accountUserTableColumns($db);
+        if (!in_array('name', $columns, true) || !in_array('passwd', $columns, true)) {
+            throw new Exception('user table must contain name and passwd columns.');
+        }
+
+        $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))');
+        $stmt->execute([':name' => $accountName]);
+        if ((int)$stmt->fetchColumn() > 0) {
+            return false;
+        }
+
+        $insertColumns = [];
+        $params = [];
+
+        if (in_array('sn', $columns, true)) {
+            $insertColumns[] = 'sn';
+            $params[':sn'] = (int)$db->query('SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`')->fetchColumn();
+        }
+
+        $insertColumns[] = 'name';
+        $params[':name'] = $accountName;
+
+        $insertColumns[] = 'passwd';
+        $params[':passwd'] = $password;
+
+        if (in_array('law', $columns, true)) {
+            $insertColumns[] = 'law';
+            $params[':law'] = $law;
+        }
+
+        $columnSql = implode(', ', array_map([$this, 'accountUserQuoteIdentifier'], $insertColumns));
+        $placeholders = implode(', ', array_keys($params));
+
+        $stmt = $db->prepare('INSERT INTO `user` (' . $columnSql . ') VALUES (' . $placeholders . ')');
+        $stmt->execute($params);
+
+        return true;
+    }
+
+    /**
+     * Ensure default admin account exists.
+     */
+    private function accountUserEnsureDefaultAdmin(PDO $db): bool
+    {
+        return $this->accountUserEnsureDefaultAccount($db, 'admin', '0734', 1);
+    }
+
+    /**
+     * Ensure default guest account exists.
+     */
+    private function accountUserEnsureDefaultGuest(PDO $db): bool
+    {
+        return $this->accountUserEnsureDefaultAccount($db, 'guest', '0000', 1);
+    }
+
+    /**
+     * Ensure all protected default accounts exist.
+     */
+    private function accountUserEnsureDefaultProtectedAccounts(PDO $db): void
+    {
+        $this->accountUserEnsureDefaultAdmin($db);
+        $this->accountUserEnsureDefaultGuest($db);
+    }
+
     public function account_user_upload_controller(): void
     {
         $targetDb = null;
@@ -206,6 +319,9 @@
 
             $this->accountUserAssertTable($sourceDb);
             $this->accountUserAssertTable($targetDb);
+
+            // Safety: before syncing, make sure the iDAS source DB has admin.
+            $this->accountUserEnsureDefaultProtectedAccounts($sourceDb);
 
             $sourceColumns = $this->accountUserTableColumns($sourceDb);
             $targetColumns = $this->accountUserTableColumns($targetDb);
@@ -253,6 +369,9 @@
                 $insertStmt->execute($params);
             }
 
+            // Safety: after full mirror, guarantee controller DB still has admin.
+            $this->accountUserEnsureDefaultProtectedAccounts($targetDb);
+
             $targetDb->commit();
             @chmod($targetPath, 0666);
             @exec('sync');
@@ -278,6 +397,7 @@
             $this->accountUserRequireAdmin();
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
+            $this->accountUserEnsureDefaultProtectedAccounts($db);
 
             $rows = $db->query("SELECT sn, name, passwd, law FROM user ORDER BY sn ASC")->fetchAll();
 
@@ -385,10 +505,23 @@
             $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
 
             $this->accountUserValidateText($oldName, 'Old username');
+            $oldLower = strtolower($oldName);
+            $newLower = strtolower($name);
+
+            if ($this->accountUserProtectedName($oldName)) {
+                if ($oldLower === 'kls') {
+                    throw new Exception($this->accountUserProtectedMessage('edit'));
+                }
+                if ($newLower !== $oldLower) {
+                    throw new Exception($this->accountUserProtectedRenameMessage($oldLower));
+                }
+            } elseif ($this->accountUserProtectedName($name)) {
+                throw new Exception($this->accountUserProtectedRenameMessage($newLower));
+            }
+
             if ($oldName !== $name) {
                 $this->accountUserValidateUsername($name, 'Username');
             } else {
-                // 允許既有 guest/admin/user1 等舊帳號在未改名時繼續修改密碼。
                 $this->accountUserValidateText($name, 'Username');
             }
 
@@ -402,29 +535,38 @@
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
 
-            $stmt = $db->prepare("SELECT COUNT(*) FROM user WHERE name = :name");
+            $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(name) = LOWER(:name)');
             $stmt->execute([':name' => $oldName]);
             if ((int)$stmt->fetchColumn() === 0) {
                 throw new Exception('Account not found.');
             }
 
             if ($oldName !== $name) {
-                $stmt = $db->prepare("SELECT COUNT(*) FROM user WHERE name = :name");
+                $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(name) = LOWER(:name)');
                 $stmt->execute([':name' => $name]);
                 if ((int)$stmt->fetchColumn() > 0) {
                     throw new Exception('Username already exists.');
                 }
             }
 
-            if ($password === '') {
-                $stmt = $db->prepare("UPDATE user SET name = :name, law = :law WHERE name = :old_name");
+            if ($oldLower === 'admin' || $oldLower === 'guest') {
+                if ($password !== '') {
+                    $stmt = $db->prepare('UPDATE `user` SET passwd = :passwd, law = :law WHERE LOWER(name) = :old_lower');
+                    $stmt->execute([
+                        ':passwd' => $password,
+                        ':law' => $law,
+                        ':old_lower' => $oldLower,
+                    ]);
+                }
+            } elseif ($password === '') {
+                $stmt = $db->prepare('UPDATE `user` SET name = :name, law = :law WHERE name = :old_name');
                 $stmt->execute([
                     ':name'     => $name,
                     ':law'      => $law,
                     ':old_name' => $oldName,
                 ]);
             } else {
-                $stmt = $db->prepare("UPDATE user SET name = :name, passwd = :passwd, law = :law WHERE name = :old_name");
+                $stmt = $db->prepare('UPDATE `user` SET name = :name, passwd = :passwd, law = :law WHERE name = :old_name');
                 $stmt->execute([
                     ':name'     => $name,
                     ':passwd'   => $password,
@@ -445,6 +587,9 @@
             $this->accountUserRequireAdmin();
             $name = $this->accountUserClean($_POST['username'] ?? '');
             $this->accountUserValidateText($name, 'Username');
+            if ($this->accountUserProtectedName($name)) {
+                throw new Exception($this->accountUserProtectedMessage('delete'));
+            }
 
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);

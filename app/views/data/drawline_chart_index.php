@@ -12,7 +12,7 @@ $labelLineChart  = htmlspecialchars($textMap['line_chart'] ?? 'Line Chart', ENT_
 $labelLatest25   = htmlspecialchars($textMap['latest_25_records'] ?? 'Latest 25 Records', ENT_QUOTES, 'UTF-8');
 $labelAll        = htmlspecialchars($textMap['all'] ?? 'ALL', ENT_QUOTES, 'UTF-8');
 $labelOK         = htmlspecialchars($textMap['ok'] ?? 'OK', ENT_QUOTES, 'UTF-8');
-$labelNOK        = htmlspecialchars($textMap['ng'] ?? ($textMap['nok'] ?? 'NOK'), ENT_QUOTES, 'UTF-8');
+$labelNOK        = htmlspecialchars($textMap['ng'] ?? ($textMap['nok'] ?? 'NG'), ENT_QUOTES, 'UTF-8');
 $labelTime       = htmlspecialchars($textMap['data_time'] ?? 'Time', ENT_QUOTES, 'UTF-8');
 $labelNo         = htmlspecialchars($textMap['no'] ?? 'No.', ENT_QUOTES, 'UTF-8');
 $labelExportCsv  = htmlspecialchars($textMap['export_csv'] ?? 'Export CSV', ENT_QUOTES, 'UTF-8');
@@ -47,6 +47,8 @@ function renderLineChartTableRows($records) {
     }
 }
 ?>
+
+<script src="<?php echo URLROOT; ?>js/echarts.min.js"></script>
 
 <div class="container-ms drawline-page">
     <div class="w3-text-white w3-center">

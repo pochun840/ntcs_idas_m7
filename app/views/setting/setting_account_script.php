@@ -272,8 +272,55 @@ if (!function_exists('settingAccountScriptTextArray')) {
 /* Account Password Mask Fix V7 */
 
 var settingAccountI18n = <?php echo json_encode(settingAccountScriptTextArray(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+var settingAccountClientFallbackI18n = {
+    'en-us': {
+        account_protected_action: 'This account is protected and cannot be deleted.',
+        account_protected_edit_action: 'This account is protected and cannot be edited.',
+        account_protected_rename_blocked: 'This built-in account name cannot be changed.',
+        account_admin_rename_blocked: 'The admin account name cannot be changed.',
+        account_guest_rename_blocked: 'The guest account name cannot be changed.'
+    },
+    'zh-tw': {
+        account_protected_action: '此帳號受保護，無法刪除。',
+        account_protected_edit_action: '此帳號受保護，無法編輯。',
+        account_protected_rename_blocked: '內建帳號名稱不可變更。',
+        account_admin_rename_blocked: 'admin 帳號名稱不可變更。',
+        account_guest_rename_blocked: 'guest 帳號名稱不可變更。'
+    },
+    'zh-cn': {
+        account_protected_action: '此账号受保护，无法删除。',
+        account_protected_edit_action: '此账号受保护，无法编辑。',
+        account_protected_rename_blocked: '内建账号名称不可变更。',
+        account_admin_rename_blocked: 'admin 账号名称不可变更。',
+        account_guest_rename_blocked: 'guest 账号名称不可变更。'
+    }
+};
+function settingAccountClientLang() {
+    var lang = '';
+    try {
+        var cookie = document.cookie || '';
+        var m = cookie.match(/(?:^|;\s*)(?:language|lang)=([^;]+)/i);
+        if (m && m[1]) lang = decodeURIComponent(m[1]);
+    } catch (e) {}
+
+    lang = String(lang || '').toLowerCase().replace('_', '-');
+    if (lang === 'zh-tw' || lang === 'zh-hant' || lang === 'tw') return 'zh-tw';
+    if (lang === 'zh-cn' || lang === 'zh-hans' || lang === 'cn' || lang === 'zh') return 'zh-cn';
+    if (lang === 'en' || lang === 'en-us') return 'en-us';
+
+    var bodyText = '';
+    try { bodyText = (document.body && document.body.innerText) ? document.body.innerText : ''; } catch (e) {}
+    if (/設定|帳號|使用者名稱|儲存|關閉/.test(bodyText)) return 'zh-tw';
+    if (/设定|账号|使用者名称|储存|关闭/.test(bodyText)) return 'zh-cn';
+    return 'en-us';
+}
 function saT(key, fallback) {
-    return settingAccountI18n[key] || fallback || key;
+    var direct = settingAccountI18n[key];
+    if (direct && !(/^This account is protected/.test(String(direct)) && settingAccountClientLang() !== 'en-us')) {
+        return direct;
+    }
+    var lang = settingAccountClientLang();
+    return (settingAccountClientFallbackI18n[lang] && settingAccountClientFallbackI18n[lang][key]) || direct || fallback || key;
 }
 
 
@@ -1043,17 +1090,40 @@ function settingAccountGetEditPassword(username) {
     });
 }
 
+function settingAccountEyeButtonForInput(inputId) {
+    var input = document.getElementById(inputId);
+    if (!input || !input.parentNode) return null;
+    return input.parentNode.querySelector('.password-eye-btn, .password-toggle-btn');
+}
+
+function settingAccountSetEyeVisible(btn, visible) {
+    if (!btn) return;
+
+    if (visible) {
+        btn.classList.add('is-visible');
+        btn.setAttribute('title', saT('account_hide_password', 'Hide password'));
+        btn.setAttribute('aria-label', saT('account_hide_password', 'Hide password'));
+    } else {
+        btn.classList.remove('is-visible');
+        btn.setAttribute('title', saT('account_show_password', 'Show password'));
+        btn.setAttribute('aria-label', saT('account_show_password', 'Show password'));
+    }
+}
+
 function settingAccountSetMaskedPassword(realPassword) {
     var p1 = document.getElementById('account_password');
     var p2 = document.getElementById('account_confirm_password');
 
-    realPassword = String(realPassword || '');
+    realPassword = String(realPassword || '').replace(/[^0-9]/g, '').slice(0, 4);
 
+    // Edit Account style:
+    //   Password         = real 4 digits + slash-eye icon
+    //   Confirm Password = custom **** mask + normal eye icon
     if (p1) {
         p1.type = 'text';
-        p1.value = realPassword ? '****' : '';
+        p1.value = realPassword;
         p1.setAttribute('data-real-password', realPassword);
-        p1.setAttribute('data-mask-mode', realPassword ? 'masked' : 'empty');
+        p1.setAttribute('data-mask-mode', 'visible');
         p1.setAttribute('autocomplete', 'off');
     }
 
@@ -1065,11 +1135,153 @@ function settingAccountSetMaskedPassword(realPassword) {
         p2.setAttribute('autocomplete', 'off');
     }
 
-    document.querySelectorAll('#settingAccountModal .password-eye-btn').forEach(function(btn) {
-        btn.classList.remove('is-visible');
-        btn.setAttribute('title', saT('account_show_password', 'Show password'));
-        btn.setAttribute('aria-label', saT('account_show_password', 'Show password'));
-    });
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_password'), !!realPassword);
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_confirm_password'), false);
+}
+
+function settingAccountPrepareNewPasswordInputs() {
+    var p1 = document.getElementById('account_password');
+    var p2 = document.getElementById('account_confirm_password');
+
+    // New Account uses the same visual rule as Edit Account.
+    if (p1) {
+        p1.type = 'text';
+        p1.value = '';
+        p1.setAttribute('data-real-password', '');
+        p1.setAttribute('data-mask-mode', 'visible');
+        p1.setAttribute('autocomplete', 'off');
+    }
+
+    if (p2) {
+        p2.type = 'text';
+        p2.value = '';
+        p2.setAttribute('data-real-password', '');
+        p2.setAttribute('data-mask-mode', 'empty');
+        p2.setAttribute('autocomplete', 'off');
+    }
+
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_password'), false);
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_confirm_password'), false);
+}
+
+function settingAccountPasswordInputChange(input) {
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+
+    // Default rule for New Account: password stays masked (****).
+    // When the eye is clicked and mode becomes visible, allow clear text editing.
+    if (mode === 'visible') {
+        var value = String(input.value || '').replace(/[^0-9]/g, '').slice(0, 4);
+        input.type = 'text';
+        input.value = value;
+        input.setAttribute('data-real-password', value);
+        input.setAttribute('data-mask-mode', 'visible');
+        settingAccountSetEyeVisible(settingAccountEyeButtonForInput(input.id), true);
+    }
+}
+
+function settingAccountUpdateConfirmMask(input, real) {
+    if (!input) return;
+
+    real = String(real || '').replace(/[^0-9]/g, '').slice(0, 4);
+    input.type = 'text';
+    input.value = real ? new Array(real.length + 1).join('*') : '';
+    input.setAttribute('data-real-password', real);
+    input.setAttribute('data-mask-mode', real ? 'masked' : 'empty');
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput(input.id), false);
+}
+
+function settingAccountConfirmPasswordKeydown(event) {
+    var input = event.target;
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+
+    // When the user intentionally shows the confirm password, let normal typing happen.
+    if (mode === 'visible') {
+        return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.altKey || event.key === 'Tab' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') {
+        return;
+    }
+
+    var real = String(input.getAttribute('data-real-password') || '').replace(/[^0-9]/g, '').slice(0, 4);
+
+    if (/^[0-9]$/.test(event.key)) {
+        event.preventDefault();
+        if (real.length < 4) real += event.key;
+        settingAccountUpdateConfirmMask(input, real);
+        return;
+    }
+
+    if (event.key === 'Backspace') {
+        event.preventDefault();
+        real = real.slice(0, -1);
+        settingAccountUpdateConfirmMask(input, real);
+        return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Escape') {
+        event.preventDefault();
+        settingAccountUpdateConfirmMask(input, '');
+        return;
+    }
+
+    event.preventDefault();
+}
+
+function settingAccountConfirmPasswordInputChange(input) {
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+    if (mode === 'visible') {
+        var value = String(input.value || '').replace(/[^0-9]/g, '').slice(0, 4);
+        input.value = value;
+        input.setAttribute('data-real-password', value);
+        input.setAttribute('data-mask-mode', 'visible');
+        settingAccountSetEyeVisible(settingAccountEyeButtonForInput(input.id), true);
+    }
+}
+
+function settingAccountConfirmPasswordPaste(event) {
+    var input = event.target;
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+    if (mode === 'visible') return;
+
+    event.preventDefault();
+    var text = '';
+    if (event.clipboardData && typeof event.clipboardData.getData === 'function') {
+        text = event.clipboardData.getData('text') || '';
+    }
+    settingAccountUpdateConfirmMask(input, text);
+}
+
+function installSettingAccountPasswordHandlers() {
+    var p1 = document.getElementById('account_password');
+    var p2 = document.getElementById('account_confirm_password');
+
+    if (p1 && !p1.getAttribute('data-account-handler-installed')) {
+        p1.setAttribute('data-account-handler-installed', '1');
+        p1.addEventListener('keydown', settingAccountConfirmPasswordKeydown);
+        p1.addEventListener('input', function() { settingAccountPasswordInputChange(p1); });
+        p1.addEventListener('paste', settingAccountConfirmPasswordPaste);
+    }
+
+    if (p2 && !p2.getAttribute('data-account-handler-installed')) {
+        p2.setAttribute('data-account-handler-installed', '1');
+        p2.addEventListener('keydown', settingAccountConfirmPasswordKeydown);
+        p2.addEventListener('input', function() { settingAccountConfirmPasswordInputChange(p2); });
+        p2.addEventListener('paste', settingAccountConfirmPasswordPaste);
+    }
+}
+
+installSettingAccountPasswordHandlers();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installSettingAccountPasswordHandlers);
 }
 
 function settingAccountOpenEditWithMaskedPassword(username) {
@@ -1119,14 +1331,11 @@ function settingAccountAction(mode) {
         document.getElementById('account_username').value = '';
         document.getElementById('account_username').removeAttribute('readonly');
         document.getElementById('account_username').classList.remove('account-username-readonly');
-        document.getElementById('account_password').value = '';
-        document.getElementById('account_confirm_password').value = '';
-        document.getElementById('account_password').removeAttribute('data-real-password');
-        document.getElementById('account_confirm_password').removeAttribute('data-real-password');
-        document.getElementById('account_password').removeAttribute('data-mask-mode');
-        document.getElementById('account_confirm_password').removeAttribute('data-mask-mode');
-        resetSettingAccountPasswordMask();
+
+        selectedAccountPassword = '';
+
         openSettingAccountModal();
+        settingAccountPrepareNewPasswordInputs();
         return;
     }
 
@@ -1176,14 +1385,14 @@ function settingAccountAction(mode) {
     }
 
     if (mode === 'delete' && settingAccountIsProtectedUser(selectedAccountUser)) {
-        settingAccountAlert(saT('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+        settingAccountAlert(saT('account_protected_action', 'This account is protected and cannot be deleted.'));
         return;
     }
 
     if (mode === 'edit') {
         var protectedEditUser = String(selectedAccountUser || '').trim().toLowerCase();
-        if (protectedEditUser === 'guest' || protectedEditUser === 'kls') {
-            settingAccountAlert(saT('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+        if (protectedEditUser === 'kls') {
+            settingAccountAlert(saT('account_protected_edit_action', 'This account is protected and cannot be edited.'));
             return;
         }
     }
@@ -1307,9 +1516,11 @@ function saveSettingAccount() {
     }
 
     // New 或 Edit 改名時，Username 必須符合 6~8 字元規則。
-    // Edit 未改名時允許既有 guest/admin/user1 等舊帳號繼續修改密碼或刪除。
-    if (settingAccountMode === 'edit' && String(oldUsername || '').toLowerCase() === 'admin' && String(username || '').toLowerCase() !== 'admin') {
-        settingAccountAlert(saT('account_admin_rename_blocked', 'The admin account name cannot be changed.'));
+    // Edit 未改名時允許既有 guest/admin/user1 等舊帳號繼續修改密碼。
+    var oldUsernameLower = String(oldUsername || '').toLowerCase();
+    var usernameLower = String(username || '').toLowerCase();
+    if (settingAccountMode === 'edit' && (oldUsernameLower === 'admin' || oldUsernameLower === 'guest') && usernameLower !== oldUsernameLower) {
+        settingAccountAlert(saT(oldUsernameLower === 'guest' ? 'account_guest_rename_blocked' : 'account_admin_rename_blocked', oldUsernameLower + ' account name cannot be changed.'));
         return;
     }
 
@@ -2495,7 +2706,7 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
         realPassword = String(realPassword || '');
 
         if (pwdInput) {
-            pwdInput.type = 'text';
+            pwdInput.type = realPassword ? 'text' : 'password';
             pwdInput.value = realPassword ? '****' : '';
             pwdInput.setAttribute('data-real-password', realPassword);
             pwdInput.setAttribute('data-mask-mode', realPassword ? 'masked' : 'empty');
@@ -2503,7 +2714,7 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
         }
 
         if (confirmInput) {
-            confirmInput.type = 'text';
+            confirmInput.type = realPassword ? 'text' : 'password';
             confirmInput.value = realPassword ? '****' : '';
             confirmInput.setAttribute('data-real-password', realPassword);
             confirmInput.setAttribute('data-mask-mode', realPassword ? 'masked' : 'empty');
@@ -2739,4 +2950,376 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
     }
 })();
 
+
+/* =====================================================
+   FINAL FIX V12
+   New Account password must be masked by default.
+   - Password and Confirm Password both show * while typing.
+   - Click eye to show clear digits.
+   - Save uses data-real-password, not the stars.
+   ===================================================== */
+(function () {
+    function textV12(key, fallback) {
+        if (typeof saT === 'function') return saT(key, fallback || key);
+        return fallback || key;
+    }
+
+    function eyeBtnV12(input) {
+        if (!input || !input.parentNode) return null;
+        return input.parentNode.querySelector('.password-eye-btn, .password-toggle-btn');
+    }
+
+    function setEyeV12(input, visible) {
+        var btn = eyeBtnV12(input);
+        if (!btn) return;
+        if (visible) {
+            btn.classList.add('is-visible');
+            btn.setAttribute('title', textV12('account_hide_password', 'Hide password'));
+            btn.setAttribute('aria-label', textV12('account_hide_password', 'Hide password'));
+        } else {
+            btn.classList.remove('is-visible');
+            btn.setAttribute('title', textV12('account_show_password', 'Show password'));
+            btn.setAttribute('aria-label', textV12('account_show_password', 'Show password'));
+        }
+    }
+
+    function starsV12(len) {
+        len = Math.max(0, Math.min(4, parseInt(len || 0, 10)));
+        return new Array(len + 1).join('*');
+    }
+
+    function digitsV12(value) {
+        return String(value || '').replace(/[^0-9]/g, '').slice(0, 4);
+    }
+
+    function setMaskedInputV12(input, realPassword) {
+        if (!input) return;
+        realPassword = digitsV12(realPassword);
+        input.type = 'text';
+        input.value = realPassword ? starsV12(realPassword.length) : '';
+        input.setAttribute('data-real-password', realPassword);
+        input.setAttribute('data-mask-mode', realPassword ? 'masked' : 'empty');
+        input.setAttribute('autocomplete', 'off');
+        setEyeV12(input, false);
+    }
+
+    function prepareNewPasswordInputsV12() {
+        setMaskedInputV12(document.getElementById('account_password'), '');
+        setMaskedInputV12(document.getElementById('account_confirm_password'), '');
+    }
+
+    function normalizeMaskedTypingV12(input) {
+        if (!input) return;
+        var mode = input.getAttribute('data-mask-mode') || '';
+        if (mode === 'visible') {
+            var visibleDigits = digitsV12(input.value);
+            input.type = 'text';
+            input.value = visibleDigits;
+            input.setAttribute('data-real-password', visibleDigits);
+            input.setAttribute('data-mask-mode', 'visible');
+            setEyeV12(input, true);
+            return;
+        }
+
+        var oldReal = digitsV12(input.getAttribute('data-real-password') || '');
+        var rawValue = String(input.value || '');
+        var typedDigits = digitsV12(rawValue);
+        var nextReal = oldReal;
+
+        if (typedDigits !== '') {
+            // Mobile/browser autocomplete may append digits to the visible stars.
+            // Keep existing real password and append the newly typed digit(s).
+            if (rawValue.indexOf('*') !== -1 && oldReal !== '') {
+                nextReal = digitsV12(oldReal + typedDigits);
+            } else {
+                nextReal = typedDigits;
+            }
+        } else if (rawValue === '') {
+            nextReal = '';
+        }
+
+        setMaskedInputV12(input, nextReal);
+    }
+
+    function togglePasswordV12(inputId, btn) {
+        var input = document.getElementById(inputId);
+        if (!input) return;
+
+        var mode = input.getAttribute('data-mask-mode') || '';
+        var realPassword = digitsV12(input.getAttribute('data-real-password') || input.value || '');
+
+        if (mode === 'visible') {
+            setMaskedInputV12(input, realPassword);
+            return;
+        }
+
+        input.type = 'text';
+        input.value = realPassword;
+        input.setAttribute('data-real-password', realPassword);
+        input.setAttribute('data-mask-mode', 'visible');
+        setEyeV12(input, true);
+    }
+
+    function resolvePasswordV12(inputId) {
+        var input = document.getElementById(inputId);
+        if (!input) return '';
+
+        var realPassword = digitsV12(input.getAttribute('data-real-password') || '');
+        var value = String(input.value || '').trim();
+
+        if (/^\*+$/.test(value) && realPassword !== '') {
+            return realPassword;
+        }
+
+        return digitsV12(value || realPassword);
+    }
+
+    function installNewPasswordMaskV12() {
+        var p1 = document.getElementById('account_password');
+        var p2 = document.getElementById('account_confirm_password');
+
+        [p1, p2].forEach(function(input) {
+            if (!input || input.getAttribute('data-new-mask-v12-installed')) return;
+            input.setAttribute('data-new-mask-v12-installed', '1');
+            input.addEventListener('input', function() {
+                if (typeof settingAccountMode !== 'undefined' && settingAccountMode === 'new') {
+                    normalizeMaskedTypingV12(input);
+                }
+            });
+            input.addEventListener('paste', function() {
+                if (typeof settingAccountMode !== 'undefined' && settingAccountMode === 'new') {
+                    setTimeout(function(){ normalizeMaskedTypingV12(input); }, 0);
+                }
+            });
+        });
+
+        if (typeof window.toggleSettingAccountPassword !== 'function' || !window.toggleSettingAccountPassword.__newMaskV12) {
+            window.toggleSettingAccountPassword = togglePasswordV12;
+            window.toggleSettingAccountPassword.__newMaskV12 = true;
+        }
+
+        window.settingAccountResolvePasswordForSave = resolvePasswordV12;
+
+        if (typeof window.settingAccountPrepareNewPasswordInputs !== 'function' || !window.settingAccountPrepareNewPasswordInputs.__newMaskV12) {
+            window.settingAccountPrepareNewPasswordInputs = prepareNewPasswordInputsV12;
+            window.settingAccountPrepareNewPasswordInputs.__newMaskV12 = true;
+        }
+
+        if (typeof window.settingAccountAction === 'function' && !window.settingAccountAction.__newPasswordMaskV12) {
+            var baseAction = window.settingAccountAction;
+            window.settingAccountAction = function(mode) {
+                var result = baseAction.apply(this, arguments);
+                if (mode === 'new') {
+                    setTimeout(prepareNewPasswordInputsV12, 0);
+                    setTimeout(prepareNewPasswordInputsV12, 60);
+                    setTimeout(prepareNewPasswordInputsV12, 200);
+                }
+                return result;
+            };
+            window.settingAccountAction.__newPasswordMaskV12 = true;
+        }
+    }
+
+    installNewPasswordMaskV12();
+    document.addEventListener('DOMContentLoaded', function() {
+        installNewPasswordMaskV12();
+        setTimeout(installNewPasswordMaskV12, 100);
+        setTimeout(installNewPasswordMaskV12, 500);
+    });
+    window.addEventListener('load', function() {
+        installNewPasswordMaskV12();
+        setTimeout(installNewPasswordMaskV12, 100);
+        setTimeout(installNewPasswordMaskV12, 500);
+    });
+})();
+
+
+/* Account Password Mask Fix V13
+   New Account: Password and Confirm Password both default to **** while typing.
+   Click eye => show clear digits; click again => mask back to ****.
+*/
+(function() {
+    function digitsV13(value) {
+        return String(value || '').replace(/[^0-9]/g, '').slice(0, 4);
+    }
+
+    function starsV13(len) {
+        len = Math.max(0, Math.min(4, parseInt(len || 0, 10)));
+        return new Array(len + 1).join('*');
+    }
+
+    function textV13(key, fallback) {
+        try {
+            if (typeof saT === 'function') return saT(key, fallback);
+        } catch (e) {}
+        return fallback || key;
+    }
+
+    function eyeBtnV13(input) {
+        if (!input || !input.parentNode) return null;
+        return input.parentNode.querySelector('.password-eye-btn, .password-toggle-btn');
+    }
+
+    function setEyeV13(input, visible) {
+        var btn = eyeBtnV13(input);
+        if (!btn) return;
+        if (visible) {
+            btn.classList.add('is-visible');
+            btn.setAttribute('title', textV13('account_hide_password', 'Hide password'));
+            btn.setAttribute('aria-label', textV13('account_hide_password', 'Hide password'));
+        } else {
+            btn.classList.remove('is-visible');
+            btn.setAttribute('title', textV13('account_show_password', 'Show password'));
+            btn.setAttribute('aria-label', textV13('account_show_password', 'Show password'));
+        }
+    }
+
+    function setMaskedV13(input, realPassword) {
+        if (!input) return;
+        realPassword = digitsV13(realPassword);
+        input.type = 'text';
+        input.value = realPassword ? starsV13(realPassword.length) : '';
+        input.setAttribute('data-real-password', realPassword);
+        input.setAttribute('data-mask-mode', realPassword ? 'masked' : 'empty');
+        input.setAttribute('autocomplete', 'off');
+        setEyeV13(input, false);
+    }
+
+    function setVisibleV13(input, realPassword) {
+        if (!input) return;
+        realPassword = digitsV13(realPassword);
+        input.type = 'text';
+        input.value = realPassword;
+        input.setAttribute('data-real-password', realPassword);
+        input.setAttribute('data-mask-mode', 'visible');
+        input.setAttribute('autocomplete', 'off');
+        setEyeV13(input, true);
+    }
+
+    function prepareNewPasswordInputsV13() {
+        setMaskedV13(document.getElementById('account_password'), '');
+        setMaskedV13(document.getElementById('account_confirm_password'), '');
+    }
+
+    function updateMaskedTypingV13(input, event) {
+        if (!input || typeof settingAccountMode === 'undefined' || settingAccountMode !== 'new') return;
+
+        var mode = input.getAttribute('data-mask-mode') || '';
+        var oldReal = digitsV13(input.getAttribute('data-real-password') || '');
+
+        if (mode === 'visible') {
+            setVisibleV13(input, input.value);
+            return;
+        }
+
+        var nextReal = oldReal;
+        var inputType = event && event.inputType ? String(event.inputType) : '';
+        var data = event && event.data !== null && event.data !== undefined ? String(event.data) : '';
+        var dataDigits = digitsV13(data);
+        var rawDigits = digitsV13(input.value);
+
+        if (inputType.indexOf('delete') === 0) {
+            nextReal = oldReal.slice(0, -1);
+        } else if (dataDigits !== '') {
+            nextReal = digitsV13(oldReal + dataDigits);
+        } else if (rawDigits !== '') {
+            // Fallback for browsers that do not provide event.data.
+            // If inline handlers or IME produced only the new digit, append it;
+            // otherwise use the full numeric value.
+            if (oldReal !== '' && rawDigits.length <= 1 && oldReal.length < 4) {
+                nextReal = digitsV13(oldReal + rawDigits);
+            } else {
+                nextReal = rawDigits;
+            }
+        } else if (String(input.value || '') === '') {
+            nextReal = '';
+        }
+
+        setMaskedV13(input, nextReal);
+    }
+
+    function togglePasswordV13(inputId, btn) {
+        var input = document.getElementById(inputId);
+        if (!input) return;
+
+        var realPassword = digitsV13(input.getAttribute('data-real-password') || input.value || '');
+        var mode = input.getAttribute('data-mask-mode') || '';
+
+        if (mode === 'visible') {
+            setMaskedV13(input, realPassword);
+        } else {
+            setVisibleV13(input, realPassword);
+        }
+    }
+
+    function resolvePasswordV13(inputId) {
+        var input = document.getElementById(inputId);
+        if (!input) return '';
+        var realPassword = digitsV13(input.getAttribute('data-real-password') || '');
+        var value = String(input.value || '').trim();
+        if (/^\*+$/.test(value) && realPassword !== '') return realPassword;
+        return digitsV13(value || realPassword);
+    }
+
+    function installV13() {
+        var p1 = document.getElementById('account_password');
+        var p2 = document.getElementById('account_confirm_password');
+
+        [p1, p2].forEach(function(input) {
+            if (!input) return;
+
+            // Remove old inline filter because it turns **** + typed digit into a clear digit.
+            input.removeAttribute('oninput');
+            input.setAttribute('maxlength', '4');
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('pattern', '[0-9]{4}');
+
+            if (!input.getAttribute('data-new-mask-v13-installed')) {
+                input.setAttribute('data-new-mask-v13-installed', '1');
+                input.addEventListener('input', function(e) {
+                    updateMaskedTypingV13(input, e);
+                });
+                input.addEventListener('paste', function() {
+                    if (typeof settingAccountMode !== 'undefined' && settingAccountMode === 'new') {
+                        window.setTimeout(function() {
+                            var pasted = digitsV13(input.value);
+                            setMaskedV13(input, pasted || input.getAttribute('data-real-password') || '');
+                        }, 0);
+                    }
+                });
+            }
+        });
+
+        window.toggleSettingAccountPassword = togglePasswordV13;
+        window.settingAccountResolvePasswordForSave = resolvePasswordV13;
+        window.settingAccountPrepareNewPasswordInputs = prepareNewPasswordInputsV13;
+
+        if (typeof window.settingAccountAction === 'function' && !window.settingAccountAction.__newPasswordMaskV13) {
+            var baseAction = window.settingAccountAction;
+            window.settingAccountAction = function(mode) {
+                var result = baseAction.apply(this, arguments);
+                if (mode === 'new') {
+                    prepareNewPasswordInputsV13();
+                    window.setTimeout(prepareNewPasswordInputsV13, 0);
+                    window.setTimeout(prepareNewPasswordInputsV13, 80);
+                    window.setTimeout(prepareNewPasswordInputsV13, 250);
+                }
+                return result;
+            };
+            window.settingAccountAction.__newPasswordMaskV13 = true;
+        }
+    }
+
+    installV13();
+    document.addEventListener('DOMContentLoaded', function() {
+        installV13();
+        window.setTimeout(installV13, 100);
+        window.setTimeout(installV13, 500);
+    });
+    window.addEventListener('load', function() {
+        installV13();
+        window.setTimeout(installV13, 100);
+        window.setTimeout(installV13, 500);
+    });
+})();
 </script>

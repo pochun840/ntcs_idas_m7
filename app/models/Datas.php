@@ -95,7 +95,7 @@ class Datas{
         $where = '';
         if ($type === 'OK') {
             $where = 'WHERE fasten_status IN (4,5,6)';
-        } elseif ($type === 'NOK') {
+        } elseif ($type === 'NOK' || $type === 'NG') {
             $where = 'WHERE fasten_status IN (7,8)';
         }
 

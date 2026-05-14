@@ -947,7 +947,7 @@ class Data extends Controller
         $limit = $_POST['limit'] ?? $_GET['limit'] ?? 25;
 
         $mode = strtoupper(trim((string)$mode));
-        if (!in_array($mode, ['ALL', 'OK', 'NOK'], true)) {
+        if (!in_array($mode, ['ALL', 'OK', 'NG'], true)) {
             $mode = 'ALL';
         }
 

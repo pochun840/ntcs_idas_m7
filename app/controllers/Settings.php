@@ -2775,6 +2775,8 @@ class Settings extends Controller
             $raw = strtolower(trim((string)$_COOKIE['language']));
         } elseif (isset($_COOKIE['lang'])) {
             $raw = strtolower(trim((string)$_COOKIE['lang']));
+        } elseif (isset($_SESSION['language'])) {
+            $raw = strtolower(trim((string)$_SESSION['language']));
         }
 
         $raw = str_replace('_', '-', $raw);
@@ -2809,6 +2811,11 @@ class Settings extends Controller
                 'account_new_success' => 'New account created successfully.',
                 'account_edit_success' => 'Account updated successfully.',
                 'account_delete_account_success' => 'Account deleted successfully.',
+                'account_protected_action' => 'This account is protected and cannot be deleted.',
+                'account_protected_edit_action' => 'This account is protected and cannot be edited.',
+                'account_protected_rename_blocked' => 'This built-in account name cannot be changed.',
+                'account_admin_rename_blocked' => 'The admin account name cannot be changed.',
+                'account_guest_rename_blocked' => 'The guest account name cannot be changed.',
             ],
             'zh-tw' => [
                 'account_upload_controller_success' => '同步到控制器成功。筆數：{rows}。',
@@ -2824,6 +2831,11 @@ class Settings extends Controller
                 'account_new_success' => '新增帳號成功。',
                 'account_edit_success' => '編輯帳號成功。',
                 'account_delete_account_success' => '刪除帳號成功。',
+                'account_protected_action' => '此帳號受保護，無法刪除。',
+                'account_protected_edit_action' => '此帳號受保護，無法編輯。',
+                'account_protected_rename_blocked' => '內建帳號名稱不可變更。',
+                'account_admin_rename_blocked' => 'admin 帳號名稱不可變更。',
+                'account_guest_rename_blocked' => 'guest 帳號名稱不可變更。',
             ],
             'zh-cn' => [
                 'account_upload_controller_success' => '同步到控制器成功。笔数：{rows}。',
@@ -2839,6 +2851,11 @@ class Settings extends Controller
                 'account_new_success' => '新增账号成功。',
                 'account_edit_success' => '编辑账号成功。',
                 'account_delete_account_success' => '删除账号成功。',
+                'account_protected_action' => '此账号受保护，无法删除。',
+                'account_protected_edit_action' => '此账号受保护，无法编辑。',
+                'account_protected_rename_blocked' => '内建账号名称不可变更。',
+                'account_admin_rename_blocked' => 'admin 账号名称不可变更。',
+                'account_guest_rename_blocked' => 'guest 账号名称不可变更。',
             ],
         ];
 
@@ -3001,6 +3018,77 @@ class Settings extends Controller
         return $columns;
     }
 
+
+    /**
+     * Ensure a default account exists in the opened account user table.
+     * If the account already exists, keep the existing password/law unchanged.
+     */
+    private function accountUserEnsureDefaultAccount(PDO $db, string $accountName, string $password, int $law = 1): bool
+    {
+        $this->accountUserAssertTable($db);
+
+        $accountName = trim($accountName);
+        $password = trim($password);
+
+        if ($accountName === '' || $password === '') {
+            throw new Exception('Default account name/password cannot be empty.');
+        }
+
+        $columns = $this->accountUserTableColumns($db);
+        if (!in_array('name', $columns, true) || !in_array('passwd', $columns, true)) {
+            throw new Exception('user table must contain name and passwd columns.');
+        }
+
+        $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))');
+        $stmt->execute([':name' => $accountName]);
+        if ((int)$stmt->fetchColumn() > 0) {
+            return false;
+        }
+
+        $insertColumns = [];
+        $params = [];
+
+        if (in_array('sn', $columns, true)) {
+            $insertColumns[] = 'sn';
+            $params[':sn'] = (int)$db->query('SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`')->fetchColumn();
+        }
+
+        $insertColumns[] = 'name';
+        $params[':name'] = $accountName;
+
+        $insertColumns[] = 'passwd';
+        $params[':passwd'] = $password;
+
+        if (in_array('law', $columns, true)) {
+            $insertColumns[] = 'law';
+            $params[':law'] = $law;
+        }
+
+        $columnSql = implode(', ', array_map([$this, 'accountUserQuoteIdentifier'], $insertColumns));
+        $placeholders = implode(', ', array_keys($params));
+
+        $stmt = $db->prepare('INSERT INTO `user` (' . $columnSql . ') VALUES (' . $placeholders . ')');
+        $stmt->execute($params);
+
+        return true;
+    }
+
+    private function accountUserEnsureDefaultAdmin(PDO $db): bool
+    {
+        return $this->accountUserEnsureDefaultAccount($db, 'admin', '0734', 1);
+    }
+
+    private function accountUserEnsureDefaultGuest(PDO $db): bool
+    {
+        return $this->accountUserEnsureDefaultAccount($db, 'guest', '0000', 1);
+    }
+
+    private function accountUserEnsureDefaultProtectedAccounts(PDO $db): void
+    {
+        $this->accountUserEnsureDefaultAdmin($db);
+        $this->accountUserEnsureDefaultGuest($db);
+    }
+
     public function account_user_upload_controller(): void
     {
         $targetDb = null;
@@ -3030,6 +3118,9 @@ class Settings extends Controller
 
             $this->accountUserAssertTable($sourceDb);
             $this->accountUserAssertTable($targetDb);
+
+            // Safety: before syncing, make sure the iDAS source DB has admin.
+            $this->accountUserEnsureDefaultProtectedAccounts($sourceDb);
 
             $sourceColumns = $this->accountUserTableColumns($sourceDb);
             $targetColumns = $this->accountUserTableColumns($targetDb);
@@ -3076,6 +3167,9 @@ class Settings extends Controller
                 }
                 $insertStmt->execute($params);
             }
+
+            // Safety: after full mirror, guarantee controller DB still has admin.
+            $this->accountUserEnsureDefaultProtectedAccounts($targetDb);
 
             $targetDb->commit();
             @chmod($targetPath, 0666);
@@ -3377,6 +3471,15 @@ class Settings extends Controller
                 }
             }
 
+            // Safety: Append / Overwrite import must never leave iDAS without admin/guest.
+            $beforeProtectedCount = $inserted;
+            if ($this->accountUserEnsureDefaultAdmin($db)) {
+                $inserted++;
+            }
+            if ($this->accountUserEnsureDefaultGuest($db)) {
+                $inserted++;
+            }
+
             $db->commit();
 
             $message = $this->accountUserFormatText('account_import_result', 'Import success. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.', ['inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped]);
@@ -3412,7 +3515,7 @@ class Settings extends Controller
 
             $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
             if ($this->accountUserIsProtectedName($name)) {
-                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be deleted.'));
             }
             $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
 
@@ -3460,18 +3563,18 @@ class Settings extends Controller
             $oldNameLower = strtolower($oldName);
             $nameLower = strtolower($name);
 
-            // admin is protected from delete/import/rename, but its password can be edited.
-            // guest/kls remain fully protected from editing.
+            // admin / guest cannot be deleted or renamed, but their password can be edited.
+            // kls remains fully protected from editing and is hidden from the Account list.
             if ($this->accountUserIsProtectedName($oldName)) {
-                if ($oldNameLower !== 'admin') {
-                    throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+                if ($oldNameLower === 'kls') {
+                    throw new Exception($this->accountUserText('account_protected_edit_action', 'This account is protected and cannot be edited.'));
                 }
 
-                if ($nameLower !== 'admin') {
-                    throw new Exception($this->accountUserText('account_admin_rename_blocked', 'The admin account name cannot be changed.'));
+                if ($nameLower !== $oldNameLower) {
+                    throw new Exception($this->accountUserText($oldNameLower === 'guest' ? 'account_guest_rename_blocked' : 'account_admin_rename_blocked', $oldNameLower . ' account name cannot be changed.'));
                 }
             } elseif ($this->accountUserIsProtectedName($name)) {
-                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+                throw new Exception($this->accountUserText('account_protected_rename_blocked', 'This built-in account name cannot be changed.'));
             }
 
             if ($oldName !== $name) {
@@ -3505,12 +3608,14 @@ class Settings extends Controller
                 }
             }
 
-            if ($oldNameLower === 'admin') {
-                // admin cannot be renamed or deleted, but password editing is allowed.
+            if ($oldNameLower === 'admin' || $oldNameLower === 'guest') {
+                // admin / guest cannot be renamed or deleted, but password editing is allowed.
                 if ($password !== '') {
-                    $stmt = $db->prepare("UPDATE `user` SET passwd = :passwd WHERE LOWER(name) = 'admin'");
+                    $stmt = $db->prepare("UPDATE `user` SET passwd = :passwd, law = :law WHERE LOWER(name) = :old_name_lower");
                     $stmt->execute([
                         ':passwd' => $password,
+                        ':law' => $law,
+                        ':old_name_lower' => $oldNameLower,
                     ]);
                 }
             } elseif ($password === '') {
@@ -3543,7 +3648,7 @@ class Settings extends Controller
             $name = $this->accountUserClean($_POST['username'] ?? '');
             $this->accountUserValidateText($name, $this->accountUserText('account_username', 'Username'));
             if ($this->accountUserIsProtectedName($name)) {
-                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be edited or deleted.'));
+                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be deleted.'));
             }
 
             $db = $this->accountUserDb();

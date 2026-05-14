@@ -324,7 +324,7 @@
     
   </style>
 
-  <?php if(($_SESSION['privilege'] ?? '') === 'admin' && !empty($btns)) : ?>
+  <?php if(!empty($btns)) : ?>
       <div class="tabs" id="customizeTabs">
         <div class="tabs-nav" role="tablist">
           <button class="tab-btn" data-tab-target="#tab-4-1">4-1</button>
@@ -442,7 +442,7 @@
 
   <div class="table-wrap">
     <div class="control-bar">
-      <?php if(($_SESSION['privilege'] ?? '') === 'admin'){ ?>
+      <?php if(true){ ?>
         <button id="btnAddRow" class="w3-btn w3-round-large"><?php echo $L['add']; ?></button>
         <button id="btnDeleteSelected" class="w3-btn w3-round-large"><?php echo $L['delete_sel']; ?></button>
         <button id="btnDeleteAll" class="w3-btn w3-round-large"><?php echo $L['delete_all']; ?></button>
@@ -456,7 +456,7 @@
       <thead>
         <tr>
           <th style="width:46px;text-align:center">
-            <?php if(($_SESSION['privilege'] ?? '') === 'admin'){ ?>
+            <?php if(true){ ?>
               <input type="checkbox" id="ckAll">
             <?php } ?>
           </th>
@@ -464,7 +464,7 @@
           <th><?php echo $L['read']; ?></th>
           <th class="col-input"><?php echo $L['input']; ?></th>
           <th><?php echo $L['result']; ?></th>
-          <?php if(($_SESSION['privilege'] ?? '') === 'admin'){ ?>
+          <?php if(true){ ?>
             <th></th>
             <th></th>
             <th style="width:90px"></th>
@@ -477,16 +477,7 @@
   </div>
 </div>
 
-<?php if($_SESSION['privilege'] != 'admin'){ ?>
-<script>
-  $(document).ready(function () {
-    if (typeof disableAllButtonsAndInputs === 'function') disableAllButtonsAndInputs();
-    document.getElementById("home").disabled = false;
-    const ds = document.getElementById("data_select");
-    if (ds) ds.disabled = false;
-  });
-</script>
-<?php } ?>
+
 
 <!-- Bottom Drawer: Table Data -->
 <div class="bottom-drawer" id="tableDrawer" aria-expanded="true">
@@ -719,7 +710,7 @@ function forbidMsg(digit){
     const FIELD_NAME_BY_INDEX = <?php echo json_encode($btns ?? [], JSON_UNESCAPED_UNICODE); ?> || {};
 
     let ROW_UID = 1;
-    const IS_ADMIN = <?php echo json_encode(($_SESSION['privilege'] ?? '') === 'admin'); ?>;
+    const IS_ADMIN = true;
     const L = <?php echo json_encode($L, JSON_UNESCAPED_UNICODE); ?>;
     const SAVE_URL = '?url=Customize/save_positions';
 
@@ -733,6 +724,7 @@ function forbidMsg(digit){
 
     let poller = null;
     let insertMarker = null;
+    let dragPayload = null;
 
     (function i18nAlertify(){
       if (!window.alertify) return;
@@ -1009,6 +1001,7 @@ function forbidMsg(digit){
             label: btn.getAttribute('data-field-label') || btn.getAttribute('title') || '',
             originId: btn.id
           };
+          dragPayload = localDragPayload;
           try {
             e.dataTransfer.effectAllowed = 'copyMove';
             e.dataTransfer.setData('text/plain', idx);

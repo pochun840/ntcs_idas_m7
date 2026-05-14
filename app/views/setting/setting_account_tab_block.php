@@ -38,6 +38,8 @@ if (!function_exists('settingAccountTabTextMap')) {
                 'account_confirm_password' => 'Confirm Password',
                 'account_save' => 'Save',
                 'account_close' => 'Close',
+                'account_show_password' => 'Show password',
+                'account_hide_password' => 'Hide password',
             ],
             'zh-tw' => [
                 'account_no' => '編號',
@@ -54,6 +56,8 @@ if (!function_exists('settingAccountTabTextMap')) {
                 'account_confirm_password' => '確認密碼',
                 'account_save' => '儲存',
                 'account_close' => '關閉',
+                'account_show_password' => '顯示密碼',
+                'account_hide_password' => '隱藏密碼',
             ],
             'zh-cn' => [
                 'account_no' => '编号',
@@ -70,6 +74,8 @@ if (!function_exists('settingAccountTabTextMap')) {
                 'account_confirm_password' => '确认密码',
                 'account_save' => '储存',
                 'account_close' => '关闭',
+                'account_show_password' => '显示密码',
+                'account_hide_password' => '隐藏密码',
             ],
         ];
 
@@ -141,14 +147,24 @@ $settingAccountTabTextJson = json_encode(settingAccountTabTextMap(), JSON_UNESCA
                     <div class="row account-form-row">
                         <div class="col-5 t1" id="settingAccountPasswordLabel"><?php echo settingAccountTabT('account_password') . $settingAccountTabColon; ?></div>
                         <div class="col-5 t2">
-                            <input type="password" class="form-control input-ms" id="account_password" maxlength="20" autocomplete="off">
+                            <div class="account-password-wrap">
+                                <input type="password" class="form-control input-ms" id="account_password" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
+                                <button type="button" class="password-eye-btn" onclick="toggleSettingAccountPassword('account_password', this)" title="<?php echo settingAccountTabT('account_show_password'); ?>" aria-label="<?php echo settingAccountTabT('account_show_password'); ?>">
+                                    <span class="eye-symbol">&#128065;</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <div class="row account-form-row">
                         <div class="col-5 t1" id="settingAccountConfirmPasswordLabel"><?php echo settingAccountTabT('account_confirm_password') . $settingAccountTabColon; ?></div>
                         <div class="col-5 t2">
-                            <input type="password" class="form-control input-ms" id="account_confirm_password" maxlength="20" autocomplete="off">
+                            <div class="account-password-wrap">
+                                <input type="password" class="form-control input-ms" id="account_confirm_password" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
+                                <button type="button" class="password-eye-btn" onclick="toggleSettingAccountPassword('account_confirm_password', this)" title="<?php echo settingAccountTabT('account_show_password'); ?>" aria-label="<?php echo settingAccountTabT('account_show_password'); ?>">
+                                    <span class="eye-symbol">&#128065;</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -171,6 +187,10 @@ var selectedAccountUser = null;
 var selectedAccountPassword = '';
 var settingAccountRecordMap = {};
 var settingAccountMode = 'new';
+var settingAccountTabText = <?php echo $settingAccountTabTextJson; ?>;
+function saT(key, fallback) {
+    return (window.settingAccountTabText && window.settingAccountTabText[key]) || fallback || key;
+}
 
 function settingAccountApi(path) {
     return window.location.protocol + '//' + window.location.hostname + '/idas/public/?url=Settings/' + path;
@@ -447,19 +467,40 @@ function settingAccountGetEditPassword(username) {
     });
 }
 
+function settingAccountEyeButtonForInput(inputId) {
+    var input = document.getElementById(inputId);
+    if (!input || !input.parentNode) return null;
+    return input.parentNode.querySelector('.password-eye-btn, .password-toggle-btn');
+}
+
+function settingAccountSetEyeVisible(btn, visible) {
+    if (!btn) return;
+
+    if (visible) {
+        btn.classList.add('is-visible');
+        btn.setAttribute('title', saT('account_hide_password', 'Hide password'));
+        btn.setAttribute('aria-label', saT('account_hide_password', 'Hide password'));
+    } else {
+        btn.classList.remove('is-visible');
+        btn.setAttribute('title', saT('account_show_password', 'Show password'));
+        btn.setAttribute('aria-label', saT('account_show_password', 'Show password'));
+    }
+}
+
 function settingAccountSetMaskedPassword(realPassword) {
     var p1 = document.getElementById('account_password');
     var p2 = document.getElementById('account_confirm_password');
 
-    realPassword = String(realPassword || '');
+    realPassword = String(realPassword || '').replace(/[^0-9]/g, '').slice(0, 4);
 
-    // 顯示固定 ****，但真正密碼存在 data-real-password。
-    // 這樣一定會看到 ****，不會因瀏覽器 password manager / reset 而看起來空白。
+    // Edit Account style:
+    //   Password         = real 4 digits + slash-eye icon
+    //   Confirm Password = custom **** mask + normal eye icon
     if (p1) {
         p1.type = 'text';
-        p1.value = realPassword ? '****' : '';
+        p1.value = realPassword;
         p1.setAttribute('data-real-password', realPassword);
-        p1.setAttribute('data-mask-mode', realPassword ? 'masked' : 'empty');
+        p1.setAttribute('data-mask-mode', 'visible');
         p1.setAttribute('autocomplete', 'off');
     }
 
@@ -471,11 +512,148 @@ function settingAccountSetMaskedPassword(realPassword) {
         p2.setAttribute('autocomplete', 'off');
     }
 
-    document.querySelectorAll('#settingAccountModal .password-eye-btn').forEach(function(btn) {
-        btn.classList.remove('is-visible');
-        btn.setAttribute('title', saT('account_show_password', 'Show password'));
-        btn.setAttribute('aria-label', saT('account_show_password', 'Show password'));
-    });
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_password'), !!realPassword);
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_confirm_password'), false);
+}
+
+function settingAccountPrepareNewPasswordInputs() {
+    var p1 = document.getElementById('account_password');
+    var p2 = document.getElementById('account_confirm_password');
+
+    // New Account uses the same visual rule as Edit Account.
+    if (p1) {
+        p1.type = 'text';
+        p1.value = '';
+        p1.setAttribute('data-real-password', '');
+        p1.setAttribute('data-mask-mode', 'visible');
+        p1.setAttribute('autocomplete', 'off');
+    }
+
+    if (p2) {
+        p2.type = 'text';
+        p2.value = '';
+        p2.setAttribute('data-real-password', '');
+        p2.setAttribute('data-mask-mode', 'empty');
+        p2.setAttribute('autocomplete', 'off');
+    }
+
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_password'), false);
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput('account_confirm_password'), false);
+}
+
+function settingAccountPasswordInputChange(input) {
+    if (!input) return;
+
+    var value = String(input.value || '').replace(/[^0-9]/g, '').slice(0, 4);
+    input.type = 'text';
+    input.value = value;
+    input.setAttribute('data-real-password', value);
+    input.setAttribute('data-mask-mode', 'visible');
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput(input.id), true);
+}
+
+function settingAccountUpdateConfirmMask(input, real) {
+    if (!input) return;
+
+    real = String(real || '').replace(/[^0-9]/g, '').slice(0, 4);
+    input.type = 'text';
+    input.value = real ? new Array(real.length + 1).join('*') : '';
+    input.setAttribute('data-real-password', real);
+    input.setAttribute('data-mask-mode', real ? 'masked' : 'empty');
+    settingAccountSetEyeVisible(settingAccountEyeButtonForInput(input.id), false);
+}
+
+function settingAccountConfirmPasswordKeydown(event) {
+    var input = event.target;
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+
+    // When the user intentionally shows the confirm password, let normal typing happen.
+    if (mode === 'visible') {
+        return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.altKey || event.key === 'Tab' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') {
+        return;
+    }
+
+    var real = String(input.getAttribute('data-real-password') || '').replace(/[^0-9]/g, '').slice(0, 4);
+
+    if (/^[0-9]$/.test(event.key)) {
+        event.preventDefault();
+        if (real.length < 4) real += event.key;
+        settingAccountUpdateConfirmMask(input, real);
+        return;
+    }
+
+    if (event.key === 'Backspace') {
+        event.preventDefault();
+        real = real.slice(0, -1);
+        settingAccountUpdateConfirmMask(input, real);
+        return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Escape') {
+        event.preventDefault();
+        settingAccountUpdateConfirmMask(input, '');
+        return;
+    }
+
+    event.preventDefault();
+}
+
+function settingAccountConfirmPasswordInputChange(input) {
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+    if (mode === 'visible') {
+        var value = String(input.value || '').replace(/[^0-9]/g, '').slice(0, 4);
+        input.value = value;
+        input.setAttribute('data-real-password', value);
+        input.setAttribute('data-mask-mode', 'visible');
+        settingAccountSetEyeVisible(settingAccountEyeButtonForInput(input.id), true);
+    }
+}
+
+function settingAccountConfirmPasswordPaste(event) {
+    var input = event.target;
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+    if (mode === 'visible') return;
+
+    event.preventDefault();
+    var text = '';
+    if (event.clipboardData && typeof event.clipboardData.getData === 'function') {
+        text = event.clipboardData.getData('text') || '';
+    }
+    settingAccountUpdateConfirmMask(input, text);
+}
+
+function installSettingAccountPasswordHandlers() {
+    var p1 = document.getElementById('account_password');
+    var p2 = document.getElementById('account_confirm_password');
+
+    if (p1 && !p1.getAttribute('data-account-handler-installed')) {
+        p1.setAttribute('data-account-handler-installed', '1');
+        p1.addEventListener('input', function() { settingAccountPasswordInputChange(p1); });
+        p1.addEventListener('paste', function(event) {
+            window.setTimeout(function() { settingAccountPasswordInputChange(p1); }, 0);
+        });
+    }
+
+    if (p2 && !p2.getAttribute('data-account-handler-installed')) {
+        p2.setAttribute('data-account-handler-installed', '1');
+        p2.addEventListener('keydown', settingAccountConfirmPasswordKeydown);
+        p2.addEventListener('input', function() { settingAccountConfirmPasswordInputChange(p2); });
+        p2.addEventListener('paste', settingAccountConfirmPasswordPaste);
+    }
+}
+
+installSettingAccountPasswordHandlers();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installSettingAccountPasswordHandlers);
 }
 
 function settingAccountOpenEditWithMaskedPassword(username) {
@@ -518,12 +696,16 @@ function settingAccountAction(mode) {
     settingAccountMode = mode;
 
     if (mode === 'new') {
-        document.getElementById('settingAccountModalTitle').innerText = 'New Account';
+        document.getElementById('settingAccountModalTitle').innerText = (window.settingAccountTabText && settingAccountTabText.account_new_title) || 'New Account';
         document.getElementById('account_old_username').value = '';
         document.getElementById('account_username').value = '';
-        document.getElementById('account_password').value = '';
-        document.getElementById('account_confirm_password').value = '';
+        document.getElementById('account_username').removeAttribute('readonly');
+        document.getElementById('account_username').classList.remove('account-username-readonly');
+
+        selectedAccountPassword = '';
+
         openSettingAccountModal();
+        settingAccountPrepareNewPasswordInputs();
         return;
     }
 
@@ -552,7 +734,74 @@ function settingAccountAction(mode) {
     }
 }
 
+
+function settingAccountEyeText(key, fallback) {
+    if (typeof saT === 'function') return saT(key, fallback);
+    if (window.settingAccountTabText && window.settingAccountTabText[key]) return window.settingAccountTabText[key];
+    return fallback || key;
+}
+
+function toggleSettingAccountPassword(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+
+    var mode = input.getAttribute('data-mask-mode') || '';
+    var real = input.getAttribute('data-real-password') || input.value || '';
+
+    if (mode === 'masked' || input.value === '****') {
+        input.type = 'text';
+        input.value = real;
+        input.setAttribute('data-mask-mode', 'visible');
+        if (btn) {
+            btn.classList.add('is-visible');
+            btn.setAttribute('title', settingAccountEyeText('account_hide_password', 'Hide password'));
+            btn.setAttribute('aria-label', settingAccountEyeText('account_hide_password', 'Hide password'));
+        }
+        return;
+    }
+
+    if (mode === 'visible') {
+        real = input.value || real;
+        input.type = 'text';
+        input.value = real ? '****' : '';
+        input.setAttribute('data-real-password', real);
+        input.setAttribute('data-mask-mode', real ? 'masked' : 'empty');
+        if (btn) {
+            btn.classList.remove('is-visible');
+            btn.setAttribute('title', settingAccountEyeText('account_show_password', 'Show password'));
+            btn.setAttribute('aria-label', settingAccountEyeText('account_show_password', 'Show password'));
+        }
+        return;
+    }
+
+    input.type = input.type === 'password' ? 'text' : 'password';
+    if (btn) btn.classList.toggle('is-visible', input.type === 'text');
+}
+
+function resetSettingAccountPasswordMask() {
+    var password = document.getElementById('account_password');
+    var confirmPassword = document.getElementById('account_confirm_password');
+    var isEditMasked =
+        settingAccountMode === 'edit' &&
+        (
+            (password && password.getAttribute('data-real-password')) ||
+            (confirmPassword && confirmPassword.getAttribute('data-real-password'))
+        );
+
+    if (!isEditMasked) {
+        if (password) password.type = 'password';
+        if (confirmPassword) confirmPassword.type = 'password';
+    }
+
+    document.querySelectorAll('#settingAccountModal .password-eye-btn, #settingAccountModal .password-toggle-btn').forEach(function(btn) {
+        btn.classList.remove('is-visible');
+        btn.setAttribute('title', settingAccountEyeText('account_show_password', 'Show password'));
+        btn.setAttribute('aria-label', settingAccountEyeText('account_show_password', 'Show password'));
+    });
+}
+
 function openSettingAccountModal() {
+    resetSettingAccountPasswordMask();
     var modal = document.getElementById('settingAccountModal');
     if (modal) modal.style.display = 'block';
 }
@@ -560,6 +809,7 @@ function openSettingAccountModal() {
 function closeSettingAccountModal() {
     var modal = document.getElementById('settingAccountModal');
     if (modal) modal.style.display = 'none';
+    resetSettingAccountPasswordMask();
 }
 
 function saveSettingAccount() {

@@ -1,5 +1,5 @@
 <?php
-/* Guest Login Fix V1 */
+/* Default Login Accounts Fix V2 */
 
 class Logins extends Controller
 {
@@ -240,6 +240,14 @@ class Logins extends Controller
 
         //先做資料庫檔案完整性檢查
         $repairResult = $this->checkAndRepairDatabaseFiles();
+
+        // Login page safety check:
+        // Ensure both controller DB and iDAS DB have default login accounts.
+        // Required accounts:
+        //   admin / 0734 / law=1
+        //   guest / 000  / law=1
+        // Required by Account login / QR login / account management flows.
+        $this->ensureDefaultLoginUsersDatabases();
 
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
@@ -611,6 +619,158 @@ class Logins extends Controller
         $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);  
     }
 
+
+
+    /**
+     * Ensure default login users exist in both login user databases.
+     *
+     * Controller DB:
+     *   /home/kls/NTCS7/KLS_NTCS.lin or /home/kls/NTCS7/KLS_NTCS.Lin
+     * iDAS DB:
+     *   /var/www/html/database/KLS_NTCS_IDAS.Lin
+     *
+     * If table user does not have these accounts, insert them:
+     *   admin / 0734 / law=1
+     *   guest / 000  / law=1
+     *
+     * This method is intentionally best-effort: login page must not crash if a DB
+     * is temporarily missing, locked, or has a different schema. Errors are logged.
+     */
+    private function ensureDefaultLoginUsersDatabases(): array
+    {
+        $paths = [];
+
+        if (PHP_OS_FAMILY === 'Linux') {
+            // User request uses .lin, existing project paths may use .Lin. Linux is case-sensitive,
+            // so support both and update whichever exists. If neither exists, prefer .lin.
+            $controllerCandidates = [
+                '/home/kls/NTCS7/KLS_NTCS.lin',
+                '/home/kls/NTCS7/KLS_NTCS.Lin',
+            ];
+
+            $controllerPath = $controllerCandidates[0];
+            foreach ($controllerCandidates as $candidate) {
+                if (is_file($candidate)) {
+                    $controllerPath = $candidate;
+                    break;
+                }
+            }
+
+            $paths['controller'] = $controllerPath;
+            $paths['idas']       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        } else {
+            // Development / Windows fallback paths.
+            $paths['controller'] = __DIR__ . '/../../database/KLS_NTCS.Lin';
+            $paths['idas']       = __DIR__ . '/../../database/KLS_NTCS_IDAS.Lin';
+        }
+
+        $result = [];
+        foreach ($paths as $key => $path) {
+            $result[$key] = $this->ensureDefaultLoginUsersInDb($path);
+        }
+
+        return $result;
+    }
+
+    private function ensureDefaultLoginUsersInDb(string $dbPath): string
+    {
+        try {
+            if (!is_file($dbPath)) {
+                error_log('[LOGIN] Default login users check skipped, DB not found: ' . $dbPath);
+                return 'db_not_found';
+            }
+
+            if (!is_readable($dbPath)) {
+                error_log('[LOGIN] Default login users check skipped, DB not readable: ' . $dbPath);
+                return 'db_not_readable';
+            }
+
+            if (!is_writable($dbPath)) {
+                error_log('[LOGIN] Default login users check skipped, DB not writable: ' . $dbPath);
+                return 'db_not_writable';
+            }
+
+            $db = new PDO('sqlite:' . $dbPath);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            $db->exec('PRAGMA busy_timeout = 3000');
+
+            $tableExists = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")->fetchColumn();
+            if (!$tableExists) {
+                error_log('[LOGIN] Default login users check skipped, table user not found: ' . $dbPath);
+                return 'table_user_not_found';
+            }
+
+            $columns = $db->query('PRAGMA table_info("user")')->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = [];
+            foreach ($columns as $column) {
+                if (!empty($column['name'])) {
+                    $columnNames[] = (string)$column['name'];
+                }
+            }
+
+            foreach (['name', 'passwd', 'law'] as $requiredColumn) {
+                if (!in_array($requiredColumn, $columnNames, true)) {
+                    error_log('[LOGIN] Default login users check skipped, missing column ' . $requiredColumn . ': ' . $dbPath);
+                    return 'missing_column_' . $requiredColumn;
+                }
+            }
+
+            $requiredUsers = [
+                ['name' => 'admin', 'passwd' => '0734', 'law' => 1],
+                ['name' => 'guest', 'passwd' => '000',  'law' => 1],
+            ];
+
+            $created = [];
+            $exists = [];
+
+            foreach ($requiredUsers as $user) {
+                $stmt = $db->prepare('SELECT COUNT(*) FROM "user" WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))');
+                $stmt->execute([':name' => $user['name']]);
+
+                if ((int)$stmt->fetchColumn() > 0) {
+                    $exists[] = $user['name'];
+                    continue;
+                }
+
+                $insertColumns = ['name', 'passwd', 'law'];
+                $insertValues = [
+                    ':name'   => $user['name'],
+                    ':passwd' => $user['passwd'],
+                    ':law'    => (int)$user['law'],
+                ];
+
+                // Some deployed schemas have a NOT NULL sn column. If present, choose max(sn)+1.
+                if (in_array('sn', $columnNames, true)) {
+                    $nextSn = (int)$db->query('SELECT COALESCE(MAX(sn), 0) + 1 FROM "user"')->fetchColumn();
+                    $insertColumns = array_merge(['sn'], $insertColumns);
+                    $insertValues = array_merge([':sn' => $nextSn], $insertValues);
+                }
+
+                $quotedColumns = array_map(function($column) {
+                    return '"' . str_replace('"', '""', $column) . '"';
+                }, $insertColumns);
+
+                $placeholders = array_keys($insertValues);
+                $sql = 'INSERT INTO "user" (' . implode(', ', $quotedColumns) . ') VALUES (' . implode(', ', $placeholders) . ')';
+                $insert = $db->prepare($sql);
+                $insert->execute($insertValues);
+
+                $created[] = $user['name'];
+            }
+
+            @chmod($dbPath, 0666);
+
+            if (!empty($created)) {
+                return 'created_' . implode('_', $created);
+            }
+
+            return 'exists_' . implode('_', $exists);
+        } catch (Throwable $e) {
+            error_log('[LOGIN] Default login users check failed for ' . $dbPath . ': ' . $e->getMessage());
+            return 'error';
+        }
+    }
 
     /**
      * 檢查 database 目錄底下 IDAS 檔案是否為 0KB
