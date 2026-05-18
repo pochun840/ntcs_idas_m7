@@ -6,6 +6,7 @@ class Logins extends Controller
     private $AdminModel;
     private $LoginModel;
     private $stepModel;
+    private $AuditModel;
     Private $deviceId;
 
     // 在建構子中將 Post 物件（Model）實例化
@@ -14,6 +15,7 @@ class Logins extends Controller
         $this->LoginModel = $this->model('Login');
         $this->stepModel = $this->model('Steptcc');
         $this->AdminModel = $this->model('Admin');
+        $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
@@ -52,9 +54,46 @@ class Logins extends Controller
     }
 
 
+    private function isLogoutRequest(array $url): bool
+    {
+        $path0 = strtolower((string)($url[0] ?? ''));
+        $path1 = strtolower((string)($url[1] ?? ''));
+
+        return $path1 === 'logout'
+            || !empty($_POST['logout_audit'])
+            || !empty($_GET['logout_audit'])
+            || (
+                isset($_SERVER['REQUEST_URI'])
+                && preg_match('/url=(In|Logins)\/logout/i', (string)$_SERVER['REQUEST_URI'])
+            );
+    }
+
+    private function respondLogoutRequest(): void
+    {
+        $this->logout(true);
+
+        $isAjax = !empty($_POST['logout_audit'])
+            || !empty($_GET['logout_audit'])
+            || (
+                isset($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
+            )
+            || (
+                isset($_SERVER['HTTP_ACCEPT'])
+                && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false
+            );
+
+        if ($isAjax) {
+            $this->sendLoginJson(true, 'Logout logged.');
+        }
+
+        header('Location: /idas/public/?url=In');
+        exit();
+    }
+
     private function loginCurrentLang(): string
     {
-        $raw = strtolower(trim((string)($_COOKIE['language'] ?? ($_COOKIE['lang'] ?? 'en-us'))));
+        $raw = strtolower(trim((string)($_COOKIE['languages'] ?? ($_COOKIE['language'] ?? ($_COOKIE['lang'] ?? 'en-us')))));
         $raw = str_replace('_', '-', $raw);
 
         if ($raw === 'zh-tw' || $raw === 'zh-hant' || $raw === 'tw') return 'zh-tw';
@@ -87,6 +126,73 @@ class Logins extends Controller
 
         $lang = $this->loginCurrentLang();
         return $dict[$lang][$key] ?? $dict['en-us'][$key] ?? $key;
+    }
+
+    private function loginAuditText(string $key, array $vars = []): string
+    {
+        $dict = [
+            'en-us' => [
+                'LOGIN_TITLE'       => 'Login',
+                'LOGIN_FAIL_TITLE'  => 'Login Fail',
+                'QR_LOGIN_TITLE'    => 'QR Code Login',
+                'QR_LOGIN_FAIL_TITLE' => 'QR Code Login Fail',
+                'LOGOUT_TITLE'      => 'Logout',
+                'LOGIN_SUCCESS_MSG' => 'Login success user: {user}',
+                'LOGIN_FAIL_MSG'    => 'Login failed user: {user}, reason: {reason}',
+                'QR_LOGIN_SUCCESS_MSG' => 'QR Code login success user: {user}',
+                'QR_LOGIN_FAIL_MSG' => 'QR Code login failed user: {user}, reason: {reason}',
+                'LOGOUT_MSG'        => 'Logout user: {user}',
+                'USER_TARGET'       => 'User: {user}',
+            ],
+            'zh-tw' => [
+                'LOGIN_TITLE'       => '登入',
+                'LOGIN_FAIL_TITLE'  => '登入失敗',
+                'QR_LOGIN_TITLE'    => 'QR Code 登入',
+                'QR_LOGIN_FAIL_TITLE' => 'QR Code 登入失敗',
+                'LOGOUT_TITLE'      => '登出',
+                'LOGIN_SUCCESS_MSG' => '使用者登入成功：{user}',
+                'LOGIN_FAIL_MSG'    => '使用者登入失敗：{user}，原因：{reason}',
+                'QR_LOGIN_SUCCESS_MSG' => 'QR Code 使用者登入成功：{user}',
+                'QR_LOGIN_FAIL_MSG' => 'QR Code 使用者登入失敗：{user}，原因：{reason}',
+                'LOGOUT_MSG'        => '使用者登出：{user}',
+                'USER_TARGET'       => '使用者：{user}',
+            ],
+            'zh-cn' => [
+                'LOGIN_TITLE'       => '登入',
+                'LOGIN_FAIL_TITLE'  => '登入失败',
+                'QR_LOGIN_TITLE'    => 'QR Code 登录',
+                'QR_LOGIN_FAIL_TITLE' => 'QR Code 登录失败',
+                'LOGOUT_TITLE'      => '登出',
+                'LOGIN_SUCCESS_MSG' => '使用者登入成功：{user}',
+                'LOGIN_FAIL_MSG'    => '使用者登入失败：{user}，原因：{reason}',
+                'QR_LOGIN_SUCCESS_MSG' => 'QR Code 使用者登录成功：{user}',
+                'QR_LOGIN_FAIL_MSG' => 'QR Code 使用者登录失败：{user}，原因：{reason}',
+                'LOGOUT_MSG'        => '使用者登出：{user}',
+                'USER_TARGET'       => '使用者：{user}',
+            ],
+        ];
+
+        $lang = $this->loginCurrentLang();
+        $text = $dict[$lang][$key] ?? $dict['en-us'][$key] ?? $key;
+
+        foreach ($vars as $name => $value) {
+            $text = str_replace('{' . $name . '}', (string)$value, $text);
+        }
+
+        return $text;
+    }
+
+    private function isQrLoginRequest(): bool
+    {
+        return !empty($_POST['qr_ajax_login'])
+            || !empty($_POST['qr_payload'])
+            || !empty($_POST['usr'])
+            || !empty($_POST['USR']);
+    }
+
+    private function loginAuditMethod(): string
+    {
+        return $this->isQrLoginRequest() ? 'QR_CODE' : 'MANUAL';
     }
 
     private function getCredentialFailureCode(string $username): string
@@ -254,6 +360,12 @@ class Logins extends Controller
         }
         $_SESSION['sessionid'] = session_id();
         $_SESSION['privilege'] = '';
+
+        // Direct logout request from dashboard logout() JS.
+        // Must be handled before normal login/auth checks, otherwise logout may only clear cookies on client side and no audit row is written.
+        if ($this->isLogoutRequest($url)) {
+            $this->respondLogoutRequest();
+        }
         $error_message = '';
         $authToken = '';
         $account = $this->LoginModel->get_account();
@@ -374,6 +486,21 @@ class Logins extends Controller
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
 
+                $isQrLoginAudit = $this->isQrLoginRequest();
+                $this->writeLoginAudit([
+                    'action'   => 'LOGIN',
+                    'status'   => 'SUCCESS',
+                    'username' => (string)$username,
+                    'operator' => (string)$username,
+                    'title'    => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_TITLE' : 'LOGIN_TITLE'),
+                    'message'  => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_SUCCESS_MSG' : 'LOGIN_SUCCESS_MSG', ['user' => (string)$username]),
+                    'after_json' => [
+                        'login_method' => $this->loginAuditMethod(),
+                        'qr_payload_present' => !empty($_POST['qr_payload']),
+                        'language' => $this->loginCurrentLang(),
+                    ],
+                ]);
+
                 if ($isAjaxLogin) {
                     $this->sendLoginJson(true, 'Login success.', [
                         'redirect_url' => '/idas/public/?url=Dashboards'
@@ -384,10 +511,26 @@ class Logins extends Controller
                 exit;
             }else{
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
-                $this->logout();
-
                 $failureCode = $this->getCredentialFailureCode($username);
                 $failureMsg = $this->loginText($failureCode);
+
+                $isQrLoginAudit = $this->isQrLoginRequest();
+                $this->writeLoginAudit([
+                    'action'   => 'LOGIN',
+                    'status'   => 'FAIL',
+                    'username' => (string)$username,
+                    'operator' => (string)$username,
+                    'title'    => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_FAIL_TITLE' : 'LOGIN_FAIL_TITLE'),
+                    'message'  => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_FAIL_MSG' : 'LOGIN_FAIL_MSG', ['user' => (string)$username, 'reason' => $failureCode]),
+                    'after_json' => [
+                        'code' => $failureCode,
+                        'login_method' => $this->loginAuditMethod(),
+                        'qr_payload_present' => !empty($_POST['qr_payload']),
+                        'language' => $this->loginCurrentLang(),
+                    ],
+                ]);
+
+                $this->logout(false);
 
                 if ($isAjaxLogin) {
                     $this->sendLoginJson(false, $failureMsg, ['code' => $failureCode]);
@@ -405,7 +548,7 @@ class Logins extends Controller
                 return true;
             } else {
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
-                $this->logout();
+                $this->logout(false);
                 $this->view('login/index', $data);
                 exit();
             }
@@ -433,7 +576,20 @@ class Logins extends Controller
     }
 
 
-    public function logout() {
+    public function logout($writeAudit = true) {
+        $username = (string)($_POST['username'] ?? ($_GET['username'] ?? ($_COOKIE['username'] ?? '')));
+
+        if ($writeAudit && $username !== '') {
+            $this->writeLoginAudit([
+                'action'   => 'LOGOUT',
+                'status'   => 'SUCCESS',
+                'username' => $username,
+                'operator' => $username,
+                'title'    => $this->loginAuditText('LOGOUT_TITLE'),
+                'message'  => $this->loginAuditText('LOGOUT_MSG', ['user' => $username]),
+            ]);
+        }
+
         setcookie('username', '', time() - 3600, '/');
         setcookie('auth_token', '', time() - 3600, '/');
 
@@ -486,6 +642,69 @@ class Logins extends Controller
         $this->LoginModel->logLoginAttempt($ip);
     }
     
+
+    private function getClientIp(): string
+    {
+        if (!empty($_SERVER["HTTP_CLIENT_IP"])) {
+            return (string)$_SERVER["HTTP_CLIENT_IP"];
+        }
+
+        if (!empty($_SERVER["HTTP_X_FORWARDED_FOR"])) {
+            $parts = explode(',', (string)$_SERVER["HTTP_X_FORWARDED_FOR"]);
+            return trim((string)$parts[0]);
+        }
+
+        return (string)($_SERVER["REMOTE_ADDR"] ?? '');
+    }
+
+    private function loginAuditRequestJson(?string $username = null): array
+    {
+        return [
+            'username'      => $username ?? (string)($_POST['username'] ?? ($_COOKIE['username'] ?? '')),
+            'ajax_login'    => !empty($_POST['ajax_login']),
+            'qr_ajax_login' => !empty($_POST['qr_ajax_login']),
+            'force_json'    => !empty($_POST['force_json']),
+            'login_method'  => $this->loginAuditMethod(),
+            'qr_payload_present' => !empty($_POST['qr_payload']),
+            'user_agent'    => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
+            'uri'           => (string)($_SERVER['REQUEST_URI'] ?? ''),
+            'language'      => $this->loginCurrentLang(),
+        ];
+    }
+
+    private function writeLoginAudit(array $data): void
+    {
+        try {
+            if (!isset($this->AuditModel)) {
+                return;
+            }
+
+            $operator = (string)($data['operator'] ?? ($_COOKIE['username'] ?? ($_POST['username'] ?? '')));
+            $username = (string)($data['username'] ?? $operator);
+
+            $defaults = [
+                'user_id'      => $operator,
+                'operator'     => $operator,
+                'client_ip'    => $this->getClientIp(),
+                'device_id'    => $this->deviceId ?? null,
+                'module'       => 'AUTH',
+                'status'       => 'SUCCESS',
+                'target'       => $username !== '' ? $this->loginAuditText('USER_TARGET', ['user' => $username]) : '-',
+                'request_json' => $this->loginAuditRequestJson($username),
+                'before_json'  => null,
+                'after_json'   => null,
+            ];
+
+            $payload = array_merge($defaults, $data);
+            unset($payload['username']);
+
+            $this->AuditModel->write($payload);
+        } catch (Throwable $e) {
+            // Audit log 失敗不能影響登入 / 登出功能
+            error_log('[LOGIN AUDIT FAIL] ' . $e->getMessage());
+        }
+    }
+
     public function active_sessions($username)
     {
         //0.先清理過期的session
@@ -546,7 +765,7 @@ class Logins extends Controller
             'iDas_Vesion' => $iDas_Vesion,
         ];
 
-        $this->logout();
+        $this->logout(false);
         $this->view('login/index', $data);
         exit();
     }
@@ -578,7 +797,7 @@ class Logins extends Controller
             $today = date("Y-m-d");
             if($today > $expired_date){
                 $data['error_message'] = 'expired';
-                $this->logout();
+                $this->logout(false);
                 $this->view('login/index', $data);
                 exit();
             }else{

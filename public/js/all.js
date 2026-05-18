@@ -248,9 +248,50 @@ function back() {
 }
 
 function logout() {
-    deleteCookie('username');
-    deleteCookie('auth_token');
-    window.location.href = '?url=In';
+    var username = '';
+    try {
+        username = getCookie('username') || '';
+    } catch (e) {
+        username = '';
+    }
+
+    var redirect = function() {
+        deleteCookie('username');
+        deleteCookie('auth_token');
+        window.location.href = '?url=In';
+    };
+
+    var body = new URLSearchParams();
+    body.append('logout_audit', '1');
+    body.append('username', username);
+
+    // Use In/logout because this project enters login through ?url=In.
+    // Logins.php also handles this inside index() before normal auth checks.
+    if (window.fetch) {
+        fetch('?url=In/logout', {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            }
+        }).catch(function() {
+            // If audit logging fails, still logout the user.
+        }).finally(function() {
+            redirect();
+        });
+        return;
+    }
+
+    // Older browser fallback.
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon('?url=In/logout', body);
+        setTimeout(redirect, 300);
+        return;
+    }
+
+    redirect();
 }
 
 function deleteCookie(name) {

@@ -2614,35 +2614,12 @@ function downloadSettingAccountQrCode(username, password, event) {
 document.addEventListener('DOMContentLoaded', function() { applySettingAccountColonFix(); resetSettingAccountPasswordMask(); });
 
 
-/* Account Password Mask V6 guard: if old code opens empty edit modal, refill it. */
+/* Account Password Mask V6 guard disabled.
+   Reason: In Edit Account, the old guard refilled account_password when the
+   user intentionally cleared it, so the original password immediately came
+   back. Password is now loaded only by settingAccountOpenEditWithMaskedPassword(). */
 (function() {
-    function guardFill() {
-        try {
-            if (typeof settingAccountMode === 'undefined' || settingAccountMode !== 'edit') return;
-
-            var modal = document.getElementById('settingAccountModal');
-            var p1 = document.getElementById('account_password');
-            var username = document.getElementById('account_username');
-
-            if (!modal || !p1 || !username) return;
-            if (modal.style.display === 'none') return;
-            if (p1.value !== '') return;
-
-            var u = username.value || (typeof selectedAccountUser !== 'undefined' ? selectedAccountUser : '');
-            if (!u) return;
-
-            settingAccountGetEditPassword(u).then(function(realPassword) {
-                if (realPassword) settingAccountSetMaskedPassword(realPassword);
-            }).catch(function(){});
-        } catch(e) {}
-    }
-
-    document.addEventListener('click', function() {
-        setTimeout(guardFill, 100);
-        setTimeout(guardFill, 400);
-    }, true);
-
-    window.setInterval(guardFill, 1000);
+    window.settingAccountPasswordGuardDisabled = true;
 })();
 
 

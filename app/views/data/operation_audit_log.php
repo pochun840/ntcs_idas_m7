@@ -69,16 +69,23 @@ function operationAuditCookieValue(name) {
 }
 
 function operationAuditLang() {
-    var lang = String(operationAuditCookieValue('language') || operationAuditCookieValue('lang') || 'en-us')
+    // 系統目前實際使用的 cookie 名稱是 languages，例如 languages=zh-cn。
+    // 保留 language / lang 作為舊版相容。
+    var lang = String(
+        operationAuditCookieValue('languages') ||
+        operationAuditCookieValue('language')  ||
+        operationAuditCookieValue('lang')      ||
+        'en-us'
+    )
         .trim()
         .toLowerCase()
         .replace('_', '-');
 
     if (lang === 'zh-tw' || lang === 'zh-hant' || lang === 'tw') return 'zh-tw';
     if (lang === 'zh-cn' || lang === 'zh-hans' || lang === 'cn') return 'zh-cn';
-    if (lang === 'en') return 'en-us';
+    if (lang === 'en' || lang === 'en-us') return 'en-us';
 
-    return lang === 'en-us' ? 'en-us' : 'en-us';
+    return 'en-us';
 }
 
 function operationAuditText(key, vars) {
@@ -119,6 +126,7 @@ function operationAuditText(key, vars) {
             module_APP: 'APP',
             module_IDAS: 'iDAS',
             module_DB_SYNC: 'DB Sync',
+            module_AUTH: 'Auth',
 
             action_NEW: 'NEW',
             action_EDIT: 'EDIT',
@@ -127,17 +135,24 @@ function operationAuditText(key, vars) {
             action_UP: 'UP',
             action_DOWN: 'DOWN',
             action_LOG: 'LOG',
+            action_LOGIN: 'LOGIN',
+            action_LOGOUT: 'LOGOUT',
             action_SAVE: 'SAVE',
             action_SYNC_D2C: 'SAVE',
             action_SYNC_C2D: 'LOAD',
             target_SYNC_D2C: 'iDAS data sync to controller',
             target_SYNC_C2D: 'Controller data sync to iDAS',
+            target_USER: 'User: {user}',
 
             status_SUCCESS: 'SUCCESS',
             status_FAIL: 'FAIL',
             status_ERROR: 'ERROR',
             status_INFO: 'INFO',
             status_WARNING: 'WARNING',
+
+            msg_login_success: 'Login success user: {user}',
+            msg_login_failed: 'Login failed user: {user}',
+            msg_logout: 'Logout user: {user}',
 
             msg_create_job: 'Create job id: {id}',
             msg_edit_job: 'Edit job id: {id}',
@@ -185,6 +200,7 @@ function operationAuditText(key, vars) {
             module_APP: 'APP',
             module_IDAS: 'iDAS',
             module_DB_SYNC: '資料庫同步',
+            module_AUTH: '登入驗證',
 
             action_NEW: '新增',
             action_EDIT: '編輯',
@@ -193,17 +209,24 @@ function operationAuditText(key, vars) {
             action_UP: '上移',
             action_DOWN: '下移',
             action_LOG: '紀錄',
+            action_LOGIN: '登入',
+            action_LOGOUT: '登出',
             action_SAVE: '儲存',
             action_SYNC_D2C: '儲存',
             action_SYNC_C2D: '上傳',
             target_SYNC_D2C: 'iDAS 資料同步到控制器',
             target_SYNC_C2D: '控制器資料同步到 iDAS',
+            target_USER: '使用者：{user}',
 
             status_SUCCESS: '成功',
             status_FAIL: '失敗',
             status_ERROR: '錯誤',
             status_INFO: '資訊',
             status_WARNING: '警告',
+
+            msg_login_success: '使用者登入成功：{user}',
+            msg_login_failed: '使用者登入失敗：{user}',
+            msg_logout: '使用者登出：{user}',
 
             msg_create_job: '新增工作 ID：{id}',
             msg_edit_job: '編輯工作 ID：{id}',
@@ -251,6 +274,7 @@ function operationAuditText(key, vars) {
             module_APP: 'APP',
             module_IDAS: 'iDAS',
             module_DB_SYNC: '数据库同步',
+            module_AUTH: '登录验证',
 
             action_NEW: '新增',
             action_EDIT: '编辑',
@@ -259,17 +283,24 @@ function operationAuditText(key, vars) {
             action_UP: '上移',
             action_DOWN: '下移',
             action_LOG: '纪录',
+            action_LOGIN: '登录',
+            action_LOGOUT: '登出',
             action_SAVE: '保存',
             action_SYNC_D2C: '保存',
             action_SYNC_C2D: '载入',
             target_SYNC_D2C: 'iDAS 数据同步到控制器',
             target_SYNC_C2D: '控制器数据同步到 iDAS',
+            target_USER: '使用者：{user}',
 
             status_SUCCESS: '成功',
             status_FAIL: '失败',
             status_ERROR: '错误',
             status_INFO: '信息',
             status_WARNING: '警告',
+
+            msg_login_success: '使用者登录成功：{user}',
+            msg_login_failed: '使用者登录失败：{user}',
+            msg_logout: '使用者登出：{user}',
 
             msg_create_job: '新增工作 ID：{id}',
             msg_edit_job: '编辑工作 ID：{id}',
@@ -321,7 +352,11 @@ function operationAuditNormalizeModuleKey(value) {
         'IDAS': 'IDAS',
 
         'DB SYNC': 'DB_SYNC',
-        'DATABASE SYNC': 'DB_SYNC'
+        'DATABASE SYNC': 'DB_SYNC',
+
+        'AUTH': 'AUTH',
+        'LOGIN AUTH': 'AUTH',
+        'AUTHENTICATION': 'AUTH'
     };
 
     return map[normalized] || raw.toUpperCase();
@@ -364,6 +399,16 @@ function operationAuditNormalizeActionKey(value) {
         'MOVE DOWN': 'DOWN',
 
         'LOG': 'LOG',
+
+        'LOGIN': 'LOGIN',
+        'SIGN IN': 'LOGIN',
+        'SIGNIN': 'LOGIN',
+        'LOG IN': 'LOGIN',
+        'LOGOUT': 'LOGOUT',
+        'LOG OUT': 'LOGOUT',
+        'SIGN OUT': 'LOGOUT',
+        'SIGNOUT': 'LOGOUT',
+
         'SAVE': 'SAVE',
         'LOAD': 'SYNC_C2D',
 
@@ -401,6 +446,9 @@ function operationAuditTranslateMessage(message) {
     var raw = String(message === null || message === undefined ? '' : message).trim();
 
     var patterns = [
+        { re: /^Login success user:\s*(.+)$/i, key: 'msg_login_success', varName: 'user' },
+        { re: /^Login failed user:\s*([^,]+)(?:,.*)?$/i, key: 'msg_login_failed', varName: 'user' },
+        { re: /^Logout user:\s*(.+)$/i, key: 'msg_logout', varName: 'user' },
         { re: /^Create job id:\s*(\d+)/i, key: 'msg_create_job' },
         { re: /^Edit job id:\s*(\d+)/i, key: 'msg_edit_job' },
         { re: /^Delete job id:\s*(\d+)/i, key: 'msg_delete_job' },
@@ -415,7 +463,9 @@ function operationAuditTranslateMessage(message) {
     for (var i = 0; i < patterns.length; i++) {
         var m = raw.match(patterns[i].re);
         if (m) {
-            return operationAuditText(patterns[i].key, { id: m[1] });
+            var vars = {};
+            vars[patterns[i].varName || 'id'] = m[1];
+            return operationAuditText(patterns[i].key, vars);
         }
     }
 
@@ -752,6 +802,11 @@ function operationAuditNormalizeLegacyTarget(targetText) {
 
     if (!raw) return '';
 
+    var userMatch = raw.match(/^User\s*:\s*(.+)$/i);
+    if (userMatch && userMatch[1]) {
+        return operationAuditText('target_USER', { user: userMatch[1] });
+    }
+
     // 已經是新格式就直接保留
     if (/Job\s*ID\s*:/i.test(raw) || /Seq\s*ID\s*:/i.test(raw) || /Step\s*ID\s*:/i.test(raw)) {
         return raw;
@@ -785,6 +840,10 @@ function operationAuditBuildTarget(row) {
 
     if (moduleKey === 'DB_SYNC' && actionKey === 'SYNC_C2D') {
         return operationAuditText('target_SYNC_C2D');
+    }
+
+    if (moduleKey === 'AUTH' && operationAuditValueFilled(row.target)) {
+        return operationAuditNormalizeLegacyTarget(row.target);
     }
 
     var jobId  = operationAuditDisplayId(row.target_job_id, row.job_id);
@@ -866,6 +925,132 @@ function operationAuditBuildRenderSignature(records) {
     }).join('||');
 }
 
+
+
+/* =====================================================
+   Hard fallback for AUTH rows
+   Why: some deployed pages still render AUTH / LOGIN from old API values
+   before cookie language is available.  Detect current visible language
+   and translate these two raw values directly at table render time.
+   ===================================================== */
+function operationAuditVisibleLang() {
+    var lang = operationAuditLang();
+    if (lang === 'zh-tw' || lang === 'zh-cn') return lang;
+
+    try {
+        var text = (document.body && document.body.innerText ? document.body.innerText : '') + ' ' + (document.title || '');
+        if (/[資料歷史匯出曲線自定義扭力操作紀錄編號時間使用者模組動作目標]/.test(text)) return 'zh-tw';
+        if (/[资料历史导出曲线自定义扭力操作纪录编号时间使用者模块动作目标]/.test(text)) return 'zh-cn';
+    } catch (e) {}
+
+    return lang || 'en-us';
+}
+
+function operationAuditRenderModule(value) {
+    var raw = String(value === null || value === undefined ? '' : value).trim();
+    if (raw.toUpperCase() === 'AUTH') {
+        var lang = operationAuditVisibleLang();
+        if (lang === 'zh-tw') return '登入驗證';
+        if (lang === 'zh-cn') return '登录验证';
+        return 'Auth';
+    }
+
+    return operationAuditTranslateValue('module', raw);
+}
+
+function operationAuditRenderAction(value) {
+    var raw = String(value === null || value === undefined ? '' : value).trim();
+    var key = raw.toUpperCase().replace(/[\s\-_]+/g, ' ');
+    var lang = operationAuditVisibleLang();
+
+    if (key === 'LOGIN' || key === 'LOG IN' || key === 'SIGN IN' || key === 'SIGNIN') {
+        if (lang === 'zh-tw') return '登入';
+        if (lang === 'zh-cn') return '登录';
+        return 'LOGIN';
+    }
+
+    if (key === 'LOGOUT' || key === 'LOG OUT' || key === 'SIGN OUT' || key === 'SIGNOUT') {
+        if (lang === 'zh-tw') return '登出';
+        if (lang === 'zh-cn') return '登出';
+        return 'LOGOUT';
+    }
+
+    return operationAuditTranslateValue('action', raw);
+}
+
+
+/* =====================================================
+   AUTH / LOGIN DOM translation safety net
+   Some pages/API responses may write raw AUTH / LOGIN directly into tbody.
+   This function translates the actually rendered table cells, so it works
+   even if rows were inserted by another script or by an older cached renderer.
+   ===================================================== */
+function operationAuditTranslateAuthCells() {
+    var tbody = document.getElementById('operationAuditLogTbody');
+    if (!tbody) return;
+
+    var lang = operationAuditVisibleLang();
+
+    var authText = 'Auth';
+    var loginText = 'LOGIN';
+    var logoutText = 'LOGOUT';
+
+    if (lang === 'zh-tw') {
+        authText = '登入驗證';
+        loginText = '登入';
+        logoutText = '登出';
+    } else if (lang === 'zh-cn') {
+        authText = '登录验证';
+        loginText = '登录';
+        logoutText = '登出';
+    }
+
+    Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function(tr) {
+        var cells = tr.children;
+        if (!cells || cells.length < 5) return;
+
+        var moduleCell = cells[3];
+        var actionCell = cells[4];
+
+        var moduleRaw = String(moduleCell.textContent || '').trim().toUpperCase();
+        var actionRaw = String(actionCell.textContent || '').trim().toUpperCase().replace(/[\s\-_]+/g, ' ');
+
+        if (moduleRaw === 'AUTH' || moduleRaw === 'AUTHENTICATION' || moduleRaw === 'LOGIN AUTH' || moduleRaw === 'AUTHORIZATION') {
+            moduleCell.textContent = authText;
+        }
+
+        if (actionRaw === 'LOGIN' || actionRaw === 'LOG IN' || actionRaw === 'SIGN IN' || actionRaw === 'SIGNIN') {
+            actionCell.textContent = loginText;
+        } else if (actionRaw === 'LOGOUT' || actionRaw === 'LOG OUT' || actionRaw === 'SIGN OUT' || actionRaw === 'SIGNOUT') {
+            actionCell.textContent = logoutText;
+        }
+    });
+}
+
+function operationAuditInstallAuthCellTranslator() {
+    operationAuditTranslateAuthCells();
+
+    var tbody = document.getElementById('operationAuditLogTbody');
+    if (!tbody || tbody.dataset.authTranslatorBound === '1') return;
+
+    tbody.dataset.authTranslatorBound = '1';
+
+    if (typeof MutationObserver !== 'undefined') {
+        var observer = new MutationObserver(function() {
+            operationAuditTranslateAuthCells();
+        });
+
+        observer.observe(tbody, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+    }
+
+    // Fallback for older browsers / pages that update rows without triggering our renderer.
+    setInterval(operationAuditTranslateAuthCells, 1000);
+}
+
 function renderSettingOperationAuditLogs(records) {
     var tbody = document.getElementById('operationAuditLogTbody');
     if (!tbody) return;
@@ -908,13 +1093,14 @@ function renderSettingOperationAuditLogs(records) {
             '<td>' + (index + 1) + '</td>' +
             '<td>' + operationAuditEscape(row.created_at || '') + '</td>' +
             '<td>' + operationAuditEscape(row.operator || row.user_id || '') + '</td>' +
-            '<td>' + operationAuditEscape(operationAuditTranslateValue('module', row.module || '')) + '</td>' +
-            '<td>' + operationAuditEscape(operationAuditTranslateValue('action', row.action || '')) + '</td>' +
+            '<td>' + operationAuditEscape(operationAuditRenderModule(row.module || '')) + '</td>' +
+            '<td>' + operationAuditEscape(operationAuditRenderAction(row.action || '')) + '</td>' +
             '<td>' + operationAuditEscape(targetText) + '</td>' +
             '</tr>';
     }).join('');
 
     operationAuditLogLastLogId = maxLogId;
+    operationAuditTranslateAuthCells();
 }
 
 function selectSettingOperationAuditLog(row) {
@@ -928,6 +1114,10 @@ function selectSettingOperationAuditLog(row) {
 
 document.addEventListener('DOMContentLoaded', function() {
     bindSettingOperationAuditButtons();
+    operationAuditInstallAuthCellTranslator();
+});
+window.addEventListener('load', function() {
+    operationAuditInstallAuthCellTranslator();
 });
 </script>
 

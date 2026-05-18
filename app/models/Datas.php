@@ -102,7 +102,7 @@ class Datas{
         $sql = "
             SELECT *
             FROM (
-                SELECT rowid AS rid, *
+                SELECT id AS chart_index, id AS sn, rowid AS rid, *
                 FROM ntcs_data
                 {$where}
                 ORDER BY rowid DESC

@@ -69,7 +69,7 @@ function operationAuditCookieValue(name) {
 }
 
 function operationAuditLang() {
-    var lang = String(operationAuditCookieValue('language') || operationAuditCookieValue('lang') || 'en-us')
+    var lang = String(operationAuditCookieValue('languages') || operationAuditCookieValue('language') || operationAuditCookieValue('lang') || 'en-us')
         .trim()
         .toLowerCase()
         .replace('_', '-');
@@ -119,6 +119,7 @@ function operationAuditText(key, vars) {
             module_APP: 'APP',
             module_IDAS: 'iDAS',
             module_DB_SYNC: 'DB Sync',
+            module_AUTH: 'AUTH',
 
             action_NEW: 'NEW',
             action_EDIT: 'EDIT',
@@ -127,6 +128,8 @@ function operationAuditText(key, vars) {
             action_UP: 'UP',
             action_DOWN: 'DOWN',
             action_LOG: 'LOG',
+            action_LOGIN: 'LOGIN',
+            action_LOGOUT: 'LOGOUT',
             action_SAVE: 'SAVE',
             action_SYNC_D2C: 'SAVE',
             action_SYNC_C2D: 'LOAD',
@@ -185,6 +188,7 @@ function operationAuditText(key, vars) {
             module_APP: 'APP',
             module_IDAS: 'iDAS',
             module_DB_SYNC: '資料庫同步',
+            module_AUTH: '登入登出',
 
             action_NEW: '新增',
             action_EDIT: '編輯',
@@ -193,6 +197,8 @@ function operationAuditText(key, vars) {
             action_UP: '上移',
             action_DOWN: '下移',
             action_LOG: '紀錄',
+            action_LOGIN: '登入',
+            action_LOGOUT: '登出',
             action_SAVE: '儲存',
             action_SYNC_D2C: '儲存',
             action_SYNC_C2D: '上傳',
@@ -251,6 +257,7 @@ function operationAuditText(key, vars) {
             module_APP: 'APP',
             module_IDAS: 'iDAS',
             module_DB_SYNC: '数据库同步',
+            module_AUTH: '登录登出',
 
             action_NEW: '新增',
             action_EDIT: '编辑',
@@ -259,6 +266,8 @@ function operationAuditText(key, vars) {
             action_UP: '上移',
             action_DOWN: '下移',
             action_LOG: '纪录',
+            action_LOGIN: '登录',
+            action_LOGOUT: '登出',
             action_SAVE: '保存',
             action_SYNC_D2C: '保存',
             action_SYNC_C2D: '载入',
@@ -321,7 +330,11 @@ function operationAuditNormalizeModuleKey(value) {
         'IDAS': 'IDAS',
 
         'DB SYNC': 'DB_SYNC',
-        'DATABASE SYNC': 'DB_SYNC'
+        'DATABASE SYNC': 'DB_SYNC',
+        'AUTH': 'AUTH',
+        'LOGIN': 'AUTH',
+        'LOGIN KEYBOARD': 'AUTH',
+        'LOGOUT': 'AUTH'
     };
 
     return map[normalized] || raw.toUpperCase();
@@ -364,6 +377,15 @@ function operationAuditNormalizeActionKey(value) {
         'MOVE DOWN': 'DOWN',
 
         'LOG': 'LOG',
+        'LOGIN': 'LOGIN',
+        'SIGN IN': 'LOGIN',
+        'LOG IN': 'LOGIN',
+        '登入': 'LOGIN',
+        '登录': 'LOGIN',
+        'LOGOUT': 'LOGOUT',
+        'SIGN OUT': 'LOGOUT',
+        'LOG OUT': 'LOGOUT',
+        '登出': 'LOGOUT',
         'SAVE': 'SAVE',
         'LOAD': 'SYNC_C2D',
 
@@ -838,6 +860,28 @@ function operationAuditIsDbSyncRow(row) {
         || actionRaw === 'SYNC_C2D';
 }
 
+function operationAuditIsAuthLoginRow(row) {
+    row = row || {};
+
+    var actionKey = operationAuditNormalizeActionKey(row.action || '');
+    var moduleKey = operationAuditNormalizeModuleKey(row.module || '');
+
+    // iDAS: module AUTH + action LOGIN
+    // Controller: module may be "Login Keyboard" or "-", so action LOGIN alone must also be styled.
+    return actionKey === 'LOGIN' || moduleKey === 'AUTH' && actionKey === 'LOGIN';
+}
+
+function operationAuditIsAuthLogoutRow(row) {
+    row = row || {};
+
+    var actionKey = operationAuditNormalizeActionKey(row.action || '');
+    var moduleKey = operationAuditNormalizeModuleKey(row.module || '');
+
+    // iDAS: module AUTH + action LOGOUT
+    // Controller: module may be "-", so action LOGOUT alone must also be styled.
+    return actionKey === 'LOGOUT' || moduleKey === 'AUTH' && actionKey === 'LOGOUT';
+}
+
 function operationAuditBuildRenderSignature(records) {
     if (!records || !records.length) {
         return 'empty';
@@ -895,10 +939,14 @@ function renderSettingOperationAuditLogs(records) {
         var logId = parseInt(row.log_id || 0, 10);
         var isNew = operationAuditLogLastLogId > 0 && logId > operationAuditLogLastLogId;
         var isDbSync = operationAuditIsDbSyncRow(row);
+        var isAuthLogin = operationAuditIsAuthLoginRow(row);
+        var isAuthLogout = operationAuditIsAuthLogoutRow(row);
 
         var rowClass = 'operation-audit-row'
             + (isNew ? ' operation-audit-new' : '')
-            + (isDbSync ? ' operation-audit-db-sync-row' : '');
+            + (isDbSync ? ' operation-audit-db-sync-row' : '')
+            + (isAuthLogin ? ' operation-audit-login-row' : '')
+            + (isAuthLogout ? ' operation-audit-logout-row' : '');
 
         if (logId > maxLogId) maxLogId = logId;
 
@@ -1121,6 +1169,38 @@ document.addEventListener('DOMContentLoaded', function() {
 #OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-db-sync-row.selected td {
     background-color: #9acfff !important;
     color: #002b4a !important;
+}
+
+
+/* AUTH LOGIN / LOGOUT 不同顏色 */
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-login-row td {
+    background-color: #dff3df !important;
+    color: #145a24 !important;
+    font-weight: 800 !important;
+}
+
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-login-row:hover td {
+    background-color: #cceccc !important;
+}
+
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-login-row.selected td {
+    background-color: #aee0ae !important;
+    color: #0b3d18 !important;
+}
+
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-logout-row td {
+    background-color: #ffe4c7 !important;
+    color: #7a3b00 !important;
+    font-weight: 800 !important;
+}
+
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-logout-row:hover td {
+    background-color: #ffd3a3 !important;
+}
+
+#OperationAuditLogDisplay #operation_audit_log_table tbody tr.operation-audit-logout-row.selected td {
+    background-color: #ffbd73 !important;
+    color: #5a2a00 !important;
 }
 
 #OperationAuditLogDisplay #operation_audit_log_table tbody tr.selected,

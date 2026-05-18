@@ -35,7 +35,7 @@ function renderLineChartTableRows($records) {
 
     foreach ($displayRecords as $i => $row) {
         $class = preg_replace('/[^a-zA-Z0-9_\-]/', '', $row['row_color'] ?? '');
-        $no    = $i + 1;
+        $no    = drawline_h($row['id'] ?? ($row['sn'] ?? ($row['chart_index'] ?? ($row['rid'] ?? ($row['rowid'] ?? ($i + 1))))));
         $torque = drawline_h($row['final_fasten_torque'] ?? '0');
         $time   = drawline_h($row['data_time'] ?? ($row['chart_label'] ?? ''));
 
@@ -154,7 +154,7 @@ function initLineChart() {
 function buildSignature(records) {
     return records.map(row => {
         return [
-            row.rid || row.rowid || '',
+            row.id || row.sn || row.chart_index || row.rid || row.rowid || '',
             row.data_time || '',
             row.final_fasten_torque_raw ?? row.final_fasten_torque ?? '',
             row.fasten_status || ''
@@ -178,8 +178,8 @@ function normalizeChartRecords(result, isFallback) {
         const rawTorque = safeNumber(row.final_fasten_torque_raw ?? row.final_fasten_torque);
         return {
             ...row,
-            chart_index: index + 1,
-            chart_label: row.chart_label || row.data_time || String(index + 1),
+            chart_index: row.id || row.sn || row.chart_index || row.rid || row.rowid || (index + 1),
+            chart_label: row.chart_label || row.data_time || String(row.id || row.sn || row.chart_index || row.rid || row.rowid || (index + 1)),
             final_fasten_torque_raw: rawTorque,
             final_fasten_torque: row.final_fasten_torque ?? (rawTorque === null ? '' : String(rawTorque))
         };
@@ -240,8 +240,8 @@ function drawLineChart(records, unitLabel = '') {
     initLineChart();
     if (!lineChartInstance) return;
 
-    // X 軸固定顯示 NO：1 ~ 25；NO 1 代表最新一筆資料。
-    const labels = records.map((row, index) => String(index + 1));
+    // X 軸 NO 改用資料庫 rowid/rid。
+    const labels = records.map((row, index) => String(row.id || row.sn || row.chart_index || row.rid || row.rowid || (index + 1)));
 
     // 時間保留在 tooltip，不放在 X 軸。
     const times = records.map(row => row.data_time || row.chart_label || '');
@@ -339,7 +339,7 @@ function updateLineChartTable(records) {
         const time = row.data_time || row.chart_label || '';
         return `
             <tr class="${rowClass}">
-                <td>${index + 1}</td>
+                <td>${escapeHtml(row.id || row.sn || row.chart_index || row.rid || row.rowid || (index + 1))}</td>
                 <td class="td-torque">${escapeHtml(torque)}</td>
                 <td class="td-time">${escapeHtml(time)}</td>
             </tr>`;

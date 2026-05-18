@@ -762,8 +762,12 @@ class Data extends Controller
 
             $row['final_fasten_torque_raw'] = $torque_raw;
             $row['final_fasten_torque']     = number_format($torque_raw, (int)$precision, '.', '');
-            $row['chart_index']             = $i + 1;
-            $row['chart_label']             = !empty($row['data_time']) ? (string)$row['data_time'] : (string)($i + 1);
+
+            // NO 顯示資料庫主鍵編號。
+            // ntcs_data.db 的主鍵欄位是 id；舊版/備援資料可能只有 sn/rid/rowid。
+            $dbNo = $row['id'] ?? ($row['sn'] ?? ($row['rid'] ?? ($row['rowid'] ?? ($i + 1))));
+            $row['chart_index'] = $dbNo;
+            $row['chart_label'] = !empty($row['data_time']) ? (string)$row['data_time'] : (string)$dbNo;
         }
         unset($row);
 
