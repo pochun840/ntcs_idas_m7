@@ -77,11 +77,14 @@
     {
         $lang = strtolower(str_replace('_', '-', (string)($_COOKIE['language'] ?? $_COOKIE['lang'] ?? $_SESSION['language'] ?? '')));
         if ($lang === 'zh-tw' || $lang === 'zh-hant' || $lang === 'tw') {
+            if ($type === 'save') return '此帳號受保護，無法儲存。';
             return $type === 'edit' ? '此帳號受保護，無法編輯。' : '此帳號受保護，無法刪除。';
         }
         if ($lang === 'zh-cn' || $lang === 'zh-hans' || $lang === 'cn' || $lang === 'zh') {
+            if ($type === 'save') return '此账号受保护，无法储存。';
             return $type === 'edit' ? '此账号受保护，无法编辑。' : '此账号受保护，无法删除。';
         }
+        if ($type === 'save') return 'This account is protected and cannot be saved.';
         return $type === 'edit' ? 'This account is protected and cannot be edited.' : 'This account is protected and cannot be deleted.';
     }
 
@@ -419,10 +422,7 @@
             $username = isset($_POST['username']) ? $this->accountUserClean((string)$_POST['username']) : '';
             $this->accountUserValidateText($username, 'Username');
 
-            if (strtolower($username) === 'kls') {
-                throw new Exception('Built-in account is hidden.');
-            }
-
+            // kls must be visible/readable in Account setting, but cannot be saved/deleted.
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
 
@@ -430,7 +430,6 @@
                 SELECT CAST(passwd AS TEXT) AS passwd
                 FROM `user`
                 WHERE LOWER(name) = LOWER(:name)
-                  AND LOWER(name) <> 'kls'
                 LIMIT 1
             ");
             $statement->execute([
@@ -463,6 +462,9 @@
             $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
 
             $this->accountUserValidateUsername($name, 'Username');
+            if ($this->accountUserProtectedName($name)) {
+                throw new Exception($this->accountUserProtectedMessage('create'));
+            }
             $this->accountUserValidatePassword($password, 'Password');
 
             if ($password !== $confirm) {
@@ -510,7 +512,7 @@
 
             if ($this->accountUserProtectedName($oldName)) {
                 if ($oldLower === 'kls') {
-                    throw new Exception($this->accountUserProtectedMessage('edit'));
+                    throw new Exception($this->accountUserProtectedMessage('save'));
                 }
                 if ($newLower !== $oldLower) {
                     throw new Exception($this->accountUserProtectedRenameMessage($oldLower));

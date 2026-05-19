@@ -2812,6 +2812,7 @@ class Settings extends Controller
                 'account_edit_success' => 'Account updated successfully.',
                 'account_delete_account_success' => 'Account deleted successfully.',
                 'account_protected_action' => 'This account is protected and cannot be deleted.',
+                'account_protected_create_action' => 'This account is protected and cannot be created.',
                 'account_protected_edit_action' => 'This account is protected and cannot be edited.',
                 'account_protected_rename_blocked' => 'This built-in account name cannot be changed.',
                 'account_admin_rename_blocked' => 'The admin account name cannot be changed.',
@@ -2832,6 +2833,7 @@ class Settings extends Controller
                 'account_edit_success' => '編輯帳號成功。',
                 'account_delete_account_success' => '刪除帳號成功。',
                 'account_protected_action' => '此帳號受保護，無法刪除。',
+                'account_protected_create_action' => '此帳號受保護，無法新增。',
                 'account_protected_edit_action' => '此帳號受保護，無法編輯。',
                 'account_protected_rename_blocked' => '內建帳號名稱不可變更。',
                 'account_admin_rename_blocked' => 'admin 帳號名稱不可變更。',
@@ -2852,6 +2854,7 @@ class Settings extends Controller
                 'account_edit_success' => '编辑账号成功。',
                 'account_delete_account_success' => '删除账号成功。',
                 'account_protected_action' => '此账号受保护，无法删除。',
+                'account_protected_create_action' => '此账号受保护，无法新增。',
                 'account_protected_edit_action' => '此账号受保护，无法编辑。',
                 'account_protected_rename_blocked' => '内建账号名称不可变更。',
                 'account_admin_rename_blocked' => 'admin 账号名称不可变更。',
@@ -3197,11 +3200,10 @@ class Settings extends Controller
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
 
-            // 隱藏內建帳號 Kls / kls，不刪除 DB 資料
+            // kls 帳號需要顯示在 Account 清單，但儲存/刪除會被保護。
             $rows = $db->query("
                 SELECT sn, name, passwd, law
                 FROM `user`
-                WHERE LOWER(name) <> 'kls'
                 ORDER BY sn ASC
             ")->fetchAll();
 
@@ -3245,10 +3247,7 @@ class Settings extends Controller
             $username = isset($_POST['username']) ? $this->accountUserClean((string)$_POST['username']) : '';
             $this->accountUserValidateText($username, 'Username');
 
-            if (strtolower($username) === 'kls') {
-                throw new Exception('Built-in account is hidden.');
-            }
-
+            // kls 帳號允許開啟查看資料，但不可儲存/刪除。
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
 
@@ -3256,7 +3255,6 @@ class Settings extends Controller
                 SELECT CAST(passwd AS TEXT) AS passwd
                 FROM `user`
                 WHERE LOWER(name) = LOWER(:name)
-                  AND LOWER(name) <> 'kls'
                 LIMIT 1
             ");
             $statement->execute([
@@ -3515,7 +3513,7 @@ class Settings extends Controller
 
             $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
             if ($this->accountUserIsProtectedName($name)) {
-                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be deleted.'));
+                throw new Exception($this->accountUserText('account_protected_create_action', 'This account is protected and cannot be created.'));
             }
             $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
 
@@ -3564,10 +3562,10 @@ class Settings extends Controller
             $nameLower = strtolower($name);
 
             // admin / guest cannot be deleted or renamed, but their password can be edited.
-            // kls remains fully protected from editing and is hidden from the Account list.
+            // kls can be opened for viewing, but saving is blocked.
             if ($this->accountUserIsProtectedName($oldName)) {
                 if ($oldNameLower === 'kls') {
-                    throw new Exception($this->accountUserText('account_protected_edit_action', 'This account is protected and cannot be edited.'));
+                    throw new Exception($this->accountUserText('account_protected_save_action', 'This account is protected and cannot be saved.'));
                 }
 
                 if ($nameLower !== $oldNameLower) {

@@ -191,6 +191,28 @@ var settingAccountTabText = <?php echo $settingAccountTabTextJson; ?>;
 function saT(key, fallback) {
     return (window.settingAccountTabText && window.settingAccountTabText[key]) || fallback || key;
 }
+function settingAccountProtectedCreateText() {
+    var lang = '<?php echo $settingAccountTabLocale; ?>';
+    if (lang === 'zh-tw') return '此帳號受保護，無法新增。';
+    if (lang === 'zh-cn') return '此账号受保护，无法新增。';
+    return 'This account is protected and cannot be created.';
+}
+function settingAccountProtectedSaveText() {
+    var lang = '<?php echo $settingAccountTabLocale; ?>';
+    if (lang === 'zh-tw') return '此帳號受保護，無法儲存。';
+    if (lang === 'zh-cn') return '此账号受保护，无法储存。';
+    return 'This account is protected and cannot be saved.';
+}
+function settingAccountProtectedDeleteText() {
+    var lang = '<?php echo $settingAccountTabLocale; ?>';
+    if (lang === 'zh-tw') return '此帳號受保護，無法刪除。';
+    if (lang === 'zh-cn') return '此账号受保护，无法删除。';
+    return 'This account is protected and cannot be deleted.';
+}
+function settingAccountIsProtectedUser(username) {
+    var name = String(username || '').trim().toLowerCase();
+    return name === 'guest' || name === 'admin' || name === 'kls';
+}
 
 function settingAccountApi(path) {
     return window.location.protocol + '//' + window.location.hostname + '/idas/public/?url=Settings/' + path;
@@ -720,6 +742,10 @@ function settingAccountAction(mode) {
     }
 
     if (mode === 'delete') {
+        if (settingAccountIsProtectedUser(selectedAccountUser)) {
+            settingAccountAlert(settingAccountProtectedDeleteText());
+            return;
+        }
         var ok = confirm('Delete Account: ' + selectedAccountUser + ' ?');
         if (!ok) return;
 
@@ -815,6 +841,14 @@ function closeSettingAccountModal() {
 function saveSettingAccount() {
     var oldUsername = document.getElementById('account_old_username').value.trim();
     var username = document.getElementById('account_username').value.trim();
+    if (settingAccountMode === 'edit' && String(oldUsername || '').trim().toLowerCase() === 'kls') {
+        settingAccountAlert(settingAccountProtectedSaveText());
+        return;
+    }
+    if (settingAccountMode === 'new' && String(username || '').trim().toLowerCase() === 'kls') {
+        settingAccountAlert(settingAccountProtectedCreateText());
+        return;
+    }
     var password = settingAccountResolvePasswordForSave('account_password');
     var confirmPassword = settingAccountResolvePasswordForSave('account_confirm_password');
 

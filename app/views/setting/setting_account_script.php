@@ -91,6 +91,7 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_search_placeholder' => 'Search account...',
                 'account_processing' => 'Processing...',
                 'account_protected_action' => 'This account is protected and cannot be deleted.',
+                'account_protected_create_action' => 'This account is protected and cannot be created.',
                 'account_admin_rename_blocked' => 'The admin account name cannot be changed.',
                 'account_select_one' => 'Please select one account.',
                 'account_delete_confirm_prefix' => 'Are you sure you want to delete this account?<br><br>Account: ',
@@ -158,6 +159,7 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_search_placeholder' => '搜尋帳號...',
                 'account_processing' => '處理中...',
                 'account_protected_action' => '此帳號受保護，無法刪除。',
+                'account_protected_create_action' => '此帳號受保護，無法新增。',
                 'account_admin_rename_blocked' => 'admin 帳號名稱不可變更。',
                 'account_select_one' => '請選擇一個帳號。',
                 'account_delete_confirm_prefix' => '是否確定刪除此帳號？<br><br>帳號：',
@@ -225,6 +227,7 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_search_placeholder' => '搜寻账号...',
                 'account_processing' => '处理中...',
                 'account_protected_action' => '此账号受保护，无法删除。',
+                'account_protected_create_action' => '此账号受保护，无法新增。',
                 'account_admin_rename_blocked' => 'admin 账号名称不可变更。',
                 'account_select_one' => '请选择一个账号。',
                 'account_delete_confirm_prefix' => '是否确定删除此账号？<br><br>账号：',
@@ -276,6 +279,8 @@ var settingAccountClientFallbackI18n = {
     'en-us': {
         account_protected_action: 'This account is protected and cannot be deleted.',
         account_protected_edit_action: 'This account is protected and cannot be edited.',
+        account_protected_save_action: 'This account is protected and cannot be saved.',
+        account_protected_create_action: 'This account is protected and cannot be created.',
         account_protected_rename_blocked: 'This built-in account name cannot be changed.',
         account_admin_rename_blocked: 'The admin account name cannot be changed.',
         account_guest_rename_blocked: 'The guest account name cannot be changed.'
@@ -283,6 +288,8 @@ var settingAccountClientFallbackI18n = {
     'zh-tw': {
         account_protected_action: '此帳號受保護，無法刪除。',
         account_protected_edit_action: '此帳號受保護，無法編輯。',
+        account_protected_save_action: '此帳號受保護，無法儲存。',
+        account_protected_create_action: '此帳號受保護，無法新增。',
         account_protected_rename_blocked: '內建帳號名稱不可變更。',
         account_admin_rename_blocked: 'admin 帳號名稱不可變更。',
         account_guest_rename_blocked: 'guest 帳號名稱不可變更。'
@@ -290,6 +297,8 @@ var settingAccountClientFallbackI18n = {
     'zh-cn': {
         account_protected_action: '此账号受保护，无法删除。',
         account_protected_edit_action: '此账号受保护，无法编辑。',
+        account_protected_save_action: '此账号受保护，无法储存。',
+        account_protected_create_action: '此账号受保护，无法新增。',
         account_protected_rename_blocked: '内建账号名称不可变更。',
         account_admin_rename_blocked: 'admin 账号名称不可变更。',
         account_guest_rename_blocked: 'guest 账号名称不可变更。'
@@ -877,10 +886,8 @@ function renderSettingAccountUsers(records) {
     selectedAccountPassword = '';
     settingAccountRecordMap = {};
 
-    // 隱藏內建帳號 Kls / kls
-    records = (records || []).filter(function(row) {
-        return String(row.name || '').toLowerCase() !== 'kls';
-    });
+    // kls 帳號需要顯示在列表，但儲存/刪除會被保護。
+    records = (records || []);
 
     var searchInput = document.getElementById('accountSearchInput');
     var keyword = searchInput ? String(searchInput.value || '').trim().toLowerCase() : '';
@@ -1390,14 +1397,6 @@ function settingAccountAction(mode) {
     }
 
     if (mode === 'edit') {
-        var protectedEditUser = String(selectedAccountUser || '').trim().toLowerCase();
-        if (protectedEditUser === 'kls') {
-            settingAccountAlert(saT('account_protected_edit_action', 'This account is protected and cannot be edited.'));
-            return;
-        }
-    }
-
-    if (mode === 'edit') {
         settingAccountOpenEditWithMaskedPassword(selectedAccountUser);
         return;
     }
@@ -1519,6 +1518,17 @@ function saveSettingAccount() {
     // Edit 未改名時允許既有 guest/admin/user1 等舊帳號繼續修改密碼。
     var oldUsernameLower = String(oldUsername || '').toLowerCase();
     var usernameLower = String(username || '').toLowerCase();
+
+    if (settingAccountMode === 'new' && usernameLower === 'kls') {
+        settingAccountAlert(saT('account_protected_create_action', 'This account is protected and cannot be created.'));
+        return;
+    }
+
+    if (settingAccountMode === 'edit' && oldUsernameLower === 'kls') {
+        settingAccountAlert(saT('account_protected_save_action', 'This account is protected and cannot be saved.'));
+        return;
+    }
+
     if (settingAccountMode === 'edit' && (oldUsernameLower === 'admin' || oldUsernameLower === 'guest') && usernameLower !== oldUsernameLower) {
         settingAccountAlert(saT(oldUsernameLower === 'guest' ? 'account_guest_rename_blocked' : 'account_admin_rename_blocked', oldUsernameLower + ' account name cannot be changed.'));
         return;
@@ -2221,9 +2231,8 @@ function downloadSettingAccountQrCode(username, password, event) {
         selectedAccountUser = null;
         selectedAccountPassword = '';
 
-        records = (records || []).filter(function(row) {
-            return String(row.name || '').toLowerCase() !== 'kls';
-        });
+        // kls 帳號需要顯示在列表，但儲存/刪除會被保護。
+        records = (records || []);
 
         var searchInput = document.getElementById('accountSearchInput');
         var keyword = searchInput ? String(searchInput.value || '').trim().toLowerCase() : '';

@@ -269,7 +269,8 @@ function drawLineChart(records, unitLabel = '') {
             left: 60,
             right: 42,
             top: 42,
-            bottom: 58,
+            // Keep X-axis labels horizontal; use extra bottom space for 6-digit NO.
+            bottom: 70,
             containLabel: true
         },
         xAxis: {
@@ -280,8 +281,12 @@ function drawLineChart(records, unitLabel = '') {
             nameGap: 32,
             data: labels,
             axisLabel: {
+                // Fixed horizontal labels. Do not auto-tilt for 6-digit NO.
                 rotate: 0,
-                interval: 0
+                interval: 0,
+                hideOverlap: true,
+                fontSize: 11,
+                margin: 12
             },
             axisTick: {
                 alignWithLabel: true
@@ -517,7 +522,7 @@ window.addEventListener('resize', function() {
 .drawline-layout {
     display: grid;
     /* 右側表格加寬，讓 Fastening Time 可以完整顯示 */
-    grid-template-columns: minmax(0, 1.75fr) minmax(420px, 1fr);
+    grid-template-columns: minmax(0, 1.65fr) minmax(470px, 1fr);
     gap: 12px;
 }
 
@@ -644,12 +649,17 @@ window.addEventListener('resize', function() {
 
 .drawline-table th:nth-child(1),
 .drawline-table td:nth-child(1) {
-    width: 58px;
+    /* Support 6-digit NO without squeezing the torque/time columns. */
+    width: 92px;
+    min-width: 92px;
+    max-width: 92px;
+    font-size: 14px;
 }
 
 .drawline-table th:nth-child(2),
 .drawline-table td:nth-child(2) {
     width: 92px;
+    min-width: 92px;
 }
 
 .drawline-table th:nth-child(3),
