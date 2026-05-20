@@ -3,7 +3,7 @@
 //sudo chmod -R 777 /var/www/html/idas
 // sudo chmod -R 777  var/www/html/idas/public/ftp
 //sudo chmod -R 777 /var/www/html/database
-//sudo rm -rf /var/www/html/extracted
+//sudo rm -rf /var/www/html/idas
 //sudo rm -rf /var/www/html/database/KLS_NTCS_IDAS.Lin
 //sudo chown -R www-data:www-data /var/www/html/idas/app/views/step
 //12345678rd
