@@ -3284,11 +3284,10 @@ class Settings extends Controller
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
 
-            // Export follows Account list rule: hide built-in Kls / kls account.
+            // Export all accounts, including built-in Kls / kls account.
             $rows = $db->query("
                 SELECT sn, name, passwd, law
                 FROM `user`
-                WHERE LOWER(name) <> 'kls'
                 ORDER BY sn ASC
             ")->fetchAll();
 
@@ -3310,7 +3309,8 @@ class Settings extends Controller
             echo "\xEF\xBB\xBF";
 
             $fp = fopen('php://output', 'w');
-            fputcsv($fp, ['No', 'User Name', 'Password', 'Law']);
+            // CSV hides internal law column. law is managed internally and defaults to 1 on import.
+            fputcsv($fp, ['No', 'User Name', 'Password']);
 
             $no = 1;
             foreach ($rows as $row) {
@@ -3318,7 +3318,6 @@ class Settings extends Controller
                     $no++,
                     $row['name'] ?? '',
                     $this->accountUserExcelText((string)($row['passwd'] ?? '')),
-                    $row['law'] ?? '',
                 ]);
             }
 
@@ -3362,12 +3361,13 @@ class Settings extends Controller
             $this->accountUserAssertTable($db);
 
             $header = fgetcsv($fp);
-            if (!$header || count($header) < 3) {
+            if (!$header || count($header) < 2) {
                 fclose($fp);
                 throw new Exception($this->accountUserText('account_csv_invalid', 'CSV format invalid. Header must include User Name and Password.'));
             }
 
-            // Normalize header names from export: No, User Name, Password, Law.
+            // Normalize header names from export: No, User Name, Password.
+            // Older CSV files with Law column are still accepted, but law is ignored and fixed to 1.
             $headerMap = [];
             foreach ($header as $idx => $col) {
                 $key = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string)$col)));
@@ -3377,7 +3377,7 @@ class Settings extends Controller
 
             $nameIndex = $headerMap['username'] ?? $headerMap['name'] ?? 1;
             $passIndex = $headerMap['password'] ?? $headerMap['passwd'] ?? 2;
-            $lawIndex  = $headerMap['law'] ?? 3;
+            // Law is intentionally not exposed in CSV. Always import accounts with default law = 1.
 
             $importMode = (string)($_POST['import_mode'] ?? 'append');
             $importMode = ($importMode === 'overwrite') ? 'overwrite' : 'append';
@@ -3401,8 +3401,7 @@ class Settings extends Controller
 
                 $name = $this->accountUserCsvText((string)($row[$nameIndex] ?? ''));
                 $password = $this->accountUserCsvText((string)($row[$passIndex] ?? ''));
-                $lawRaw = $this->accountUserCsvText((string)($row[$lawIndex] ?? '1'));
-                $law = ($lawRaw !== '' && is_numeric($lawRaw)) ? (int)$lawRaw : 1;
+                $law = 1;
                 $nameLower = strtolower($name);
 
                 // Built-in accounts are protected and will not be imported or modified.

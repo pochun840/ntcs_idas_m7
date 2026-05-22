@@ -81,7 +81,8 @@
 }
 
 #AccountDisplay .account-sync-controller-btn {
-    width: 150px !important;
+    width: 200px !important;
+    min-width: 200px !important;
 }
 
 #AccountDisplay .account-table-container {
