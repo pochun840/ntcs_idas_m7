@@ -20,6 +20,11 @@ $(document).ready(function () {
     if (lastSection === 'iDas-Update_Setting') $('#bnt5').addClass('active');*/
 
     getCurrentSystemTime();
+
+    // 初始化 iDAS 更新包版本檢查，讓選擇 .pack 後可自動啟用上傳按鈕。
+    if (typeof initIdasPackVersionCheck === 'function') {
+        initIdasPackVersionCheck();
+    }
 });
 
 function suppressRangeHints(on = true) {
@@ -147,6 +152,64 @@ function updateCurrentTime(serverDateTime) {
 
 
 
+function getSettingsCookieValue(name) {
+  const prefix = encodeURIComponent(name) + '=';
+  const cookies = String(document.cookie || '').split(';');
+  for (const cookie of cookies) {
+    const value = cookie.trim();
+    if (value.indexOf(prefix) === 0) {
+      try {
+        return decodeURIComponent(value.substring(prefix.length));
+      } catch (_) {
+        return value.substring(prefix.length);
+      }
+    }
+  }
+  return '';
+}
+function getSettingsLanguage() {
+  let language = String(
+    window.IDAS_LANGUAGE
+    || (typeof getCookie === 'function' ? getCookie('language') : '')
+    || getSettingsCookieValue('language')
+    || document.documentElement.lang
+    || navigator.language
+    || 'en-us'
+  ).trim().toLowerCase().replace(/_/g, '-');
+
+  if (language === 'zh' || language === 'zh-tw' || language.startsWith('zh-hant') || language === 'tw') {
+    return 'zh-tw';
+  }
+  if (language === 'zh-cn' || language.startsWith('zh-hans') || language === 'cn') {
+    return 'zh-cn';
+  }
+  if (language === 'en' || language.startsWith('en-')) {
+    return 'en-us';
+  }
+  return 'en-us';
+}
+function getModbusRestartMessages(language, seconds) {
+  const delay = Number.isFinite(Number(seconds)) && Number(seconds) > 0 ? Math.round(Number(seconds)) : 5;
+  const messages = {
+    'zh-tw': {
+      title: '控制器重新啟動',
+      scheduled: 'Modbus 類型已變更，設定已儲存。控制器將於約 ' + delay + ' 秒後重新啟動。',
+      failed: 'Modbus 類型已變更，設定已儲存，但無法自動排程重新啟動。請手動重新啟動控制器。'
+    },
+    'zh-cn': {
+      title: '控制器重新启动',
+      scheduled: 'Modbus 类型已变更，设置已保存。控制器将于约 ' + delay + ' 秒后重新启动。',
+      failed: 'Modbus 类型已变更，设置已保存，但无法自动安排重新启动。请手动重新启动控制器。'
+    },
+    'en-us': {
+      title: 'Controller Restart',
+      scheduled: 'The Modbus type was changed and saved. Controller will restart in about ' + delay + ' seconds.',
+      failed: 'The Modbus type was changed and saved, but the automatic restart could not be scheduled. Please restart the controller manually.'
+    }
+  };
+  return messages[language] || messages['en-us'];
+}
+
 function controller_save(){
   // 取值 & 去除前後空白
   const trim = (v) => (v == null ? '' : String(v).trim());
@@ -162,6 +225,7 @@ function controller_save(){
   const circular_archive_val  = trim(document.querySelector('input[name="circular_archive"]:checked')?.value);
   const blackout_recovery_val = trim(document.querySelector('input[name="blackout_recovery"]:checked')?.value);
   const buzzer_val            = trim(document.querySelector('input[name="buzzer_mode"]:checked')?.value);
+  const modbus_type_val       = trim(document.querySelector('input[name="modbus_type"]:checked')?.value ?? '0');
   const global_downshift_torque = trim(document.getElementById('global_downshift_torque')?.value);
   const global_downshift_speed  = trim(document.getElementById('global_downshift_speed')?.value);
 
@@ -189,15 +253,42 @@ function controller_save(){
       circular_archive: circular_archive_val,
       blackout_recovery: blackout_recovery_val,
       buzzer_mode: buzzer_val,
+      modbus_type: modbus_type_val,
       global_downshift_torque: global_downshift_torque,
       global_downshift_speed: global_downshift_speed
     },
     success: function(response) {
       suppressRangeHints(true);
-      handleAjaxResponse(response); // 你原本的處理
+
+      let result = response;
+      if (typeof result === 'string') {
+        try {
+          result = JSON.parse(result);
+        } catch (error) {
+          handleAjaxResponse(response);
+          return;
+        }
+      }
+
+      if (result && result.success === true && result.restart_required === true) {
+        const language = getSettingsLanguage();
+        const text = getModbusRestartMessages(language, result.restart_delay_seconds);
+        const message = result.restart_scheduled ? text.scheduled : text.failed;
+        const saveButton = document.getElementById('downshift_save');
+        if (saveButton) saveButton.disabled = true;
+        alertify.alert(text.title, message);
+        return;
+      }
+
+      handleAjaxResponse(typeof response === 'string' ? response : JSON.stringify(response));
     },
     error: function(xhr, status, error) {
-      // 依需求處理
+      let message = 'There was an issue with the request.';
+      try {
+        const result = JSON.parse(xhr.responseText || '{}');
+        if (result.res_msg) message = result.res_msg;
+      } catch (_) {}
+      alertify.alert('Error', message);
     }
   });
 }
@@ -912,26 +1003,336 @@ function StatusCheck(action) {
    
 }*/
 
+
+window.IDAS_PACK_CHECK = window.IDAS_PACK_CHECK || {
+    checked: false,
+    success: false,
+    is_downgrade: false,
+    is_upgrade: false,
+    is_same_version: false,
+    is_special_switch: false,
+    requires_db_rebuild: false,
+    requires_confirm: false,
+    status_key: '',
+    pack_version: '',
+    current_version: ''
+};
+
+function getIdasUpdateI18n() {
+    return window.IDAS_UPDATE_I18N || {};
+}
+
+function setIdasRowVisible(rowId, visible) {
+    var row = document.getElementById(rowId);
+    if (!row) return;
+    row.classList.toggle('is-hidden', !visible);
+}
+
+function setIdasUploadEnabled(enabled) {
+    var btn = document.getElementById('idas-upload-btn');
+    if (!btn) return;
+    btn.disabled = !enabled;
+    btn.classList.toggle('idas-btn-disabled', !enabled);
+}
+
+function makeEmptyIdasPackCheckState(checked, success) {
+    return {
+        checked: !!checked,
+        success: !!success,
+        is_downgrade: false,
+        is_upgrade: false,
+        is_same_version: false,
+        is_special_switch: false,
+        requires_db_rebuild: false,
+        requires_confirm: false,
+        status_key: '',
+        pack_version: '',
+        current_version: ''
+    };
+}
+
+function resetIdasPackCheckUi() {
+    window.IDAS_PACK_CHECK = makeEmptyIdasPackCheckState(false, false);
+    setIdasUploadEnabled(false);
+
+    setIdasRowVisible('idas-pack-check-row', false);
+    setIdasRowVisible('idas-downgrade-row', false);
+
+    var versionEl = document.getElementById('idas-pack-version');
+    var statusEl  = document.getElementById('idas-pack-status');
+    var riskTitle = document.getElementById('idas-risk-title');
+
+    if (versionEl) versionEl.textContent = '-';
+    if (statusEl) {
+        statusEl.textContent = '-';
+        statusEl.className = '';
+    }
+    if (riskTitle) riskTitle.textContent = '';
+}
+
+function renderIdasPackCheckState(payload) {
+    var i18n = getIdasUpdateI18n();
+    var versionEl = document.getElementById('idas-pack-version');
+    var statusEl  = document.getElementById('idas-pack-status');
+    var riskTitle = document.getElementById('idas-risk-title');
+
+    setIdasRowVisible('idas-pack-check-row', true);
+
+    var statusText = i18n.status_same || 'Same version';
+    var statusClass = 'same';
+
+    if (payload.is_downgrade) {
+        statusText = i18n.status_downgrade || 'Downgrade';
+        statusClass = 'downgrade';
+    } else if (payload.is_upgrade && payload.is_special_switch) {
+        statusText = i18n.status_upgrade_special || 'Upgrade / Special version switch';
+        statusClass = 'upgrade-special';
+    } else if (payload.is_upgrade) {
+        statusText = i18n.status_upgrade || 'Upgrade';
+        statusClass = 'upgrade';
+    } else if (payload.is_special_switch) {
+        statusText = i18n.status_special_switch || 'Special version switch';
+        statusClass = 'special';
+    }
+
+    if (payload.requires_db_rebuild) {
+        statusText += ' / ' + (i18n.db_rebuild_required || 'DB rebuild required');
+    }
+
+    if (versionEl) versionEl.textContent = payload.pack_version || '-';
+    if (statusEl) {
+        statusEl.textContent = statusText;
+        statusEl.className = 'idas-version-status ' + statusClass;
+    }
+
+    var showRiskNotice = !!(payload.is_downgrade || payload.is_special_switch || payload.requires_db_rebuild);
+    setIdasRowVisible('idas-downgrade-row', showRiskNotice);
+
+    if (riskTitle) {
+        if (payload.is_downgrade) {
+            riskTitle.textContent = i18n.downgrade_detected || '⚠ Downgrade detected';
+        } else if (payload.is_special_switch) {
+            riskTitle.textContent = i18n.special_switch_detected || '⚠ Special version switch detected';
+        } else if (payload.requires_db_rebuild) {
+            riskTitle.textContent = i18n.db_rebuild_required || 'DB rebuild required';
+        } else {
+            riskTitle.textContent = '';
+        }
+    }
+
+    window.IDAS_PACK_CHECK = {
+        checked: true,
+        success: true,
+        is_downgrade: !!payload.is_downgrade,
+        is_upgrade: !!payload.is_upgrade,
+        is_same_version: !!payload.is_same_version,
+        is_special_switch: !!payload.is_special_switch,
+        requires_db_rebuild: !!payload.requires_db_rebuild,
+        requires_confirm: !!payload.requires_confirm,
+        status_key: payload.status_key || '',
+        pack_version: payload.pack_version || '',
+        current_version: payload.current_version || ''
+    };
+
+    setIdasUploadEnabled(true);
+}
+
+function initIdasPackVersionCheck() {
+    var uploader = document.getElementById('file-uploader');
+    if (!uploader) return;
+
+    resetIdasPackCheckUi();
+
+    uploader.addEventListener('change', function () {
+        resetIdasPackCheckUi();
+
+        var file = uploader.files && uploader.files[0] ? uploader.files[0] : null;
+        if (!file) return;
+
+        var i18n = getIdasUpdateI18n();
+        var versionEl = document.getElementById('idas-pack-version');
+        var statusEl  = document.getElementById('idas-pack-status');
+
+        setIdasRowVisible('idas-pack-check-row', true);
+        if (versionEl) versionEl.textContent = '-';
+        if (statusEl) {
+            statusEl.textContent = i18n.checking || 'Checking package version...';
+            statusEl.className = 'idas-version-status checking';
+        }
+
+        var form = new FormData();
+        form.append('file', file);
+
+        $.ajax({
+            url: '?url=Settings/check_idas_pack_version',
+            method: 'POST',
+            data: form,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            cache: false,
+            success: function (resp) {
+                var resType = String((resp && resp.res_type) ? resp.res_type : '').toLowerCase();
+                var isOk = !!(resp && (resp.success === true || resType === 'ok' || resType === 'success'));
+
+                if (isOk) {
+                    // 後端舊版欄位是 is_profile_switch，新版前端使用 is_special_switch；兩者都相容。
+                    resp.is_special_switch = !!(resp.is_special_switch || resp.is_profile_switch);
+                    renderIdasPackCheckState(resp);
+                    return;
+                }
+
+                window.IDAS_PACK_CHECK = makeEmptyIdasPackCheckState(true, false);
+                setIdasUploadEnabled(false);
+
+                if (statusEl) {
+                    statusEl.textContent = (resp && (resp.message || resp.res_msg)) ? (resp.message || resp.res_msg) : (i18n.check_failed || 'Unable to verify package version.');
+                    statusEl.className = 'idas-version-status error';
+                }
+                setIdasRowVisible('idas-downgrade-row', false);
+            },
+            error: function (xhr) {
+                window.IDAS_PACK_CHECK = makeEmptyIdasPackCheckState(true, false);
+                setIdasUploadEnabled(false);
+
+                var msg = i18n.check_failed || 'Unable to verify package version.';
+                try {
+                    if (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.res_msg)) {
+                        msg = xhr.responseJSON.message || xhr.responseJSON.res_msg;
+                    } else if (xhr.responseText) {
+                        msg = xhr.responseText;
+                    }
+                } catch (e) {}
+
+                if (statusEl) {
+                    statusEl.textContent = msg;
+                    statusEl.className = 'idas-version-status error';
+                }
+                setIdasRowVisible('idas-downgrade-row', false);
+            }
+        });
+    });
+}
+
+function idasEscapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function idasStripUpdateBackupLine(message) {
+    // 備份仍會建立並寫入後端 log，但不在成功/失敗彈跳視窗顯示完整路徑。
+    return String(message || '')
+        .replace(/(^|\r?\n)\s*備份檔案：.*(?=\r?\n|$)/g, '')
+        .replace(/(^|\r?\n)\s*备份文件：.*(?=\r?\n|$)/g, '')
+        .replace(/(^|\r?\n)\s*Backup file:\s*.*(?=\r?\n|$)/gi, '')
+        .replace(/^\s+|\s+$/g, '');
+}
+
+function idasFormatAlertifyMessage(message) {
+    var text = idasStripUpdateBackupLine(message);
+
+    // 後端有些訊息會帶 <br>，先保護換行語意，再進行 HTML escape，
+    // 避免長錯誤內容或檔案路徑直接撐破 alertify 視窗。
+    text = text.replace(/<br\s*\/?\s*>/gi, '\n');
+    text = idasEscapeHtml(text).replace(/\r?\n/g, '<br>');
+
+    return '<div class="idas-update-alert-message">' + text + '</div>';
+}
+
+function idasBuildUpdateConfirmHtml(message, language, currentVersion, packVersion) {
+    var currentLabel = 'Current version';
+    var packLabel = 'Package version';
+
+    if (language === 'zh-tw') {
+        currentLabel = '目前版本';
+        packLabel = '更新包版本';
+    } else if (language === 'zh-cn') {
+        currentLabel = '当前版本';
+        packLabel = '更新包版本';
+    }
+
+    var html = '<div class="idas-update-confirm">';
+    html += '<div class="idas-update-confirm-message">' + idasFormatAlertifyMessage(message) + '</div>';
+
+    if (currentVersion || packVersion) {
+        html += '<div class="idas-update-confirm-versions">';
+        html += '<div class="idas-update-confirm-version-row"><span class="idas-update-confirm-label">' + idasEscapeHtml(currentLabel) + '</span><span class="idas-update-confirm-value">' + idasEscapeHtml(currentVersion || '-') + '</span></div>';
+        html += '<div class="idas-update-confirm-version-row"><span class="idas-update-confirm-label">' + idasEscapeHtml(packLabel) + '</span><span class="idas-update-confirm-value">' + idasEscapeHtml(packVersion || '-') + '</span></div>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+function idasShowDbSchemaMismatchAlert(responseData, language, fallbackTitle) {
+    var title = responseData?.res_title || fallbackTitle || 'Error';
+    var msg = responseData?.res_msg || '';
+
+    if (!msg) {
+        if (language === 'zh-tw') {
+            msg = '偵測到降版本，但 Controller DB 與 iDAS DB 的資料庫格式不相容。<br><br>為避免降版本後系統無法正常讀取資料，本次更新已中止，尚未變更系統檔案與資料庫。<br><br>請確認 Controller 與 iDAS 的資料庫版本是否相容，或改用對應版本的更新包後再重新執行。';
+        } else if (language === 'zh-cn') {
+            msg = '检测到降版本，但 Controller DB 与 iDAS DB 的数据库格式不兼容。<br><br>为避免降版本后系统无法正常读取数据，本次更新已中止，尚未变更系统文件与数据库。<br><br>请确认 Controller 与 iDAS 的数据库版本是否兼容，或改用对应版本的更新包后再重新执行。';
+        } else {
+            msg = 'Downgrade detected, but the Controller DB format is different from the iDAS DB format.<br><br>To prevent the system from reading incompatible data after downgrade, this update has been stopped. System files and databases have not been changed.<br><br>Please confirm that the Controller DB and iDAS DB versions are compatible, or use a matching update package and try again.';
+        }
+    }
+
+    msg = idasFormatAlertifyMessage(msg);
+
+    alertify.alert(title, msg, function () {
+        setIdasUploadEnabled(true);
+    });
+}
+
 function idas_update() {
-    var import_file = document.getElementById("file-uploader").files[0];
-    var form = new FormData();
-    form.append("file", import_file);
+    var uploader = document.getElementById("file-uploader");
+    var import_file = uploader && uploader.files ? uploader.files[0] : null;
+    var uploadBtn = document.getElementById('idas-upload-btn');
     var url = '?url=Settings/iDas_Update';
 
     var language = getCookie('language') || 'en-us';
-    var title, confirm_text, empty_file_text, upload_error_text;
+    var title, confirm_text, empty_file_text, upload_error_text, downgrade_confirm_text, special_confirm_text, check_wait_text, check_failed_text, disabled_text, rebuild_text;
     var login_redirect_url = '/idas/public/?url=In';
 
-    if (language === "zh-cn" || language === "zh-tw") {
+    if (language === "zh-tw") {
         title = 'IDAS 更新';
         confirm_text = '您確定要導入 IDAS 更新包嗎？';
+        downgrade_confirm_text = '系統已自動偵測此更新包為「降版本」。\n\n降版本時，系統會強制重建 iDAS DB，避免舊版本無法讀取新版 DB。\n請確認更新包正確後再執行。\n\n確定要繼續嗎？';
+        special_confirm_text = '系統已自動偵測此更新包為「特殊版本切換」。\n\n若目前版本是 SA349 且更新包不是 SA349，系統會重建 DB。\n請確認更新包正確後再執行。\n\n確定要繼續嗎？';
         empty_file_text = '請先選擇要上傳的更新檔。';
         upload_error_text = '上傳檔案時發生錯誤。';
+        check_wait_text = '系統正在自動檢查更新包版本，請稍後再上傳。';
+        check_failed_text = '無法確認更新包版本，請重新選擇 .pack 檔案後再上傳。';
+        disabled_text = '請先選擇 .pack 檔案，並等待版本檢查完成。';
+        rebuild_text = '本次更新會重建 iDAS DB；SA349 → 非 SA349 時會移除 KLS_NTCS_IDAS.Lin 內 table user 的 admin 帳號，更新前系統會先建立備份。';
+    } else if (language === "zh-cn") {
+        title = 'IDAS 更新';
+        confirm_text = '您确定要导入 IDAS 更新包吗？';
+        downgrade_confirm_text = '系统已自动检测此更新包为「降版本」。\n\n降版本时，系统会强制重建 iDAS DB，避免旧版本无法读取新版 DB。\n请确认更新包正确后再执行。\n\n确定要继续吗？';
+        special_confirm_text = '系统已自动检测此更新包为「特殊版本切换」。\n\n若目前版本是 SA349 且更新包不是 SA349，系统会重建 DB。\n请确认更新包正确后再执行。\n\n确定要继续吗？';
+        empty_file_text = '请先选择要上传的更新文件。';
+        upload_error_text = '上传文件时发生错误。';
+        check_wait_text = '系统正在自动检查更新包版本，请稍后再上传。';
+        check_failed_text = '无法确认更新包版本，请重新选择 .pack 文件后再上传。';
+        disabled_text = '请先选择 .pack 文件，并等待版本检查完成。';
+        rebuild_text = '本次更新会重建 iDAS DB；SA349 → 非 SA349 时会移除 KLS_NTCS_IDAS.Lin 内 table user 的 admin 帐号，更新前系统会先建立备份。';
     } else {
         title = 'IDAS UPDATE';
         confirm_text = 'Are you sure you want to import the IDAS update package?';
+        downgrade_confirm_text = 'The system detected that this package is a downgrade.\n\nDuring downgrade, the system will forcibly rebuild the iDAS DB to prevent old versions from reading a newer DB format.\nPlease confirm the package before continuing.\n\nContinue?';
+        special_confirm_text = 'The system detected a special version switch.\n\nIf the current version is SA349 and the package is not SA349, the system will rebuild DB.\nPlease confirm the package before continuing.\n\nContinue?';
         empty_file_text = 'Please select a file to upload.';
         upload_error_text = 'An error occurred while uploading the file.';
+        check_wait_text = 'The system is checking the package version. Please upload again after the check is complete.';
+        check_failed_text = 'Unable to verify the package version. Please select the .pack file again before uploading.';
+        disabled_text = 'Please select a .pack file and wait for version verification to complete.';
+        rebuild_text = 'This update will rebuild the iDAS DB. For SA349 → non-SA349, the admin account in KLS_NTCS_IDAS.Lin table user will be removed. The system will create a backup before updating.';
     }
 
     if (!import_file) {
@@ -939,10 +1340,47 @@ function idas_update() {
         return;
     }
 
-    alertify.confirm(confirm_text, function (result) {
+    if (uploadBtn && uploadBtn.disabled) {
+        alertify.alert(title, disabled_text);
+        return;
+    }
+
+    var packCheck = window.IDAS_PACK_CHECK || {};
+    if (!packCheck.checked) {
+        alertify.alert(title, check_wait_text);
+        return;
+    }
+
+    if (!packCheck.success) {
+        alertify.alert(title, check_failed_text);
+        return;
+    }
+
+    var isDowngrade = !!packCheck.is_downgrade;
+    var isSpecial = !!packCheck.is_special_switch;
+    var message = isDowngrade ? downgrade_confirm_text : (isSpecial ? special_confirm_text : confirm_text);
+
+    if (packCheck.requires_db_rebuild) {
+        message += '\n\n' + rebuild_text;
+    }
+
+    var currentText = packCheck.current_version || '';
+    var packText = packCheck.pack_version || '';
+    var confirmHtml = idasBuildUpdateConfirmHtml(message, language, currentText, packText);
+
+    var form = new FormData();
+    form.append("file", import_file);
+    // 降版本與特殊版本切換都由前端預檢自動判斷；後端仍會重新比對版本。
+    form.append("allow_downgrade", (packCheck.requires_confirm || isDowngrade || isSpecial) ? '1' : '0');
+
+    alertify.confirm(confirmHtml, function (result) {
         if (!result) return;
 
+        // 已在 alertify.confirm 完成風險確認；不再跳出瀏覽器原生 prompt 要求輸入 SWITCH / DOWNGRADE。
+        // 後端仍會依 allow_downgrade 與版本狀態再次驗證，保留正式保護機制。
+
         document.getElementById('spinner').style.display = 'block';
+        setIdasUploadEnabled(false);
 
         $.ajax({
             url: url,
@@ -956,22 +1394,36 @@ function idas_update() {
             success: function (responseData) {
                 document.getElementById('spinner').style.display = 'none';
 
+                if (responseData && responseData.error_code === 'DB_SCHEMA_MISMATCH') {
+                    idasShowDbSchemaMismatchAlert(responseData, language, title);
+                    return;
+                }
+
                 var resType = responseData?.res_type || 'Error';
                 var resMsg  = responseData?.res_msg || upload_error_text;
 
-                alertify.alert(resType, resMsg, function () {
+                alertify.alert(resType, idasFormatAlertifyMessage(resMsg), function () {
                     if (String(resType).toLowerCase() === 'success') {
                         forceLogoutAllTabs(login_redirect_url);
+                    } else {
+                        setIdasUploadEnabled(true);
                     }
                 });
             },
 
             error: function (xhr, status, error) {
                 document.getElementById('spinner').style.display = 'none';
+                setIdasUploadEnabled(true);
 
                 var msg = upload_error_text;
 
                 try {
+                    if (xhr.responseJSON && xhr.responseJSON.error_code === 'DB_SCHEMA_MISMATCH') {
+                        idasShowDbSchemaMismatchAlert(xhr.responseJSON, language, title);
+                        console.error("上傳錯誤：", status, error, xhr.responseText);
+                        return;
+                    }
+
                     if (xhr.responseJSON && xhr.responseJSON.res_msg) {
                         msg = xhr.responseJSON.res_msg;
                     } else if (xhr.responseText) {
@@ -981,7 +1433,7 @@ function idas_update() {
                     console.warn('parse xhr failed:', e);
                 }
 
-                alertify.alert('Error', msg);
+                alertify.alert('Error', idasFormatAlertifyMessage(msg));
                 console.error("上傳錯誤：", status, error, xhr.responseText);
             }
         });
@@ -1220,9 +1672,11 @@ function update_barcode() {
             success: function (html) {
               $('#total_barcodes').html(html);
 
-              // 刷新後，重新選取該 job 的 checkbox
-              if (barcode_job) {
-                const $cb = $('.barcode-check[data-job-id="' + barcode_job + '"]').first();
+              // 刷新後，優先重新選取同一筆 rowid；新增模式則不強制選取，避免同 JOB 多筆時選錯。
+              if (barcode_id || barcode_job) {
+                const $cb = barcode_id
+                  ? $('.barcode-check[data-id="' + barcode_id + '"]').first()
+                  : $();
                 if ($cb.length) {
                   $('.barcode-check').prop('checked', false);
                   $cb.prop('checked', true);
@@ -1495,10 +1949,10 @@ document.addEventListener('DOMContentLoaded', function() {
       seqEl.value = (ds.seqId !== undefined && ds.seqId !== '-1') ? ds.seqId : '-1';
     }
 
-    // （選用）如果你有 hidden barcode_id
+    // SQLite rowid：不新增 DB 欄位，用 rowid 當單筆 Barcode 識別。
     const idEl = document.getElementById('barcode_id');
-    if (idEl && ds.jobId) {
-      idEl.value = ds.jobId; // 若你用 job_id 當識別
+    if (idEl) {
+      idEl.value = ds.id || ds.barcodeRowid || '';
     }
 
     // Debug

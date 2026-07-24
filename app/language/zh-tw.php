@@ -311,12 +311,6 @@ $text['N.m'] = '牛頓.公尺';
 $text['kgf.cm'] = '公斤.公分';
 $text['Lbf.in'] = '磅.英吋';
 $text['cN.m'] = '牛頓.釐米';
-$text['tor_line_chart'] = '扭力折線圖';
-$text['latest_25_fastening_data'] = '最新 25 筆鎖附資料';
-$text['auto_refresh_25_records'] = '自動更新 / 25 筆資料';
-$text['user_id'] = '使用者 ID';
-$text['job_cycle_time'] = '工作週期時間';
-
 
 //Customize 
 $text['customize'] = '自定義';
@@ -494,8 +488,8 @@ $text['refresh'] = '刷新';
 $text['db_version'] = '資料庫版本';
 
 //Setting
-$text['controller_setting'] = '控制器';
-$text['system_setting'] = '系統';
+$text['controller_setting'] = '控制器設定';
+$text['system_setting'] = '系統設定';
 $text['system_id'] = 'ID';
 $text['system_name'] = '名稱';
 $text['system_unit'] = '單位';
@@ -576,7 +570,7 @@ $text['system_sync_warning_login'] = '控制器已登入';
 
 
 //barcode setting
-$text['system_barcode_setting'] = '條碼';
+$text['system_barcode_setting'] = '條碼設定';
 $text['system_barcode_from'] = '從';
 $text['system_barcode_to'] = '個數';
 $text['system_barcode_match_from'] = '匹配從';
@@ -607,7 +601,7 @@ $text['barcode_delete_fail']      = '刪除條碼失敗，請稍後再試';
 
 
 //admin setting
-$text['system_connect_setting'] = '連線';
+$text['system_connect_setting'] = '連線設定';
 $text['system_connect_number'] = '連線數量';
 $text['system_connect_max_number'] = '目前最大連線人數';
 $text['system_connect_guest_pwd'] = '訪客密碼';
@@ -855,78 +849,3 @@ $text['missing_info_json'] = '缺少 info.json，無法驗證更新檔';
 $text['info_json_invalid'] = 'info.json 格式錯誤或缺少 Match_TCC_Version';
 $text['version_too_low'] = '更新檔版本低於目前版本，無法更新，目前版本：';
 $text['update_success'] = '更新成功，已將檔案移動至 tccidas 目錄';
-// Account QRCode force patch i18n
-$text['account_qrcode'] = 'QRCode';
-$text['account_qrcode_download'] = '下載';
-
-$text['account_no'] = '編號';
-
-$text['account_user_name'] = '使用者名稱';
-
-$text['account_select_tab'] = '請選擇帳號分頁';
-
-$text['account_username'] = '使用者名稱';
-
-$text['account_password'] = '密碼';
-
-$text['account_confirm_password'] = '確認密碼';
-
-$text['account_import'] = '匯入';
-
-$text['account_export'] = '匯出';
-
-$text['account_upload'] = '上傳';
-
-$text['account_new_title'] = '新增帳號';
-
-$text['account_edit_title'] = '編輯帳號';
-
-$text['account_show_password'] = '顯示密碼';
-
-$text['account_hide_password'] = '隱藏密碼';
-
-$text['audit_button'] = '操作紀錄';
-
-$text['audit_realtime_monitor'] = '即時監控';
-
-$text['audit_running'] = '監控中';
-
-$text['audit_paused'] = '已暫停';
-
-$text['audit_pause'] = '暫停';
-
-$text['audit_start'] = '開始';
-
-$text['audit_standby'] = '待命';
-
-$text['audit_error'] = '錯誤';
-
-$text['audit_monitor'] = '監控來源';
-
-$text['audit_updated'] = '更新時間';
-
-$text['audit_records'] = '筆數';
-
-$text['audit_no'] = '編號';
-
-$text['audit_time'] = '時間';
-
-$text['audit_user'] = '使用者';
-
-$text['audit_module'] = '模組';
-
-$text['audit_action'] = '動作';
-
-$text['audit_target'] = '目標';
-
-$text['audit_status'] = '狀態';
-
-$text['audit_message'] = '訊息';
-
-$text['audit_select_tab'] = '請選擇操作紀錄分頁';
-
-$text['audit_no_data'] = '無資料';
-
-$text['audit_loading'] = '載入中...';
-
-$text['account_text'] = '帳號';

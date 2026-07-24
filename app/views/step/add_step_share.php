@@ -128,6 +128,37 @@
         return tq ? 2 : (ang ? 1 : 0);
     }
 
+    function getCheckedRadioValue(name) {
+        return document.querySelector(`input[name="${name}"]:checked`)?.value ?? '0';
+    }
+
+    function isStepAngleModeField(elOrId) {
+        const id = (typeof elOrId === 'string') ? elOrId : (elOrId?.id || '');
+        if (id === 'StepTorqueTS') {
+            return getCheckedRadioValue('StepEnableThreshold') === '1';
+        }
+        if (id === 'StepTorqueDownShift') {
+            return getCheckedRadioValue('StepEnableDownShift') === '1';
+        }
+        return false;
+    }
+
+    function normalizeStepAngleIntegerField(elOrId) {
+        const el = (typeof elOrId === 'string') ? document.getElementById(elOrId) : elOrId;
+        if (!el) return;
+        const raw = String(el.value ?? '').trim();
+        if (raw === '') return;
+        const n = Number(raw);
+        if (!Number.isFinite(n)) {
+            el.value = raw.replace(/[^0-9]/g, '');
+            return;
+        }
+        el.value = String(Math.floor(n));
+    }
+
+    window.isStepAngleModeField = isStepAngleModeField;
+    window.normalizeStepAngleIntegerField = normalizeStepAngleIntegerField;
+
     function bindRoundedWhenVisible(id, digits) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -278,6 +309,10 @@
             stepTorqueTS.setAttribute('step', '1');
             stepTorqueTS.setAttribute('pattern', '\\d+');
             stepTorqueTS.setAttribute('inputmode', 'numeric');
+            stepTorqueTS.dataset.allowDecimals = '0';
+            stepTorqueTS.dataset.storePrecision = '0';
+            stepTorqueTS.dataset.angleIntegerMode = '1';
+            normalizeStepAngleIntegerField(stepTorqueTS);
             // 更新 prev
             stepTorqueTS.dataset.prev = stepTorqueTS.value;
             }
@@ -352,6 +387,10 @@
             ds.step = '1';
             ds.pattern = '\\d+';      // 只允許整數
             ds.inputMode = 'numeric';
+            ds.dataset.allowDecimals = '0';
+            ds.dataset.storePrecision = '0';
+            ds.dataset.angleIntegerMode = '1';
+            normalizeStepAngleIntegerField(ds);
 
             ds._intHandler = function () {
                 const v = ds.value.trim();
@@ -467,11 +506,34 @@
         let StepTorqueOffsetSign = document.querySelector('input[name="StepTorqueOffsetSign"]:checked');
         let StepTorqueOffset     = document.getElementById("StepTorqueOffset").value;
 
+        // N7 相容：補償值有輸入且 > 0 時 StepEnableTorqueOffset=1，否則=0。
+        const StepTorqueOffsetRaw = String(StepTorqueOffset ?? '').trim();
+        const StepTorqueOffsetNumber = Number(StepTorqueOffsetRaw);
+        const StepEnableTorqueOffset = (
+            StepTorqueOffsetRaw !== '' &&
+            Number.isFinite(StepTorqueOffsetNumber) &&
+            StepTorqueOffsetNumber > 0
+        ) ? 1 : 0;
+
         let StepEnableDownShift = document.querySelector('input[name="StepEnableDownShift"]:checked')?.value ?? null;
         let StepEnableThreshold = document.querySelector('input[name="StepEnableThreshold"]:checked')?.value ?? null;
         let StepTorqueTS        = document.getElementById("StepTorqueTS").value;
         let StepTorqueDownShift = document.getElementById("StepTorqueDownShift").value;
         let StepRPMDownShift    = document.getElementById("StepRPMDownShift").value;
+
+        // 角度模式一律用整數儲存 / 顯示，避免出現 565656.000 這類尾端小數。
+        if (StepEnableThreshold === "1") {
+            const tsNum = Number(StepTorqueTS);
+            StepTorqueTS = Number.isFinite(tsNum) ? String(Math.floor(tsNum)) : String(StepTorqueTS || '').replace(/[^0-9]/g, '');
+            const tsEl = document.getElementById("StepTorqueTS");
+            if (tsEl) tsEl.value = StepTorqueTS;
+        }
+        if (StepEnableDownShift === "1") {
+            const dsNum = Number(StepTorqueDownShift);
+            StepTorqueDownShift = Number.isFinite(dsNum) ? String(Math.floor(dsNum)) : String(StepTorqueDownShift || '').replace(/[^0-9]/g, '');
+            const dsEl = document.getElementById("StepTorqueDownShift");
+            if (dsEl) dsEl.value = StepTorqueDownShift;
+        }
 
         let step_unit = document.getElementById("step_torque_unit").value;
         let time = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -559,6 +621,7 @@
             data.append("StepDelay", StepDelay);
             data.append("StepRPM", StepRPM);
             data.append("StepTorqueOffset", StepTorqueOffset);
+            data.append("StepEnableTorqueOffset", StepEnableTorqueOffset);
             data.append("StepTorqueOffsetSign", StepTorqueOffsetSign ? StepTorqueOffsetSign.value : null);
             data.append("StepEnableThreshold", StepEnableThreshold);
             data.append("StepTorqueTS", StepTorqueTS);
@@ -2233,42 +2296,8 @@
 
 
 
-        // ---- 交叉驗證：Threshold=2 & DownShift=1 時，StepTorqueDownShift(整數) < StepTorqueTS(整數)
-        (function enforceDownshiftVsTS() {
-            if (StepEnableThreshold === "2" && StepEnableDownShift === "1") {
-                const dsEl = document.getElementById('StepTorqueDownShift'); // DownShift
-                const tsEl = document.getElementById('StepTorqueTS');        // Threshold
-                if (!dsEl || !tsEl) return;
-
-                const dsVal = Number(dsEl.value);
-                const tsVal = Number(tsEl.value);
-
-                const dsInt = Math.floor(dsVal);
-                const tsInt = Math.floor(tsVal);
-
-                const fb = dsEl.nextElementSibling;
-
-                if (Number.isFinite(dsVal) && Number.isFinite(tsVal)) {
-                    if (!(dsInt < tsInt)) {
-                        dsEl.classList.add("is-invalid");
-                        if (fb?.classList.contains("invalid-feedback")) {
-                            fb.innerText = "Must be less than StepTorqueTS (integer compare)";
-                            fb.classList.add("d-block");
-                            fb.style.display = "block";
-                        }
-                        isValid = false;
-                        errorList.push('StepTorqueDownShift');
-                    } else {
-                        dsEl.classList.remove("is-invalid");
-                        if (fb?.classList.contains("invalid-feedback")) {
-                            fb.innerText = '';
-                            fb.classList.remove("d-block");
-                            fb.style.display = "none";
-                        }
-                    }
-                }
-            }
-        })();
+        // 舊版曾在 Threshold=扭力、DownShift=角度時，拿角度值去比扭力值。
+        // 這會和新規則牴觸，已改由下方「新規則最終交叉檢核」統一處理。
 
        
 
@@ -3338,9 +3367,11 @@
 
 
 
-            // 4) 關鍵：取消 invalid 旗標並清空值，避免下一次 '.' 被擋
+            // 4) 關鍵：取消 invalid 旗標，但保留使用者輸入值。
+            //    舊版這裡會 dsEl.value = ''，造成輸入 5 檢核失敗後欄位變空白。
+            //    保留原值，讓使用者可直接修改，不需要重新輸入。
             if (typeof dsEl.setCustomValidity === 'function') dsEl.setCustomValidity('');
-            dsEl.value = '';
+            dsEl.dataset.lastInvalidValue = String(dsEl.value ?? '');
 
             // 5) i18n（沿用你的語系 cookie）
             const getCookieSafe = (name) => {
@@ -3398,7 +3429,7 @@
             if (StepOption !== 1 || StepEnableThreshold !== "2") return;
 
             const tsEl = document.getElementById('StepTorqueTS');   // 門檻扭力
-            const hiEl = document.getElementById('check_target_tor_hi');   // 扭力上限(起子規格)
+            const hiEl = document.getElementById('StepHiTorque');   // 扭力上限(畫面設定值)
             if (!tsEl || !hiEl) return;
 
             const tsRaw = Number(tsEl.value);
@@ -3442,17 +3473,17 @@
             const I18N = {
                 'en-us': { 
                     title: 'Warning', 
-                    msg: `Threshold torque (${unit}) must be less than Target Torque`, 
+                    msg: `Threshold torque (${unit}) must be less than torque upper limit`, 
                     ok: 'OK' 
                 },
                 'zh-tw': { 
                     title: '警告',   
-                    msg: `門檻點扭力 (${unit}) 需小於 目標扭力`, 
+                    msg: `門檻點扭力 (${unit}) 需小於 扭力上限`, 
                     ok: '確定' 
                 },
                 'zh-cn': { 
                     title: '警告',   
-                    msg: `门槛点扭力 (${unit}) 需小于 目标扭力`, 
+                    msg: `门槛点扭力 (${unit}) 需小于 扭力上限`, 
                     ok: '确定' 
                 }
             };
@@ -3630,7 +3661,7 @@
 
 
 
-        // ---- 交叉驗證：StepOption==1 且「扭力降速」時，StepTorqueDownShift 必須小於 StepTorque（彈窗 + 語系 + 小數點可再輸入）----
+        // ---- 交叉驗證：StepOption==1 且「扭力降速」時，StepTorqueDownShift 必須小於 StepHiTorque（彈窗 + 語系 + 小數點可再輸入）----
         (function enforceDSTorqueLessThanTarget_WhenOpt1() {
             const stepOpt = parseInt(document.getElementById('StepOption')?.value ?? 0, 10);
             if (stepOpt !== 1) return;
@@ -3640,7 +3671,7 @@
             if (dsMode !== "2") return;
 
             const dsEl = document.getElementById('StepTorqueDownShift'); // 降速扭力
-            const tqEl = document.getElementById('StepTorque');          // ← 目標扭力（改這裡）
+            const tqEl = document.getElementById('StepHiTorque');        // 扭力上限
             if (!dsEl || !tqEl) return;
 
             const dsVal = Number(dsEl.value?.trim() ?? "");
@@ -3658,9 +3689,9 @@
 
             const OK_LABEL = (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定'));
             const I18N = {
-                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than Target torque.' },
-                'zh-tw': { title: '警告',   msg: '降速扭力 必須小於 目標扭力。' },
-                'zh-cn': { title: '警告',   msg: '降速扭力 必须小于 目标扭力。' }
+                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than torque upper limit.' },
+                'zh-tw': { title: '警告',   msg: '降速扭力 必須小於 扭力上限。' },
+                'zh-cn': { title: '警告',   msg: '降速扭力 必须小于 扭力上限。' }
             }[lang];
 
             // 通過 → 清錯
@@ -3784,8 +3815,8 @@
                 fb.style.display = 'none';
             }
 
-            // 依你的敘述：觸發條件是 ds > StepAngle；若也要擋等於，改成 dsInt >= tgtInt
-            if (dsInt > tgtInt) {
+            // 新規則：降速點角度必須小於目標角度；等於也要擋
+            if (!(dsInt < tgtInt)) {
                 // i18n
                 function getCookieSafe(name){ try{ const m = document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; } catch { return null; } }
                 let lang = (typeof getLangAndUnit === 'function' ? (getLangAndUnit().lang || 'en-us') : (getCookieSafe('language') || 'en-us')).toLowerCase();
@@ -4603,6 +4634,121 @@
         const okTS = validateThresholdAngleVsHiAngle_Opt1({ errorList });
         if (!okTS) isValid = false;
 
+
+        // === 新規則最終交叉檢核：門檻 / 降轉必須嚴格小於對應目標或上限 ===
+        (function enforceThresholdDownshiftFinalRules() {
+            const stepOpt = Number(document.getElementById('StepOption')?.value || 0); // 2=目標扭力, 1=目標角度
+            const thMode  = String(document.querySelector('input[name="StepEnableThreshold"]:checked')?.value ?? '0'); // 1=角度, 2=扭力
+            const dsMode  = String(document.querySelector('input[name="StepEnableDownShift"]:checked')?.value ?? '0'); // 1=角度, 2=扭力
+
+            const fieldMap = {
+                StepTorqueTS: document.getElementById('StepTorqueTS'),
+                StepTorqueDownShift: document.getElementById('StepTorqueDownShift')
+            };
+            const targetMap = {
+                StepTorque: document.getElementById('StepTorque'),
+                StepAngle: document.getElementById('StepAngle'),
+                StepHiTorque: document.getElementById('StepHiTorque'),
+                StepHiAngle: document.getElementById('StepHiAngle')
+            };
+
+            const lu = (typeof getLangAndUnit === 'function') ? (getLangAndUnit() || {}) : {};
+            const lang = normalizeLang(lu.lang || 'en-us');
+            const unit = lu.unit || '';
+            const OK = (lang === 'en-us') ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定');
+            const TITLE = (lang === 'en-us') ? 'Warning' : '警告';
+            const precisionNow = (typeof getTorquePrecision === 'function') ? Number(getTorquePrecision()) : 3;
+            const roundN = (n, digits) => {
+                const v = Number(n);
+                if (!Number.isFinite(v)) return NaN;
+                const f = Math.pow(10, digits);
+                return Math.round(v * f) / f;
+            };
+
+            const labels = {
+                StepTorqueTS: {
+                    torque: {'en-us':'Threshold torque','zh-tw':'門檻點扭力','zh-cn':'门槛点扭力'},
+                    angle:  {'en-us':'Threshold angle','zh-tw':'門檻點角度','zh-cn':'门槛点角度'}
+                },
+                StepTorqueDownShift: {
+                    torque: {'en-us':'Downshift torque','zh-tw':'降速點扭力','zh-cn':'降速点扭力'},
+                    angle:  {'en-us':'Downshift angle','zh-tw':'降速點角度','zh-cn':'降速点角度'}
+                },
+                target: {
+                    StepTorque: {'en-us':'target torque','zh-tw':'目標扭力','zh-cn':'目标扭力'},
+                    StepAngle: {'en-us':'target angle','zh-tw':'目標角度','zh-cn':'目标角度'},
+                    StepHiTorque: {'en-us':'torque upper limit','zh-tw':'扭力上限','zh-cn':'扭力上限'},
+                    StepHiAngle: {'en-us':'angle upper limit','zh-tw':'角度上限','zh-cn':'角度上限'}
+                }
+            };
+
+            const getLabel = (obj) => obj?.[lang] || obj?.['en-us'] || '';
+
+            function fail(fieldId, valueType, targetId) {
+                const el = fieldMap[fieldId];
+                if (!el) return;
+
+                el.classList.add('is-invalid');
+                const fb = el.nextElementSibling;
+                if (fb?.classList.contains('invalid-feedback')) {
+                    fb.innerText = '';
+                    fb.classList.remove('d-block');
+                    fb.style.display = 'none';
+                }
+
+                const fieldLabel = getLabel(labels[fieldId][valueType]);
+                const targetLabel = getLabel(labels.target[targetId]);
+                const suffix = valueType === 'torque' && unit ? ` (${unit})` : '';
+                const msg = (lang === 'en-us')
+                    ? `${fieldLabel}${suffix} must be less than ${targetLabel}.`
+                    : `${fieldLabel}${suffix} 需小於 ${targetLabel}`;
+
+                const flag = `_alertingFinal_${fieldId}_${valueType}_${targetId}`;
+                if (!window[flag]) {
+                    window[flag] = true;
+                    alertify.alert(TITLE, msg, function () {
+                        try { el.focus(); el.select?.(); } catch {}
+                        window[flag] = false;
+                    }).set('labels', { ok: OK });
+                }
+
+                isValid = false;
+                if (!errorList.includes(fieldId)) errorList.push(fieldId);
+            }
+
+            function check(fieldId, mode, targetId) {
+                if (mode === '0') return;
+                const el = fieldMap[fieldId];
+                const targetEl = targetMap[targetId];
+                if (!el || !targetEl) return;
+
+                const valueType = (mode === '2') ? 'torque' : 'angle';
+                let v = Number(String(el.value || '').trim());
+                let t = Number(String(targetEl.value || '').trim());
+                if (!Number.isFinite(v) || !Number.isFinite(t)) return;
+
+                if (valueType === 'angle') {
+                    v = Math.trunc(v);
+                    t = Math.trunc(t);
+                } else {
+                    v = roundN(v, precisionNow);
+                    t = roundN(t, precisionNow);
+                }
+
+                if (!(v < t)) fail(fieldId, valueType, targetId);
+            }
+
+            if (stepOpt === 2) {
+                // 目標扭力：扭力門檻/降速 < 目標扭力；角度門檻/降速 < 角度上限
+                check('StepTorqueTS', thMode, thMode === '2' ? 'StepTorque' : 'StepHiAngle');
+                check('StepTorqueDownShift', dsMode, dsMode === '2' ? 'StepTorque' : 'StepHiAngle');
+            } else if (stepOpt === 1) {
+                // 目標角度：角度門檻/降速 < 目標角度；扭力門檻/降速 < 扭力上限
+                check('StepTorqueTS', thMode, thMode === '1' ? 'StepAngle' : 'StepHiTorque');
+                check('StepTorqueDownShift', dsMode, dsMode === '1' ? 'StepAngle' : 'StepHiTorque');
+            }
+        })();
+
     // === 最後統一套用紅框（避免被其它段落清掉）===
     (function finalizeInvalidStyles(){
         try {
@@ -4674,8 +4820,8 @@
                     msg: (limit) => `门槛点角度（度）需小于目标角度` },
         }[lang];
 
-        // ---- 驗證：TS 必須 <= HiAngle ----
-        if (tsVal > hiVal) {
+        // ---- 驗證：TS 必須 < 目標角度；等於也要擋 ----
+        if (!(tsVal < hiVal)) {
             // 標紅並收掉欄位旁的 inline 提示（避免雙重訊息）
             tsEl.classList.add('is-invalid');
             const fb = tsEl.nextElementSibling;
@@ -5112,16 +5258,35 @@
     const allowedInputDecimals = () => (decimalsByUnit[getUnit()] ?? 3) + (extraInputDecimals[getUnit()] ?? 0);
 
     function applyAttrs(el) {
+      if (window.isStepAngleModeField?.(el)) {
+        el.setAttribute('inputmode', 'numeric');
+        el.setAttribute('pattern', '^\\d+$');
+        el.setAttribute('step', '1');
+        el.dataset.allowDecimals = '0';
+        el.dataset.storePrecision = '0';
+        el.dataset.angleIntegerMode = '1';
+        window.normalizeStepAngleIntegerField?.(el);
+        return;
+      }
+
+      delete el.dataset.angleIntegerMode;
       const allow = allowedInputDecimals();
       const storeP = targetPrecision();
       el.setAttribute('inputmode', 'decimal');
-      el.setAttribute('pattern', `^\\d+(?:\\.\\d{0,${allow}})?$`);
+      el.setAttribute('pattern', `^\d+(?:\.\d{0,${allow}})?$`);
       el.setAttribute('step', String(1 / Math.pow(10, storeP)));
       el.dataset.allowDecimals = String(allow);
       el.dataset.storePrecision = String(storeP);
     }
 
     function enforceDecimalPlaces(el) {
+      if (window.isStepAngleModeField?.(el)) {
+        let v = String(el.value || '').replace(/[^\d.]/g, '');
+        if (v.includes('.')) v = v.split('.')[0];
+        el.value = v.replace(/[^\d]/g, '');
+        return;
+      }
+
       const allow = parseInt(el.dataset.allowDecimals || allowedInputDecimals(), 10);
       let v = (el.value || '').replace(/[^\d.]/g, '');
       const i = v.indexOf('.');
@@ -5139,8 +5304,12 @@
       if (v === '' || v === '.') return;
       const n = Number(v);
       if (!Number.isFinite(n)) return;
-        const p = parseInt(el.dataset.storePrecision || targetPrecision(), 10);
-        el.value = roundHalfUp(n, p).toFixed(p);
+      if (window.isStepAngleModeField?.(el)) {
+        el.value = String(Math.floor(n));
+        return;
+      }
+      const p = parseInt(el.dataset.storePrecision || targetPrecision(), 10);
+      el.value = roundHalfUp(n, p).toFixed(p);
       //const p = parseInt(el.dataset.storePrecision || targetPrecision(), 10);
       //el.value = n.toFixed(p); // 依儲存精度四捨五入
     }
@@ -5191,6 +5360,23 @@ document.addEventListener('DOMContentLoaded', function () {
     decimalsByUnit: DECIMALS_BY_UNIT,
     extraInputDecimals: EXTRA_INPUT_DECIMALS,
     padOnBlur: true
+  });
+
+  // Threshold / Downshift 切到「角度」時，立即改為整數顯示；切回扭力時再恢復扭力精度。
+  document.querySelectorAll('input[name="StepEnableThreshold"], input[name="StepEnableDownShift"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (typeof setupTorqueInputs === 'function') {
+        setupTorqueInputs({
+          unitSelect: '#step_torque_unit',
+          fields: ['#StepTorqueTS','#StepTorqueDownShift'],
+          decimalsByUnit: DECIMALS_BY_UNIT,
+          extraInputDecimals: EXTRA_INPUT_DECIMALS,
+          padOnBlur: true
+        });
+      }
+      if (window.isStepAngleModeField?.('StepTorqueTS')) window.normalizeStepAngleIntegerField?.('StepTorqueTS');
+      if (window.isStepAngleModeField?.('StepTorqueDownShift')) window.normalizeStepAngleIntegerField?.('StepTorqueDownShift');
+    });
   });
 });
 </script>

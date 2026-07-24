@@ -3,8 +3,8 @@
 //sudo chmod -R 777 /var/www/html/idas
 // sudo chmod -R 777  var/www/html/idas/public/ftp
 //sudo chmod -R 777 /var/www/html/database
-//sudo rm -rf /var/www/html/idas
-//sudo rm -rf /var/www/html/database/KLS_NTCS_IDAS.Lin
+//sudo rm -rf /var/www/html/extracted
+//sudo rm -rf /var/www/html/idas  
 //sudo chown -R www-data:www-data /var/www/html/idas/app/views/step
 //12345678rd
 //
@@ -105,7 +105,7 @@ switch (ICONMODE) {
 		define('TITLE_INDEX',       'MYTORQ');
 		define('SUBTITLE_INDEX',    'iDAS FOR MY-EVO-M7');
 		define('TITLE_AGENT',       'MYTORQ IoT Agent');
-		define('DEVICE_TYPE_11',    'MY-EVO-3 mini');
+		define('DEVICE_TYPE_11',    'MY-EVO-M7');
 	break;
 
 	case 5: // 晶元 SUMAKE

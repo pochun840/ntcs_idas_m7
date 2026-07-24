@@ -213,17 +213,203 @@ class Setting{
 
 
 
-    public function Controller_Setting($con_setting){
-        // 舊ID（WHERE 用）
-        $device_id_old = $con_setting['control_id'] ?? null;
-        // 新ID（SET 用）；沒提供就沿用舊ID（= 不改）
-        $device_id_new = $con_setting['control_id_new'] ?? $device_id_old;
+    public function Controller_Setting($con_setting)
+    {
+        /*
+         * Controller Setting 必須同時更新：
+         *
+         * 1. iDAS DB
+         *    /var/www/html/database/ntcs_device_IDAS.db
+         *
+         * 2. Controller DB
+         *    /home/kls/NTCS7/ntcs_device.db
+         *
+         * Linux 使用 SQLite ATTACH，在同一個 transaction 內更新兩個 DB。
+         * 任一 DB 更新失敗時會 rollback，不排程重新啟動。
+         */
 
-        // 舊 ID 為 NULL（或空字串）→ 用 IS NULL；否則用等號
-        $useIsNull = is_null($device_id_old) || $device_id_old === '';
+        $deviceIdOld = $con_setting['control_id'] ?? null;
+        $deviceIdNew = $con_setting['control_id_new']
+            ?? $deviceIdOld;
+
+        $useIsNull = (
+            $deviceIdOld === null
+            || $deviceIdOld === ''
+        );
+
+        $table = (string)TABLE_NTCS_DEVICE;
+
+        /*
+         * TABLE_NTCS_DEVICE 是程式常數，但仍限制 identifier 格式，
+         * 避免直接拼接不合法的資料表名稱。
+         */
+        if (
+            !preg_match(
+                '/^[A-Za-z_][A-Za-z0-9_]*$/',
+                $table
+            )
+        ) {
+            error_log(
+                'Controller_Setting invalid table name: '
+                . $table
+            );
+
+            return false;
+        }
+
+        $controllerDbPath =
+            '/home/kls/NTCS7/ntcs_device.db';
+
+        $attachAlias = 'controller_device_db';
+        $attached = false;
+
+        try {
+            $this->db_iDas_tools->setAttribute(
+                PDO::ATTR_ERRMODE,
+                PDO::ERRMODE_EXCEPTION
+            );
+
+            /*
+             * 避免 Controller 程式短時間占用 SQLite 時立即失敗。
+             */
+            $this->db_iDas_tools->exec(
+                'PRAGMA busy_timeout = 5000'
+            );
+
+            if (PHP_OS_FAMILY === 'Linux') {
+                if (
+                    !is_file($controllerDbPath)
+                    || !is_readable($controllerDbPath)
+                    || !is_writable($controllerDbPath)
+                ) {
+                    throw new RuntimeException(
+                        'Controller DB is missing or not writable: '
+                        . $controllerDbPath
+                    );
+                }
+
+                /*
+                 * SQLite 寫 journal/WAL 時也需要資料夾可寫。
+                 */
+                $controllerDbDirectory =
+                    dirname($controllerDbPath);
+
+                if (!is_writable($controllerDbDirectory)) {
+                    throw new RuntimeException(
+                        'Controller DB directory is not writable: '
+                        . $controllerDbDirectory
+                    );
+                }
+
+                $attachStatement =
+                    $this->db_iDas_tools->prepare(
+                        'ATTACH DATABASE :db_path AS '
+                        . $attachAlias
+                    );
+
+                $attachStatement->bindValue(
+                    ':db_path',
+                    $controllerDbPath,
+                    PDO::PARAM_STR
+                );
+
+                $attachStatement->execute();
+                $attached = true;
+            }
+
+            $this->db_iDas_tools->beginTransaction();
+
+            /*
+             * 先更新 iDAS DB。
+             */
+            $idasRows = $this->executeControllerSettingUpdate(
+                'main.' . $table,
+                $con_setting,
+                $deviceIdOld,
+                $deviceIdNew,
+                $useIsNull
+            );
+
+            if ($idasRows < 1) {
+                throw new RuntimeException(
+                    'No matching controller row in iDAS DB.'
+                );
+            }
+
+            /*
+             * Linux 再更新 Controller 實際使用的 ntcs_device.db。
+             */
+            if (PHP_OS_FAMILY === 'Linux') {
+                $controllerRows =
+                    $this->executeControllerSettingUpdate(
+                        $attachAlias . '.' . $table,
+                        $con_setting,
+                        $deviceIdOld,
+                        $deviceIdNew,
+                        $useIsNull
+                    );
+
+                if ($controllerRows < 1) {
+                    throw new RuntimeException(
+                        'No matching controller row in Controller DB.'
+                    );
+                }
+            }
+
+            $this->db_iDas_tools->commit();
+
+            if ($attached) {
+                $this->db_iDas_tools->exec(
+                    'DETACH DATABASE ' . $attachAlias
+                );
+                $attached = false;
+            }
+
+            return true;
+
+        } catch (Throwable $exception) {
+            if ($this->db_iDas_tools->inTransaction()) {
+                $this->db_iDas_tools->rollBack();
+            }
+
+            if ($attached) {
+                try {
+                    $this->db_iDas_tools->exec(
+                        'DETACH DATABASE ' . $attachAlias
+                    );
+                } catch (Throwable $detachException) {
+                    // 原始錯誤優先，DETACH 錯誤只寫入 log。
+                    error_log(
+                        'Controller DB detach failed: '
+                        . $detachException->getMessage()
+                    );
+                }
+            }
+
+            error_log(
+                'Controller_Setting dual DB update failed: '
+                . $exception->getMessage()
+            );
+
+            return false;
+        }
+    }
 
 
-        $sql = "UPDATE " . TABLE_NTCS_DEVICE . " 
+    /**
+     * 對指定 SQLite schema/table 執行相同的 Controller Setting UPDATE。
+     *
+     * @return int 受影響列數
+     */
+    private function executeControllerSettingUpdate(
+        string $qualifiedTable,
+        array $conSetting,
+        $deviceIdOld,
+        $deviceIdNew,
+        bool $useIsNull
+    ): int {
+        $sql = "
+            UPDATE {$qualifiedTable}
             SET device_id               = :device_id_new,
                 device_name             = :device_name,
                 storage_warning         = :storage_warning,
@@ -234,41 +420,115 @@ class Setting{
                 counting_method         = :counting_method,
                 blackout_recovery       = :blackout_recovery,
                 buzzer_mode             = :buzzer_mode,
+                modbus_type             = :modbus_type,
                 global_downshift_torque = :global_downshift_torque,
                 global_downshift_speed  = :global_downshift_speed
-            WHERE " . ($useIsNull ? "device_id IS NULL" : "device_id = :device_id_old");
+            WHERE "
+            . (
+                $useIsNull
+                    ? 'device_id IS NULL'
+                    : 'device_id = :device_id_old'
+            );
 
-        $st = $this->db_iDas_tools->prepare($sql);
+        $statement =
+            $this->db_iDas_tools->prepare($sql);
 
-        // ★ 一定要綁 :device_id_new
-        if ($device_id_new === null || $device_id_new === '') {
-            // 若你允許把新 ID 設回 NULL，就用 PARAM_NULL；否則可在此擋掉並回傳 false
-            $st->bindValue(':device_id_new', null, PDO::PARAM_NULL);
+        if (
+            $deviceIdNew === null
+            || $deviceIdNew === ''
+        ) {
+            $statement->bindValue(
+                ':device_id_new',
+                null,
+                PDO::PARAM_NULL
+            );
         } else {
-            $st->bindValue(':device_id_new', $device_id_new, PDO::PARAM_STR);
+            $statement->bindValue(
+                ':device_id_new',
+                (int)$deviceIdNew,
+                PDO::PARAM_INT
+            );
         }
 
-        // 其他欄位（依你資料型別可用 PARAM_INT/STR）
-        $st->bindValue(':device_name',             $con_setting['control_name']);
-        $st->bindValue(':storage_warning',         $con_setting['storage_warning']);
-        $st->bindValue(':torque_filter',           $con_setting['torque_filter']);
-        $st->bindValue(':language',                $con_setting['lang_val']);
-        $st->bindValue(':torque_unit',             $con_setting['unit_val']);
-        $st->bindValue(':circular_archive',        $con_setting['circular_archive']);
-        $st->bindValue(':counting_method',         $con_setting['counting_method']);
-        $st->bindValue(':blackout_recovery',       $con_setting['blackout_recovery']);
-        $st->bindValue(':buzzer_mode',             $con_setting['buzzer_mode']);
-        $st->bindValue(':global_downshift_torque', $con_setting['global_downshift_torque']);
-        $st->bindValue(':global_downshift_speed',  $con_setting['global_downshift_speed']);
+        $statement->bindValue(
+            ':device_name',
+            (string)($conSetting['control_name'] ?? ''),
+            PDO::PARAM_STR
+        );
 
-        // 只有在非 NULL 的情況才綁 WHERE 的舊 ID
+        $statement->bindValue(
+            ':storage_warning',
+            $conSetting['storage_warning'] ?? 0
+        );
+
+        $statement->bindValue(
+            ':torque_filter',
+            $conSetting['torque_filter'] ?? 0
+        );
+
+        $statement->bindValue(
+            ':language',
+            (int)($conSetting['lang_val'] ?? 0),
+            PDO::PARAM_INT
+        );
+
+        $statement->bindValue(
+            ':torque_unit',
+            (int)($conSetting['unit_val'] ?? 0),
+            PDO::PARAM_INT
+        );
+
+        $statement->bindValue(
+            ':circular_archive',
+            (int)($conSetting['circular_archive'] ?? 0),
+            PDO::PARAM_INT
+        );
+
+        $statement->bindValue(
+            ':counting_method',
+            (int)($conSetting['counting_method'] ?? 0),
+            PDO::PARAM_INT
+        );
+
+        $statement->bindValue(
+            ':blackout_recovery',
+            (string)($conSetting['blackout_recovery'] ?? '0'),
+            PDO::PARAM_STR
+        );
+
+        $statement->bindValue(
+            ':buzzer_mode',
+            (int)($conSetting['buzzer_mode'] ?? 0),
+            PDO::PARAM_INT
+        );
+
+        $statement->bindValue(
+            ':modbus_type',
+            (int)($conSetting['modbus_type'] ?? 0),
+            PDO::PARAM_INT
+        );
+
+        $statement->bindValue(
+            ':global_downshift_torque',
+            $conSetting['global_downshift_torque'] ?? 0
+        );
+
+        $statement->bindValue(
+            ':global_downshift_speed',
+            $conSetting['global_downshift_speed'] ?? 0
+        );
+
         if (!$useIsNull) {
-            $st->bindValue(':device_id_old', $device_id_old, PDO::PARAM_STR);
+            $statement->bindValue(
+                ':device_id_old',
+                (int)$deviceIdOld,
+                PDO::PARAM_INT
+            );
         }
 
-        $ok = $st->execute();
-        // （可選）你也可以檢查受影響筆數：$rows = $st->rowCount();
-        return $ok;
+        $statement->execute();
+
+        return (int)$statement->rowCount();
     }
 
 
@@ -685,287 +945,5 @@ class Setting{
     
 
 
-
-
-    private function operationAuditTableExists(): bool
-    {
-        $stmt = $this->db_iDas_login->prepare("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'operation_audit_log'");
-        $stmt->execute();
-        return ((int)$stmt->fetchColumn()) > 0;
-    }
-
-    public function getOperationAuditLogs(int $limit = 100): array
-    {
-        if (!$this->operationAuditTableExists()) {
-            return [];
-        }
-
-        if ($limit <= 0 || $limit > 500) {
-            $limit = 100;
-        }
-
-        $sql = "
-            SELECT
-                log_id,
-                created_at,
-                user_id,
-                operator,
-                client_ip,
-                device_id,
-                module,
-                action,
-                status,
-                job_id,
-                seq_id,
-                step_id,
-                source_job_id,
-                source_seq_id,
-                source_step_id,
-                target_job_id,
-                target_seq_id,
-                target_step_id,
-                title,
-                message
-            FROM operation_audit_log
-            ORDER BY log_id DESC
-            LIMIT :limit
-        ";
-
-        $stmt = $this->db_iDas_login->prepare($sql);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-
-    private function operationAuditNormalizeCsvKey($key): string
-    {
-        $key = strtolower(trim((string)$key));
-        $key = preg_replace('/[^a-z0-9]+/', '_', $key) ?? $key;
-        return trim($key, '_');
-    }
-
-    private function operationAuditCsvLooksLikeHeader(array $row): bool
-    {
-        $known = [
-            'time', 'date', 'datetime', 'timestamp', 'created_at', 'log_time',
-            'user', 'username', 'operator', 'module', 'source', 'category',
-            'action', 'event', 'status', 'level', 'severity',
-            'message', 'msg', 'content', 'detail', 'description',
-            'job_id', 'jobid', 'seq_id', 'seqid', 'step_id', 'stepid'
-        ];
-
-        foreach ($row as $cell) {
-            $key = $this->operationAuditNormalizeCsvKey($cell);
-            if (in_array($key, $known, true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function operationAuditIsDateLike($value): bool
-    {
-        $value = trim((string)$value);
-        if ($value === '') {
-            return false;
-        }
-
-        return (bool)preg_match('/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}(?:[ T]\d{1,2}:\d{1,2}(?::\d{1,2})?)?/', $value);
-    }
-
-    private function operationAuditFirstValue(array $assoc, array $keys): string
-    {
-        foreach ($keys as $key) {
-            $normalized = $this->operationAuditNormalizeCsvKey($key);
-            if (isset($assoc[$normalized]) && trim((string)$assoc[$normalized]) !== '') {
-                return trim((string)$assoc[$normalized]);
-            }
-        }
-
-        return '';
-    }
-
-    private function operationAuditDetectStatus(string $text): string
-    {
-        $upper = strtoupper($text);
-
-        if (strpos($upper, 'ERROR') !== false || strpos($upper, 'FAIL') !== false || strpos($upper, 'NG') !== false) {
-            return 'ERROR';
-        }
-        if (strpos($upper, 'WARN') !== false || strpos($upper, 'WARNING') !== false) {
-            return 'WARNING';
-        }
-        if (strpos($upper, 'SUCCESS') !== false || strpos($upper, 'OK') !== false) {
-            return 'SUCCESS';
-        }
-
-        return 'INFO';
-    }
-
-    private function operationAuditBuildAppLogRow(array $cols, array $assoc, int $lineNo): array
-    {
-        $rawText = trim(implode(' | ', array_map('strval', $cols)));
-
-        $createdAt = $this->operationAuditFirstValue($assoc, [
-            'created_at', 'datetime', 'timestamp', 'time', 'date', 'log_time'
-        ]);
-
-        $message = $this->operationAuditFirstValue($assoc, [
-            'message', 'msg', 'content', 'detail', 'description', 'event_message'
-        ]);
-
-        // 無 header 或 header 沒有 message 時，第一欄是時間就把後面欄位合併成 message。
-        if ($message === '' && count($cols) > 1 && $this->operationAuditIsDateLike($cols[0] ?? '')) {
-            $message = trim(implode(' | ', array_slice($cols, 1)));
-        }
-
-        if ($message === '') {
-            $message = $rawText;
-        }
-
-        if ($createdAt === '' && isset($cols[0]) && $this->operationAuditIsDateLike($cols[0])) {
-            $createdAt = trim((string)$cols[0]);
-        }
-
-        $operator = $this->operationAuditFirstValue($assoc, [
-            'operator', 'user', 'username', 'account'
-        ]);
-
-        $module = $this->operationAuditFirstValue($assoc, [
-            'module', 'source', 'category', 'tag'
-        ]);
-        if ($module === '') {
-            $module = 'APP';
-        }
-
-        $action = $this->operationAuditFirstValue($assoc, [
-            'action', 'event', 'function', 'operation'
-        ]);
-        if ($action === '') {
-            $action = 'LOG';
-        }
-
-        $status = $this->operationAuditFirstValue($assoc, [
-            'status', 'level', 'severity', 'result'
-        ]);
-        if ($status === '') {
-            $status = $this->operationAuditDetectStatus($rawText);
-        }
-
-        $jobId = $this->operationAuditFirstValue($assoc, ['job_id', 'jobid', 'job']);
-        $seqId = $this->operationAuditFirstValue($assoc, ['seq_id', 'seqid', 'seq']);
-        $stepId = $this->operationAuditFirstValue($assoc, ['step_id', 'stepid', 'step']);
-
-        return [
-            'log_id' => $lineNo,
-            'created_at' => $createdAt,
-            'user_id' => $operator,
-            'operator' => $operator,
-            'client_ip' => '',
-            'device_id' => null,
-            'module' => $module,
-            'action' => $action,
-            'status' => $status,
-            'job_id' => is_numeric($jobId) ? (int)$jobId : null,
-            'seq_id' => is_numeric($seqId) ? (int)$seqId : null,
-            'step_id' => is_numeric($stepId) ? (int)$stepId : null,
-            'source_job_id' => null,
-            'source_seq_id' => null,
-            'source_step_id' => null,
-            'target_job_id' => null,
-            'target_seq_id' => null,
-            'target_step_id' => null,
-            'target' => 'APP #' . $lineNo,
-            'title' => 'APP Log',
-            'message' => $message,
-        ];
-    }
-
-    public function getAppOperationLogs(int $limit = 100): array
-    {
-        if ($limit <= 0 || $limit > 500) {
-            $limit = 100;
-        }
-
-        $csvPath = '/home/kls/NTCS7/ntcs_log.csv';
-        if (!is_file($csvPath) || !is_readable($csvPath)) {
-            return [];
-        }
-
-        $fp = @fopen($csvPath, 'r');
-        if (!$fp) {
-            return [];
-        }
-
-        $rows = [];
-        $header = null;
-        $lineNo = 0;
-
-        while (($cols = fgetcsv($fp)) !== false) {
-            $lineNo++;
-
-            // 空白列略過
-            $nonEmpty = false;
-            foreach ($cols as $cell) {
-                if (trim((string)$cell) !== '') {
-                    $nonEmpty = true;
-                    break;
-                }
-            }
-            if (!$nonEmpty) {
-                continue;
-            }
-
-            if ($header === null && $lineNo === 1 && $this->operationAuditCsvLooksLikeHeader($cols)) {
-                $header = array_map(function ($cell) {
-                    return $this->operationAuditNormalizeCsvKey($cell);
-                }, $cols);
-                continue;
-            }
-
-            $assoc = [];
-            if (is_array($header)) {
-                foreach ($header as $idx => $key) {
-                    if ($key !== '') {
-                        $assoc[$key] = $cols[$idx] ?? '';
-                    }
-                }
-            }
-
-            $rows[] = $this->operationAuditBuildAppLogRow($cols, $assoc, $lineNo);
-        }
-
-        fclose($fp);
-
-        usort($rows, function ($a, $b) {
-            $ta = !empty($a['created_at']) ? strtotime((string)$a['created_at']) : false;
-            $tb = !empty($b['created_at']) ? strtotime((string)$b['created_at']) : false;
-
-            if ($ta !== false && $tb !== false && $ta !== $tb) {
-                return $tb <=> $ta;
-            }
-
-            return ((int)($b['log_id'] ?? 0)) <=> ((int)($a['log_id'] ?? 0));
-        });
-
-        return array_slice($rows, 0, $limit);
-    }
-
-    public function getOperationAuditLogDetail(int $logId): ?array
-    {
-        if (!$this->operationAuditTableExists()) {
-            return null;
-        }
-
-        $stmt = $this->db_iDas_login->prepare("SELECT * FROM operation_audit_log WHERE log_id = :log_id LIMIT 1");
-        $stmt->bindValue(':log_id', $logId, PDO::PARAM_INT);
-        $stmt->execute();
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ?: null;
-    }
 
 }

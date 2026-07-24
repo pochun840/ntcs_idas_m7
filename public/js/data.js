@@ -367,3 +367,226 @@ function downloadCSVZip() {
   });
 }
 
+
+
+/* =========================================================
+ * Operator(law = 3) download/export guard
+ * ---------------------------------------------------------
+ * - Backend still blocks direct API access in Data.php.
+ * - This client guard makes the Torque Line Chart export button
+ *   behave the same as the Data export/download buttons.
+ * ========================================================= */
+(function () {
+  'use strict';
+
+  const COOKIE_FLAG = 'ntcs_operator_download_block';
+  const LAW_KEYS = ['user_law', 'law', 'userLaw', 'user_level', 'permission', 'role_law'];
+  const ROLE_KEYS = ['role', 'user_role', 'account_role', 'permission_name'];
+
+  function readCookie(name) {
+    const parts = String(document.cookie || '').split(';');
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+      const eq = part.indexOf('=');
+      const key = eq >= 0 ? part.slice(0, eq) : part;
+      if (key === name) {
+        const val = eq >= 0 ? part.slice(eq + 1) : '';
+        try { return decodeURIComponent(val); } catch (e) { return val; }
+      }
+    }
+    return '';
+  }
+
+  function isOperatorLogin() {
+    // Data/index.php 會注入此常數；目前頁面有明確值時，以它為準。
+    // 這樣 guest/admin 不會被舊 cookie user_law=3 或 ntcs_operator_download_block=1 誤判。
+    if (window.IS_OPERATOR_LOGIN === true) return true;
+    if (window.IS_OPERATOR_LOGIN === false) return false;
+
+    if (readCookie(COOKIE_FLAG) === '1') return true;
+
+    for (const key of LAW_KEYS) {
+      const v = readCookie(key);
+      if (v !== '' && !Number.isNaN(Number(v)) && Number(v) === 3) return true;
+    }
+
+    for (const key of ROLE_KEYS) {
+      const v = String(readCookie(key) || '').trim().toLowerCase();
+      if (v === 'operator') return true;
+    }
+
+    return false;
+  }
+
+  function getLang() {
+    const lang = (readCookie('language') || document.documentElement.getAttribute('lang') || 'zh-tw').toLowerCase();
+    if (lang.includes('cn') || lang.includes('hans')) return 'zh-cn';
+    if (lang.includes('en')) return 'en-us';
+    return 'zh-tw';
+  }
+
+  function denyMessage() {
+    const lang = getLang();
+    if (lang === 'zh-cn') return { title: '权限不足', msg: 'Operator 权限不允许下载或汇出档案。' };
+    if (lang === 'en-us') return { title: 'Permission denied', msg: 'Operator permission is not allowed to download or export files.' };
+    return { title: '權限不足', msg: 'Operator 權限不允許下載或匯出檔案。' };
+  }
+
+  function showDenied() {
+    // Operator 不允許下載/匯出時，前端只阻擋動作，不顯示彈窗。
+    return false;
+  }
+
+  function stopEvent(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    }
+    showDenied();
+    return false;
+  }
+
+  function pageLooksLikeTorqueLineChart() {
+    const text = String(document.body ? document.body.innerText : '').slice(0, 3000);
+    const url = String(location.href || '');
+    return /drawLineChart|Torque_line_chart|export_drawline_chart_csv/i.test(url)
+        || /扭力折線圖|扭力折线图|Torque\s*Line\s*Chart/i.test(text);
+  }
+
+  function elementText(el) {
+    if (!el) return '';
+    return [
+      el.id,
+      el.name,
+      el.className,
+      el.title,
+      el.value,
+      el.getAttribute && el.getAttribute('href'),
+      el.getAttribute && el.getAttribute('onclick'),
+      el.textContent
+    ].filter(Boolean).join(' ');
+  }
+
+  function looksLikeDownloadExport(el) {
+    const s = elementText(el).toLowerCase();
+    return /export|download|csv|zip|匯出|汇出|下載|下载/.test(s)
+        || /exportdata|downloadcsvzip|export_drawline_chart_csv|exportdrawline/i.test(s);
+  }
+
+  function shouldBlockElement(el) {
+    if (!el) return false;
+
+    const s = elementText(el);
+
+    // 明確 API / function 名稱：所有 Data 下載與匯出都擋。
+    if (/Data\/(exportData|download_file|export_drawline_chart_csv)/i.test(s)) return true;
+    if (/exportData\s*\(|downloadCSVZip\s*\(|export_drawline_chart_csv|exportDrawLine/i.test(s)) return true;
+
+    // 扭力折線圖頁面內的「匯出」按鈕。
+    if (pageLooksLikeTorqueLineChart() && looksLikeDownloadExport(el)) return true;
+
+    return false;
+  }
+
+  function markRestrictedButton(el) {
+    if (!el || el.dataset.operatorDownloadRestricted === '1') return;
+    el.dataset.operatorDownloadRestricted = '1';
+    el.classList.add('download-restricted');
+    el.setAttribute('aria-disabled', 'true');
+    if ('disabled' in el) el.disabled = true;
+    el.setAttribute('tabindex', '-1');
+  }
+
+  function markCurrentPageButtons() {
+    if (!isOperatorLogin()) return;
+
+    const candidates = document.querySelectorAll('button, a, input[type="button"], input[type="submit"]');
+    candidates.forEach(function (el) {
+      if (shouldBlockElement(el)) markRestrictedButton(el);
+    });
+  }
+
+  function installClickGuard() {
+    if (window.__operatorDownloadClickGuardInstalled) return;
+    window.__operatorDownloadClickGuardInstalled = true;
+
+    document.addEventListener('click', function (e) {
+      if (!isOperatorLogin()) return;
+      const el = e.target && e.target.closest
+        ? e.target.closest('button, a, input[type="button"], input[type="submit"], .button, .btn')
+        : null;
+      if (shouldBlockElement(el)) stopEvent(e);
+    }, true);
+
+    document.addEventListener('submit', function (e) {
+      if (!isOperatorLogin()) return;
+      const form = e.target;
+      const action = form && form.getAttribute ? String(form.getAttribute('action') || '') : '';
+      if (/Data\/(exportData|download_file|export_drawline_chart_csv)/i.test(action)) stopEvent(e);
+    }, true);
+  }
+
+  function wrapDownloadFunction(name) {
+    const fn = window[name];
+    if (typeof fn !== 'function' || fn.__operatorDownloadGuarded) return;
+
+    const wrapped = function () {
+      if (isOperatorLogin()) return false;
+      return fn.apply(this, arguments);
+    };
+    wrapped.__operatorDownloadGuarded = true;
+    window[name] = wrapped;
+  }
+
+  function installFunctionGuards() {
+    [
+      'exportData',
+      'downloadCSVZip',
+      'exportDrawLineChartCsv',
+      'exportLineChartCsv',
+      'exportTorqueLineChartCsv',
+      'downloadDrawLineChartCsv',
+      'downloadLineChartCsv',
+      'export_drawline_chart_csv'
+    ].forEach(wrapDownloadFunction);
+  }
+
+  function refreshGuards() {
+    if (!isOperatorLogin()) return;
+    installClickGuard();
+    installFunctionGuards();
+    markCurrentPageButtons();
+  }
+
+  document.addEventListener('DOMContentLoaded', refreshGuards);
+  window.addEventListener('load', refreshGuards);
+
+  // 部分頁面會動態建立按鈕或後載入 inline function，短時間內多補幾次。
+  let times = 0;
+  const timer = setInterval(function () {
+    refreshGuards();
+    times += 1;
+    if (times >= 10) clearInterval(timer);
+  }, 500);
+
+  // 給 PHP inline onclick 共用；Operator 只阻擋，不顯示彈窗。
+  window.denyDownloadByOperator = function () { return false; };
+})();
+
+(function () {
+  if (document.getElementById('operator-download-restricted-style')) return;
+  const style = document.createElement('style');
+  style.id = 'operator-download-restricted-style';
+  style.textContent = `
+    .download-restricted {
+      background-color: #8a8f93 !important;
+      border-color: #8a8f93 !important;
+      color: #ffffff !important;
+      cursor: not-allowed !important;
+      opacity: 0.75;
+    }
+  `;
+  (document.head || document.documentElement).appendChild(style);
+})();

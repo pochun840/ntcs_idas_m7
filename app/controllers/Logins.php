@@ -1,12 +1,10 @@
 <?php
-/* Default Login Accounts Fix V2 */
 
 class Logins extends Controller
 {
     private $AdminModel;
     private $LoginModel;
     private $stepModel;
-    private $AuditModel;
     Private $deviceId;
 
     // 在建構子中將 Post 物件（Model）實例化
@@ -15,330 +13,10 @@ class Logins extends Controller
         $this->LoginModel = $this->model('Login');
         $this->stepModel = $this->model('Steptcc');
         $this->AdminModel = $this->model('Admin');
-        $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
-    }
-
-    private function isAccountUserApiRequest($url): bool
-    {
-        return isset($url[0], $url[1])
-            && $url[0] === 'Settings'
-            && in_array($url[1], [
-                'account_user_list',
-                'account_user_create',
-                'account_user_update',
-                'account_user_delete'
-            ], true);
-    }
-
-    private function sendLoginJson(bool $ok, string $msg, array $extra = []): void
-    {
-        while (ob_get_level() > 0) {
-            @ob_end_clean();
-        }
-
-        if (!headers_sent()) {
-            header('Content-Type: application/json; charset=utf-8');
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-        }
-
-        echo json_encode(array_merge([
-            'success'  => $ok,
-            'res_type' => $ok ? 'Success' : 'Error',
-            'res_msg'  => $msg,
-        ], $extra), JSON_UNESCAPED_UNICODE);
-        exit();
-    }
-
-
-    private function isLogoutRequest(array $url): bool
-    {
-        $path0 = strtolower((string)($url[0] ?? ''));
-        $path1 = strtolower((string)($url[1] ?? ''));
-
-        return $path1 === 'logout'
-            || !empty($_POST['logout_audit'])
-            || !empty($_GET['logout_audit'])
-            || (
-                isset($_SERVER['REQUEST_URI'])
-                && preg_match('/url=(In|Logins)\/logout/i', (string)$_SERVER['REQUEST_URI'])
-            );
-    }
-
-    private function respondLogoutRequest(): void
-    {
-        $this->logout(true);
-
-        $isAjax = !empty($_POST['logout_audit'])
-            || !empty($_GET['logout_audit'])
-            || (
-                isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-                && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
-            )
-            || (
-                isset($_SERVER['HTTP_ACCEPT'])
-                && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false
-            );
-
-        if ($isAjax) {
-            $this->sendLoginJson(true, 'Logout logged.');
-        }
-
-        header('Location: /idas/public/?url=In');
-        exit();
-    }
-
-    private function loginCurrentLang(): string
-    {
-        $raw = strtolower(trim((string)($_COOKIE['languages'] ?? ($_COOKIE['language'] ?? ($_COOKIE['lang'] ?? 'en-us')))));
-        $raw = str_replace('_', '-', $raw);
-
-        if ($raw === 'zh-tw' || $raw === 'zh-hant' || $raw === 'tw') return 'zh-tw';
-        if ($raw === 'zh-cn' || $raw === 'zh-hans' || $raw === 'cn') return 'zh-cn';
-        return 'en-us';
-    }
-
-    private function loginText(string $key): string
-    {
-        $dict = [
-            'en-us' => [
-                'LOGIN_EXPIRED' => 'Login expired. Please login again.',
-                'USER_NOT_FOUND' => 'Account does not exist.',
-                'PASSWORD_ERROR' => 'Incorrect password.',
-                'LOGIN_FAILED' => 'Login failed.',
-            ],
-            'zh-tw' => [
-                'LOGIN_EXPIRED' => '登入已逾時，請重新登入。',
-                'USER_NOT_FOUND' => '帳號不存在。',
-                'PASSWORD_ERROR' => '密碼錯誤。',
-                'LOGIN_FAILED' => '登入失敗。',
-            ],
-            'zh-cn' => [
-                'LOGIN_EXPIRED' => '登录已逾时，请重新登录。',
-                'USER_NOT_FOUND' => '账号不存在。',
-                'PASSWORD_ERROR' => '密码错误。',
-                'LOGIN_FAILED' => '登录失败。',
-            ],
-        ];
-
-        $lang = $this->loginCurrentLang();
-        return $dict[$lang][$key] ?? $dict['en-us'][$key] ?? $key;
-    }
-
-    private function loginAuditText(string $key, array $vars = []): string
-    {
-        $dict = [
-            'en-us' => [
-                'LOGIN_TITLE'       => 'Login',
-                'LOGIN_FAIL_TITLE'  => 'Login Fail',
-                'QR_LOGIN_TITLE'    => 'QR Code Login',
-                'QR_LOGIN_FAIL_TITLE' => 'QR Code Login Fail',
-                'LOGOUT_TITLE'      => 'Logout',
-                'LOGIN_SUCCESS_MSG' => 'Login success user: {user}',
-                'LOGIN_FAIL_MSG'    => 'Login failed user: {user}, reason: {reason}',
-                'QR_LOGIN_SUCCESS_MSG' => 'QR Code login success user: {user}',
-                'QR_LOGIN_FAIL_MSG' => 'QR Code login failed user: {user}, reason: {reason}',
-                'LOGOUT_MSG'        => 'Logout user: {user}',
-                'USER_TARGET'       => 'User: {user}',
-            ],
-            'zh-tw' => [
-                'LOGIN_TITLE'       => '登入',
-                'LOGIN_FAIL_TITLE'  => '登入失敗',
-                'QR_LOGIN_TITLE'    => 'QR Code 登入',
-                'QR_LOGIN_FAIL_TITLE' => 'QR Code 登入失敗',
-                'LOGOUT_TITLE'      => '登出',
-                'LOGIN_SUCCESS_MSG' => '使用者登入成功：{user}',
-                'LOGIN_FAIL_MSG'    => '使用者登入失敗：{user}，原因：{reason}',
-                'QR_LOGIN_SUCCESS_MSG' => 'QR Code 使用者登入成功：{user}',
-                'QR_LOGIN_FAIL_MSG' => 'QR Code 使用者登入失敗：{user}，原因：{reason}',
-                'LOGOUT_MSG'        => '使用者登出：{user}',
-                'USER_TARGET'       => '使用者：{user}',
-            ],
-            'zh-cn' => [
-                'LOGIN_TITLE'       => '登入',
-                'LOGIN_FAIL_TITLE'  => '登入失败',
-                'QR_LOGIN_TITLE'    => 'QR Code 登录',
-                'QR_LOGIN_FAIL_TITLE' => 'QR Code 登录失败',
-                'LOGOUT_TITLE'      => '登出',
-                'LOGIN_SUCCESS_MSG' => '使用者登入成功：{user}',
-                'LOGIN_FAIL_MSG'    => '使用者登入失败：{user}，原因：{reason}',
-                'QR_LOGIN_SUCCESS_MSG' => 'QR Code 使用者登录成功：{user}',
-                'QR_LOGIN_FAIL_MSG' => 'QR Code 使用者登录失败：{user}，原因：{reason}',
-                'LOGOUT_MSG'        => '使用者登出：{user}',
-                'USER_TARGET'       => '使用者：{user}',
-            ],
-        ];
-
-        $lang = $this->loginCurrentLang();
-        $text = $dict[$lang][$key] ?? $dict['en-us'][$key] ?? $key;
-
-        foreach ($vars as $name => $value) {
-            $text = str_replace('{' . $name . '}', (string)$value, $text);
-        }
-
-        return $text;
-    }
-
-    private function isQrLoginRequest(): bool
-    {
-        return !empty($_POST['qr_ajax_login'])
-            || !empty($_POST['qr_payload'])
-            || !empty($_POST['usr'])
-            || !empty($_POST['USR']);
-    }
-
-    private function loginAuditMethod(): string
-    {
-        return $this->isQrLoginRequest() ? 'QR_CODE' : 'MANUAL';
-    }
-
-    private function getCredentialFailureCode(string $username): string
-    {
-        $username = trim($username);
-        if ($username === '') {
-            return 'USER_NOT_FOUND';
-        }
-
-        try {
-            $row = $this->LoginModel->getpwd($username);
-            if (!$row || !is_array($row) || !isset($row['passwd'])) {
-                return 'USER_NOT_FOUND';
-            }
-        } catch (Throwable $e) {
-            return 'LOGIN_FAILED';
-        }
-
-        return 'PASSWORD_ERROR';
-    }
-
-
-    /**
-     * QR Code login payload support.
-     * 支援 QR 內容：{"usr":"abcd123","pwd":"0734"}
-     * 也支援部分掃碼槍輸出格式：usr=abcd123,pwd=0734 / usr:abcd123,pwd:0734。
-     * 最後統一轉成既有 username / password 登入流程。
-     */
-    private function normalizeQrLoginPost(): void
-    {
-        $qrData = [];
-
-        if (!empty($_POST['qr_payload']) && is_string($_POST['qr_payload'])) {
-            $qrData = $this->parseQrLoginPayload((string)$_POST['qr_payload']);
-            if (is_array($qrData)) {
-                // 支援 QR key 大小寫不同，例如 USR/PWD、User/Pass。
-                $qrData = array_change_key_case($qrData, CASE_LOWER);
-            }
-        }
-
-        if (empty($_POST['username'])) {
-            if (!empty($qrData['usr'])) {
-                $_POST['username'] = $qrData['usr'];
-            } elseif (!empty($qrData['username'])) {
-                $_POST['username'] = $qrData['username'];
-            } elseif (!empty($qrData['user'])) {
-                $_POST['username'] = $qrData['user'];
-            } elseif (!empty($qrData['name'])) {
-                $_POST['username'] = $qrData['name'];
-            } elseif (!empty($qrData['account'])) {
-                $_POST['username'] = $qrData['account'];
-            } elseif (isset($_POST['usr'])) {
-                $_POST['username'] = $_POST['usr'];
-            } elseif (isset($_POST['USR'])) {
-                $_POST['username'] = $_POST['USR'];
-            }
-        }
-
-        if (empty($_POST['password'])) {
-            if (!empty($qrData['pwd'])) {
-                $_POST['password'] = $qrData['pwd'];
-            } elseif (!empty($qrData['password'])) {
-                $_POST['password'] = $qrData['password'];
-            } elseif (!empty($qrData['pass'])) {
-                $_POST['password'] = $qrData['pass'];
-            } elseif (isset($_POST['pwd'])) {
-                $_POST['password'] = $_POST['pwd'];
-            } elseif (isset($_POST['PWD'])) {
-                $_POST['password'] = $_POST['PWD'];
-            }
-        }
-    }
-
-    /**
-     * 掃碼槍內容容錯解析：
-     * 1. 標準 JSON：{"usr":"abcd123","pwd":"0734"}
-     * 2. 單引號：{'usr':'abcd123','pwd':'0734'}
-     * 3. key/value：usr=abcd123,pwd=0734 或 usr:abcd123,pwd:0734
-     * 4. URL encoded：%7B%22usr%22...
-     */
-    private function parseQrLoginPayload(string $raw): array
-    {
-        $payload = trim($raw);
-
-        // 移除 BOM / 控制字元，並把常見全形符號、智慧引號轉回標準符號。
-        $payload = preg_replace('/^\xEF\xBB\xBF/', '', $payload) ?? $payload;
-        $payload = preg_replace('/[\x00-\x1F\x7F]/u', '', $payload) ?? $payload;
-        $payload = strtr($payload, [
-            '“' => '"',
-            '”' => '"',
-            '＂' => '"',
-            '‘' => "'",
-            '’' => "'",
-            '｛' => '{',
-            '｝' => '}',
-            '：' => ':',
-            '，' => ',',
-        ]);
-        $payload = trim($payload);
-
-        // 部分掃碼槍/中介軟體會輸出 URL encoded 字串。
-        if (stripos($payload, '%7B') !== false || stripos($payload, '%22') !== false || stripos($payload, '%3A') !== false) {
-            $decoded = rawurldecode($payload);
-            if (is_string($decoded) && $decoded !== '') {
-                $payload = trim($decoded);
-            }
-        }
-
-        // 若前後帶入其他文字，只擷取 JSON 區段。
-        $jsonStart = strpos($payload, '{');
-        $jsonEnd   = strrpos($payload, '}');
-        $jsonPayload = $payload;
-        if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd >= $jsonStart) {
-            $jsonPayload = substr($payload, $jsonStart, $jsonEnd - $jsonStart + 1);
-        }
-
-        $json = json_decode($jsonPayload, true);
-        if (is_array($json)) {
-            return $json;
-        }
-
-        // 兼容單引號 JSON。
-        $singleQuoteJson = str_replace("'", '"', $jsonPayload);
-        $json = json_decode($singleQuoteJson, true);
-        if (is_array($json)) {
-            return $json;
-        }
-
-        // 兼容 usr=abcd123,pwd=0734 或 usr:abcd123,pwd:0734。
-        $usr = null;
-        $pwd = null;
-        if (preg_match('/(?:usr|username|user)\s*[:=]\s*["\']?([^"\',;\s}]+)/i', $payload, $m)) {
-            $usr = $m[1];
-        }
-        if (preg_match('/(?:pwd|password|pass)\s*[:=]\s*["\']?([^"\',;\s}]+)/i', $payload, $m)) {
-            $pwd = $m[1];
-        }
-
-        if ($usr !== null && $pwd !== null) {
-            return [
-                'usr' => $usr,
-                'pwd' => $pwd,
-            ];
-        }
-
-        return [];
     }
 
 
@@ -347,25 +25,9 @@ class Logins extends Controller
         //先做資料庫檔案完整性檢查
         $repairResult = $this->checkAndRepairDatabaseFiles();
 
-        // Login page safety check:
-        // Ensure both controller DB and iDAS DB have default login accounts.
-        // Required accounts:
-        //   admin / 0734 / law=1
-        //   guest / 000  / law=1
-        // Required by Account login / QR login / account management flows.
-        $this->ensureDefaultLoginUsersDatabases();
-
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
-        }
+        session_start();
         $_SESSION['sessionid'] = session_id();
         $_SESSION['privilege'] = '';
-
-        // Direct logout request from dashboard logout() JS.
-        // Must be handled before normal login/auth checks, otherwise logout may only clear cookies on client side and no audit row is written.
-        if ($this->isLogoutRequest($url)) {
-            $this->respondLogoutRequest();
-        }
         $error_message = '';
         $authToken = '';
         $account = $this->LoginModel->get_account();
@@ -388,38 +50,13 @@ class Logins extends Controller
             }
         }
 
-        // QR Code login: 先把 qr_payload / usr / pwd 正規化成 username / password。
-        $this->normalizeQrLoginPost();
-
-        // QR / 手動 Login 使用 AJAX 驗證成功後，前端顯示 3 秒成功動畫再跳頁。
-        // 也支援 force_json / X-Requested-With / Accept: application/json，避免回傳 HTML 造成前端 JSON.parse 失敗。
-        $isAjaxLogin = !empty($_POST['ajax_login'])
-            || !empty($_POST['qr_ajax_login'])
-            || !empty($_POST['force_json'])
-            || (
-                isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-                && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
-            )
-            || (
-                isset($_SERVER['HTTP_ACCEPT'])
-                && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false
-            );
-
-        // Account API 必須回 JSON，不可以回登入頁 HTML，否則前端 JSON.parse 會失敗
-        if ($this->isAccountUserApiRequest($url)) {
-            if ($this->isAuthenticated()) {
-                return true;
-            }
-            $this->sendLoginJson(false, $this->loginText('LOGIN_EXPIRED'), ['code' => 'LOGIN_EXPIRED']);
-        }
-
         //判斷有沒有post password
         //有post就驗證password
         //沒有就單純檢查cookies
         if( !empty($_POST['password']) && isset($_POST['password'])  ){
             //login attempt
-            $_POST['username'] = trim((string)($_POST['username'] ?? ''));
-            $_POST['password'] = trim((string)($_POST['password'] ?? ''));
+            $_POST['username'] = trim($_POST['username']);
+            $_POST['password'] = trim($_POST['password']);
         
             $this->logLoginAttempt();
 
@@ -455,7 +92,10 @@ class Logins extends Controller
                     $dir = '/mnt/ramdisk/ftp';
 
                     if (@chmod($dir, 0777)) {
-                        // chmod 成功即可，不要在 redirect 前 echo，避免 headers already sent。
+                        echo json_encode([
+                            "status" => "success",
+                            "message" => "✅ PHP chmod 成功"
+                        ]);
                     } else {
                         // 如果 PHP chmod 失敗 → 改用 sudo
                         $cmd = 'sudo chmod 777 ' . escapeshellarg($dir);
@@ -470,10 +110,6 @@ class Logins extends Controller
                                 "message" => "✅ sudo chmod 成功"
                             ]);*/
                         } else {
-                            if ($isAjaxLogin) {
-                                $this->sendLoginJson(false, "sudo chmod failed: " . (string)$output);
-                            }
-
                             echo json_encode([
                                 "status" => "error",
                                 "message" => "❌ sudo chmod 失敗，結果：" . $output
@@ -486,57 +122,11 @@ class Logins extends Controller
                 setcookie('username', $username, time() + 600, '/');
                 setcookie('auth_token', $authToken, time() + 600, '/');
 
-                $isQrLoginAudit = $this->isQrLoginRequest();
-                $this->writeLoginAudit([
-                    'action'   => 'LOGIN',
-                    'status'   => 'SUCCESS',
-                    'username' => (string)$username,
-                    'operator' => (string)$username,
-                    'title'    => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_TITLE' : 'LOGIN_TITLE'),
-                    'message'  => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_SUCCESS_MSG' : 'LOGIN_SUCCESS_MSG', ['user' => (string)$username]),
-                    'after_json' => [
-                        'login_method' => $this->loginAuditMethod(),
-                        'qr_payload_present' => !empty($_POST['qr_payload']),
-                        'language' => $this->loginCurrentLang(),
-                    ],
-                ]);
-
-                if ($isAjaxLogin) {
-                    $this->sendLoginJson(true, 'Login success.', [
-                        'redirect_url' => '/idas/public/?url=Dashboards'
-                    ]);
-                }
-
                 header('Location: /idas/public/?url=Dashboards');
                 exit;
             }else{
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
-                $failureCode = $this->getCredentialFailureCode($username);
-                $failureMsg = $this->loginText($failureCode);
-
-                $isQrLoginAudit = $this->isQrLoginRequest();
-                $this->writeLoginAudit([
-                    'action'   => 'LOGIN',
-                    'status'   => 'FAIL',
-                    'username' => (string)$username,
-                    'operator' => (string)$username,
-                    'title'    => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_FAIL_TITLE' : 'LOGIN_FAIL_TITLE'),
-                    'message'  => $this->loginAuditText($isQrLoginAudit ? 'QR_LOGIN_FAIL_MSG' : 'LOGIN_FAIL_MSG', ['user' => (string)$username, 'reason' => $failureCode]),
-                    'after_json' => [
-                        'code' => $failureCode,
-                        'login_method' => $this->loginAuditMethod(),
-                        'qr_payload_present' => !empty($_POST['qr_payload']),
-                        'language' => $this->loginCurrentLang(),
-                    ],
-                ]);
-
-                $this->logout(false);
-
-                if ($isAjaxLogin) {
-                    $this->sendLoginJson(false, $failureMsg, ['code' => $failureCode]);
-                }
-
-                $data['error_message'] = $failureMsg;
+                $this->logout();
                 $this->view('login/index', $data);
                 exit();
             }
@@ -548,7 +138,7 @@ class Logins extends Controller
                 return true;
             } else {
                 // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
-                $this->logout(false);
+                $this->logout();
                 $this->view('login/index', $data);
                 exit();
             }
@@ -576,58 +166,36 @@ class Logins extends Controller
     }
 
 
-    public function logout($writeAudit = true) {
-        $username = (string)($_POST['username'] ?? ($_GET['username'] ?? ($_COOKIE['username'] ?? '')));
-
-        if ($writeAudit && $username !== '') {
-            $this->writeLoginAudit([
-                'action'   => 'LOGOUT',
-                'status'   => 'SUCCESS',
-                'username' => $username,
-                'operator' => $username,
-                'title'    => $this->loginAuditText('LOGOUT_TITLE'),
-                'message'  => $this->loginAuditText('LOGOUT_MSG', ['user' => $username]),
-            ]);
-        }
-
+    public function logout() {
         setcookie('username', '', time() - 3600, '/');
         setcookie('auth_token', '', time() - 3600, '/');
 
     }
 
     // 验证用户提交的用户名和密码
-    public function verifyCredentials($username, $authToken) {
-        $pwd = $this->LoginModel->getpwd($username);
+    public function verifyCredentials($username,$authToken) {
+        // 自定義的身份驗證邏輯，根據實際情況進行驗證
+        // 返回 true 表示驗證成功，false 表示驗證失敗
+        // 可以與數據庫或其他存儲進行比對驗證
+        $pwd = $this->LoginModel->getpwd($username); //控制器密碼
+        // $pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
+        $input = $authToken;
+        $output = hash('sha256', $pwd['passwd']);
+        // $output2 = hash('sha256', $pwd2['password']);
 
-        // 找不到帳號或 DB 讀取失敗時，直接驗證失敗，不輸出 Notice。
-        if (!$pwd || !is_array($pwd) || !isset($pwd['passwd'])) {
+        if($input == $output){
+            //登入成功寫入 active_sessions 資料庫
+            $reslut = $this->active_sessions('admin');
+
+            if($reslut){
+                $_SESSION['privilege'] = 'admin';
+                return true;
+            }else{
+                return false;
+            }
+        }else{
             return false;
         }
-
-        $input  = $authToken;
-        $output = hash('sha256', trim((string)$pwd['passwd']));
-
-        if ($input == $output) {
-            /*
-             * Guest Login Fix V1
-             * 以前 guest 在 active_sessions() 內會直接呼叫 Users_Uplimit()，
-             * 造成 AJAX fetch 無法取得正常 JSON，畫面卡在 Verifying Login。
-             *
-             * 登入成功後，active_sessions 寫入失敗不應該變成密碼錯誤。
-             */
-            $sessionOk = $this->active_sessions((string)$username);
-            if (!$sessionOk) {
-                error_log('[LOGIN] active_sessions write failed or skipped for user: ' . (string)$username);
-            }
-
-            // 保留既有邏輯：admin 權限仍可由系統後續判斷。
-            // 若未來要依 DB 欄位 law 區分，可在這裡擴充。
-            $_SESSION['privilege'] = ((string)$username === 'guest') ? 'guest' : 'admin';
-
-            return true;
-        }
-
-        return false;
     }
 
     public function logLoginAttempt()
@@ -642,69 +210,6 @@ class Logins extends Controller
         $this->LoginModel->logLoginAttempt($ip);
     }
     
-
-    private function getClientIp(): string
-    {
-        if (!empty($_SERVER["HTTP_CLIENT_IP"])) {
-            return (string)$_SERVER["HTTP_CLIENT_IP"];
-        }
-
-        if (!empty($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-            $parts = explode(',', (string)$_SERVER["HTTP_X_FORWARDED_FOR"]);
-            return trim((string)$parts[0]);
-        }
-
-        return (string)($_SERVER["REMOTE_ADDR"] ?? '');
-    }
-
-    private function loginAuditRequestJson(?string $username = null): array
-    {
-        return [
-            'username'      => $username ?? (string)($_POST['username'] ?? ($_COOKIE['username'] ?? '')),
-            'ajax_login'    => !empty($_POST['ajax_login']),
-            'qr_ajax_login' => !empty($_POST['qr_ajax_login']),
-            'force_json'    => !empty($_POST['force_json']),
-            'login_method'  => $this->loginAuditMethod(),
-            'qr_payload_present' => !empty($_POST['qr_payload']),
-            'user_agent'    => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
-            'uri'           => (string)($_SERVER['REQUEST_URI'] ?? ''),
-            'language'      => $this->loginCurrentLang(),
-        ];
-    }
-
-    private function writeLoginAudit(array $data): void
-    {
-        try {
-            if (!isset($this->AuditModel)) {
-                return;
-            }
-
-            $operator = (string)($data['operator'] ?? ($_COOKIE['username'] ?? ($_POST['username'] ?? '')));
-            $username = (string)($data['username'] ?? $operator);
-
-            $defaults = [
-                'user_id'      => $operator,
-                'operator'     => $operator,
-                'client_ip'    => $this->getClientIp(),
-                'device_id'    => $this->deviceId ?? null,
-                'module'       => 'AUTH',
-                'status'       => 'SUCCESS',
-                'target'       => $username !== '' ? $this->loginAuditText('USER_TARGET', ['user' => $username]) : '-',
-                'request_json' => $this->loginAuditRequestJson($username),
-                'before_json'  => null,
-                'after_json'   => null,
-            ];
-
-            $payload = array_merge($defaults, $data);
-            unset($payload['username']);
-
-            $this->AuditModel->write($payload);
-        } catch (Throwable $e) {
-            // Audit log 失敗不能影響登入 / 登出功能
-            error_log('[LOGIN AUDIT FAIL] ' . $e->getMessage());
-        }
-    }
-
     public function active_sessions($username)
     {
         //0.先清理過期的session
@@ -714,6 +219,7 @@ class Logins extends Controller
         //4.檢查session id是否存在
         //5.如果存在update time
         //6.如果不存在insert
+        //$max_concurrent_users = $this->Max_User();//連線數量限制
         $session_id = session_id();
 
         if (!empty($_SERVER["HTTP_CLIENT_IP"])){
@@ -724,34 +230,19 @@ class Logins extends Controller
             $ip = $_SERVER["REMOTE_ADDR"];
         }
 
-        /*
-         * Guest Login Fix V1
-         * 原本程式：
-         * if ($username == 'guest') {
-         *     $this->Users_Uplimit();
-         *     return false;
-         * }
-         *
-         * Users_Uplimit() 會 logout + 輸出 login view + exit，
-         * 造成 guest 密碼正確也無法登入，前端 fetch 會得到錯誤/HTML。
-         *
-         * 新版：
-         * guest 也允許登入；active_sessions DB 寫入失敗只記 log，不中斷登入。
-         */
-        try {
-            $this->LoginModel->cleanExpiredSessions();
+        //清理過期的session
+        $this->LoginModel->cleanExpiredSessions();
+        //確認目前連線數量，排除目前的session_id
+        $concurrent_users = $this->LoginModel->GetConcurrentUsers($session_id);
 
-            // guest 也寫入 active_sessions；如果 login DB 沒有 active_sessions，也不影響登入。
-            $ok = $this->LoginModel->active_sessions($username, $session_id, $ip);
-            if (!$ok) {
-                error_log('[LOGIN] active_sessions skipped/failed for user: ' . (string)$username);
-            }
-
-            return true;
-        } catch (Throwable $e) {
-            error_log('[LOGIN] active_sessions exception for user ' . (string)$username . ': ' . $e->getMessage());
+        if( $username == 'guest'){
+            $this->Users_Uplimit();
+            return false;
+        }else{
+            $this->LoginModel->active_sessions($username,$session_id,$ip);
             return true;
         }
+
     }
 
     //連線數達到上限時，直接從這邊跳回登入畫面，並帶error message
@@ -765,7 +256,7 @@ class Logins extends Controller
             'iDas_Vesion' => $iDas_Vesion,
         ];
 
-        $this->logout(false);
+        $this->logout();
         $this->view('login/index', $data);
         exit();
     }
@@ -797,7 +288,7 @@ class Logins extends Controller
             $today = date("Y-m-d");
             if($today > $expired_date){
                 $data['error_message'] = 'expired';
-                $this->logout(false);
+                $this->logout();
                 $this->view('login/index', $data);
                 exit();
             }else{
@@ -838,158 +329,6 @@ class Logins extends Controller
         $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);  
     }
 
-
-
-    /**
-     * Ensure default login users exist in both login user databases.
-     *
-     * Controller DB:
-     *   /home/kls/NTCS7/KLS_NTCS.lin or /home/kls/NTCS7/KLS_NTCS.Lin
-     * iDAS DB:
-     *   /var/www/html/database/KLS_NTCS_IDAS.Lin
-     *
-     * If table user does not have these accounts, insert them:
-     *   admin / 0734 / law=1
-     *   guest / 000  / law=1
-     *
-     * This method is intentionally best-effort: login page must not crash if a DB
-     * is temporarily missing, locked, or has a different schema. Errors are logged.
-     */
-    private function ensureDefaultLoginUsersDatabases(): array
-    {
-        $paths = [];
-
-        if (PHP_OS_FAMILY === 'Linux') {
-            // User request uses .lin, existing project paths may use .Lin. Linux is case-sensitive,
-            // so support both and update whichever exists. If neither exists, prefer .lin.
-            $controllerCandidates = [
-                '/home/kls/NTCS7/KLS_NTCS.lin',
-                '/home/kls/NTCS7/KLS_NTCS.Lin',
-            ];
-
-            $controllerPath = $controllerCandidates[0];
-            foreach ($controllerCandidates as $candidate) {
-                if (is_file($candidate)) {
-                    $controllerPath = $candidate;
-                    break;
-                }
-            }
-
-            $paths['controller'] = $controllerPath;
-            $paths['idas']       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        } else {
-            // Development / Windows fallback paths.
-            $paths['controller'] = __DIR__ . '/../../database/KLS_NTCS.Lin';
-            $paths['idas']       = __DIR__ . '/../../database/KLS_NTCS_IDAS.Lin';
-        }
-
-        $result = [];
-        foreach ($paths as $key => $path) {
-            $result[$key] = $this->ensureDefaultLoginUsersInDb($path);
-        }
-
-        return $result;
-    }
-
-    private function ensureDefaultLoginUsersInDb(string $dbPath): string
-    {
-        try {
-            if (!is_file($dbPath)) {
-                error_log('[LOGIN] Default login users check skipped, DB not found: ' . $dbPath);
-                return 'db_not_found';
-            }
-
-            if (!is_readable($dbPath)) {
-                error_log('[LOGIN] Default login users check skipped, DB not readable: ' . $dbPath);
-                return 'db_not_readable';
-            }
-
-            if (!is_writable($dbPath)) {
-                error_log('[LOGIN] Default login users check skipped, DB not writable: ' . $dbPath);
-                return 'db_not_writable';
-            }
-
-            $db = new PDO('sqlite:' . $dbPath);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $db->exec('PRAGMA busy_timeout = 3000');
-
-            $tableExists = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")->fetchColumn();
-            if (!$tableExists) {
-                error_log('[LOGIN] Default login users check skipped, table user not found: ' . $dbPath);
-                return 'table_user_not_found';
-            }
-
-            $columns = $db->query('PRAGMA table_info("user")')->fetchAll(PDO::FETCH_ASSOC);
-            $columnNames = [];
-            foreach ($columns as $column) {
-                if (!empty($column['name'])) {
-                    $columnNames[] = (string)$column['name'];
-                }
-            }
-
-            foreach (['name', 'passwd', 'law'] as $requiredColumn) {
-                if (!in_array($requiredColumn, $columnNames, true)) {
-                    error_log('[LOGIN] Default login users check skipped, missing column ' . $requiredColumn . ': ' . $dbPath);
-                    return 'missing_column_' . $requiredColumn;
-                }
-            }
-
-            $requiredUsers = [
-                ['name' => 'admin', 'passwd' => '0734', 'law' => 1],
-                ['name' => 'guest', 'passwd' => '000',  'law' => 1],
-            ];
-
-            $created = [];
-            $exists = [];
-
-            foreach ($requiredUsers as $user) {
-                $stmt = $db->prepare('SELECT COUNT(*) FROM "user" WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))');
-                $stmt->execute([':name' => $user['name']]);
-
-                if ((int)$stmt->fetchColumn() > 0) {
-                    $exists[] = $user['name'];
-                    continue;
-                }
-
-                $insertColumns = ['name', 'passwd', 'law'];
-                $insertValues = [
-                    ':name'   => $user['name'],
-                    ':passwd' => $user['passwd'],
-                    ':law'    => (int)$user['law'],
-                ];
-
-                // Some deployed schemas have a NOT NULL sn column. If present, choose max(sn)+1.
-                if (in_array('sn', $columnNames, true)) {
-                    $nextSn = (int)$db->query('SELECT COALESCE(MAX(sn), 0) + 1 FROM "user"')->fetchColumn();
-                    $insertColumns = array_merge(['sn'], $insertColumns);
-                    $insertValues = array_merge([':sn' => $nextSn], $insertValues);
-                }
-
-                $quotedColumns = array_map(function($column) {
-                    return '"' . str_replace('"', '""', $column) . '"';
-                }, $insertColumns);
-
-                $placeholders = array_keys($insertValues);
-                $sql = 'INSERT INTO "user" (' . implode(', ', $quotedColumns) . ') VALUES (' . implode(', ', $placeholders) . ')';
-                $insert = $db->prepare($sql);
-                $insert->execute($insertValues);
-
-                $created[] = $user['name'];
-            }
-
-            @chmod($dbPath, 0666);
-
-            if (!empty($created)) {
-                return 'created_' . implode('_', $created);
-            }
-
-            return 'exists_' . implode('_', $exists);
-        } catch (Throwable $e) {
-            error_log('[LOGIN] Default login users check failed for ' . $dbPath . ': ' . $e->getMessage());
-            return 'error';
-        }
-    }
 
     /**
      * 檢查 database 目錄底下 IDAS 檔案是否為 0KB

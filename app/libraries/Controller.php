@@ -53,24 +53,22 @@ class Controller
 
     public function language_auto($value='')
     {
-        // 如果 $_SESSION['language'] 未設定或為空，就從瀏覽器語系帶入。
-        // AJAX / wget / curl 不一定有 HTTP_ACCEPT_LANGUAGE，所以必須有預設值。
-        if (!isset($_SESSION['language']) || $_SESSION['language'] == '') {
-            $acceptLang = strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'en-us');
-            $lang = substr($acceptLang, 0, 5);
-
-            if (preg_match("/zh-cn/i", $lang)) {
+        // 如果$_SESSION['language'] 未設定 或為空 就從瀏覽器訊息帶入
+        if( !isset($_SESSION['language']) || $_SESSION['language'] == '' ){
+            $lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 4);
+            if (preg_match("/zh-cn/i", $lang)){
                 $_SESSION['language'] = 'zh-cn';
-            } else if (preg_match("/zh-tw/i", $lang)) {
+            }else if(preg_match("/zh-tw/i", $lang)){
                 $_SESSION['language'] = 'zh-tw';
-            } else if (preg_match("/en/i", $lang)) {
+            }else if(preg_match("/en/i", $lang)){
                 $_SESSION['language'] = 'en-us';
-            } else {
+            }else{//預設
                 $_SESSION['language'] = 'en-us';
             }
         }
 
         setcookie('language', $_SESSION['language'], time() + (365 * 24 * 60 * 60), '/');
+        
     }
 
 
@@ -83,22 +81,21 @@ class Controller
     public function isMobileCheck($value='')
     {
         //Detect special conditions devices
-        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $iPod = stripos($ua,"iPod");
-        $iPhone = stripos($ua,"iPhone");
-        $iPad = stripos($ua,"iPad");
-        if(stripos($ua,"Android") && stripos($ua,"mobile")){
+        $iPod = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
+        $iPhone = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
+        $iPad = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
+        if(stripos($_SERVER['HTTP_USER_AGENT'],"Android") && stripos($_SERVER['HTTP_USER_AGENT'],"mobile")){
             $Android = true;
-        }else if(stripos($ua,"Android")){
+        }else if(stripos($_SERVER['HTTP_USER_AGENT'],"Android")){
             $Android = false;
             $AndroidTablet = true;
         }else{
             $Android = false;
             $AndroidTablet = false;
         }
-        $webOS = stripos($ua,"webOS");
-        $BlackBerry = stripos($ua,"BlackBerry");
-        $RimTablet= stripos($ua,"RIM Tablet");
+        $webOS = stripos($_SERVER['HTTP_USER_AGENT'],"webOS");
+        $BlackBerry = stripos($_SERVER['HTTP_USER_AGENT'],"BlackBerry");
+        $RimTablet= stripos($_SERVER['HTTP_USER_AGENT'],"RIM Tablet");
         //do something with this information
         if( $iPod || $iPhone || $iPad || $Android || $AndroidTablet || $webOS || $BlackBerry || $RimTablet){
             return true;

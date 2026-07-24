@@ -29,3 +29,59 @@
 .status-ng {
  background-color: red !important;
 }
+
+/* merged from 20260702 OP/downgrade pack */
+﻿.form-control{
+    width: auto!important;
+    display: initial!important;
+}
+
+.form-control.is-invalid{
+    padding-right:inherit!important;
+}
+.is-invalid~.invalid-feedback{
+    display: inline!important;
+}
+
+
+.main-content.overlay-active {
+  filter: grayscale(100%); /* 完全灰化 */
+  pointer-events: none; /* 禁止點擊 */
+  opacity: 0.3; /* 降低不透明度 */
+}
+
+
+.status-ok {
+ background-color: green !important;
+}
+
+.status-warn {
+ background-color: yellow !important;
+}
+
+.status-ng {
+ background-color: red !important;
+}
+
+/* ===== Controller communication protocol radio ===== */
+.protocol-setting-row .protocol-options {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.protocol-setting-row .form-check-inline {
+    margin-right: 12px;
+    white-space: nowrap;
+}
+
+.protocol-setting-row .form-check-input {
+    margin-top: 0;
+    cursor: pointer;
+}
+
+.protocol-setting-row .form-check-label {
+    margin-left: 4px;
+    cursor: pointer;
+}

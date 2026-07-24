@@ -36,6 +36,8 @@ if (!function_exists('settingAccountTabTextMap')) {
                 'account_username' => 'Username',
                 'account_password' => 'Password',
                 'account_confirm_password' => 'Confirm Password',
+                'account_permission' => 'Permission',
+                'account_permission_rule' => 'Permission must be 1: guest or 3: operator.',
                 'account_save' => 'Save',
                 'account_close' => 'Close',
                 'account_show_password' => 'Show password',
@@ -54,6 +56,8 @@ if (!function_exists('settingAccountTabTextMap')) {
                 'account_username' => '使用者名稱',
                 'account_password' => '密碼',
                 'account_confirm_password' => '確認密碼',
+                'account_permission' => '權限',
+                'account_permission_rule' => '權限必須選擇 1: guest 或 3: operator。',
                 'account_save' => '儲存',
                 'account_close' => '關閉',
                 'account_show_password' => '顯示密碼',
@@ -72,6 +76,8 @@ if (!function_exists('settingAccountTabTextMap')) {
                 'account_username' => '使用者名称',
                 'account_password' => '密码',
                 'account_confirm_password' => '确认密码',
+                'account_permission' => '权限',
+                'account_permission_rule' => '权限必须选择 1: guest 或 3: operator。',
                 'account_save' => '储存',
                 'account_close' => '关闭',
                 'account_show_password' => '显示密码',
@@ -165,6 +171,16 @@ $settingAccountTabTextJson = json_encode(settingAccountTabTextMap(), JSON_UNESCA
                                     <span class="eye-symbol">&#128065;</span>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="row account-form-row">
+                        <div class="col-5 t1" id="settingAccountPermissionLabel"><?php echo settingAccountTabT('account_permission') . $settingAccountTabColon; ?></div>
+                        <div class="col-5 t2">
+                            <select class="form-control input-ms" id="account_law" autocomplete="off">
+                                <option value="1" selected>1: guest</option>
+                                <option value="3">3: operator</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -682,6 +698,12 @@ function settingAccountOpenEditWithMaskedPassword(username) {
     document.getElementById('settingAccountModalTitle').innerText = saT('account_edit_title', 'Edit Account');
     document.getElementById('account_old_username').value = username;
     document.getElementById('account_username').value = username;
+    var lawEditInput = document.getElementById('account_law');
+    if (lawEditInput) {
+        var selectedRow = document.querySelector('#AccountDisplay .account-user-row.selected, #AccountDisplay .account-user-row.active');
+        var selectedLaw = selectedRow ? String(selectedRow.getAttribute('data-law') || '1') : '1';
+        lawEditInput.value = (selectedLaw === '3') ? '3' : '1';
+    }
 
     // 先不開視窗，等密碼回來再開。
     settingAccountGetEditPassword(username).then(function(realPassword) {
@@ -721,6 +743,8 @@ function settingAccountAction(mode) {
         document.getElementById('settingAccountModalTitle').innerText = (window.settingAccountTabText && settingAccountTabText.account_new_title) || 'New Account';
         document.getElementById('account_old_username').value = '';
         document.getElementById('account_username').value = '';
+        var lawNewInput = document.getElementById('account_law');
+        if (lawNewInput) lawNewInput.value = '1';
         document.getElementById('account_username').removeAttribute('readonly');
         document.getElementById('account_username').classList.remove('account-username-readonly');
 
@@ -851,6 +875,9 @@ function saveSettingAccount() {
     }
     var password = settingAccountResolvePasswordForSave('account_password');
     var confirmPassword = settingAccountResolvePasswordForSave('account_confirm_password');
+    var lawInput = document.getElementById('account_law');
+    var law = lawInput ? String(lawInput.value || '1') : '1';
+    law = (law === '3') ? '3' : '1';
 
     if (!username) {
         settingAccountAlert('Username cannot be empty.');
@@ -881,13 +908,18 @@ function saveSettingAccount() {
         }
     }
 
+    if (!['1', '3'].includes(String(law))) {
+        settingAccountAlert((window.settingAccountTabText && window.settingAccountTabText.account_permission_rule) || 'Permission must be 1: guest or 3: operator.');
+        return;
+    }
+
     var path = settingAccountMode === 'edit' ? 'account_user_update' : 'account_user_create';
     var payload = {
         old_username: oldUsername,
         username: username,
         password: password,
         confirm_password: confirmPassword,
-        law: 1
+        law: law
     };
 
     settingAccountPost(path, payload).then(function(json) {
@@ -1052,6 +1084,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTextById('settingAccountUsernameLabel', at('account_username', 'Username') + accountColon());
         setTextById('settingAccountPasswordLabel', at('account_password', 'Password') + accountColon());
         setTextById('settingAccountConfirmPasswordLabel', at('account_confirm_password', 'Confirm Password') + accountColon());
+        setTextById('settingAccountPermissionLabel', at('account_permission', 'Permission') + accountColon());
 
         setTextById('settingAccountSaveBtn', at('account_save', 'Save'));
         setTextById('settingAccountCloseBtn', at('account_close', 'Close'));

@@ -12,8 +12,6 @@ switch ($_SESSION['language'] ?? '') {
         break;
 }
 
-$is_admin_login = (isset($_COOKIE['username']) && strtolower(trim((string)$_COOKIE['username'])) === 'admin');
-
 
 #顯示 表格
 function renderTableRows($records, $unit_arr, $status_arr, $text) {
@@ -52,14 +50,11 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
     <div class="main-content">
         <div class="center-content">
             <div class="w3-center" style="position: relative; padding-right: 10px">
-                <button id="data_bnt1" name="History_Display" class="button active" onclick="OpenButton('History')"><?php echo $text['data_history'];?></button>
-                <button id="data_bnt2" name="Export_Data_Display" class="button" onclick="OpenButton('Exportdata')"><?php echo $text['data_export'];?></button>
-                <button id="data_bnt3" name="Export_Data_download" class="button" onclick="OpenButton('Export_Data_download')"><?php echo $text['download_chart'];?></button>
-                <button id="data_bnt4" name="Customize" class="button hide-mobile"   onclick="OpenButton('Customize')"><?php echo $text['customize'];?></button>
-                <button id="data_bnt5" name="Torque_line_chart" class="button hide-mobile"   onclick="OpenButton('Torque_line_chart')"><?php echo $text['tor_line_chart'];?></button>
-                <?php if ($is_admin_login) { ?>
-                    <button id="data_bnt7" name="Operation_Audit_Log_Display" class="button operation-audit-top-button" onclick="window.location.href='?url=Data/AuditLog'"><?php echo htmlspecialchars($text['audit_button'] ?? 'operation_audit_log', ENT_QUOTES, 'UTF-8'); ?></button>
-                <?php } ?>
+                <button id="bnt1" name="History_Display" class="button active" onclick="OpenButton('History')"><?php echo $text['data_history'];?></button>
+                <button id="bnt2" name="Export_Data_Display" class="button" onclick="OpenButton('Exportdata')"><?php echo $text['data_export'];?></button>
+                <button id="bnt3" name="Export_Data_download" class="button" onclick="OpenButton('Export_Data_download')"><?php echo $text['download_chart'];?></button>
+                <button id="bnt4" name="Customize" class="button hide-mobile"   onclick="OpenButton('Customize')"><?php echo $text['customize'];?></button>
+
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
                         <option value="ALL">ALL</option>
@@ -95,10 +90,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                             <th><?php echo $text['angle']; ?></th>
                                             <th><?php echo $text['column_count']; ?></th>
                                             <th><?php echo $text['column_total']; ?></th>
-                                            <th><?php echo $text['system_barcode']; ?></th>
-                                            <th><?php echo $text['user_id']; ?></th>
-                                            <th><?php echo $text['job_cycle_time']; ?></th>
                                             <th><?php echo $text['column_status']; ?></th>
+                                            <th><?php echo $text['system_barcode']; ?></th>
                                         </tr>
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">
@@ -292,10 +285,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.total_fasten_angle}</td>
                     <td>${row.last_screw_count}</td>
                     <td>${row.total_screw_count}</td>
-                    <td>${row.barcode}</td>
-                    <td>${row.user_id}</td>
-                    <td>${row.job_cycle_time}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>
+                    <td >${row.barcode}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
         });

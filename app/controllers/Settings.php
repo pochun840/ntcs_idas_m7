@@ -9,7 +9,6 @@ class Settings extends Controller
     private $DataModel;
     private $stepModel;
     Private $deviceId;
-    private $AuditModel;
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct(){
@@ -21,7 +20,6 @@ class Settings extends Controller
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
         $this->stepModel = $this->model('Steptcc');
-        $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
@@ -318,6 +316,7 @@ class Settings extends Controller
             'circular_archive',
             'blackout_recovery',
             'buzzer_mode',
+            'modbus_type',
             'global_downshift_torque',
             'global_downshift_speed'
         ];
@@ -325,9 +324,33 @@ class Settings extends Controller
             $con_setting[$field] = $get($field, '');
         }
 
-        // 基本數值型別正規化（選用：避免字串進 DB）
-        foreach (['counting_method','circular_archive','blackout_recovery','buzzer_mode','lang_val','unit_val'] as $nf) {
-            if (isset($con_setting[$nf]) && $con_setting[$nf] !== '') $con_setting[$nf] = (int)$con_setting[$nf];
+        /*
+         * Modbus 通訊類型：
+         * 0 = TCP
+         * 1 = RTU
+         */
+        $modbusTypeRaw = (string)($con_setting['modbus_type'] ?? '0');
+
+        if (!in_array($modbusTypeRaw, ['0', '1'], true)) {
+            $input_check = false;
+        }
+
+        // 基本數值型別正規化，避免字串直接寫入 DB。
+        foreach ([
+            'counting_method',
+            'circular_archive',
+            'blackout_recovery',
+            'buzzer_mode',
+            'modbus_type',
+            'lang_val',
+            'unit_val'
+        ] as $nf) {
+            if (
+                isset($con_setting[$nf])
+                && $con_setting[$nf] !== ''
+            ) {
+                $con_setting[$nf] = (int)$con_setting[$nf];
+            }
         }
         foreach (['global_downshift_torque','global_downshift_speed','storage_warning','torque_filter'] as $nf) {
             if (isset($con_setting[$nf]) && $con_setting[$nf] !== '') $con_setting[$nf] = $con_setting[$nf] + 0;
@@ -368,17 +391,281 @@ class Settings extends Controller
         if($con_setting["blackout_recovery"] ==1){
             $con_setting["blackout_recovery"] = "1_1";
         }
-        // ===== 執行更新（Model 需為先前已修改的版本：支援 :device_id_new，且 WHERE 可處理 IS NULL）=====
-        $ok = $this->SettingModel->Controller_Setting($con_setting);
 
-        if ($ok) {
-            $res_type = $text['success'] ?? 'Success';
-            $res_msg  = $text['success'] ?? 'Success';
-        } else {
-            $res_type = $text['fail'] ?? 'Fail';
-            $res_msg  = $text['fail'] ?? 'Fail';
+        /*
+         * 儲存前先取得目前資料庫中的 Modbus Type。
+         *
+         * 0 = TCP
+         * 1 = RTU
+         *
+         * 只有 Modbus Type 真正改變時，Linux 才需要重新啟動。
+         */
+        $currentControllerInfo = (array)(
+            $this->SettingModel->GetControllerInfo()
+            ?? []
+        );
+
+        $oldModbusType = (int)(
+            $currentControllerInfo['modbus_type']
+            ?? 0
+        );
+
+        $newModbusType = (int)(
+            $con_setting['modbus_type']
+            ?? 0
+        );
+
+        $modbusTypeChanged = (
+            $oldModbusType !== $newModbusType
+        );
+
+        // ===== 執行更新 =====
+        $ok = $this->SettingModel->Controller_Setting(
+            $con_setting
+        );
+
+        if (!$ok) {
+            $this->respondControllerSettingJson([
+                'success' => false,
+                'res_type' => $text['fail'] ?? 'Fail',
+                'res_msg' => $text['fail'] ?? 'Fail',
+                'modbus_type_changed' => false,
+                'controller_device_db_synced' => false,
+                'restart_required' => false,
+                'restart_scheduled' => false
+            ], 500);
         }
-        $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+
+        $restartRequired = (
+            PHP_OS_FAMILY === 'Linux'
+            && $modbusTypeChanged
+        );
+
+        $restartResult = [
+            'scheduled' => false,
+            'message' => ''
+        ];
+
+        if ($restartRequired) {
+            $restartResult =
+                $this->scheduleModbusTypeLinuxRestart();
+
+            $this->logMessage(
+                sprintf(
+                    'Modbus type changed: %d -> %d; restart scheduled=%s; message=%s',
+                    $oldModbusType,
+                    $newModbusType,
+                    !empty($restartResult['scheduled'])
+                        ? 'true'
+                        : 'false',
+                    (string)($restartResult['message'] ?? '')
+                )
+            );
+        }
+
+        $this->respondControllerSettingJson([
+            'success' => true,
+            'res_type' => $text['success'] ?? 'Success',
+            'res_msg' => $text['success'] ?? 'Success',
+            'old_modbus_type' => $oldModbusType,
+            'new_modbus_type' => $newModbusType,
+            'modbus_type_changed' => $modbusTypeChanged,
+            'controller_device_db_synced' => (
+                PHP_OS_FAMILY !== 'Linux'
+                || $ok
+            ),
+            'controller_device_db_path' => (
+                PHP_OS_FAMILY === 'Linux'
+                    ? '/home/kls/NTCS7/ntcs_device.db'
+                    : ''
+            ),
+            'restart_required' => $restartRequired,
+            'restart_scheduled' => !empty(
+                $restartResult['scheduled']
+            ),
+            'restart_delay_seconds' => $restartRequired
+                ? 5
+                : 0,
+            'restart_message' => (string)(
+                $restartResult['message']
+                ?? ''
+            )
+        ]);
+    }
+
+
+    /**
+     * Modbus Type 變更後，排程重新啟動 Linux。
+     *
+     * PHP 使用 exec() 建立背景程序，
+     * 等待 5 秒後透過 sudo systemctl reboot 重新啟動。
+     */
+    private function scheduleModbusTypeLinuxRestart(): array
+    {
+        if (PHP_OS_FAMILY !== 'Linux') {
+            return [
+                'scheduled' => false,
+                'message' => 'Restart is only supported on Linux.'
+            ];
+        }
+
+        if (!function_exists('exec')) {
+            return [
+                'scheduled' => false,
+                'message' => 'PHP exec() is not available.'
+            ];
+        }
+
+        $disabledFunctions = array_map(
+            'trim',
+            explode(
+                ',',
+                (string)ini_get('disable_functions')
+            )
+        );
+
+        if (in_array('exec', $disabledFunctions, true)) {
+            return [
+                'scheduled' => false,
+                'message' => 'PHP exec() is disabled.'
+            ];
+        }
+
+        $sudo = '';
+
+        foreach (
+            [
+                '/usr/bin/sudo',
+                '/bin/sudo'
+            ] as $candidate
+        ) {
+            if (is_executable($candidate)) {
+                $sudo = $candidate;
+                break;
+            }
+        }
+
+        if ($sudo === '') {
+            return [
+                'scheduled' => false,
+                'message' => 'sudo command was not found.'
+            ];
+        }
+
+        $systemctl = '';
+
+        foreach (
+            [
+                '/usr/bin/systemctl',
+                '/bin/systemctl'
+            ] as $candidate
+        ) {
+            if (is_executable($candidate)) {
+                $systemctl = $candidate;
+                break;
+            }
+        }
+
+        if ($systemctl === '') {
+            return [
+                'scheduled' => false,
+                'message' => 'systemctl command was not found.'
+            ];
+        }
+
+        /*
+         * 先確認 www-data 有免密碼執行 systemctl reboot 的權限。
+         * 若沒有權限，設定仍會儲存，但不會假裝排程成功。
+         */
+        $permissionCommand = escapeshellarg($sudo)
+            . ' -n -l '
+            . escapeshellarg($systemctl)
+            . ' reboot 2>&1';
+
+        $permissionOutput = [];
+        $permissionExitCode = 1;
+
+        exec(
+            $permissionCommand,
+            $permissionOutput,
+            $permissionExitCode
+        );
+
+        if ($permissionExitCode !== 0) {
+            return [
+                'scheduled' => false,
+                'message' => !empty($permissionOutput)
+                    ? implode(' ', $permissionOutput)
+                    : 'www-data is not allowed to reboot Linux.'
+            ];
+        }
+
+        /*
+         * PHP 啟動獨立背景程序：
+         * 1. 先等待 5 秒。
+         * 2. 再透過 sudo 執行 systemctl reboot。
+         *
+         * nohup + 背景執行可避免 HTTP Request 結束時程序被中止。
+         */
+        $delayedCommand = 'sleep 5; '
+            . escapeshellarg($sudo)
+            . ' -n '
+            . escapeshellarg($systemctl)
+            . ' reboot';
+
+        $backgroundCommand = 'nohup /bin/sh -c '
+            . escapeshellarg($delayedCommand)
+            . ' >/dev/null 2>&1 < /dev/null &';
+
+        $output = [];
+        $exitCode = 1;
+
+        exec(
+            $backgroundCommand,
+            $output,
+            $exitCode
+        );
+
+        if ($exitCode !== 0) {
+            return [
+                'scheduled' => false,
+                'message' => !empty($output)
+                    ? implode(' ', $output)
+                    : 'Unable to start the PHP reboot task.'
+            ];
+        }
+
+        return [
+            'scheduled' => true,
+            'message' => 'Linux restart scheduled in 5 seconds by PHP.'
+        ];
+    }
+
+
+    /**
+     * Controller Setting 專用 JSON Response。
+     */
+    private function respondControllerSettingJson(
+        array $payload,
+        int $statusCode = 200
+    ): void {
+        if (!headers_sent()) {
+            http_response_code($statusCode);
+            header(
+                'Content-Type: application/json; charset=utf-8'
+            );
+            header(
+                'Cache-Control: no-store, no-cache, must-revalidate'
+            );
+        }
+
+        echo json_encode(
+            $payload,
+            JSON_UNESCAPED_UNICODE
+            | JSON_UNESCAPED_SLASHES
+        );
+
+        exit;
     }
 
 
@@ -968,67 +1255,9 @@ class Settings extends Controller
         }
     }
 
-    /**
-     * DB Sync 操作紀錄
-     * 跟 JOB create job 一樣寫入 operation_audit_log
-     */
-    private function writeDbSyncAudit($action, $status, $message, $extra = []){
-
-        try {
-            if (!isset($this->AuditModel)) {
-                $this->AuditModel = $this->model('OperationAudit');
-            }
-
-            $payload = [
-                'module'       => 'DB_SYNC',
-                'action'       => $action,
-                'status'       => $status,
-                'device_id'    => isset($this->deviceId) ? (int)$this->deviceId : 1,
-
-                // DB Sync 沒有 job / seq / step
-                'job_id'       => null,
-                'seq_id'       => null,
-                'step_id'      => null,
-
-                'title'        => 'DB Sync',
-                'message'      => $message,
-
-                'before_json'  => null,
-                'after_json'   => $extra,
-                'request_json' => $_POST,
-            ];
-
-            // 主要：照 JOB create job 的 OperationAudit 寫法
-            if (method_exists($this->AuditModel, 'write')) {
-                $this->AuditModel->write($payload);
-            } else {
-                error_log('[OperationAudit][DB_SYNC] OperationAudit::write() not found');
-            }
-
-        } catch (Throwable $e) {
-            // 寫 log 失敗不能影響同步功能
-            error_log('[OperationAudit][DB_SYNC] write failed: ' . $e->getMessage());
-        }
-    }
-
-
-    /**
-     * DB Sync 統一回傳
-     * 回傳前先寫 operation_audit_log
-     */
-    private function syncDbAuditResponse($resType, $resMsg, $action, $extra = []){
-
-        $status = (strtolower((string)$resType) === 'success') ? 'SUCCESS' : 'FAIL';
-
-        $this->writeDbSyncAudit($action, $status, $resMsg, $extra);
-
-        return $this->MiscellaneousModel->generateErrorResponse($resType, $resMsg);
-    }
-
-
     
     public function Sync_check_db(){
-
+        
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
@@ -1045,104 +1274,52 @@ class Settings extends Controller
         $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
         $dst3         = '/home/kls/NTCS7/ntcs_device.db';
 
-        // 取得正確的 Modbus id
+
+        // 取得 正確的 Modbus id
         $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
-        $auditExtra = [
-            'direction' => 'D2C',
-            'argument'  => $argument,
-            'device_id' => $device_id,
-            'unit_id'   => $unitId,
-            'files'     => [
-                'lin' => [
-                    'src'     => $src1,
-                    'final'   => $finalPath1,
-                    'renamed' => $renamedPath1,
-                ],
-                'barcode' => [
-                    'src'     => $src2,
-                    'final'   => $finalPath2,
-                    'renamed' => $renamedPath2,
-                ],
-                'device' => [
-                    'src' => $src3,
-                    'dst' => $dst3,
-                ],
-            ],
-        ];
 
-        // 只處理 Linux + D2C
+
+        // 只處理 Linux + D2C，其它情況直接回錯誤
         if (PHP_OS_FAMILY !== 'Linux' || $argument !== 'D2C') {
-            return $this->syncDbAuditResponse(
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+        }
+
+        // ✅ 先同步 device.db (src3 → dst3)
+        if (file_exists($src3)) {
+            if (!copy($src3, $dst3)) {
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
+            }
+            @chmod($dst3, 0777);
+
+            // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
+            $this->get_db_sync($unitId);
+        }
+
+        //  檢查原始檔案是否存在
+        if (!file_exists($src1) || !file_exists($src2)) {
+            $missingFiles = [];
+            if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
+            if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
+
+            $this->MiscellaneousModel->generateErrorResponse(
                 'Error',
-                'Invalid sync argument or unsupported OS',
-                'SYNC_D2C',
-                $auditExtra
+                'Source file(s) missing: ' . implode(', ', $missingFiles)
             );
         }
 
+        // 初始化 Modbus
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $modbus = new ModbusMaster("127.0.0.1", "TCP");
+        $modbus->port        = 502;
+        $modbus->timeout_sec = 2;   // 原本 10 → 3，這裡直接壓到 2 秒
+
         try {
-            // 先同步 device.db
-            if (file_exists($src3)) {
-                if (!copy($src3, $dst3)) {
-                    $auditExtra['failed_stage'] = 'copy_device_db';
-
-                    return $this->syncDbAuditResponse(
-                        'Error',
-                        "Failed to copy $src3 to $dst3",
-                        'SYNC_D2C',
-                        $auditExtra
-                    );
-                }
-
-                @chmod($dst3, 0777);
-
-                // 原本就有的同步動作
-                $this->get_db_sync($unitId);
-
-                $auditExtra['device_synced'] = true;
-            } else {
-                $auditExtra['device_synced'] = false;
-                $auditExtra['device_note'] = 'ntcs_device_IDAS.db not found, skipped';
-            }
-
-            // 檢查原始檔案是否存在
-            if (!file_exists($src1) || !file_exists($src2)) {
-                $missingFiles = [];
-
-                if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
-                if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
-
-                $auditExtra['missing_files'] = $missingFiles;
-
-                return $this->syncDbAuditResponse(
-                    'Error',
-                    'Source file(s) missing: ' . implode(', ', $missingFiles),
-                    'SYNC_D2C',
-                    $auditExtra
-                );
-            }
-
-            // 初始化 Modbus
-            require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-            $modbus = new ModbusMaster("127.0.0.1", "TCP");
-            $modbus->port        = 502;
-            $modbus->timeout_sec = 2;
-
-            // ----------- Sync LIN File -----------
+            // ----------- Sync LIN File（簡化：直接 src → final → rename）-----------
             if (!$this->safeCopy($src1, $finalPath1)) {
-                $auditExtra['failed_stage'] = 'copy_lin_to_ramdisk';
-
-                return $this->syncDbAuditResponse(
-                    'Error',
-                    "Failed to copy $src1 to $finalPath1",
-                    'SYNC_D2C',
-                    $auditExtra
-                );
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1 to $finalPath1");
             }
-
             @chmod($finalPath1, 0777);
             $this->logMessage("$src1 copied to $finalPath1");
 
@@ -1150,31 +1327,18 @@ class Settings extends Controller
             $this->notifyModbus($modbus, [1, 12593], "LIN");
 
             if (!$this->safeCopy($finalPath1, $renamedPath1)) {
-                $auditExtra['failed_stage'] = 'rename_lin_file';
-
-                return $this->syncDbAuditResponse(
-                    'Error',
-                    "Failed to rename LIN file",
-                    'SYNC_D2C',
-                    $auditExtra
-                );
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
             }
-
             @unlink($finalPath1);
             $this->logMessage("$finalPath1 renamed to $renamedPath1");
 
-            // ----------- Sync DB File barcode -----------
+            // 🔥 拿掉 usleep(1_000_000) 不再強制多等 1 秒
+            // usleep(1_000_000);
+
+            // ----------- Sync DB File (barcode)（一樣簡化）-----------
             if (!$this->safeCopy($src2, $finalPath2)) {
-                $auditExtra['failed_stage'] = 'copy_barcode_db_to_ramdisk';
-
-                return $this->syncDbAuditResponse(
-                    'Error',
-                    "Failed to copy $src2 to $finalPath2",
-                    'SYNC_D2C',
-                    $auditExtra
-                );
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2 to $finalPath2");
             }
-
             @chmod($finalPath2, 0777);
             $this->logMessage("$src2 copied to $finalPath2");
 
@@ -1182,164 +1346,74 @@ class Settings extends Controller
             $this->notifyModbus($modbus, [1, 12593], "DB");
 
             if (!$this->safeCopy($finalPath2, $renamedPath2)) {
-                $auditExtra['failed_stage'] = 'rename_barcode_db_file';
-
-                return $this->syncDbAuditResponse(
-                    'Error',
-                    "Failed to rename DB file",
-                    'SYNC_D2C',
-                    $auditExtra
-                );
+                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
             }
-
             @unlink($finalPath2);
             $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
-            $auditExtra['result'] = [
-                'lin_synced'     => true,
-                'barcode_synced' => true,
-                'device_synced'  => !empty($auditExtra['device_synced']),
-            ];
+            // ✅ 最後回傳成功訊息（純 JSON）
+            $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
 
-            return $this->syncDbAuditResponse(
-                'Success',
-                'SYNC ' . ($text['success'] ?? 'success'),
-                'SYNC_D2C',
-                $auditExtra
-            );
-
-        } catch (Throwable $e) {
-            $this->logMessage('DB Sync D2C fail: ' . $e->getMessage());
-
-            $auditExtra['exception'] = $e->getMessage();
-
-            return $this->syncDbAuditResponse(
-                'Error',
-                'Modbus communication failed',
-                'SYNC_D2C',
-                $auditExtra
-            );
+        } catch (Exception $e) {
+            $this->logMessage('Modbus write fail: ' . $e->getMessage());
+            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
         }
     }
 
 
-    public function Sync_check_db_load(){
 
+
+
+
+
+
+
+    public function Sync_check_db_load() {
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
 
-        $auditExtra = [
-            'direction'         => 'C2D',
-            'argument'          => $argument,
-            'device_id'         => isset($this->deviceId) ? (int)$this->deviceId : 1,
-
-            // ★ 明確指定這支是 Load / 載入
-            'audit_action'      => 'load',
-            'audit_action_name' => '載入',
-        ];
-
         if (empty($argument) || PHP_OS_FAMILY !== 'Linux') {
-            return $this->syncDbAuditResponse(
-                'Error',
-                'Invalid sync argument or unsupported OS',
-                'SYNC_C2D',
-                $auditExtra
-            );
+            return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
         }
 
-        // Controller → iDAS
+        // 定義來源與目的地檔案清單（Controller → iDAS）
         $fileList = [
-            '/home/kls/NTCS7/KLS_NTCS.Lin'    => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/home/kls/NTCS7/ntcs_barcode.db' => '/var/www/html/database/ntcs_barcode_IDAS.db',
-            '/home/kls/NTCS7/ntcs_device.db'  => '/var/www/html/database/ntcs_device_IDAS.db',
-            '/home/kls/NTCS7/ntcs_data.db'    => '/var/www/html/database/ntcs_data.db',
+            '/home/kls/NTCS7/KLS_NTCS.Lin'      => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
+            '/home/kls/NTCS7/ntcs_barcode.db'   => '/var/www/html/database/ntcs_barcode_IDAS.db',
+            '/home/kls/NTCS7/ntcs_device.db'    => '/var/www/html/database/ntcs_device_IDAS.db',
+            '/home/kls/NTCS7/ntcs_data.db'      => '/var/www/html/database/ntcs_data.db',
         ];
 
-        $auditExtra['files'] = $fileList;
-
-        if ($argument !== 'C2D') {
-            return $this->syncDbAuditResponse(
-                'Error',
-                'Invalid sync argument',
-                'SYNC_C2D',
-                $auditExtra
-            );
-        }
-
-        try {
+        if ($argument === 'C2D') {
             $copiedCount = 0;
-            $copiedFiles = [];
-
             foreach ($fileList as $src => $dst) {
-                if (!file_exists($src)) {
-                    $auditExtra['failed_stage'] = 'source_file_missing';
-                    $auditExtra['missing_file'] = $src;
+                if (file_exists($src)) {
+                    if (copy($src, $dst)) {
+                        $copiedCount++;
 
-                    return $this->syncDbAuditResponse(
-                        'Error',
-                        "Source file not found: $src",
-                        'SYNC_C2D',
-                        $auditExtra
-                    );
-                }
-
-                if (copy($src, $dst)) {
-                    $copiedCount++;
-
-                    @chmod($dst, 0777);
-
-                    $copiedFiles[] = [
-                        'src' => $src,
-                        'dst' => $dst,
-                    ];
-
-                    if (basename($src) === 'KLS_NTCS.Lin') {
-                        // $this->stepModel->get_success_data_by_step();
+                        // 如果是特定檔案可額外執行後處理
+                        if (basename($src) === 'KLS_NTCS.Lin') {
+                            //$this->stepModel->get_success_data_by_step();
+                        }
+                    } else {
+                        return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy: $src → $dst");
                     }
-
                 } else {
-                    $auditExtra['failed_stage'] = 'copy_file_failed';
-                    $auditExtra['failed_file'] = [
-                        'src' => $src,
-                        'dst' => $dst,
-                    ];
-
-                    return $this->syncDbAuditResponse(
-                        'Error',
-                        "Failed to copy: $src → $dst",
-                        'SYNC_C2D',
-                        $auditExtra
-                    );
+                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Source file not found: $src");
                 }
             }
 
-            $auditExtra['result'] = [
-                'copied_count' => $copiedCount,
-                'copied_files' => $copiedFiles,
-            ];
-
-            return $this->syncDbAuditResponse(
+            return $this->MiscellaneousModel->generateErrorResponse(
                 'Success',
-                'SYNC' . ($text['success'] ?? 'success'),
-                'SYNC_C2D',
-                $auditExtra
-            );
-
-        } catch (Throwable $e) {
-            $auditExtra['exception'] = $e->getMessage();
-
-            return $this->syncDbAuditResponse(
-                'Error',
-                'SYNC failed: ' . $e->getMessage(),
-                'SYNC_C2D',
-                $auditExtra
+                "SYNC" . ($text['success'] ?? 'success')
             );
         }
+
+        // 預留其他參數（例如 D2C）
+        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument');
     }
-
-
 
     /**
      * 安全複製檔案，若 copy 失敗會寫 log
@@ -1668,93 +1742,6 @@ class Settings extends Controller
     }
 
 
-    private function parseIdasVersionParts($version): array
-    {
-        $raw = trim((string)$version);
-
-        $result = [
-            'raw'    => $raw,
-            'base'   => '0',
-            'suffix' => '',
-        ];
-
-        if ($raw === '') {
-            return $result;
-        }
-
-        // 支援 11_20260508-0.72_SA349，抓最後的 0.72_SA349
-        if (preg_match('/(\d+(?:\.\d+)+(?:[_\-][A-Za-z]+\d*)?)$/', $raw, $m)) {
-            $raw = $m[1];
-        }
-
-        if (preg_match('/^v?(\d+(?:\.\d+)*)(?:[_\-]?(.+))?$/i', $raw, $m)) {
-            $result['base'] = $m[1];
-            $result['suffix'] = isset($m[2]) ? trim((string)$m[2]) : '';
-            return $result;
-        }
-
-        if (preg_match('/(\d+(?:\.\d+)*)/', $raw, $m)) {
-            $result['base'] = $m[1];
-        }
-
-        return $result;
-    }
-
-    private function compareIdasVersionSuffix($leftSuffix, $rightSuffix): int
-    {
-        $left = trim((string)$leftSuffix);
-        $right = trim((string)$rightSuffix);
-
-        if ($left === $right) {
-            return 0;
-        }
-
-        if ($left === '' && $right !== '') {
-            return -1;
-        }
-
-        if ($left !== '' && $right === '') {
-            return 1;
-        }
-
-        $leftParsed = [];
-        $rightParsed = [];
-
-        $leftOk = preg_match('/^([A-Za-z]+)(\d+)$/', $left, $leftParsed);
-        $rightOk = preg_match('/^([A-Za-z]+)(\d+)$/', $right, $rightParsed);
-
-        if ($leftOk && $rightOk) {
-            $leftPrefix = strtoupper($leftParsed[1]);
-            $rightPrefix = strtoupper($rightParsed[1]);
-
-            if ($leftPrefix === $rightPrefix) {
-                return ((int)$leftParsed[2]) <=> ((int)$rightParsed[2]);
-            }
-        }
-
-        return strnatcasecmp($left, $right);
-    }
-
-    private function isIdasUpdateVersionLower($updateVersion, $currentVersion): bool
-    {
-        $update = $this->parseIdasVersionParts($updateVersion);
-        $current = $this->parseIdasVersionParts($currentVersion);
-
-        $baseCompare = version_compare($update['base'], $current['base']);
-
-        if ($baseCompare < 0) {
-            return true;
-        }
-
-        if ($baseCompare > 0) {
-            return false;
-        }
-
-        return $this->compareIdasVersionSuffix($update['suffix'], $current['suffix']) < 0;
-    }
-
-
-
 
     #IDAS上傳 20250624 修改
     public function iDas_Update($debug = false) {
@@ -1842,18 +1829,12 @@ class Settings extends Controller
                 return $this->sendResponse('Error', $this->t('ERR_BAD_INFO'));
             }
 
-
             // 11. 比對版本
-            // 注意：
-            // PHP version_compare() 會把 0.72_SA349 判斷成低於 0.72，
-            // 因此這裡改用 iDAS 專用版本比對，支援 0.72_SA349 / 0.72-SA349 這種格式。
-            $match_tcc_version = (string)$verify_data['idas_version'];
-            $current_idas_version = (string)$iDas_Version;
-
-            if ($this->isIdasUpdateVersionLower($match_tcc_version, $current_idas_version)) {
+            $match_tcc_version = $verify_data['idas_version'];
+            if (version_compare($match_tcc_version, $iDas_Version, '<')) {
                 return $this->sendResponse('Error', $this->t('ERR_VERSION_LOW', [
-                    'current' => $current_idas_version,
-                    'update'  => $match_tcc_version,
+                    'current' => (string)$iDas_Version,
+                    'update'  => (string)$match_tcc_version,
                 ]));
             }
 
@@ -2714,1135 +2695,5 @@ class Settings extends Controller
 
 
 
-
-    /* =====================================================
-     * Setting Account / table user
-     * Rule: only English letters and numbers are allowed.
-     *       Regex uses 0-9 because existing examples like steve01/admin0734 need 0.
-     * ===================================================== */
-
-    private function accountUserDb(): PDO
-    {
-        // 統一使用 Database.php 內的：'iDas' => BASE_PATH . 'KLS_NTCS_IDAS.Lin'
-        $database = new Database();
-        $db = $database->getDb_das();
-
-        if (!$db instanceof PDO) {
-            throw new Exception('Account DB connect failed: iDas / KLS_NTCS_IDAS.Lin');
-        }
-
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-        return $db;
-    }
-
-    private function accountUserJson(bool $ok, string $msg, array $extra = []): void
-    {
-        // 防止 Notice / Warning / login HTML 混入 JSON，造成前端 JSON.parse 失敗。
-        while (ob_get_level() > 0) {
-            @ob_end_clean();
-        }
-
-        if (!headers_sent()) {
-            header('Content-Type: application/json; charset=utf-8');
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-        }
-
-        echo json_encode(array_merge([
-            'success'  => $ok,
-            'res_type' => $ok ? 'Success' : 'Error',
-            'res_msg'  => $msg,
-        ], $extra), JSON_UNESCAPED_UNICODE);
-        exit();
-    }
-
-    private function accountUserClean(string $value): string
-    {
-        return trim($value);
-    }
-
-    private function accountUserCurrentUsername(): string
-    {
-        return strtolower(trim((string)($_COOKIE['username'] ?? '')));
-    }
-
-
-    private function accountUserLocale(): string
-    {
-        $raw = '';
-        if (isset($_COOKIE['language'])) {
-            $raw = strtolower(trim((string)$_COOKIE['language']));
-        } elseif (isset($_COOKIE['lang'])) {
-            $raw = strtolower(trim((string)$_COOKIE['lang']));
-        } elseif (isset($_SESSION['language'])) {
-            $raw = strtolower(trim((string)$_SESSION['language']));
-        }
-
-        $raw = str_replace('_', '-', $raw);
-
-        if ($raw === 'zh-tw' || $raw === 'zh-hant' || $raw === 'tw') {
-            return 'zh-tw';
-        }
-        if ($raw === 'zh-cn' || $raw === 'zh-hans' || $raw === 'cn' || $raw === 'zh') {
-            return 'zh-cn';
-        }
-        if ($raw === 'en' || $raw === 'en-us') {
-            return 'en-us';
-        }
-
-        return 'en-us';
-    }
-
-    private function accountUserFallbackText(string $key, string $default = ''): string
-    {
-        $dict = [
-            'en-us' => [
-                'account_upload_controller_success' => 'Sync to controller success. Rows: {rows}.',
-                'account_upload_controller_failed'  => 'Sync to controller failed: {error}',
-                'account_upload_controller_linux_only' => 'Sync to controller is only supported on Linux.',
-                'account_upload_controller_source_missing' => 'Source iDAS DB not found: {path}',
-                'account_upload_controller_target_missing' => 'Target controller DB not found: {path}',
-                'account_upload_controller_target_not_writable' => 'Target controller DB or folder is not writable: {path}',
-                'account_upload_controller_empty' => 'Source user table has no data. Sync aborted.',
-                'account_upload_controller_backup_failed' => 'Backup target DB failed: {path}',
-                'account_import_result' => 'Import success. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.',
-                'account_import_account_failed' => 'Import account failed: {error}',
-                'account_new_success' => 'New account created successfully.',
-                'account_edit_success' => 'Account updated successfully.',
-                'account_delete_account_success' => 'Account deleted successfully.',
-                'account_protected_action' => 'This account is protected and cannot be deleted.',
-                'account_protected_create_action' => 'This account is protected and cannot be created.',
-                'account_protected_edit_action' => 'This account is protected and cannot be edited.',
-                'account_protected_rename_blocked' => 'This built-in account name cannot be changed.',
-                'account_admin_rename_blocked' => 'The admin account name cannot be changed.',
-                'account_guest_rename_blocked' => 'The guest account name cannot be changed.',
-            ],
-            'zh-tw' => [
-                'account_upload_controller_success' => '同步到控制器成功。筆數：{rows}。',
-                'account_upload_controller_failed'  => '同步到控制器失敗：{error}',
-                'account_upload_controller_linux_only' => '同步到控制器僅支援 Linux。',
-                'account_upload_controller_source_missing' => '找不到 iDAS 來源資料庫：{path}',
-                'account_upload_controller_target_missing' => '找不到控制器目標資料庫：{path}',
-                'account_upload_controller_target_not_writable' => '控制器目標資料庫或資料夾不可寫入：{path}',
-                'account_upload_controller_empty' => 'iDAS user table 沒有資料，已取消同步。',
-                'account_upload_controller_backup_failed' => '備份控制器資料庫失敗：{path}',
-                'account_import_result' => '匯入成功。新增：{inserted}，更新：{updated}，跳過：{skipped}。',
-                'account_import_account_failed' => '匯入帳號失敗：{error}',
-                'account_new_success' => '新增帳號成功。',
-                'account_edit_success' => '編輯帳號成功。',
-                'account_delete_account_success' => '刪除帳號成功。',
-                'account_protected_action' => '此帳號受保護，無法刪除。',
-                'account_protected_create_action' => '此帳號受保護，無法新增。',
-                'account_protected_edit_action' => '此帳號受保護，無法編輯。',
-                'account_protected_rename_blocked' => '內建帳號名稱不可變更。',
-                'account_admin_rename_blocked' => 'admin 帳號名稱不可變更。',
-                'account_guest_rename_blocked' => 'guest 帳號名稱不可變更。',
-            ],
-            'zh-cn' => [
-                'account_upload_controller_success' => '同步到控制器成功。笔数：{rows}。',
-                'account_upload_controller_failed'  => '同步到控制器失败：{error}',
-                'account_upload_controller_linux_only' => '同步到控制器仅支持 Linux。',
-                'account_upload_controller_source_missing' => '找不到 iDAS 来源数据库：{path}',
-                'account_upload_controller_target_missing' => '找不到控制器目标数据库：{path}',
-                'account_upload_controller_target_not_writable' => '控制器目标数据库或文件夹不可写入：{path}',
-                'account_upload_controller_empty' => 'iDAS user table 没有数据，已取消同步。',
-                'account_upload_controller_backup_failed' => '备份控制器数据库失败：{path}',
-                'account_import_result' => '导入成功。新增：{inserted}，更新：{updated}，跳过：{skipped}。',
-                'account_import_account_failed' => '导入账号失败：{error}',
-                'account_new_success' => '新增账号成功。',
-                'account_edit_success' => '编辑账号成功。',
-                'account_delete_account_success' => '删除账号成功。',
-                'account_protected_action' => '此账号受保护，无法删除。',
-                'account_protected_create_action' => '此账号受保护，无法新增。',
-                'account_protected_edit_action' => '此账号受保护，无法编辑。',
-                'account_protected_rename_blocked' => '内建账号名称不可变更。',
-                'account_admin_rename_blocked' => 'admin 账号名称不可变更。',
-                'account_guest_rename_blocked' => 'guest 账号名称不可变更。',
-            ],
-        ];
-
-        $locale = $this->accountUserLocale();
-        return $dict[$locale][$key] ?? $dict['en-us'][$key] ?? $default;
-    }
-
-    private function accountUserText(string $key, string $default = ''): string
-    {
-        static $accountText = null;
-
-        if ($accountText === null) {
-            $accountText = [];
-            try {
-                $file = $this->MiscellaneousModel->lang_load();
-                if (!empty($file) && is_file($file)) {
-                    $text = [];
-                    include $file;
-                    if (isset($text) && is_array($text)) {
-                        $accountText = $text;
-                    }
-                }
-            } catch (Throwable $e) {
-                $accountText = [];
-            }
-        }
-
-        if (isset($accountText[$key]) && (string)$accountText[$key] !== '') {
-            return (string)$accountText[$key];
-        }
-
-        return $this->accountUserFallbackText($key, $default);
-    }
-
-    private function accountUserFormatText(string $key, string $default = '', array $vars = []): string
-    {
-        $msg = $this->accountUserText($key, $default);
-        foreach ($vars as $k => $v) {
-            $msg = str_replace('{' . $k . '}', (string)$v, $msg);
-        }
-        return $msg;
-    }
-
-    private function accountUserProtectedNames(): array
-    {
-        return ['kls', 'guest', 'admin'];
-    }
-
-    private function accountUserIsProtectedName(string $name): bool
-    {
-        return in_array(strtolower(trim($name)), $this->accountUserProtectedNames(), true);
-    }
-
-    private function accountUserRequireAdmin(): void
-    {
-        // Account 管理功能只允許 cookie username=admin 使用。
-        if ($this->accountUserCurrentUsername() !== 'admin') {
-            $this->accountUserJson(false, $this->accountUserText('account_only_admin', 'Only admin can use Account setting.'));
-        }
-    }
-
-    private function accountUserValidateText(string $value, string $label): void
-    {
-        if ($value === '') {
-            throw new Exception($label . ' ' . $this->accountUserText('account_cannot_be_empty_suffix', 'cannot be empty.'));
-        }
-
-        // 既有帳號 key 檢查：允許 A-Z / a-z / 0-9。
-        if (!preg_match('/^[A-Za-z0-9]+$/', $value)) {
-            throw new Exception($label . ' ' . $this->accountUserText('account_only_allows_suffix', 'only allows A-Z, a-z, 0-9.'));
-        }
-    }
-
-    private function accountUserValidateUsername(string $value, string $label = 'Username'): void
-    {
-        if ($value === '') {
-            throw new Exception($label . ' ' . $this->accountUserText('account_cannot_be_empty_suffix', 'cannot be empty.'));
-        }
-
-        // 新帳號 / 改名：6~8 字元，只允許 A-Z / a-z / 0-9。
-        if (!preg_match('/^[A-Za-z0-9]{6,8}$/', $value)) {
-            throw new Exception($label . ' ' . $this->accountUserText('account_username_rule_suffix', 'must be 6 to 8 characters and only allows A-Z, a-z, 0-9.'));
-        }
-    }
-
-    private function accountUserValidatePassword(string $value, string $label = 'Password'): void
-    {
-        if ($value === '') {
-            throw new Exception($label . ' ' . $this->accountUserText('account_cannot_be_empty_suffix', 'cannot be empty.'));
-        }
-
-        // 密碼固定 4 碼數字，允許 0000。
-        if (!preg_match('/^[0-9]{4}$/', $value)) {
-            throw new Exception($label . ' ' . $this->accountUserText('account_password_rule_suffix', 'must be exactly 4 digits, 0-9.'));
-        }
-    }
-
-    private function accountUserAssertTable(PDO $db): void
-    {
-        $exists = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")->fetchColumn();
-        if (!$exists) {
-            throw new Exception($this->accountUserText('account_table_not_found', 'table user not found.'));
-        }
-    }
-
-    private function accountUserIdasDbPathStrict(): string
-    {
-        if (PHP_OS_FAMILY === 'Linux') {
-            return '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        }
-
-        return $this->accountUserDbPath();
-    }
-
-    private function accountUserControllerDbPath(): string
-    {
-        if (PHP_OS_FAMILY === 'Linux') {
-            return '/home/kls/NTCS7/KLS_NTCS.Lin';
-        }
-
-        return __DIR__ . '/../../../database/KLS_NTCS.Lin';
-    }
-
-    private function accountUserOpenSqliteFile(string $dbPath): PDO
-    {
-        if (!is_file($dbPath)) {
-            throw new Exception('DB file not found: ' . $dbPath);
-        }
-        if (!is_readable($dbPath)) {
-            throw new Exception('DB file is not readable: ' . $dbPath);
-        }
-
-        $db = new PDO('sqlite:' . $dbPath);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-        return $db;
-    }
-
-    private function accountUserQuoteIdentifier(string $name): string
-    {
-        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
-            throw new Exception('Invalid column name: ' . $name);
-        }
-
-        return '"' . str_replace('"', '""', $name) . '"';
-    }
-
-    private function accountUserTableColumns(PDO $db): array
-    {
-        $rows = $db->query('PRAGMA table_info("user")')->fetchAll(PDO::FETCH_ASSOC);
-        $columns = [];
-
-        foreach ($rows as $row) {
-            if (isset($row['name']) && $row['name'] !== '') {
-                $columns[] = (string)$row['name'];
-            }
-        }
-
-        return $columns;
-    }
-
-
-    /**
-     * Ensure a default account exists in the opened account user table.
-     * If the account already exists, keep the existing password/law unchanged.
-     */
-    private function accountUserEnsureDefaultAccount(PDO $db, string $accountName, string $password, int $law = 1): bool
-    {
-        $this->accountUserAssertTable($db);
-
-        $accountName = trim($accountName);
-        $password = trim($password);
-
-        if ($accountName === '' || $password === '') {
-            throw new Exception('Default account name/password cannot be empty.');
-        }
-
-        $columns = $this->accountUserTableColumns($db);
-        if (!in_array('name', $columns, true) || !in_array('passwd', $columns, true)) {
-            throw new Exception('user table must contain name and passwd columns.');
-        }
-
-        $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))');
-        $stmt->execute([':name' => $accountName]);
-        if ((int)$stmt->fetchColumn() > 0) {
-            return false;
-        }
-
-        $insertColumns = [];
-        $params = [];
-
-        if (in_array('sn', $columns, true)) {
-            $insertColumns[] = 'sn';
-            $params[':sn'] = (int)$db->query('SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`')->fetchColumn();
-        }
-
-        $insertColumns[] = 'name';
-        $params[':name'] = $accountName;
-
-        $insertColumns[] = 'passwd';
-        $params[':passwd'] = $password;
-
-        if (in_array('law', $columns, true)) {
-            $insertColumns[] = 'law';
-            $params[':law'] = $law;
-        }
-
-        $columnSql = implode(', ', array_map([$this, 'accountUserQuoteIdentifier'], $insertColumns));
-        $placeholders = implode(', ', array_keys($params));
-
-        $stmt = $db->prepare('INSERT INTO `user` (' . $columnSql . ') VALUES (' . $placeholders . ')');
-        $stmt->execute($params);
-
-        return true;
-    }
-
-    private function accountUserEnsureDefaultAdmin(PDO $db): bool
-    {
-        return $this->accountUserEnsureDefaultAccount($db, 'admin', '0734', 1);
-    }
-
-    private function accountUserEnsureDefaultGuest(PDO $db): bool
-    {
-        return $this->accountUserEnsureDefaultAccount($db, 'guest', '0000', 1);
-    }
-
-    private function accountUserEnsureDefaultProtectedAccounts(PDO $db): void
-    {
-        $this->accountUserEnsureDefaultAdmin($db);
-        $this->accountUserEnsureDefaultGuest($db);
-    }
-
-    public function account_user_upload_controller(): void
-    {
-        $targetDb = null;
-
-        try {
-            $this->accountUserRequireAdmin();
-
-            if (PHP_OS_FAMILY !== 'Linux') {
-                throw new Exception($this->accountUserText('account_upload_controller_linux_only', 'Sync to controller is only supported on Linux.'));
-            }
-
-            $sourcePath = $this->accountUserIdasDbPathStrict();
-            $targetPath = $this->accountUserControllerDbPath();
-
-            if (!is_file($sourcePath)) {
-                throw new Exception($this->accountUserFormatText('account_upload_controller_source_missing', 'Source iDAS DB not found: {path}', ['path' => $sourcePath]));
-            }
-            if (!is_file($targetPath)) {
-                throw new Exception($this->accountUserFormatText('account_upload_controller_target_missing', 'Target controller DB not found: {path}', ['path' => $targetPath]));
-            }
-            if (!is_writable($targetPath) || !is_writable(dirname($targetPath))) {
-                throw new Exception($this->accountUserFormatText('account_upload_controller_target_not_writable', 'Target controller DB or folder is not writable: {path}', ['path' => $targetPath]));
-            }
-
-            $sourceDb = $this->accountUserOpenSqliteFile($sourcePath);
-            $targetDb = $this->accountUserOpenSqliteFile($targetPath);
-
-            $this->accountUserAssertTable($sourceDb);
-            $this->accountUserAssertTable($targetDb);
-
-            // Safety: before syncing, make sure the iDAS source DB has admin.
-            $this->accountUserEnsureDefaultProtectedAccounts($sourceDb);
-
-            $sourceColumns = $this->accountUserTableColumns($sourceDb);
-            $targetColumns = $this->accountUserTableColumns($targetDb);
-            $copyColumns = array_values(array_intersect($targetColumns, $sourceColumns));
-
-            if (empty($copyColumns)) {
-                throw new Exception('No matching columns found between source and target user table.');
-            }
-            if (!in_array('name', $copyColumns, true) || !in_array('passwd', $copyColumns, true)) {
-                throw new Exception('Target/source user table must contain name and passwd columns.');
-            }
-
-            $columnSql = implode(', ', array_map([$this, 'accountUserQuoteIdentifier'], $copyColumns));
-            $orderSql = in_array('sn', $sourceColumns, true) ? ' ORDER BY "sn" ASC' : ' ORDER BY rowid ASC';
-
-            $rows = $sourceDb->query('SELECT ' . $columnSql . ' FROM "user"' . $orderSql)->fetchAll(PDO::FETCH_ASSOC);
-            if (empty($rows)) {
-                throw new Exception($this->accountUserText('account_upload_controller_empty', 'Source user table has no data. Sync aborted.'));
-            }
-
-            // Backup target DB before touching table user only.
-            $backupPath = $targetPath . '.user_backup_' . date('Ymd_His');
-            if (!@copy($targetPath, $backupPath)) {
-                throw new Exception($this->accountUserFormatText('account_upload_controller_backup_failed', 'Backup target DB failed: {path}', ['path' => $backupPath]));
-            }
-            @chmod($backupPath, 0666);
-
-            $targetDb->beginTransaction();
-
-            // Only table user is modified. Other tables are untouched.
-            $targetDb->exec('DELETE FROM "user"');
-
-            $placeholders = implode(', ', array_map(function($col) {
-                return ':' . $col;
-            }, $copyColumns));
-
-            $insertSql = 'INSERT INTO "user" (' . $columnSql . ') VALUES (' . $placeholders . ')';
-            $insertStmt = $targetDb->prepare($insertSql);
-
-            foreach ($rows as $row) {
-                $params = [];
-                foreach ($copyColumns as $col) {
-                    $params[':' . $col] = $row[$col] ?? null;
-                }
-                $insertStmt->execute($params);
-            }
-
-            // Safety: after full mirror, guarantee controller DB still has admin.
-            $this->accountUserEnsureDefaultProtectedAccounts($targetDb);
-
-            $targetDb->commit();
-            @chmod($targetPath, 0666);
-            @exec('sync');
-
-            $this->accountUserJson(true, $this->accountUserFormatText('account_upload_controller_success', 'Upload user list to controller success. Rows: {rows}.', ['rows' => count($rows)]), [
-                'rows'        => count($rows),
-                'source_path' => $sourcePath,
-                'target_path' => $targetPath,
-                'backup_path' => $backupPath,
-            ]);
-        } catch (Throwable $e) {
-            if ($targetDb instanceof PDO && $targetDb->inTransaction()) {
-                $targetDb->rollBack();
-            }
-
-            $this->accountUserJson(false, $this->accountUserFormatText('account_upload_controller_failed', 'Upload user list to controller failed: {error}', ['error' => $e->getMessage()]));
-        }
-    }
-
-    public function account_user_list(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            // kls 帳號需要顯示在 Account 清單，但儲存/刪除會被保護。
-            $rows = $db->query("
-                SELECT sn, name, passwd, law
-                FROM `user`
-                ORDER BY sn ASC
-            ")->fetchAll();
-
-            $this->accountUserJson(true, 'OK', [
-                'records' => $rows,
-                'count'   => count($rows),
-            ]);
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, $e->getMessage());
-        }
-    }
-
-
-
-    private function accountUserCsvText(string $value): string
-    {
-        $value = trim($value);
-
-        // Excel formula-text style from export, e.g. ="0000".
-        if (preg_match('/^="(.*)"$/s', $value, $m)) {
-            return str_replace('""', '"', $m[1]);
-        }
-
-        // Remove UTF-8 BOM if present.
-        $value = preg_replace('/^\xEF\xBB\xBF/', '', $value);
-        return trim((string)$value);
-    }
-
-    private function accountUserExcelText(string $value): string
-    {
-        // Force Excel to treat password as text, so 0000 will not become 0.
-        return '="' . str_replace('"', '""', $value) . '"';
-    }
-
-
-    public function account_user_get_password(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-
-            $username = isset($_POST['username']) ? $this->accountUserClean((string)$_POST['username']) : '';
-            $this->accountUserValidateText($username, 'Username');
-
-            // kls 帳號允許開啟查看資料，但不可儲存/刪除。
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            $statement = $db->prepare("
-                SELECT CAST(passwd AS TEXT) AS passwd
-                FROM `user`
-                WHERE LOWER(name) = LOWER(:name)
-                LIMIT 1
-            ");
-            $statement->execute([
-                ':name' => $username,
-            ]);
-
-            $row = $statement->fetch(PDO::FETCH_ASSOC);
-
-            if (!$row) {
-                throw new Exception('Account not found.');
-            }
-
-            $this->accountUserJson(true, 'OK', [
-                'username' => $username,
-                'passwd'   => (string)($row['passwd'] ?? ''),
-            ]);
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, $e->getMessage());
-        }
-    }
-
-
-    public function account_user_export(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            // Export all accounts, including built-in Kls / kls account.
-            $rows = $db->query("
-                SELECT sn, name, passwd, law
-                FROM `user`
-                ORDER BY sn ASC
-            ")->fetchAll();
-
-            // Clean all previous output to avoid corrupting CSV download.
-            while (ob_get_level() > 0) {
-                @ob_end_clean();
-            }
-
-            $filename = 'account_password_export_' . date('Ymd_His') . '.csv';
-
-            if (!headers_sent()) {
-                header('Content-Type: text/csv; charset=utf-8');
-                header('Content-Disposition: attachment; filename="' . $filename . '"');
-                header('Cache-Control: no-store, no-cache, must-revalidate');
-                header('Pragma: no-cache');
-            }
-
-            // UTF-8 BOM for Excel compatibility.
-            echo "\xEF\xBB\xBF";
-
-            $fp = fopen('php://output', 'w');
-            // CSV hides internal law column. law is managed internally and defaults to 1 on import.
-            fputcsv($fp, ['No', 'User Name', 'Password']);
-
-            $no = 1;
-            foreach ($rows as $row) {
-                fputcsv($fp, [
-                    $no++,
-                    $row['name'] ?? '',
-                    $this->accountUserExcelText((string)($row['passwd'] ?? '')),
-                ]);
-            }
-
-            fclose($fp);
-            exit();
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, 'Export account failed: ' . $e->getMessage());
-        }
-    }
-
-    public function account_user_import(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-            if (empty($_FILES['account_file']) || !isset($_FILES['account_file']['tmp_name'])) {
-                throw new Exception('Please select a CSV file.');
-            }
-
-            if ((int)($_FILES['account_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                throw new Exception('Upload failed. Error code: ' . (int)$_FILES['account_file']['error']);
-            }
-
-            $tmpName = (string)$_FILES['account_file']['tmp_name'];
-            $originalName = (string)($_FILES['account_file']['name'] ?? '');
-            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-
-            if ($ext !== 'csv') {
-                throw new Exception('Only CSV file is allowed.');
-            }
-
-            if (!is_uploaded_file($tmpName) && !is_file($tmpName)) {
-                throw new Exception('Uploaded file not found.');
-            }
-
-            $fp = fopen($tmpName, 'r');
-            if (!$fp) {
-                throw new Exception($this->accountUserText('account_cannot_open_csv', 'Cannot open uploaded CSV file.'));
-            }
-
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            $header = fgetcsv($fp);
-            if (!$header || count($header) < 2) {
-                fclose($fp);
-                throw new Exception($this->accountUserText('account_csv_invalid', 'CSV format invalid. Header must include User Name and Password.'));
-            }
-
-            // Normalize header names from export: No, User Name, Password.
-            // Older CSV files with Law column are still accepted, but law is ignored and fixed to 1.
-            $headerMap = [];
-            foreach ($header as $idx => $col) {
-                $key = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string)$col)));
-                $key = str_replace([' ', '_', '-'], '', $key);
-                $headerMap[$key] = $idx;
-            }
-
-            $nameIndex = $headerMap['username'] ?? $headerMap['name'] ?? 1;
-            $passIndex = $headerMap['password'] ?? $headerMap['passwd'] ?? 2;
-            // Law is intentionally not exposed in CSV. Always import accounts with default law = 1.
-
-            $importMode = (string)($_POST['import_mode'] ?? 'append');
-            $importMode = ($importMode === 'overwrite') ? 'overwrite' : 'append';
-            $protectedUsers = ['kls', 'guest', 'admin'];
-
-            $inserted = 0;
-            $updated  = 0;
-            $skipped  = 0;
-            $lineNo   = 1;
-            $errors   = [];
-            $rowsToImport = [];
-
-            // First pass: validate the whole CSV before touching DB.
-            while (($row = fgetcsv($fp)) !== false) {
-                $lineNo++;
-
-                // Skip blank lines.
-                if (count(array_filter($row, function($v) { return trim((string)$v) !== ''; })) === 0) {
-                    continue;
-                }
-
-                $name = $this->accountUserCsvText((string)($row[$nameIndex] ?? ''));
-                $password = $this->accountUserCsvText((string)($row[$passIndex] ?? ''));
-                $law = 1;
-                $nameLower = strtolower($name);
-
-                // Built-in accounts are protected and will not be imported or modified.
-                if (in_array($nameLower, $protectedUsers, true)) {
-                    $skipped++;
-                    continue;
-                }
-
-                try {
-                    $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
-                    $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
-                } catch (Throwable $e) {
-                    $errors[] = 'Line ' . $lineNo . ': ' . $e->getMessage();
-                    continue;
-                }
-
-                $rowsToImport[] = [
-                    'name' => $name,
-                    'passwd' => $password,
-                    'law' => $law,
-                ];
-            }
-
-            fclose($fp);
-
-            if (!empty($errors)) {
-                throw new Exception($this->accountUserText('account_csv_validation_failed', 'CSV validation failed. No data was imported.') . ' ' . implode(' ', array_slice($errors, 0, 10)));
-            }
-
-            $db->beginTransaction();
-
-            if ($importMode === 'overwrite') {
-                // Only table user is modified. Built-in accounts are protected.
-                $db->exec("DELETE FROM `user` WHERE LOWER(name) NOT IN ('kls', 'guest', 'admin')");
-            }
-
-            foreach ($rowsToImport as $row) {
-                $name = $row['name'];
-                $password = $row['passwd'];
-                $law = $row['law'];
-
-                $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(name) = LOWER(:name)');
-                $stmt->execute([':name' => $name]);
-                $exists = (int)$stmt->fetchColumn() > 0;
-
-                if ($exists) {
-                    $stmt = $db->prepare('UPDATE `user` SET passwd = :passwd, law = :law WHERE LOWER(name) = LOWER(:name)');
-                    $stmt->execute([
-                        ':passwd' => $password,
-                        ':law'    => $law,
-                        ':name'   => $name,
-                    ]);
-                    $updated++;
-                } else {
-                    $nextSn = (int)$db->query('SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`')->fetchColumn();
-                    $stmt = $db->prepare('INSERT INTO `user` (sn, name, passwd, law) VALUES (:sn, :name, :passwd, :law)');
-                    $stmt->execute([
-                        ':sn'     => $nextSn,
-                        ':name'   => $name,
-                        ':passwd' => $password,
-                        ':law'    => $law,
-                    ]);
-                    $inserted++;
-                }
-            }
-
-            // Safety: Append / Overwrite import must never leave iDAS without admin/guest.
-            $beforeProtectedCount = $inserted;
-            if ($this->accountUserEnsureDefaultAdmin($db)) {
-                $inserted++;
-            }
-            if ($this->accountUserEnsureDefaultGuest($db)) {
-                $inserted++;
-            }
-
-            $db->commit();
-
-            $message = $this->accountUserFormatText('account_import_result', 'Import success. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.', ['inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped]);
-
-            $this->accountUserJson(true, $message, [
-                'mode'     => $importMode,
-                'inserted' => $inserted,
-                'updated'  => $updated,
-                'skipped'  => $skipped,
-                'errors'   => [],
-            ]);
-        } catch (Throwable $e) {
-            if (isset($db) && $db instanceof PDO && $db->inTransaction()) {
-                $db->rollBack();
-            }
-
-            if (isset($fp) && is_resource($fp)) {
-                fclose($fp);
-            }
-
-            $this->accountUserJson(false, $this->accountUserFormatText('account_import_account_failed', 'Import account failed: {error}', ['error' => $e->getMessage()]));
-        }
-    }
-
-    public function account_user_create(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-            $name     = $this->accountUserClean($_POST['username'] ?? '');
-            $password = $this->accountUserClean($_POST['password'] ?? '');
-            $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
-            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
-
-            $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
-            if ($this->accountUserIsProtectedName($name)) {
-                throw new Exception($this->accountUserText('account_protected_create_action', 'This account is protected and cannot be created.'));
-            }
-            $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
-
-            if ($password !== $confirm) {
-                throw new Exception($this->accountUserText('account_confirm_diff', 'Confirm password is different.'));
-            }
-
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
-            $stmt->execute([':name' => $name]);
-            if ((int)$stmt->fetchColumn() > 0) {
-                throw new Exception($this->accountUserText('account_username_exists', 'Username already exists.'));
-            }
-
-            $nextSn = (int)$db->query("SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`")->fetchColumn();
-
-            $stmt = $db->prepare("INSERT INTO `user` (sn, name, passwd, law) VALUES (:sn, :name, :passwd, :law)");
-            $stmt->execute([
-                ':sn'     => $nextSn,
-                ':name'   => $name,
-                ':passwd' => $password,
-                ':law'    => $law,
-            ]);
-
-            $this->accountUserJson(true, $this->accountUserText('account_new_success', 'New Account success.'));
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, $e->getMessage());
-        }
-    }
-
-    public function account_user_update(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-            $oldName  = $this->accountUserClean($_POST['old_username'] ?? '');
-            $name     = $this->accountUserClean($_POST['username'] ?? '');
-            $password = $this->accountUserClean($_POST['password'] ?? '');
-            $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
-            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
-
-            $this->accountUserValidateText($oldName, $this->accountUserText('account_old_username', 'Old username'));
-
-            $oldNameLower = strtolower($oldName);
-            $nameLower = strtolower($name);
-
-            // admin / guest cannot be deleted or renamed, but their password can be edited.
-            // kls can be opened for viewing, but saving is blocked.
-            if ($this->accountUserIsProtectedName($oldName)) {
-                if ($oldNameLower === 'kls') {
-                    throw new Exception($this->accountUserText('account_protected_save_action', 'This account is protected and cannot be saved.'));
-                }
-
-                if ($nameLower !== $oldNameLower) {
-                    throw new Exception($this->accountUserText($oldNameLower === 'guest' ? 'account_guest_rename_blocked' : 'account_admin_rename_blocked', $oldNameLower . ' account name cannot be changed.'));
-                }
-            } elseif ($this->accountUserIsProtectedName($name)) {
-                throw new Exception($this->accountUserText('account_protected_rename_blocked', 'This built-in account name cannot be changed.'));
-            }
-
-            if ($oldName !== $name) {
-                $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
-            } else {
-                // 允許既有 admin/user1 等舊帳號在未改名時繼續修改密碼。
-                $this->accountUserValidateText($name, $this->accountUserText('account_username', 'Username'));
-            }
-
-            if ($password !== '') {
-                $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
-                if ($password !== $confirm) {
-                    throw new Exception($this->accountUserText('account_confirm_diff', 'Confirm password is different.'));
-                }
-            }
-
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
-            $stmt->execute([':name' => $oldName]);
-            if ((int)$stmt->fetchColumn() === 0) {
-                throw new Exception($this->accountUserText('account_not_found', 'Account not found.'));
-            }
-
-            if ($oldName !== $name) {
-                $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
-                $stmt->execute([':name' => $name]);
-                if ((int)$stmt->fetchColumn() > 0) {
-                    throw new Exception($this->accountUserText('account_username_exists', 'Username already exists.'));
-                }
-            }
-
-            if ($oldNameLower === 'admin' || $oldNameLower === 'guest') {
-                // admin / guest cannot be renamed or deleted, but password editing is allowed.
-                if ($password !== '') {
-                    $stmt = $db->prepare("UPDATE `user` SET passwd = :passwd, law = :law WHERE LOWER(name) = :old_name_lower");
-                    $stmt->execute([
-                        ':passwd' => $password,
-                        ':law' => $law,
-                        ':old_name_lower' => $oldNameLower,
-                    ]);
-                }
-            } elseif ($password === '') {
-                $stmt = $db->prepare("UPDATE `user` SET name = :name, law = :law WHERE name = :old_name");
-                $stmt->execute([
-                    ':name'     => $name,
-                    ':law'      => $law,
-                    ':old_name' => $oldName,
-                ]);
-            } else {
-                $stmt = $db->prepare("UPDATE `user` SET name = :name, passwd = :passwd, law = :law WHERE name = :old_name");
-                $stmt->execute([
-                    ':name'     => $name,
-                    ':passwd'   => $password,
-                    ':law'      => $law,
-                    ':old_name' => $oldName,
-                ]);
-            }
-
-            $this->accountUserJson(true, $this->accountUserText('account_edit_success', 'Edit Account success.'));
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, $e->getMessage());
-        }
-    }
-
-    public function account_user_delete(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-            $name = $this->accountUserClean($_POST['username'] ?? '');
-            $this->accountUserValidateText($name, $this->accountUserText('account_username', 'Username'));
-            if ($this->accountUserIsProtectedName($name)) {
-                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be deleted.'));
-            }
-
-            $db = $this->accountUserDb();
-            $this->accountUserAssertTable($db);
-
-            $count = (int)$db->query("SELECT COUNT(*) FROM `user`")->fetchColumn();
-            if ($count <= 1) {
-                throw new Exception($this->accountUserText('account_last_delete_error', 'Cannot delete the last account.'));
-            }
-
-            $stmt = $db->prepare("DELETE FROM `user` WHERE name = :name");
-            $stmt->execute([':name' => $name]);
-
-            if ($stmt->rowCount() <= 0) {
-                throw new Exception($this->accountUserText('account_not_found', 'Account not found.'));
-            }
-
-            $this->accountUserJson(true, $this->accountUserText('account_delete_account_success', 'Delete Account success.'));
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, $e->getMessage());
-        }
-    }
-
-
-    public function operation_audit_log_list(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-
-            $limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 100;
-            if ($limit <= 0 || $limit > 500) {
-                $limit = 100;
-            }
-
-            $source = isset($_POST['source']) ? strtolower(trim((string)$_POST['source'])) : 'idas';
-            if (!in_array($source, ['idas', 'app'], true)) {
-                $source = 'idas';
-            }
-
-            if ($source === 'app') {
-                // APP 監控資料來源固定讀 ntcs_log.csv。
-                // CSV 欄位格式：date,time,user,action,module,target
-                $rows = $this->getAppOperationLogsFromCsv($limit);
-            } else {
-                $rows = $this->SettingModel->getOperationAuditLogs($limit);
-            }
-
-            $this->accountUserJson(true, 'OK', [
-                'source'  => $source,
-                'records' => $rows,
-                'count'   => count($rows),
-            ]);
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, 'Load operation log failed: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * 讀取 APP 操作紀錄 CSV。
-     *
-     * ntcs_log.csv 格式：
-     * 0 date   例：2026-05-07
-     * 1 time   例：05:29.39.9
-     * 2 user   例：guest
-     * 3 action 例：Add / Edit
-     * 4 module 例：Job Editor / Sequence Management
-     * 5 target 例：Job ID: 1; Seq ID: 2
-     */
-    private function getAppOperationLogsFromCsv(int $limit = 100): array
-    {
-        $csvPath = $this->getAppOperationLogCsvPath();
-        if ($csvPath === '' || !is_file($csvPath) || !is_readable($csvPath)) {
-            return [];
-        }
-
-        $rows = [];
-        $fp = fopen($csvPath, 'r');
-        if (!$fp) {
-            return [];
-        }
-
-        $lineNo = 0;
-        while (($cols = fgetcsv($fp)) !== false) {
-            $lineNo++;
-
-            // 跳過空行或欄位不足的資料
-            if (!is_array($cols) || count($cols) < 5) {
-                continue;
-            }
-
-            $date   = trim((string)($cols[0] ?? ''));
-            $time   = $this->normalizeAppLogTime(trim((string)($cols[1] ?? '')));
-            $user   = trim((string)($cols[2] ?? ''));
-            $action = trim((string)($cols[3] ?? ''));
-            $module = trim((string)($cols[4] ?? ''));
-            $target = trim((string)($cols[5] ?? ''));
-
-            // 避免完全空資料進入前端
-            if ($date === '' && $time === '' && $user === '' && $action === '' && $module === '' && $target === '') {
-                continue;
-            }
-
-            $createdAt = trim($date . ' ' . $time);
-            $messageParts = array_filter([$user, $action, $module, $target], function ($v) {
-                return trim((string)$v) !== '';
-            });
-
-            $rows[] = [
-                // 保留多組 key，避免前端目前用不同名稱取值時顯示空白
-                'id'         => $lineNo,
-                'log_id'     => $lineNo,
-                'source'     => 'app',
-                'created_at' => $createdAt,
-                'time'       => $createdAt,
-                'date'       => $date,
-                // 前端 operation_audit_log.php 主要讀 operator / user_id，
-                // 也保留 user_name / username / user，避免不同版本 View 顯示空白。
-                'operator'   => $user,
-                'user_id'    => $user,
-                'user_name'  => $user,
-                'username'   => $user,
-                'user'       => $user,
-                'module'     => $module,
-                'action'     => $action,
-                'target'     => $target,
-                'level'      => 'INFO',
-                // 用 INFO 交給前端依語系轉成「資訊 / INFO」，不要後端固定中文。
-                'status'     => 'INFO',
-                // Message 不再重複放 user，因為 user 已有獨立欄位。
-                'message'    => implode(' | ', array_filter([$action, $module, $target], function ($v) {
-                    return trim((string)$v) !== '';
-                })),
-                'raw'        => $cols,
-            ];
-        }
-        fclose($fp);
-
-        // CSV 通常舊資料在上、新資料在下；前端監控要顯示最新在最上面
-        $rows = array_reverse($rows);
-
-        return array_slice($rows, 0, $limit);
-    }
-
-    /**
-     * APP 操作紀錄檔路徑。
-     */
-    private function getAppOperationLogCsvPath(): string
-    {
-        $paths = [
-            '/home/kls/NTCS7/ntcs_log.csv',
-            '/mnt/ramdisk/ftp/ntcs_log.csv',
-            '/var/www/html/database/ntcs_log.csv',
-        ];
-
-        foreach ($paths as $path) {
-            if (is_file($path) && is_readable($path)) {
-                return $path;
-            }
-        }
-
-        // 回傳主要路徑，方便後續 debug 知道預期位置
-        return $paths[0];
-    }
-
-    /**
-     * 將 APP CSV 時間 05:29.39.9 轉成 05:29:39.9，顯示較清楚。
-     */
-    private function normalizeAppLogTime(string $time): string
-    {
-        if (preg_match('/^(\d{1,2}):(\d{2})\.(\d{2})(\.\d+)?$/', $time, $m)) {
-            return sprintf('%02d:%s:%s%s', (int)$m[1], $m[2], $m[3], $m[4] ?? '');
-        }
-
-        return $time;
-    }
-
-    public function operation_audit_log_detail(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-
-            $logId = isset($_POST['log_id']) ? (int)$_POST['log_id'] : 0;
-            if ($logId <= 0) {
-                throw new Exception('Invalid log_id.');
-            }
-
-            $row = $this->SettingModel->getOperationAuditLogDetail($logId);
-            if (!$row) {
-                throw new Exception('Log not found.');
-            }
-
-            $this->accountUserJson(true, 'OK', [
-                'record' => $row,
-            ]);
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, 'Load operation_audit_log detail failed: ' . $e->getMessage());
-        }
-    }
 
 }

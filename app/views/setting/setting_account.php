@@ -58,6 +58,7 @@ if (!function_exists('settingAccountLocalFallback')) {
                 'account_username' => 'Username',
                 'account_password' => 'Password',
                 'account_confirm_password' => 'Confirm Password',
+                'account_permission' => 'Permission',
                 'account_import' => 'Import',
                 'account_export' => 'Export',
                 'account_upload' => 'Sync to Controller',
@@ -85,6 +86,7 @@ if (!function_exists('settingAccountLocalFallback')) {
                 'account_username' => '使用者名稱',
                 'account_password' => '密碼',
                 'account_confirm_password' => '確認密碼',
+                'account_permission' => '權限',
                 'account_import' => '匯入',
                 'account_export' => '匯出',
                 'account_upload' => '同步到控制器',
@@ -112,6 +114,7 @@ if (!function_exists('settingAccountLocalFallback')) {
                 'account_username' => '使用者名称',
                 'account_password' => '密码',
                 'account_confirm_password' => '确认密码',
+                'account_permission' => '权限',
                 'account_import' => '导入',
                 'account_export' => '导出',
                 'account_upload' => '同步到控制器',
@@ -247,6 +250,16 @@ if (!function_exists('settingAccountLabelText')) {
                                                 <span class="eye-symbol">&#128065;</span>
                                             </button>
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div class="row account-form-row">
+                                    <div class="col-5 t1" id="settingAccountPermissionLabel"><?php echo settingAccountLabelText('account_permission', 'Permission'); ?></div>
+                                    <div class="col-5 t2">
+                                        <select class="form-control input-ms" id="account_law" autocomplete="off">
+                                            <option value="1" selected>guest</option>
+                                            <option value="3">operator</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

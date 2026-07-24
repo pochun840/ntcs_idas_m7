@@ -1,3 +1,7 @@
+<?php
+$idasSettingUserLaw = (string)($_COOKIE['user_law'] ?? ($_SESSION['user_law'] ?? '1'));
+$idasSettingIsOperator = ($idasSettingUserLaw === '3');
+?>
 <div class="container-ms">
 
 
@@ -70,7 +74,146 @@
 
 </div>
 
+
+
+<style>
+.operator-setting-locked,
+.operator-setting-locked:hover,
+.operator-setting-locked:active {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    transform: none !important;
+}
+</style>
+
 <script>
+
+/* =====================================================
+   Operator setting lock
+   law=3 operator：設定頁內所有操作按鈕不可點擊；上方分頁與 Home 保留可切換/返回。
+   ===================================================== */
+window.IDAS_SETTING_OPERATOR_LOCK = <?php echo $idasSettingIsOperator ? 'true' : 'false'; ?>;
+
+function idasSettingLockCookie(name) {
+    var target = name + '=';
+    var parts = (document.cookie || '').split(';');
+    for (var i = 0; i < parts.length; i++) {
+        var item = parts[i].trim();
+        if (item.indexOf(target) === 0) {
+            try {
+                return decodeURIComponent(item.substring(target.length));
+            } catch (e) {
+                return item.substring(target.length);
+            }
+        }
+    }
+    return '';
+}
+
+function idasSettingOperatorLockEnabled() {
+    return window.IDAS_SETTING_OPERATOR_LOCK === true || String(idasSettingLockCookie('user_law') || '').trim() === '3';
+}
+
+function idasSettingLockRoots() {
+    return [
+        'Controller_Setting',
+        'System_Setting',
+        'Barcode_Setting',
+        'Connect_Setting',
+        'iDas-Update_Setting',
+        'Upload_Setting',
+        'AccountDisplay',
+        'OperationAuditLogDisplay',
+        'operationAuditLogDetailPanel'
+    ];
+}
+
+function idasSettingElementInLockRoot(el) {
+    if (!el || !el.closest) return false;
+    var roots = idasSettingLockRoots();
+    for (var i = 0; i < roots.length; i++) {
+        var root = document.getElementById(roots[i]);
+        if (root && root.contains(el)) return true;
+    }
+    return false;
+}
+
+function idasSettingLockTargetSelector() {
+    return 'button, input[type="button"], input[type="submit"], input[type="file"], .w3-button[onclick], [role="button"]';
+}
+
+function applyIdasOperatorSettingLock() {
+    if (!idasSettingOperatorLockEnabled()) return;
+
+    var roots = idasSettingLockRoots();
+    var selector = idasSettingLockTargetSelector();
+
+    roots.forEach(function(rootId) {
+        var root = document.getElementById(rootId);
+        if (!root) return;
+
+        root.querySelectorAll(selector).forEach(function(el) {
+            // 只鎖設定內容，不鎖上方分頁與 Home。
+            el.classList.add('operator-setting-locked');
+            el.setAttribute('aria-disabled', 'true');
+            el.setAttribute('data-operator-setting-locked', '1');
+            el.style.pointerEvents = 'none';
+
+            if (!el.getAttribute('title')) {
+                el.setAttribute('title', 'Operator permission locked');
+            }
+
+            if ('disabled' in el) {
+                el.disabled = true;
+            }
+
+            // 避免 span.w3-button 或動態按鈕仍保留 inline onclick。
+            if (el.getAttribute('onclick')) {
+                el.setAttribute('data-operator-original-onclick', el.getAttribute('onclick'));
+                el.removeAttribute('onclick');
+            }
+            el.onclick = null;
+        });
+    });
+}
+
+// Capture 階段攔截，避免外部 JS 或 inline onclick 被繞過。
+document.addEventListener('click', function(e) {
+    if (!idasSettingOperatorLockEnabled()) return;
+    var target = e.target && e.target.closest ? e.target.closest(idasSettingLockTargetSelector()) : null;
+    if (target && idasSettingElementInLockRoot(target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        return false;
+    }
+}, true);
+
+// 避免按 Enter 送出設定表單。
+document.addEventListener('submit', function(e) {
+    if (!idasSettingOperatorLockEnabled()) return;
+    if (idasSettingElementInLockRoot(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        return false;
+    }
+}, true);
+
+document.addEventListener('DOMContentLoaded', function() {
+    applyIdasOperatorSettingLock();
+    var observerRoot = document.querySelector('.center-content') || document.body;
+    if (observerRoot && window.MutationObserver) {
+        var observer = new MutationObserver(function() {
+            applyIdasOperatorSettingLock();
+        });
+        observer.observe(observerRoot, { childList: true, subtree: true });
+    }
+});
+
+window.addEventListener('load', applyIdasOperatorSettingLock);
+
 
 
 

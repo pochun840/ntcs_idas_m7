@@ -91,7 +91,21 @@
                 </div>
             </div>
 
-            <div class="row t2">
+            
+            <?php
+                $controller_modbus_type = isset($data['controller_info']['modbus_type']) ? (int)$data['controller_info']['modbus_type'] : 0;
+                if (!in_array($controller_modbus_type, [0, 1, 2], true)) {
+                    $controller_modbus_type = 0;
+                }
+
+                $idas_lang = $_COOKIE['language'] ?? ($_SESSION['language'] ?? 'zh-tw');
+                $protocol_label = $text['communication_protocol']
+                    ?? $text['system_communication_protocol']
+                    ?? (($idas_lang === 'en-us') ? 'Communication Protocol' : (($idas_lang === 'zh-cn') ? '通讯协议' : '通訊協議'));
+            ?>
+           
+
+<div class="row t2">
                 <div class="col-6 t1"><?php echo $text['Circular Archive_text']; ?>:</div>
                 <div class="col t2">
                     <div class="col-4 form-check form-check-inline">
@@ -181,6 +195,24 @@
                                value="1"
                                <?php echo (($data['controller_info']['buzzer_mode'] ?? '') == 1) ? 'checked="checked"' : ''; ?>>
                         <label class="form-check-label" for="buzzer_mod_on"><?php echo $text['switch_on']; ?></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row t2 protocol-setting-row">
+                <div class="col-6 t1"><?php echo htmlspecialchars((string)$protocol_label, ENT_QUOTES, 'UTF-8'); ?>:</div>
+                <div class="col t2 protocol-options">
+                    <div class="col-4 form-check form-check-inline" style="white-space: nowrap;">
+                        <input class="form-check-input" type="radio" name="modbus_type" disabled="disabled" id="modbus_type_tcp_m" value="0" <?php echo $controller_modbus_type === 0 ? 'checked="checked"' : ''; ?>>
+                        <label class="form-check-label" for="modbus_type_tcp_m">TCP</label>
+                    </div>
+                    <div class="col-4 form-check form-check-inline" style="white-space: nowrap;">
+                        <input class="form-check-input" type="radio" name="modbus_type" disabled="disabled" id="modbus_type_rtu_m" value="1" <?php echo $controller_modbus_type === 1 ? 'checked="checked"' : ''; ?>>
+                        <label class="form-check-label" for="modbus_type_rtu_m">RTU</label>
+                    </div>
+                    <div class="form-check form-check-inline" style="white-space: nowrap;">
+                        <input class="form-check-input" type="radio" name="modbus_type" disabled="disabled" id="modbus_type_op_m" value="2" <?php echo $controller_modbus_type === 2 ? 'checked="checked"' : ''; ?>>
+                        <label class="form-check-label" for="modbus_type_op_m">OP</label>
                     </div>
                 </div>
             </div>

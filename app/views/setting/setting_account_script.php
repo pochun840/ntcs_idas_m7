@@ -66,6 +66,8 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_username' => 'Username',
                 'account_password' => 'Password',
                 'account_confirm_password' => 'Confirm Password',
+                'account_permission' => 'Permission',
+                'account_permission_rule' => 'Permission must be 1: guest or 3: operator.',
                 'account_new' => 'New',
                 'account_edit' => 'Edit',
                 'account_delete' => 'Delete',
@@ -134,6 +136,8 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_username' => '使用者名稱',
                 'account_password' => '密碼',
                 'account_confirm_password' => '確認密碼',
+                'account_permission' => '權限',
+                'account_permission_rule' => '權限必須選擇 1: guest 或 3: operator。',
                 'account_new' => '新增',
                 'account_edit' => '編輯',
                 'account_delete' => '刪除',
@@ -202,6 +206,8 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_username' => '使用者名称',
                 'account_password' => '密码',
                 'account_confirm_password' => '确认密码',
+                'account_permission' => '权限',
+                'account_permission_rule' => '权限必须选择 1: guest 或 3: operator。',
                 'account_new' => '新增',
                 'account_edit' => '编辑',
                 'account_delete' => '删除',
@@ -283,7 +289,8 @@ var settingAccountClientFallbackI18n = {
         account_protected_create_action: 'This account is protected and cannot be created.',
         account_protected_rename_blocked: 'This built-in account name cannot be changed.',
         account_admin_rename_blocked: 'The admin account name cannot be changed.',
-        account_guest_rename_blocked: 'The guest account name cannot be changed.'
+        account_guest_rename_blocked: 'The guest account name cannot be changed.',
+        account_permission_rule: 'Permission must be 1: guest or 3: operator.'
     },
     'zh-tw': {
         account_protected_action: '此帳號受保護，無法刪除。',
@@ -292,7 +299,8 @@ var settingAccountClientFallbackI18n = {
         account_protected_create_action: '此帳號受保護，無法新增。',
         account_protected_rename_blocked: '內建帳號名稱不可變更。',
         account_admin_rename_blocked: 'admin 帳號名稱不可變更。',
-        account_guest_rename_blocked: 'guest 帳號名稱不可變更。'
+        account_guest_rename_blocked: 'guest 帳號名稱不可變更。',
+        account_permission_rule: '權限必須選擇 1: guest 或 3: operator。'
     },
     'zh-cn': {
         account_protected_action: '此账号受保护，无法删除。',
@@ -301,7 +309,8 @@ var settingAccountClientFallbackI18n = {
         account_protected_create_action: '此账号受保护，无法新增。',
         account_protected_rename_blocked: '内建账号名称不可变更。',
         account_admin_rename_blocked: 'admin 账号名称不可变更。',
-        account_guest_rename_blocked: 'guest 账号名称不可变更。'
+        account_guest_rename_blocked: 'guest 账号名称不可变更。',
+        account_permission_rule: '权限必须选择 1: guest 或 3: operator。'
     }
 };
 function settingAccountClientLang() {
@@ -371,18 +380,21 @@ function applySettingAccountColonFix() {
     var usernameLabel = document.getElementById('settingAccountUsernameLabel');
     var passwordLabel = document.getElementById('settingAccountPasswordLabel');
     var confirmLabel = document.getElementById('settingAccountConfirmPasswordLabel');
+    var permissionLabel = document.getElementById('settingAccountPermissionLabel');
 
     // 舊版 tab block 沒有 label id 時，改抓 modal 裡前三個 .t1。
-    if (!usernameLabel || !passwordLabel || !confirmLabel) {
+    if (!usernameLabel || !passwordLabel || !confirmLabel || !permissionLabel) {
         var labels = document.querySelectorAll('#settingAccountModal .account-form-row .t1');
         usernameLabel = usernameLabel || labels[0];
         passwordLabel = passwordLabel || labels[1];
         confirmLabel = confirmLabel || labels[2];
+        permissionLabel = permissionLabel || labels[3];
     }
 
     if (usernameLabel) usernameLabel.innerText = settingAccountLabelI18n('account_username', 'Username');
     if (passwordLabel) passwordLabel.innerText = settingAccountLabelI18n('account_password', 'Password');
     if (confirmLabel) confirmLabel.innerText = settingAccountLabelI18n('account_confirm_password', 'Confirm Password');
+    if (permissionLabel) permissionLabel.innerText = settingAccountLabelI18n('account_permission', 'Permission');
 
     // 順手同步表頭與按鈕，避免 Account tab 有些區塊仍維持英文。
     var table = document.getElementById('account_user_table');
@@ -416,6 +428,7 @@ function applySettingAccountColonFix() {
 // =====================================================
 var selectedAccountUser = null;
 var selectedAccountPassword = '';
+var selectedAccountLaw = '1';
 var settingAccountRecordMap = {};
 var settingAccountMode = 'new';
 var settingAccountLoaded = false;
@@ -664,6 +677,54 @@ function settingAccountFindPasswordByUsername(username) {
     return '';
 }
 
+function settingAccountNormalizeLaw(value) {
+    value = String(value === undefined || value === null || value === '' ? '1' : value).replace(/[^0-9]/g, '');
+    return value === '3' ? '3' : '1';
+}
+
+function settingAccountPickLaw(row) {
+    row = row || {};
+    var candidates = [row.law, row.LAW, row.permission, row.Permission, row.PERMISSION];
+    for (var i = 0; i < candidates.length; i++) {
+        if (candidates[i] !== undefined && candidates[i] !== null && String(candidates[i]) !== '') {
+            return settingAccountNormalizeLaw(candidates[i]);
+        }
+    }
+    return '1';
+}
+
+function settingAccountFindLawByUsername(username) {
+    username = String(username || '').trim();
+    if (username === '') return '1';
+
+    var row = settingAccountRecordMap[username.toLowerCase()];
+    if (row) return settingAccountPickLaw(row);
+
+    var selectedRow = document.querySelector('#AccountDisplay .account-user-row.selected, #AccountDisplay .account-user-row.active');
+    if (selectedRow && (selectedRow.getAttribute('data-name') || '').toLowerCase() === username.toLowerCase()) {
+        return settingAccountNormalizeLaw(selectedRow.getAttribute('data-law') || '1');
+    }
+
+    var rows = document.querySelectorAll('#AccountDisplay .account-user-row');
+    for (var i = 0; i < rows.length; i++) {
+        if ((rows[i].getAttribute('data-name') || '').toLowerCase() === username.toLowerCase()) {
+            return settingAccountNormalizeLaw(rows[i].getAttribute('data-law') || '1');
+        }
+    }
+
+    return '1';
+}
+
+function settingAccountSetLawInput(value) {
+    var lawInput = document.getElementById('account_law');
+    if (lawInput) lawInput.value = settingAccountNormalizeLaw(value);
+}
+
+function settingAccountCurrentLawForSave() {
+    var lawInput = document.getElementById('account_law');
+    return settingAccountNormalizeLaw(lawInput ? lawInput.value : '1');
+}
+
 function settingAccountFillPasswordInputs(passwd) {
     var passwordInput = document.getElementById('account_password');
     var confirmInput = document.getElementById('account_confirm_password');
@@ -884,6 +945,7 @@ function renderSettingAccountUsers(records) {
 
     selectedAccountUser = null;
     selectedAccountPassword = '';
+    selectedAccountLaw = '1';
     settingAccountRecordMap = {};
 
     // kls 帳號需要顯示在列表，但儲存/刪除會被保護。
@@ -906,8 +968,9 @@ function renderSettingAccountUsers(records) {
     tbody.innerHTML = records.map(function(row, index) {
         var name = settingAccountEscape(row.name || '');
         var passwd = settingAccountEscape(settingAccountRememberRecord(row));
+        var law = settingAccountEscape(settingAccountPickLaw(row));
 
-        return '<tr class="account-user-row" data-name="' + name + '" data-passwd="' + passwd + '" onclick="selectSettingAccountUser(this)">' +
+        return '<tr class="account-user-row" data-name="' + name + '" data-passwd="' + passwd + '" data-law="' + law + '" onclick="selectSettingAccountUser(this)">' +
             '<td>' + (index + 1) + '</td>' +
             '<td>' + name + settingAccountProtectedBadge(row.name || '') + '</td>' +
             '</tr>';
@@ -924,6 +987,7 @@ function selectSettingAccountUser(row) {
     row.classList.add('selected');
     selectedAccountUser = row.getAttribute('data-name') || '';
     selectedAccountPassword = row.getAttribute('data-passwd') || settingAccountFindPasswordByUsername(selectedAccountUser);
+    selectedAccountLaw = settingAccountNormalizeLaw(row.getAttribute('data-law') || settingAccountFindLawByUsername(selectedAccountUser));
 }
 
 
@@ -1295,6 +1359,8 @@ function settingAccountOpenEditWithMaskedPassword(username) {
     document.getElementById('settingAccountModalTitle').innerText = saT('account_edit_title', 'Edit Account');
     document.getElementById('account_old_username').value = username;
     document.getElementById('account_username').value = username;
+    selectedAccountLaw = settingAccountFindLawByUsername(username);
+    settingAccountSetLawInput(selectedAccountLaw);
 
     settingAccountGetEditPassword(username).then(function(realPassword) {
         selectedAccountPassword = realPassword;
@@ -1340,6 +1406,8 @@ function settingAccountAction(mode) {
         document.getElementById('account_username').classList.remove('account-username-readonly');
 
         selectedAccountPassword = '';
+        selectedAccountLaw = '1';
+        settingAccountSetLawInput('1');
 
         openSettingAccountModal();
         settingAccountPrepareNewPasswordInputs();
@@ -1508,6 +1576,7 @@ function saveSettingAccount() {
     var username = document.getElementById('account_username').value.trim();
     var password = settingAccountResolvePasswordForSave('account_password');
     var confirmPassword = settingAccountResolvePasswordForSave('account_confirm_password');
+    var law = settingAccountCurrentLawForSave();
 
     if (!username) {
         settingAccountAlert(saT('account_username_empty', 'Username cannot be empty.'));
@@ -1561,13 +1630,18 @@ function saveSettingAccount() {
         }
     }
 
+    if (!['1', '3'].includes(String(law))) {
+        settingAccountAlert(saT('account_permission_rule', 'Permission must be 1: guest or 3: operator.'));
+        return;
+    }
+
     var path = settingAccountMode === 'edit' ? 'account_user_update' : 'account_user_create';
     var payload = {
         old_username: oldUsername,
         username: username,
         password: password,
         confirm_password: confirmPassword,
-        law: 1
+        law: law
     };
 
     settingAccountPost(path, payload).then(function(json) {
@@ -2253,8 +2327,9 @@ function downloadSettingAccountQrCode(username, password, event) {
         tbody.innerHTML = records.map(function(row, index) {
             var name = accountQrPatchEscape(row.name || '');
             var passwd = accountQrPatchEscape(settingAccountRememberRecord(row));
+            var law = accountQrPatchEscape(typeof settingAccountPickLaw === 'function' ? settingAccountPickLaw(row) : (row.law || '1'));
 
-            return '<tr class="account-user-row" data-name="' + name + '" data-passwd="' + passwd + '" onclick="selectSettingAccountUser(this)">'
+            return '<tr class="account-user-row" data-name="' + name + '" data-passwd="' + passwd + '" data-law="' + law + '" onclick="selectSettingAccountUser(this)">'
                 + '<td>' + (index + 1) + '</td>'
                 + '<td>' + name + (typeof settingAccountProtectedBadge === 'function' ? settingAccountProtectedBadge(row.name || '') : '') + '</td>'
                 + '<td class="account-qrcode-cell">'
@@ -2415,6 +2490,7 @@ function downloadSettingAccountQrCode(username, password, event) {
             if (rows[0]) rows[0].textContent = settingAccountStripColonText(saTextV6('account_username', 'Username')) + saColonV6();
             if (rows[1]) rows[1].textContent = settingAccountStripColonText(saTextV6('account_password', 'Password')) + saColonV6();
             if (rows[2]) rows[2].textContent = settingAccountStripColonText(saTextV6('account_confirm_password', 'Confirm Password')) + saColonV6();
+            if (rows[3]) rows[3].textContent = settingAccountStripColonText(saTextV6('account_permission', 'Permission')) + saColonV6();
 
             var btns = document.querySelectorAll('#settingAccountModal .account-modal-footer .button-modal');
             if (btns[0]) btns[0].textContent = saTextV6('save', 'Save');
@@ -2739,6 +2815,10 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
             selectedAccountPassword = realPassword;
         }
 
+        if (typeof selectedAccountLaw !== 'undefined') {
+            selectedAccountLaw = (typeof settingAccountFindLawByUsername === 'function') ? settingAccountFindLawByUsername(username) : '1';
+        }
+
         var title = document.getElementById('settingAccountModalTitle');
         var oldUsername = document.getElementById('account_old_username');
         var usernameInput = document.getElementById('account_username');
@@ -2760,6 +2840,10 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
                 usernameInput.removeAttribute('readonly');
                 usernameInput.classList.remove('account-username-readonly');
             }
+        }
+
+        if (typeof settingAccountSetLawInput === 'function') {
+            settingAccountSetLawInput((typeof selectedAccountLaw !== 'undefined') ? selectedAccountLaw : '1');
         }
 
         if (typeof openSettingAccountModal === 'function') {

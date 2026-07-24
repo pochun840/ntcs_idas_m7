@@ -268,14 +268,14 @@
 
 #settingAccountModal .account-modal-body {
     background-color: #D8D8D8;
-    padding: 44px 48px 70px 48px;
+    padding: 36px 48px 54px 48px;
 }
 
 #settingAccountModal .account-form-row {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 #settingAccountModal .account-form-row .t1 {
