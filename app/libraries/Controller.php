@@ -2,6 +2,10 @@
 
 class Controller
 {
+    // OP protocol runtime cache: avoid reading SQLite / retrying fallback endpoints on every command.
+    protected static $opProtocolCandidatesCache = null;
+    protected static $opLastEndpoint = null;
+
     // 載入 model
     public function model($model)
     {
@@ -53,22 +57,24 @@ class Controller
 
     public function language_auto($value='')
     {
-        // 如果$_SESSION['language'] 未設定 或為空 就從瀏覽器訊息帶入
-        if( !isset($_SESSION['language']) || $_SESSION['language'] == '' ){
-            $lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 4);
-            if (preg_match("/zh-cn/i", $lang)){
+        // 如果 $_SESSION['language'] 未設定或為空，就從瀏覽器語系帶入。
+        // AJAX / wget / curl 不一定有 HTTP_ACCEPT_LANGUAGE，所以必須有預設值。
+        if (!isset($_SESSION['language']) || $_SESSION['language'] == '') {
+            $acceptLang = strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'en-us');
+            $lang = substr($acceptLang, 0, 5);
+
+            if (preg_match("/zh-cn/i", $lang)) {
                 $_SESSION['language'] = 'zh-cn';
-            }else if(preg_match("/zh-tw/i", $lang)){
+            } else if (preg_match("/zh-tw/i", $lang)) {
                 $_SESSION['language'] = 'zh-tw';
-            }else if(preg_match("/en/i", $lang)){
+            } else if (preg_match("/en/i", $lang)) {
                 $_SESSION['language'] = 'en-us';
-            }else{//預設
+            } else {
                 $_SESSION['language'] = 'en-us';
             }
         }
 
         setcookie('language', $_SESSION['language'], time() + (365 * 24 * 60 * 60), '/');
-        
     }
 
 
@@ -81,21 +87,22 @@ class Controller
     public function isMobileCheck($value='')
     {
         //Detect special conditions devices
-        $iPod = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
-        $iPhone = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
-        $iPad = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
-        if(stripos($_SERVER['HTTP_USER_AGENT'],"Android") && stripos($_SERVER['HTTP_USER_AGENT'],"mobile")){
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $iPod = stripos($ua,"iPod");
+        $iPhone = stripos($ua,"iPhone");
+        $iPad = stripos($ua,"iPad");
+        if(stripos($ua,"Android") && stripos($ua,"mobile")){
             $Android = true;
-        }else if(stripos($_SERVER['HTTP_USER_AGENT'],"Android")){
+        }else if(stripos($ua,"Android")){
             $Android = false;
             $AndroidTablet = true;
         }else{
             $Android = false;
             $AndroidTablet = false;
         }
-        $webOS = stripos($_SERVER['HTTP_USER_AGENT'],"webOS");
-        $BlackBerry = stripos($_SERVER['HTTP_USER_AGENT'],"BlackBerry");
-        $RimTablet= stripos($_SERVER['HTTP_USER_AGENT'],"RIM Tablet");
+        $webOS = stripos($ua,"webOS");
+        $BlackBerry = stripos($ua,"BlackBerry");
+        $RimTablet= stripos($ua,"RIM Tablet");
         //do something with this information
         if( $iPod || $iPhone || $iPad || $Android || $AndroidTablet || $webOS || $BlackBerry || $RimTablet){
             return true;
@@ -280,6 +287,758 @@ class Controller
     }
 
     
+
+
+    /**
+     * 讀取指定 SQLite DB 的 ntcs_device_test.modbus_type。
+     * 0 = MODBUS TCP, 1 = MODBUS RTU, 2 = OP Protocol
+     */
+    protected function readModbusTypeFromDb(string $dbPath): ?int
+    {
+        if (!is_file($dbPath) || !is_readable($dbPath)) {
+            return null;
+        }
+
+        try {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->exec('PRAGMA busy_timeout = 2000');
+
+            $columnExists = (bool)$pdo->query(
+                "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name = 'modbus_type' LIMIT 1"
+            )->fetchColumn();
+
+            if (!$columnExists) {
+                return null;
+            }
+
+            $value = $pdo->query(
+                "SELECT modbus_type FROM ntcs_device_test WHERE modbus_type IS NOT NULL ORDER BY rowid DESC LIMIT 1"
+            )->fetchColumn();
+
+            if ($value === false || $value === null || $value === '' || !is_numeric($value)) {
+                return null;
+            }
+
+            $type = (int)$value;
+            return in_array($type, [0, 1, 2], true) ? $type : null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * 將 modbus_type 寫入指定 SQLite DB。
+     */
+    protected function writeModbusTypeToDb(string $dbPath, int $modbusType): bool
+    {
+        if (!in_array($modbusType, [0, 1, 2], true)) {
+            return false;
+        }
+
+        if (!is_file($dbPath) || !is_readable($dbPath) || !is_writable($dbPath)) {
+            return false;
+        }
+
+        try {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->exec('PRAGMA busy_timeout = 3000');
+
+            $columnExists = (bool)$pdo->query(
+                "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name = 'modbus_type' LIMIT 1"
+            )->fetchColumn();
+
+            if (!$columnExists) {
+                return false;
+            }
+
+            $stmt = $pdo->prepare("UPDATE ntcs_device_test SET modbus_type = :type");
+            $stmt->bindValue(':type', $modbusType, PDO::PARAM_INT);
+            $stmt->execute();
+            @chmod($dbPath, 0777);
+
+            return true;
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * 取得目前控制器通訊協議。
+     *
+     * 注意：這裡只負責「判斷目前要使用哪一種通訊協議」，不可直接把
+     * Controller 端的 modbus_type 寫回 iDAS DB。
+     *
+     * 原因：Check/ajax_check_device_id 需要比對
+     * /home/kls/NTCS7/ntcs_device.db 與
+     * /var/www/html/database/ntcs_device_IDAS.db 的 modbus_type 是否不同。
+     * 如果共用通訊層在判斷協議時就先自動寫回 iDAS DB，前端就會偵測不到
+     *「控制器端 MODBUS TYPE 已變更」的狀態，也就不會出現紅色 Banner / Popup。
+     *
+     * 正確同步時機：
+     * - Check 偵測到 changed = true 後，前端顯示提醒。
+     * - 再由 Check/sync_device_identity 或 ajax_force_sync_device_id 走原本同步流程。
+     */
+    public function get_modbus_type_from_controller(): int
+    {
+        $controllerDb = '/home/kls/NTCS7/ntcs_device.db';
+        $idasDb       = '/var/www/html/database/ntcs_device_IDAS.db';
+        $tempDb       = '/var/www/html/database/ntcs_device_temp.db';
+
+        // 優先以 Controller 實際 DB 為準，讓 iDAS 通訊可立即切到正確協議；
+        // 但不要在這裡同步寫回 iDAS DB，避免 Check 偵測不到差異。
+        $controllerType = $this->readModbusTypeFromDb($controllerDb);
+        if ($controllerType !== null) {
+            return $controllerType;
+        }
+
+        // Controller DB 讀不到時，再使用 iDAS DB。
+        $idasType = $this->readModbusTypeFromDb($idasDb);
+        if ($idasType !== null) {
+            return $idasType;
+        }
+
+        // 最後才使用 temp DB。
+        $tempType = $this->readModbusTypeFromDb($tempDb);
+        if ($tempType !== null) {
+            return $tempType;
+        }
+
+        return 0;
+    }
+
+    public function is_op_protocol_enabled(): bool
+    {
+        return $this->get_modbus_type_from_controller() === 2;
+    }
+
+    protected function getProtocolHost(): string
+    {
+        require_once '../app/config/config.php';
+        $host = defined('CONTROLLER_IP') ? trim((string)CONTROLLER_IP) : '';
+        return $host !== '' ? $host : '127.0.0.1';
+    }
+
+    /**
+     * 從 ntcs_device_test.wifi 解析控制器連線資訊。
+     * 常見格式：1_192.168.0.75_4545_255.255.255.0_192.168.0.255
+     */
+    protected function parseControllerWifiEndpoint($wifi, int $defaultPort = 4545): ?array
+    {
+        $wifi = trim((string)$wifi);
+        if ($wifi === '') {
+            return null;
+        }
+
+        $parts = preg_split('/[_\s,;]+/', $wifi);
+        $host = null;
+        $port = null;
+
+        foreach ($parts as $idx => $part) {
+            $part = trim((string)$part);
+            if ($host === null && filter_var($part, FILTER_VALIDATE_IP)) {
+                $host = $part;
+
+                // IP 後面第一個合法數字通常就是 port。
+                for ($j = $idx + 1; $j < count($parts); $j++) {
+                    $candidate = trim((string)$parts[$j]);
+                    if (ctype_digit($candidate)) {
+                        $candidatePort = (int)$candidate;
+                        if ($candidatePort > 0 && $candidatePort <= 65535) {
+                            $port = $candidatePort;
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        if ($host === null) {
+            return null;
+        }
+
+        return [
+            'host' => $host,
+            'port' => $port ?: $defaultPort,
+        ];
+    }
+
+    protected function readControllerWifiEndpointFromDb(string $dbPath, int $defaultPort = 4545): ?array
+    {
+        if (!is_file($dbPath) || !is_readable($dbPath)) {
+            return null;
+        }
+
+        try {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->exec('PRAGMA busy_timeout = 2000');
+
+            $columnExists = (bool)$pdo->query(
+                "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name = 'wifi' LIMIT 1"
+            )->fetchColumn();
+
+            if (!$columnExists) {
+                return null;
+            }
+
+            $wifi = $pdo->query(
+                "SELECT wifi FROM ntcs_device_test WHERE wifi IS NOT NULL AND wifi <> '' ORDER BY rowid DESC LIMIT 1"
+            )->fetchColumn();
+
+            if ($wifi === false || $wifi === null || $wifi === '') {
+                return null;
+            }
+
+            return $this->parseControllerWifiEndpoint($wifi, $defaultPort);
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * OP 連線候選清單。
+     *
+     * OP Server 有些版本只綁定實體 IP，不一定會聽 127.0.0.1。
+     * 因此 OP 不應只吃 CONTROLLER_IP，而是優先從 Controller DB 的 wifi 欄位解析
+     * 例如 1_192.168.0.75_4545_255.255.255.0_192.168.0.255。
+     */
+    protected function getOpProtocolCandidates(?string $host = null, int $port = 4545): array
+    {
+        $candidates = [];
+        $add = function($h, $p) use (&$candidates) {
+            $h = trim((string)$h);
+            $p = (int)$p;
+            if ($h === '' || $p <= 0 || $p > 65535) {
+                return;
+            }
+            $key = $h . ':' . $p;
+            $candidates[$key] = ['host' => $h, 'port' => $p];
+        };
+
+        // Explicit host is used as-is. This keeps test/debug calls predictable.
+        if ($host !== null && trim((string)$host) !== '') {
+            $add($host, $port);
+            return array_values($candidates);
+        }
+
+        // Same PHP request: put the last successful endpoint first.
+        if (is_array(self::$opLastEndpoint ?? null)) {
+            $add(self::$opLastEndpoint['host'] ?? '', self::$opLastEndpoint['port'] ?? 4545);
+        }
+
+        // Same PHP request: reuse the candidate list so every OP command does not re-open SQLite DBs.
+        if (is_array(self::$opProtocolCandidatesCache)) {
+            foreach (self::$opProtocolCandidatesCache as $endpoint) {
+                $add($endpoint['host'] ?? '', $endpoint['port'] ?? 4545);
+            }
+            return array_values($candidates);
+        }
+
+        foreach ([
+            '/home/kls/NTCS7/ntcs_device.db',
+            '/var/www/html/database/ntcs_device_IDAS.db',
+            '/var/www/html/database/ntcs_device_temp.db',
+        ] as $dbPath) {
+            $endpoint = $this->readControllerWifiEndpointFromDb($dbPath, 4545);
+            if ($endpoint) {
+                // OP standard port is 4545. Also add 4545 explicitly in case DB still contains 502.
+                $add($endpoint['host'], $endpoint['port']);
+                $add($endpoint['host'], 4545);
+            }
+        }
+
+        $add($this->getProtocolHost(), 4545);
+        $add('127.0.0.1', 4545);
+
+        self::$opProtocolCandidatesCache = array_values($candidates);
+        return array_values($candidates);
+    }
+
+    protected function rememberOpEndpoint(string $host, int $port): void
+    {
+        if ($host !== '' && $port > 0 && $port <= 65535) {
+            self::$opLastEndpoint = ['host' => $host, 'port' => $port];
+        }
+    }
+
+    protected function setOpStreamTimeout($client, float $seconds): void
+    {
+        $seconds = max(0.05, $seconds);
+        $sec = (int)floor($seconds);
+        $usec = (int)(($seconds - $sec) * 1000000);
+        @stream_set_timeout($client, $sec, $usec);
+    }
+
+    protected function readOpStreamLine($client, int $maxBytes = 8192): string
+    {
+        $response = '';
+        while (!feof($client) && strlen($response) < $maxBytes) {
+            $chunk = fread($client, 1024);
+            if ($chunk === false || $chunk === '') {
+                break;
+            }
+            $response .= $chunk;
+            if (strpos($response, "\n") !== false || strpos($response, "\r") !== false) {
+                break;
+            }
+        }
+        return trim($response);
+    }
+
+    protected function openOpClient(string $host, int $port, float $connectTimeout)
+    {
+        $errno = 0;
+        $errstr = '';
+        return @stream_socket_client(
+            "tcp://{$host}:{$port}",
+            $errno,
+            $errstr,
+            max(0.05, $connectTimeout),
+            STREAM_CLIENT_CONNECT
+        );
+    }
+
+    protected function normalizeModbusResponseToRegisters($raw): array
+    {
+        if (is_string($raw)) {
+            $values = @unpack('n*', $raw);
+            return $values ? array_values($values) : [];
+        }
+
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        if ($raw === []) {
+            return [];
+        }
+
+        $raw = array_values(array_map('intval', $raw));
+
+        // phpmodbus 常見回傳為 byte array；若數量為偶數且每個值 <= 255，轉成 16-bit word。
+        $isByteArray = (count($raw) % 2 === 0 && max($raw) <= 0xFF);
+        if ($isByteArray) {
+            $words = [];
+            for ($i = 0; $i + 1 < count($raw); $i += 2) {
+                $words[] = (($raw[$i] & 0xFF) << 8) | ($raw[$i + 1] & 0xFF);
+            }
+            return $words;
+        }
+
+        return $raw;
+    }
+
+    public function op_send(string $command, ?string $host = null, int $port = 4545, float $connectTimeout = 1.0, float $readTimeout = 1.0): array
+    {
+        $command = strtoupper(trim($command));
+        $isWriteCommand = (strpos($command, 'IDAS_WRITE_') === 0);
+
+        $baseResult = [
+            'ok' => false,
+            'command' => $command,
+            'host' => $host ?: '',
+            'port' => $port,
+            'response' => '',
+            'parsed' => null,
+            'error' => '',
+            'attempts' => [],
+        ];
+
+        if ($command === '') {
+            $baseResult['error'] = 'OP command is empty';
+            return $baseResult;
+        }
+
+        $candidates = $this->getOpProtocolCandidates($host, $port);
+        if (empty($candidates)) {
+            $baseResult['error'] = 'No OP endpoint candidate';
+            return $baseResult;
+        }
+
+        foreach ($candidates as $endpoint) {
+            $tryHost = (string)$endpoint['host'];
+            $tryPort = (int)$endpoint['port'];
+
+            $result = $baseResult;
+            $result['host'] = $tryHost;
+            $result['port'] = $tryPort;
+            $result['attempts'] = [];
+
+            $client = $this->openOpClient($tryHost, $tryPort, $connectTimeout);
+
+            if (!$client) {
+                $result['error'] = 'TCP connect failed';
+                $baseResult['attempts'][] = [
+                    'host' => $tryHost,
+                    'port' => $tryPort,
+                    'ok' => false,
+                    'error' => $result['error'],
+                ];
+                continue;
+            }
+
+            try {
+                $this->setOpStreamTimeout($client, $readTimeout);
+                $payload = $command . (substr($command, -1) === "\n" ? '' : "\n");
+
+                $written = fwrite($client, $payload);
+                if ($written === false || $written <= 0) {
+                    $result['error'] = 'TCP write failed';
+                    $baseResult['attempts'][] = [
+                        'host' => $tryHost,
+                        'port' => $tryPort,
+                        'ok' => false,
+                        'error' => $result['error'],
+                    ];
+                    continue;
+                }
+
+                /*
+                 * OP WRITE is fire-and-forget on current controller firmware:
+                 *   - READ returns NTCS_RETURN_xxx_x
+                 *   - WRITE accepts the ASCII command but does not reply.
+                 * Do not wait for read timeout after WRITE. This is the biggest speed gain.
+                 */
+                if ($isWriteCommand) {
+                    $this->rememberOpEndpoint($tryHost, $tryPort);
+                    $result['ok'] = true;
+                    $result['response'] = '';
+                    $result['parsed'] = [
+                        'type' => 'WRITE_NO_RESPONSE',
+                        'address' => null,
+                        'value' => null,
+                        'raw' => '',
+                    ];
+                    $result['accepted_no_response'] = true;
+                    $result['write_sent_only'] = true;
+                    $result['error'] = '';
+                    $baseResult['attempts'][] = [
+                        'host' => $tryHost,
+                        'port' => $tryPort,
+                        'ok' => true,
+                        'accepted_no_response' => true,
+                        'write_sent_only' => true,
+                    ];
+                    $result['attempts'] = $baseResult['attempts'];
+                    return $result;
+                }
+
+                $response = $this->readOpStreamLine($client);
+                $meta = stream_get_meta_data($client);
+
+                if ($response === '') {
+                    $result['error'] = !empty($meta['timed_out']) ? 'TCP read timeout' : 'OP empty response';
+                    $baseResult['attempts'][] = [
+                        'host' => $tryHost,
+                        'port' => $tryPort,
+                        'ok' => false,
+                        'error' => $result['error'],
+                    ];
+                    continue;
+                }
+
+                $this->rememberOpEndpoint($tryHost, $tryPort);
+                $result['ok'] = true;
+                $result['response'] = $response;
+                $result['parsed'] = $this->parse_op_return($response);
+                $baseResult['attempts'][] = [
+                    'host' => $tryHost,
+                    'port' => $tryPort,
+                    'ok' => true,
+                    'response' => $response,
+                ];
+                $result['attempts'] = $baseResult['attempts'];
+                return $result;
+            } catch (Throwable $e) {
+                $result['error'] = $e->getMessage();
+                $baseResult['attempts'][] = [
+                    'host' => $tryHost,
+                    'port' => $tryPort,
+                    'ok' => false,
+                    'error' => $result['error'],
+                ];
+                continue;
+            } finally {
+                if (is_resource($client)) {
+                    fclose($client);
+                }
+            }
+        }
+
+        $baseResult['error'] = 'All OP endpoints failed';
+        if (!empty($baseResult['attempts'])) {
+            $last = end($baseResult['attempts']);
+            if (!empty($last['error'])) {
+                $baseResult['error'] .= ': ' . $last['error'];
+            }
+        }
+
+        return $baseResult;
+    }
+
+    protected function op_read_registers_one_socket(int $startAddress, int $quantity, float $connectTimeout = 1.0, float $readTimeout = 1.0): ?array
+    {
+        if ($quantity <= 0) {
+            return [];
+        }
+
+        $candidates = $this->getOpProtocolCandidates(null, 4545);
+        foreach ($candidates as $endpoint) {
+            $tryHost = (string)($endpoint['host'] ?? '');
+            $tryPort = (int)($endpoint['port'] ?? 4545);
+            if ($tryHost === '') {
+                continue;
+            }
+
+            $client = $this->openOpClient($tryHost, $tryPort, $connectTimeout);
+            if (!$client) {
+                continue;
+            }
+
+            $values = [];
+            $ok = true;
+
+            try {
+                $this->setOpStreamTimeout($client, $readTimeout);
+                for ($i = 0; $i < $quantity; $i++) {
+                    $address = $startAddress + $i;
+                    $command = "IDAS_READ_{$address}\n";
+                    $written = fwrite($client, $command);
+                    if ($written === false || $written <= 0) {
+                        $ok = false;
+                        break;
+                    }
+
+                    $response = $this->readOpStreamLine($client);
+                    if ($response === '') {
+                        $ok = false;
+                        break;
+                    }
+
+                    $parsed = $this->parse_op_return($response);
+                    if (!is_array($parsed) || ($parsed['type'] ?? '') !== 'RETURN') {
+                        $ok = false;
+                        break;
+                    }
+                    if ((int)($parsed['address'] ?? -1) !== $address) {
+                        $ok = false;
+                        break;
+                    }
+
+                    $value = $parsed['value'] ?? null;
+                    if (!is_numeric($value)) {
+                        $ok = false;
+                        break;
+                    }
+                    $values[] = (int)$value;
+                }
+            } catch (Throwable $e) {
+                $ok = false;
+            } finally {
+                if (is_resource($client)) {
+                    fclose($client);
+                }
+            }
+
+            if ($ok && count($values) === $quantity) {
+                $this->rememberOpEndpoint($tryHost, $tryPort);
+                return $values;
+            }
+        }
+
+        return null;
+    }
+
+    public function parse_op_return(string $rawResponse): ?array
+    {
+        $rawResponse = strtoupper(trim($rawResponse));
+        if ($rawResponse === '') {
+            return null;
+        }
+
+        if (preg_match('/^NTCS_RETURN_(\d+)_(.+)$/', $rawResponse, $matches)) {
+            return [
+                'type' => 'RETURN',
+                'address' => (int)$matches[1],
+                'value' => $matches[2],
+                'raw' => $rawResponse,
+            ];
+        }
+
+        if (preg_match('/^NTCS_([A-Z]+)_(.*)$/', $rawResponse, $matches)) {
+            return [
+                'type' => $matches[1],
+                'address' => null,
+                'value' => $matches[2],
+                'raw' => $rawResponse,
+            ];
+        }
+
+        if (in_array($rawResponse, ['OK', 'SUCCESS', 'WRITE_OK', 'NTCS_OK'], true)) {
+            return [
+                'type' => 'OK',
+                'address' => null,
+                'value' => null,
+                'raw' => $rawResponse,
+            ];
+        }
+
+        return [
+            'type' => 'UNKNOWN',
+            'address' => null,
+            'value' => null,
+            'raw' => $rawResponse,
+        ];
+    }
+
+    public function op_read(int $address): ?int
+    {
+        $result = $this->op_send("IDAS_READ_{$address}");
+        if (empty($result['ok'])) {
+            return null;
+        }
+
+        $parsed = $result['parsed'] ?? null;
+        if (!is_array($parsed) || ($parsed['type'] ?? '') !== 'RETURN') {
+            return null;
+        }
+
+        if ((int)($parsed['address'] ?? -1) !== $address) {
+            return null;
+        }
+
+        $value = $parsed['value'] ?? null;
+        return is_numeric($value) ? (int)$value : null;
+    }
+
+    public function op_write(int $address, $value): bool
+    {
+        $value = is_numeric($value) ? (int)$value : strtoupper(trim((string)$value));
+        $result = $this->op_send("IDAS_WRITE_{$address}_{$value}");
+
+        if (empty($result['ok'])) {
+            return false;
+        }
+
+        $parsed = $result['parsed'] ?? null;
+        if (!is_array($parsed)) {
+            return !empty($result['accepted_no_response'])
+                || trim((string)($result['response'] ?? '')) !== '';
+        }
+
+        $type = (string)($parsed['type'] ?? '');
+        return in_array($type, ['RETURN', 'OK', 'SUCCESS', 'WRITE', 'WRITE_NO_RESPONSE'], true);
+    }
+
+    public function protocol_read_register(int $unitId, int $address): ?int
+    {
+        if ($this->is_op_protocol_enabled()) {
+            return $this->op_read($address);
+        }
+
+        require_once '../app/config/config.php';
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        try {
+            $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+            $raw = $modbus->readMultipleRegisters($unitId, $address, 1);
+            $words = $this->normalizeModbusResponseToRegisters($raw);
+            return $words[0] ?? null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    public function protocol_read_registers(int $unitId, int $startAddress, int $quantity): array
+    {
+        if ($quantity <= 0) {
+            return [];
+        }
+
+        if ($this->is_op_protocol_enabled()) {
+            // OP protocol can only send one command at a time.
+            // To improve speed, keep one TCP connection and send/read one command sequentially.
+            $values = $this->op_read_registers_one_socket($startAddress, $quantity);
+            if ($values !== null) {
+                return $values;
+            }
+
+            // Fallback for older OP servers that close the socket after every command.
+            $values = [];
+            for ($i = 0; $i < $quantity; $i++) {
+                $value = $this->op_read($startAddress + $i);
+                if ($value === null) {
+                    throw new RuntimeException('OP read failed at address ' . ($startAddress + $i));
+                }
+                $values[] = $value;
+            }
+            return $values;
+        }
+
+        require_once '../app/config/config.php';
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
+        $modbus->port = 502;
+        $modbus->timeout_sec = 10;
+        $raw = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
+        return $this->normalizeModbusResponseToRegisters($raw);
+    }
+
+    public function protocol_write_register(int $unitId, int $address, $value): bool
+    {
+        if ($this->is_op_protocol_enabled()) {
+            return $this->op_write($address, $value);
+        }
+
+        require_once '../app/config/config.php';
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        try {
+            $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+            $modbus->writeMultipleRegister($unitId, $address, [(int)$value], ['INT']);
+            return true;
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    public function protocol_write_registers(int $unitId, int $startAddress, array $values): bool
+    {
+        if ($values === []) {
+            return true;
+        }
+
+        if ($this->is_op_protocol_enabled()) {
+            foreach (array_values($values) as $offset => $value) {
+                if (!$this->op_write($startAddress + $offset, $value)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        require_once '../app/config/config.php';
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+        try {
+            $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
+            $modbus->port = 502;
+            $modbus->timeout_sec = 10;
+            $types = array_fill(0, count($values), 'INT');
+            $modbus->writeMultipleRegister($unitId, $startAddress, array_values($values), $types);
+            return true;
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
     /**
      * 將 /var/www/html/database/ntcs_device_temp.db 的 device_id
      * 寫入到 /var/www/html/database/ntcs_device_IDAS.db
@@ -370,213 +1129,114 @@ class Controller
 
 
     //判斷控制器的登入登出
+    //判斷控制器的登入登出
     public function idas_check($device_id){
 
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        require_once '../app/config/config.php';
 
-        $ip = CONTROLLER_IP;  // 使用定義的常數
-
-        $port = 502;
+        $ip = CONTROLLER_IP;
         $startAddress = 29002;
-        $quantity = 1;
-
         $response = ['result' => null, 'error' => ''];
 
-        // 驗證 IP 格式
         if (!filter_var($ip, FILTER_VALIDATE_IP)) {
             $response['error'] = "無效的 IP 位址：$ip";
-            return $response; 
+            return $response;
+        }
+
+        $unitId = (int)$device_id;
+        if ($unitId < 1 || $unitId > 255) {
+            $unitId = 1;
         }
 
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($device_id, $startAddress, $quantity);
-
-            $response['result'] = $data[1] ?? null;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $value = $this->protocol_read_register($unitId, $startAddress);
+            if ($value === null) {
+                throw new RuntimeException('Protocol read failed');
+            }
+            $response['result'] = $value;
+        } catch (Throwable $e) {
+            $response['error'] = $e->getMessage() ?: '通訊失敗';
         }
 
         return $response;
     }
 
 
+
     public function get_tools_version($unitId){
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
-        //$unitId = 0;
-        $startAddress = 29003;
-        $quantity = 1;
-
-        $response = ['result' => null, 'error' => ''];
-
-        try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            $response['result'] = $data[1] ?? null;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
-        }
-
-        return  $response['result'];
+        $unitId = (int)$unitId;
+        if ($unitId < 1 || $unitId > 255) $unitId = 1;
+        return $this->protocol_read_register($unitId, 29003);
     }
+
     
 
 
     public function get_firmware_version($unitId){
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
-        //$unitId = 0;
-        $startAddress = 29004;
-        $quantity = 1;
-
-        $response = ['result' => null, 'error' => ''];
-
-        try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            $response['result'] = $data[1] ?? null;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
-        }
-
-        return  $response['result'];
+        $unitId = (int)$unitId;
+        if ($unitId < 1 || $unitId > 255) $unitId = 1;
+        return $this->protocol_read_register($unitId, 29004);
     }
+
 
 
     public function get_db_sync($unitId){
-
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
-        //$unitId = 0;
-        $startAddress = 29006;
-        $quantity = 1;
-
+        $unitId = (int)$unitId;
+        if ($unitId < 1 || $unitId > 255) $unitId = 1;
         $response = ['result' => null, 'error' => ''];
-
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            $response['result'] = $data[1] ?? null;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $value = $this->protocol_read_register($unitId, 29006);
+            if ($value === null) {
+                throw new RuntimeException('Protocol read failed');
+            }
+            $response['result'] = $value;
+        } catch (Throwable $e) {
+            $response['error'] = $e->getMessage() ?: '通訊失敗';
         }
-
-        return json_encode($response);    
-
-
+        return json_encode($response);
     }
+
 
 
     
     public function get_operation_id(){
-
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
-        $unitId = 0;
-        $startAddress = 4165;
-        $quantity = 2;
-
         $response = ['result' => null, 'error' => ''];
-
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            $response['result'] = $data[1] ?? null;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $value = $this->protocol_read_register(1, 4165);
+            if ($value === null) {
+                throw new RuntimeException('Protocol read failed');
+            }
+            $response['result'] = $value;
+        } catch (Throwable $e) {
+            $response['error'] = $e->getMessage() ?: '通訊失敗';
         }
-
-        return json_encode($response);    
+        return json_encode($response);
     }
 
 
+
     public function get_data_info(){
-        
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $ip = CONTROLLER_IP;  // 使用定義的常數
-        $port = 502;
-        $unitId = 0;
-        $startAddress = 4097;
-        $quantity = 64;
-
         $response = ['result' => null, 'error' => ''];
-
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            $response['result'] = $data[1] ?? null;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $values = $this->protocol_read_registers(1, 4097, 64);
+            $response['result'] = $values;
+        } catch (Throwable $e) {
+            $response['error'] = $e->getMessage() ?: '通訊失敗';
         }
-
         echo json_encode($response);
     }
 
 
+
     //起子sn
-    public function get_tools_sn($unitId) {
+    public function get_tools_sn($unitId = 1) {
 
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $unitId = (int)$unitId;
+        if ($unitId < 1 || $unitId > 255) $unitId = 1;
 
-        $ip = CONTROLLER_IP;
-        $port = 502;
-        //$unitId = 0;
-        $startAddress = 4122;  // 字串起始暫存器
-        $quantity = 10;        // 讀 10 格＝20 bytes
+        $startAddress = 4122;
+        $quantity = 10;
 
-        // 小工具：把 16-bit 暫存器陣列轉成 ASCII
         $regsToAscii = function(array $regs, string $endian = 'BE', bool $stripNul = true, bool $printableOnly = true): string {
             $out = '';
             foreach ($regs as $n) {
@@ -606,53 +1266,36 @@ class Controller
         ];
 
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            if (!is_array($data) || empty($data)) {
-                throw new Exception('No data returned from Modbus');
+            $regs = $this->protocol_read_registers($unitId, $startAddress, $quantity);
+            if (!is_array($regs) || empty($regs)) {
+                throw new RuntimeException('No data returned from protocol');
             }
 
-            // 轉成 int 陣列（保底）
-            $regs = array_map('intval', $data);
-
-            // 兩種端序的字串
             $asciiBE = $regsToAscii($regs, 'BE', true, true);
             $asciiLE = $regsToAscii($regs, 'LE', true, true);
 
-            // 以 Big-Endian 為主（多數裝置字串是這樣），也可換成 $asciiLE
-            $model = $asciiBE;
-
             $response['ok']            = true;
-            $response['raw_registers'] = $regs;
+            $response['raw_registers'] = array_map('intval', $regs);
             $response['ascii_be']      = $asciiBE;
             $response['ascii_le']      = $asciiLE;
-            $response['model']         = $model;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $response['model']         = $asciiBE;
+        } catch (Throwable $e) {
+            $response['error'] = $e->getMessage() ?: '通訊失敗';
         }
-        
+
         return $response;
     }
 
 
-    public function get_controller_sn(){
 
-        require_once '../app/config/config.php';  // 載入常數
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+    public function get_controller_sn($unitId = 1) {
 
-        $ip = CONTROLLER_IP;
-        $port = 502;
-        $unitId = 0;
-        $startAddress = 4102;  // 字串起始暫存器
-        $quantity = 10;        // 讀 10 格＝20 bytes
+        $unitId = (int)$unitId;
+        if ($unitId < 1 || $unitId > 255) $unitId = 1;
 
-        // 小工具：把 16-bit 暫存器陣列轉成 ASCII
+        $startAddress = 4102;
+        $quantity = 10;
+
         $regsToAscii = function(array $regs, string $endian = 'BE', bool $stripNul = true, bool $printableOnly = true): string {
             $out = '';
             foreach ($regs as $n) {
@@ -682,54 +1325,36 @@ class Controller
         ];
 
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            if (!is_array($data) || empty($data)) {
-                throw new Exception('No data returned from Modbus');
+            $regs = $this->protocol_read_registers($unitId, $startAddress, $quantity);
+            if (!is_array($regs) || empty($regs)) {
+                throw new RuntimeException('No data returned from protocol');
             }
 
-            // 轉成 int 陣列（保底）
-            $regs = array_map('intval', $data);
-
-            // 兩種端序的字串
             $asciiBE = $regsToAscii($regs, 'BE', true, true);
             $asciiLE = $regsToAscii($regs, 'LE', true, true);
 
-            // 以 Big-Endian 為主（多數裝置字串是這樣），也可換成 $asciiLE
-            $model = $asciiBE;
-
             $response['ok']            = true;
-            $response['raw_registers'] = $regs;
+            $response['raw_registers'] = array_map('intval', $regs);
             $response['ascii_be']      = $asciiBE;
             $response['ascii_le']      = $asciiLE;
-            $response['model']         = $model;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $response['model']         = $asciiBE;
+        } catch (Throwable $e) {
+            $response['error'] = $e->getMessage() ?: '通訊失敗';
         }
-        
-        return $response;
 
+        return $response;
     }
+
 
     //起子型號
-    public function get_tools_type($unitId) {
+    public function get_tools_type($unitId = 1) {
 
-        require_once '../app/config/config.php';  
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $unitId = (int)$unitId;
+        if ($unitId < 1 || $unitId > 255) $unitId = 1;
 
-        $ip = CONTROLLER_IP;
-        $port = 502;
-        //$unitId = 0;
-        $startAddress = 4112;  // 字串起始暫存器
-        $quantity = 10;        // 讀 10 格＝20 bytes
+        $startAddress = 4112;
+        $quantity = 10;
 
-        // 小工具：把 16-bit 暫存器陣列轉成 ASCII
         $regsToAscii = function(array $regs, string $endian = 'BE', bool $stripNul = true, bool $printableOnly = true): string {
             $out = '';
             foreach ($regs as $n) {
@@ -759,39 +1384,26 @@ class Controller
         ];
 
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            // 功能碼 FC3: 讀取保持暫存器
-            $data = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            if (!is_array($data) || empty($data)) {
-                throw new Exception('No data returned from Modbus');
+            $regs = $this->protocol_read_registers($unitId, $startAddress, $quantity);
+            if (!is_array($regs) || empty($regs)) {
+                throw new RuntimeException('No data returned from protocol');
             }
 
-            // 轉成 int 陣列（保底）
-            $regs = array_map('intval', $data);
-
-            // 兩種端序的字串
             $asciiBE = $regsToAscii($regs, 'BE', true, true);
             $asciiLE = $regsToAscii($regs, 'LE', true, true);
 
-            // 以 Big-Endian 為主（多數裝置字串是這樣），也可換成 $asciiLE
-            $model = $asciiBE;
-
             $response['ok']            = true;
-            $response['raw_registers'] = $regs;
+            $response['raw_registers'] = array_map('intval', $regs);
             $response['ascii_be']      = $asciiBE;
             $response['ascii_le']      = $asciiLE;
-            $response['model']         = $model;
-
-        } catch (Exception $e) {
-            $response['error'] = $e->getMessage() ?: 'Modbus 通訊失敗';
+            $response['model']         = $asciiBE;
+        } catch (Throwable $e) {
+            $response['error'] = $e->getMessage() ?: '通訊失敗';
         }
-        
+
         return $response;
     }
+
 
 
     public function ntcs_data_db_sysnc() {

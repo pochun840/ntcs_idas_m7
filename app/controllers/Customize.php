@@ -44,6 +44,75 @@ class Customize extends Controller
         $this->view('customize/index', $data);
     }
 
+    /**
+     * Operator / law = 3：只能瀏覽，不允許自定義儲存寫入。
+     */
+    private function isOperatorLaw3(): bool{
+
+        $lawKeys  = ['user_law', 'law', 'userLaw', 'user_level', 'permission', 'role_law'];
+        $roleKeys = ['role', 'user_role', 'account_role', 'permission_name'];
+        $session  = $_SESSION ?? [];
+
+        $privilege = strtolower(trim((string)($session['privilege'] ?? '')));
+        if (in_array($privilege, ['admin', 'administrator', 'guest'], true)) {
+            return false;
+        }
+        if ($privilege === 'operator') {
+            return true;
+        }
+
+        foreach ($lawKeys as $key) {
+            if (isset($session[$key]) && is_numeric($session[$key])) {
+                return ((int)$session[$key] === 3);
+            }
+        }
+
+        foreach ($roleKeys as $key) {
+            if (isset($session[$key])) {
+                $role = strtolower(trim((string)$session[$key]));
+                if ($role === 'operator') return true;
+                if (in_array($role, ['admin', 'administrator', 'guest'], true)) return false;
+            }
+        }
+
+        // 只有沒有明確 SESSION 身分時才 fallback 到 cookie，避免 guest/admin 被舊 cookie 誤判。
+        $hasSessionIdentity = isset($session['privilege']) || isset($session['username']) || isset($session['user']) || isset($session['account']);
+        if ($hasSessionIdentity) {
+            return false;
+        }
+
+        foreach ($lawKeys as $key) {
+            if (isset($_COOKIE[$key]) && is_numeric($_COOKIE[$key]) && (int)$_COOKIE[$key] === 3) {
+                return true;
+            }
+        }
+
+        foreach ($roleKeys as $key) {
+            if (isset($_COOKIE[$key]) && strtolower(trim((string)$_COOKIE[$key])) === 'operator') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function denyOperatorWriteJson(): void{
+
+        if (!headers_sent()) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        echo json_encode([
+            'res_type' => 'Error',
+            'res_code' => 'OPERATOR_WRITE_DENIED',
+            'res_msg'  => 'Operator permission is read-only.'
+        ], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+
 
 
     /**
@@ -145,6 +214,12 @@ class Customize extends Controller
             http_response_code(405);
             exit;
         }
+
+        if ($this->isOperatorLaw3()) {
+            $this->denyOperatorWriteJson();
+            return;
+        }
+
         header('Content-Type: application/json; charset=utf-8');
 
         // 同時支援 JSON 與 x-www-form-urlencoded
@@ -504,44 +579,20 @@ class Customize extends Controller
     public function get_modbus_api(int $a, int $b = 1) {
         
         require_once '../app/config/config.php';
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
 
-        // Modbus slave ID 合理範圍通常是  1~255
-        $unitId = $this->deviceId;
+        // Modbus slave ID 合理範圍通常是 1~255
+        $unitId = (int)$this->deviceId;
         if ($unitId < 1 || $unitId > 255) {
-            $unitId = 1; 
+            $unitId = 1;
         }
 
-        $ip = CONTROLLER_IP;
-        $port = 502;
         $startAddress = $a;
         $quantity = $b;  // 每個「暫存器」= 16-bit (= 2 bytes)
 
         try {
-            $modbus = new ModbusMaster($ip, "TCP");
-            $modbus->port = $port;
-            $modbus->timeout_sec = 10;
-
-            $raw = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
-
-            // --- 正規化成 16-bit words（大端）---
-            $words = [];
-            if (is_string($raw)) {
-                // 二進位字串 -> 16-bit 大端
-                $words = array_values(unpack('n*', $raw));
-            } elseif (is_array($raw)) {
-                // 可能回 bytes 或 words
-                $isBytes = !empty($raw) && max($raw) <= 0xFF;
-                if ($isBytes) {
-                    for ($i = 0; $i + 1 < count($raw); $i += 2) {
-                        $hi = $raw[$i] & 0xFF;
-                        $lo = $raw[$i + 1] & 0xFF;
-                        $words[] = ($hi << 8) | $lo;
-                    }
-                } else {
-                    foreach ($raw as $v) $words[] = (int)$v;
-                }
-            } else {
+            // MODBUS TCP / OP 由 protocol_read_registers 自動切換。
+            $words = $this->protocol_read_registers($unitId, $startAddress, $quantity);
+            if (!is_array($words) || empty($words)) {
                 return null;
             }
 

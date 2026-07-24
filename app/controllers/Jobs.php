@@ -11,6 +11,7 @@ class Jobs extends Controller
     private $OutputModel;
     Private $deviceId;
     private $res_agent;
+    private $AuditModel;
 
  
     // 在建構子中將 Post 物件（Model）實例化
@@ -24,6 +25,7 @@ class Jobs extends Controller
         $this->ToolModel = $this->model('Tool');
         $this->SettingModel = $this->model('Setting');
         $this->OutputModel = $this->model('Output');
+        $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
         $this->deviceId = $this->ntcs_device_db_sysnc();
@@ -34,6 +36,74 @@ class Jobs extends Controller
 
 
     }
+
+    private function jobAuditSnapshot($jobid): array
+    {
+        return [
+            'job'   => $this->jobModel->search_jobinfo($jobid),
+            'seqs'  => $this->jobModel->search_seqinfo($jobid),
+            'steps' => $this->jobModel->search_stepnfo($jobid),
+        ];
+    }
+
+
+    private function auditValueFilled($value): bool
+    {
+        return $value !== null && $value !== '' && $value !== [];
+    }
+
+    /**
+     * Audit Target 統一格式。
+     * 與 APP 顯示一致：Job ID: 3
+     */
+    private function buildJobAuditTarget(array $payload): string
+    {
+        $jobId = $payload['target_job_id'] ?? ($payload['job_id'] ?? null);
+
+        if ($this->auditValueFilled($jobId)) {
+            return 'Job ID: ' . $jobId;
+        }
+
+        return '-';
+    }
+
+    private function writeJobAudit(array $data): void
+    {
+        try {
+            if (!isset($this->AuditModel)) {
+                return;
+            }
+
+            $operator = $_COOKIE['username'] ?? '';
+
+            $defaults = [
+                'user_id'      => $operator,
+                'operator'     => $operator,
+                'client_ip'    => $_SERVER['REMOTE_ADDR'] ?? '',
+                'device_id'    => $this->deviceId ?? null,
+                'module'       => 'JOB',
+                'status'       => 'SUCCESS',
+                'request_json' => $_POST,
+            ];
+
+            $payload = array_merge($defaults, $data);
+
+            if ((!isset($payload['target_job_id']) || !$this->auditValueFilled($payload['target_job_id']))
+                && isset($payload['job_id']) && $this->auditValueFilled($payload['job_id'])) {
+                $payload['target_job_id'] = $payload['job_id'];
+            }
+
+            if (!isset($payload['target']) || !$this->auditValueFilled($payload['target'])) {
+                $payload['target'] = $this->buildJobAuditTarget($payload);
+            }
+
+            $this->AuditModel->write($payload);
+        } catch (Throwable $e) {
+            // Audit log 失敗不能影響原本 Job 功能
+            error_log('[JOB AUDIT FAIL] ' . $e->getMessage());
+        }
+    }
+
 
     // 取得所有Jobs
     public function index(){
@@ -139,32 +209,57 @@ class Jobs extends Controller
 
             $res = $this->jobModel->create_job($jobdata);
 
-            // 建立預設 SEQ & STEP
-            $res_device = $this->SettingModel->GetControllerInfo();
-            $device_torque_unit = (int)$res_device['torque_unit'];
-
-            $seq_result = $this->sequenceModel->createDefaultSeq($jobdata['job_id'], $device_torque_unit);  
-            $tools_temp = $this->getConvertedToolInfo();
-
-            if (!empty($tools_temp)) {
-                $this->stepModel->createDefaultStep(
-                    $jobdata['job_id'],
-                    $seq_result['seq_id'],
-                    $tools_temp['torque'],
-                    $tools_temp['max_torque'],
-                    $tools_temp['min_torque'],
-                    $tools_temp['torque'],
-                    $device_torque_unit
-                );
-            }
-
             if ($res) {
+                // 建立預設 SEQ & STEP
+                // 注意：只有 Job 建立成功後，才可以建立預設 SEQ / STEP，
+                // 避免 Job 建立失敗時產生孤兒 SEQ / STEP 資料。
+                $res_device = $this->SettingModel->GetControllerInfo();
+                $device_torque_unit = (int)$res_device['torque_unit'];
+
+                $seq_result = $this->sequenceModel->createDefaultSeq($jobdata['job_id'], $device_torque_unit);
+                $tools_temp = $this->getConvertedToolInfo();
+
+                if (!empty($tools_temp) && !empty($seq_result['seq_id'])) {
+                    $this->stepModel->createDefaultStep(
+                        $jobdata['job_id'],
+                        $seq_result['seq_id'],
+                        $tools_temp['torque'],
+                        $tools_temp['max_torque'],
+                        $tools_temp['min_torque'],
+                        $tools_temp['torque'],
+                        $device_torque_unit
+                    );
+                }
+
+                $after = $this->jobAuditSnapshot($jobdata['job_id']);
+
+                $this->writeJobAudit([
+                    'action'      => 'NEW',
+                    'status'      => 'SUCCESS',
+                    'job_id'      => (int)$jobdata['job_id'],
+                    'title'       => 'New Job',
+                    'message'     => 'Create job id: ' . $jobdata['job_id'],
+                    'before_json' => null,
+                    'after_json'  => $after,
+                ]);
+
                 $res_msg = $text['New'] . " " . $text['job_id'] . ': ' . $jobdata['job_id'] . " " . $text['success'];
                 $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg);
             } else {
+                $this->writeJobAudit([
+                    'action'      => 'NEW',
+                    'status'      => 'FAIL',
+                    'job_id'      => (int)$jobdata['job_id'],
+                    'title'       => 'New Job Fail',
+                    'message'     => 'Create job failed id: ' . $jobdata['job_id'],
+                    'before_json' => null,
+                    'after_json'  => null,
+                ]);
+
                 $res_msg = $text['New'] . " " . $text['job_id'] . ': ' . $jobdata['job_id'] . " " . $text['fail'];
                 $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg);
             }
+
         }
     }
 
@@ -188,15 +283,39 @@ class Jobs extends Controller
 
             );
 
+            $before = $this->jobAuditSnapshot($jobdata['job_id']);
             $res = $this->jobModel->update_job_by_id($jobdata);
             $result = array();
             if($res){
+                $after = $this->jobAuditSnapshot($jobdata['job_id']);
+
+                $this->writeJobAudit([
+                    'action'      => 'EDIT',
+                    'status'      => 'SUCCESS',
+                    'job_id'      => (int)$jobdata['job_id'],
+                    'title'       => 'Edit Job',
+                    'message'     => 'Edit job id: ' . $jobdata['job_id'],
+                    'before_json' => $before,
+                    'after_json'  => $after,
+                ]);
+
                 $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['success'];
                 $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
             }else{
+                $this->writeJobAudit([
+                    'action'      => 'EDIT',
+                    'status'      => 'FAIL',
+                    'job_id'      => (int)$jobdata['job_id'],
+                    'title'       => 'Edit Job Fail',
+                    'message'     => 'Edit job failed id: ' . $jobdata['job_id'],
+                    'before_json' => $before,
+                    'after_json'  => null,
+                ]);
+
                 $res_msg = $text['Edit']."  ".$text['job_id'].':'. $jobdata['job_id']."  ".$text['fail'];
                 $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg );
             }
+
 
         } 
     
@@ -213,6 +332,7 @@ class Jobs extends Controller
         $jobid = $_POST['jobid'] ?? null;
         if(!empty($jobid)){
 
+            $before = $this->jobAuditSnapshot($jobid);
             $res = $this->jobModel->delete_job_by_id($jobid);
             $ans = $this->jobModel->delete_sequence_by_job_id($jobid);
             $an1 = $this->jobModel->delete_step_by_job_id($jobid);
@@ -221,12 +341,33 @@ class Jobs extends Controller
 
             $result = array();
             if($res){
+                $this->writeJobAudit([
+                    'action'      => 'DELETE',
+                    'status'      => 'SUCCESS',
+                    'job_id'      => (int)$jobid,
+                    'title'       => 'Delete Job',
+                    'message'     => 'Delete job id: ' . $jobid,
+                    'before_json' => $before,
+                    'after_json'  => null,
+                ]);
+
                 $res_msg = $text['Delete']."  ".$text['job_id'].':'. $jobid."  ".$text['success'];
                 $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
             }else{
+                $this->writeJobAudit([
+                    'action'      => 'DELETE',
+                    'status'      => 'FAIL',
+                    'job_id'      => (int)$jobid,
+                    'title'       => 'Delete Job Fail',
+                    'message'     => 'Delete job failed id: ' . $jobid,
+                    'before_json' => $before,
+                    'after_json'  => null,
+                ]);
+
                 $res_msg = $text['Delete']."  ".$text['job_id'].':'. $jobid."  ".$text['fail'];
                 $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg );
             }
+
 
         }
    
@@ -263,6 +404,7 @@ class Jobs extends Controller
         $new_jobname = $_POST['new_jobname'] ?? null;
 
         if(!empty($old_jobid)){
+            $before = $this->jobAuditSnapshot($old_jobid);
             $job_count = $this->jobModel->countjob();
             if($job_count >= 100) {
                 $this->MiscellaneousModel->generateErrorResponse('Error', $error_message['job_id']);
@@ -328,10 +470,10 @@ class Jobs extends Controller
                             $new_temp_seq[$key]['addtion'] = $val['addtion'];
                             $new_temp_seq[$key]['unscrew_count_switch'] = $val['unscrew_count_switch'];
                             $new_temp_seq[$key]['unscrew_torque_threshold'] = $val['unscrew_torque_threshold'];
-                            $nre_temp_seq[$key]['seq_unit'] = $val['seq_unit'];
-                            $nre_temp_seq[$key]['unscrew_angle_threshold'] = $val['unscrew_angle_threshold'];
-                            $nre_temp_seq[$key]['dt_time'] = $val['dt_time'];
-                            $nre_temp_seq[$key]['tt_time'] = $val['tt_time'];
+                            $new_temp_seq[$key]['seq_unit'] = $val['seq_unit'];
+                            $new_temp_seq[$key]['unscrew_angle_threshold'] = $val['unscrew_angle_threshold'];
+                            $new_temp_seq[$key]['dt_time'] = $val['dt_time'];
+                            $new_temp_seq[$key]['tt_time'] = $val['tt_time'];
                             
                         }
 
@@ -395,12 +537,39 @@ class Jobs extends Controller
                     }
                     
                     if($res){
+                        $after = $this->jobAuditSnapshot($new_jobid);
+
+                        $this->writeJobAudit([
+                            'action'        => 'COPY',
+                            'status'        => 'SUCCESS',
+                            'job_id'        => (int)$new_jobid,
+                            'source_job_id' => (int)$old_jobid,
+                            'target_job_id' => (int)$new_jobid,
+                            'title'         => 'Copy Job',
+                            'message'       => 'Copy job from ' . $old_jobid . ' to ' . $new_jobid,
+                            'before_json'   => $before,
+                            'after_json'    => $after,
+                        ]);
+
                         $res_msg = $text['Copy']."  ".$text['job_id'].':'. $_POST['new_jobid']."  ".$text['success'];
                         $this->MiscellaneousModel->generateErrorResponse($text['success'], $res_msg );
                     }else{
+                        $this->writeJobAudit([
+                            'action'        => 'COPY',
+                            'status'        => 'FAIL',
+                            'job_id'        => (int)$new_jobid,
+                            'source_job_id' => (int)$old_jobid,
+                            'target_job_id' => (int)$new_jobid,
+                            'title'         => 'Copy Job Fail',
+                            'message'       => 'Copy job failed from ' . $old_jobid . ' to ' . $new_jobid,
+                            'before_json'   => $before,
+                            'after_json'    => null,
+                        ]);
+
                         $res_msg = $text['Copy']."  ".$text['job_id'].':'. $_POST['new_jobid']."  ".$text['fail'];
                         $this->MiscellaneousModel->generateErrorResponse($text['fail'], $res_msg );
                     }
+
                     
                 }
             }

@@ -145,6 +145,17 @@
         }
     }
 
+    private function accountUserNormalizeLaw($value): int
+    {
+        $raw = trim((string)($value === null || $value === '' ? '1' : $value));
+
+        if (!in_array($raw, ['1', '3'], true)) {
+            throw new Exception('Permission must be 1: guest or 3: operator.');
+        }
+
+        return (int)$raw;
+    }
+
     private function accountUserAssertTable(PDO $db): void
     {
         $exists = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")->fetchColumn();
@@ -459,7 +470,7 @@
             $name     = $this->accountUserClean($_POST['username'] ?? '');
             $password = $this->accountUserClean($_POST['password'] ?? '');
             $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
-            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
+            $law      = $this->accountUserNormalizeLaw($_POST['law'] ?? 1);
 
             $this->accountUserValidateUsername($name, 'Username');
             if ($this->accountUserProtectedName($name)) {
@@ -504,7 +515,7 @@
             $name     = $this->accountUserClean($_POST['username'] ?? '');
             $password = $this->accountUserClean($_POST['password'] ?? '');
             $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
-            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
+            $law      = $this->accountUserNormalizeLaw($_POST['law'] ?? 1);
 
             $this->accountUserValidateText($oldName, 'Old username');
             $oldLower = strtolower($oldName);

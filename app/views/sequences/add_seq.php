@@ -1,3 +1,4 @@
+<?php $idasSeqEditUserLaw = (string)($_COOKIE['user_law'] ?? '1'); ?>
 <link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/add_seq_step.css">
 
 <div class="container-ms" id ="your_container_id">
@@ -265,11 +266,7 @@
                                         <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force']  > 101) ? 'checked' : ''; ?>  >
                                         <label class="form-check-label" for="force_unlimit"><?php echo $text['Unlimited_text']; ?></label>
                                         </div>
-                                        <div class="form-check form-check-inline col-md-3">
-                                        <input class="form-check-input" type="radio"  name="unscrew_forcemode" id="unscrew_forcemode_off" value="2" 
-                                        <?php echo ($data['type'] == 'edit' && $data['sequences']['unscrew_force'] == 0) ? 'checked' : ''; ?>  >
-                                        <label class="form-check-label" for="force_off"><?php echo $text['switch_off']; ?></label>
-                                        </div>
+                                        
                                         <div class="invalid-feedback"></div>
                                     </div>
                                 </div>
@@ -309,6 +306,43 @@
 
 
 </div>
+
+
+<script>
+(function () {
+    var currentLaw = <?php echo json_encode($idasSeqEditUserLaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    if (String(currentLaw) !== '3') return;
+
+    function lockSeqSaveButton() {
+        var btn = document.getElementById('button1');
+        if (!btn) return;
+        btn.removeAttribute('onclick');
+        btn.onclick = null;
+        btn.disabled = true;
+        btn.setAttribute('aria-disabled', 'true');
+        btn.classList.add('operator-seq-save-disabled');
+        btn.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }, true);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', lockSeqSaveButton);
+    } else {
+        lockSeqSaveButton();
+    }
+})();
+</script>
+<style>
+.operator-seq-save-disabled {
+    opacity: 0.45 !important;
+    filter: grayscale(1) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+</style>
 
 <?php require_once '../app/views/sequences/add_seq_share.php';?>
 

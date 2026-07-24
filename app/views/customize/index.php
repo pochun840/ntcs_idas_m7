@@ -15,6 +15,152 @@
   </div>
 
   <?php
+    // DATA 頁籤：直接放在自定義頁，不新增 _data_tabs.php。
+    // 樣式比照 Data/index.php 的 .button / .active。
+    $dataTabsText = is_array($data['text'] ?? null) ? $data['text'] : [];
+
+    if (!function_exists('idas_is_operator_law3_current_session')) {
+      function idas_is_operator_law3_current_session(): bool {
+        $lawKeys  = ['user_law', 'law', 'userLaw', 'user_level', 'permission', 'role_law'];
+        $roleKeys = ['role', 'user_role', 'account_role', 'permission_name'];
+        $session  = $_SESSION ?? [];
+
+        $privilege = strtolower(trim((string)($session['privilege'] ?? '')));
+        if (in_array($privilege, ['admin', 'administrator', 'guest'], true)) return false;
+        if ($privilege === 'operator') return true;
+
+        foreach ($lawKeys as $key) {
+          if (isset($session[$key]) && is_numeric($session[$key])) {
+            return ((int)$session[$key] === 3);
+          }
+        }
+
+        foreach ($roleKeys as $key) {
+          if (isset($session[$key])) {
+            $role = strtolower(trim((string)$session[$key]));
+            if ($role === 'operator') return true;
+            if (in_array($role, ['admin', 'administrator', 'guest'], true)) return false;
+          }
+        }
+
+        // 有明確 SESSION 身分時，不讀 cookie，避免切換帳號後舊 user_law=3 造成 guest 被鎖。
+        $hasSessionIdentity = isset($session['privilege']) || isset($session['username']) || isset($session['user']) || isset($session['account']);
+        if ($hasSessionIdentity) return false;
+
+        foreach ($lawKeys as $key) {
+          if (isset($_COOKIE[$key]) && is_numeric($_COOKIE[$key]) && (int)$_COOKIE[$key] === 3) return true;
+        }
+        foreach ($roleKeys as $key) {
+          if (isset($_COOKIE[$key]) && strtolower(trim((string)$_COOKIE[$key])) === 'operator') return true;
+        }
+        return false;
+      }
+    }
+
+    $dataTabsIsOperator = idas_is_operator_law3_current_session();
+
+    $dataTabs = [
+      [
+        'label' => $dataTabsText['data_history'] ?? '歷史資料',
+        'url'   => './?url=Data/index&tab=History',
+        'active'=> false,
+        'restricted' => false,
+      ],
+      [
+        'label' => $dataTabsText['data_export'] ?? '歷史資料匯出',
+        'url'   => './?url=Data/index&tab=Exportdata',
+        'active'=> false,
+        'restricted' => $dataTabsIsOperator,
+      ],
+      [
+        'label' => $dataTabsText['download_chart'] ?? '曲線圖下載',
+        'url'   => './?url=Data/index&tab=Export_Data_download',
+        'active'=> false,
+        'restricted' => $dataTabsIsOperator,
+      ],
+      [
+        'label' => $dataTabsText['customize'] ?? '自定義',
+        'url'   => './?url=Customize',
+        'active'=> true,
+        'restricted' => false,
+      ],
+    ];
+  ?>
+
+  <style>
+    /* 自定義頁 DATA 頁籤樣式：比照 app/views/data/index.php + data.css 的 .button */
+    .customize-data-tabs{
+      position:relative;
+      padding-right:10px;
+      margin:4px auto 8px;
+      text-align:center;
+      width:100%;
+      z-index:2;
+    }
+    .customize-data-tabs .button{
+      background-color:#888888;
+      height:45px;
+      border:1px outset #CCFFFF;
+      border-radius:5px;
+      color:white;
+      padding:5px;
+      text-align:center;
+      text-decoration:none;
+      display:inline-block;
+      font-size:18px;
+      margin:4px 10px;
+      cursor:pointer;
+      font-weight:700;
+      min-width:auto;
+      box-shadow:none;
+      vertical-align:middle;
+    }
+    .customize-data-tabs .button:hover{
+      cursor:pointer;
+      background:#336699;
+      color:white;
+      transform:none;
+    }
+    .customize-data-tabs .button.active{
+      background:#336699;
+    }
+    .customize-data-tabs .button.download-restricted,
+    .customize-data-tabs .button.operator-disabled,
+    .customize-data-tabs .button:disabled{
+      background:#888888 !important;
+      color:#d8d8d8 !important;
+      opacity:.72 !important;
+      cursor:not-allowed !important;
+      pointer-events:none !important;
+      filter:grayscale(1);
+    }
+    @media (max-width:768px){
+      .customize-data-tabs .button{
+        height:34px;
+        font-size:14px;
+        margin:3px 5px;
+        padding:4px 8px;
+      }
+    }
+  </style>
+
+  <div class="w3-center customize-data-tabs" aria-label="Data Tabs">
+    <?php foreach ($dataTabs as $idx => $tab): ?>
+      <?php
+        $classes = 'button' . (!empty($tab['active']) ? ' active' : '') . (!empty($tab['restricted']) ? ' download-restricted operator-disabled' : '');
+        $label = htmlspecialchars((string)$tab['label'], ENT_QUOTES, 'UTF-8');
+        $url = htmlspecialchars((string)$tab['url'], ENT_QUOTES, 'UTF-8');
+      ?>
+      <?php if (!empty($tab['restricted'])): ?>
+        <button id="data_bnt<?php echo $idx + 1; ?>" type="button" class="<?php echo $classes; ?>" disabled aria-disabled="true"><?php echo $label; ?></button>
+      <?php else: ?>
+        <button id="data_bnt<?php echo $idx + 1; ?>" type="button" class="<?php echo $classes; ?>" onclick="window.location.href='<?php echo $url; ?>'"><?php echo $label; ?></button>
+      <?php endif; ?>
+    <?php endforeach; ?>
+  </div>
+
+
+  <?php
     function norm_lang($s){
       $s = strtolower(trim((string)$s));
       if ($s === 'zh' || strpos($s,'hant')!==false || strpos($s,'tw')!==false || strpos($s,'hk')!==false || strpos($s,'mo')!==false) return 'zh-tw';
@@ -101,6 +247,14 @@
 
     // $data_button 的格式與 $columns 相同： [index => column_name]
     $btns = $data['data_button'];
+
+    // Operator / law = 3：自定義頁維持可看，但不可新增 / 刪除 / 儲存。
+    // 只限制 Operator / law = 3 唯讀；guest 不是 Operator，允許操作自定義。
+    $is_operator_law3 = idas_is_operator_law3_current_session();
+    $can_edit_customize = !$is_operator_law3;
+    $customize_action_disabled_attr = $can_edit_customize ? '' : ' disabled aria-disabled="true"';
+    $customize_restricted_class = $can_edit_customize ? '' : ' operator-disabled customize-readonly';
+    $customize_restricted_icon = $can_edit_customize ? '' : '🚫 ';
   ?>
 
   <style>
@@ -316,6 +470,23 @@
       border-bottom-width: 1px;
     }
 
+    /* Operator / law = 3：顯示操作欄，但全部灰色、不可點擊、帶禁止圖示 */
+    .operator-disabled,
+    .operator-disabled * {
+      cursor: not-allowed !important;
+    }
+    button.operator-disabled,
+    input.operator-disabled,
+    select.operator-disabled {
+      opacity: .45 !important;
+      filter: grayscale(1) !important;
+    }
+    .customize-readonly-note {
+      color:#999;
+      font-size:13px;
+      margin-left:8px;
+    }
+
 
 
 
@@ -324,7 +495,7 @@
     
   </style>
 
-  <?php if(($_SESSION['privilege'] ?? '') === 'admin' && !empty($btns)) : ?>
+  <?php if(!empty($btns)) : ?>
       <div class="tabs" id="customizeTabs">
         <div class="tabs-nav" role="tablist">
           <button class="tab-btn" data-tab-target="#tab-4-1">4-1</button>
@@ -442,12 +613,10 @@
 
   <div class="table-wrap">
     <div class="control-bar">
-      <?php if(($_SESSION['privilege'] ?? '') === 'admin'){ ?>
-        <button id="btnAddRow" class="w3-btn w3-round-large"><?php echo $L['add']; ?></button>
-        <button id="btnDeleteSelected" class="w3-btn w3-round-large"><?php echo $L['delete_sel']; ?></button>
-        <button id="btnDeleteAll" class="w3-btn w3-round-large"><?php echo $L['delete_all']; ?></button>
-        <button id="btnSave" class="w3-btn w3-round-large"><?php echo $L['save']; ?></button>
-      <?php } ?>
+      <button id="btnAddRow" class="w3-btn w3-round-large<?php echo $customize_restricted_class; ?>"<?php echo $customize_action_disabled_attr; ?>><?php echo $customize_restricted_icon . $L['add']; ?></button>
+      <button id="btnDeleteSelected" class="w3-btn w3-round-large<?php echo $customize_restricted_class; ?>"<?php echo $customize_action_disabled_attr; ?>><?php echo $customize_restricted_icon . $L['delete_sel']; ?></button>
+      <button id="btnDeleteAll" class="w3-btn w3-round-large<?php echo $customize_restricted_class; ?>"<?php echo $customize_action_disabled_attr; ?>><?php echo $customize_restricted_icon . $L['delete_all']; ?></button>
+      <button id="btnSave" class="w3-btn w3-round-large<?php echo $customize_restricted_class; ?>"<?php echo $customize_action_disabled_attr; ?>><?php echo $customize_restricted_icon . $L['save']; ?></button>
     </div>
 
     
@@ -456,19 +625,15 @@
       <thead>
         <tr>
           <th style="width:46px;text-align:center">
-            <?php if(($_SESSION['privilege'] ?? '') === 'admin'){ ?>
-              <input type="checkbox" id="ckAll">
-            <?php } ?>
+              <input type="checkbox" id="ckAll"<?php echo $customize_action_disabled_attr; ?>>
           </th>
           <th><?php echo $L['no']; ?></th>
           <th><?php echo $L['read']; ?></th>
           <th class="col-input"><?php echo $L['input']; ?></th>
           <th><?php echo $L['result']; ?></th>
-          <?php if(($_SESSION['privilege'] ?? '') === 'admin'){ ?>
-            <th></th>
-            <th></th>
-            <th style="width:90px"></th>
-          <?php } ?>
+          <th></th>
+          <th></th>
+          <th style="width:90px"></th>
         </tr>
       </thead>
       <tbody id="dynTbody"><!-- rows injected by JS --></tbody>
@@ -477,14 +642,9 @@
   </div>
 </div>
 
-<?php if($_SESSION['privilege'] != 'admin'){ ?>
+<?php if(!$can_edit_customize){ ?>
 <script>
-  $(document).ready(function () {
-    if (typeof disableAllButtonsAndInputs === 'function') disableAllButtonsAndInputs();
-    document.getElementById("home").disabled = false;
-    const ds = document.getElementById("data_select");
-    if (ds) ds.disabled = false;
-  });
+  // Operator / law = 3 使用 JS 做二次唯讀保護，畫面仍保留操作欄位。
 </script>
 <?php } ?>
 
@@ -719,7 +879,9 @@ function forbidMsg(digit){
     const FIELD_NAME_BY_INDEX = <?php echo json_encode($btns ?? [], JSON_UNESCAPED_UNICODE); ?> || {};
 
     let ROW_UID = 1;
-    const IS_ADMIN = <?php echo json_encode(($_SESSION['privilege'] ?? '') === 'admin'); ?>;
+    const CAN_EDIT_CUSTOMIZE = <?php echo json_encode($can_edit_customize); ?>;
+    const SHOW_CUSTOMIZE_ACTIONS = true;
+    const IS_ADMIN = SHOW_CUSTOMIZE_ACTIONS;
     const L = <?php echo json_encode($L, JSON_UNESCAPED_UNICODE); ?>;
     const SAVE_URL = '?url=Customize/save_positions';
 
@@ -969,6 +1131,13 @@ function forbidMsg(digit){
     function updateSaveButtonState(){
 
       if (!btnSave) return;
+
+      if (!CAN_EDIT_CUSTOMIZE) {
+        btnSave.disabled = true;
+        btnSave.classList.add('operator-disabled');
+        return;
+      }
+
       const hasData = anyDataExists();
 
       if (ALLOW_EMPTY_SAVE) {
@@ -985,7 +1154,7 @@ function forbidMsg(digit){
 
 
 
-    function updateAddButtonState(){ if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS; }
+    function updateAddButtonState(){ if (btnAdd) btnAdd.disabled = (!CAN_EDIT_CUSTOMIZE || getRowCount() >= MAX_ROWS); }
 
     /* ===== （同時支援 4-1 與 4-2） 分頁  ===== */
       function bindFieldBank(containerId){
@@ -1526,12 +1695,17 @@ function forbidMsg(digit){
         const rows = getDataRows();
         rows.forEach((tr, i) => {
         const up = tr.querySelector('.btn-row-up'); const down = tr.querySelector('.btn-row-down');
+        if (!CAN_EDIT_CUSTOMIZE) {
+          if (up) up.disabled = true;
+          if (down) down.disabled = true;
+          return;
+        }
         if (up) up.disabled = (i === 0); if (down) down.disabled = (i === rows.length - 1);
         });
     }
 
     /* Admin 控制列加入上下移群組操作 */
-    if (IS_ADMIN) {
+    if (CAN_EDIT_CUSTOMIZE) {
         const controlBar = document.querySelector('.control-bar');
         if (controlBar && !document.getElementById('btnMoveUp')) {
         const btnUp = document.createElement('button');
@@ -1571,7 +1745,7 @@ function forbidMsg(digit){
         if (beforeNode) tbody.insertBefore(tr, beforeNode); else tbody.appendChild(tr);
 
         renumber(); syncCkAllState();
-        if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
+        if (btnAdd) btnAdd.disabled = (!CAN_EDIT_CUSTOMIZE || getRowCount() >= MAX_ROWS);
         bumpDom?.(); poller?.triggerNow?.();
         return tr;
     }
@@ -1676,7 +1850,7 @@ function forbidMsg(digit){
 
         // (1) 選取
         const tdSel = document.createElement('td'); tdSel.className = 'sel-ck';
-        if (IS_ADMIN) { const ck = document.createElement('input'); ck.type='checkbox'; ck.className='row-ck'; tdSel.appendChild(ck); }
+        if (SHOW_CUSTOMIZE_ACTIONS) { const ck = document.createElement('input'); ck.type='checkbox'; ck.className='row-ck'; ck.disabled = !CAN_EDIT_CUSTOMIZE; if (!CAN_EDIT_CUSTOMIZE) ck.classList.add('operator-disabled'); tdSel.appendChild(ck); }
         tr.appendChild(tdSel);
 
         // (2) NO
@@ -1715,19 +1889,25 @@ function forbidMsg(digit){
         // (6/7) 上/下
         if (IS_ADMIN) {
           const tdUp = document.createElement('td'); tdUp.className = 'move-cell';
-          const bUp = document.createElement('button'); bUp.type='button'; bUp.className='w3-btn w3-round-large icon-btn btn-row-up'; bUp.title=(L['move_up']||'Move Up'); bUp.textContent='▲';
-          bUp.addEventListener('click', () => moveRow(tr, -1)); tdUp.appendChild(bUp); tr.appendChild(tdUp);
+          const bUp = document.createElement('button'); bUp.type='button'; bUp.className='w3-btn w3-round-large icon-btn btn-row-up'; bUp.title=(L['move_up']||'Move Up'); bUp.textContent = CAN_EDIT_CUSTOMIZE ? '▲' : '🚫 ▲';
+          bUp.disabled = !CAN_EDIT_CUSTOMIZE;
+          if (!CAN_EDIT_CUSTOMIZE) bUp.classList.add('operator-disabled');
+          if (CAN_EDIT_CUSTOMIZE) bUp.addEventListener('click', () => moveRow(tr, -1)); tdUp.appendChild(bUp); tr.appendChild(tdUp);
 
           const tdDown = document.createElement('td'); tdDown.className = 'move-cell';
-          const bDown = document.createElement('button'); bDown.type='button'; bDown.className='w3-btn w3-round-large icon-btn btn-row-down'; bDown.title=(L['move_down']||'Move Down'); bDown.textContent='▼';
-          bDown.addEventListener('click', () => moveRow(tr, +1)); tdDown.appendChild(bDown); tr.appendChild(tdDown);
+          const bDown = document.createElement('button'); bDown.type='button'; bDown.className='w3-btn w3-round-large icon-btn btn-row-down'; bDown.title=(L['move_down']||'Move Down'); bDown.textContent = CAN_EDIT_CUSTOMIZE ? '▼' : '🚫 ▼';
+          bDown.disabled = !CAN_EDIT_CUSTOMIZE;
+          if (!CAN_EDIT_CUSTOMIZE) bDown.classList.add('operator-disabled');
+          if (CAN_EDIT_CUSTOMIZE) bDown.addEventListener('click', () => moveRow(tr, +1)); tdDown.appendChild(bDown); tr.appendChild(tdDown);
         }
 
         // (8) 單筆刪除
         if (IS_ADMIN) {
           const tdAct = document.createElement('td'); tdAct.className = 'row-actions';
-          const del = document.createElement('button'); del.textContent = L['delete']; del.className = 'w3-btn w3-round-large';
-          del.addEventListener('click', () => {
+          const del = document.createElement('button'); del.textContent = CAN_EDIT_CUSTOMIZE ? L['delete'] : ('🚫 ' + L['delete']); del.className = 'w3-btn w3-round-large';
+          del.disabled = !CAN_EDIT_CUSTOMIZE;
+          if (!CAN_EDIT_CUSTOMIZE) del.classList.add('operator-disabled');
+          if (CAN_EDIT_CUSTOMIZE) del.addEventListener('click', () => {
               tr.querySelectorAll('.field-chip').forEach(chip => { const originId = chip.dataset.originId; if (originId) restoreFieldBankButton(originId); });
               tr.remove(); renumber(); syncCkAllState?.(); if (btnAdd && getRowCount() < MAX_ROWS) btnAdd.disabled = false; bumpDom?.(); poller?.triggerNow?.();
 
@@ -1740,9 +1920,42 @@ function forbidMsg(digit){
 
         tbody.appendChild(tr);
         renumber(); updateRowMoveButtonsState();
-        if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
+        if (btnAdd) btnAdd.disabled = (!CAN_EDIT_CUSTOMIZE || getRowCount() >= MAX_ROWS);
         bumpDom(); poller?.triggerNow?.();
         return tr;
+    }
+
+
+    function applyCustomizeReadOnlyMode(){
+        if (CAN_EDIT_CUSTOMIZE) return;
+
+        const readonlyTargets = [
+            btnAdd, btnSave, btnDelSel, btnDelAll,
+            document.getElementById('btnMoveUp'),
+            document.getElementById('btnMoveDown'),
+            ckAll
+        ].filter(Boolean);
+
+        readonlyTargets.forEach(el => {
+            el.disabled = true;
+            el.setAttribute('aria-disabled', 'true');
+            el.classList.add('operator-disabled');
+        });
+
+        document.querySelectorAll('.field-btn, .row-ck, .btn-row-up, .btn-row-down, .row-actions button').forEach(el => {
+            el.disabled = true;
+            el.setAttribute('aria-disabled', 'true');
+            el.classList.add('operator-disabled');
+        });
+
+        // 自定義頁 Operator 只能瀏覽，表格輸入欄位也不可編輯。
+        document.querySelectorAll('#dynTable input, #dynTable select, #dynTable button').forEach(el => {
+            el.disabled = true;
+            el.setAttribute('aria-disabled', 'true');
+            if (!el.classList.contains('result-input')) {
+                el.classList.add('operator-disabled');
+            }
+        });
     }
 
     // 初始化
@@ -1753,6 +1966,7 @@ function forbidMsg(digit){
     }
 
     updateSaveButtonState();
+    applyCustomizeReadOnlyMode();
 
     // 啟動輪詢（+ 可見度暫停/恢復）
     const createPoller = () => startResultPolling({
@@ -1779,11 +1993,11 @@ function forbidMsg(digit){
     window.addEventListener('beforeunload', () => poller.stop());
 
     // Admin 綁定
-    if(IS_ADMIN){
+    if(CAN_EDIT_CUSTOMIZE){
         if(btnAdd) btnAdd.addEventListener('click', ()=> addRow());
         if(btnSave) btnSave.addEventListener('click', onSave);
     } else {
-        [...tbody.querySelectorAll('input,select,button')].forEach(el=> el.disabled = true);
+        applyCustomizeReadOnlyMode();
     }
 
     function collectData(){
@@ -1815,7 +2029,7 @@ function forbidMsg(digit){
     }
 
     function syncCkAllState(){
-        if (!IS_ADMIN || !ckAll) return;
+        if (!CAN_EDIT_CUSTOMIZE || !ckAll) return;
         const cks = [...tbody.querySelectorAll('.row-ck')];
         const total = cks.length;
         const chosen = cks.filter(c => c.checked).length;
@@ -1823,7 +2037,7 @@ function forbidMsg(digit){
         ckAll.checked = (total > 0 && chosen === total);
     }
 
-    if (IS_ADMIN && ckAll) {
+    if (CAN_EDIT_CUSTOMIZE && ckAll) {
         ckAll.addEventListener('change', ()=>{ const rowCks = tbody.querySelectorAll('.row-ck'); rowCks.forEach(ck => ck.checked = ckAll.checked); ckAll.indeterminate = false; });
         tbody.addEventListener('change', (e)=>{ if (e.target && e.target.classList.contains('row-ck')) syncCkAllState(); });
     }
@@ -1839,7 +2053,7 @@ function forbidMsg(digit){
         });
         renumber(); syncCkAllState();
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
-        if (btnAdd) btnAdd.disabled = getRowCount() >= MAX_ROWS;
+        if (btnAdd) btnAdd.disabled = (!CAN_EDIT_CUSTOMIZE || getRowCount() >= MAX_ROWS);
             bumpDom(); poller?.triggerNow();
 
               //刪完後更新儲存鈕狀態
@@ -1856,7 +2070,7 @@ function forbidMsg(digit){
         tbody.innerHTML = '';
         renumber(); syncCkAllState();
         if (ckAll) { ckAll.checked = false; ckAll.indeterminate = false; }
-        if (btnAdd) btnAdd.disabled = false;
+        if (btnAdd) btnAdd.disabled = !CAN_EDIT_CUSTOMIZE ? true : false;
         bumpDom(); poller?.triggerNow();
 
         updateSaveButtonState(); // 新增
@@ -1867,7 +2081,7 @@ function forbidMsg(digit){
         else if (confirm(L['confirm_delete_all'])) doRemoveAll();
     }
 
-    if(IS_ADMIN){
+    if(CAN_EDIT_CUSTOMIZE){
         if(btnDelSel) btnDelSel.addEventListener('click', deleteSelectedRows);
         if(btnDelAll) btnDelAll.addEventListener('click', deleteAllRows);
     }
@@ -1896,6 +2110,7 @@ function forbidMsg(digit){
     function insertBetweenNos(no){ insertRowAt(no + 1); }
 
     async function onSave(){
+        if (!CAN_EDIT_CUSTOMIZE) return;
         const hasData = anyDataExists();
 
         // 空白儲存處理

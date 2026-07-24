@@ -60,6 +60,107 @@ function renderLineChartTableRows($records) {
         </table>
     </div>
 
+
+    <?php
+        // DATA 頁籤：直接放在本頁，不另外新增 app/views/data/_data_tabs.php。
+        $drawlineTabsText = [];
+        if (isset($text) && is_array($text)) {
+            $drawlineTabsText = $text;
+        } elseif (isset($data['text']) && is_array($data['text'])) {
+            $drawlineTabsText = $data['text'];
+        } elseif (isset($textMap) && is_array($textMap)) {
+            $drawlineTabsText = $textMap;
+        }
+
+        $drawlineTabText = function(string $key, string $fallback) use ($drawlineTabsText): string {
+            return htmlspecialchars((string)($drawlineTabsText[$key] ?? $fallback), ENT_QUOTES, 'UTF-8');
+        };
+
+        $drawlineOperatorLawKeys  = ['user_law', 'law', 'userLaw', 'user_level', 'permission', 'role_law'];
+        $drawlineOperatorRoleKeys = ['role', 'user_role', 'account_role', 'permission_name'];
+        $isDrawlineDataTabOperator = false;
+
+        foreach ([($_SESSION ?? []), ($_COOKIE ?? [])] as $source) {
+            foreach ($drawlineOperatorLawKeys as $key) {
+                if (isset($source[$key]) && is_numeric($source[$key]) && (int)$source[$key] === 3) {
+                    $isDrawlineDataTabOperator = true;
+                    break 2;
+                }
+            }
+        }
+
+        if (!$isDrawlineDataTabOperator) {
+            foreach ([($_SESSION ?? []), ($_COOKIE ?? [])] as $source) {
+                foreach ($drawlineOperatorRoleKeys as $key) {
+                    if (isset($source[$key]) && strtolower(trim((string)$source[$key])) === 'operator') {
+                        $isDrawlineDataTabOperator = true;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        $drawlineDataTabs = [
+            [
+                'key'   => 'History',
+                'label' => $drawlineTabText('data_history', '歷史資料'),
+                'url'   => '?url=Data/index',
+                'restricted' => false,
+            ],
+            [
+                'key'   => 'Exportdata',
+                'label' => $drawlineTabText('data_export', '歷史資料匯出'),
+                'url'   => '?url=Data/index&tab=Exportdata',
+                'restricted' => true,
+            ],
+            [
+                'key'   => 'Export_Data_download',
+                'label' => $drawlineTabText('download_chart', '曲線圖下載'),
+                'url'   => '?url=Data/index&tab=Export_Data_download',
+                'restricted' => true,
+            ],
+            [
+                'key'   => 'Customize',
+                'label' => $drawlineTabText('customize', '自定義'),
+                'url'   => '?url=Customize',
+                'restricted' => false,
+            ],
+            [
+                'key'   => 'Torque_line_chart',
+                'label' => $drawlineTabText('tor_line_chart', '扭力折線圖'),
+                'url'   => '?url=Data/drawLineChart',
+                'restricted' => false,
+            ],
+        ];
+    ?>
+
+    <div class="ntcs-data-tabs-wrap">
+        <div class="ntcs-data-tabs w3-center" role="navigation" aria-label="Data tabs">
+            <?php foreach ($drawlineDataTabs as $tab): ?>
+                <?php
+                    $isActive = ($tab['key'] === 'Torque_line_chart');
+                    $isDisabled = $isDrawlineDataTabOperator && !empty($tab['restricted']);
+                    $classes = ['button', 'ntcs-data-tab-btn'];
+                    if ($isActive) {
+                        $classes[] = 'active';
+                    }
+                    if ($isDisabled) {
+                        $classes[] = 'download-restricted';
+                        $classes[] = 'operator-disabled';
+                    }
+                    $classAttr = htmlspecialchars(implode(' ', $classes), ENT_QUOTES, 'UTF-8');
+                    $url = htmlspecialchars($tab['url'], ENT_QUOTES, 'UTF-8');
+                    $disabledAttr = $isDisabled ? ' disabled aria-disabled="true" data-operator-restricted="1"' : '';
+                    $onclick = $isDisabled ? 'return false;' : "window.location.href='{$url}'";
+                ?>
+                <button type="button"
+                        class="<?php echo $classAttr; ?>"
+                        onclick="<?php echo htmlspecialchars($onclick, ENT_QUOTES, 'UTF-8'); ?>"
+                        <?php echo $disabledAttr; ?>><?php echo $tab['label']; ?></button>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
     <div class="main-content">
         <div class="center-content drawline-content">
 
@@ -458,6 +559,37 @@ window.addEventListener('resize', function() {
 </script>
 
 <style>
+
+.ntcs-data-tabs-wrap {
+    width: 96%;
+    max-width: 1320px;
+    margin: 10px auto 8px auto;
+}
+.ntcs-data-tabs {
+    position: relative;
+    padding: 0 10px;
+}
+.ntcs-data-tab-btn {
+    margin: 0 8px 8px 0;
+    min-width: 88px;
+}
+.ntcs-data-tab-btn.active {
+    background-color: #0d6fb8 !important;
+    border-color: #0d6fb8 !important;
+    color: #fff !important;
+}
+.ntcs-data-tab-btn.download-restricted,
+.ntcs-data-tab-btn.operator-disabled {
+    background-color: #8a8f93 !important;
+    border-color: #8a8f93 !important;
+    color: #ffffff !important;
+    opacity: .72 !important;
+    cursor: not-allowed !important;
+}
+.ntcs-data-tab-btn[disabled] {
+    pointer-events: none !important;
+}
+
 .drawline-page .drawline-content {
     width: 96%;
     max-width: 1320px;

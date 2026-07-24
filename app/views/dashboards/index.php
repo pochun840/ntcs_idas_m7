@@ -1,3 +1,4 @@
+<?php $idasMenuUserLaw = (string)($_COOKIE['user_law'] ?? '1'); ?>
 <?php $ver = date('YmdHis'); ?>
 <link rel="stylesheet" href="<?=URLROOT;?>css/tcc_main.css?v=<?=$ver;?>">
 
@@ -50,6 +51,55 @@
 </body>
 
 </html>
+
+<script>
+(function () {
+    var currentLaw = <?php echo json_encode($idasMenuUserLaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+    if (String(currentLaw) !== '3') {
+        return;
+    }
+
+    // Operator 權限：MENU 頁面限制上傳/下載同步與代理功能，其他選單仍可點擊。
+    var deniedMenuIds = {
+        load: true,  // 下載 / Controller DB -> iDAS
+        save: true,  // 上傳 / iDAS DB -> Controller
+        agent: true  // 代理：Operator / law=3 不允許進入
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.menu-item').forEach(function (btn) {
+            if (!btn || !deniedMenuIds[btn.id]) {
+                return;
+            }
+
+            btn.removeAttribute('onclick');
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+            btn.classList.add('operator-disabled');
+            btn.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }, true);
+        });
+    });
+})();
+</script>
+<style>
+.menu-item.operator-disabled {
+    position: relative !important;
+    opacity: 0.35 !important;
+    filter: grayscale(1) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+/* 禁止圖示由 public/js/all.js 的 .idas-operator-forbidden-badge 統一產生，避免 ::after 重複顯示 */
+.menu-item.operator-disabled:hover {
+    transform: none !important;
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const langRaw = getCookie('language') || 'en-us';

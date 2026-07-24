@@ -1,5 +1,6 @@
 <?php
 
+
 class Settings extends Controller
 {
     private $SettingModel;
@@ -9,6 +10,14 @@ class Settings extends Controller
     private $DataModel;
     private $stepModel;
     Private $deviceId;
+    private $AuditModel;
+
+    // Uploaded sequence images are normalized to a fixed display size.
+    // private const SEQ_IMG_WIDTH = 1140;
+    // private const SEQ_IMG_HEIGHT = 800;
+    private const SEQ_IMG_WIDTH  = 800;
+    private const SEQ_IMG_HEIGHT = 1140;
+    private const SEQ_IMG_DPI = 72;
 
     // 在建構子中將 Post 物件（Model）實例化
     public function __construct(){
@@ -19,17 +28,95 @@ class Settings extends Controller
         $this->ToolModel = $this->model('Tool');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         $this->DataModel = $this->model('Datas');
-        $this->stepModel = $this->model('Steptcc');
+        $this->stepModel = $this->model('Step');
+        $this->AuditModel = $this->model('OperationAudit');
 
-        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id
+        // 使用 Modbus TCP 時必須先解析實際 unitId，避免預設 1 造成 Protocol read failed。
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
 
     }
 
+    /**
+     * 取得目前應使用的 Modbus TCP Unit ID。
+     * 優先使用 ntcs_device_db_sysnc() 解析出的實際 device_id，
+     * 再退回 cookie / iDAS DB controller info，最後才使用 1。
+     */
+    private function getActiveModbusUnitId(): int
+    {
+        $candidates = [];
+
+        if (isset($this->deviceId) && $this->deviceId !== null && $this->deviceId !== '') {
+            $candidates[] = (int)$this->deviceId;
+        }
+
+        if (!empty($_COOKIE['temp_device_id'])) {
+            $candidates[] = (int)$_COOKIE['temp_device_id'];
+        }
+
+        try {
+            $controllerInfo = (array)($this->SettingModel->GetControllerInfo() ?? []);
+            if (isset($controllerInfo['device_id'])) {
+                $candidates[] = (int)$controllerInfo['device_id'];
+            }
+        } catch (Throwable $e) {
+            error_log('[Settings][Modbus] GetControllerInfo device_id failed: ' . $e->getMessage());
+        }
+
+        foreach ($candidates as $id) {
+            if ($id >= 1 && $id <= 255) {
+                return $id;
+            }
+        }
+
+        return 1;
+    }
+
+
+    /**
+     * 統一寫入控制器暫存器。
+     *
+     * - MODBUS TCP / RTU：走 Controller::protocol_write_registers()
+     * - OP 協議：同一個 protocol_write_registers() 會自動轉成 IDAS_WRITE_xxx_xxx
+     *
+     * 避免 Settings.php 在 OP 協議時仍直接 new ModbusMaster，造成
+     *「Modbus communication failed」或「Protocol read failed」。
+     */
+    private function writeControllerRegisters(int $startAddress, array $values, string $tag = ''): void
+    {
+        $unitId = $this->getActiveModbusUnitId();
+        $values = array_values(array_map('intval', $values));
+
+        if ($values === []) {
+            return;
+        }
+
+        if (method_exists($this, 'protocol_write_registers')) {
+            $ok = $this->protocol_write_registers($unitId, $startAddress, $values);
+            if (!$ok) {
+                throw new Exception('Protocol write failed' . ($tag !== '' ? ': ' . $tag : ''));
+            }
+
+            $protocol = (method_exists($this, 'is_op_protocol_enabled') && $this->is_op_protocol_enabled())
+                ? 'OP'
+                : 'MODBUS';
+            $this->logMessage("{$protocol} write ({$tag}) [unitId={$unitId}, start={$startAddress}]: " . implode(',', $values));
+            return;
+        }
+
+        // 舊版 Controller.php 尚未有 protocol_write_registers() 時的保底。
+        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+        $modbus = new ModbusMaster('127.0.0.1', 'TCP');
+        $modbus->port = 502;
+        $modbus->timeout_sec = 10;
+        $types = array_fill(0, count($values), 'INT');
+        $modbus->writeMultipleRegister($unitId, $startAddress, $values, $types);
+        $this->logMessage("MODBUS fallback write ({$tag}) [unitId={$unitId}, start={$startAddress}]: " . implode(',', $values));
+    }
+
     // 取得所有info
     public function index(){
-
 
         // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
@@ -41,16 +128,13 @@ class Settings extends Controller
         // Lock:     使用 flock 防止多 request 同步造成重複/競態
         // Sync:     只在來源(controller)與目的(iDAS)值不同時才更新
         // Note:     非 cron；沒有 request 就不會自動同步
-        if ($this->shouldRunToolSpecSync(10)) {
-            $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
-                '.tool_spec_sync',               // 任務鎖名稱（key）
-                fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
-            );
-        }
-
-        
-
+        // if ($this->shouldRunToolSpecSync(10)) {
+        //     $this->runOnceWithFlag(
+        //         '/var/www/html/database',        // lock / state 檔案目錄
+        //         '.tool_spec_sync',               // 任務鎖名稱（key）
+        //         fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
+        //     );
+        // }
 
         $isMobile = $this->isMobileCheck();
 
@@ -59,7 +143,7 @@ class Settings extends Controller
         $sample_rate = $this->MiscellaneousModel->details('sample_rate');
         $controller_info = $this->SettingModel->GetControllerInfo();
         $active_session = $this->AdminModel->GetActiveSession();
-        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        $iDas_Vesion = $this->normalizeIdasVersionDisplay($this->AdminModel->Get_Das_Config('idas_version'));
         $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
@@ -70,7 +154,7 @@ class Settings extends Controller
 
         $history_year_arr = $this->DataModel->get_data_for_year();
 
-        $iDAS_version = $idas_version['config_value'];
+        $iDAS_version = $this->normalizeIdasVersionDisplay($idas_version['config_value'] ?? $iDas_Vesion);
 
         $barcodes = $this->GetBarcodes();
         
@@ -90,7 +174,6 @@ class Settings extends Controller
             'idas_version'   => $iDAS_version,
             'disk_usage_percent' => $disk_usage_percent,
             'history_year_arr' => $history_year_arr 
-
         );
 
         if($isMobile){
@@ -101,39 +184,99 @@ class Settings extends Controller
        
     }
 
-    //修改密碼 
-    public function edit_password(){
 
-        $conset = array();
-        $input_check = true;
-        if( !empty($_POST['device_id']) && isset($_POST['device_id'])  ){
-            $conset['device_id'] = $_POST['device_id'];
-        }else{ 
-            $input_check = false; 
+    public function SetAgentIp(){
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if(!empty($file)){
+            include $file;
         }
 
-        if( !empty($_POST['new_password']) && isset($_POST['new_password'])  ){
-             $conset['new_password']  = $_POST['new_password'];
-        }else{ 
-            $input_check = false; 
+        $ip = '';
+        $result = false;
+
+        // ✅ 檢查輸入
+        if (isset($_POST['agent_server_ip']) && $_POST['agent_server_ip'] !== '') {
+            $ip = $_POST['agent_server_ip'];
+            $result = $this->AdminModel->Set_Agent_Ip($ip);
         }
-        
 
-        if ($input_check) {
-            $result = $this->SettingModel->Edit_Login_Password($conset);
-            if($result){
-                $res_msg = 'edit:'. $conset['device_id'].'password  success';
-            }else{
-                $res_msg = 'edit:'. $conset['device_id'].'password  fail';
-            }
-            echo $res_msg;
-
+        // ✅ 回傳
+        if($result){
+            $res_msg = $text['Edit'].' IP:'.$ip." ".$text['success'];
+            $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg, $ip);
         }else{
-            $result = false;
+            $res_msg = $text['Edit'].' IP:'.$ip." ".$text['fail'];
+            $this->MiscellaneousModel->generateErrorResponse('Error', $res_msg, $ip);
         }
-    
     }
 
+
+    //修改密碼
+    public function edit_password(){
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        $file = $this->MiscellaneousModel->lang_load();
+        if (!empty($file)) {
+            include $file;
+        }
+
+        $password        = trim((string)($_POST['new_password'] ?? ''));
+        $confirmPassword = trim((string)($_POST['confirm_password'] ?? ($_POST['comfirm_password'] ?? '')));
+        $deviceId        = trim((string)($_POST['device_id'] ?? ''));
+
+        if ($deviceId === '') {
+            $controllerInfo = $this->SettingModel->GetControllerInfo();
+            $deviceId = (string)($controllerInfo['device_id'] ?? '1');
+        }
+
+        $msgInput = $text['input_error'] ?? 'Input error';
+
+        // 密碼不可空白，只允許數字，支援 4~10 碼
+        if ($password === '' || $confirmPassword === '') {
+            echo json_encode([
+                'result'   => false,
+                'res_type' => 'Error',
+                'res_msg'  => $msgInput . ': password is required.'
+            ]);
+            exit;
+        }
+
+        if (!preg_match('/^\d{4,10}$/', $password)) {
+            echo json_encode([
+                'result'   => false,
+                'res_type' => 'Error',
+                'res_msg'  => $msgInput . ': password must be 4-10 digits.'
+            ]);
+            exit;
+        }
+
+        if ($password !== $confirmPassword) {
+            echo json_encode([
+                'result'   => false,
+                'res_type' => 'Error',
+                'res_msg'  => $msgInput . ': password confirmation does not match.'
+            ]);
+            exit;
+        }
+
+        $conset = [
+            'device_id'    => $deviceId,
+            'new_password' => $password,
+        ];
+
+        $result = $this->SettingModel->Edit_Login_Password($conset);
+
+        echo json_encode([
+            'result'   => (bool)$result,
+            'res_type' => $result ? 'Success' : 'Error',
+            'res_msg'  => $result
+                ? ($text['success'] ?? 'Success')
+                : ($text['fail'] ?? 'Fail')
+        ]);
+        exit;
+    }
 
     public function edit_permission()
     {
@@ -268,15 +411,12 @@ class Settings extends Controller
         return $decimalValue;
     }
 
-    
     public function control_setting() {
 
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) {
             include $file;
         }
-
-
 
         $con_setting = [];
         $input_check = true;
@@ -316,7 +456,6 @@ class Settings extends Controller
             'circular_archive',
             'blackout_recovery',
             'buzzer_mode',
-            'modbus_type',
             'global_downshift_torque',
             'global_downshift_speed'
         ];
@@ -324,33 +463,9 @@ class Settings extends Controller
             $con_setting[$field] = $get($field, '');
         }
 
-        /*
-         * Modbus 通訊類型：
-         * 0 = TCP
-         * 1 = RTU
-         */
-        $modbusTypeRaw = (string)($con_setting['modbus_type'] ?? '0');
-
-        if (!in_array($modbusTypeRaw, ['0', '1'], true)) {
-            $input_check = false;
-        }
-
-        // 基本數值型別正規化，避免字串直接寫入 DB。
-        foreach ([
-            'counting_method',
-            'circular_archive',
-            'blackout_recovery',
-            'buzzer_mode',
-            'modbus_type',
-            'lang_val',
-            'unit_val'
-        ] as $nf) {
-            if (
-                isset($con_setting[$nf])
-                && $con_setting[$nf] !== ''
-            ) {
-                $con_setting[$nf] = (int)$con_setting[$nf];
-            }
+        // 基本數值型別正規化（選用：避免字串進 DB）
+        foreach (['counting_method','circular_archive','blackout_recovery','buzzer_mode','lang_val','unit_val'] as $nf) {
+            if (isset($con_setting[$nf]) && $con_setting[$nf] !== '') $con_setting[$nf] = (int)$con_setting[$nf];
         }
         foreach (['global_downshift_torque','global_downshift_speed','storage_warning','torque_filter'] as $nf) {
             if (isset($con_setting[$nf]) && $con_setting[$nf] !== '') $con_setting[$nf] = $con_setting[$nf] + 0;
@@ -391,286 +506,18 @@ class Settings extends Controller
         if($con_setting["blackout_recovery"] ==1){
             $con_setting["blackout_recovery"] = "1_1";
         }
+        // ===== 執行更新（Model 需為先前已修改的版本：支援 :device_id_new，且 WHERE 可處理 IS NULL）=====
+        $ok = $this->SettingModel->Controller_Setting($con_setting);
 
-        /*
-         * 儲存前先取得目前資料庫中的 Modbus Type。
-         *
-         * 0 = TCP
-         * 1 = RTU
-         *
-         * 只有 Modbus Type 真正改變時，Linux 才需要重新啟動。
-         */
-        $currentControllerInfo = (array)(
-            $this->SettingModel->GetControllerInfo()
-            ?? []
-        );
-
-        $oldModbusType = (int)(
-            $currentControllerInfo['modbus_type']
-            ?? 0
-        );
-
-        $newModbusType = (int)(
-            $con_setting['modbus_type']
-            ?? 0
-        );
-
-        $modbusTypeChanged = (
-            $oldModbusType !== $newModbusType
-        );
-
-        // ===== 執行更新 =====
-        $ok = $this->SettingModel->Controller_Setting(
-            $con_setting
-        );
-
-        if (!$ok) {
-            $this->respondControllerSettingJson([
-                'success' => false,
-                'res_type' => $text['fail'] ?? 'Fail',
-                'res_msg' => $text['fail'] ?? 'Fail',
-                'modbus_type_changed' => false,
-                'controller_device_db_synced' => false,
-                'restart_required' => false,
-                'restart_scheduled' => false
-            ], 500);
+        if ($ok) {
+            $res_type = $text['success'] ?? 'Success';
+            $res_msg  = $text['success'] ?? 'Success';
+        } else {
+            $res_type = $text['fail'] ?? 'Fail';
+            $res_msg  = $text['fail'] ?? 'Fail';
         }
-
-        $restartRequired = (
-            PHP_OS_FAMILY === 'Linux'
-            && $modbusTypeChanged
-        );
-
-        $restartResult = [
-            'scheduled' => false,
-            'message' => ''
-        ];
-
-        if ($restartRequired) {
-            $restartResult =
-                $this->scheduleModbusTypeLinuxRestart();
-
-            $this->logMessage(
-                sprintf(
-                    'Modbus type changed: %d -> %d; restart scheduled=%s; message=%s',
-                    $oldModbusType,
-                    $newModbusType,
-                    !empty($restartResult['scheduled'])
-                        ? 'true'
-                        : 'false',
-                    (string)($restartResult['message'] ?? '')
-                )
-            );
-        }
-
-        $this->respondControllerSettingJson([
-            'success' => true,
-            'res_type' => $text['success'] ?? 'Success',
-            'res_msg' => $text['success'] ?? 'Success',
-            'old_modbus_type' => $oldModbusType,
-            'new_modbus_type' => $newModbusType,
-            'modbus_type_changed' => $modbusTypeChanged,
-            'controller_device_db_synced' => (
-                PHP_OS_FAMILY !== 'Linux'
-                || $ok
-            ),
-            'controller_device_db_path' => (
-                PHP_OS_FAMILY === 'Linux'
-                    ? '/home/kls/NTCS7/ntcs_device.db'
-                    : ''
-            ),
-            'restart_required' => $restartRequired,
-            'restart_scheduled' => !empty(
-                $restartResult['scheduled']
-            ),
-            'restart_delay_seconds' => $restartRequired
-                ? 5
-                : 0,
-            'restart_message' => (string)(
-                $restartResult['message']
-                ?? ''
-            )
-        ]);
+        $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
     }
-
-
-    /**
-     * Modbus Type 變更後，排程重新啟動 Linux。
-     *
-     * PHP 使用 exec() 建立背景程序，
-     * 等待 5 秒後透過 sudo systemctl reboot 重新啟動。
-     */
-    private function scheduleModbusTypeLinuxRestart(): array
-    {
-        if (PHP_OS_FAMILY !== 'Linux') {
-            return [
-                'scheduled' => false,
-                'message' => 'Restart is only supported on Linux.'
-            ];
-        }
-
-        if (!function_exists('exec')) {
-            return [
-                'scheduled' => false,
-                'message' => 'PHP exec() is not available.'
-            ];
-        }
-
-        $disabledFunctions = array_map(
-            'trim',
-            explode(
-                ',',
-                (string)ini_get('disable_functions')
-            )
-        );
-
-        if (in_array('exec', $disabledFunctions, true)) {
-            return [
-                'scheduled' => false,
-                'message' => 'PHP exec() is disabled.'
-            ];
-        }
-
-        $sudo = '';
-
-        foreach (
-            [
-                '/usr/bin/sudo',
-                '/bin/sudo'
-            ] as $candidate
-        ) {
-            if (is_executable($candidate)) {
-                $sudo = $candidate;
-                break;
-            }
-        }
-
-        if ($sudo === '') {
-            return [
-                'scheduled' => false,
-                'message' => 'sudo command was not found.'
-            ];
-        }
-
-        $systemctl = '';
-
-        foreach (
-            [
-                '/usr/bin/systemctl',
-                '/bin/systemctl'
-            ] as $candidate
-        ) {
-            if (is_executable($candidate)) {
-                $systemctl = $candidate;
-                break;
-            }
-        }
-
-        if ($systemctl === '') {
-            return [
-                'scheduled' => false,
-                'message' => 'systemctl command was not found.'
-            ];
-        }
-
-        /*
-         * 先確認 www-data 有免密碼執行 systemctl reboot 的權限。
-         * 若沒有權限，設定仍會儲存，但不會假裝排程成功。
-         */
-        $permissionCommand = escapeshellarg($sudo)
-            . ' -n -l '
-            . escapeshellarg($systemctl)
-            . ' reboot 2>&1';
-
-        $permissionOutput = [];
-        $permissionExitCode = 1;
-
-        exec(
-            $permissionCommand,
-            $permissionOutput,
-            $permissionExitCode
-        );
-
-        if ($permissionExitCode !== 0) {
-            return [
-                'scheduled' => false,
-                'message' => !empty($permissionOutput)
-                    ? implode(' ', $permissionOutput)
-                    : 'www-data is not allowed to reboot Linux.'
-            ];
-        }
-
-        /*
-         * PHP 啟動獨立背景程序：
-         * 1. 先等待 5 秒。
-         * 2. 再透過 sudo 執行 systemctl reboot。
-         *
-         * nohup + 背景執行可避免 HTTP Request 結束時程序被中止。
-         */
-        $delayedCommand = 'sleep 5; '
-            . escapeshellarg($sudo)
-            . ' -n '
-            . escapeshellarg($systemctl)
-            . ' reboot';
-
-        $backgroundCommand = 'nohup /bin/sh -c '
-            . escapeshellarg($delayedCommand)
-            . ' >/dev/null 2>&1 < /dev/null &';
-
-        $output = [];
-        $exitCode = 1;
-
-        exec(
-            $backgroundCommand,
-            $output,
-            $exitCode
-        );
-
-        if ($exitCode !== 0) {
-            return [
-                'scheduled' => false,
-                'message' => !empty($output)
-                    ? implode(' ', $output)
-                    : 'Unable to start the PHP reboot task.'
-            ];
-        }
-
-        return [
-            'scheduled' => true,
-            'message' => 'Linux restart scheduled in 5 seconds by PHP.'
-        ];
-    }
-
-
-    /**
-     * Controller Setting 專用 JSON Response。
-     */
-    private function respondControllerSettingJson(
-        array $payload,
-        int $statusCode = 200
-    ): void {
-        if (!headers_sent()) {
-            http_response_code($statusCode);
-            header(
-                'Content-Type: application/json; charset=utf-8'
-            );
-            header(
-                'Cache-Control: no-store, no-cache, must-revalidate'
-            );
-        }
-
-        echo json_encode(
-            $payload,
-            JSON_UNESCAPED_UNICODE
-            | JSON_UNESCAPED_SLASHES
-        );
-
-        exit;
-    }
-
-
-
-
 
     public function edit_system_date() {
 
@@ -696,8 +543,6 @@ class Settings extends Controller
         }
         exit;
     }
-    
-
 
     public function get_system_time(){
         
@@ -707,10 +552,8 @@ class Settings extends Controller
         echo trim($output);
     }
 
-   
 
-
-    public function FirmwareUpdate(){
+     public function FirmwareUpdate(){
 
         header('Content-Type: application/json; charset=utf-8');
 
@@ -728,8 +571,8 @@ class Settings extends Controller
         }
 
         // 取得控制器 device id → Modbus unitId
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
+        $device_id = $this->getActiveModbusUnitId();
+        $unitId = $device_id;
 
         $this->logMessage('firmware update start');
 
@@ -778,26 +621,14 @@ class Settings extends Controller
         $name_int16 = array_slice($name_int16, 0, 10);
 
         /* =============================
-        * 一次寫入 R480~R490 
+        * 一次寫入 R480~R490
+        * MODBUS TCP / OP 協議都走統一 protocol layer。
         * ============================= */
-        require_once __DIR__ . '/../../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-
-        $modbus = new ModbusMaster("127.0.0.1", "TCP");
-        $modbus->port = 502;
-        $modbus->timeout_sec = 10;
-
         try {
 
             // R480=1 + R481~R490 filename
             $data = array_merge([1], $name_int16);
-            $types = array_fill(0, count($data), "INT");
-
-            $modbus->writeMultipleRegister(
-                $unitId,
-                480,
-                $data,
-                $types
-            );
+            $this->writeControllerRegisters(480, $data, 'FIRMWARE_UPDATE_FILENAME');
 
             $this->logMessage(
                 "write R480~R490 OK, filename={$filenameWithoutExtension}, unitId={$unitId}"
@@ -809,9 +640,9 @@ class Settings extends Controller
             exit();
 
         } catch (Exception $e) {
-            $this->logMessage('modbus error status: ' . $modbus->status);
+            $this->logMessage('protocol write error: ' . $e->getMessage());
             $this->logMessage('firmware update end');
-            echo json_encode(["error" => "modbus error"]);
+            echo json_encode(["error" => "communication error"]);
             exit();
         }
     }
@@ -842,9 +673,7 @@ class Settings extends Controller
     }
 
 
-
-
-
+ 
     public function export_sysytem_config(){
 
         /* =====================================================
@@ -1012,8 +841,6 @@ class Settings extends Controller
         echo json_encode(array_values($fileList));
     }
 
-
-
     //刪除鎖附記路的年份
     //取得年份後 用modbus 刪除
     public function delete_files(){
@@ -1022,7 +849,6 @@ class Settings extends Controller
         if(!empty($file)){
             include $file;
         }
-
 
         $del_year_id = $_POST['del_year_id'][0];
         if(empty($del_year_id)){
@@ -1034,13 +860,11 @@ class Settings extends Controller
             return;
         }
 
-
-
         $temp_del_year = $del_year_id[0]; // 只處理第一筆
 
         // 檢查是否可以刪除（Modbus 狀態檢查）
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
+        $device_id = $this->getActiveModbusUnitId();
+        $unitId = $device_id;
         $idas_result = $this->idas_check( $unitId);
 
         if ($idas_result['result'] != 1) {
@@ -1052,19 +876,11 @@ class Settings extends Controller
             return;
         }
 
-        // 執行 Modbus 寫入刪除年份
-        $controller_ip = CONTROLLER_IP;
+        // 執行刪除年份通知：MODBUS TCP / OP 協議都走統一 protocol layer。
         $year = array($temp_del_year);
 
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-        $modbus = new ModbusMaster($controller_ip, "TCP");
-
         try {
-            $modbus->port = 502;
-            $modbus->timeout_sec = 10;
-            $dataTypes = array("INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT", "INT");
-
-            $modbus->writeMultipleRegister($device_id, 517, $year, $dataTypes);
+            $this->writeControllerRegisters(517, $year, 'DELETE_HISTORY_YEAR');
 
             echo json_encode([
                 'result' => true,
@@ -1072,6 +888,7 @@ class Settings extends Controller
                 'res_msg' => $text['delete_text'].$text['success'] 
             ]);
         } catch (Exception $e) {
+            $this->logMessage('delete_files protocol write failed: ' . $e->getMessage());
             echo json_encode([
                 'result' => false,
                 'res_type' => 'Error',
@@ -1080,14 +897,11 @@ class Settings extends Controller
         }
     }
 
-        
-
 
     public function firmware_update() //FTP 上傳檔案大小限制 : 500M
     {
         // code...
     }
-
 
 
     //DB匯入提醒判斷
@@ -1255,6 +1069,214 @@ class Settings extends Controller
         }
     }
 
+
+    /**
+     * DB Sync 操作紀錄
+     * 跟 JOB create job 一樣寫入 operation_audit_log
+     */
+    private function writeDbSyncAudit($action, $status, $message, $extra = []){
+
+        try {
+            if (!isset($this->AuditModel)) {
+                $this->AuditModel = $this->model('OperationAudit');
+            }
+
+            $operator = $_COOKIE['username'] ?? ($_SESSION['username'] ?? '');
+
+            $payload = [
+                'module'       => 'DB_SYNC',
+                'action'       => $action,
+                'status'       => $status,
+                'device_id'    => $this->getActiveModbusUnitId(),
+
+                // DB Sync 沒有 job / seq / step
+                'job_id'       => null,
+                'seq_id'       => null,
+                'step_id'      => null,
+
+                'user_id'      => $operator,
+                'operator'     => $operator,
+                'client_ip'    => $_SERVER['REMOTE_ADDR'] ?? '',
+                'title'        => 'DB Sync',
+                'message'      => $message,
+
+                'before_json'  => null,
+                'after_json'   => $extra,
+                'request_json' => $_POST,
+            ];
+
+            if (method_exists($this->AuditModel, 'write')) {
+                $this->AuditModel->write($payload);
+            } else {
+                error_log('[OperationAudit][DB_SYNC] OperationAudit::write() not found');
+            }
+
+        } catch (Throwable $e) {
+            // 寫 log 失敗不能影響同步功能
+            error_log('[OperationAudit][DB_SYNC] write failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * DB Sync 統一回傳
+     * 回傳前先寫 operation_audit_log
+     */
+    private function syncDbAuditResponse($resType, $resMsg, $action, $extra = []){
+
+        $status = (strtolower((string)$resType) === 'success') ? 'SUCCESS' : 'FAIL';
+
+        $this->writeDbSyncAudit($action, $status, $resMsg, $extra);
+
+        return $this->MiscellaneousModel->generateErrorResponse($resType, $resMsg);
+    }
+
+    /**
+     * 在 D2C 覆蓋 ntcs_device.db 前，保留控制器目前的 Wi-Fi 設定。
+     *
+     * 流程：
+     * 1. 從 Controller DB 的 ntcs_device_test.wifi 讀取現值。
+     * 2. 依資料列順序寫入 iDAS DB 的 ntcs_device_test.wifi。
+     * 3. 完成後才允許 iDAS DB 覆蓋 Controller DB。
+     *
+     * @return int 已同步的資料列數
+     */
+    private function preserveControllerWifiToIdasDeviceDb(
+        string $controllerDb,
+        string $idasDb
+    ): int {
+
+        if (!is_file($controllerDb) || !is_readable($controllerDb)) {
+            throw new Exception("Controller device DB not found or unreadable: {$controllerDb}");
+        }
+
+        if (!is_file($idasDb) || !is_readable($idasDb) || !is_writable($idasDb)) {
+            throw new Exception("iDAS device DB not found, unreadable or unwritable: {$idasDb}");
+        }
+
+        // 覆寫前先確認兩份 SQLite DB 都是健康的。
+        $this->assertSqliteHealthy($controllerDb);
+        $this->assertSqliteHealthy($idasDb);
+
+        $controllerPdo = new PDO('sqlite:' . $controllerDb);
+        $idasPdo       = new PDO('sqlite:' . $idasDb);
+
+        foreach ([$controllerPdo, $idasPdo] as $pdo) {
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            // DB 正在被其它程序短暫使用時，最多等待 5 秒，避免立即出現 database is locked。
+            $pdo->exec('PRAGMA busy_timeout = 5000');
+        }
+
+        // 確認來源與目的 DB 都存在 ntcs_device_test.wifi 欄位。
+        foreach ([
+            'Controller' => $controllerPdo,
+            'iDAS'       => $idasPdo,
+        ] as $label => $pdo) {
+            $columns = $pdo->query("PRAGMA table_info(ntcs_device_test)")->fetchAll();
+            if (empty($columns)) {
+                throw new Exception("{$label} DB table not found: ntcs_device_test");
+            }
+
+            $columnNames = array_map(
+                static fn(array $column): string => (string)($column['name'] ?? ''),
+                $columns
+            );
+
+            if (!in_array('wifi', $columnNames, true)) {
+                throw new Exception("{$label} DB column not found: ntcs_device_test.wifi");
+            }
+        }
+
+        // 使用 rowid 依資料列順序配對；一般 ntcs_device_test 為單筆資料，
+        // 若未來變成多筆，也不會把第一筆 wifi 任意套用到全部資料。
+        $controllerRows = $controllerPdo
+            ->query('SELECT rowid AS sync_rowid, wifi FROM ntcs_device_test ORDER BY rowid')
+            ->fetchAll();
+
+        $idasRows = $idasPdo
+            ->query('SELECT rowid AS sync_rowid FROM ntcs_device_test ORDER BY rowid')
+            ->fetchAll();
+
+        if (empty($controllerRows)) {
+            throw new Exception('Controller DB has no ntcs_device_test data');
+        }
+
+        if (count($controllerRows) !== count($idasRows)) {
+            throw new Exception(sprintf(
+                'ntcs_device_test row count mismatch (Controller=%d, iDAS=%d)',
+                count($controllerRows),
+                count($idasRows)
+            ));
+        }
+
+        try {
+            $idasPdo->beginTransaction();
+
+            $update = $idasPdo->prepare(
+                'UPDATE ntcs_device_test SET wifi = :wifi WHERE rowid = :rowid'
+            );
+
+            foreach ($controllerRows as $index => $controllerRow) {
+                $targetRowId = (int)$idasRows[$index]['sync_rowid'];
+                $wifiValue   = $controllerRow['wifi'] ?? null;
+
+                if ($wifiValue === null) {
+                    $update->bindValue(':wifi', null, PDO::PARAM_NULL);
+                } elseif (is_int($wifiValue)) {
+                    $update->bindValue(':wifi', $wifiValue, PDO::PARAM_INT);
+                } else {
+                    $update->bindValue(':wifi', (string)$wifiValue, PDO::PARAM_STR);
+                }
+
+                $update->bindValue(':rowid', $targetRowId, PDO::PARAM_INT);
+                $update->execute();
+            }
+
+            $idasPdo->commit();
+
+            // 回讀確認每一列的 wifi 確實已寫入 iDAS DB。
+            $verifiedRows = $idasPdo
+                ->query('SELECT rowid AS sync_rowid, wifi FROM ntcs_device_test ORDER BY rowid')
+                ->fetchAll();
+
+            foreach ($controllerRows as $index => $controllerRow) {
+                $sourceWifi = $controllerRow['wifi'] ?? null;
+                $targetWifi = $verifiedRows[$index]['wifi'] ?? null;
+
+                $sameValue = ($sourceWifi === null && $targetWifi === null)
+                    || ($sourceWifi !== null && $targetWifi !== null && (string)$sourceWifi === (string)$targetWifi);
+
+                if (!$sameValue) {
+                    throw new Exception('Controller wifi verification failed at row ' . ($index + 1));
+                }
+            }
+
+            // 若 DB 使用 WAL，先把 wifi 變更 checkpoint 回主 DB，之後才能安全複製單一 .db 檔。
+            $journalMode = strtolower((string)$idasPdo->query('PRAGMA journal_mode')->fetchColumn());
+            if ($journalMode === 'wal') {
+                $checkpoint = $idasPdo->query('PRAGMA wal_checkpoint(TRUNCATE)')->fetch(PDO::FETCH_NUM);
+                if (is_array($checkpoint) && (int)($checkpoint[0] ?? 0) !== 0) {
+                    throw new Exception('SQLite WAL checkpoint is busy');
+                }
+            }
+        } catch (Throwable $e) {
+            if ($idasPdo->inTransaction()) {
+                $idasPdo->rollBack();
+            }
+            throw new Exception('Failed to preserve controller wifi value: ' . $e->getMessage());
+        }
+
+        // 關閉連線後再做完整性檢查，避免複製時仍持有 DB handle。
+        $controllerPdo = null;
+        $idasPdo = null;
+        clearstatcache(true, $idasDb);
+
+        // 寫入完成後再次確認 iDAS DB 完整性。
+        $this->assertSqliteHealthy($idasDb);
+
+        return count($controllerRows);
+    }
+
     
     public function Sync_check_db(){
         
@@ -1276,25 +1298,83 @@ class Settings extends Controller
 
 
         // 取得 正確的 Modbus id
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
-        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
+        $device_id = $this->getActiveModbusUnitId();
+        $unitId = $device_id;
 
-
+        $auditExtra = [
+            'direction' => 'D2C',
+            'argument'  => $argument,
+            'device_id' => $device_id,
+            'unit_id'   => $unitId,
+            'files'     => [
+                'lin' => [
+                    'src'     => $src1,
+                    'final'   => $finalPath1,
+                    'renamed' => $renamedPath1,
+                ],
+                'barcode' => [
+                    'src'     => $src2,
+                    'final'   => $finalPath2,
+                    'renamed' => $renamedPath2,
+                ],
+                'device' => [
+                    'src' => $src3,
+                    'dst' => $dst3,
+                ],
+            ],
+        ];
 
         // 只處理 Linux + D2C，其它情況直接回錯誤
         if (PHP_OS_FAMILY !== 'Linux' || $argument !== 'D2C') {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
+            return $this->syncDbAuditResponse('Error', 'Invalid sync argument or unsupported OS', 'SYNC_D2C', $auditExtra);
         }
 
-        // ✅ 先同步 device.db (src3 → dst3)
-        if (file_exists($src3)) {
-            if (!copy($src3, $dst3)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src3 to $dst3");
-            }
-            @chmod($dst3, 0777);
+        // ✅ Device DB 同步前，先保留 Controller 目前的 wifi 設定。
+        // 流程：dst3.wifi → src3.wifi → src3 整份覆蓋回 dst3。
+        if (!file_exists($src3) || !file_exists($dst3)) {
+            $missingDeviceFiles = [];
+            if (!file_exists($src3)) $missingDeviceFiles[] = $src3;
+            if (!file_exists($dst3)) $missingDeviceFiles[] = $dst3;
 
-            // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
+            $auditExtra['failed_stage'] = 'missing_device_db';
+            $auditExtra['missing_files'] = $missingDeviceFiles;
+
+            return $this->syncDbAuditResponse(
+                'Error',
+                'Device DB file(s) missing: ' . implode(', ', $missingDeviceFiles),
+                'SYNC_D2C',
+                $auditExtra
+            );
+        }
+
+        try {
+            // 1. Controller DB 的 wifi value 複寫到 iDAS DB。
+            $wifiRows = $this->preserveControllerWifiToIdasDeviceDb($dst3, $src3);
+            $auditExtra['device_wifi_preserved'] = true;
+            $auditExtra['device_wifi_row_count'] = $wifiRows;
+            $this->logMessage("Controller wifi value preserved to iDAS device DB, rows={$wifiRows}");
+
+            // 2. 完成 wifi 保留後，再將更新後的 iDAS device DB 覆蓋回 Controller。
+            // 使用同目錄 temp + atomic rename，避免直接 copy 中途失敗留下半份 SQLite DB。
+            $this->replaceSqliteDbFile($src3, $dst3, false);
+
+            @chmod($dst3, 0777);
+            $this->logMessage("Updated iDAS device DB copied to Controller: {$src3} -> {$dst3}");
+
+            // 3. 延續原本的後續 DB 同步流程。
             $this->get_db_sync($unitId);
+
+        } catch (Throwable $e) {
+            $auditExtra['failed_stage'] = 'preserve_wifi_and_copy_device_db';
+            $auditExtra['exception'] = $e->getMessage();
+            $this->logMessage('Device DB sync failed: ' . $e->getMessage());
+
+            return $this->syncDbAuditResponse(
+                'Error',
+                'Device DB synchronization failed',
+                'SYNC_D2C',
+                $auditExtra
+            );
         }
 
         //  檢查原始檔案是否存在
@@ -1303,22 +1383,25 @@ class Settings extends Controller
             if (!file_exists($src1)) $missingFiles[] = 'KLS_NTCS_IDAS.Lin';
             if (!file_exists($src2)) $missingFiles[] = 'ntcs_barcode_IDAS.db';
 
-            $this->MiscellaneousModel->generateErrorResponse(
+            $auditExtra['failed_stage'] = 'missing_source_files';
+            $auditExtra['missing_files'] = $missingFiles;
+            return $this->syncDbAuditResponse(
                 'Error',
-                'Source file(s) missing: ' . implode(', ', $missingFiles)
+                'Source file(s) missing: ' . implode(', ', $missingFiles),
+                'SYNC_D2C',
+                $auditExtra
             );
         }
 
-        // 初始化 Modbus
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-        $modbus = new ModbusMaster("127.0.0.1", "TCP");
-        $modbus->port        = 502;
-        $modbus->timeout_sec = 2;   // 原本 10 → 3，這裡直接壓到 2 秒
+        // 通知控制器時改走 protocol layer。
+        // MODBUS TCP 使用 ModbusMaster；OP 協議會自動轉成 IDAS_WRITE_xxx_xxx。
+        $modbus = null;
 
         try {
             // ----------- Sync LIN File（簡化：直接 src → final → rename）-----------
             if (!$this->safeCopy($src1, $finalPath1)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src1 to $finalPath1");
+                $auditExtra['failed_stage'] = 'copy_lin_to_ftp';
+                return $this->syncDbAuditResponse('Error', "Failed to copy $src1 to $finalPath1", 'SYNC_D2C', $auditExtra);
             }
             @chmod($finalPath1, 0777);
             $this->logMessage("$src1 copied to $finalPath1");
@@ -1327,17 +1410,19 @@ class Settings extends Controller
             $this->notifyModbus($modbus, [1, 12593], "LIN");
 
             if (!$this->safeCopy($finalPath1, $renamedPath1)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename LIN file");
+                $auditExtra['failed_stage'] = 'rename_lin_file';
+                return $this->syncDbAuditResponse('Error', "Failed to rename LIN file", 'SYNC_D2C', $auditExtra);
             }
             @unlink($finalPath1);
             $this->logMessage("$finalPath1 renamed to $renamedPath1");
 
-            // 🔥 拿掉 usleep(1_000_000) 不再強制多等 1 秒
-            // usleep(1_000_000);
+            // 控制器收到 LIN 通知後需要時間處理檔案；太快接續 DB 通知容易 Protocol read failed。
+            usleep(1_000_000);
 
             // ----------- Sync DB File (barcode)（一樣簡化）-----------
             if (!$this->safeCopy($src2, $finalPath2)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy $src2 to $finalPath2");
+                $auditExtra['failed_stage'] = 'copy_barcode_to_ftp';
+                return $this->syncDbAuditResponse('Error', "Failed to copy $src2 to $finalPath2", 'SYNC_D2C', $auditExtra);
             }
             @chmod($finalPath2, 0777);
             $this->logMessage("$src2 copied to $finalPath2");
@@ -1346,37 +1431,30 @@ class Settings extends Controller
             $this->notifyModbus($modbus, [1, 12593], "DB");
 
             if (!$this->safeCopy($finalPath2, $renamedPath2)) {
-                $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to rename DB file");
+                $auditExtra['failed_stage'] = 'rename_barcode_file';
+                return $this->syncDbAuditResponse('Error', "Failed to rename DB file", 'SYNC_D2C', $auditExtra);
             }
             @unlink($finalPath2);
             $this->logMessage("$finalPath2 renamed to $renamedPath2");
 
             // ✅ 最後回傳成功訊息（純 JSON）
-            $this->MiscellaneousModel->generateErrorResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'));
+            return $this->syncDbAuditResponse('Success', 'SYNC ' . ($text['success'] ?? 'success'), 'SYNC_D2C', $auditExtra);
 
         } catch (Exception $e) {
             $this->logMessage('Modbus write fail: ' . $e->getMessage());
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus communication failed');
+            $auditExtra['failed_stage'] = 'modbus_communication';
+            $auditExtra['exception'] = $e->getMessage();
+            return $this->syncDbAuditResponse('Error', 'Modbus communication failed', 'SYNC_D2C', $auditExtra);
         }
     }
 
-
-
-
-
-
-
-
-
     public function Sync_check_db_load() {
+        header('Content-Type: application/json; charset=utf-8');
+
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) include $file;
 
         $argument = $_POST['argument'] ?? '';
-
-        if (empty($argument) || PHP_OS_FAMILY !== 'Linux') {
-            return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument or unsupported OS');
-        }
 
         // 定義來源與目的地檔案清單（Controller → iDAS）
         $fileList = [
@@ -1386,33 +1464,57 @@ class Settings extends Controller
             '/home/kls/NTCS7/ntcs_data.db'      => '/var/www/html/database/ntcs_data.db',
         ];
 
+        $auditExtra = [
+            'direction' => 'C2D',
+            'argument'  => $argument,
+            'files'     => $fileList,
+            'copied'    => [],
+        ];
+
+        if (empty($argument) || PHP_OS_FAMILY !== 'Linux') {
+            return $this->syncDbAuditResponse('Error', 'Invalid sync argument or unsupported OS', 'SYNC_C2D', $auditExtra);
+        }
+
         if ($argument === 'C2D') {
             $copiedCount = 0;
             foreach ($fileList as $src => $dst) {
                 if (file_exists($src)) {
                     if (copy($src, $dst)) {
                         $copiedCount++;
+                        $auditExtra['copied'][] = [
+                            'src' => $src,
+                            'dst' => $dst,
+                        ];
 
                         // 如果是特定檔案可額外執行後處理
                         if (basename($src) === 'KLS_NTCS.Lin') {
                             //$this->stepModel->get_success_data_by_step();
                         }
                     } else {
-                        return $this->MiscellaneousModel->generateErrorResponse('Error', "Failed to copy: $src → $dst");
+                        $auditExtra['failed_stage'] = 'copy_file';
+                        $auditExtra['failed_src'] = $src;
+                        $auditExtra['failed_dst'] = $dst;
+                        return $this->syncDbAuditResponse('Error', "Failed to copy: $src -> $dst", 'SYNC_C2D', $auditExtra);
                     }
                 } else {
-                    return $this->MiscellaneousModel->generateErrorResponse('Error', "Source file not found: $src");
+                    $auditExtra['failed_stage'] = 'source_file_not_found';
+                    $auditExtra['missing_src'] = $src;
+                    return $this->syncDbAuditResponse('Error', "Source file not found: $src", 'SYNC_C2D', $auditExtra);
                 }
             }
 
-            return $this->MiscellaneousModel->generateErrorResponse(
+            $auditExtra['copied_count'] = $copiedCount;
+
+            return $this->syncDbAuditResponse(
                 'Success',
-                "SYNC" . ($text['success'] ?? 'success')
+                "SYNC" . ($text['success'] ?? 'success'),
+                'SYNC_C2D',
+                $auditExtra
             );
         }
 
         // 預留其他參數（例如 D2C）
-        return $this->MiscellaneousModel->generateErrorResponse('Error', 'Invalid sync argument');
+        return $this->syncDbAuditResponse('Error', 'Invalid sync argument', 'SYNC_C2D', $auditExtra);
     }
 
     /**
@@ -1429,34 +1531,19 @@ class Settings extends Controller
     }
 
     /**
-     * 發送 Modbus 訊號
+     * 發送控制器同步訊號。
+     *
+     * 舊版只支援 ModbusMaster；新版統一走 protocol layer：
+     * - TCP / RTU：寫 Modbus register 506 起算
+     * - OP：寫 IDAS_WRITE_506_xxx / IDAS_WRITE_507_xxx ...
      */
-    private function notifyModbus($modbus, $data, $tag = ""){
-        
-        // 取得控制器資訊
-        $controller_info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+    private function notifyModbus($modbus = null, $data = [], $tag = ""){
+        $data = is_array($data) ? array_values($data) : [];
+        $payload = array_merge($data, array_fill(0, max(0, 16 - count($data)), 0));
+        $payload = array_slice($payload, 0, 16);
 
-        // 正確拿出 device_id
-        $device_id = isset($controller_info['device_id'])
-            ? (int)$controller_info['device_id']
-            : 1;   // 沒抓到就先用 1
-
-        // Modbus slave ID 合理範圍通常是  1~255
-        $unitId = $device_id;
-        if ($unitId < 1 || $unitId > 255) {
-            $unitId = 1; 
-        }
-
-        $dataTypes = array_fill(0, 16, 'INT');
-        $payload   = array_merge($data, array_fill(0, 16 - count($data), 0));
-
-        $modbus->writeMultipleRegister($unitId, 506, $payload, $dataTypes);
-        $this->logMessage("Modbus write ($tag) [unitId=$unitId]: " . implode(',', $payload));
+        $this->writeControllerRegisters(506, $payload, $tag);
     }
-
-
-
-
     
     //get barcode
     public function GetBarcodes(){
@@ -1506,8 +1593,6 @@ class Settings extends Controller
             echo '</tr>';
         }
     }
-
-
 
     public function Update_Barcode(){
         
@@ -1582,7 +1667,7 @@ class Settings extends Controller
         $ok = $this->SettingModel->Update_Barcode($barcode);
 
         /* ===============================
-        * 回傳結果
+        * 回傳結果 - Huí chuán jiéguǒ
         * =============================== */
         if ($ok) {
             $msg = $isEdit
@@ -1618,11 +1703,6 @@ class Settings extends Controller
 
         exit;
     }
-
-
-
-
-
 
 
     public function GetJobSeq(){
@@ -1669,8 +1749,6 @@ class Settings extends Controller
 
 
     }
-
-
 
     public function GetJobBarcode(){
 
@@ -1741,11 +1819,127 @@ class Settings extends Controller
         exit;
     }
 
+        #IDAS上傳 20250624 修改
+    /**
+     * iDAS pack version pre-check.
+     *
+     * This endpoint only reads info.json from the uploaded .pack and does not install it.
+     * It is used by the UI to automatically show the downgrade confirmation only when needed.
+     */
+    public function check_idas_pack_version(){
 
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            if (empty($_FILES['file'])) {
+                $msg = $this->t('ERR_NO_FILE');
+                echo json_encode([
+                    'success' => false,
+                    'res_type' => 'Error',
+                    'res_msg'  => $msg,
+                    'message'  => $msg,
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            if ($_FILES['file']['error'] !== 0) {
+                $msg = $this->t('ERR_UPLOAD_ERROR', ['code' => (string)$_FILES['file']['error']]);
+                echo json_encode([
+                    'success' => false,
+                    'res_type' => 'Error',
+                    'res_msg'  => $msg,
+                    'message'  => $msg,
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $uploadedFilename = (string)($_FILES['file']['name'] ?? '');
+            if (strtolower(pathinfo($uploadedFilename, PATHINFO_EXTENSION)) !== 'pack') {
+                $msg = $this->t('ERR_EXT', ['filename' => $uploadedFilename]);
+                echo json_encode([
+                    'success' => false,
+                    'res_type' => 'Error',
+                    'res_msg'  => $msg,
+                    'message'  => $msg,
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $currentRaw = (string)$this->AdminModel->Get_Das_Config('idas_version');
+            $packInfo   = $this->readIdasPackInfoFromZip((string)$_FILES['file']['tmp_name']);
+
+            $currentDisplay = $this->normalizeIdasVersionDisplay($currentRaw);
+            $targetDisplay  = $this->normalizeIdasVersionDisplay($packInfo['idas_version']);
+            $currentBase    = $this->normalizeIdasVersionBase($currentRaw);
+            $targetBase     = $this->normalizeIdasVersionBase($packInfo['idas_version']);
+            $currentProfile = $this->getIdasVersionProfile($currentRaw);
+            $targetProfile  = $this->getIdasVersionProfile($packInfo['idas_version']);
+            $isDowngrade    = version_compare($targetBase, $currentBase, '<');
+            $isSameVersion  = version_compare($targetBase, $currentBase, '==');
+            $isUpgrade      = version_compare($targetBase, $currentBase, '>');
+            $isProfileSwitch = ($currentProfile !== $targetProfile);
+            $requiresDbRebuild = $this->shouldRebuildDbForUpdate($currentProfile, $targetProfile, $isDowngrade);
+            $requiresConfirm   = $this->shouldRequireUpdateConfirm($currentProfile, $targetProfile, $isDowngrade);
+
+            if ($currentProfile === 'SA349' && $targetProfile !== 'SA349') {
+                $statusKey = 'STATUS_SA349_TO_STANDARD_REBUILD';
+            } elseif ($isDowngrade) {
+                $statusKey = 'STATUS_DOWNGRADE';
+            } elseif ($isProfileSwitch) {
+                $statusKey = 'STATUS_PROFILE_SWITCH';
+            } elseif ($isSameVersion) {
+                $statusKey = 'STATUS_SAME_VERSION';
+            } else {
+                $statusKey = 'STATUS_UPGRADE';
+            }
+
+            echo json_encode([
+                'success'             => true,
+                'res_type'            => 'OK',
+                'message'             => '',
+                'current_version'     => $currentDisplay,
+                'pack_version'        => $targetDisplay,
+                'pack_version_raw'    => (string)$packInfo['idas_version'],
+                'current_profile'     => $currentProfile,
+                'pack_profile'        => $targetProfile,
+                'is_downgrade'        => $isDowngrade,
+                'is_same_version'     => $isSameVersion,
+                'is_upgrade'          => $isUpgrade,
+                'is_profile_switch'   => $isProfileSwitch,
+                'is_special_switch'   => $isProfileSwitch,
+                'requires_confirm'    => $requiresConfirm,
+                'requires_db_rebuild' => $requiresDbRebuild,
+                'status_key'          => $statusKey,
+                'status_text'         => $this->t($statusKey),
+                'db_action_text'      => $this->t($requiresDbRebuild ? 'DB_ACTION_REBUILD' : 'DB_ACTION_KEEP'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            echo json_encode([
+                'success' => false,
+                'res_type' => 'Error',
+                'res_msg'  => $msg,
+                'message'  => $msg,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
 
     #IDAS上傳 20250624 修改
     public function iDas_Update($debug = false) {
-        
+
+        // NTCS iDAS 10 update hotfix: keep AJAX response as clean JSON, even if file operations emit warnings.
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+        @ini_set('default_socket_timeout', '300');
+        if (ob_get_level() === 0) {
+            ob_start();
+        } else {
+            ob_start();
+        }
+
         // 1. 紀錄上傳限制
         $maxUpload = ini_get('upload_max_filesize');
         $postMax   = ini_get('post_max_size');
@@ -1757,21 +1951,36 @@ class Settings extends Controller
         if (!empty($file)) include $file;
 
         // 3. 當前版本
-        $iDas_Version = $this->AdminModel->Get_Das_Config('idas_version');
+        $iDas_Version = (string)$this->AdminModel->Get_Das_Config('idas_version');
 
         // 4. 設定路徑
         $file_location = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/' : $_SERVER['DOCUMENT_ROOT'] . '/';
         $extract_path  = $file_location . 'extracted/';
         $main_folder   = '';
+        $updateLockFp  = null;
+        $dbPreflightFiles = [];
+        $deployedNewIdas = false;
 
         // 上傳大小上限（訊息顯示用）
-        $MAX_SIZE     = 30 * 1024 * 1024;
-        $limitText    = '30MB';
+        $MAX_SIZE     = 80 * 1024 * 1024;
+        $limitText    = '80MB';
 
         try {
-            // 5. 驗證上傳
+            // 5. 後端更新鎖：避免兩個瀏覽器 / 兩個 request 同時執行更新。
+            $updateLockFp = $this->acquireIdasUpdateLock();
+
+            // 6. 驗證上傳
             if (empty($_FILES['file'])) {
-                return $this->sendResponse('Error', $this->t('ERR_NO_FILE'));
+                $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+                $clientFileName = trim((string)($_POST['client_file_name'] ?? ''));
+                $clientFileSize = trim((string)($_POST['client_file_size'] ?? ''));
+                return $this->sendResponse('Error', $this->t('ERR_NO_FILE_DETAIL', [
+                    'name' => $clientFileName !== '' ? $clientFileName : '-',
+                    'size' => $clientFileSize !== '' ? $clientFileSize : '-',
+                    'length' => (string)$contentLength,
+                    'post_max' => (string)ini_get('post_max_size'),
+                    'upload_max' => (string)ini_get('upload_max_filesize'),
+                ]));
             }
             if ($_FILES['file']['error'] !== 0) {
                 return $this->sendResponse('Error', $this->t('ERR_UPLOAD_ERROR', ['code' => (string)$_FILES['file']['error']]));
@@ -1783,7 +1992,7 @@ class Settings extends Controller
             }
 
             // 7. 副檔名檢查
-            $uploaded_filename = $_FILES['file']['name'];
+            $uploaded_filename = (string)$_FILES['file']['name'];
             if (strtolower(pathinfo($uploaded_filename, PATHINFO_EXTENSION)) !== 'pack') {
                 return $this->sendResponse('Error', $this->t('ERR_EXT', ['filename' => $uploaded_filename]));
             }
@@ -1794,20 +2003,25 @@ class Settings extends Controller
                 return $this->sendResponse('Error', $this->t('ERR_OPEN_PACK'));
             }
 
-            if (!is_dir($extract_path)) mkdir($extract_path, 0777, true);
+            // 清掉前一次殘留的 extracted，避免 scandir() 抓到舊資料夾導致更新錯包。
+            if (is_dir($extract_path)) {
+                $this->deleteDirectory($extract_path);
+            }
+            if (!is_dir($extract_path) && !@mkdir($extract_path, 0777, true)) {
+                $zip->close();
+                return $this->sendResponse('Error', 'Cannot create extract folder: ' . $extract_path);
+            }
             if (!$zip->extractTo($extract_path)) {
                 $zip->close();
                 return $this->sendResponse('Error', $this->t('ERR_EXTRACT'));
             }
             $zip->close();
 
-            // 9. 找資料夾
-            $folders = array_filter(scandir($extract_path), fn($f) => is_dir($extract_path . $f) && !in_array($f, ['.', '..']));
-            if (empty($folders)) {
+            // 9. 找本次解壓縮的主資料夾：以 info.json 為準，不使用 reset(scandir())，避免吃到殘留舊資料。
+            $main_folder = $this->findExtractedIdasPackRoot($extract_path);
+            if ($main_folder === '') {
                 return $this->sendResponse('Error', $this->t('ERR_NO_FOLDER'));
             }
-
-            $main_folder = $extract_path . reset($folders);
 
             // Debug：列出結構
             if ($debug) {
@@ -1829,17 +2043,38 @@ class Settings extends Controller
                 return $this->sendResponse('Error', $this->t('ERR_BAD_INFO'));
             }
 
-            // 11. 比對版本
-            $match_tcc_version = $verify_data['idas_version'];
-            if (version_compare($match_tcc_version, $iDas_Version, '<')) {
-                return $this->sendResponse('Error', $this->t('ERR_VERSION_LOW', [
-                    'current' => (string)$iDas_Version,
-                    'update'  => (string)$match_tcc_version,
+            // 11. 比對版本：正式上傳仍需後端再次驗證，避免繞過前端預檢。
+            $targetVersionRaw     = (string)$verify_data['idas_version'];
+            $currentVersionBase   = $this->normalizeIdasVersionBase($iDas_Version);
+            $targetVersionBase    = $this->normalizeIdasVersionBase($targetVersionRaw);
+            $currentVersionLabel  = $this->normalizeIdasVersionDisplay($iDas_Version);
+            $targetVersionLabel   = $this->normalizeIdasVersionDisplay($targetVersionRaw);
+            $currentProfile       = $this->getIdasVersionProfile($iDas_Version);
+            $targetProfile        = $this->getIdasVersionProfile($targetVersionRaw);
+            $isDowngrade          = version_compare($targetVersionBase, $currentVersionBase, '<');
+            $isProfileSwitch      = ($currentProfile !== $targetProfile);
+            $requiresDbRebuild    = $this->shouldRebuildDbForUpdate($currentProfile, $targetProfile, $isDowngrade);
+            $requiresConfirm      = $this->shouldRequireUpdateConfirm($currentProfile, $targetProfile, $isDowngrade);
+            $isSa349ToNonSa349    = ($currentProfile === 'SA349' && $targetProfile !== 'SA349');
+            $allowUpdateConfirm   = $this->isTruthy($_POST['allow_downgrade'] ?? '0');
+
+            if ($requiresConfirm && !$allowUpdateConfirm) {
+                return $this->sendResponse('Error', $this->t('ERR_UPDATE_CONFIRM_REQUIRED', [
+                    'current' => $currentVersionLabel,
+                    'update'  => $targetVersionLabel,
                 ]));
             }
 
-            // 12. 寫入 config 表
-            $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);
+            if ($requiresConfirm) {
+                error_log("[iDAS UPDATE] update confirm allowed: current={$currentVersionLabel}({$currentProfile}), target={$targetVersionLabel}({$targetProfile}), downgrade=" . ($isDowngrade ? '1' : '0') . ", profile_switch=" . ($isProfileSwitch ? '1' : '0') . ", db_rebuild=" . ($requiresDbRebuild ? '1' : '0') . ", sa349_to_non_sa349=" . ($isSa349ToNonSa349 ? '1' : '0'));
+            }
+
+            // 12. 若此次需要重建 DB，必須在切換程式資料夾前先完成 preflight。
+            //     這裡只檢查 / 測試複製 temp，不會覆蓋正式 DB。
+            if ($requiresDbRebuild) {
+                $dbPreflightFiles = $this->preflightIdasDbRebuildFromNtcs7();
+                error_log('[iDAS UPDATE] database rebuild preflight OK: ' . json_encode($dbPreflightFiles, JSON_UNESCAPED_SLASHES));
+            }
 
             /* =====================================================
             ⭐ 安全原子部署（無備份版）
@@ -1866,24 +2101,31 @@ class Settings extends Controller
 
             // 4️⃣ 舊版 → old（瞬間完成，不會影響正在執行的 Apache）
             if (is_dir($target_directory)) {
-                rename($target_directory, $old_directory);
+                if (!@rename($target_directory, $old_directory)) {
+                    $err = error_get_last();
+                    throw new Exception('Rename current idas to idas_old failed: ' . ($err['message'] ?? 'unknown'));
+                }
             }
 
             // 5️⃣ 新版 → 正式上線（瞬間完成）
-            rename($staging_directory, $target_directory);
-
-            // 6️⃣ 現在才刪 old（此時 Apache 已完全切換）
-            if (is_dir($old_directory)) {
-                $this->deleteDirectory($old_directory);
+            if (!@rename($staging_directory, $target_directory)) {
+                $err = error_get_last();
+                // 嘗試復原舊版，避免半更新。
+                if (is_dir($old_directory) && !is_dir($target_directory)) {
+                    @rename($old_directory, $target_directory);
+                }
+                throw new Exception('Rename idas_new to idas failed: ' . ($err['message'] ?? 'unknown'));
             }
 
+            $deployedNewIdas = true;
+
+            // 6️⃣ old 先保留到 DB rebuild 與版本寫入成功後才刪除，避免 DB 失敗時無法 rollback。
 
             sleep(1);
-            exec("sync");//強制將ram寫回硬碟，避免控制器馬上關機時會遺失資料
+            exec("sync"); //強制將ram寫回硬碟，避免控制器馬上關機時會遺失資料
             sleep(1);
 
-
-            // 13. 清除舊 ntcs_idas 資料夾（若存在）
+            // 12. 清除舊 ntcs_idas 資料夾（若存在）
             $legacy_directory = $root . 'ntcs_idas/';
 
             if (is_dir($legacy_directory)) {
@@ -1898,27 +2140,453 @@ class Settings extends Controller
                 error_log("[iDAS UPDATE] legacy folder removed: {$legacy_directory}");
             }
 
+            // 13. 需要重建 DB 時，從 /home/kls/NTCS7 複製乾淨 DB 回 iDAS。
+            //     preflight 已在切換程式前完成；這裡才正式 atomic replace。
+            //     規則：STANDARD -> STANDARD 降版本重建；SA349 -> 非 SA349 一律重建，且移除 Lin user.admin 與 law=3 使用者。
+            if ($requiresDbRebuild) {
+                $copiedFiles = $this->rebuildIdasDbFromNtcs7ForDowngrade($isSa349ToNonSa349);
+                error_log('[iDAS UPDATE] database rebuild finished: ' . json_encode($copiedFiles, JSON_UNESCAPED_SLASHES));
+                exec("sync");
+            }
 
- 
+            // 14. 寫入 config 表：0.72.0_SA349 會正規化為 0.72_SA349 顯示。
+            $this->AdminModel->Set_Das_Config('idas_version', $targetVersionLabel);
 
+            // 15. 全部成功後才刪 old，避免 DB rebuild 失敗時無法 rollback。
+            if (is_dir($old_directory)) {
+                $this->deleteDirectory($old_directory);
+            }
 
-            // 14. 登出使用者
+            // 16. 登出使用者
             $this->setting_logout();
 
             // Debug：保留 extracted
             if ($debug) {
-                return $this->sendResponse('Success', $this->t('SUC_DEBUG'));
+                return $this->sendResponse('Success', $this->t('SUC_DEBUG'), $this->updateForceLogoutPayload());
             }
 
-            return $this->sendResponse('Success', $this->t('SUC_OK'));
+            return $this->sendResponse('Success', $this->t('SUC_OK'), $this->updateForceLogoutPayload());
 
+        } catch (Throwable $e) {
+            error_log('[iDAS UPDATE] failed: ' . $e->getMessage());
+
+            // 若程式已切換但後續 DB rebuild / 版本寫入失敗，優先還原 idas_old，避免半更新。
+            if (!empty($deployedNewIdas) && !empty($old_directory) && is_dir($old_directory) && !empty($target_directory)) {
+                try {
+                    if (is_dir($target_directory)) {
+                        $this->deleteDirectory($target_directory);
+                    }
+                    if (@rename($old_directory, $target_directory)) {
+                        error_log('[iDAS UPDATE] rollback idas_old -> idas success');
+                    } else {
+                        $rollbackErr = error_get_last();
+                        error_log('[iDAS UPDATE] rollback idas_old -> idas failed: ' . ($rollbackErr['message'] ?? 'unknown'));
+                    }
+                } catch (Throwable $rollbackException) {
+                    error_log('[iDAS UPDATE] rollback exception: ' . $rollbackException->getMessage());
+                }
+            }
+
+            return $this->sendResponse('Error', $e->getMessage());
         } finally {
+            if (is_resource($updateLockFp)) {
+                @flock($updateLockFp, LOCK_UN);
+                @fclose($updateLockFp);
+                error_log('[iDAS UPDATE] update lock released');
+            }
+
             // 非 Debug 才刪暫存
             if (!$debug) {
                 if (!empty($main_folder) && is_dir($main_folder)) $this->deleteDirectory($main_folder);
                 if (is_dir($extract_path)) $this->deleteDirectory($extract_path);
             }
         }
+    }
+
+    private function findExtractedIdasPackRoot(string $extractPath): string{
+
+        $extractPath = rtrim($extractPath, '/\\') . '/';
+
+        if (is_file($extractPath . 'info.json')) {
+            return rtrim($extractPath, '/');
+        }
+
+        $items = @scandir($extractPath);
+        if (!is_array($items)) {
+            return '';
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $dir = $extractPath . $item;
+            if (is_dir($dir) && is_file($dir . '/info.json')) {
+                return $dir;
+            }
+        }
+
+        return '';
+    }
+
+
+    private function readIdasPackInfoFromZip(string $zipPath): array{
+
+        if (!is_file($zipPath)) {
+            throw new Exception($this->t('ERR_OPEN_PACK'));
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== TRUE) {
+            throw new Exception($this->t('ERR_OPEN_PACK'));
+        }
+
+        $infoJson = null;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = (string)$zip->getNameIndex($i);
+            if (preg_match('#(^|/)info\.json$#i', $name)) {
+                $infoJson = $zip->getFromIndex($i);
+                break;
+            }
+        }
+        $zip->close();
+
+        if ($infoJson === null || $infoJson === false || trim((string)$infoJson) === '') {
+            throw new Exception($this->t('ERR_MISSING_INFO'));
+        }
+
+        $info = json_decode((string)$infoJson, true);
+        if (!is_array($info) || empty($info['idas_version'])) {
+            throw new Exception($this->t('ERR_BAD_INFO'));
+        }
+
+        return $info;
+    }
+
+    private function normalizeIdasVersionDisplay($version): string{
+
+        $version = trim((string)$version);
+        if ($version === '') {
+            return '';
+        }
+
+        // 0.72.0_SA349 → 0.72_SA349
+        if (preg_match('/^(\d+\.\d+)\.0(_[A-Za-z0-9][A-Za-z0-9._-]*)$/', $version, $matches)) {
+            return $matches[1] . $matches[2];
+        }
+
+        return $version;
+    }
+
+    private function normalizeIdasVersionBase($version): string{
+
+        $version = $this->normalizeIdasVersionDisplay($version);
+        $version = preg_replace('/[_-].*$/', '', $version);
+
+        return trim((string)$version) !== '' ? (string)$version : '0.0.0';
+    }
+
+    private function getIdasVersionProfile($version): string{
+
+        $version = strtoupper($this->normalizeIdasVersionDisplay($version));
+
+        if (preg_match('/(^|[_-])SA[_-]?349($|[_-])/', $version)) {
+            return 'SA349';
+        }
+
+        return 'STANDARD';
+    }
+
+    private function shouldRebuildDbForUpdate(string $currentProfile, string $targetProfile, bool $isDowngrade): bool{
+
+        // SA349 特規版切回非 SA349 版本一定重建 DB，避免 SA349 專用資料殘留。
+        // 例如：0.75_SA349 -> 0.75、0.75_SA349 -> 0.76、0.76_SA349 -> 0.77。
+        if ($currentProfile === 'SA349' && $targetProfile !== 'SA349') {
+            return true;
+        }
+
+        // 只有標準版 -> 標準版降版本時才因降版重建 DB。
+        // SA349 -> SA349 降版本仍維持 SA349 DB 架構，不重建 DB。
+        if ($isDowngrade && $currentProfile === 'STANDARD' && $targetProfile === 'STANDARD') {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function shouldRequireUpdateConfirm(string $currentProfile, string $targetProfile, bool $isDowngrade): bool{
+
+        // 降版本或 STANDARD / SA349 互切，都需要使用者明確確認。
+        return $isDowngrade || ($currentProfile !== $targetProfile);
+    }
+
+    private function isTruthy($value): bool{
+        if (is_bool($value)) {
+            return $value;
+        }
+        $value = strtolower(trim((string)$value));
+        return in_array($value, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    private function acquireIdasUpdateLock()
+    {
+        $lockDir = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/database' : sys_get_temp_dir();
+        if (!is_dir($lockDir) || !is_writable($lockDir)) {
+            throw new Exception('Update lock directory is not writable: ' . $lockDir);
+        }
+
+        $lockPath = rtrim($lockDir, '/\\') . '/.idas_update.lock';
+        $fp = @fopen($lockPath, 'c');
+        if (!$fp) {
+            throw new Exception('Unable to create update lock file: ' . $lockPath);
+        }
+
+        if (!@flock($fp, LOCK_EX | LOCK_NB)) {
+            @fclose($fp);
+            throw new Exception($this->t('ERR_UPDATE_LOCKED'));
+        }
+
+        @ftruncate($fp, 0);
+        @fwrite($fp, date('Y-m-d H:i:s') . ' pid=' . getmypid() . ' ip=' . ($_SERVER['REMOTE_ADDR'] ?? '') . PHP_EOL);
+        @fflush($fp);
+        @chmod($lockPath, 0666);
+
+        error_log('[iDAS UPDATE] update lock acquired: ' . $lockPath);
+        return $fp;
+    }
+
+    private function getIdasDbRebuildFileMapFromNtcs7(): array
+    {
+        return [
+            '/home/kls/NTCS7/KLS_NTCS.Lin'    => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
+            '/home/kls/NTCS7/ntcs_barcode.db' => '/var/www/html/database/ntcs_barcode_IDAS.db',
+            '/home/kls/NTCS7/ntcs_device.db'  => '/var/www/html/database/ntcs_device_IDAS.db',
+            '/home/kls/NTCS7/ntcs_data.db'    => '/var/www/html/database/ntcs_data.db',
+        ];
+    }
+
+    /**
+     * DB rebuild preflight.
+     * 在程式資料夾切換前執行：確認來源 DB 可讀、可複製到目的資料夾 temp，且 .Lin / .db 都能通過 SQLite integrity_check。
+     * 這個函式不會覆蓋正式 DB。
+     */
+    private function preflightIdasDbRebuildFromNtcs7(): array
+    {
+        if (PHP_OS_FAMILY !== 'Linux') {
+            throw new Exception('DB rebuild preflight is only supported on Linux.');
+        }
+
+        $fileMap = $this->getIdasDbRebuildFileMapFromNtcs7();
+        $checked = [];
+
+        error_log('[iDAS UPDATE] database rebuild preflight start');
+
+        foreach ($fileMap as $src => $dst) {
+            clearstatcache(true, $src);
+            if (!is_file($src) || !is_readable($src)) {
+                throw new Exception("DB rebuild source file missing or unreadable: {$src}");
+            }
+
+            $srcSize = @filesize($src);
+            if ($srcSize === false || $srcSize < 1024) {
+                throw new Exception("DB rebuild source file is empty or too small: {$src}");
+            }
+
+            // .Lin 實際上也是 SQLite，這裡直接檢查來源檔。
+            $this->assertSqliteHealthy($src);
+
+            $dstDir = dirname($dst);
+            if (!is_dir($dstDir) || !is_writable($dstDir)) {
+                throw new Exception("DB rebuild destination directory is not writable: {$dstDir}");
+            }
+
+            // 測試實際 copy 到目的資料夾 temp，避免等程式切換後才發現權限 / 空間 / copy 問題。
+            $tmp = $dstDir . '/.' . basename($dst) . '.preflight_' . getmypid() . '_' . str_replace('.', '', uniqid('', true));
+            if (!@copy($src, $tmp)) {
+                $err = error_get_last();
+                @unlink($tmp);
+                throw new Exception("DB rebuild preflight copy failed: {$src} -> {$tmp}. " . ($err['message'] ?? 'unknown'));
+            }
+            @chmod($tmp, 0666);
+
+            $tmpSize = @filesize($tmp);
+            if ($tmpSize === false || $tmpSize !== $srcSize) {
+                @unlink($tmp);
+                throw new Exception("DB rebuild preflight size mismatch: {$src} -> {$tmp}");
+            }
+
+            $this->assertSqliteHealthy($tmp);
+            @unlink($tmp);
+
+            $checked[] = [
+                'src' => $src,
+                'dst' => $dst,
+                'size' => $srcSize,
+            ];
+
+            error_log("[iDAS UPDATE] database rebuild preflight OK: {$src} -> {$dst}");
+        }
+
+        error_log('[iDAS UPDATE] database rebuild preflight end');
+
+        return $checked;
+    }
+
+    private function removeSqliteDbFileSet(string $dbPath): void
+    {
+        foreach ([$dbPath, $dbPath . '-wal', $dbPath . '-shm', $dbPath . '-journal'] as $path) {
+            if (file_exists($path) && !@unlink($path)) {
+                $err = error_get_last();
+                throw new Exception('Remove old DB file failed: ' . $path . '. ' . ($err['message'] ?? 'unknown'));
+            }
+        }
+        clearstatcache(true, $dbPath);
+    }
+
+    /**
+     * SA349 -> non-SA349 cleanup for KLS_NTCS_IDAS.Lin user table.
+     *
+     * Rule:
+     * - Remove built-in admin account.
+     * - Remove every user row with law = 3 (Operator accounts).
+     *
+     * This is used only during SA349 -> non-SA349 rebuild. It intentionally
+     * does not touch guest / kls / law=1 accounts.
+     */
+    private function removeSa349RestrictedUsersFromLinUserTable(string $linPath): array
+    {
+        if (!is_file($linPath) || !is_writable($linPath)) {
+            throw new Exception('KLS_NTCS_IDAS.Lin is missing or not writable: ' . $linPath);
+        }
+
+        $db = new PDO('sqlite:' . $linPath);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->exec('PRAGMA busy_timeout = 3000;');
+
+        $exists = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")->fetchColumn();
+        if (!$exists) {
+            throw new Exception('KLS_NTCS_IDAS.Lin table user not found; cannot remove SA349 restricted users.');
+        }
+
+        $columns = $db->query('PRAGMA table_info("user")')->fetchAll(PDO::FETCH_ASSOC);
+        $hasNameColumn = false;
+        $hasLawColumn  = false;
+        foreach ($columns as $column) {
+            $columnName = strtolower((string)($column['name'] ?? ''));
+            if ($columnName === 'name') {
+                $hasNameColumn = true;
+            }
+            if ($columnName === 'law') {
+                $hasLawColumn = true;
+            }
+        }
+        if (!$hasNameColumn) {
+            throw new Exception('KLS_NTCS_IDAS.Lin table user has no name column; cannot remove admin.');
+        }
+
+        $adminStmt = $db->prepare('DELETE FROM "user" WHERE LOWER(TRIM(CAST("name" AS TEXT))) = :name');
+        $adminStmt->execute([':name' => 'admin']);
+        $adminAffected = (int)$adminStmt->rowCount();
+
+        $law3Affected = 0;
+        if ($hasLawColumn) {
+            $law3Stmt = $db->prepare('DELETE FROM "user" WHERE CAST("law" AS INTEGER) = :law');
+            $law3Stmt->execute([':law' => 3]);
+            $law3Affected = (int)$law3Stmt->rowCount();
+        } else {
+            error_log('[iDAS UPDATE] SA349 -> non-SA349 cleanup skipped law=3 removal because user.law column is missing: ' . $linPath);
+        }
+
+        $db = null;
+
+        $this->assertSqliteHealthy($linPath);
+        @chmod($linPath, 0666);
+        error_log('[iDAS UPDATE] SA349 -> non-SA349 removed restricted users from KLS_NTCS_IDAS.Lin user table, admin=' . $adminAffected . ', law3=' . $law3Affected);
+
+        return [
+            'admin' => $adminAffected,
+            'law3'  => $law3Affected,
+        ];
+    }
+
+    /**
+     * Rebuild iDAS DB by copying clean controller DB from NTCS7.
+     * Used for downgrades and SA349 -> non-SA349 switches.
+     * das.db is intentionally not touched.
+     * When SA349 -> non-SA349, KLS_NTCS_IDAS.Lin is recreated from /home/kls/NTCS7/KLS_NTCS.Lin and user.admin / law=3 users are removed.
+     */
+    private function rebuildIdasDbFromNtcs7ForDowngrade(bool $removeAdminFromLinUserTable = false): array{
+
+        if (PHP_OS_FAMILY !== 'Linux') {
+            throw new Exception('DB rebuild is only supported on Linux.');
+        }
+
+        $fileMap = $this->getIdasDbRebuildFileMapFromNtcs7();
+
+        $copied = [];
+        error_log('[iDAS UPDATE] database rebuild start');
+        error_log('[iDAS UPDATE] keep /var/www/html/database/das.db unchanged');
+
+        // Preflight first: do not replace any DB until all required source files and destination folders are ready.
+        foreach ($fileMap as $src => $dst) {
+            if (!is_file($src) || !is_readable($src)) {
+                throw new Exception("DB rebuild source file missing or unreadable: {$src}");
+            }
+
+            $dstDir = dirname($dst);
+            if (!is_dir($dstDir) || !is_writable($dstDir)) {
+                throw new Exception("DB rebuild destination directory is not writable: {$dstDir}");
+            }
+
+            if (@filesize($src) <= 0) {
+                throw new Exception("DB rebuild source file is empty: {$src}");
+            }
+        }
+
+        foreach ($fileMap as $src => $dst) {
+            $isLinDb = (basename($dst) === 'KLS_NTCS_IDAS.Lin');
+            $removeOldLinBeforeCopy = ($removeAdminFromLinUserTable && $isLinDb);
+
+            if ($removeOldLinBeforeCopy && is_file($dst)) {
+                $backup = $dst . '.sa349_to_standard_bak_' . date('Ymd_His');
+                if (!@copy($dst, $backup)) {
+                    $err = error_get_last();
+                    throw new Exception('Backup old KLS_NTCS_IDAS.Lin failed before SA349 removal: ' . ($err['message'] ?? 'unknown'));
+                }
+                @chmod($backup, 0666);
+                $this->removeSqliteDbFileSet($dst);
+                error_log('[iDAS UPDATE] SA349 -> non-SA349 removed old KLS_NTCS_IDAS.Lin before rebuild: ' . $dst);
+            }
+
+            // replaceSqliteDbFile() will copy to temp, run SQLite integrity_check, optionally back up old DB, then atomic rename.
+            $this->replaceSqliteDbFile($src, $dst, !$removeOldLinBeforeCopy);
+
+            $restrictedUsersRemoved = null;
+            if ($removeAdminFromLinUserTable && $isLinDb) {
+                $restrictedUsersRemoved = $this->removeSa349RestrictedUsersFromLinUserTable($dst);
+            }
+
+            clearstatcache(true, $dst);
+            if (!is_file($dst) || filesize($dst) <= 0) {
+                throw new Exception("Rebuilt DB is invalid or empty: {$dst}");
+            }
+
+            $copiedItem = [
+                'src' => $src,
+                'dst' => $dst,
+            ];
+            if ($restrictedUsersRemoved !== null) {
+                $copiedItem['user_admin_removed'] = (int)($restrictedUsersRemoved['admin'] ?? 0);
+                $copiedItem['user_law3_removed']  = (int)($restrictedUsersRemoved['law3'] ?? 0);
+            }
+            $copied[] = $copiedItem;
+
+            error_log("[iDAS UPDATE] database rebuild copied: {$src} -> {$dst}" . ($restrictedUsersRemoved !== null ? ", user.admin removed=" . (int)($restrictedUsersRemoved['admin'] ?? 0) . ", user.law3 removed=" . (int)($restrictedUsersRemoved['law3'] ?? 0) : ''));
+        }
+
+        error_log('[iDAS UPDATE] database rebuild end');
+
+        return $copied;
     }
 
 
@@ -1931,9 +2599,6 @@ class Settings extends Controller
             $this->deleteDirectory($dir);
         }
     }
-
-
-
 
     // === 語系工具（改用 en-us） ===
     private function currentLang(): string {
@@ -1999,10 +2664,55 @@ class Settings extends Controller
                 'zh-tw' => 'info.json 格式錯誤或缺少 idas_version。',
                 'zh-cn' => 'info.json 格式错误或缺少 idas_version。',
             ],
+            'ERR_UPDATE_LOCKED' => [
+                'en-us' => 'System update is already in progress. Please try again later.',
+                'zh-tw' => '系統更新中，請稍後再試。',
+                'zh-cn' => '系统更新中，请稍后再试。',
+            ],
             'ERR_VERSION_LOW'   => [
                 'en-us' => 'Update version is lower than current (current: {current}, update: {update}).',
                 'zh-tw' => '更新檔版本低於目前版本，無法更新（目前：{current}，更新：{update}）。',
                 'zh-cn' => '更新包版本低于当前版本，无法更新（当前：{current}，更新：{update}）。',
+            ],
+            'ERR_UPDATE_CONFIRM_REQUIRED' => [
+                'en-us' => 'This update requires confirmation (current: {current}, update: {update}).',
+                'zh-tw' => '此更新需要先勾選確認後才能繼續（目前：{current}，更新：{update}）。',
+                'zh-cn' => '此更新需要先勾选确认后才能继续（当前：{current}，更新：{update}）。',
+            ],
+            'STATUS_DOWNGRADE'  => [
+                'en-us' => 'Downgrade',
+                'zh-tw' => '降版本',
+                'zh-cn' => '降版本',
+            ],
+            'STATUS_PROFILE_SWITCH' => [
+                'en-us' => 'Profile switch',
+                'zh-tw' => '版本類型切換',
+                'zh-cn' => '版本类型切换',
+            ],
+            'STATUS_SA349_TO_STANDARD_REBUILD' => [
+                'en-us' => 'SA349 to non-SA349 version, DB rebuild required; user.admin and law=3 users will be removed',
+                'zh-tw' => 'SA349 切回非 SA349，需重建 DB 並移除 user.admin 與 law=3 使用者',
+                'zh-cn' => 'SA349 切回非 SA349，需重建 DB 并移除 user.admin 与 law=3 使用者',
+            ],
+            'DB_ACTION_REBUILD' => [
+                'en-us' => 'Rebuild iDAS DB',
+                'zh-tw' => '重建 iDAS DB',
+                'zh-cn' => '重建 iDAS DB',
+            ],
+            'DB_ACTION_KEEP' => [
+                'en-us' => 'Keep current DB',
+                'zh-tw' => '保留目前 DB',
+                'zh-cn' => '保留目前 DB',
+            ],
+            'STATUS_SAME_VERSION' => [
+                'en-us' => 'Same version',
+                'zh-tw' => '同版本更新',
+                'zh-cn' => '同版本更新',
+            ],
+            'STATUS_UPGRADE'    => [
+                'en-us' => 'Upgrade',
+                'zh-tw' => '升版本',
+                'zh-cn' => '升版本',
             ],
             'SUC_DEBUG'         => [
                 'en-us' => 'Update successful (Debug mode: extracted folder retained).',
@@ -2010,9 +2720,9 @@ class Settings extends Controller
                 'zh-cn' => '更新成功（调试模式：保留 extracted 文件夹）。',
             ],
             'SUC_OK'            => [
-                'en-us' => 'Update successful. Files have been moved to the "idas" directory.',
-                'zh-tw' => '更新成功，已將檔案移動至 idas 目錄。',
-                'zh-cn' => '更新成功，已将文件移动至 idas 目录。',
+                'en-us' => 'Update successful. Please log in again.',
+                'zh-tw' => '更新成功，請重新登入。',
+                'zh-cn' => '更新成功，请重新登录。',
             ],
         ];
 
@@ -2028,36 +2738,98 @@ class Settings extends Controller
     }
 
     
-    private function sendResponse($type, $msg) {
-        $this->MiscellaneousModel->generateErrorResponse($type, $msg);
+    private function updateForceLogoutPayload(): array
+    {
+        return [
+            'force_logout' => true,
+            'redirect_url' => '/idas/public/?url=In',
+        ];
+    }
+
+    private function sendResponse($type, $msg, array $extra = []) {
+        // iDAS update endpoint must return pure JSON.
+        // File operations may emit PHP warnings; clear buffers to prevent jQuery JSON parse errors.
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+
+        echo json_encode(array_merge([
+            'res_type' => (string)$type,
+            'res_msg'  => (string)$msg,
+        ], $extra), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit();
     }
 
     private function copyDirectory($source, $destination) {
-        if (!is_dir($destination)) mkdir($destination, 0777, true);
-        foreach (scandir($source) as $file) {
-            if (!in_array($file, ['.', '..'])) {
-                $src = $source . '/' . $file;
-                $dst = $destination . '/' . $file;
-                if (is_dir($src)) {
-                    $this->copyDirectory($src, $dst);
-                } else {
-                    if (file_exists($dst)) unlink($dst);
-                    copy($src, $dst);
-                }
+        if (!is_dir($source)) {
+            throw new Exception('Source directory not found: ' . $source);
+        }
+
+        if (!is_dir($destination) && !@mkdir($destination, 0777, true)) {
+            $err = error_get_last();
+            throw new Exception('Create directory failed: ' . $destination . '. ' . ($err['message'] ?? ''));
+        }
+
+        $items = @scandir($source);
+        if (!is_array($items)) {
+            throw new Exception('Read directory failed: ' . $source);
+        }
+
+        foreach ($items as $file) {
+            if (in_array($file, ['.', '..'], true)) {
+                continue;
             }
+
+            $src = $source . '/' . $file;
+            $dst = $destination . '/' . $file;
+
+            if (is_dir($src)) {
+                $this->copyDirectory($src, $dst);
+                continue;
+            }
+
+            if (file_exists($dst) && !@unlink($dst)) {
+                $err = error_get_last();
+                throw new Exception('Remove old file failed: ' . $dst . '. ' . ($err['message'] ?? ''));
+            }
+
+            if (!@copy($src, $dst)) {
+                $err = error_get_last();
+                throw new Exception('Copy file failed: ' . $src . ' -> ' . $dst . '. ' . ($err['message'] ?? ''));
+            }
+            @chmod($dst, 0666);
         }
     }
 
     private function deleteDirectory($dir) {
         if (!is_dir($dir)) return;
-        foreach (scandir($dir) as $file) {
-            if (!in_array($file, ['.', '..'])) {
-                $path = $dir . '/' . $file;
-                is_dir($path) ? $this->deleteDirectory($path) : unlink($path);
+
+        $items = @scandir($dir);
+        if (!is_array($items)) {
+            throw new Exception('Read directory failed: ' . $dir);
+        }
+
+        foreach ($items as $file) {
+            if (in_array($file, ['.', '..'], true)) {
+                continue;
+            }
+            $path = $dir . '/' . $file;
+            if (is_dir($path)) {
+                $this->deleteDirectory($path);
+            } elseif (file_exists($path) && !@unlink($path)) {
+                $err = error_get_last();
+                throw new Exception('Delete file failed: ' . $path . '. ' . ($err['message'] ?? ''));
             }
         }
-        rmdir($dir);
+
+        if (!@rmdir($dir)) {
+            $err = error_get_last();
+            throw new Exception('Delete directory failed: ' . $dir . '. ' . ($err['message'] ?? ''));
+        }
     }
 
 
@@ -2217,112 +2989,146 @@ class Settings extends Controller
 
 
     public function Import_Config(){
-        
+
+        header('Content-Type: application/json; charset=utf-8');
+
         $file = $this->MiscellaneousModel->lang_load();
         if (!empty($file)) {
             include $file;
         }
 
-        // 取得Modbus的uid
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1; 
-        $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
+        $lang = strtolower($_COOKIE['language'] ?? ($_SESSION['language'] ?? 'en-us'));
+        if ($lang === 'en') {
+            $lang = 'en-us';
+        }
+        if (!in_array($lang, ['en-us', 'zh-tw', 'zh-cn'], true)) {
+            $lang = 'en-us';
+        }
 
-        // 驗證上傳
+        $msg = [
+            'en-us' => [
+                'invalid_config_format' => 'Please upload a valid configuration file format.',
+                'no_file'       => 'Please upload a valid configuration file format.',
+                'bad_upload'    => 'Please upload a valid configuration file format.',
+                'bad_name'      => 'Please upload a valid configuration file format.',
+                'bad_ext'       => 'Please upload a valid configuration file format.',
+                'not_sqlite'    => 'Please upload a valid configuration file format.',
+                'missing_table' => 'Please upload a valid configuration file format.',
+                'bad_dir'       => 'Upload directory is not writable.',
+                'move_fail'     => 'Failed to save import file.',
+                'success'       => 'Import successful.',
+                'modbus_error'  => 'Modbus communication failed.',
+            ],
+            'zh-tw' => [
+                'invalid_config_format' => '請上傳正確的設定檔格式。',
+                'no_file'       => '請上傳正確的設定檔格式。',
+                'bad_upload'    => '請上傳正確的設定檔格式。',
+                'bad_name'      => '請上傳正確的設定檔格式。',
+                'bad_ext'       => '請上傳正確的設定檔格式。',
+                'not_sqlite'    => '請上傳正確的設定檔格式。',
+                'missing_table' => '請上傳正確的設定檔格式。',
+                'bad_dir'       => '上傳目錄不可寫入。',
+                'move_fail'     => '儲存匯入檔案失敗。',
+                'success'       => '匯入成功。',
+                'modbus_error'  => 'Modbus 通訊失敗。',
+            ],
+            'zh-cn' => [
+                'invalid_config_format' => '请上传正确的设置文件格式。',
+                'no_file'       => '请上传正确的设置文件格式。',
+                'bad_upload'    => '请上传正确的设置文件格式。',
+                'bad_name'      => '请上传正确的设置文件格式。',
+                'bad_ext'       => '请上传正确的设置文件格式。',
+                'not_sqlite'    => '请上传正确的设置文件格式。',
+                'missing_table' => '请上传正确的设置文件格式。',
+                'bad_dir'       => '上传目录不可写入。',
+                'move_fail'     => '保存导入文件失败。',
+                'success'       => '导入成功。',
+                'modbus_error'  => 'Modbus 通讯失败。',
+            ],
+        ];
+        $T = $msg[$lang];
+
+        $fail = function (string $key) use ($T) {
+            $this->MiscellaneousModel->generateErrorResponse('Error', $T[$key] ?? $key);
+            return;
+        };
+
         if (empty($_FILES) || !isset($_FILES['file'])) {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'No file uploaded.');
-            return;  // 使用 return 代替 exit()，避免中斷執行
+            return $fail('no_file');
         }
 
-        $file_name = $_FILES['file']['name'];
-        $file_info = pathinfo($file_name);
-        $ext = strtolower($file_info['extension']);
-        $tmp_file = $_FILES['file']['tmp_name'];
-        $ftp_dir = "/mnt/ramdisk/";
-
-        // 驗證上傳文件是否為 .pack 格式
-        if ($ext !== 'pack') {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Only .pack files are allowed.');
-            return; // 使用 return 代替 exit()
+        if (($_FILES['file']['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            return $fail('bad_upload');
         }
 
-        // 確保目錄存在且可寫
-        if (!is_dir($ftp_dir) || !is_writable($ftp_dir)) {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Upload directory not writable.');
-            return; // 使用 return 代替 exit()
+        $originalName = basename((string)($_FILES['file']['name'] ?? ''));
+        $fileInfo     = pathinfo($originalName);
+        $ext          = strtolower($fileInfo['extension'] ?? '');
+        $tmpFile      = (string)($_FILES['file']['tmp_name'] ?? '');
+
+        // 需求：Import Config 只能匯入 KLS_NTCS.Lin
+        if ($originalName !== 'KLS_NTCS.Lin') {
+            return $fail('bad_name');
         }
 
-        // 儲存 .pack 文件並解壓縮
-        $tempZipPath = $ftp_dir . "uploaded_tmp.zip";
-        if (!move_uploaded_file($tmp_file, $tempZipPath)) {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Failed to save uploaded file.');
-            return; // 使用 return 代替 exit()
+        if ($ext !== 'lin') {
+            return $fail('bad_ext');
         }
 
-        // 解壓縮檔案
-        $zip = new ZipArchive();
-        if ($zip->open($tempZipPath) === TRUE) {
-            $zip->extractTo($ftp_dir);
-            $zip->close();
-            unlink($tempZipPath);  // 刪除臨時 zip 檔案
-        } else {
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Failed to extract .pack file.');
-            return; // 使用 return 代替 exit()
+        // 需求：必須是 SQLite，且一定要有 SEQ_type table
+        try {
+            $checkDb = new PDO('sqlite:' . $tmpFile);
+            $checkDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $stmt = $checkDb->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = :table LIMIT 1");
+            $stmt->execute([':table' => 'SEQ_type']);
+            $hasSeqType = (bool)$stmt->fetchColumn();
+            $checkDb = null;
+        } catch (Throwable $e) {
+            error_log('[Import_Config] SQLite validate failed: ' . $e->getMessage());
+            return $fail('not_sqlite');
         }
 
-        // 尋找 .cfg 和 .Lin 文件
-        $cfg_file = '';
-        $lin_file = '';
-        foreach (scandir($ftp_dir) as $f) {
-            if (preg_match('/\.cfg$/i', $f)) {
-                $cfg_file = $f;
-            } elseif (preg_match('/\.lin$/i', $f)) {
-                $lin_file = $f;
-            }
+        if (!$hasSeqType) {
+            return $fail('missing_table');
         }
 
-        // 檢查是否找到所需的檔案
-        if (!$cfg_file || !$lin_file) {
-            $this->MiscellaneousModel->generateErrorResponse('Error', '.cfg or .Lin file not found in .pack.');
-            return; // 使用 return 代替 exit()
+        $ftpDir = '/mnt/ramdisk/ftp/';
+        if (!is_dir($ftpDir) && !@mkdir($ftpDir, 0777, true)) {
+            return $fail('bad_dir');
+        }
+        if (!is_writable($ftpDir)) {
+            return $fail('bad_dir');
         }
 
-        // 重新命名文件
-        $cfg_path = $ftp_dir . "/ftp/iDas.cfg";
-        $lin_path = $ftp_dir . "/ftp/iDas.Lin";
-        @rename($ftp_dir . $cfg_file, $cfg_path);
-        @rename($ftp_dir . $lin_file, $lin_path);
+        // 控制器端沿用既有協議：放到 ftp/iDas.Lin，再由 Modbus 通知控制器匯入
+        $linPath = $ftpDir . 'iDas.Lin';
+        if (is_file($linPath)) {
+            @unlink($linPath);
+        }
 
-        // 執行 Modbus 寫入
-        require_once '../modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
-        $modbus = new ModbusMaster("127.0.0.1", "TCP");
+        if (!move_uploaded_file($tmpFile, $linPath)) {
+            return $fail('move_fail');
+        }
+        @chmod($linPath, 0666);
+
+        $device_id = $this->getActiveModbusUnitId();
+        $unitId = $device_id;
 
         try {
-            $modbus->port = 502;
-            $modbus->timeout_sec = 10;
             $data = [1, 26948, 24947]; // iDas
-            $dataTypes = array_fill(0, 16, "INT");
 
-            $modbus->writeMultipleRegister($unitId, 506, $data, $dataTypes);
-            $this->logMessage("modbus write 506 ,array = " . implode("','", $data));
-            $this->logMessage("modbus status: " . $modbus->status);
-            $this->logMessage("Import config end");
+            // MODBUS TCP / OP 協議都走統一 protocol layer。
+            $this->writeControllerRegisters(506, $data, 'IMPORT_CONFIG_FILENAME');
+            $this->logMessage('Import config: KLS_NTCS.Lin validated with SEQ_type, protocol write 506 OK');
 
-            // 成功回應
-            $this->MiscellaneousModel->generateErrorResponse('Success', 'Import successful.');
+            // 要求控制器套用匯入檔
+            $this->writeControllerRegisters(462, [1], 'IMPORT_CONFIG_APPLY');
 
-            // 第二次寫入 Modbus
-            $modbus->writeMultipleRegister($unitId, 462, [1], $dataTypes);
-
-
-            //重啟控制器 
-            //$modbus->writeMultipleRegister(0, 462, array(1), $dataTypes);
+            $this->MiscellaneousModel->generateErrorResponse('Success', $T['success']);
 
         } catch (Exception $e) {
-            // 錯誤處理
-            $this->logMessage('modbus write 506 fail');
-            $this->logMessage('modbus status: ' . $modbus->status);
-            $this->logMessage('Import config end');
-            $this->MiscellaneousModel->generateErrorResponse('Error', 'Modbus error.');
+            $this->logMessage('Import config protocol write failed: ' . $e->getMessage());
+            $this->MiscellaneousModel->generateErrorResponse('Error', $T['modbus_error']);
         }
     }
 
@@ -2432,66 +3238,37 @@ class Settings extends Controller
          return true;
     } 
 
+
     public function setting_logout() {
-
-        // 1. 啟動 session（若尚未啟動）
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        // 2. 清空 session 資料
-        $_SESSION = [];
-
-        // 3. 取得 session cookie 參數
-        $params = session_get_cookie_params();
-
-        // 4. 刪除 session cookie
-        if (ini_get('session.use_cookies')) {
-            setcookie(
-                session_name(),
-                '',
-                time() - 42000,
-                $params['path'] ?? '/',
-                $params['domain'] ?? '',
-                $params['secure'] ?? false,
-                $params['httponly'] ?? true
-            );
-
-            // 補一組通用刪除
-            setcookie(session_name(), '', time() - 42000, '/');
-        }
-
-        // 5. 刪除其他 cookie
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $host = preg_replace('/:\d+$/', '', $host); // 移除 port
-
-        foreach ($_COOKIE as $key => $value) {
-            // 基本刪除
+        // 更新成功後強制登出：清除登入相關 cookie 與 session。
+        // 語系 cookie 保留，避免回到登入頁時語系被重置。
+        $cookieNames = ['username', 'auth_token', 'user_law', 'PHPSESSID'];
+        foreach ($cookieNames as $key) {
             setcookie($key, '', time() - 3600, '/');
-
-            // 帶 host 刪除
-            if (!empty($host)) {
-                setcookie($key, '', time() - 3600, '/', $host);
-            }
-
-            // 空 domain 再補一次
-            setcookie($key, '', time() - 3600, '/', '', false, false);
-
-            // 當前請求中同步移除
             unset($_COOKIE[$key]);
         }
 
-        // 6. 銷毀 session
-        session_destroy();
-        session_write_close();
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
 
-        // 7. 禁止快取
-        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-        header('Pragma: no-cache');
-
-        error_log('[iDAS UPDATE] user session destroyed and cookies cleared');
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION = [];
+            if (ini_get('session.use_cookies')) {
+                $params = session_get_cookie_params();
+                setcookie(
+                    session_name(),
+                    '',
+                    time() - 3600,
+                    $params['path'] ?? '/',
+                    $params['domain'] ?? '',
+                    (bool)($params['secure'] ?? false),
+                    (bool)($params['httponly'] ?? false)
+                );
+            }
+            @session_destroy();
+        }
     }
-
 
     
     public function get_controller_login() {
@@ -2526,9 +3303,7 @@ class Settings extends Controller
         $device_sn       = preg_replace('/[^A-Za-z0-9_\-]/', '_', $device_sn_raw);
 
         // ✅ 檢查是否可同步（Modbus 工具狀態）
-        $device_id = isset($this->deviceId)
-            ? (int)$this->deviceId
-            : 1; // 防呆，沒有就給 1 (依你實際情況調整)
+        $device_id = $this->getActiveModbusUnitId();
 
         $idas_result = $this->idas_check($device_id);
 
@@ -2561,7 +3336,7 @@ class Settings extends Controller
             $response = [
                 'result'   => false,
                 'login'    => 1,
-                'res_type' => 'SuccessError',
+                'res_type' => 'Error',
                 'res_msg'  => $msg['already_logged_in']
             ];
         }
@@ -2666,7 +3441,7 @@ class Settings extends Controller
         $this->get_db_sync($unitId);
     }
 
-    private function syncFilesToController(ModbusMaster $modbus): void {
+    private function syncFilesToController($modbus = null): void {
 
         // LIN
         $this->safeCopy(
@@ -2684,16 +3459,1936 @@ class Settings extends Controller
     }
 
 
+        // ===============================
+    // 圖片資料夾路徑
+    // ===============================
+    private function getSeqImgDir(): string
+    {
+        return '/home/kls/NTCS7/Message';
+    }
+
+    // ===============================
+    // 取得圖片清單
+    // ===============================
+    public function get_seq_images(){
+        
+        header('Content-Type: application/json; charset=utf-8');
+
+        $dir = $this->getSeqImgDir();
+
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+
+        if (!is_dir($dir)) {
+            echo json_encode([
+                'result' => false,
+                'msg' => $this->seqImageText('image_dir_not_found')
+            ]);
+            exit;
+        }
+
+        $allowedExt = ['jpg', 'jpeg', 'png', 'bmp'];
+        $files = array_diff(scandir($dir), ['.', '..']);
+        $result = [];
+
+        foreach ($files as $file) {
+            $fullPath = $dir . '/' . $file;
+
+            if (!is_file($fullPath)) {
+                continue;
+            }
+
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowedExt, true)) {
+                continue;
+            }
+
+            $imageInfo = @getimagesize($fullPath);
+            $imageWidth = (is_array($imageInfo) && isset($imageInfo[0])) ? (int)$imageInfo[0] : 0;
+            $imageHeight = (is_array($imageInfo) && isset($imageInfo[1])) ? (int)$imageInfo[1] : 0;
+
+            $result[] = [
+                'name' => $file,
+                'url'  => '/idas/public/?url=Settings/show_seq_image&name=' . rawurlencode($file),
+                // 檔案容量，單位 bytes。前端會顯示成 KB / MB。
+                'file_size' => filesize($fullPath) ?: 0,
+                // 圖片尺寸，單位 px。
+                'width' => $imageWidth,
+                'height' => $imageHeight,
+                'dimension' => ($imageWidth > 0 && $imageHeight > 0) ? ($imageWidth . ' x ' . $imageHeight) : '',
+                'time' => filemtime($fullPath) ?: 0
+            ];
+        }
+
+        // 上傳時間排序：新 → 舊
+        usort($result, function ($a, $b) {
+            return ($b['time'] ?? 0) <=> ($a['time'] ?? 0);
+        });
+
+        // 不回傳 time 給前端
+        $result = array_map(function ($item) {
+            unset($item['time']);
+            return $item;
+        }, $result);
+
+        echo json_encode([
+            'result' => true,
+            'files'  => $result
+        ]);
+        exit;
+    }
+
+
+    // ===============================
+    // 顯示圖片（給 <img src=""> 預覽用）
+    // ===============================
+    public function show_seq_image()
+    {
+        $fileName = $_GET['name'] ?? '';
+        $fileName = basename($fileName);
+
+        $dir = $this->getSeqImgDir();
+        $basePath = realpath($dir);
+        $fullPath = realpath($dir . '/' . $fileName);
+
+        if (
+            !$fileName ||
+            !$basePath ||
+            !$fullPath ||
+            strpos($fullPath, $basePath) !== 0 ||
+            !is_file($fullPath)
+        ) {
+            http_response_code(404);
+            exit('Image not found');
+        }
+
+        $mime = mime_content_type($fullPath);
+        if (!$mime) {
+            $mime = 'application/octet-stream';
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . filesize($fullPath));
+        readfile($fullPath);
+        exit;
+    }
+
+    // ===============================
+    // 圖片裁切：center crop -> resize to 1600 x 1900, output JPEG
+    // 原始上傳檔只當暫存來源，不另外保存。
+    // ===============================
+    private function normalizeSeqImage(string $src, string $dst, string $mime): bool
+    {
+       
+
+        if (!function_exists('imagecreatetruecolor')) {
+            return false;
+        }
+
+        switch ($mime) {
+            case 'image/jpeg':
+            case 'image/jpg':
+            case 'image/pjpeg':
+                $srcImg = @imagecreatefromjpeg($src);
+                break;
+            case 'image/png':
+                $srcImg = @imagecreatefrompng($src);
+                break;
+            case 'image/bmp':
+            case 'image/x-ms-bmp':
+                $srcImg = function_exists('imagecreatefrombmp') ? @imagecreatefrombmp($src) : false;
+                break;
+            default:
+                return false;
+        }
+
+        if (!$srcImg) {
+            return false;
+        }
+
+        $srcW = imagesx($srcImg);
+        $srcH = imagesy($srcImg);
+
+        if ($srcW <= 0 || $srcH <= 0) {
+            imagedestroy($srcImg);
+            return false;
+        }
+
+        $targetW = self::SEQ_IMG_WIDTH;
+        $targetH = self::SEQ_IMG_HEIGHT;
+        $srcRatio = $srcW / $srcH;
+        $targetRatio = $targetW / $targetH;
+
+        // Center crop: keep the middle, crop left/right or top/bottom as needed.
+        if ($srcRatio > $targetRatio) {
+            $cropH = $srcH;
+            $cropW = (int)round($srcH * $targetRatio);
+            $cropX = (int)round(($srcW - $cropW) / 2);
+            $cropY = 0;
+        } else {
+            $cropW = $srcW;
+            $cropH = (int)round($srcW / $targetRatio);
+            $cropX = 0;
+            $cropY = (int)round(($srcH - $cropH) / 2);
+        }
+
+        $canvas = imagecreatetruecolor($targetW, $targetH);
+        if (!$canvas) {
+            imagedestroy($srcImg);
+            return false;
+        }
+
+        // JPEG has no alpha; use white background for transparent PNG/BMP.
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefilledrectangle($canvas, 0, 0, $targetW, $targetH, $white);
+
+        $ok = imagecopyresampled(
+            $canvas,
+            $srcImg,
+            0,
+            0,
+            $cropX,
+            $cropY,
+            $targetW,
+            $targetH,
+            $cropW,
+            $cropH
+        );
+
+        if ($ok) {
+            $ok = imagejpeg($canvas, $dst, 90);
+            if ($ok) {
+                $this->setJpegDpi($dst, self::SEQ_IMG_DPI);
+            }
+        }
+
+        imagedestroy($srcImg);
+        imagedestroy($canvas);
+
+        return (bool)$ok;
+    }
+
+    // Best-effort JFIF DPI patch for JPEG files created by GD.
+    private function setJpegDpi(string $path, int $dpi): void
+    {
+        $data = @file_get_contents($path);
+        if ($data === false || strlen($data) < 18) {
+            return;
+        }
+
+        // SOI + APP0(JFIF) marker, then JFIF\0 identifier.
+        if (substr($data, 0, 4) !== "\xFF\xD8\xFF\xE0" || substr($data, 6, 5) !== "JFIF\x00") {
+            return;
+        }
+
+        $dpi = max(1, min(65535, $dpi));
+        $density = chr(($dpi >> 8) & 0xFF) . chr($dpi & 0xFF);
+
+        // Offset 13 = density units. 1 = dots per inch.
+        $data[13] = "\x01";
+        $data = substr_replace($data, $density, 14, 2);
+        $data = substr_replace($data, $density, 16, 2);
+
+        @file_put_contents($path, $data);
+    }
+
+    private function seqImageLang(): string
+    {
+        $raw = strtolower((string)(
+            $_COOKIE['languages']
+            ?? $_COOKIE['language']
+            ?? $_COOKIE['lang']
+            ?? $_SERVER['HTTP_ACCEPT_LANGUAGE']
+            ?? 'en-us'
+        ));
+        $raw = str_replace('_', '-', $raw);
+
+        if ($raw === 'zh-tw' || strpos($raw, 'zh-hant') !== false || strpos($raw, 'tw') !== false || strpos($raw, 'hk') !== false || strpos($raw, 'mo') !== false) {
+            return 'zh-tw';
+        }
+        if ($raw === 'zh-cn' || strpos($raw, 'zh-hans') !== false || strpos($raw, 'cn') !== false || strpos($raw, 'sg') !== false) {
+            return 'zh-cn';
+        }
+        return 'en-us';
+    }
+
+    private function seqImageText(string $key, array $vars = []): string
+    {
+        static $dict = [
+            'upload_success' => [
+                'en-us' => 'Upload success.',
+                'zh-tw' => '上傳成功。',
+                'zh-cn' => '上传成功。',
+            ],
+            'upload_failed' => [
+                'en-us' => 'Upload failed.',
+                'zh-tw' => '上傳失敗。',
+                'zh-cn' => '上传失败。',
+            ],
+            'delete_success' => [
+                'en-us' => 'Delete success.',
+                'zh-tw' => '刪除成功。',
+                'zh-cn' => '删除成功。',
+            ],
+            'delete_failed' => [
+                'en-us' => 'Delete failed.',
+                'zh-tw' => '刪除失敗。',
+                'zh-cn' => '删除失败。',
+            ],
+            'no_image_selected' => [
+                'en-us' => 'Please select image.',
+                'zh-tw' => '請選擇圖片。',
+                'zh-cn' => '请选择图片。',
+            ],
+            'image_dir_not_found' => [
+                'en-us' => 'Image directory not found.',
+                'zh-tw' => '找不到圖片資料夾。',
+                'zh-cn' => '找不到图片文件夹。',
+            ],
+            'no_image_uploaded' => [
+                'en-us' => 'No image uploaded.',
+                'zh-tw' => '未上傳圖片。',
+                'zh-cn' => '未上传图片。',
+            ],
+            'upload_dir_not_writable' => [
+                'en-us' => 'Upload directory is not writable.',
+                'zh-tw' => '上傳資料夾無法寫入。',
+                'zh-cn' => '上传文件夹无法写入。',
+            ],
+            'invalid_image_type' => [
+                'en-us' => 'Only BMP, PNG, JPEG, and JPG files are allowed.',
+                'zh-tw' => '只接受 BMP、PNG、JPEG、JPG 四種圖片格式。',
+                'zh-cn' => '只接受 BMP、PNG、JPEG、JPG 四种图片格式。',
+            ],
+            'image_limit_reached' => [
+                'en-us' => 'The maximum number of images is 300. You cannot upload more images.',
+                'zh-tw' => '圖片已達 300 張上限，無法再上傳。',
+                'zh-cn' => '图片已达 300 张上限，无法再上传。',
+            ],
+            'selection_limit_exceeded' => [
+                'en-us' => 'You can upload up to 6 images at a time.',
+                'zh-tw' => '一次最多只能上傳 6 張圖片。',
+                'zh-cn' => '一次最多只能上传 6 张图片。',
+            ],
+            'upload_busy' => [
+                'en-us' => 'Another image upload is being processed. Please try again shortly.',
+                'zh-tw' => '目前已有圖片上傳作業正在處理，請稍後再試。',
+                'zh-cn' => '当前已有图片上传作业正在处理，请稍后再试。',
+            ],
+            'upload_lock_failed' => [
+                'en-us' => 'Unable to create the image upload lock.',
+                'zh-tw' => '無法建立圖片上傳鎖定檔。',
+                'zh-cn' => '无法创建图片上传锁定文件。',
+            ],
+        ];
+
+        $lang = $this->seqImageLang();
+        $msg = $dict[$key][$lang] ?? ($dict[$key]['en-us'] ?? $key);
+        if (!empty($vars)) {
+            foreach ($vars as $name => $value) {
+                $msg = str_replace('{' . $name . '}', (string)$value, $msg);
+            }
+        }
+        return $msg;
+    }
+
+    // ===============================
+    // 上傳圖片
+    // ===============================
+    public function upload_seq_images(){
+        
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $dir = $this->getSeqImgDir();
+
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0777, true);
+            }
+
+            if (!is_dir($dir) || !is_writable($dir)) {
+                throw new Exception($this->seqImageText('upload_dir_not_writable')); // . ': ' . $dir
+            }
+
+            if (empty($_FILES['images'])) {
+                throw new Exception($this->seqImageText('no_image_uploaded'));
+            }
+
+            $maxFilesPerRequest = 6;
+            $uploadNames = $_FILES['images']['name'] ?? [];
+            $uploadCount = is_array($uploadNames)
+                ? count($uploadNames)
+                : 0;
+
+            if (
+                $uploadCount <= 0
+                || $uploadCount > $maxFilesPerRequest
+            ) {
+                http_response_code(422);
+
+                echo json_encode([
+                    'result' => false,
+                    'code' => 'SELECTION_LIMIT_EXCEEDED',
+                    'max_files' => $maxFilesPerRequest,
+                    'msg' => $this->seqImageText(
+                        'selection_limit_exceeded'
+                    )
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            /*
+             * 防止連點、多分頁或多瀏覽器同時重複執行
+             * GD 裁切與 JPG 輸出。
+             */
+            $uploadLockPath = sys_get_temp_dir()
+                . DIRECTORY_SEPARATOR
+                . 'idas_seq_image_upload.lock';
+
+            $uploadLockHandle = @fopen(
+                $uploadLockPath,
+                'c+'
+            );
+
+            if ($uploadLockHandle === false) {
+                throw new Exception(
+                    $this->seqImageText(
+                        'upload_lock_failed'
+                    )
+                );
+            }
+
+            if (!@flock(
+                $uploadLockHandle,
+                LOCK_EX | LOCK_NB
+            )) {
+                @fclose($uploadLockHandle);
+                http_response_code(409);
+
+                echo json_encode([
+                    'result' => false,
+                    'code' => 'UPLOAD_BUSY',
+                    'msg' => $this->seqImageText(
+                        'upload_busy'
+                    )
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // Only BMP, PNG, JPEG, JPG are accepted.
+            // GIF / WEBP and other formats are rejected here even if the browser allows them.
+            $allowedMime = [
+                'image/jpeg'     => 'jpg',
+                'image/jpg'      => 'jpg',
+                'image/pjpeg'    => 'jpg',
+                'image/png'      => 'png',
+                'image/bmp'      => 'bmp',
+                'image/x-ms-bmp' => 'bmp',
+            ];
+
+            $maxImages = 300;
+            $allowedStoredExt = ['jpg', 'jpeg', 'png', 'bmp'];
+            $existingFiles = [];
+            foreach (array_diff(scandir($dir), ['.', '..']) as $file) {
+                $fullPath = $dir . '/' . $file;
+                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                if (is_file($fullPath) && in_array($ext, $allowedStoredExt, true)) {
+                    $existingFiles[strtolower($file)] = true;
+                }
+            }
+            $imageCount = count($existingFiles);
+            $reservedNewNames = [];
+
+            $success = [];
+            $failed = [];
+
+            $names    = $_FILES['images']['name'] ?? [];
+            $tmpNames = $_FILES['images']['tmp_name'] ?? [];
+            $errors   = $_FILES['images']['error'] ?? [];
+            $sizes    = $_FILES['images']['size'] ?? [];
+
+            foreach ($names as $i => $originalName) {
+                $tmp  = $tmpNames[$i] ?? '';
+                $err  = $errors[$i] ?? UPLOAD_ERR_NO_FILE;
+                $size = $sizes[$i] ?? 0;
+
+                if ($err !== UPLOAD_ERR_OK) {
+                    $failed[] = $originalName . ' (upload error code=' . $err . ')';
+                    continue;
+                }
+
+                if (!is_uploaded_file($tmp)) {
+                    $failed[] = $originalName . ' (invalid upload source)';
+                    continue;
+                }
+
+                if ($size <= 0) {
+                    $failed[] = $originalName . ' (empty file)';
+                    continue;
+                }
+
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                if (!$finfo) {
+                    $failed[] = $originalName . ' (cannot open finfo)';
+                    continue;
+                }
+
+                $mime = finfo_file($finfo, $tmp);
+                finfo_close($finfo);
+
+                if (!isset($allowedMime[$mime])) {
+                    $failed[] = $originalName . ' (' . $this->seqImageText('invalid_image_type') . ')';
+                    continue;
+                }
+
+                $baseName = strtolower(pathinfo($originalName, PATHINFO_FILENAME));
+                $baseName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $baseName);
+                $baseName = trim($baseName, '_');
+
+                if ($baseName === '') {
+                    $baseName = 'img_' . date('YmdHis') . '_' . $i;
+                }
+
+                // Controller image storage uses normalized JPG output.
+                // Same final filename means overwrite by force; do not create _1, _2, ... files.
+                $finalName = $baseName . '.jpg';
+                $target = $dir . '/' . $finalName;
+                $finalNameKey = strtolower($finalName);
+
+                $isOverwrite = isset($existingFiles[$finalNameKey]) || isset($reservedNewNames[$finalNameKey]);
+                if (!$isOverwrite && $imageCount >= $maxImages) {
+                    $failed[] = $originalName . ' (' . $this->seqImageText('image_limit_reached') . ')';
+                    continue;
+                }
+
+                if ($this->normalizeSeqImage($tmp, $target, $mime)) {
+                    if (!$isOverwrite) {
+                        $existingFiles[$finalNameKey] = true;
+                        $reservedNewNames[$finalNameKey] = true;
+                        $imageCount++;
+                    }
+                    @chmod($target, 0666);
+                    $success[] = $finalName;
+                } else {
+                    $detail = 'crop failed; mime=' . $mime
+                        . '; gd=' . (function_exists('imagecreatetruecolor') ? 'yes' : 'no')
+                        . '; writable=' . (is_writable($dir) ? 'yes' : 'no');
+
+                    error_log('[SEQ IMG UPLOAD] ' . $originalName . ' ' . $detail);
+                    $failed[] = $originalName . ' (' . $detail . ')';
+                }
+            }
+
+            $msg = count($success) > 0 ? $this->seqImageText('upload_success') : $this->seqImageText('upload_failed');
+            if (!empty($failed)) {
+                $msg .= ' ' . implode('; ', $failed);
+            }
+
+            if (
+                isset($uploadLockHandle)
+                && is_resource($uploadLockHandle)
+            ) {
+                @flock($uploadLockHandle, LOCK_UN);
+                @fclose($uploadLockHandle);
+            }
+
+            echo json_encode([
+                'result'  => count($success) > 0,
+                'success' => $success,
+                'failed'  => $failed,
+                'processed_count' => count($success),
+                'requested_count' => $uploadCount,
+                'msg'     => $msg
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        } catch (Throwable $e) {
+            if (
+                isset($uploadLockHandle)
+                && is_resource($uploadLockHandle)
+            ) {
+                @flock($uploadLockHandle, LOCK_UN);
+                @fclose($uploadLockHandle);
+            }
+
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            header('Content-Type: application/json; charset=utf-8');
+
+            error_log('[SEQ IMG UPLOAD ERROR] ' . $e->getMessage());
+
+            http_response_code(500);
+
+            echo json_encode([
+                'result' => false,
+                'msg'    => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+
+    // ===============================
+    // 刪除圖片
+    // ===============================
+    public function delete_seq_images()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $names = $_POST['names'] ?? [];
+
+        if (!is_array($names) || empty($names)) {
+            echo json_encode([
+                'result' => false,
+                'msg' => $this->seqImageText('no_image_selected')
+            ]);
+            exit;
+        }
+
+        $dir = realpath($this->getSeqImgDir());
+
+        if (!$dir) {
+            echo json_encode([
+                'result' => false,
+                'msg' => $this->seqImageText('image_dir_not_found')
+            ]);
+            exit;
+        }
+
+        $deleted = [];
+        $failed = [];
+
+        foreach ($names as $name) {
+            $safeName = basename($name);
+            $fullPath = realpath($dir . '/' . $safeName);
+
+            if (!$fullPath || strpos($fullPath, $dir) !== 0 || !is_file($fullPath)) {
+                $failed[] = $safeName;
+                continue;
+            }
+
+            if (@unlink($fullPath)) {
+                $deleted[] = $safeName;
+            } else {
+                $failed[] = $safeName;
+            }
+        }
+
+        echo json_encode([
+            'result'  => count($deleted) > 0,
+            'deleted' => $deleted,
+            'failed'  => $failed,
+            'msg'     => count($deleted) > 0 ? $this->seqImageText('delete_success') : $this->seqImageText('delete_failed')
+        ]);
+        exit;
+    }
+
+
+    private function accountUserDbPath(): string
+    {
+        $candidates = [];
+
+        if (PHP_OS_FAMILY === 'Linux') {
+            $candidates[] = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+            $candidates[] = '/home/kls/NTCS7/KLS_NTCS.Lin';
+            $candidates[] = '/home/kls/NTCS7/KLS_NTCS.Lin';
+        } else {
+            $candidates[] = __DIR__ . '/../../database/KLS_NTCS_IDAS.Lin';
+            $candidates[] = __DIR__ . '/../../../database/KLS_NTCS_IDAS.Lin';
+            $candidates[] = '../database/KLS_NTCS_IDAS.Lin';
+        }
+
+        foreach ($candidates as $path) {
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        return $candidates[0] ?? '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+    }
+
+    private function accountUserDb(): PDO
+    {
+        $dbPath = $this->accountUserDbPath();
+
+        if (!is_file($dbPath)) {
+            throw new Exception('Account DB not found: ' . $dbPath);
+        }
+
+        $db = new PDO('sqlite:' . $dbPath);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        return $db;
+    }
+
+    private function accountUserJson(bool $ok, string $msg, array $extra = []): void
+    {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        echo json_encode(array_merge([
+            'success'  => $ok,
+            'res_type' => $ok ? 'Success' : 'Error',
+            'res_msg'  => $msg,
+        ], $extra), JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    private function accountUserClean(string $value): string
+    {
+        return trim($value);
+    }
+
+    private function accountUserCurrentUsername(): string
+    {
+        return strtolower(trim((string)($_COOKIE['username'] ?? '')));
+    }
+
+    private function accountUserLocale(): string
+    {
+        $raw = strtolower(str_replace('_', '-', (string)($_COOKIE['language'] ?? $_COOKIE['lang'] ?? $_SESSION['language'] ?? '')));
+        if ($raw === 'zh-tw' || $raw === 'zh-hant' || $raw === 'tw') return 'zh-tw';
+        if ($raw === 'zh-cn' || $raw === 'zh-hans' || $raw === 'cn' || $raw === 'zh') return 'zh-cn';
+        return 'en-us';
+    }
+
+    private function accountUserFallbackText(string $key, string $default = ''): string
+    {
+        $lang = $this->accountUserLocale();
+        $dict = [
+            'en-us' => [
+                'account_only_admin' => 'Only admin can use Account setting.',
+                'account_cannot_be_empty_suffix' => 'cannot be empty.',
+                'account_only_allows_suffix' => 'only allows A-Z, a-z, 0-9.',
+                'account_username_rule_suffix' => 'must be 6 to 8 characters and only allows A-Z, a-z, 0-9.',
+                'account_password_rule_suffix' => 'must be exactly 4 digits, 0-9.',
+                'account_table_not_found' => 'table user not found.',
+            ],
+            'zh-tw' => [
+                'account_only_admin' => '只有 admin 可以使用帳號設定。',
+                'account_cannot_be_empty_suffix' => '不可空白。',
+                'account_only_allows_suffix' => '只允許 A-Z、a-z、0-9。',
+                'account_username_rule_suffix' => '必須為 6 到 8 個字元，且只允許 A-Z、a-z、0-9。',
+                'account_password_rule_suffix' => '必須為 4 碼數字 0-9。',
+                'account_table_not_found' => '找不到 user 資料表。',
+            ],
+            'zh-cn' => [
+                'account_only_admin' => '只有 admin 可以使用账号设定。',
+                'account_cannot_be_empty_suffix' => '不可空白。',
+                'account_only_allows_suffix' => '只允许 A-Z、a-z、0-9。',
+                'account_username_rule_suffix' => '必须为 6 到 8 个字符，且只允许 A-Z、a-z、0-9。',
+                'account_password_rule_suffix' => '必须为 4 码数字 0-9。',
+                'account_table_not_found' => '找不到 user 数据表。',
+            ],
+        ];
+
+        return $dict[$lang][$key] ?? $dict['en-us'][$key] ?? $default;
+    }
+
+    private function accountUserText(string $key, string $default = ''): string
+    {
+        static $accountText = null;
+
+        if ($accountText === null) {
+            $accountText = [];
+            try {
+                $file = $this->MiscellaneousModel->lang_load();
+                if (!empty($file) && is_file($file)) {
+                    $text = [];
+                    include $file;
+                    if (isset($text) && is_array($text)) {
+                        $accountText = $text;
+                    }
+                }
+            } catch (Throwable $e) {
+                $accountText = [];
+            }
+        }
+
+        if (isset($accountText[$key]) && (string)$accountText[$key] !== '') {
+            return (string)$accountText[$key];
+        }
+
+        return $this->accountUserFallbackText($key, $default);
+    }
+
+    private function accountUserFormatText(string $key, string $default = '', array $vars = []): string
+    {
+        $msg = $this->accountUserText($key, $default);
+        foreach ($vars as $k => $v) {
+            $msg = str_replace('{' . $k . '}', (string)$v, $msg);
+        }
+        return $msg;
+    }
+
+    private function accountUserProtectedNames(): array
+    {
+        return ['kls', 'guest', 'admin'];
+    }
+
+    private function accountUserIsProtectedName(string $name): bool
+    {
+        return in_array(strtolower(trim($name)), $this->accountUserProtectedNames(), true);
+    }
+
+    private function accountUserRequireAdmin(): void
+    {
+        // Account 管理功能只允許 cookie username=admin 使用。
+        if ($this->accountUserCurrentUsername() !== 'admin') {
+            $this->accountUserJson(false, $this->accountUserText('account_only_admin', 'Only admin can use Account setting.'));
+        }
+    }
+
+    private function accountUserValidateText(string $value, string $label): void
+    {
+        if ($value === '') {
+            throw new Exception($label . ' ' . $this->accountUserText('account_cannot_be_empty_suffix', 'cannot be empty.'));
+        }
+
+        // 既有帳號 key 檢查：允許 A-Z / a-z / 0-9。
+        if (!preg_match('/^[A-Za-z0-9]+$/', $value)) {
+            throw new Exception($label . ' ' . $this->accountUserText('account_only_allows_suffix', 'only allows A-Z, a-z, 0-9.'));
+        }
+    }
+
+    private function accountUserValidateUsername(string $value, string $label = 'Username'): void
+    {
+        if ($value === '') {
+            throw new Exception($label . ' ' . $this->accountUserText('account_cannot_be_empty_suffix', 'cannot be empty.'));
+        }
+
+        // 新帳號 / 改名：6~8 字元，只允許 A-Z / a-z / 0-9。
+        if (!preg_match('/^[A-Za-z0-9]{6,8}$/', $value)) {
+            throw new Exception($label . ' ' . $this->accountUserText('account_username_rule_suffix', 'must be 6 to 8 characters and only allows A-Z, a-z, 0-9.'));
+        }
+    }
+
+    private function accountUserValidatePassword(string $value, string $label = 'Password'): void
+    {
+        if ($value === '') {
+            throw new Exception($label . ' ' . $this->accountUserText('account_cannot_be_empty_suffix', 'cannot be empty.'));
+        }
+
+        // 密碼固定 4 碼數字，允許 0000。
+        if (!preg_match('/^[0-9]{4}$/', $value)) {
+            throw new Exception($label . ' ' . $this->accountUserText('account_password_rule_suffix', 'must be exactly 4 digits, 0-9.'));
+        }
+    }
+
+    private function accountUserAssertTable(PDO $db): void
+    {
+        $exists = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")->fetchColumn();
+        if (!$exists) {
+            throw new Exception($this->accountUserText('account_table_not_found', 'table user not found.'));
+        }
+    }
+
+    private function accountUserIdasDbPathStrict(): string
+    {
+        if (PHP_OS_FAMILY === 'Linux') {
+            return '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        }
+
+        return $this->accountUserDbPath();
+    }
+
+    private function accountUserControllerDbPath(): string
+    {
+        if (PHP_OS_FAMILY === 'Linux') {
+            return '/home/kls/NTCS7/KLS_NTCS.Lin';
+        }
+
+        return __DIR__ . '/../../../database/KLS_NTCS.Lin';
+    }
+
+    private function accountUserOpenSqliteFile(string $dbPath): PDO
+    {
+        if (!is_file($dbPath)) {
+            throw new Exception('DB file not found: ' . $dbPath);
+        }
+        if (!is_readable($dbPath)) {
+            throw new Exception('DB file is not readable: ' . $dbPath);
+        }
+
+        $db = new PDO('sqlite:' . $dbPath);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        return $db;
+    }
+
+    private function accountUserQuoteIdentifier(string $name): string
+    {
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
+            throw new Exception('Invalid column name: ' . $name);
+        }
+
+        return '"' . str_replace('"', '""', $name) . '"';
+    }
+
+    private function accountUserTableColumns(PDO $db): array
+    {
+        $rows = $db->query('PRAGMA table_info("user")')->fetchAll(PDO::FETCH_ASSOC);
+        $columns = [];
+
+        foreach ($rows as $row) {
+            if (isset($row['name']) && $row['name'] !== '') {
+                $columns[] = (string)$row['name'];
+            }
+        }
+
+        return $columns;
+    }
+
+
+    /**
+     * Ensure a default account exists in the opened account user table.
+     * If the account already exists, keep the existing password/law unchanged.
+     */
+    private function accountUserEnsureDefaultAccount(PDO $db, string $accountName, string $password, int $law = 1): bool
+    {
+        $this->accountUserAssertTable($db);
+
+        $accountName = trim($accountName);
+        $password = trim($password);
+
+        if ($accountName === '' || $password === '') {
+            throw new Exception('Default account name/password cannot be empty.');
+        }
+
+        $columns = $this->accountUserTableColumns($db);
+        if (!in_array('name', $columns, true) || !in_array('passwd', $columns, true)) {
+            throw new Exception('user table must contain name and passwd columns.');
+        }
+
+        $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))');
+        $stmt->execute([':name' => $accountName]);
+        if ((int)$stmt->fetchColumn() > 0) {
+            return false;
+        }
+
+        $insertColumns = [];
+        $params = [];
+
+        if (in_array('sn', $columns, true)) {
+            $insertColumns[] = 'sn';
+            $params[':sn'] = (int)$db->query('SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`')->fetchColumn();
+        }
+
+        $insertColumns[] = 'name';
+        $params[':name'] = $accountName;
+
+        $insertColumns[] = 'passwd';
+        $params[':passwd'] = $password;
+
+        if (in_array('law', $columns, true)) {
+            $insertColumns[] = 'law';
+            $params[':law'] = $law;
+        }
+
+        $columnSql = implode(', ', array_map([$this, 'accountUserQuoteIdentifier'], $insertColumns));
+        $placeholders = implode(', ', array_keys($params));
+
+        $stmt = $db->prepare('INSERT INTO `user` (' . $columnSql . ') VALUES (' . $placeholders . ')');
+        $stmt->execute($params);
+
+        return true;
+    }
+
+    private function accountUserEnsureDefaultAdmin(PDO $db): bool
+    {
+        return $this->accountUserEnsureDefaultAccount($db, 'admin', '0734', 1);
+    }
+
+    private function accountUserEnsureDefaultGuest(PDO $db): bool
+    {
+        return $this->accountUserEnsureDefaultAccount($db, 'guest', '0000', 1);
+    }
+
+    private function accountUserEnsureDefaultProtectedAccounts(PDO $db): void
+    {
+        $this->accountUserEnsureDefaultAdmin($db);
+        $this->accountUserEnsureDefaultGuest($db);
+    }
+
+    public function account_user_upload_controller(): void
+    {
+        $targetDb = null;
+
+        try {
+            $this->accountUserRequireAdmin();
+
+            if (PHP_OS_FAMILY !== 'Linux') {
+                throw new Exception($this->accountUserText('account_upload_controller_linux_only', 'Sync to controller is only supported on Linux.'));
+            }
+
+            $sourcePath = $this->accountUserIdasDbPathStrict();
+            $targetPath = $this->accountUserControllerDbPath();
+
+            if (!is_file($sourcePath)) {
+                throw new Exception($this->accountUserFormatText('account_upload_controller_source_missing', 'Source iDAS DB not found: {path}', ['path' => $sourcePath]));
+            }
+            if (!is_file($targetPath)) {
+                throw new Exception($this->accountUserFormatText('account_upload_controller_target_missing', 'Target controller DB not found: {path}', ['path' => $targetPath]));
+            }
+            if (!is_writable($targetPath) || !is_writable(dirname($targetPath))) {
+                throw new Exception($this->accountUserFormatText('account_upload_controller_target_not_writable', 'Target controller DB or folder is not writable: {path}', ['path' => $targetPath]));
+            }
+
+            $sourceDb = $this->accountUserOpenSqliteFile($sourcePath);
+            $targetDb = $this->accountUserOpenSqliteFile($targetPath);
+
+            $this->accountUserAssertTable($sourceDb);
+            $this->accountUserAssertTable($targetDb);
+
+            // Safety: before syncing, make sure the iDAS source DB has admin.
+            $this->accountUserEnsureDefaultProtectedAccounts($sourceDb);
+
+            $sourceColumns = $this->accountUserTableColumns($sourceDb);
+            $targetColumns = $this->accountUserTableColumns($targetDb);
+            $copyColumns = array_values(array_intersect($targetColumns, $sourceColumns));
+
+            if (empty($copyColumns)) {
+                throw new Exception('No matching columns found between source and target user table.');
+            }
+            if (!in_array('name', $copyColumns, true) || !in_array('passwd', $copyColumns, true)) {
+                throw new Exception('Target/source user table must contain name and passwd columns.');
+            }
+
+            $columnSql = implode(', ', array_map([$this, 'accountUserQuoteIdentifier'], $copyColumns));
+            $orderSql = in_array('sn', $sourceColumns, true) ? ' ORDER BY "sn" ASC' : ' ORDER BY rowid ASC';
+
+            $rows = $sourceDb->query('SELECT ' . $columnSql . ' FROM "user"' . $orderSql)->fetchAll(PDO::FETCH_ASSOC);
+            if (empty($rows)) {
+                throw new Exception($this->accountUserText('account_upload_controller_empty', 'Source user table has no data. Sync aborted.'));
+            }
+
+            // Backup target DB before touching table user only.
+            $backupPath = $targetPath . '.user_backup_' . date('Ymd_His');
+            if (!@copy($targetPath, $backupPath)) {
+                throw new Exception($this->accountUserFormatText('account_upload_controller_backup_failed', 'Backup target DB failed: {path}', ['path' => $backupPath]));
+            }
+            @chmod($backupPath, 0666);
+
+            $targetDb->beginTransaction();
+
+            // Only table user is modified. Other tables are untouched.
+            $targetDb->exec('DELETE FROM "user"');
+
+            $placeholders = implode(', ', array_map(function($col) {
+                return ':' . $col;
+            }, $copyColumns));
+
+            $insertSql = 'INSERT INTO "user" (' . $columnSql . ') VALUES (' . $placeholders . ')';
+            $insertStmt = $targetDb->prepare($insertSql);
+
+            foreach ($rows as $row) {
+                $params = [];
+                foreach ($copyColumns as $col) {
+                    $params[':' . $col] = $row[$col] ?? null;
+                }
+                $insertStmt->execute($params);
+            }
+
+            // Safety: after full mirror, guarantee controller DB still has admin.
+            $this->accountUserEnsureDefaultProtectedAccounts($targetDb);
+
+            $targetDb->commit();
+            @chmod($targetPath, 0666);
+            @exec('sync');
+
+            $this->accountUserJson(true, $this->accountUserFormatText('account_upload_controller_success', 'Upload user list to controller success. Rows: {rows}.', ['rows' => count($rows)]), [
+                'rows'        => count($rows),
+                'source_path' => $sourcePath,
+                'target_path' => $targetPath,
+                'backup_path' => $backupPath,
+            ]);
+        } catch (Throwable $e) {
+            if ($targetDb instanceof PDO && $targetDb->inTransaction()) {
+                $targetDb->rollBack();
+            }
+
+            $this->accountUserJson(false, $this->accountUserFormatText('account_upload_controller_failed', 'Upload user list to controller failed: {error}', ['error' => $e->getMessage()]));
+        }
+    }
+
+    public function account_user_list(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            // kls 帳號需要顯示在 Account 清單，但儲存/刪除會被保護。
+            $rows = $db->query("
+                SELECT sn, name, passwd, law
+                FROM `user`
+                ORDER BY sn ASC
+            ")->fetchAll();
+
+            $this->accountUserJson(true, 'OK', [
+                'records' => $rows,
+                'count'   => count($rows),
+            ]);
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
 
 
 
+    private function accountUserCsvText(string $value): string
+    {
+        $value = trim($value);
+
+        // Excel formula-text style from export, e.g. ="0000".
+        if (preg_match('/^="(.*)"$/s', $value, $m)) {
+            return str_replace('""', '"', $m[1]);
+        }
+
+        // Remove UTF-8 BOM if present.
+        $value = preg_replace('/^\xEF\xBB\xBF/', '', $value);
+        return trim((string)$value);
+    }
+
+    private function accountUserExcelText(string $value): string
+    {
+        // Force Excel to treat password as text, so 0000 will not become 0.
+        return '="' . str_replace('"', '""', $value) . '"';
+    }
 
 
+    public function account_user_get_password(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+
+            $username = isset($_POST['username']) ? $this->accountUserClean((string)$_POST['username']) : '';
+            $this->accountUserValidateText($username, 'Username');
+
+            // kls 帳號允許開啟查看資料，但不可儲存/刪除。
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $statement = $db->prepare("
+                SELECT CAST(passwd AS TEXT) AS passwd
+                FROM `user`
+                WHERE LOWER(name) = LOWER(:name)
+                LIMIT 1
+            ");
+            $statement->execute([
+                ':name' => $username,
+            ]);
+
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                throw new Exception('Account not found.');
+            }
+
+            $this->accountUserJson(true, 'OK', [
+                'username' => $username,
+                'passwd'   => (string)($row['passwd'] ?? ''),
+            ]);
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
 
 
+    public function account_user_export(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            // Export all accounts, including built-in Kls / kls account.
+            $rows = $db->query("
+                SELECT sn, name, passwd, law
+                FROM `user`
+                ORDER BY sn ASC
+            ")->fetchAll();
+
+            // Clean all previous output to avoid corrupting CSV download.
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+
+            $filename = 'account_password_export_' . date('Ymd_His') . '.csv';
+
+            if (!headers_sent()) {
+                header('Content-Type: text/csv; charset=utf-8');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Cache-Control: no-store, no-cache, must-revalidate');
+                header('Pragma: no-cache');
+            }
+
+            // UTF-8 BOM for Excel compatibility.
+            echo "\xEF\xBB\xBF";
+
+            $fp = fopen('php://output', 'w');
+            // CSV hides internal law column. law is managed internally and defaults to 1 on import.
+            fputcsv($fp, ['No', 'User Name', 'Password']);
+
+            $no = 1;
+            foreach ($rows as $row) {
+                fputcsv($fp, [
+                    $no++,
+                    $row['name'] ?? '',
+                    $this->accountUserExcelText((string)($row['passwd'] ?? '')),
+                ]);
+            }
+
+            fclose($fp);
+            exit();
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, 'Export account failed: ' . $e->getMessage());
+        }
+    }
+
+    public function account_user_import(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+            if (empty($_FILES['account_file']) || !isset($_FILES['account_file']['tmp_name'])) {
+                throw new Exception('Please select a CSV file.');
+            }
+
+            if ((int)($_FILES['account_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                throw new Exception('Upload failed. Error code: ' . (int)$_FILES['account_file']['error']);
+            }
+
+            $tmpName = (string)$_FILES['account_file']['tmp_name'];
+            $originalName = (string)($_FILES['account_file']['name'] ?? '');
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+            if ($ext !== 'csv') {
+                throw new Exception('Only CSV file is allowed.');
+            }
+
+            if (!is_uploaded_file($tmpName) && !is_file($tmpName)) {
+                throw new Exception('Uploaded file not found.');
+            }
+
+            $fp = fopen($tmpName, 'r');
+            if (!$fp) {
+                throw new Exception($this->accountUserText('account_cannot_open_csv', 'Cannot open uploaded CSV file.'));
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $header = fgetcsv($fp);
+            if (!$header || count($header) < 2) {
+                fclose($fp);
+                throw new Exception($this->accountUserText('account_csv_invalid', 'CSV format invalid. Header must include User Name and Password.'));
+            }
+
+            // Normalize header names from export: No, User Name, Password.
+            // Older CSV files with Law column are still accepted, but law is ignored and fixed to 1.
+            $headerMap = [];
+            foreach ($header as $idx => $col) {
+                $key = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string)$col)));
+                $key = str_replace([' ', '_', '-'], '', $key);
+                $headerMap[$key] = $idx;
+            }
+
+            $nameIndex = $headerMap['username'] ?? $headerMap['name'] ?? 1;
+            $passIndex = $headerMap['password'] ?? $headerMap['passwd'] ?? 2;
+            // Law is intentionally not exposed in CSV. Always import accounts with default law = 1.
+
+            $importMode = (string)($_POST['import_mode'] ?? 'append');
+            $importMode = ($importMode === 'overwrite') ? 'overwrite' : 'append';
+            $protectedUsers = ['kls', 'guest', 'admin'];
+
+            $inserted = 0;
+            $updated  = 0;
+            $skipped  = 0;
+            $lineNo   = 1;
+            $errors   = [];
+            $rowsToImport = [];
+
+            // First pass: validate the whole CSV before touching DB.
+            while (($row = fgetcsv($fp)) !== false) {
+                $lineNo++;
+
+                // Skip blank lines.
+                if (count(array_filter($row, function($v) { return trim((string)$v) !== ''; })) === 0) {
+                    continue;
+                }
+
+                $name = $this->accountUserCsvText((string)($row[$nameIndex] ?? ''));
+                $password = $this->accountUserCsvText((string)($row[$passIndex] ?? ''));
+                $law = 1;
+                $nameLower = strtolower($name);
+
+                // Built-in accounts are protected and will not be imported or modified.
+                if (in_array($nameLower, $protectedUsers, true)) {
+                    $skipped++;
+                    continue;
+                }
+
+                try {
+                    $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
+                    $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
+                } catch (Throwable $e) {
+                    $errors[] = 'Line ' . $lineNo . ': ' . $e->getMessage();
+                    continue;
+                }
+
+                $rowsToImport[] = [
+                    'name' => $name,
+                    'passwd' => $password,
+                    'law' => $law,
+                ];
+            }
+
+            fclose($fp);
+
+            if (!empty($errors)) {
+                throw new Exception($this->accountUserText('account_csv_validation_failed', 'CSV validation failed. No data was imported.') . ' ' . implode(' ', array_slice($errors, 0, 10)));
+            }
+
+            $db->beginTransaction();
+
+            if ($importMode === 'overwrite') {
+                // Only table user is modified. Built-in accounts are protected.
+                $db->exec("DELETE FROM `user` WHERE LOWER(name) NOT IN ('kls', 'guest', 'admin')");
+            }
+
+            foreach ($rowsToImport as $row) {
+                $name = $row['name'];
+                $password = $row['passwd'];
+                $law = $row['law'];
+
+                $stmt = $db->prepare('SELECT COUNT(*) FROM `user` WHERE LOWER(name) = LOWER(:name)');
+                $stmt->execute([':name' => $name]);
+                $exists = (int)$stmt->fetchColumn() > 0;
+
+                if ($exists) {
+                    $stmt = $db->prepare('UPDATE `user` SET passwd = :passwd, law = :law WHERE LOWER(name) = LOWER(:name)');
+                    $stmt->execute([
+                        ':passwd' => $password,
+                        ':law'    => $law,
+                        ':name'   => $name,
+                    ]);
+                    $updated++;
+                } else {
+                    $nextSn = (int)$db->query('SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`')->fetchColumn();
+                    $stmt = $db->prepare('INSERT INTO `user` (sn, name, passwd, law) VALUES (:sn, :name, :passwd, :law)');
+                    $stmt->execute([
+                        ':sn'     => $nextSn,
+                        ':name'   => $name,
+                        ':passwd' => $password,
+                        ':law'    => $law,
+                    ]);
+                    $inserted++;
+                }
+            }
+
+            // Safety: Append / Overwrite import must never leave iDAS without admin/guest.
+            $beforeProtectedCount = $inserted;
+            if ($this->accountUserEnsureDefaultAdmin($db)) {
+                $inserted++;
+            }
+            if ($this->accountUserEnsureDefaultGuest($db)) {
+                $inserted++;
+            }
+
+            $db->commit();
+
+            $message = $this->accountUserFormatText('account_import_result', 'Import success. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.', ['inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped]);
+
+            $this->accountUserJson(true, $message, [
+                'mode'     => $importMode,
+                'inserted' => $inserted,
+                'updated'  => $updated,
+                'skipped'  => $skipped,
+                'errors'   => [],
+            ]);
+        } catch (Throwable $e) {
+            if (isset($db) && $db instanceof PDO && $db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            if (isset($fp) && is_resource($fp)) {
+                fclose($fp);
+            }
+
+            $this->accountUserJson(false, $this->accountUserFormatText('account_import_account_failed', 'Import account failed: {error}', ['error' => $e->getMessage()]));
+        }
+    }
+
+    public function account_user_create(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+            $name     = $this->accountUserClean($_POST['username'] ?? '');
+            $password = $this->accountUserClean($_POST['password'] ?? '');
+            $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
+            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
+
+            $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
+            if ($this->accountUserIsProtectedName($name)) {
+                throw new Exception($this->accountUserText('account_protected_create_action', 'This account is protected and cannot be created.'));
+            }
+            $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
+
+            if ($password !== $confirm) {
+                throw new Exception($this->accountUserText('account_confirm_diff', 'Confirm password is different.'));
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
+            $stmt->execute([':name' => $name]);
+            if ((int)$stmt->fetchColumn() > 0) {
+                throw new Exception($this->accountUserText('account_username_exists', 'Username already exists.'));
+            }
+
+            $nextSn = (int)$db->query("SELECT COALESCE(MAX(sn), -1) + 1 FROM `user`")->fetchColumn();
+
+            $stmt = $db->prepare("INSERT INTO `user` (sn, name, passwd, law) VALUES (:sn, :name, :passwd, :law)");
+            $stmt->execute([
+                ':sn'     => $nextSn,
+                ':name'   => $name,
+                ':passwd' => $password,
+                ':law'    => $law,
+            ]);
+
+            $this->accountUserJson(true, $this->accountUserText('account_new_success', 'New Account success.'));
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
+
+    public function account_user_update(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+            $oldName  = $this->accountUserClean($_POST['old_username'] ?? '');
+            $name     = $this->accountUserClean($_POST['username'] ?? '');
+            $password = $this->accountUserClean($_POST['password'] ?? '');
+            $confirm  = $this->accountUserClean($_POST['confirm_password'] ?? '');
+            $law      = isset($_POST['law']) ? (int)$_POST['law'] : 1;
+
+            $this->accountUserValidateText($oldName, $this->accountUserText('account_old_username', 'Old username'));
+
+            $oldNameLower = strtolower($oldName);
+            $nameLower = strtolower($name);
+
+            // admin / guest cannot be deleted or renamed, but their password can be edited.
+            // kls can be opened for viewing, but saving is blocked.
+            if ($this->accountUserIsProtectedName($oldName)) {
+                if ($oldNameLower === 'kls') {
+                    throw new Exception($this->accountUserText('account_protected_save_action', 'This account is protected and cannot be saved.'));
+                }
+
+                if ($nameLower !== $oldNameLower) {
+                    throw new Exception($this->accountUserText($oldNameLower === 'guest' ? 'account_guest_rename_blocked' : 'account_admin_rename_blocked', $oldNameLower . ' account name cannot be changed.'));
+                }
+            } elseif ($this->accountUserIsProtectedName($name)) {
+                throw new Exception($this->accountUserText('account_protected_rename_blocked', 'This built-in account name cannot be changed.'));
+            }
+
+            if ($oldName !== $name) {
+                $this->accountUserValidateUsername($name, $this->accountUserText('account_username', 'Username'));
+            } else {
+                // 允許既有 admin/user1 等舊帳號在未改名時繼續修改密碼。
+                $this->accountUserValidateText($name, $this->accountUserText('account_username', 'Username'));
+            }
+
+            if ($password !== '') {
+                $this->accountUserValidatePassword($password, $this->accountUserText('account_password', 'Password'));
+                if ($password !== $confirm) {
+                    throw new Exception($this->accountUserText('account_confirm_diff', 'Confirm password is different.'));
+                }
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
+            $stmt->execute([':name' => $oldName]);
+            if ((int)$stmt->fetchColumn() === 0) {
+                throw new Exception($this->accountUserText('account_not_found', 'Account not found.'));
+            }
+
+            if ($oldName !== $name) {
+                $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
+                $stmt->execute([':name' => $name]);
+                if ((int)$stmt->fetchColumn() > 0) {
+                    throw new Exception($this->accountUserText('account_username_exists', 'Username already exists.'));
+                }
+            }
+
+            if ($oldNameLower === 'admin' || $oldNameLower === 'guest') {
+                // admin / guest cannot be renamed or deleted, but password editing is allowed.
+                if ($password !== '') {
+                    $stmt = $db->prepare("UPDATE `user` SET passwd = :passwd, law = :law WHERE LOWER(name) = :old_name_lower");
+                    $stmt->execute([
+                        ':passwd' => $password,
+                        ':law' => $law,
+                        ':old_name_lower' => $oldNameLower,
+                    ]);
+                }
+            } elseif ($password === '') {
+                $stmt = $db->prepare("UPDATE `user` SET name = :name, law = :law WHERE name = :old_name");
+                $stmt->execute([
+                    ':name'     => $name,
+                    ':law'      => $law,
+                    ':old_name' => $oldName,
+                ]);
+            } else {
+                $stmt = $db->prepare("UPDATE `user` SET name = :name, passwd = :passwd, law = :law WHERE name = :old_name");
+                $stmt->execute([
+                    ':name'     => $name,
+                    ':passwd'   => $password,
+                    ':law'      => $law,
+                    ':old_name' => $oldName,
+                ]);
+            }
+
+            $this->accountUserJson(true, $this->accountUserText('account_edit_success', 'Edit Account success.'));
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
+
+    public function account_user_delete(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+            $name = $this->accountUserClean($_POST['username'] ?? '');
+            $this->accountUserValidateText($name, $this->accountUserText('account_username', 'Username'));
+            if ($this->accountUserIsProtectedName($name)) {
+                throw new Exception($this->accountUserText('account_protected_action', 'This account is protected and cannot be deleted.'));
+            }
+
+            $db = $this->accountUserDb();
+            $this->accountUserAssertTable($db);
+
+            $count = (int)$db->query("SELECT COUNT(*) FROM `user`")->fetchColumn();
+            if ($count <= 1) {
+                throw new Exception($this->accountUserText('account_last_delete_error', 'Cannot delete the last account.'));
+            }
+
+            $stmt = $db->prepare("DELETE FROM `user` WHERE name = :name");
+            $stmt->execute([':name' => $name]);
+
+            if ($stmt->rowCount() <= 0) {
+                throw new Exception($this->accountUserText('account_not_found', 'Account not found.'));
+            }
+
+            $this->accountUserJson(true, $this->accountUserText('account_delete_account_success', 'Delete Account success.'));
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, $e->getMessage());
+        }
+    }
 
 
+    
+    /**
+     * Read iDAS operation audit logs without depending on SettingModel.
+     * This keeps Data/AuditLog working even when the Setting model has not
+     * been updated with getOperationAuditLogs().
+     */
+    private function getOperationAuditLogs(int $limit = 100): array
+    {
+        $limit = max(1, min(500, $limit));
+
+        $info = $this->openOperationAuditDb();
+        if (!$info) {
+            return [];
+        }
+
+        /** @var PDO $db */
+        $db = $info['db'];
+        $table = $info['table'];
+        $columns = $this->operationAuditColumns($db, $table);
+
+        $orderColumn = $this->operationAuditFirstExistingColumn($columns, [
+            'log_id', 'id', 'created_at', 'time', 'data_time', 'rowid'
+        ]);
+
+        $orderSql = '';
+        if ($orderColumn === 'rowid') {
+            $orderSql = ' ORDER BY rowid DESC';
+        } elseif ($orderColumn !== '') {
+            $orderSql = ' ORDER BY ' . $this->operationAuditQuoteIdentifier($orderColumn) . ' DESC';
+        }
+
+        $sql = 'SELECT * FROM ' . $this->operationAuditQuoteIdentifier($table) . $orderSql . ' LIMIT ' . (int)$limit;
+        $rows = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        $result = [];
+        $no = 1;
+        foreach ($rows as $row) {
+            $result[] = $this->normalizeOperationAuditRow($row, $no++);
+        }
+
+        return $result;
+    }
+
+    private function getOperationAuditLogDetail(int $logId): ?array
+    {
+        $info = $this->openOperationAuditDb();
+        if (!$info) {
+            return null;
+        }
+
+        /** @var PDO $db */
+        $db = $info['db'];
+        $table = $info['table'];
+        $columns = $this->operationAuditColumns($db, $table);
+        $idColumn = $this->operationAuditFirstExistingColumn($columns, ['log_id', 'id']);
+
+        if ($idColumn === '') {
+            return null;
+        }
+
+        $stmt = $db->prepare(
+            'SELECT * FROM ' . $this->operationAuditQuoteIdentifier($table) .
+            ' WHERE ' . $this->operationAuditQuoteIdentifier($idColumn) . ' = :id LIMIT 1'
+        );
+        $stmt->execute([':id' => $logId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ? $this->normalizeOperationAuditRow($row, 1) : null;
+    }
+
+    private function openOperationAuditDb(): ?array
+    {
+       $dbPaths = [
+            '/var/www/html/database/das.db',
+            '/var/www/html/database/KLS_NTCS_IDAS.Lin',
+            '/var/www/html/database/ntcs_device_IDAS.db',
+            '/var/www/html/database/ntcs_data.db',
+            '/home/kls/NTCS7/KLS_NTCS.Lin',
+            '/home/kls/NTCS7/ntcs_data.db',
+            __DIR__ . '/../../../database/das.db',
+            __DIR__ . '/../../../database/KLS_NTCS_IDAS.Lin',
+            __DIR__ . '/../../../database/operation_audit_log.db',
+        ];
+
+        $preferredTables = [
+            'operation_audit_log',
+            'operation_audit_logs',
+            'audit_log',
+            'audit_logs',
+            'idas_operation_audit_log',
+        ];
+
+        foreach ($dbPaths as $path) {
+            if (!is_file($path) || !is_readable($path)) {
+                continue;
+            }
+
+            try {
+                $db = new PDO('sqlite:' . $path);
+                $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+                $tables = $db->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll(PDO::FETCH_COLUMN);
+                if (!is_array($tables) || empty($tables)) {
+                    continue;
+                }
+
+                foreach ($preferredTables as $name) {
+                    if (in_array($name, $tables, true)) {
+                        return ['db' => $db, 'table' => $name, 'path' => $path];
+                    }
+                }
+
+                foreach ($tables as $table) {
+                    $lower = strtolower((string)$table);
+                    if (strpos($lower, 'audit') !== false && strpos($lower, 'log') !== false) {
+                        return ['db' => $db, 'table' => (string)$table, 'path' => $path];
+                    }
+                }
+            } catch (Throwable $e) {
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    private function operationAuditColumns(PDO $db, string $table): array
+    {
+        $stmt = $db->query('PRAGMA table_info(' . $this->operationAuditQuoteIdentifier($table) . ')');
+        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        $columns = [];
+
+        foreach ($rows as $row) {
+            if (isset($row['name']) && $row['name'] !== '') {
+                $columns[] = (string)$row['name'];
+            }
+        }
+
+        return $columns;
+    }
+
+    private function operationAuditFirstExistingColumn(array $columns, array $candidates): string
+    {
+        foreach ($candidates as $candidate) {
+            if ($candidate === 'rowid') {
+                return 'rowid';
+            }
+
+            foreach ($columns as $column) {
+                if (strtolower($column) === strtolower($candidate)) {
+                    return $column;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private function operationAuditQuoteIdentifier(string $name): string
+    {
+        return '"' . str_replace('"', '""', $name) . '"';
+    }
+
+    private function operationAuditPick(array $row, array $keys, $default = '')
+    {
+        foreach ($keys as $key) {
+            foreach ($row as $actualKey => $value) {
+                if (strtolower((string)$actualKey) === strtolower((string)$key)) {
+                    return $value;
+                }
+            }
+        }
+
+        return $default;
+    }
+
+    private function normalizeOperationAuditRow(array $row, int $fallbackId = 0): array
+    {
+        $logId = $this->operationAuditPick($row, ['log_id', 'id', 'sn', 'rowid'], $fallbackId);
+
+        return array_merge($row, [
+            'log_id' => $logId,
+            'id' => $this->operationAuditPick($row, ['id', 'log_id', 'sn'], $logId),
+            'created_at' => $this->operationAuditPick($row, ['created_at', 'time', 'data_time', 'datetime', 'date_time'], ''),
+            'operator' => $this->operationAuditPick($row, ['operator', 'user_name', 'username', 'user', 'user_id'], ''),
+            'user_id' => $this->operationAuditPick($row, ['user_id', 'operator', 'user_name', 'username', 'user'], ''),
+            'client_ip' => $this->operationAuditPick($row, ['client_ip', 'ip'], ''),
+            'device_id' => $this->operationAuditPick($row, ['device_id'], ''),
+            'module' => $this->operationAuditPick($row, ['module', 'category'], ''),
+            'action' => $this->operationAuditPick($row, ['action', 'operation'], ''),
+            'status' => $this->operationAuditPick($row, ['status', 'level'], ''),
+            'job_id' => $this->operationAuditPick($row, ['job_id'], ''),
+            'seq_id' => $this->operationAuditPick($row, ['seq_id', 'sequence_id'], ''),
+            'step_id' => $this->operationAuditPick($row, ['step_id'], ''),
+            'source_job_id' => $this->operationAuditPick($row, ['source_job_id'], ''),
+            'source_seq_id' => $this->operationAuditPick($row, ['source_seq_id'], ''),
+            'source_step_id' => $this->operationAuditPick($row, ['source_step_id'], ''),
+            'target_job_id' => $this->operationAuditPick($row, ['target_job_id'], ''),
+            'target_seq_id' => $this->operationAuditPick($row, ['target_seq_id'], ''),
+            'target_step_id' => $this->operationAuditPick($row, ['target_step_id'], ''),
+            'target' => $this->operationAuditPick($row, ['target', 'object', 'title'], ''),
+            'title' => $this->operationAuditPick($row, ['title'], ''),
+            'message' => $this->operationAuditPick($row, ['message', 'msg', 'target', 'title'], ''),
+            'before_json' => $this->operationAuditPick($row, ['before_json'], ''),
+            'after_json' => $this->operationAuditPick($row, ['after_json'], ''),
+            'order_before_json' => $this->operationAuditPick($row, ['order_before_json'], ''),
+            'order_after_json' => $this->operationAuditPick($row, ['order_after_json'], ''),
+            'request_json' => $this->operationAuditPick($row, ['request_json'], ''),
+        ]);
+    }
 
 
+    public function operation_audit_log_list(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+
+            $limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 100;
+            if ($limit <= 0 || $limit > 500) {
+                $limit = 100;
+            }
+
+            $source = isset($_POST['source']) ? strtolower(trim((string)$_POST['source'])) : 'idas';
+            if (!in_array($source, ['idas', 'app'], true)) {
+                $source = 'idas';
+            }
+
+            if ($source === 'app') {
+                // APP 監控資料來源固定讀 ntcs_log.csv。
+                // CSV 欄位格式：date,time,user,action,module,target
+                $rows = $this->getAppOperationLogsFromCsv($limit);
+            } else {
+                $rows = $this->getOperationAuditLogs($limit);
+            }
+
+            $this->accountUserJson(true, 'OK', [
+                'source'  => $source,
+                'records' => $rows,
+                'count'   => count($rows),
+            ]);
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, 'Load operation log failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 讀取 APP 操作紀錄 CSV。
+     *
+     * ntcs_log.csv 格式：
+     * 0 date   例：2026-05-07
+     * 1 time   例：05:29.39.9
+     * 2 user   例：guest
+     * 3 action 例：Add / Edit
+     * 4 module 例：Job Editor / Sequence Management
+     * 5 target 例：Job ID: 1; Seq ID: 2
+     */
+    private function getAppOperationLogsFromCsv(int $limit = 100): array
+    {
+        $csvPath = $this->getAppOperationLogCsvPath();
+        if ($csvPath === '' || !is_file($csvPath) || !is_readable($csvPath)) {
+            return [];
+        }
+
+        $rows = [];
+        $fp = fopen($csvPath, 'r');
+        if (!$fp) {
+            return [];
+        }
+
+        $lineNo = 0;
+        while (($cols = fgetcsv($fp)) !== false) {
+            $lineNo++;
+
+            // 跳過空行或欄位不足的資料
+            if (!is_array($cols) || count($cols) < 5) {
+                continue;
+            }
+
+            $date   = trim((string)($cols[0] ?? ''));
+            $time   = $this->normalizeAppLogTime(trim((string)($cols[1] ?? '')));
+            $user   = trim((string)($cols[2] ?? ''));
+            $action = trim((string)($cols[3] ?? ''));
+            $module = trim((string)($cols[4] ?? ''));
+            $target = trim((string)($cols[5] ?? ''));
+
+            // 避免完全空資料進入前端
+            if ($date === '' && $time === '' && $user === '' && $action === '' && $module === '' && $target === '') {
+                continue;
+            }
+
+            $createdAt = trim($date . ' ' . $time);
+            $messageParts = array_filter([$user, $action, $module, $target], function ($v) {
+                return trim((string)$v) !== '';
+            });
+
+            $rows[] = [
+                // 保留多組 key，避免前端目前用不同名稱取值時顯示空白
+                'id'         => $lineNo,
+                'log_id'     => $lineNo,
+                'source'     => 'app',
+                'created_at' => $createdAt,
+                'time'       => $createdAt,
+                'date'       => $date,
+                // 前端 operation_audit_log.php 主要讀 operator / user_id，
+                // 也保留 user_name / username / user，避免不同版本 View 顯示空白。
+                'operator'   => $user,
+                'user_id'    => $user,
+                'user_name'  => $user,
+                'username'   => $user,
+                'user'       => $user,
+                'module'     => $module,
+                'action'     => $action,
+                'target'     => $target,
+                'level'      => 'INFO',
+                // 用 INFO 交給前端依語系轉成「資訊 / INFO」，不要後端固定中文。
+                'status'     => 'INFO',
+                // Message 不再重複放 user，因為 user 已有獨立欄位。
+                'message'    => implode(' | ', array_filter([$action, $module, $target], function ($v) {
+                    return trim((string)$v) !== '';
+                })),
+                'raw'        => $cols,
+            ];
+        }
+        fclose($fp);
+
+        // CSV 通常舊資料在上、新資料在下；前端監控要顯示最新在最上面
+        $rows = array_reverse($rows);
+
+        return array_slice($rows, 0, $limit);
+    }
+
+    /**
+     * APP 操作紀錄檔路徑。
+     */
+    private function getAppOperationLogCsvPath(): string
+    {
+        $paths = [
+            '/home/kls/NTCS/ntcs_log.csv',
+            '/mnt/ramdisk/ftp/ntcs_log.csv',
+            '/var/www/html/database/ntcs_log.csv',
+        ];
+
+        foreach ($paths as $path) {
+            if (is_file($path) && is_readable($path)) {
+                return $path;
+            }
+        }
+
+        // 回傳主要路徑，方便後續 debug 知道預期位置
+        return $paths[0];
+    }
+
+    /**
+     * 將 APP CSV 時間 05:29.39.9 轉成 05:29:39.9，顯示較清楚。
+     */
+    private function normalizeAppLogTime(string $time): string
+    {
+        if (preg_match('/^(\d{1,2}):(\d{2})\.(\d{2})(\.\d+)?$/', $time, $m)) {
+            return sprintf('%02d:%s:%s%s', (int)$m[1], $m[2], $m[3], $m[4] ?? '');
+        }
+
+        return $time;
+    }
+
+    public function operation_audit_log_detail(): void
+    {
+        try {
+            $this->accountUserRequireAdmin();
+
+            $logId = isset($_POST['log_id']) ? (int)$_POST['log_id'] : 0;
+            if ($logId <= 0) {
+                throw new Exception('Invalid log_id.');
+            }
+
+            $row = $this->getOperationAuditLogDetail($logId);
+            if (!$row) {
+                throw new Exception('Log not found.');
+            }
+
+            $this->accountUserJson(true, 'OK', [
+                'record' => $row,
+            ]);
+        } catch (Throwable $e) {
+            $this->accountUserJson(false, 'Load operation_audit_log detail failed: ' . $e->getMessage());
+        }
+    }
 
 }

@@ -12,6 +12,86 @@ switch ($_SESSION['language'] ?? '') {
         break;
 }
 
+$is_admin_login = (isset($_COOKIE['username']) && strtolower(trim((string)$_COOKIE['username'])) === 'admin');
+
+// Operator(law = 3) 只可瀏覽，不可下載/匯出檔案。
+// 以目前 SESSION 登入帳號為準，避免 guest/admin 被舊 cookie user_law=3 誤判。
+$operator_law_keys = ['user_law', 'law', 'userLaw', 'user_level', 'permission', 'role_law'];
+$operator_role_keys = ['role', 'user_role', 'account_role', 'permission_name'];
+$is_operator_login = false;
+$session_source = $_SESSION ?? [];
+$session_privilege = strtolower(trim((string)($session_source['privilege'] ?? '')));
+
+if (in_array($session_privilege, ['admin', 'administrator', 'guest'], true)) {
+    $is_operator_login = false;
+} elseif ($session_privilege === 'operator') {
+    $is_operator_login = true;
+} else {
+    $session_law_found = false;
+    foreach ($operator_law_keys as $key) {
+        if (isset($session_source[$key]) && is_numeric($session_source[$key])) {
+            $session_law_found = true;
+            $is_operator_login = ((int)$session_source[$key] === 3);
+            break;
+        }
+    }
+
+    if (!$session_law_found) {
+        foreach ($operator_role_keys as $key) {
+            if (isset($session_source[$key])) {
+                $role = strtolower(trim((string)$session_source[$key]));
+                if ($role === 'operator') {
+                    $is_operator_login = true;
+                    break;
+                }
+                if (in_array($role, ['admin', 'administrator', 'guest'], true)) {
+                    $is_operator_login = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    // 沒有明確 SESSION 身分時才 fallback 到 cookie，避免切換帳號後舊 cookie 影響 guest。
+    $has_session_identity = isset($session_source['privilege']) || isset($session_source['username']) || isset($session_source['user']) || isset($session_source['account']);
+    if (!$is_operator_login && !$has_session_identity) {
+        foreach ($operator_law_keys as $key) {
+            if (isset($_COOKIE[$key]) && is_numeric($_COOKIE[$key]) && (int)$_COOKIE[$key] === 3) {
+                $is_operator_login = true;
+                break;
+            }
+        }
+        if (!$is_operator_login) {
+            foreach ($operator_role_keys as $key) {
+                if (isset($_COOKIE[$key]) && strtolower(trim((string)$_COOKIE[$key])) === 'operator') {
+                    $is_operator_login = true;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+$lang_for_operator_msg = strtolower(trim((string)($_SESSION['language'] ?? $_COOKIE['language'] ?? 'zh-tw')));
+if ($lang_for_operator_msg === 'zh-cn') {
+    $operator_download_denied_title = '权限不足';
+    $operator_download_denied_msg = 'Operator 权限不允许下载或汇出档案。';
+} elseif ($lang_for_operator_msg === 'en-us' || $lang_for_operator_msg === 'en') {
+    $operator_download_denied_title = 'Permission denied';
+    $operator_download_denied_msg = 'Operator permission is not allowed to download or export files.';
+} else {
+    $operator_download_denied_title = '權限不足';
+    $operator_download_denied_msg = 'Operator 權限不允許下載或匯出檔案。';
+}
+
+$download_restricted_class = $is_operator_login ? ' download-restricted' : '';
+$download_restricted_title = '';
+$download_restricted_attr = $is_operator_login ? ' disabled aria-disabled="true"' : '';
+$export_data_onclick = $is_operator_login ? 'return false;' : "OpenButton('Exportdata')";
+$download_chart_onclick = $is_operator_login ? 'return false;' : "OpenButton('Export_Data_download')";
+$customize_onclick = $is_operator_login ? 'return false;' : "OpenButton('Customize')";
+$export_submit_onclick = $is_operator_login ? 'return false;' : 'exportData()';
+
 
 #顯示 表格
 function renderTableRows($records, $unit_arr, $status_arr, $text) {
@@ -50,11 +130,14 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
     <div class="main-content">
         <div class="center-content">
             <div class="w3-center" style="position: relative; padding-right: 10px">
-                <button id="bnt1" name="History_Display" class="button active" onclick="OpenButton('History')"><?php echo $text['data_history'];?></button>
-                <button id="bnt2" name="Export_Data_Display" class="button" onclick="OpenButton('Exportdata')"><?php echo $text['data_export'];?></button>
-                <button id="bnt3" name="Export_Data_download" class="button" onclick="OpenButton('Export_Data_download')"><?php echo $text['download_chart'];?></button>
-                <button id="bnt4" name="Customize" class="button hide-mobile"   onclick="OpenButton('Customize')"><?php echo $text['customize'];?></button>
-
+                <button id="data_bnt1" name="History_Display" class="button active" onclick="OpenButton('History')"><?php echo $text['data_history'];?></button>
+                <button id="data_bnt2" name="Export_Data_Display" class="button<?php echo $download_restricted_class; ?>" onclick="<?php echo htmlspecialchars($export_data_onclick, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo htmlspecialchars($download_restricted_title, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $download_restricted_attr; ?>><?php echo $text['data_export'];?></button>
+                <button id="data_bnt3" name="Export_Data_download" class="button<?php echo $download_restricted_class; ?>" onclick="<?php echo htmlspecialchars($download_chart_onclick, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo htmlspecialchars($download_restricted_title, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $download_restricted_attr; ?>><?php echo $text['download_chart'];?></button>
+                <button id="data_bnt4" name="Customize" class="button hide-mobile<?php echo $download_restricted_class; ?>" onclick="<?php echo htmlspecialchars($customize_onclick, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo htmlspecialchars($download_restricted_title, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $download_restricted_attr; ?>><?php echo $text['customize'];?></button>
+                <!--<button id="data_bnt5" name="Torque_line_chart" class="button hide-mobile"   onclick="OpenButton('Torque_line_chart')"><?php echo $text['tor_line_chart'];?></button>-->
+                <?php //if ($is_admin_login) { ?>
+                    <!--<button id="data_bnt7" name="Operation_Audit_Log_Display" class="button operation-audit-top-button" onclick="window.location.href='?url=Data/AuditLog'"><?php echo htmlspecialchars($text['audit_button'] ?? 'operation_audit_log', ENT_QUOTES, 'UTF-8'); ?></button>-->
+                <?php //} ?>
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
                         <option value="ALL">ALL</option>
@@ -90,8 +173,10 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                             <th><?php echo $text['angle']; ?></th>
                                             <th><?php echo $text['column_count']; ?></th>
                                             <th><?php echo $text['column_total']; ?></th>
-                                            <th><?php echo $text['column_status']; ?></th>
                                             <th><?php echo $text['system_barcode']; ?></th>
+                                            <th><?php echo $text['user_id']; ?></th>
+                                            <th><?php echo $text['job_cycle_time']; ?></th>
+                                            <th><?php echo $text['column_status']; ?></th>
                                         </tr>
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">
@@ -140,7 +225,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                         </div>
                         
                         <div style="text-align: center;margin-top: 20px;">
-                            <button class="btn-export w3-button w3-border w3-round" onclick="exportData()"><?php echo $text['data_export'];?></button>
+                            <button class="btn-export w3-button w3-border w3-round<?php echo $download_restricted_class; ?>" onclick="<?php echo htmlspecialchars($export_submit_onclick, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo htmlspecialchars($download_restricted_title, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $download_restricted_attr; ?>><?php echo $text['data_export'];?></button>
                         </div>
                     </div>
                 </div>
@@ -152,6 +237,14 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
 
 
 <script>
+
+    const IS_OPERATOR_LOGIN = <?php echo $is_operator_login ? 'true' : 'false'; ?>;
+    const OPERATOR_DOWNLOAD_DENIED_TITLE = <?php echo json_encode($operator_download_denied_title, JSON_UNESCAPED_UNICODE); ?>;
+    const OPERATOR_DOWNLOAD_DENIED_MESSAGE = <?php echo json_encode($operator_download_denied_msg, JSON_UNESCAPED_UNICODE); ?>;
+
+    function denyDownloadByOperator() {
+        return false;
+    }
 
     document.addEventListener("DOMContentLoaded", function () {
         const today = new Date();
@@ -285,8 +378,10 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.total_fasten_angle}</td>
                     <td>${row.last_screw_count}</td>
                     <td>${row.total_screw_count}</td>
+                    <td>${row.barcode}</td>
+                    <td>${row.user_id}</td>
+                    <td>${row.job_cycle_time}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>
-                    <td >${row.barcode}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
         });
@@ -307,11 +402,43 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         fetchRealTimeData(currentMode);
     });
 
+
+    // 支援從自定義頁 DATA 頁籤導回指定頁籤，例如：?url=Data/index&tab=Exportdata
+    document.addEventListener('DOMContentLoaded', function () {
+        const params = new URLSearchParams(window.location.search);
+        const requestedTab = params.get('tab') || params.get('data_tab') || '';
+        const allowedTabs = {
+            History: 'History',
+            Exportdata: 'Exportdata',
+            Export_Data_download: 'Export_Data_download',
+            Customize: 'Customize',
+            Torque_line_chart: 'Torque_line_chart'
+        };
+
+        if (requestedTab === 'Customize' && IS_OPERATOR_LOGIN) {
+            return;
+        }
+
+        if (requestedTab && allowedTabs[requestedTab] && typeof OpenButton === 'function') {
+            setTimeout(function () {
+                OpenButton(allowedTabs[requestedTab]);
+            }, 80);
+        }
+    });
+
 </script>
 </body>
 
 </html>
 <style>
+    .download-restricted {
+        background-color: #8a8f93 !important;
+        border-color: #8a8f93 !important;
+        color: #ffffff !important;
+        cursor: not-allowed !important;
+        opacity: 0.75;
+    }
+
     th.col-dt{
   white-space: nowrap;
   max-width: 110px;   /* 自行調整 */

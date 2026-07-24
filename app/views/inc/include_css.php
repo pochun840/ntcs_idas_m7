@@ -155,11 +155,22 @@ function getLangCode(){
     if(!["en-us","zh-tw","zh-cn"].includes(lang)) lang="en-us";
     return lang;
 }
+
 const TEXT = {
-    rebootBanner:{
-        "zh-tw":"控制器裝置編號已變更，請重新啟動控制器以完成套用。",
-        "zh-cn":"控制器设备编号已变更，请重新启动控制器以完成应用。",
-        "en-us":"Controller device ID changed. Please reboot the controller."
+    rebootBannerDevice:{
+        "zh-tw":"控制器裝置編號已變更，請手動重新啟動控制器以完成套用。",
+        "zh-cn":"控制器设备编号已变更，请手动重新启动控制器以完成应用。",
+        "en-us":"Controller device ID changed. Please manually reboot the controller."
+    },
+    rebootBannerModbus:{
+        "zh-tw":"控制器通訊協議已變更，請手動重新啟動控制器以完成套用。",
+        "zh-cn":"控制器通讯协议已变更，请手动重新启动控制器以完成应用。",
+        "en-us":"Controller communication protocol changed. Please manually reboot the controller."
+    },
+    rebootBannerBoth:{
+        "zh-tw":"控制器裝置編號與通訊協議已變更，請手動重新啟動控制器以完成套用。",
+        "zh-cn":"控制器设备编号与通讯协议已变更，请手动重新启动控制器以完成应用。",
+        "en-us":"Controller device ID and communication protocol changed. Please manually reboot the controller."
     },
     reloadTitle:{ "zh-tw":"提示","zh-cn":"提示","en-us":"Notice" },
     reloadMsg:(id)=>({
@@ -167,180 +178,299 @@ const TEXT = {
         "zh-cn":"检测到新的控制器 (ID:"+id+")，是否重新刷新页面？",
         "en-us":"New controller detected (ID:"+id+"). Reload now?"
     }),
+    syncReloadMsg:(id, changeType)=>({
+        "zh-tw":getSyncReloadMessage("zh-tw", id, changeType),
+        "zh-cn":getSyncReloadMessage("zh-cn", id, changeType),
+        "en-us":getSyncReloadMessage("en-us", id, changeType)
+    }),
+    syncFail:{
+        "zh-tw":"同步控制器設定失敗，請稍後再試。",
+        "zh-cn":"同步控制器设置失败，请稍后再试。",
+        "en-us":"Failed to synchronize controller settings. Please try again."
+    },
     ok:{ "zh-tw":"確定","zh-cn":"确定","en-us":"OK" }
 };
+
 function t(obj){ return obj[getLangCode()] || obj["en-us"]; }
 
-/* ============================================================
-   ⭐ Boot grace（controller reboot）
-============================================================ */
-var bootGraceStart=null;
-const BOOT_GRACE_MS=30000;
-var lastOnlineState=null;
+function getSyncReloadMessage(lang, id, changeType){
+    const idText = Number.isFinite(parseInt(id,10)) ? " (ID:"+id+")" : "";
 
-function startBootGrace(){ bootGraceStart=Date.now(); }
-function inBootGrace(){
-    if(!bootGraceStart) return false;
-    return (Date.now()-bootGraceStart)<BOOT_GRACE_MS;
+    if(lang === "zh-cn"){
+        if(changeType === "modbus_type") return "检测到控制器已重新上线，是否同步新的通讯协议并重新刷新页面？";
+        if(changeType === "device_id") return "检测到控制器已重新上线，是否同步新的设备编号"+idText+"并重新刷新页面？";
+        return "检测到控制器已重新上线，是否同步新的控制器设置"+idText+"并重新刷新页面？";
+    }
+
+    if(lang === "en-us"){
+        if(changeType === "modbus_type") return "The controller is online again. Synchronize the new communication protocol and reload now?";
+        if(changeType === "device_id") return "The controller is online again. Synchronize the new device ID"+idText+" and reload now?";
+        return "The controller is online again. Synchronize the new controller settings"+idText+" and reload now?";
+    }
+
+    if(changeType === "modbus_type") return "偵測到控制器已重新上線，是否同步新的通訊協議並重新整理畫面？";
+    if(changeType === "device_id") return "偵測到控制器已重新上線，是否同步新的裝置編號"+idText+"並重新整理畫面？";
+    return "偵測到控制器已重新上線，是否同步新的控制器設定"+idText+"並重新整理畫面？";
 }
 
 /* ============================================================
-   🔴 Banner（改ID用）
+   Controller identity change flow
+   1) changed=true          → show red banner only
+   2) online=false observed → wait for controller online again
+   3) online=true observed  → show popup
+   4) popup OK             → Check/sync_device_identity → reload
 ============================================================ */
-function showRebootBanner(){
-    if(document.getElementById("rebootBanner")) return;
+const DEVICE_FLOW_STATE_KEY   = "idas_device_identity_flow_state";
+const DEVICE_FLOW_PAYLOAD_KEY = "idas_device_identity_flow_payload";
+const DEVICE_FLOW_IDLE        = "idle";
+const DEVICE_FLOW_WAIT_OFFLINE= "waiting_offline";
+const DEVICE_FLOW_WAIT_ONLINE = "waiting_online";
+const DEVICE_FLOW_WAIT_POPUP  = "waiting_popup";
+const DEVICE_FLOW_SYNCING     = "syncing";
 
-    const banner=document.createElement("div");
-    banner.id="rebootBanner";
-    banner.innerHTML="🔴 "+t(TEXT.rebootBanner);
+var currentDeviceId = null;
+var lastOnlineState = null;
+var deviceReloadDialogShown = false;
 
-    Object.assign(banner.style,{
-        position:"fixed",top:"0",left:"0",width:"100%",
-        background:"#c0392b",color:"#fff",padding:"12px",
-        textAlign:"center",fontSize:"15px",zIndex:"99999",fontWeight:"bold"
+function boolVal(value){
+    return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function getFlowState(){
+    return localStorage.getItem(DEVICE_FLOW_STATE_KEY) || DEVICE_FLOW_IDLE;
+}
+
+function setFlowState(state, payload){
+    localStorage.setItem(DEVICE_FLOW_STATE_KEY, state);
+    if(payload){
+        localStorage.setItem(DEVICE_FLOW_PAYLOAD_KEY, JSON.stringify(payload));
+    }
+}
+
+function getFlowPayload(){
+    try{
+        return JSON.parse(localStorage.getItem(DEVICE_FLOW_PAYLOAD_KEY) || "{}");
+    }catch(e){
+        return {};
+    }
+}
+
+function clearFlowState(){
+    localStorage.removeItem(DEVICE_FLOW_STATE_KEY);
+    localStorage.removeItem(DEVICE_FLOW_PAYLOAD_KEY);
+    localStorage.removeItem("device_sync_lock"); // 舊版相容：清掉曾經自動同步用的 lock
+}
+
+function normalizeChangeType(res){
+    const type = String(res.change_type || "").toLowerCase();
+    if(type === "modbus_type" || type === "device_id" || type === "both") return type;
+
+    const idChanged = boolVal(res.id_changed);
+    const modbusChanged = boolVal(res.modbus_type_changed);
+    if(idChanged && modbusChanged) return "both";
+    if(modbusChanged) return "modbus_type";
+    if(idChanged) return "device_id";
+    return "none";
+}
+
+function buildFlowPayload(res){
+    return {
+        device_id: res.device_id ?? null,
+        idas_id: res.idas_id ?? null,
+        modbus_type: res.modbus_type ?? null,
+        idas_modbus_type: res.idas_modbus_type ?? null,
+        change_type: normalizeChangeType(res),
+        updated_at: Date.now()
+    };
+}
+
+function getBannerText(changeType){
+    if(changeType === "modbus_type") return t(TEXT.rebootBannerModbus);
+    if(changeType === "both") return t(TEXT.rebootBannerBoth);
+    return t(TEXT.rebootBannerDevice);
+}
+
+function showRebootBanner(changeType){
+    const payload = getFlowPayload();
+    const finalChangeType = changeType || payload.change_type || "device_id";
+    let banner = document.getElementById("rebootBanner");
+
+    if(!banner){
+        banner=document.createElement("div");
+        banner.id="rebootBanner";
+        Object.assign(banner.style,{
+            position:"fixed",top:"0",left:"0",width:"100%",
+            background:"#c0392b",color:"#fff",padding:"12px",
+            textAlign:"center",fontSize:"15px",zIndex:"99999",fontWeight:"bold"
+        });
+        document.body.appendChild(banner);
+    }
+
+    banner.innerHTML="🔴 "+getBannerText(finalChangeType);
+}
+
+function hideRebootBanner(){
+    document.getElementById("rebootBanner")?.remove();
+}
+
+function syncDeviceIdentityAndReload(){
+    const payload = getFlowPayload();
+    setFlowState(DEVICE_FLOW_SYNCING, payload);
+
+    $.ajax({
+        url:"?url=Check/sync_device_identity",
+        type:"POST",
+        dataType:"json",
+        timeout:15000,
+        success:function(syncRes){
+            if(syncRes && syncRes.res_type === "OK"){
+                clearFlowState();
+                hideRebootBanner();
+                location.reload();
+                return;
+            }
+
+            deviceReloadDialogShown = false;
+            setFlowState(DEVICE_FLOW_WAIT_POPUP, payload);
+            alertify.alert(t(TEXT.reloadTitle), t(TEXT.syncFail));
+        },
+        error:function(){
+            deviceReloadDialogShown = false;
+            setFlowState(DEVICE_FLOW_WAIT_POPUP, payload);
+            alertify.alert(t(TEXT.reloadTitle), t(TEXT.syncFail));
+        }
     });
-    document.body.appendChild(banner);
 }
-function hideRebootBanner(){ document.getElementById("rebootBanner")?.remove(); }
 
-/* ============================================================
-   🔵 Popup（換控制器用）
-============================================================ */
-var currentDeviceId=null;
-var deviceReloadDialogShown=false;
-
-function showReloadPopup(id){
+function showReloadPopup(id, needSync, changeType){
     if(deviceReloadDialogShown) return;
     deviceReloadDialogShown=true;
-    hideRebootBanner();
+
+    if(needSync){
+        const payload = Object.assign(getFlowPayload(), {
+            device_id: id ?? getFlowPayload().device_id ?? null,
+            change_type: changeType || getFlowPayload().change_type || "device_id"
+        });
+        setFlowState(DEVICE_FLOW_WAIT_POPUP, payload);
+    }else{
+        hideRebootBanner();
+    }
+
+    const msg = needSync
+        ? t(TEXT.syncReloadMsg(id, changeType || getFlowPayload().change_type || "device_id"))
+        : t(TEXT.reloadMsg(id));
 
     alertify.alert(
         t(TEXT.reloadTitle),
-        t(TEXT.reloadMsg(id))
+        msg
     ).set({
         labels:{ ok:t(TEXT.ok) },
-        closable:false,movable:false,pinnable:false,resizable:false,
-        onok:function(){ location.reload(); }
+        closable:false,
+        movable:false,
+        pinnable:false,
+        resizable:false,
+        onok:function(){
+            if(needSync){
+                syncDeviceIdentityAndReload();
+            }else{
+                location.reload();
+            }
+        }
     });
 }
 
-/* ============================================================
-   ⭐ 同步 + Banner 控制（最終完整版）
-============================================================ */
-var lastChangedState = null; // ⭐ 新增：記錄上一輪 changed 狀態
+function handleDeviceIdentityStatus(res){
+    if(!res || res.res_type !== "OK") return;
 
-function autoSyncDeviceAfterReload(){
+    const newId = parseInt(res.device_id, 10);
+    const hasNewId = Number.isFinite(newId);
+    const online = boolVal(res.online);
+    const changed = boolVal(res.changed);
+    const changeType = normalizeChangeType(res);
+    const stateBefore = getFlowState();
 
-    $.post("?url=Check/ajax_check_device_id",function(res){
+    if(hasNewId && currentDeviceId === null){
+        currentDeviceId = newId;
+    }
 
-        if(!res || res.res_type!=="OK") return;
-        const changed = (res.changed===true || res.changed==="true" || res.changed==1);
-
-        /* ⭐⭐⭐ 同步完成偵測（最關鍵）⭐⭐⭐
-           changed：true → false = 後端剛同步完成
-           → UI 必須 reload
-        */
-        if(lastChangedState === true && changed === false){
-            console.log("Device sync finished → show reload popup");
-            showReloadPopup(res.device_id);
-            lastChangedState = changed;
-            return;
-        }
-
-        /* 更新狀態紀錄 */
-        lastChangedState = changed;
-
-        /* ⭐ reboot期間：只顯示 Banner */
-        if(inBootGrace()){
-            if(changed) showRebootBanner();
-            else hideRebootBanner();
-            return;
-        }
-
-        /* ⭐ ID已一致 */
-        if(!changed){
+    if(!changed){
+        if(stateBefore !== DEVICE_FLOW_SYNCING){
+            clearFlowState();
             hideRebootBanner();
-            localStorage.removeItem("device_sync_lock");
-            return;
+            deviceReloadDialogShown = false;
         }
 
-        /* ⭐ 同一台控制器改ID → 顯示 Banner */
-        showRebootBanner();
+        if(hasNewId && currentDeviceId !== null && newId !== currentDeviceId && online){
+            showReloadPopup(newId, false, "none");
+        }
 
-        /* ⭐ 同步只做一次 */
-        if(localStorage.getItem("device_sync_lock")==="1") return;
-        localStorage.setItem("device_sync_lock","1");
+        if(hasNewId) currentDeviceId = newId;
+        lastOnlineState = online;
+        return;
+    }
 
-        console.log("Start backend sync...");
-        $.post("?url=Check/sync_device_identity");
+    const payload = buildFlowPayload(res);
+    showRebootBanner(changeType);
 
-    },"json");
+    let state = stateBefore;
+    if(state === DEVICE_FLOW_IDLE){
+        state = DEVICE_FLOW_WAIT_OFFLINE;
+        setFlowState(state, payload);
+    }else if(state !== DEVICE_FLOW_SYNCING){
+        setFlowState(state, Object.assign(getFlowPayload(), payload));
+    }
+
+    // 已偵測到不一致後，必須先看到 offline，不能直接同步。
+    if(state === DEVICE_FLOW_WAIT_OFFLINE && online === false){
+        state = DEVICE_FLOW_WAIT_ONLINE;
+        setFlowState(state, payload);
+    }
+
+    // 只要已經看過 offline，下一次 online=true 才能跳同步 Popup。
+    if((state === DEVICE_FLOW_WAIT_ONLINE || state === DEVICE_FLOW_WAIT_POPUP) && online === true){
+        showReloadPopup(hasNewId ? newId : payload.device_id, true, payload.change_type);
+    }
+
+    if(hasNewId) currentDeviceId = newId;
+    lastOnlineState = online;
 }
 
+function markControllerOfflineByAjaxError(){
+    const state = getFlowState();
+    if(state === DEVICE_FLOW_WAIT_OFFLINE){
+        const payload = getFlowPayload();
+        setFlowState(DEVICE_FLOW_WAIT_ONLINE, payload);
+        showRebootBanner(payload.change_type || "device_id");
+    }
+    lastOnlineState = false;
+}
 
-/* ============================================================
-   ⭐ 輪詢 Controller（最重要）
-============================================================ */
 function pollDeviceId(){
     $.ajax({
         url:"?url=Check/ajax_check_device_id",
         type:"POST",
         dataType:"json",
+        timeout:5000,
         success:function(res){
-
-            if(!res || res.res_type!=="OK") return;
-
-            const newId=parseInt(res.device_id);
-            if(!Number.isFinite(newId)) return;
-
-            const changed = (res.changed===true || res.changed==="true" || res.changed==1);
-
-            /* reboot偵測 */
-            if(lastOnlineState===false && res.online===true)
-                startBootGrace();
-            lastOnlineState=res.online;
-
-            /* 初始化 */
-            if(currentDeviceId===null){
-                currentDeviceId=newId;
-                return;
-            }
-
-            /* ⭐⭐⭐ 核心判斷 ⭐⭐⭐ */
-            if(newId!==currentDeviceId){
-
-                if(inBootGrace()){
-                    currentDeviceId=newId;
-                    return;
-                }
-
-                if(changed){
-                    /* 改ID（同一台）→ Banner */
-                    showRebootBanner();
-                    currentDeviceId=newId;
-                    return;
-                }else{
-                    /* 換控制器 → Popup */
-                    showReloadPopup(newId);
-                    return;
-                }
-            }
-
-            currentDeviceId=newId;
-            autoSyncDeviceAfterReload();
+            handleDeviceIdentityStatus(res);
         },
-        complete:function(){ setTimeout(pollDeviceId,2000); }
+        error:function(){
+            markControllerOfflineByAjaxError();
+        },
+        complete:function(){
+            setTimeout(pollDeviceId,2000);
+        }
     });
 }
 
-/* ============================================================
-   啟動
-============================================================ */
 $(function(){
     const cookieVal=getCookieSafe("temp_device_id");
-    if(cookieVal) currentDeviceId=parseInt(cookieVal);
+    if(cookieVal) currentDeviceId=parseInt(cookieVal,10);
 
-    autoSyncDeviceAfterReload();
+    if(getFlowState() !== DEVICE_FLOW_IDLE){
+        showRebootBanner(getFlowPayload().change_type || "device_id");
+    }
+
     pollDeviceId();
 });
 </script>

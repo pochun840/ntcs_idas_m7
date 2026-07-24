@@ -1,4 +1,7 @@
 <?php 
+    $idasRemoteUserLaw = (string)($_COOKIE['user_law'] ?? ($_SESSION['user_law'] ?? '1'));
+    $idasRemoteIsOperator = ($idasRemoteUserLaw === '3');
+
     if($_SESSION['language'] == 'en-us'){
         $calendar_lang = 'Please Select Seq';
     }else if($_SESSION['language'] == 'zh-cn'){
@@ -45,7 +48,13 @@
                             <button style=" height: 35px; " onclick="get_job()"><?php echo $text['get_job']; ?></button>
                         </div>
                         <div class="col my-auto" style="font-size: ; margin: 5px 5px 5px">
-                            <button style=" height: 35px; " onclick="switch_job()"><?php echo $text['switch_job']; ?></button>
+                            <button id="remote_switch_job_btn"
+                                    class="<?php echo $idasRemoteIsOperator ? 'idas-operator-crud-disabled' : ''; ?>"
+                                    style=" height: 35px; "
+                                    <?php echo $idasRemoteIsOperator ? 'disabled aria-disabled="true" data-operator-save-lock="1"' : ''; ?>
+                                    onclick="<?php echo $idasRemoteIsOperator ? 'return false' : 'switch_job()'; ?>">
+                                <?php if ($idasRemoteIsOperator) { ?><span class="idas-operator-forbidden-badge" aria-hidden="true">🚫</span><?php } ?><?php echo $text['switch_job']; ?>
+                            </button>
                         </div>
                     </div>
 
@@ -93,7 +102,13 @@
                     <input type="text" id="view_id" value="" style="display: none;" disabled>
                 </div>
                 <div class="w3-center modal-footer justify-content-center" style="padding: 0;background-color: #616161;color: white;">
-                    <button type="button" class="btn btn-primary" onclick="change_job()"><?php echo $text['save'];?></button>
+                    <button type="button"
+                            id="remote_change_job_save_btn"
+                            class="btn btn-primary <?php echo $idasRemoteIsOperator ? 'idas-operator-crud-disabled' : ''; ?>"
+                            <?php echo $idasRemoteIsOperator ? 'disabled aria-disabled="true" data-operator-save-lock="1"' : ''; ?>
+                            onclick="<?php echo $idasRemoteIsOperator ? 'return false' : 'change_job()'; ?>">
+                        <?php if ($idasRemoteIsOperator) { ?><span class="idas-operator-forbidden-badge" aria-hidden="true">🚫</span><?php } ?><?php echo $text['save'];?>
+                    </button>
                 </div>
             </div>
         </div>
@@ -103,7 +118,12 @@
 
 <script type="text/javascript">
     //for switch job button
+    function remoteIsOperatorLaw3() {
+        return <?php echo $idasRemoteIsOperator ? 'true' : 'false'; ?>;
+    }
+
     function switch_job(argument) {
+        if (remoteIsOperatorLaw3()) return false;
         document.getElementById("switch_job_id").value = -1;
         document.getElementById("switch_seq_id").innerHTML = '';
         document.getElementById('SwitchJob').style.display = 'block'
@@ -167,63 +187,105 @@
 
 
 
+    var remoteChangeJobBusy = false;
+
     function get_job(argument) {
+        const opts = (argument && typeof argument === 'object') ? argument : {};
+        const silent = opts.silent === true;
+        const done = (typeof opts.done === 'function') ? opts.done : null;
+
         $.ajax({
             url: '?url=Remotes/get_current_job', // 指向服務器端檢查更新的 PHP 腳本
             method: 'GET',
             dataType: "json",
             beforeSend: function() {
-                $('#overlay').removeClass('hidden');
+                if (!silent) $('#overlay').removeClass('hidden');
             },
             success: function(response) {
-                $('#overlay').addClass('hidden');
+                if (!silent) $('#overlay').addClass('hidden');
                 // 處理服務器返回的響應
-                console.log(response)
-                document.getElementById("current_job_id").value = response.result.jod_id
-                document.getElementById("current_seq_id").value = response.result.seq_id
-                document.getElementById("current_step_id").value = response.result.step_id
-                
+                console.log(response);
+
+                if (!response || response.error || !response.result) {
+                    if (!silent && window.alertify) {
+                        alertify.alert('Get Job Failed', response?.msg || response?.error || 'protocol fail');
+                    }
+                    return;
+                }
+
+                document.getElementById("current_job_id").value = response.result.jod_id;
+                document.getElementById("current_seq_id").value = response.result.seq_id;
+                document.getElementById("current_step_id").value = response.result.step_id;
+            },
+            complete: function() {
+                if (!silent) $('#overlay').addClass('hidden');
+                if (done) done();
             },
             error: function(xhr, status, error) {
-                history.go(0);
+                if (!silent) {
+                    $('#overlay').addClass('hidden');
+                    history.go(0);
+                } else {
+                    console.log("silent get_job failed", status, error, xhr.responseText);
+                }
             }
         });
     }
 
     function change_job(argument) {
 
-        let job_id = document.getElementById("switch_job_id").value
-        let seq_id = document.getElementById("switch_seq_id").value
+        if (remoteIsOperatorLaw3()) return false;
+        if (remoteChangeJobBusy) return;
+
+        let job_id = document.getElementById("switch_job_id").value;
+        let seq_id = document.getElementById("switch_seq_id").value;
+
+        remoteChangeJobBusy = true;
 
         $.ajax({
             url: '?url=Remotes/change_job', // 指向服務器端檢查更新的 PHP 腳本
             method: 'GET',
+            dataType: 'json',
             data :{ 'job_id' : job_id, 'seq_id' : seq_id },
             beforeSend: function() {
                 $('#overlay').removeClass('hidden');
             },
             success: function(response) {
-                $('#overlay').addClass('hidden');
-                // 處理服務器返回的響應
-                //console.log(response);
+                console.log(response);
+
+                if (response && response.error) {
+                    const msg = response.msg || response.error || 'protocol fail';
+                    if (window.alertify) {
+                        alertify.alert('Change Job Failed', msg);
+                    } else {
+                        alert(msg);
+                    }
+                    return;
+                }
                 
                 // 隱藏 SwitchJob 區塊
                 document.getElementById("SwitchJob").style.display = "none";
 
-                // 將 job_id 和 seq_id 寫入指定 input 欄位
+                // 先顯示送出的值；背景再讀一次控制器目前 JOB，避免 OP 寫入失敗時畫面誤判成功。
+                // 背景讀取不顯示 overlay，避免切換工作後轉圈圈出現兩次。
                 document.getElementById("current_job_id").value = job_id;
                 document.getElementById("current_seq_id").value = seq_id;
-                
-                // history.go(0);
-                
+
+                if (typeof get_job === 'function') {
+                    setTimeout(function(){ get_job({ silent: true }); }, 1000);
+                }
             },
             complete: function(XHR, TS) {
+                $('#overlay').addClass('hidden');
+                remoteChangeJobBusy = false;
                 XHR = null;
                 console.log("执行一次"); 
             },
             error: function(xhr, status, error) {
-                console.log("fail");
-                //history.go(0);
+                console.log("fail", status, error, xhr.responseText);
+                if (window.alertify) {
+                    alertify.alert('Change Job Failed', error || status || 'request failed');
+                }
             }
         });
         

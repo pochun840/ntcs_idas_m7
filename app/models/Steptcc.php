@@ -11,6 +11,21 @@ class Steptcc{
 
     }
 
+    /**
+     * 儲存層保護：一律依 StepTorqueOffset 重新計算啟用旗標。
+     * 有值且 > 0 => 1；空值、0、非數字或負值 => 0。
+     */
+    private function normalizeStepEnableTorqueOffset(array &$step_data): void
+    {
+        $raw = trim((string)($step_data['StepTorqueOffset'] ?? ''));
+
+        $step_data['StepEnableTorqueOffset'] = (
+            $raw !== '' &&
+            is_numeric($raw) &&
+            (float)$raw > 0
+        ) ? 1 : 0;
+    }
+
 
     #透過 job_id 及 seq_id 取得當前有幾個step
     public function countstep($jobid, $seqid){
@@ -101,6 +116,8 @@ class Steptcc{
         if (empty($step_data['JOBID'])) {
             return false; 
         }
+
+        $this->normalizeStepEnableTorqueOffset($step_data);
         
         $sql = "INSERT INTO `STEP_lst` (JOBID, SEQID, StepSelect, STEPname, type, time, act, StepSwitch, StepRPM, StepOption, StepTime, StepAngle, StepTorque, StepDirection, StepDelay, StepMoniByWin, StepLimiHi, StepLimiLo, StepHiAngle, StepLoAngle, StepHiTorque, StepLoTorque, StepAccelerateOffset, StepAccelerateOffsetSign, StepEnableTorqueOffset, StepTorqueOffset, StepTorqueOffsetSign, StepEnableDownShift, StepTorqueDownShift, StepRPMDownShift, StepEnableThreshold, StepTorqueTS, StepReTry, StepUnScrew, StepReTryTorq, StepReTryAngl, StepAngleRecord, StepAutoDetectAngle, InterruptAlarm, OverAngleStop,KValue,step_unit ) ";
         $sql .= "VALUES (:jobid, :seqid, :step_select, :stepname, :type, :time, :act, :step_switch, :step_rpm, :step_option, :step_time, :step_angle, :step_torque, :step_direction, :step_delay, :step_moni_by_win, :step_limi_hi, :step_limi_lo, :step_hi_angle, :step_lo_angle, :step_hi_torque, :step_lo_torque, :step_accelerate_offset, :step_accelerate_offset_sign, :step_enable_torque_offset, :step_torque_offset, :step_torque_offset_sign, :step_enable_down_shift, :step_torque_down_shift, :step_rpm_down_shift, :step_enable_threshold, :step_torque_ts, :step_retry, :step_unscrew, :step_retry_torq, :step_retry_angl, :step_angle_record, :step_auto_detect_angle, :interrupt_alarm, :over_angle_stop,:KValue,:step_unit);";
@@ -180,6 +197,8 @@ class Steptcc{
         if (empty($step_data['JOBID']) || empty($step_data['SEQID']) || empty($step_data['StepSelect'])) {
             return false; 
         }
+
+        $this->normalizeStepEnableTorqueOffset($step_data);
         $step_data['StepAccelerateOffset'] =  0.2;
 
 

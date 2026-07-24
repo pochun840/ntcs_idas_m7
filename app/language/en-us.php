@@ -30,7 +30,7 @@ $text['add_seq'] = 'Add Seq';
 $text['New'] = 'New';
 $text['Edit'] = 'Edit';
 $text['Copy'] = 'Copy';
-$text['Delete'] = 'Del';
+$text['Delete'] = 'Delete';
 
 $text['total_job'] = 'Total Jobs';
 $text['total_seq'] = 'Total Seq';
@@ -325,7 +325,11 @@ $text['N.m'] = 'N.m';
 $text['kgf.cm'] = 'Kgf.cm';
 $text['Lbf.in'] = 'Lbf.in';
 $text['cN.m'] = 'cN.m';
-
+$text['tor_line_chart'] = 'Torque_line_chart';
+$text['latest_25_fastening_data'] = 'Latest 25 Fastening Records';
+$text['auto_refresh_25_records'] = 'Auto refresh / 25 records';
+$text['user_id'] = 'User ID';
+$text['job_cycle_time'] = 'Job cycle time';
 //Customize 
 $text['customize'] = 'Customize';
 $text['id'] = 'System No';
@@ -503,8 +507,8 @@ $text['refresh'] = 'Refresh';
 $text['db_version'] = 'DB Version';
 
 //Setting
-$text['controller_setting'] = 'Controller Setting';
-$text['system_setting'] = 'System Setting';
+$text['controller_setting'] = 'Controller';
+$text['system_setting'] = 'System';
 $text['system_id'] = 'ID';
 $text['system_name'] = 'Name';
 $text['system_unit'] = 'Unit';
@@ -579,7 +583,7 @@ $text['system_client_status'] = 'Client Status';
 $text['system_server_status'] = 'Server Status';
 
 //barcode setting
-$text['system_barcode_setting'] = 'Barcode Setting';
+$text['system_barcode_setting'] = 'Barcode';
 $text['system_barcode_from'] = 'From';
 $text['system_barcode_to'] = 'To';
 $text['system_barcode_match_from'] = 'Match From';
@@ -611,7 +615,7 @@ $text['barcode_delete_fail']      = 'Failed to delete barcode. Please try again'
 
 
 //admin setting
-$text['system_connect_setting'] = 'Connection Setting';
+$text['system_connect_setting'] = 'Connection';
 $text['system_connect_number'] = 'Number of connections';
 $text['system_connect_max_number'] = 'maximum number of connect';
 $text['system_connect_guest_pwd'] = 'Guest password';
@@ -856,3 +860,78 @@ $text['missing_info_json'] ='Missing info.json, unable to verify the update file
 $text['info_json_invalid'] = 'info.json format error or missing Match_TCC_Version';
 $text['version_too_low'] = 'The update file version is lower than the current version and cannot be updated. Current version:';
 $text['update_success'] = 'Update successful. Files have been moved to the tccidas directory';
+
+// Account QRCode force patch i18n
+$text['account_qrcode'] = 'QRCode';
+$text['account_text'] = 'Account';
+$text['account_qrcode_download'] = 'Download';
+
+$text['account_no'] = 'No';
+
+$text['account_user_name'] = 'User Name';
+
+$text['account_select_tab'] = 'Please select Account tab';
+
+$text['account_username'] = 'Username';
+
+$text['account_password'] = 'Password';
+
+$text['account_confirm_password'] = 'Confirm Password';
+
+$text['account_import'] = 'Import';
+
+$text['account_export'] = 'Export';
+
+$text['account_upload'] = 'Upload';
+
+$text['account_new_title'] = 'New Account';
+
+$text['account_edit_title'] = 'Edit Account';
+
+$text['account_show_password'] = 'Show password';
+
+$text['account_hide_password'] = 'Hide password';
+
+$text['audit_button'] = 'operation_audit_log';
+
+$text['audit_realtime_monitor'] = 'Realtime Monitor';
+
+$text['audit_running'] = 'Running';
+
+$text['audit_paused'] = 'Paused';
+
+$text['audit_pause'] = 'Pause';
+
+$text['audit_start'] = 'Start';
+
+$text['audit_standby'] = 'Standby';
+
+$text['audit_error'] = 'Error';
+
+$text['audit_monitor'] = 'Monitor';
+
+$text['audit_updated'] = 'Updated';
+
+$text['audit_records'] = 'Records';
+
+$text['audit_no'] = 'No';
+
+$text['audit_time'] = 'Time';
+
+$text['audit_user'] = 'User';
+
+$text['audit_module'] = 'Module';
+
+$text['audit_action'] = 'Action';
+
+$text['audit_target'] = 'Target';
+
+$text['audit_status'] = 'Status';
+
+$text['audit_message'] = 'Message';
+
+$text['audit_select_tab'] = 'Please select operation_audit_log tab';
+
+$text['audit_no_data'] = 'No Data';
+
+$text['audit_loading'] = 'Loading...';

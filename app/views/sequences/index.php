@@ -1,3 +1,4 @@
+<?php $idasSeqUserLaw = (string)($_COOKIE['user_law'] ?? '1'); ?>
 
 <div class="container-ms">
     <div class="w3-text-white w3-center">
@@ -214,5 +215,54 @@
 })();
 </script>
 
+
+
+<script>
+(function () {
+    if (window.__idasSeqOperatorLock) return;
+    window.__idasSeqOperatorLock = true;
+
+    var currentLaw = <?php echo json_encode($idasSeqUserLaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+    if (String(currentLaw) !== '3') {
+        return;
+    }
+
+    function lockOperatorControl(el) {
+        if (!el) return;
+
+        el.removeAttribute('onclick');
+        el.onclick = null;
+        el.disabled = true;
+        el.setAttribute('aria-disabled', 'true');
+        el.classList.add('operator-seq-disabled');
+
+        el.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }, true);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // law=3 operator：Sequence 可按 Edit 進入編輯頁，但不可 New / Copy / Delete。
+        document.querySelectorAll('input[name="Seq_Manager_Submit"]#S3, input[name="Seq_Manager_Submit"]#S5, input[name="Seq_Manager_Submit"]#S4').forEach(lockOperatorControl);
+
+        // law=3 operator：不可調整 Sequence 順序。
+        document.querySelectorAll('#seq_table img[onclick*="MoveUp"], #seq_table img[onclick*="MoveDown"]').forEach(lockOperatorControl);
+
+        // law=3 operator：不可切換 Sequence Enable。
+        document.querySelectorAll('#seq_table .seq_enable').forEach(lockOperatorControl);
+    });
+})();
+</script>
+<style>
+.operator-seq-disabled {
+    opacity: 0.35 !important;
+    filter: grayscale(1) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+</style>
 
 <?php require_once '../app/views/sequences/seq_share.php';?>
