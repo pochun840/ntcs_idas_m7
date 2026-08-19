@@ -1,3 +1,4 @@
+/* NTCS base styles */
 ﻿.container-ms
 {
     margin: 0 auto;
@@ -519,4 +520,536 @@ th, td
 .ajs-dialog .idas-update-confirm-message .idas-update-alert-message {
     max-height: none;
     overflow: visible;
+}
+
+/* i-controller overrides */
+html.icontroller .container-ms{
+    margin: 0 auto;
+    padding: 0px;
+    overflow: hidden;
+    position: static;
+}
+
+/* Header */
+html.icontroller #header{
+    min-height:50px;
+    background-color:hsl(0, 60%, 50%);
+    margin: 10px;
+    font-size: 30px;
+}
+
+html.icontroller .no-border{
+    border: none;
+}
+
+html.icontroller .no-border td{
+    border: none;
+}
+
+html.icontroller .main-content{
+    display: flex;
+}
+
+
+html.icontroller .center-content{
+    width: 100%;
+    height: calc(100vh - 80px);
+    padding: 5px 100px;
+}
+
+html.icontroller .button{
+    background-color: #888888; /* Green */
+    border:  1px outset #CCFFFF;
+    border-radius: 8px;;
+    color: white;
+    padding: 5px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 18px;
+    cursor: pointer;
+    margin: 4px 10px;
+}
+
+html.icontroller .all-btn{
+    font-size: 2vmin;
+    height: 35px;
+    padding: 0 10px;
+    background-color: #EFEFEF;
+    color: #000;
+    width: auto;
+    box-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.2);
+}
+
+/* Connect Setting Button Delete */
+html.icontroller #delete-btn{
+    height: 30px;
+    width: auto;
+}
+
+html.icontroller .button:hover{
+    cursor: pointer;
+    background:#0d6efd;
+    color: white;
+}
+
+html.icontroller .active{
+    background-color: #0d6efd;
+}
+
+html.icontroller .divMode{
+    font-size: 2vmin;
+    height: calc(100vh - 150px);
+    margin: 4px 0px;
+    background-color: #FCFCFC;
+    box-shadow: 0px 2px 4px 1px rgba(0,0,0,0.2);
+
+    width: 100%;
+    overflow: auto; /* Ẩn thanh cuộn */
+    justify-content: center;
+    align-items: center;
+}
+
+/* Vẫn cho phép cuộn nhưng ẩn thanh cuộn */
+html.icontroller .divMode::-webkit-scrollbar{
+    display: none; /* Ẩn thanh cuộn trên Chrome, Safari */
+}
+
+html.icontroller .divMode{
+    -ms-overflow-style: none;  /* Ẩn thanh cuộn trên IE, Edge */
+    scrollbar-width: none;  /* Ẩn thanh cuộn trên Firefox */
+}
+
+html.icontroller select{
+    height: 38px;
+    width: 252px;
+    border: 1px solid #CCCCCC;
+    cursor: pointer;
+    border-radius: 5px;
+    color: #000;
+    transition: color 0.s ease, background-color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+/* table barcode */
+html.icontroller .table-container{
+    overflow-y: auto; /* Cho phép cuộn */
+    position: relative;
+}
+
+html.icontroller #job_table{
+    width: 100%;
+    overflow-y: scroll;
+    scrollbar-width: thin;
+    vertical-align: middle;
+}
+
+html.icontroller thead th{
+    position: sticky;
+    top: 0;
+    background-color: #A3A3A3;
+    z-index: 10;
+}
+
+html.icontroller th, html.icontroller td{
+    border: 1px solid #ddd;
+    text-align: center;
+    vertical-align: middle;
+}
+
+html.icontroller .w3-table{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+html.icontroller .w3-table th, html.icontroller .w3-table td{
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: center; /* Horizontally center */
+    vertical-align: middle; /* Vertically center */
+}
+
+html.icontroller #header-table{
+    position: sticky;
+    top: 0;
+    background-color: #A3A3A3;
+    z-index: 2;
+    font-size: 1.8vmin;
+}
+
+/* scrollbar style */
+html.icontroller .scrollbar{
+    position: relative;
+    float: left;
+    height: calc(50vh - 190px);
+    width: 100%;
+    overflow-y: scroll;
+}
+
+html.icontroller .force-overflow{
+    min-height: 35vh;
+}
+
+html.icontroller #wrapper{
+    text-align: center;
+    margin: auto;
+}
+
+/**  STYLE barcode and connection Table */
+html.icontroller #style-table::-webkit-scrollbar{
+    display: none;
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+html.icontroller #style-table::-webkit-scrollbar-thumb{
+    border-radius: 10px;
+    background: linear-gradient(left, #96A6BF, #63738C);
+    box-shadow: inset 0 0 1px 1px #5C6670;
+}
+
+html.icontroller #style-table::-webkit-scrollbar-track{
+    border-radius: 10px;
+    background: #eee;
+    box-shadow: 0 0 1px 1px #bbb, inset 0 0 7px rgba(0,0,0,0.3)
+}
+
+html.icontroller #style-table::-webkit-scrollbar-thumb:hover{
+    background: linear-gradient(left, #8391A6, #536175);
+}
+
+html.icontroller .t1{font-size: 17px; margin: 5px 0px; display: flex; align-items: center;}
+html.icontroller .t2{font-size: 17px; margin: 5px 0px; margin-left: 5%}         /* title  */
+html.icontroller .t3{font-size: 17px; margin: 5px 0px;}
+html.icontroller .t4{height: 28px;text-align: center;}   
+html.icontroller .selected{ background-color: #9AC0CD !important;}
+html.icontroller .input-pin img{ height: 25px; width: 40px}
+html.icontroller .output-pin img{ height: 25px; width: 45px}
+html.icontroller .disabled_input{ color: #999; pointer-events: none;}
+html.icontroller .zoom{zoom:1.2; vertical-align: middle}
+
+html.icontroller .year-item{
+    font-size: 17px;        /* thay 14px theo ý bạn */
+    display: inline-flex;   /* cho phép align-items */
+    align-items: center;    /* căn dọc giữa */
+    gap: 4px;               /* khoảng cách checkbox‑số năm */
+}
+
+html.icontroller .year-checkbox{
+    margin: 0;              /* bỏ margin mặc định của bootstrap */
+}
+
+html.icontroller .progress.custom-bg{
+    background-color: #8393A0; 
+    height: 25px;
+}
+
+html.icontroller .progress-bar.custom-bar{
+    background-color: #34C7AC;
+    color: #fff;
+}
+
+/* iDAS Update: downgrade protection */
+html.icontroller .idas-downgrade-row{
+    margin-top: 6px;
+}
+
+html.icontroller .idas-downgrade-option{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-weight: 700;
+    cursor: pointer;
+    color: #1f2937;
+}
+
+html.icontroller .idas-downgrade-option input[type="checkbox"]{
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
+html.icontroller .idas-downgrade-warning{
+    max-width: 620px;
+    margin-top: 7px;
+    padding: 9px 12px;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+/* iDAS Update: auto version detection */
+html.icontroller .is-hidden{
+    display: none !important;
+}
+
+html.icontroller .idas-pack-check-panel{
+    max-width: 620px;
+    padding: 10px 12px;
+    border: 1px solid #dbe3ef;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+html.icontroller .idas-pack-check-panel > div + div{
+    margin-top: 4px;
+}
+
+html.icontroller .idas-version-status{
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+html.icontroller .idas-version-status.checking{
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+html.icontroller .idas-version-status.upgrade{
+    background: #dcfce7;
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
+html.icontroller .idas-version-status.same{
+    background: #e0f2fe;
+    border-color: #bae6fd;
+    color: #075985;
+}
+
+html.icontroller .idas-version-status.downgrade{
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+html.icontroller .idas-version-status.error{
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+html.icontroller .idas-downgrade-notice{
+    max-width: 620px;
+    margin-top: 7px;
+}
+
+html.icontroller .idas-downgrade-notice > strong{
+    display: inline-block;
+    margin-bottom: 6px;
+    color: #92400e;
+}
+
+
+html.icontroller .idas-version-status.special, html.icontroller .idas-version-status.upgrade-special{
+    background: #f5f3ff;
+    border-color: #ddd6fe;
+    color: #6d28d9;
+}
+
+html.icontroller #idas-upload-btn:disabled, html.icontroller .idas-btn-disabled{
+    opacity: .55;
+    cursor: not-allowed !important;
+    box-shadow: none;
+}
+
+html.icontroller #idas-upload-btn:not(:disabled){
+    opacity: 1;
+    cursor: pointer;
+}
+
+
+/* ===== Controller communication protocol radio ===== */
+html.icontroller .protocol-setting-row .protocol-options{
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+html.icontroller .protocol-setting-row .form-check-inline{
+    margin-right: 12px;
+    white-space: nowrap;
+}
+
+html.icontroller .protocol-setting-row .form-check-input{
+    margin-top: 0;
+    cursor: pointer;
+}
+
+html.icontroller .protocol-setting-row .form-check-label{
+    margin-left: 4px;
+    cursor: pointer;
+}
+
+/* iDAS Update confirm dialog: prevent long version / downgrade text overflow */
+html.icontroller .ajs-dialog .idas-update-confirm{
+    max-width: min(560px, calc(100vw - 70px));
+    max-height: 58vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    text-align: left;
+    line-height: 1.55;
+}
+
+html.icontroller .ajs-dialog .idas-update-confirm-message{
+    margin-bottom: 10px;
+}
+
+html.icontroller .ajs-dialog .idas-update-confirm-versions{
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #dbe3ef;
+}
+
+html.icontroller .ajs-dialog .idas-update-confirm-version-row{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 2px 0;
+}
+
+html.icontroller .ajs-dialog .idas-update-confirm-label{
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: #374151;
+}
+
+html.icontroller .ajs-dialog .idas-update-confirm-label::after{
+    content: '：';
+}
+
+html.icontroller .ajs-dialog .idas-update-confirm-value{
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 700;
+    color: #111827;
+    word-break: break-all;
+}
+
+
+/* iDAS Update alertify global overflow guard: success / failure / confirm / error */
+html.icontroller .alertify .ajs-dialog, html.icontroller .ajs-dialog{
+    max-width: min(620px, calc(100vw - 32px));
+    box-sizing: border-box;
+}
+
+html.icontroller .alertify .ajs-content, html.icontroller .ajs-dialog .ajs-content{
+    max-height: 62vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+    box-sizing: border-box;
+}
+
+html.icontroller .alertify .ajs-content *, html.icontroller .ajs-dialog .ajs-content *{
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+html.icontroller .alertify .ajs-content pre, html.icontroller .alertify .ajs-content code, html.icontroller .ajs-dialog .ajs-content pre, html.icontroller .ajs-dialog .ajs-content code{
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+html.icontroller .ajs-dialog .idas-update-alert-message{
+    width: 100%;
+    max-height: 58vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    text-align: left;
+    line-height: 1.6;
+}
+
+html.icontroller .ajs-dialog .idas-update-confirm-message .idas-update-alert-message{
+    max-height: none;
+    overflow: visible;
+}
+
+/* PC Network Setting tab */
+html.icontroller #Network_Setting .network-setting-row{
+    min-height: 48px;
+    align-items: center;
+}
+
+html.icontroller #Network_Setting .network-setting-input{
+    width: 252px;
+    height: 38px;
+}
+
+html.icontroller #Network_Setting .network-mode-options{
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+html.icontroller #Network_Setting .network-port-wrap{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+html.icontroller #Network_Setting .network-setting-port{
+    width: 150px;
+    height: 38px;
+}
+
+html.icontroller #Network_Setting .network-reboot-note{
+    color: #666;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+html.icontroller #Network_Setting .network-field-disabled{
+    background-color: #e9ecef;
+    color: #777;
+    cursor: not-allowed;
+}
+
+html.icontroller #Network_Setting #network_current_ip[readonly]{
+    background-color: #e9ecef;
+}
+
+html.icontroller #Network_Setting #network_setting_save.network-save-busy{
+    opacity: 0.65;
+    cursor: wait;
+}
+
+
+/* PC Network Setting - use the same Alertify dialog style as the rest of iDAS */
+html.icontroller .ajs-dialog .network-setting-alert-message{
+    width: 100%;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.65;
+    text-align: left;
 }

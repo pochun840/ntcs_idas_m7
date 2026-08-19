@@ -12,8 +12,13 @@
 
     <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js?v=<?php echo ASSET_VERSION; ?>"></script>
     <script src="<?php echo URLROOT; ?>js/jquery_dataTables_min.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <?php include_once 'include_css.php';?>
+    <?php $includeCssFile = idas_platform_app_file('views/inc/include_css.php'); include_once $includeCssFile; ?>
     <title><?php echo SITENAME; ?></title>    
     
+<script>
+window.IS_ICONTROLLER = <?php echo (defined('IS_ICONTROLLER') && IS_ICONTROLLER) ? 'true' : 'false'; ?>;
+document.documentElement.classList.toggle('icontroller', window.IS_ICONTROLLER);
+document.documentElement.classList.toggle('ntcs', !window.IS_ICONTROLLER);
+</script>
 </head>
 <body>

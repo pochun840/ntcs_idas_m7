@@ -1,5 +1,208 @@
 <?php
+/*
+ * Single-codebase platform switch.
+ * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
+ * 0 / missing / invalid -> NTCS implementation
+ */
+if (defined('IS_ICONTROLLER') && IS_ICONTROLLER) {
+class Remotes extends Controller
+{
+    private $DataModel;
+    private $SettingModel;
+    private $MiscellaneousModel;
+    Private $deviceId;
+    private $ToolModel;
+    
+    // 在建構子中將 Post 物件（Model）實例化
+    public function __construct(){
+        
+        $this->DataModel = $this->model('Datas');
+        $this->SettingModel = $this->model('Setting');
+        $this->MiscellaneousModel = $this->model('Miscellaneous');
+        $this->ToolModel = $this->model('Tool');
 
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
+
+    }
+
+    // 取得所有Jobs
+    public function index(){
+
+   
+        // 同步控制器資料庫（ntcs_data.db）至 iDAS
+        $this->ntcs_data_db_sysnc();
+        
+
+
+        $isMobile = $this->isMobileCheck();
+        $job_list = $this->SettingModel->get_job_list();
+
+        $data = [
+            'isMobile' => $isMobile,
+            'job_list' => $job_list,
+        ];
+        
+        $this->view('remote/index', $data);
+
+    }
+
+    public function Change_Job($value=''){
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        $error_message = '';
+        $input_check = true;
+
+        if (isset($_GET['job_id']) && $_GET['job_id'] !== '') {
+            $job_id = (int)$_GET['job_id'];
+            if ($job_id <= 0) {
+                $input_check = false;
+                $error_message .= "job_id,";
+            }
+        } else {
+            $input_check = false;
+            $error_message .= "job_id,";
+        }
+
+        // seq_id 允許 0，避免控制器目前回傳 Seq 0 時被 empty() 判斷成未填。
+        if (isset($_GET['seq_id']) && $_GET['seq_id'] !== '') {
+            $seq_id = (int)$_GET['seq_id'];
+            if ($seq_id < 0) {
+                $input_check = false;
+                $error_message .= "seq_id,";
+            }
+        } else {
+            $input_check = false;
+            $error_message .= "seq_id,";
+        }
+
+        $device_id = (int)$this->deviceId;
+        if ($device_id < 1 || $device_id > 255) {
+            $input_check = false;
+            $error_message .= 'device_id,';
+        }
+
+        if ($input_check && PHP_OS_FAMILY == 'Linux') {
+            try {
+                $isOp = $this->is_op_protocol_enabled();
+
+                if ($isOp) {
+                    /*
+                     * OP 協議一次只能送一筆，但位址仍要保留 Modbus Register 對應關係：
+                     *   463 = Change Job ID
+                     *   464 = Change Seq ID
+                     *
+                     * 前一版改成 463 / 463 會造成 Controller 端無法正確切換工序。
+                     * 正確做法是「一筆一筆送」，不是「兩筆都送同一個位址」。
+                     */
+                    $opCommands = [];
+
+                    $opCommands[] = 'IDAS_WRITE_463_' . $job_id;
+                    $jobOk = $this->op_write(463, $job_id);
+                    if (!$jobOk) {
+                        throw new RuntimeException('OP write job_id failed');
+                    }
+
+                    // OP Controller 一次處理一筆命令，兩筆命令中間保留短暫處理時間。
+                    usleep(120000);
+
+                    $opCommands[] = 'IDAS_WRITE_464_' . $seq_id;
+                    $seqOk = $this->op_write(464, $seq_id);
+                    if (!$seqOk) {
+                        throw new RuntimeException('OP write seq_id failed');
+                    }
+
+                    // OP WRITE 本身沒有 ACK；改讀 Controller 真實狀態 4305/4306 驗證切換結果。
+                    // 最多等待約 1 秒，避免 TCP 有送出、Controller 卻沒有真正套用時誤報成功。
+                    $verified = $this->protocol_wait_for_register_values(
+                        $device_id,
+                        4305,
+                        [$job_id, $seq_id],
+                        5,
+                        200000
+                    );
+                    if (!$verified) {
+                        throw new RuntimeException('OP write sent but controller JOB/SEQ read-back verification failed');
+                    }
+
+                    echo json_encode([
+                        'error' => '',
+                        'protocol' => 'OP',
+                        'job_id' => $job_id,
+                        'seq_id' => $seq_id,
+                        'op_commands' => $opCommands,
+                        'op_change_job_register_pair' => true,
+                        'verified' => true,
+                        'verify_register_start' => 4305,
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit();
+                }
+
+                $ok = $this->protocol_write_registers($device_id, 463, [$job_id, $seq_id]);
+                if (!$ok) {
+                    throw new RuntimeException('protocol write failed');
+                }
+
+                echo json_encode([
+                    'error' => '',
+                    'protocol' => 'MODBUS',
+                    'job_id' => $job_id,
+                    'seq_id' => $seq_id,
+                ], JSON_UNESCAPED_UNICODE);
+                exit();
+            } catch (Throwable $e) {
+                $this->logMessage('remote change job fail: ' . $e->getMessage());
+                echo json_encode([
+                    'error' => 'protocol fail',
+                    'msg' => $e->getMessage(),
+                    'protocol' => $this->is_op_protocol_enabled() ? 'OP' : 'MODBUS',
+                ], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+        } else {
+            echo json_encode(['error' => $error_message], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+
+
+    public function get_current_job($value=''){
+
+        $error_message = '';
+        $device_id = (int)$this->deviceId;
+
+        if ($device_id < 1 || $device_id > 255) {
+            $error_message = 'device_id,';
+        }
+
+        if (PHP_OS_FAMILY == 'Linux' && $error_message === '') {
+            try {
+                $recData = $this->protocol_read_registers($device_id, 4305, 3);
+
+                $data = [];
+                $data['jod_id']  = (int)($recData[0] ?? 0);
+                $data['seq_id']  = (int)($recData[1] ?? 0);
+                $data['step_id'] = (int)($recData[2] ?? 0);
+
+                echo json_encode(['error' => '', 'result' => $data]);
+                exit();
+            } catch (Throwable $e) {
+                $this->logMessage('protocol read 4305 fail: ' . $e->getMessage());
+                echo json_encode(['error' => 'protocol fail']);
+                exit();
+            }
+        } else {
+            echo json_encode(['error' => $error_message]);
+            exit();
+        }
+    }
+
+
+    
+}
+} else {
 class Remotes extends Controller
 {
     private $DataModel;
@@ -283,4 +486,5 @@ class Remotes extends Controller
 
 
     
+}
 }

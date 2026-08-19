@@ -1,3 +1,4 @@
+<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
 <?php 
 // 共用：條件式載入 CSS / JS（根據 URL 第一層）
 function include_asset($part, $fileName) {
@@ -12,15 +13,15 @@ function include_asset($part, $fileName) {
         if ($firstPart === $part) {
             $path = ($extension === 'css') ? 'css' : 'js';
             $tag = ($extension === 'css')
-                ? "<link rel=\"stylesheet\" href=\"" . URLROOT . "$path/$fileName?v=" . ASSET_VERSION . "\">"
-                : "<script src=\"" . URLROOT . "$path/$fileName?v=" . ASSET_VERSION . "\"></script>";
+                ? "<link rel=\"stylesheet\" href=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . ASSET_VERSION . "\">"
+                : "<script src=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . ASSET_VERSION . "\"></script>";
             echo $tag . "\n";
         }
     }
 
     //額外條件：若網址是 Sequences，就強制載入 seq.js
     if ($firstPart === 'Sequences' && $fileName === 'sequences.js') {
-        echo "<script src=\"" . URLROOT . "js/seq.js?v=" . ASSET_VERSION . "\"></script>\n";
+        echo "<script src=\"" . idas_asset_url('js/seq.js') . '?v=' . ASSET_VERSION . "\"></script>\n";
     }
 }
 
@@ -72,7 +73,7 @@ function include_css() {
 
     // 輸出 <link>
     if ($cssFile) {
-        echo '<link rel="stylesheet" href="' . URLROOT . 'css/' . $cssFile . '?v=' . ASSET_VERSION . '" type="text/css">' . "\n";
+        echo '<link rel="stylesheet" href="' . idas_asset_url('css/' . $cssFile) . '?v=' . ASSET_VERSION . '" type="text/css">' . "\n";
     }
 }
 
@@ -81,17 +82,17 @@ function include_css() {
 ?>
 
     <!-- ================== 基礎 JS ================== -->
-    <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/jquery-3.7.1.min.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
 
     <!-- ================== 基礎 CSS ================== -->
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/jquery_data_Tables.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/datatables.min.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/w3.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/font-awesome.min.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/flatpickr.min.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/alertify_min.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/default_min.css?v=<?php echo ASSET_VERSION; ?>">
-    <link rel="stylesheet" href="<?php echo URLROOT; ?>css/footer.css?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/jquery_data_Tables.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/datatables.min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/w3.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/font-awesome.min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/flatpickr.min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/alertify_min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
     <?php
         $queryString = $_SERVER['QUERY_STRING'] ?? '';
         $route = explode('/', str_replace('url=', '', $queryString))[0] ?? '';
@@ -103,7 +104,7 @@ function include_css() {
         // 不在 Inputs 或 Outputs 頁面時，根據裝置載入對應的 CSS
         if (!in_array($route, ['Inputs', 'Outputs'])) {
             $cssFile = $isMobile ? 'share_m.css' : 'share.css';
-            echo '<link rel="stylesheet" href="' . URLROOT . 'css/' . $cssFile . '?v=' . ASSET_VERSION . '">' . "\n";
+            echo '<link rel="stylesheet" href="' . idas_asset_url('css/' . $cssFile) . '?v=' . ASSET_VERSION . '">' . "\n";
         }
     ?>
 
@@ -114,10 +115,10 @@ function include_css() {
 
 
     <!-- ================== 共用 JS ================== -->
-    <script src="<?php echo URLROOT; ?>js/all.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/echarts_min.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/jquery_data_Tables.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/alertify_min.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/all.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
 
 
 
@@ -130,10 +131,590 @@ function include_css() {
     ?>
 
     <!-- ================== 其他工具 JS ================== -->
-    <script src="<?php echo URLROOT; ?>js/flatpickr.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/flatpickr_zh-tw.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/tcc_data.js?v=<?php echo ASSET_VERSION; ?>"></script>
-    <script src="<?php echo URLROOT; ?>js/jszip.js?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/flatpickr.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/flatpickr_zh-tw.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/tcc_data.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/jszip.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+
+
+    <!-- ================== 其他工具 JS ================== -->
+
+
+    <script>
+/* ============================================================
+   🌐 Language helper
+============================================================ */
+function getCookieSafe(name){
+    try{
+        const m=document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+        return m?decodeURIComponent(m[1]):null;
+    }catch(e){return null;}
+}
+function getLangCode(){
+    let lang=(getCookieSafe("language")||"zh-tw").toLowerCase();
+    if(lang==="en") lang="en-us";
+    if(!["en-us","zh-tw","zh-cn"].includes(lang)) lang="en-us";
+    return lang;
+}
+function t(obj){ return obj[getLangCode()] || obj["en-us"]; }
+
+function protocolName(type){
+    const n = parseInt(type, 10);
+    if(n === 0) return 'MODBUS TCP';
+    if(n === 1) return 'MODBUS RTU';
+    if(n === 2) return 'OP';
+    return '';
+}
+
+function protocolChangeLabel(oldType, newType){
+    const oldName = protocolName(oldType);
+    const newName = protocolName(newType);
+
+    // 方向必須依後端回傳值動態顯示：
+    // idas_modbus_type = iDAS 目前舊值
+    // modbus_type      = Controller 目前新值
+    // 因此可支援 MODBUS TCP → OP，也可支援 OP → MODBUS TCP / RTU 等反向變更。
+    if(oldName && newName) return oldName + ' → ' + newName;
+    if(newName) return newName;
+    return '';
+}
+
+function getChangeFlags(res){
+    const idChanged = (
+        res?.id_changed === true || res?.id_changed === 'true' || res?.id_changed == 1
+    );
+    const modbusTypeChanged = (
+        res?.modbus_type_changed === true || res?.modbus_type_changed === 'true' || res?.modbus_type_changed == 1
+    );
+    const changed = (
+        res?.changed === true || res?.changed === 'true' || res?.changed == 1
+        || idChanged || modbusTypeChanged
+    );
+
+    let type = res?.change_type || 'none';
+    if(type === 'none' && idChanged && modbusTypeChanged) type = 'both';
+    else if(type === 'none' && idChanged) type = 'device_id';
+    else if(type === 'none' && modbusTypeChanged) type = 'modbus_type';
+
+    return { changed, idChanged, modbusTypeChanged, type };
+}
+
+const TEXT = {
+    rebootBannerDevice:{
+        "zh-tw":"控制器裝置編號已變更，請手動重新啟動控制器以完成套用。",
+        "zh-cn":"控制器设备编号已变更，请手动重新启动控制器以完成应用。",
+        "en-us":"Controller device ID changed. Please manually reboot the controller."
+    },
+    rebootBannerModbus:{
+        "zh-tw":"控制器通訊協議已變更，請手動重新啟動控制器以完成套用。",
+        "zh-cn":"控制器通讯协议已变更，请手动重新启动控制器以完成应用。",
+        "en-us":"Controller communication protocol changed. Please manually reboot the controller."
+    },
+    rebootBannerBoth:{
+        "zh-tw":"控制器裝置編號與通訊協議已變更，請手動重新啟動控制器以完成套用。",
+        "zh-cn":"控制器设备编号与通讯协议已变更，请手动重新启动控制器以完成应用。",
+        "en-us":"Controller device ID and communication protocol changed. Please manually reboot the controller."
+    },
+    reloadTitle:{ "zh-tw":"提示","zh-cn":"提示","en-us":"Notice" },
+    reloadDevice:(id)=>({
+        "zh-tw":"偵測到新的控制器 (ID:"+id+")，是否重新整理畫面？",
+        "zh-cn":"检测到新的控制器 (ID:"+id+")，是否重新刷新页面？",
+        "en-us":"New controller detected (ID:"+id+"). Reload now?"
+    }),
+    reloadModbus:(protocolChange)=>({
+        "zh-tw": protocolChange
+            ? "偵測到控制器通訊協議已變更（"+protocolChange+"），是否重新整理畫面？"
+            : "偵測到控制器通訊協議已變更，是否重新整理畫面？",
+        "zh-cn": protocolChange
+            ? "检测到控制器通讯协议已变更（"+protocolChange+"），是否重新刷新页面？"
+            : "检测到控制器通讯协议已变更，是否重新刷新页面？",
+        "en-us": protocolChange
+            ? "Controller communication protocol changed ("+protocolChange+"). Reload now?"
+            : "Controller communication protocol changed. Reload now?"
+    }),
+    reloadBoth:(id,protocolChange)=>({
+        "zh-tw": protocolChange
+            ? "偵測到新的控制器 (ID:"+id+")，且通訊協議已變更（"+protocolChange+"），是否重新整理畫面？"
+            : "偵測到新的控制器 (ID:"+id+")，且通訊協議已變更，是否重新整理畫面？",
+        "zh-cn": protocolChange
+            ? "检测到新的控制器 (ID:"+id+")，且通讯协议已变更（"+protocolChange+"），是否重新刷新页面？"
+            : "检测到新的控制器 (ID:"+id+")，且通讯协议已变更，是否重新刷新页面？",
+        "en-us": protocolChange
+            ? "New controller detected (ID:"+id+") and protocol changed ("+protocolChange+"). Reload now?"
+            : "New controller detected (ID:"+id+") and protocol changed. Reload now?"
+    }),
+    ok:{ "zh-tw":"確定","zh-cn":"确定","en-us":"OK" }
+};
+
+function getBannerText(res){
+    const flags = getChangeFlags(res || {});
+    if(flags.type === 'both' || (flags.idChanged && flags.modbusTypeChanged)) {
+        return t(TEXT.rebootBannerBoth);
+    }
+    if(flags.type === 'modbus_type' || flags.modbusTypeChanged) {
+        return t(TEXT.rebootBannerModbus);
+    }
+    return t(TEXT.rebootBannerDevice);
+}
+
+function getReloadMessage(res){
+    const flags = getChangeFlags(res || {});
+    const id = res?.device_id ?? '';
+    const protocolChange = protocolChangeLabel(res?.idas_modbus_type, res?.modbus_type);
+
+    if(flags.type === 'both' || (flags.idChanged && flags.modbusTypeChanged)) {
+        return t(TEXT.reloadBoth(id, protocolChange));
+    }
+    if(flags.type === 'modbus_type' || flags.modbusTypeChanged) {
+        return t(TEXT.reloadModbus(protocolChange));
+    }
+    return t(TEXT.reloadDevice(id));
+}
+
+/* ============================================================
+   ⭐ Controller ID / MODBUS TYPE 變更流程
+   1. 偵測 device_id / modbus_type 變更 → 只顯示紅色 Banner。
+   2. 等待使用者手動重新啟動控制器。
+   3. 前端偵測到 Controller 曾經斷線一次。
+   4. Controller 重新上線後才跳出 Popup。
+   5. 使用者按確定後才執行 Controller → iDAS 同步。
+   6. 同步完成後重新整理畫面。
+============================================================ */
+var currentDeviceId=null;
+var deviceReloadDialogShown=false;
+var pendingChangeContext=null;
+var waitingForControllerReboot=false;
+var controllerWentOfflineAfterChange=false;
+var syncAfterRebootStarted=false;
+
+const REBOOT_WAIT_STORAGE_KEY='idas_device_identity_wait_manual_reboot_v2';
+
+function boolValue(v){
+    return v===true || v==='true' || v===1 || v==='1';
+}
+
+function isOnlineResponse(res){
+    return boolValue(res?.online);
+}
+
+function saveRebootWaitState(){
+    try{
+        if(!waitingForControllerReboot){
+            localStorage.removeItem(REBOOT_WAIT_STORAGE_KEY);
+            return;
+        }
+        localStorage.setItem(REBOOT_WAIT_STORAGE_KEY, JSON.stringify({
+            waiting:true,
+            offline:controllerWentOfflineAfterChange,
+            context:pendingChangeContext || null,
+            ts:Date.now()
+        }));
+    }catch(e){}
+}
+
+function restoreRebootWaitState(){
+    try{
+        const raw=localStorage.getItem(REBOOT_WAIT_STORAGE_KEY);
+        if(!raw) return;
+        const data=JSON.parse(raw);
+        if(!data || data.waiting!==true) return;
+
+        // 避免舊狀態永久殘留，超過 10 分鐘就清掉。
+        if(data.ts && (Date.now()-parseInt(data.ts,10)) > 10*60*1000){
+            localStorage.removeItem(REBOOT_WAIT_STORAGE_KEY);
+            return;
+        }
+
+        waitingForControllerReboot=true;
+        controllerWentOfflineAfterChange=!!data.offline;
+        pendingChangeContext=data.context || null;
+        if(pendingChangeContext) showRebootBanner(pendingChangeContext);
+    }catch(e){
+        localStorage.removeItem(REBOOT_WAIT_STORAGE_KEY);
+    }
+}
+
+function clearRebootWaitState(){
+    waitingForControllerReboot=false;
+    controllerWentOfflineAfterChange=false;
+    syncAfterRebootStarted=false;
+    pendingChangeContext=null;
+    localStorage.removeItem('device_sync_lock');
+    try{ localStorage.removeItem(REBOOT_WAIT_STORAGE_KEY); }catch(e){}
+}
+
+/* ============================================================
+   🔴 Banner（ID / MODBUS TYPE 變更共用）
+============================================================ */
+function showRebootBanner(res){
+    let banner=document.getElementById("rebootBanner");
+    if(!banner){
+        banner=document.createElement("div");
+        banner.id="rebootBanner";
+        Object.assign(banner.style,{
+            position:"fixed",top:"0",left:"0",width:"100%",
+            background:"#c0392b",color:"#fff",padding:"12px",
+            textAlign:"center",fontSize:"15px",zIndex:"99999",fontWeight:"bold"
+        });
+        document.body.appendChild(banner);
+    }
+    banner.innerHTML="🔴 "+getBannerText(res);
+}
+function hideRebootBanner(){ document.getElementById("rebootBanner")?.remove(); }
+
+/* ============================================================
+   🔵 Popup（Controller 重開機 + 同步完成後 reload 共用）
+============================================================ */
+function showReloadPopup(res){
+    if(deviceReloadDialogShown) return;
+    deviceReloadDialogShown=true;
+    hideRebootBanner();
+
+    alertify.alert(
+        t(TEXT.reloadTitle),
+        getReloadMessage(res || {})
+    ).set({
+        labels:{ ok:t(TEXT.ok) },
+        closable:false,movable:false,pinnable:false,resizable:false,
+        onok:function(){
+            syncDeviceIdentityThenReload(res || {});
+        }
+    });
+}
+
+function syncDeviceIdentityThenReload(context){
+    const popupContext = context || pendingChangeContext || {};
+
+    try { $('#overlay').removeClass('hidden'); } catch(e) {}
+
+    $.post("?url=Check/sync_device_identity", function(syncRes){
+        try { $('#overlay').addClass('hidden'); } catch(e) {}
+
+        if(syncRes && syncRes.res_type === "OK"){
+            clearRebootWaitState();
+            hideRebootBanner();
+            location.reload();
+            return;
+        }
+
+        // 同步失敗：保留等待狀態，避免差異被誤清掉。
+        deviceReloadDialogShown=false;
+        syncAfterRebootStarted=false;
+        showRebootBanner(popupContext);
+        saveRebootWaitState();
+
+        if(window.alertify && alertify.error){
+            alertify.error('Sync failed');
+        }
+    }, "json").fail(function(){
+        try { $('#overlay').addClass('hidden'); } catch(e) {}
+        deviceReloadDialogShown=false;
+        syncAfterRebootStarted=false;
+        showRebootBanner(popupContext);
+        saveRebootWaitState();
+
+        if(window.alertify && alertify.error){
+            alertify.error('Sync failed');
+        }
+    });
+}
+
+function beginWaitControllerReboot(res){
+    const online = isOnlineResponse(res);
+
+    waitingForControllerReboot=true;
+    pendingChangeContext=res || pendingChangeContext;
+
+    // 如果第一次偵測時 Controller 已經離線，也視為已進入重開機階段。
+    if(online===false) controllerWentOfflineAfterChange=true;
+
+    showRebootBanner(pendingChangeContext || res);
+    saveRebootWaitState();
+}
+
+function startSyncAfterControllerManualReboot(){
+    if(syncAfterRebootStarted) return;
+    syncAfterRebootStarted=true;
+    saveRebootWaitState();
+
+    // 這裡只跳 Popup，不做同步。
+    // 使用者按下 Popup 確定後，才呼叫 Check/sync_device_identity。
+    console.log("Controller manual reboot detected → show reload confirm popup...");
+    showReloadPopup(pendingChangeContext || {});
+}
+
+function processDeviceIdentityState(res){
+    if(!res || res.res_type!=="OK") return false;
+
+    const flags = getChangeFlags(res);
+    const changed = flags.changed;
+    const online = isOnlineResponse(res);
+
+    if(changed){
+        // 只要還沒完成重開機同步，就持續保留第一次偵測到的變更內容，
+        // 避免後續回傳內容造成 Popup 方向或 ID 資訊被覆蓋。
+        if(!waitingForControllerReboot){
+            beginWaitControllerReboot(res);
+        }else{
+            if(!pendingChangeContext) pendingChangeContext=res;
+            showRebootBanner(pendingChangeContext || res);
+        }
+    }
+
+    if(waitingForControllerReboot){
+        if(online===false){
+            controllerWentOfflineAfterChange=true;
+            showRebootBanner(pendingChangeContext || res);
+            saveRebootWaitState();
+            return true;
+        }
+
+        if(online===true && controllerWentOfflineAfterChange){
+            startSyncAfterControllerManualReboot();
+            return true;
+        }
+
+        // 已偵測到變更，但尚未看到 Controller 因人工重開而離線 → 只顯示 Banner，不同步、不跳 Popup。
+        showRebootBanner(pendingChangeContext || res);
+        saveRebootWaitState();
+        return true;
+    }
+
+    if(!changed){
+        hideRebootBanner();
+        localStorage.removeItem("device_sync_lock");
+    }
+
+    return false;
+}
+
+/* ============================================================
+   ⭐ 與原本流程相同的定期檢查，但改成「等待人工重開機後再 Popup」
+============================================================ */
+function autoSyncDeviceAfterReload(){
+    $.post("?url=Check/ajax_check_device_id",function(res){
+        processDeviceIdentityState(res);
+    },"json");
+}
+
+/* ============================================================
+   ⭐ 輪詢 Controller
+============================================================ */
+function pollDeviceId(){
+    $.ajax({
+        url:"?url=Check/ajax_check_device_id",
+        type:"POST",
+        dataType:"json",
+        success:function(res){
+            if(!res || res.res_type!=="OK") return;
+
+            const newId=parseInt(res.device_id);
+
+            if(Number.isFinite(newId) && currentDeviceId===null){
+                currentDeviceId=newId;
+            }else if(Number.isFinite(newId)){
+                currentDeviceId=newId;
+            }
+
+            processDeviceIdentityState(res);
+        },
+        complete:function(){ setTimeout(pollDeviceId,2000); }
+    });
+}
+
+/* ============================================================
+   啟動
+============================================================ */
+$(function(){
+    const cookieVal=getCookieSafe("temp_device_id");
+    if(cookieVal) currentDeviceId=parseInt(cookieVal);
+
+    restoreRebootWaitState();
+    autoSyncDeviceAfterReload();
+    pollDeviceId();
+});
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+
+/* 不要再用裸的 button，改用 big-btn */
+.big-btn {
+    background: #EEEEEE;
+    border-radius: 10%;
+    width: 130px;
+    height: 130px;
+    color: #FFFFFF;
+    text-align: center;
+    /* float: center; 這個其實是無效值，可以拿掉，改用 flex 或 text-align 排版 */
+}
+
+/* 只縮小 Device ID 警告視窗裡的「確定」(OK) 按鈕 */
+.device-reload-alert .ajs-footer .ajs-buttons .ajs-button.ajs-ok {
+    width: auto !important;
+    height: auto !important;
+    min-width: 60px !important;
+    min-height: 26px !important;
+
+    padding: 2px 8px !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    text-transform: none !important;
+
+    background: transparent !important;
+    border-radius: 4px !important;
+    line-height: 1.2 !important;
+    margin: 0 4px !important;
+}
+</style>
+<?php else: ?>
+<?php 
+// 共用：條件式載入 CSS / JS（根據 URL 第一層）
+function include_asset($part, $fileName) {
+    $queryString = $_SERVER['QUERY_STRING'] ?? '';
+    $queryStringWithoutUrl = str_replace('url=', '', $queryString);
+    $parts = explode('/', $queryStringWithoutUrl);
+    $firstPart = $parts[0] ?? '';
+    $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+
+    //特別排除 Sequences 頁面載入 sequences.js（強制不要載）
+    if (!($firstPart === 'Sequences' && $fileName === 'sequences.js')) {
+        if ($firstPart === $part) {
+            $path = ($extension === 'css') ? 'css' : 'js';
+            $tag = ($extension === 'css')
+                ? "<link rel=\"stylesheet\" href=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . ASSET_VERSION . "\">"
+                : "<script src=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . ASSET_VERSION . "\"></script>";
+            echo $tag . "\n";
+        }
+    }
+
+    //額外條件：若網址是 Sequences，就強制載入 seq.js
+    if ($firstPart === 'Sequences' && $fileName === 'sequences.js') {
+        echo "<script src=\"" . idas_asset_url('js/seq.js') . '?v=' . ASSET_VERSION . "\"></script>\n";
+    }
+}
+
+function include_css() {
+    $queryString = $_SERVER['QUERY_STRING'] ?? '';
+    $routeParts = explode('/', str_replace('url=', '', $queryString));
+    $controller = $routeParts[0] ?? '';
+    $action = $routeParts[1] ?? '';
+
+    $isMobile = isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/Mobile|Android|iPhone|iPad|iPod/i', $_SERVER['HTTP_USER_AGENT']);
+
+    // 模組對應表
+    $cssMap = [
+        'Jobs'      => ['pc' => 'jobs.css',    'mobile' => 'jobs_m.css'],
+        'Sequences' => ['pc' => 'seq.css',     'mobile' => 'seq_m.css'],
+        'Step'      => ['pc' => 'step.css',    'mobile' => 'step_m.css'],
+        'Inputs'    => ['pc' => 'input.css',   'mobile' => 'input_m.css'],
+        'Outputs'   => ['pc' => 'output.css',  'mobile' => 'output_m.css'],
+        'Settings'  => ['pc' => 'setting.css', 'mobile' => 'setting_m.css'],
+        'Tools'     => ['pc' => 'tools.css'],
+        'Data'      => ['pc' => 'data.css'],
+        'Agents'    => ['pc' => 'agent.css'],
+        'Remotes'   => ['pc' => 'jobs.css'],
+        'Customize' => ['pc' => 'jobs.css'],
+    ];
+
+    $cssFile = null;
+
+    // 特例處理 - Dashboards 模組
+    if ($controller === 'Dashboards') {
+        if ($action === 'index') {
+            $cssFile = 'main.css';
+        } elseif ($action === 'operation') {
+            $cssFile = $isMobile ? 'operation_m.css' : 'operation.css';
+        } else {
+            $cssFile = 'tcc_main.css'; // fallback
+        }
+
+    // 特例處理 - In 模組
+    } elseif ($controller === 'In' || $controller === 'Logins' ||  $controller === 'Login') {
+        $cssFile = 'main.css';
+
+    // 一般對應
+    } elseif (isset($cssMap[$controller])) {
+        $cssFile = $isMobile && isset($cssMap[$controller]['mobile']) 
+            ? $cssMap[$controller]['mobile'] 
+            : $cssMap[$controller]['pc'];
+    }
+
+    // 輸出 <link>
+    if ($cssFile) {
+        echo '<link rel="stylesheet" href="' . idas_asset_url('css/' . $cssFile) . '?v=' . ASSET_VERSION . '" type="text/css">' . "\n";
+    }
+}
+
+
+
+?>
+
+    <!-- ================== 基礎 JS ================== -->
+    <script src="<?php echo idas_asset_url('js/jquery-3.7.1.min.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+
+    <!-- ================== 基礎 CSS ================== -->
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/jquery_data_Tables.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/datatables.min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/w3.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/font-awesome.min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/flatpickr.min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/alertify_min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo ASSET_VERSION; ?>">
+    <?php
+        $queryString = $_SERVER['QUERY_STRING'] ?? '';
+        $route = explode('/', str_replace('url=', '', $queryString))[0] ?? '';
+
+        // 檢查是否為行動裝置
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $isMobile = preg_match('/Mobile|Android|iPhone|iPad|iPod/i', $userAgent);
+
+        // 不在 Inputs 或 Outputs 頁面時，根據裝置載入對應的 CSS
+        if (!in_array($route, ['Inputs', 'Outputs'])) {
+            $cssFile = $isMobile ? 'share_m.css' : 'share.css';
+            echo '<link rel="stylesheet" href="' . idas_asset_url('css/' . $cssFile) . '?v=' . ASSET_VERSION . '">' . "\n";
+        }
+    ?>
+
+
+    
+    <!-- ================== 模組 CSS 動態載入 ================== -->
+    <?php echo include_css();?>
+
+
+    <!-- ================== 共用 JS ================== -->
+    <script src="<?php echo idas_asset_url('js/all.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+
+
+
+    <!-- ================== 模組 JS 動態載入 ================== -->
+    <?php 
+    $modules = ['Inputs', 'Outputs', 'Jobs', 'Data', 'Sequences', 'Step', 'Settings'];
+    foreach ($modules as $mod) {
+        include_asset($mod, strtolower($mod) . '.js');
+    }
+    ?>
+
+    <!-- ================== 其他工具 JS ================== -->
+    <script src="<?php echo idas_asset_url('js/flatpickr.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/flatpickr_zh-tw.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/tcc_data.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
+    <script src="<?php echo idas_asset_url('js/jszip.js'); ?>?v=<?php echo ASSET_VERSION; ?>"></script>
 
 
     <!-- ================== 其他工具 JS ================== -->
@@ -518,3 +1099,4 @@ $(function(){
     margin: 0 4px !important;
 }
 </style>
+<?php endif; ?>

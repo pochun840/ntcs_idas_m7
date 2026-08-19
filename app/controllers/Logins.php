@@ -1,4 +1,503 @@
 <?php
+/*
+ * Single-codebase platform switch.
+ * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
+ * 0 / missing / invalid -> NTCS implementation
+ */
+if (defined('IS_ICONTROLLER') && IS_ICONTROLLER) {
+class Logins extends Controller
+{
+    private $AdminModel;
+    private $LoginModel;
+    private $stepModel;
+    Private $deviceId;
+
+    // 在建構子中將 Post 物件（Model）實例化
+    public function __construct()
+    {
+        $this->LoginModel = $this->model('Login');
+        $this->stepModel = $this->model('Steptcc');
+        $this->AdminModel = $this->model('Admin');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+        $this->deviceId = $this->ntcs_device_db_sysnc();
+
+    }
+
+
+    public function index($url){
+
+        //先做資料庫檔案完整性檢查
+        $repairResult = $this->checkAndRepairDatabaseFiles();
+        // 登入時強制恢復『同一個 JOB 只能一筆 Barcode』規則。
+        $repairResult['ntcs_barcode_schema'] = $this->checkAndRepairBarcodeSingleJobSchema();
+
+        session_start();
+        $_SESSION['sessionid'] = session_id();
+        $_SESSION['privilege'] = '';
+        $error_message = '';
+        $authToken = '';
+        $account = $this->LoginModel->get_account();
+
+
+        $targetDir = '/var/www/html/extracted';
+        $this->deleteDirectory($targetDir);
+
+       
+        $data = [
+            'error_message' => $error_message,
+            'account' => $account
+        ];
+
+        //例外狀況，切換語系
+        $exception = false;
+        if(isset($url[1])){
+            if($url[0] == 'Dashboards' && $url[1] == 'change_language' ){
+                $exception = true;
+            }
+        }
+
+        //判斷有沒有post password
+        //有post就驗證password
+        //沒有就單純檢查cookies
+        if( !empty($_POST['password']) && isset($_POST['password'])  ){
+            //login attempt
+            $_POST['username'] = trim($_POST['username']);
+            $_POST['password'] = trim($_POST['password']);
+        
+            $this->logLoginAttempt();
+
+            $username = $_POST['username'];
+            $password = $_POST['password'];
+            $authToken = hash('sha256', $password);
+            
+
+            
+            if($this->verifyCredentials($username,$authToken)){
+                                
+                // 同步控制器資料庫（ntcs_data.db）至 iDAS
+                $this->ntcs_data_db_sysnc();
+                $this->set_ver();
+
+                // ------------------------------
+                // Tool Spec Sync (Web-triggered)
+                // ------------------------------
+                // Gate(10s): 限制同步檢查頻率，避免每個 request 都打 DB
+                // Lock:     使用 flock 防止多 request 同步造成重複/競態
+                // Sync:     只在來源(controller)與目的(iDAS)值不同時才更新
+                // Note:     非 cron；沒有 request 就不會自動同步
+                if ($this->shouldRunToolSpecSync(10)) {
+                    $this->runOnceWithFlag(
+                        '/var/www/html/database',        // lock / state 檔案目錄
+                        '.tool_spec_sync',               // 任務鎖名稱（key）
+                        fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
+                    );
+                }
+
+
+                if (PHP_OS_FAMILY === 'Linux') {
+                    $dir = '/mnt/ramdisk/ftp';
+
+                    if (@chmod($dir, 0777)) {
+                        echo json_encode([
+                            "status" => "success",
+                            "message" => "✅ PHP chmod 成功"
+                        ]);
+                    } else {
+                        // 如果 PHP chmod 失敗 → 改用 sudo
+                        $cmd = 'sudo chmod 777 ' . escapeshellarg($dir);
+                        $output = shell_exec($cmd . ' 2>&1');
+
+                        // 檢查結果
+                        clearstatcache(); // 清快取
+                        $perms = substr(sprintf('%o', fileperms($dir)), -4);
+                        if ($perms == '0777') {
+                            /*echo json_encode([
+                                "status" => "success",
+                                "message" => "✅ sudo chmod 成功"
+                            ]);*/
+                        } else {
+                            echo json_encode([
+                                "status" => "error",
+                                "message" => "❌ sudo chmod 失敗，結果：" . $output
+                            ]);
+                        }
+                    }
+                }
+
+
+                setcookie('username', $username, time() + 600, '/');
+                setcookie('auth_token', $authToken, time() + 600, '/');
+
+                header('Location: /idas/public/?url=Dashboards');
+                exit;
+            }else{
+                // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
+                $this->logout();
+                $this->view('login/index', $data);
+                exit();
+            }
+
+        }else{
+
+            if ($this->isAuthenticated() || $exception ) { //切換語系例外
+                // 用戶已登錄，繼續處理其他操作
+                return true;
+            } else {
+                // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
+                $this->logout();
+                $this->view('login/index', $data);
+                exit();
+            }
+        }
+
+    }
+
+    public function isAuthenticated() {
+        if (isset($_COOKIE['auth_token']) && isset($_COOKIE['username'])) {
+            $authToken = $_COOKIE['auth_token'];
+            
+            // 解密和驗證令牌的有效性，根據需要進行自定義驗證
+            $username = $_COOKIE['username'];
+            $valid_check = $this->verifyCredentials($username,$authToken);
+
+            if ($valid_check !== false) {
+                // 令牌有效，可以根據需要刷新 Cookie 的過期時間
+                setcookie('username', $username, time() + 600, '/');
+                setcookie('auth_token', $authToken, time() + 600, '/');
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    public function logout() {
+        setcookie('username', '', time() - 3600, '/');
+        setcookie('auth_token', '', time() - 3600, '/');
+
+    }
+
+    // 验证用户提交的用户名和密码
+    public function verifyCredentials($username,$authToken) {
+        // 自定義的身份驗證邏輯，根據實際情況進行驗證
+        // 返回 true 表示驗證成功，false 表示驗證失敗
+        // 可以與數據庫或其他存儲進行比對驗證
+        $pwd = $this->LoginModel->getpwd($username); //控制器密碼
+        // $pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
+        $input = $authToken;
+        $output = hash('sha256', $pwd['passwd']);
+        // $output2 = hash('sha256', $pwd2['password']);
+
+        if($input == $output){
+            //登入成功寫入 active_sessions 資料庫
+            $reslut = $this->active_sessions('admin');
+
+            if($reslut){
+                $_SESSION['privilege'] = 'admin';
+                return true;
+            }else{
+                return false;
+            }
+        }else{
+            return false;
+        }
+    }
+
+    public function logLoginAttempt()
+    {
+        if (!empty($_SERVER["HTTP_CLIENT_IP"])){
+            $ip = $_SERVER["HTTP_CLIENT_IP"];
+        }elseif(!empty($_SERVER["HTTP_X_FORWARDED_FOR"])){
+            $ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
+        }else{
+            $ip = $_SERVER["REMOTE_ADDR"];
+        }
+        $this->LoginModel->logLoginAttempt($ip);
+    }
+    
+    public function active_sessions($username)
+    {
+        //0.先清理過期的session
+        //1.先確認是否達連線上限
+        //2.如果已達連線上限，回傳false
+        //3.如果未達連線上限，寫入db
+        //4.檢查session id是否存在
+        //5.如果存在update time
+        //6.如果不存在insert
+        //$max_concurrent_users = $this->Max_User();//連線數量限制
+        $session_id = session_id();
+
+        if (!empty($_SERVER["HTTP_CLIENT_IP"])){
+            $ip = $_SERVER["HTTP_CLIENT_IP"];
+        }elseif(!empty($_SERVER["HTTP_X_FORWARDED_FOR"])){
+            $ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
+        }else{
+            $ip = $_SERVER["REMOTE_ADDR"];
+        }
+
+        //清理過期的session
+        $this->LoginModel->cleanExpiredSessions();
+        //確認目前連線數量，排除目前的session_id
+        $concurrent_users = $this->LoginModel->GetConcurrentUsers($session_id);
+
+        if( $username == 'guest'){
+            $this->Users_Uplimit();
+            return false;
+        }else{
+            $this->LoginModel->active_sessions($username,$session_id,$ip);
+            return true;
+        }
+
+    }
+
+    //連線數達到上限時，直接從這邊跳回登入畫面，並帶error message
+    public function Users_Uplimit()
+    {
+        $error_message = '連線數已達上限';
+        $authToken = '';
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        $data = [
+            'error_message' => $error_message,
+            'iDas_Vesion' => $iDas_Vesion,
+        ];
+
+        $this->logout();
+        $this->view('login/index', $data);
+        exit();
+    }
+
+    public function Max_User()
+    {
+        $reslut = $this->LoginModel->get_max_user();
+        return $reslut;
+    }
+
+    public function Activation_Check()
+    {
+        //判斷是否已授權，如果未授權就導回登入頁
+        $auth_status = $this->AdminModel->Get_Das_Config('activate_status');
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        $data = [
+            'error_message' => '',
+            'iDas_Vesion' => $iDas_Vesion,
+        ];
+
+        if($auth_status == 0){//未授權
+            $data['error_message'] = 'inactive';
+            $this->logout();
+            $this->view('login/index', $data);
+            exit();
+        }else if($auth_status == 1){//試用版，要再判斷到期日
+            // date_default_timezone_set('UTC');
+            $expired_date = $this->AdminModel->Get_Das_Config('expired_date');
+            $today = date("Y-m-d");
+            if($today > $expired_date){
+                $data['error_message'] = 'expired';
+                $this->logout();
+                $this->view('login/index', $data);
+                exit();
+            }else{
+                return true;
+            }
+
+        }else if($auth_status == 2){//永久授權
+            return true;
+        }else{
+            $data['error_message'] = 'inactive';
+            $this->logout();
+            $this->view('login/index', $data);
+            exit();
+        }
+    }
+
+
+    public function deleteDirectory($dir) {
+
+        if (!file_exists($dir)) return true;
+        if (!is_dir($dir)) return unlink($dir);
+
+        foreach (scandir($dir) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) return false;
+        }
+
+        return rmdir($dir);
+    }
+
+    /**
+     * 判斷 iDAS Update 是否正持有更新鎖。
+     * 更新期間禁止登入流程自行依 info.json 改寫 idas_version，避免版本號早於 transaction commit。
+     */
+    private function isIdasUpdateLocked(): bool
+    {
+        $lockPath = '/var/www/html/database/.idas_update.lock';
+        if (!is_file($lockPath)) {
+            return false;
+        }
+
+        $handle = @fopen($lockPath, 'c');
+        if (!$handle) {
+            // 無法確認時採保守策略，避免更新途中寫版本。
+            return true;
+        }
+
+        $acquired = @flock($handle, LOCK_SH | LOCK_NB);
+        if ($acquired) {
+            @flock($handle, LOCK_UN);
+            @fclose($handle);
+            return false;
+        }
+
+        @fclose($handle);
+        return true;
+    }
+
+    // #IDAS上傳：版本同步僅在沒有 Update transaction 時執行。
+    public function set_ver($debug = false) {
+
+        if ($this->isIdasUpdateLocked()) {
+            error_log('[iDAS UPDATE] login set_ver skipped: update lock is active');
+            return false;
+        }
+
+        $info_json_url = '/var/www/html/idas/info.json';
+        $verify_data = json_decode(@file_get_contents($info_json_url), true);
+        if (!is_array($verify_data) || empty($verify_data['idas_version'])) {
+            error_log('[iDAS] login set_ver skipped: invalid or missing info.json');
+            return false;
+        }
+
+        $currentVersion = (string)$this->AdminModel->Get_Das_Config('idas_version');
+        $targetVersion  = (string)$verify_data['idas_version'];
+        if ($currentVersion === $targetVersion) {
+            return true;
+        }
+
+        return (bool)$this->AdminModel->Set_Das_Config('idas_version', $targetVersion);
+    }
+
+
+    /**
+     * 檢查 database 目錄底下 IDAS 檔案是否為 0KB
+     * 若為 0KB 或不存在，則從 controller 端複製來源檔案覆蓋
+     */
+    private function checkAndRepairDatabaseFiles(): array
+    {
+        $baseDir = '/var/www/html/database/';
+        $srcDir  = '/home/kls/NTCS7/';
+
+        $files = [
+            'KLS_NTCS_IDAS.Lin'     => 'KLS_NTCS.Lin',
+            'ntcs_barcode_IDAS.db'  => 'ntcs_barcode.db',
+            'ntcs_device_IDAS.db'   => 'ntcs_device.db',
+        ];
+
+        $result = [];
+
+        // 確保目標目錄存在
+        if (!is_dir($baseDir)) {
+            mkdir($baseDir, 0777, true);
+        }
+
+        foreach ($files as $targetName => $sourceName) {
+
+            $targetPath = $baseDir . $targetName;
+            $sourcePath = $srcDir  . $sourceName;
+
+            $needsRepair = false;
+
+            // 檔案不存在
+            if (!file_exists($targetPath)) {
+                $needsRepair = true;
+            }
+            // 檔案大小為 0
+            elseif (filesize($targetPath) === 0) {
+                $needsRepair = true;
+            }
+
+            if ($needsRepair) {
+
+                if (file_exists($sourcePath) && filesize($sourcePath) > 0) {
+
+                    if (copy($sourcePath, $targetPath)) {
+                        $result[$targetName] = 'repaired';
+                    } else {
+                        $result[$targetName] = 'copy_failed';
+                    }
+
+                } else {
+                    $result[$targetName] = 'source_missing';
+                }
+
+            } else {
+                $result[$targetName] = 'ok';
+            }
+        }
+
+        return $result;
+    }
+
+
+
+
+    /** 登入時套用「同一個 JOB 只能一筆 Barcode」規則。 */
+    private function checkAndRepairBarcodeSingleJobSchema(): array
+    {
+        $paths = [
+            'idas' => '/var/www/html/database/ntcs_barcode_IDAS.db',
+            'controller' => '/home/kls/NTCS7/ntcs_barcode.db',
+        ];
+        $result = ['status'=>'ok','policy'=>'single_barcode_per_job','databases'=>[]];
+        if (PHP_OS_FAMILY !== 'Linux') { $result['status']='skipped'; return $result; }
+        foreach ($paths as $name=>$path) {
+            $r=$this->normalizeBarcodeSingleJobDb($path);
+            $result['databases'][$name]=$r;
+            if (($r['status'] ?? '') === 'failed') $result['status']='failed';
+        }
+        error_log('[BarcodeSingle] '.json_encode($result, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        return $result;
+    }
+
+    private function normalizeBarcodeSingleJobDb(string $dbPath): array
+    {
+        $table='ntcs_barcode_test';
+        $ret=['status'=>'ok','path'=>$dbPath,'duplicates_removed'=>0,'seq_id_added'=>false,'unique_index'=>false];
+        if (!is_file($dbPath) || filesize($dbPath)<=0) { $ret['status']='missing'; return $ret; }
+        try {
+            $pdo=new PDO('sqlite:'.$dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+            $st=$pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=:name LIMIT 1");
+            $st->execute([':name'=>$table]);
+            if (!$st->fetch(PDO::FETCH_ASSOC)) { $ret['status']='failed'; $ret['message']='table_missing'; return $ret; }
+            $cols=$pdo->query('PRAGMA table_info('.$table.')')->fetchAll(PDO::FETCH_ASSOC);
+            $hasJob=false; $hasSeq=false; $jobPk=false;
+            foreach ($cols as $c) {
+                $n=strtolower((string)($c['name'] ?? ''));
+                if ($n==='job_id') { $hasJob=true; $jobPk=((int)($c['pk'] ?? 0))>0; }
+                if ($n==='seq_id') $hasSeq=true;
+            }
+            if (!$hasJob) { $ret['status']='failed'; $ret['message']='job_id_missing'; return $ret; }
+            $pdo->beginTransaction();
+            if (!$hasSeq) { $pdo->exec('ALTER TABLE '.$table.' ADD COLUMN seq_id INTEGER DEFAULT -1'); $ret['seq_id_added']=true; }
+            $dup=(int)$pdo->query('SELECT COALESCE(SUM(cnt-1),0) FROM (SELECT COUNT(*) cnt FROM '.$table.' WHERE job_id IS NOT NULL GROUP BY job_id HAVING COUNT(*)>1)')->fetchColumn();
+            if ($dup>0) {
+                $pdo->exec('DELETE FROM '.$table.' WHERE rowid NOT IN (SELECT MIN(rowid) FROM '.$table.' WHERE job_id IS NOT NULL GROUP BY job_id) AND job_id IS NOT NULL');
+                $ret['duplicates_removed']=$dup;
+            }
+            if (!$jobPk) { $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS ux_ntcs_barcode_test_job_id ON '.$table.' (job_id)'); $ret['unique_index']=true; }
+            $pdo->commit();
+            return $ret;
+        } catch (Throwable $e) {
+            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
+            $ret['status']='failed'; $ret['message']=$e->getMessage(); return $ret;
+        }
+    }
+
+}
+} else {
 /* Default Login Accounts Fix V2 + Login Cookie Cleanup + Short Animation V1 */
 
 class Logins extends Controller
@@ -399,8 +898,8 @@ class Logins extends Controller
 
         //先做資料庫檔案完整性檢查
         $repairResult = $this->checkAndRepairDatabaseFiles();
-        // 登入時檢查 Barcode DB 是否支援一個 JOB 多筆 Barcode；不支援時自動從 Controller DB 重建並轉移舊資料。
-        $repairResult['ntcs_barcode_schema'] = $this->checkAndRepairBarcodeMultiJobSchema();
+        // 登入時強制 Barcode DB 為 1:1：一個 JOB 只能有一個 Barcode，且同一 Barcode 只能屬於一個 JOB。
+        $repairResult['ntcs_barcode_schema'] = $this->checkAndRepairBarcodeOneToOneSchema();
 
         // Login page safety check:
         // Ensure both controller DB and iDAS DB have default login accounts.
@@ -1258,380 +1757,29 @@ class Logins extends Controller
 
 
 
-    private function checkAndRepairBarcodeMultiJobSchema(): array
+    private function checkAndRepairBarcodeOneToOneSchema(): array
     {
         $targetPath = '/var/www/html/database/ntcs_barcode_IDAS.db';
-        $sourcePath = '/home/kls/NTCS7/ntcs_barcode.db';
-        $tableName  = 'ntcs_barcode_test';
-
-        $result = [
-            'status' => 'ok',
-            'action' => 'none',
-            'message' => '',
-            'old_rows' => 0,
-            'merged_rows' => 0,
-            'backup' => '',
-        ];
 
         if (PHP_OS_FAMILY !== 'Linux') {
-            $result['status'] = 'skipped';
-            $result['message'] = 'not_linux';
-            return $result;
-        }
-
-        try {
-            if ($this->barcodeTableSupportsMultiJob($targetPath, $tableName)) {
-                return $result;
-            }
-
-            $oldRows = $this->readBarcodeRowsFromDb($targetPath, $tableName);
-            $result['old_rows'] = count($oldRows);
-
-            if (!is_dir(dirname($targetPath))) {
-                @mkdir(dirname($targetPath), 0777, true);
-            }
-
-            if (is_file($targetPath)) {
-                $backupPath = $targetPath . '.before_multi_barcode_' . date('YmdHis') . '.bak';
-                if (@copy($targetPath, $backupPath)) {
-                    $result['backup'] = $backupPath;
-                }
-            }
-
-            $copiedFromSource = false;
-            if (is_file($sourcePath) && filesize($sourcePath) > 0) {
-                if (@copy($sourcePath, $targetPath)) {
-                    $copiedFromSource = true;
-                    $result['action'] = 'copy_source_db';
-                    @chmod($targetPath, 0666);
-                } else {
-                    $result['action'] = 'copy_source_failed';
-                }
-            } else {
-                $result['action'] = 'source_missing';
-            }
-
-            // 若來源 DB schema 仍不支援，或來源不存在，直接用目前 target DB 重建表結構。
-            if (!$this->barcodeTableSupportsMultiJob($targetPath, $tableName)) {
-                if (!$this->rebuildBarcodeTableForMultiJob($targetPath, $tableName)) {
-                    $result['status'] = 'failed';
-                    $result['message'] = $copiedFromSource
-                        ? 'copied_source_but_rebuild_failed'
-                        : 'source_unavailable_and_rebuild_failed';
-                    $this->logBarcodeRepairResult($result);
-                    return $result;
-                }
-                $result['action'] .= '+rebuild_schema';
-            }
-
-            $result['merged_rows'] = $this->mergeBarcodeRowsIntoDb($targetPath, $tableName, $oldRows);
-            $result['status'] = 'repaired';
-            $result['message'] = 'barcode_db_supports_multi_job';
-            $this->logBarcodeRepairResult($result);
-            return $result;
-
-        } catch (Throwable $e) {
-            $result['status'] = 'failed';
-            $result['message'] = $e->getMessage();
-            $this->logBarcodeRepairResult($result);
-            return $result;
-        }
-    }
-
-
-    private function barcodeTableSupportsMultiJob(string $dbPath, string $tableName): bool
-    {
-        if (!is_file($dbPath) || filesize($dbPath) <= 0) {
-            return false;
-        }
-
-        try {
-            $pdo = $this->openSqliteDatabase($dbPath);
-
-            if (!$this->sqliteTableExists($pdo, $tableName)) {
-                return false;
-            }
-
-            $columns = $pdo->query('PRAGMA table_info(' . $tableName . ')')->fetchAll(PDO::FETCH_ASSOC);
-            $hasJobId = false;
-
-            foreach ($columns as $column) {
-                $name = strtolower((string)($column['name'] ?? ''));
-                if ($name === 'job_id') {
-                    $hasJobId = true;
-                    if ((int)($column['pk'] ?? 0) > 0) {
-                        return false;
-                    }
-                }
-            }
-
-            if (!$hasJobId) {
-                return false;
-            }
-
-            // 避免有 UNIQUE(job_id) 這種單欄唯一限制，否則仍無法一個 JOB 多筆 Barcode。
-            $indexes = $pdo->query('PRAGMA index_list(' . $tableName . ')')->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($indexes as $index) {
-                if ((int)($index['unique'] ?? 0) !== 1) {
-                    continue;
-                }
-
-                $indexName = (string)($index['name'] ?? '');
-                if ($indexName === '') {
-                    continue;
-                }
-
-                $safeIndexName = str_replace("'", "''", $indexName);
-                $indexColumns = $pdo->query("PRAGMA index_info('{$safeIndexName}')")->fetchAll(PDO::FETCH_ASSOC);
-                $columnNames = array_map(
-                    static fn($row) => strtolower((string)($row['name'] ?? '')),
-                    $indexColumns
-                );
-
-                if (count($columnNames) === 1 && $columnNames[0] === 'job_id') {
-                    return false;
-                }
-            }
-
-            return true;
-        } catch (Throwable $e) {
-            return false;
-        }
-    }
-
-
-
-    private function openSqliteDatabase(string $dbPath): PDO
-    {
-        $pdo = new PDO('sqlite:' . $dbPath);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        return $pdo;
-    }
-
-
-
-    private function sqliteTableExists(PDO $pdo, string $tableName): bool
-    {
-        $stmt = $pdo->prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = :name LIMIT 1");
-        $stmt->bindValue(':name', $tableName, PDO::PARAM_STR);
-        $stmt->execute();
-        return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-
-    private function readBarcodeRowsFromDb(string $dbPath, string $tableName): array
-    {
-        if (!is_file($dbPath) || filesize($dbPath) <= 0) {
-            return [];
-        }
-
-        try {
-            $pdo = $this->openSqliteDatabase($dbPath);
-            if (!$this->sqliteTableExists($pdo, $tableName)) {
-                return [];
-            }
-
-            $columnsInfo = $pdo->query('PRAGMA table_info(' . $tableName . ')')->fetchAll(PDO::FETCH_ASSOC);
-            $columns = array_map(
-                static fn($row) => strtolower((string)($row['name'] ?? '')),
-                $columnsInfo
-            );
-
-            $select = [
-                in_array('job_id', $columns, true)       ? 'job_id' : 'NULL AS job_id',
-                in_array('barcode', $columns, true)      ? 'barcode' : "'' AS barcode",
-                in_array('range_from', $columns, true)   ? 'range_from' : '1 AS range_from',
-                in_array('range_count', $columns, true)  ? 'range_count' : '0 AS range_count',
-                in_array('barcode_mode', $columns, true) ? 'barcode_mode' : '0 AS barcode_mode',
-                in_array('seq_id', $columns, true)       ? 'COALESCE(seq_id, -1) AS seq_id' : '-1 AS seq_id',
+            return [
+                'status' => 'skipped',
+                'action' => 'none',
+                'message' => 'not_linux',
             ];
-
-            $sql = 'SELECT ' . implode(', ', $select) . ' FROM ' . $tableName . ' ORDER BY rowid ASC';
-            $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-            return is_array($rows) ? $rows : [];
-        } catch (Throwable $e) {
-            return [];
-        }
-    }
-
-
-    private function rebuildBarcodeTableForMultiJob(string $dbPath, string $tableName): bool
-    {
-        if ($dbPath === '') {
-            return false;
         }
 
-        try {
-            if (!is_file($dbPath)) {
-                if (!is_dir(dirname($dbPath))) {
-                    @mkdir(dirname($dbPath), 0777, true);
-                }
-                @touch($dbPath);
-                @chmod($dbPath, 0666);
-            }
-
-            $existingRows = $this->readBarcodeRowsFromDb($dbPath, $tableName);
-            $pdo = $this->openSqliteDatabase($dbPath);
-            $oldTable = $tableName . '_old_' . date('YmdHis');
-
-            $pdo->beginTransaction();
-
-            if ($this->sqliteTableExists($pdo, $tableName)) {
-                $pdo->exec('ALTER TABLE ' . $tableName . ' RENAME TO ' . $oldTable);
-            }
-
-            $pdo->exec(
-                'CREATE TABLE ' . $tableName . ' (
-                    job_id INTEGER,
-                    barcode TEXT,
-                    range_from INTEGER,
-                    range_count INTEGER,
-                    barcode_mode INTEGER,
-                    seq_id INTEGER
-                )'
-            );
-
-            $insert = $pdo->prepare(
-                'INSERT INTO ' . $tableName . ' (
-                    job_id,
-                    barcode,
-                    range_from,
-                    range_count,
-                    barcode_mode,
-                    seq_id
-                ) VALUES (
-                    :job_id,
-                    :barcode,
-                    :range_from,
-                    :range_count,
-                    :barcode_mode,
-                    :seq_id
-                )'
-            );
-
-            foreach ($existingRows as $row) {
-                $this->bindBarcodeRowValues($insert, $row);
-                $insert->execute();
-            }
-
-            if ($this->sqliteTableExists($pdo, $oldTable)) {
-                $pdo->exec('DROP TABLE ' . $oldTable);
-            }
-
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_ntcs_barcode_test_job_id ON ' . $tableName . ' (job_id)');
-
-            $pdo->commit();
-            return true;
-        } catch (Throwable $e) {
-            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            return false;
-        }
-    }
-
-
-    private function mergeBarcodeRowsIntoDb(string $dbPath, string $tableName, array $oldRows): int
-    {
-        if (empty($oldRows) || !is_file($dbPath)) {
-            return 0;
-        }
-
-        try {
-            $pdo = $this->openSqliteDatabase($dbPath);
-            if (!$this->sqliteTableExists($pdo, $tableName)) {
-                return 0;
-            }
-
-            $existingRows = $this->readBarcodeRowsFromDb($dbPath, $tableName);
-            $seen = [];
-            foreach ($existingRows as $row) {
-                $seen[$this->barcodeRowKey($row)] = true;
-            }
-
-            $insert = $pdo->prepare(
-                'INSERT INTO ' . $tableName . ' (
-                    job_id,
-                    barcode,
-                    range_from,
-                    range_count,
-                    barcode_mode,
-                    seq_id
-                ) VALUES (
-                    :job_id,
-                    :barcode,
-                    :range_from,
-                    :range_count,
-                    :barcode_mode,
-                    :seq_id
-                )'
-            );
-
-            $merged = 0;
-            $pdo->beginTransaction();
-
-            foreach ($oldRows as $row) {
-                $key = $this->barcodeRowKey($row);
-                if (isset($seen[$key])) {
-                    continue;
-                }
-
-                $this->bindBarcodeRowValues($insert, $row);
-                if ($insert->execute()) {
-                    $seen[$key] = true;
-                    $merged++;
-                }
-            }
-
-            $pdo->commit();
-            return $merged;
-        } catch (Throwable $e) {
-            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            return 0;
-        }
-    }
-
-
-
-    private function bindBarcodeRowValues(PDOStatement $statement, array $row): void
-    {
-        $statement->bindValue(':job_id', isset($row['job_id']) && $row['job_id'] !== '' ? (int)$row['job_id'] : null, isset($row['job_id']) && $row['job_id'] !== '' ? PDO::PARAM_INT : PDO::PARAM_NULL);
-        $statement->bindValue(':barcode', (string)($row['barcode'] ?? ''), PDO::PARAM_STR);
-        $statement->bindValue(':range_from', isset($row['range_from']) && $row['range_from'] !== '' ? (int)$row['range_from'] : 1, PDO::PARAM_INT);
-        $statement->bindValue(':range_count', isset($row['range_count']) && $row['range_count'] !== '' ? (int)$row['range_count'] : 0, PDO::PARAM_INT);
-        $statement->bindValue(':barcode_mode', isset($row['barcode_mode']) && $row['barcode_mode'] !== '' ? (int)$row['barcode_mode'] : 0, PDO::PARAM_INT);
-        $statement->bindValue(':seq_id', isset($row['seq_id']) && $row['seq_id'] !== '' ? (int)$row['seq_id'] : -1, PDO::PARAM_INT);
-    }
-
-
-
-    private function barcodeRowKey(array $row): string
-    {
-        return implode('|', [
-            (string)($row['job_id'] ?? ''),
-            (string)($row['barcode'] ?? ''),
-            (string)($row['range_from'] ?? ''),
-            (string)($row['range_count'] ?? ''),
-            (string)($row['barcode_mode'] ?? ''),
-            (string)($row['seq_id'] ?? -1),
-        ]);
-    }
-
-
-
-    private function logBarcodeRepairResult(array $result): void
-    {
-        $message = '[Barcode DB repair] ' . json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $result = BarcodeSchemaGuard::ensureOneToOne($targetPath, 'ntcs_barcode_test');
+        $message = '[Barcode DB 1:1] ' . json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if (method_exists($this, 'logMessage')) {
             $this->logMessage($message);
-            return;
+        } else {
+            error_log($message);
         }
 
-        error_log($message);
+        return $result;
     }
-}
 
+}
+}

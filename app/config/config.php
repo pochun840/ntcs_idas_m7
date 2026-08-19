@@ -14,6 +14,72 @@ date_default_timezone_set(trim(shell_exec('cat /etc/timezone')));
 // App 根目錄，這是引入 app 資料夾裡的資源用的
 define('APPROOT', dirname(dirname(__FILE__)) . '/');
 
+
+/* ============================================================
+ * Platform switch
+ * /home/kls/upgrade/icontroller
+ *   0 / missing / invalid => NTCS (default, existing behavior)
+ *   1                   => i-controller variant files
+ * ============================================================ */
+define('ICONTROLLER_FLAG_FILE', '/home/kls/upgrade/icontroller');
+
+function is_i_controller(): bool
+{
+    if (PHP_OS_FAMILY !== 'Linux') {
+        return false;
+    }
+
+    $flagFile = ICONTROLLER_FLAG_FILE;
+    if (!is_file($flagFile) || !is_readable($flagFile)) {
+        return false;
+    }
+
+    $value = @file_get_contents($flagFile);
+    if ($value === false) {
+        return false;
+    }
+
+    return trim((string)$value) === '1';
+}
+
+define('IS_ICONTROLLER', is_i_controller());
+define('IDAS_PLATFORM', IS_ICONTROLLER ? 'icontroller' : 'ntcs');
+
+/** Resolve an i-controller variant file when enabled. */
+function idas_platform_app_file(string $relative): string
+{
+    $relative = ltrim(str_replace('\\', '/', $relative), '/');
+    $defaultFile = APPROOT . $relative;
+
+    if (IS_ICONTROLLER) {
+        $info = pathinfo($relative);
+        $dir  = isset($info['dirname']) && $info['dirname'] !== '.'
+            ? rtrim($info['dirname'], '/') . '/'
+            : '';
+        $name = $info['filename'] ?? '';
+        $ext  = isset($info['extension']) ? '.' . $info['extension'] : '';
+
+        $iControllerFile = APPROOT
+            . $dir
+            . $name
+            . '_icontroller'
+            . $ext;
+
+        if (is_file($iControllerFile)) {
+            return $iControllerFile;
+        }
+    }
+
+    return $defaultFile;
+}
+
+/** Resolve an i-controller variant asset when enabled. */
+function idas_asset_url(string $relative): string
+{
+    $relative = ltrim(str_replace('\\', '/', $relative), '/');
+    return URLROOT . $relative;
+}
+
 // URL 根目錄，這是引入 public 資料夾裡的資源，或是頁面跳轉時用的
 define('URLROOT', '../public/'); //local用
 

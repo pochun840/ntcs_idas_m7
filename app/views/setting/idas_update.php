@@ -1,3 +1,116 @@
+<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php
+$idasUpdateLangRaw = strtolower(trim((string)(
+    $_SESSION['language']
+    ?? $_COOKIE['language']
+    ?? $_COOKIE['languages']
+    ?? 'en-us'
+)));
+$idasUpdateLangRaw = str_replace('_', '-', $idasUpdateLangRaw);
+
+if (in_array($idasUpdateLangRaw, ['zh-tw', 'zh-hant', 'tw'], true)) {
+    $idasUpdateLang = 'zh-tw';
+} elseif (in_array($idasUpdateLangRaw, ['zh-cn', 'zh-hans', 'cn'], true)) {
+    $idasUpdateLang = 'zh-cn';
+} else {
+    $idasUpdateLang = 'en-us';
+}
+
+$idasUpdateI18nAll = [
+    'en-us' => [
+        'downgrade_detected' => '⚠ Downgrade detected',
+        'special_switch_detected' => '⚠ Special version switch detected',
+        'downgrade_warning' => "The selected package is a downgrade or special version switch.\nFor downgrade, the system will rebuild the iDAS DB. Switching between Standard and SA349 in either direction also forces a DB rebuild to avoid incompatible edition data remaining.\nA backup and rollback snapshot will be created before the update.",
+        'pack_version' => 'Update package version',
+        'version_status' => 'Version status',
+        'status_upgrade' => 'Upgrade',
+        'status_upgrade_special' => 'Upgrade / Special version switch',
+        'status_same' => 'Same version',
+        'status_downgrade' => 'Downgrade',
+        'status_special_switch' => 'Special version switch',
+        'db_rebuild_required' => 'DB rebuild required',
+        'checking' => 'Checking package version...',
+        'check_failed' => 'Unable to verify package version.',
+    ],
+    'zh-tw' => [
+        'downgrade_detected' => '⚠ 偵測到降版本',
+        'special_switch_detected' => '⚠ 偵測到特殊版本切換',
+        'downgrade_warning' => "系統偵測到更新包為降版本或特殊版本切換。\n降版本時會重建 iDAS DB；Standard ↔ SA349 任一方向切換也會強制重建 DB，避免不同版本格式資料殘留。\n更新前系統會先建立備份與 rollback 快照。",
+        'pack_version' => '更新包版本',
+        'version_status' => '版本判斷',
+        'status_upgrade' => '升版本',
+        'status_upgrade_special' => '升版本 / 特殊版本切換',
+        'status_same' => '同版本更新',
+        'status_downgrade' => '降版本',
+        'status_special_switch' => '特殊版本切換',
+        'db_rebuild_required' => '需要重建 DB',
+        'checking' => '正在檢查更新包版本...',
+        'check_failed' => '無法驗證更新包版本。',
+    ],
+    'zh-cn' => [
+        'downgrade_detected' => '⚠ 检测到降版本',
+        'special_switch_detected' => '⚠ 检测到特殊版本切换',
+        'downgrade_warning' => "系统检测到更新包为降版本或特殊版本切换。\n降版本时会重建 iDAS DB；Standard ↔ SA349 任一方向切换也会强制重建 DB，避免不同版本格式数据残留。\n更新前系统会先建立备份与 rollback 快照。",
+        'pack_version' => '更新包版本',
+        'version_status' => '版本判断',
+        'status_upgrade' => '升版本',
+        'status_upgrade_special' => '升版本 / 特殊版本切换',
+        'status_same' => '同版本更新',
+        'status_downgrade' => '降版本',
+        'status_special_switch' => '特殊版本切换',
+        'db_rebuild_required' => '需要重建 DB',
+        'checking' => '正在检查更新包版本...',
+        'check_failed' => '无法验证更新包版本。',
+    ],
+];
+$idasUpdateI18n = $idasUpdateI18nAll[$idasUpdateLang] ?? $idasUpdateI18nAll['en-us'];
+?>
+<script>
+window.IDAS_UPDATE_I18N = <?php echo json_encode($idasUpdateI18n, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+</script>
+
+<div id="iDas-Update_Setting" class="divMode" style="display: none;">
+    <div class="row t2" style="padding-top: 30px">
+        <div class="col-3 t1"><?php echo $text['system_idas_current_version'];?>:</div>
+        <div class="col-3 t2">
+            <input id="idas_software_version" name="idas_software_version" type="text" value="<?php echo htmlspecialchars((string)$data['idas_version'], ENT_QUOTES, 'UTF-8');?>" style="height: 32px" class="form-control" disabled>
+        </div>
+    </div>
+ 
+    <div class="row t2">
+        <div class="col-3 t1"><?php echo $text['system_idas_upload_file'];?>:</div>
+        <div class="col-3 t2">
+            <input type="file" id="file-uploader" data-target="file-uploader" accept=".pack" class="form-control" style="height: 32px">
+        </div>
+    </div>
+
+    <div class="row t2 idas-pack-check-row is-hidden" id="idas-pack-check-row">
+        <div class="col-3 t1"></div>
+        <div class="col-7 t2">
+            <div class="idas-pack-check-panel" id="idas-pack-check-panel">
+                <div><strong><?php echo htmlspecialchars($idasUpdateI18n['pack_version'], ENT_QUOTES, 'UTF-8'); ?>：</strong><span id="idas-pack-version">-</span></div>
+                <div><strong><?php echo htmlspecialchars($idasUpdateI18n['version_status'], ENT_QUOTES, 'UTF-8'); ?>：</strong><span id="idas-pack-status">-</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row t2 idas-downgrade-row is-hidden" id="idas-downgrade-row">
+        <div class="col-3 t1"></div>
+        <div class="col-7 t2">
+            <div class="idas-downgrade-notice">
+                <strong id="idas-risk-title"><?php echo htmlspecialchars($idasUpdateI18n['downgrade_detected'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                <div class="idas-downgrade-warning">
+                    <?php echo nl2br(htmlspecialchars($idasUpdateI18n['downgrade_warning'], ENT_QUOTES, 'UTF-8')); ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center;margin-top:50px;">
+        <input id="idas-upload-btn" class="all-btn w3-submit w3-border w3-round-large idas-btn-disabled" type="button" value="<?php echo $text['system_idas_upload_file'];?>" onclick='idas_update();' disabled>
+    </div> 
+</div>
+<?php else: ?>
 <?php
 $idasUpdateLangRaw = strtolower(trim((string)(
     $_SESSION['language']
@@ -116,3 +229,4 @@ if ($idasCurrentVersionDisplay !== '' && preg_match('/^(\d+\.\d+)\.0(_[A-Za-z0-9
         <input id="idas-upload-btn" class="all-btn w3-submit w3-border w3-round-large idas-btn-disabled" type="button" value="<?php echo $text['system_idas_upload_file'];?>" onclick='idas_update();' disabled>
     </div> 
 </div>
+<?php endif; ?>

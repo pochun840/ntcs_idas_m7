@@ -13,7 +13,8 @@ class Core
     {
         
         //加入登入驗證
-        require_once dirname(dirname(__FILE__)).'/controllers/Logins.php';
+        $loginFile = idas_platform_app_file('controllers/Logins.php');
+        require_once $loginFile;
         $login_class = new Logins();  
 
         // 呼叫 getUrl() 取得 $url 陣列
@@ -47,13 +48,14 @@ class Core
         if(!empty($url[0]))
             $this->currentController = $url[0];
         // 引入 Controller
-        $file = dirname(dirname(__FILE__)).'/controllers/'.$this->currentController.'.php';
+        $file = idas_platform_app_file('controllers/' . $this->currentController . '.php');
         //判斷url帶入的controller是否存在
         if (file_exists($file)) {
-            require_once dirname(dirname(__FILE__)).'/controllers/'.$this->currentController.'.php';
+            require_once $file;
         } else {
             $this->currentController = 'Dashboards';
-            require_once dirname(dirname(__FILE__)).'/controllers/'.$this->currentController.'.php';
+            $file = idas_platform_app_file('controllers/Dashboards.php');
+            require_once $file;
         }
 
         
