@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <div id="Barcode_Setting" class="divMode" style="display: none">
     <div class="col t1" style="padding-left: 3%; font-weight: bold; padding-top: 1%;">
         <?php echo $text['system_barcode_setting']; ?>

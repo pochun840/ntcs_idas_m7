@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <table class="no-border">
@@ -15,7 +15,7 @@
                 <button id="bnt2" name="System_Display" class="button" onclick="OpenButton('System')"><?php echo $text['system_setting'];?></button>
                 <button id="bnt3" name="Barcode_Display" class="button" onclick="OpenButton('Barcode')"><?php echo $text['system_barcode_setting'] ;?></button>
                 <button id="bnt4" name="Connect_Display" class="button" onclick="OpenButton('Connect')"><?php echo $text['system_connect_setting'];?></button>
-                <?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+                <?php if (idas_network_settings_enabled()): ?>
                 <button id="bnt5" name="Network_Display" class="button" onclick="OpenButton('Network')"><?php echo $text['network_setting'];?></button>
                 <?php endif; ?>
                 <button id="bnt6" name="iDas_Display" class="button" onclick="OpenButton('Update')">iDAS</button>
@@ -39,7 +39,7 @@
                 <?php require_once '../app/views/setting/idas_agent.php';?>
             <!-- idas_agent ED -->
 
-            <?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+            <?php if (idas_network_settings_enabled()): ?>
             <!-- idas_network OP -->
                 <?php require_once '../app/views/setting/idas_network.php';?>
             <!-- idas_network ED -->
@@ -155,7 +155,7 @@ function OpenButton(ButtonMode) {
         "Update": "bnt6"
     };
 
-    <?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+    <?php if (idas_is_icontroller()): ?>
     sections["Network"] = "Network_Setting";
     buttons["Network"] = "bnt5";
     <?php endif; ?>

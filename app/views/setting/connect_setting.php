@@ -10,11 +10,14 @@
     <div class="row t2 align-items-center">
         <div class="col-3 t1"><?php echo $text['system_agent_ip'];?>:</div>
         <div class="col">
-                <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
-                    value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
-                <div class="invalid-feedback"></div>
-                <span style="margin-left: 10px;"></span>
-                <input type="button"  onclick="agent_ip_save_new()"  value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" >
+                <div class="connect-inline-row">
+                    <div class="connect-input-wrap">
+                        <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
+                            value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <input type="button" onclick="agent_ip_save_new()" value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large connect-save-btn">
+                </div>
         </div>
     </div>
 

@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <div id="Controller_Setting" class="divMode">
     <div class="col t1" style="font-weight: bold; padding-top: 1%;">
         <?php echo $text['controller_setting']; ?>

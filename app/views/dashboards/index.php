@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <?php $ver = date('YmdHis'); ?>
 <link rel="stylesheet" href="<?=URLROOT;?>css/tcc_main.css?v=<?=$ver;?>">
 
@@ -953,7 +953,7 @@ function DB_sync_idas(argument) {
 <?php endif; ?>
 
 <?php
-$platformLabel = (defined('IS_ICONTROLLER') && IS_ICONTROLLER)
+$platformLabel = (idas_is_icontroller())
     ? 'i-controller'
     : 'KL-NTCS';
 ?>

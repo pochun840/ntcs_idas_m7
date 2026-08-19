@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <div class="container-ms">
      <div class="buttonbox" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding-right: 10px; width: 100%;">
     

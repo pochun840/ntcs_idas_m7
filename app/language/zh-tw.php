@@ -4,7 +4,7 @@
  * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
  * 0 / missing / invalid -> NTCS implementation
  */
-if (defined('IS_ICONTROLLER') && IS_ICONTROLLER) {
+if (idas_is_icontroller()) {
 $text = array();
 
 //login page

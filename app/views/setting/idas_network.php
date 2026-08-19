@@ -8,6 +8,14 @@ $staticNetworkIp = trim((string)($networkSetting['static_ip'] ?? ''));
 $networkMask = trim((string)($networkSetting['mask'] ?? '255.255.255.0'));
 $networkGateway = trim((string)($networkSetting['gateway'] ?? ''));
 $networkPort = isset($networkSetting['port']) ? (int)$networkSetting['port'] : 502;
+
+$controllerModbusType = isset($data['controller_info']['modbus_type'])
+    ? (int)$data['controller_info']['modbus_type']
+    : IDAS_PROTOCOL_TCP;
+
+// Protocol / Port policy is centralized in app/config/config.php.
+$networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
+$networkPortLocked = idas_protocol_has_fixed_server_port($controllerModbusType);
 ?>
 <div id="Network_Setting" class="divMode" style="display: none; overflow-x: hidden;">
     <div class="col t1" style="padding-left: 3%; font-weight: bold; padding-top: 1%;">
@@ -77,7 +85,8 @@ $networkPort = isset($networkSetting['port']) ? (int)$networkSetting['port'] : 5
         <div class="col-5 t2 network-port-wrap">
             <input id="network_server_port" type="number" min="1" max="65535" step="1"
                 value="<?php echo (int)$networkPort; ?>"
-                class="t3 form-control network-setting-port" autocomplete="off">
+                class="t3 form-control network-setting-port" autocomplete="off"
+                <?php echo $networkPortLocked ? 'readonly' : ''; ?>>
             <span class="network-reboot-note">
                 (<?php echo htmlspecialchars((string)$text['network_reboot_note'], ENT_QUOTES, 'UTF-8'); ?>)
             </span>
@@ -93,6 +102,28 @@ $networkPort = isset($networkSetting['port']) ? (int)$networkSetting['port'] : 5
 
 <script>
 (function () {
+    const NETWORK_PROTOCOL_TYPE = <?php echo (int)$controllerModbusType; ?>;
+    const NETWORK_PROTOCOL_TCP = <?php echo (int)IDAS_PROTOCOL_TCP; ?>;
+    const NETWORK_PROTOCOL_OP = <?php echo (int)IDAS_PROTOCOL_OP; ?>;
+    const NETWORK_PORT_TCP = <?php echo (int)IDAS_SERVER_PORT_TCP; ?>;
+    const NETWORK_PORT_OP = <?php echo (int)IDAS_SERVER_PORT_OP; ?>;
+
+    function applyProtocolServerPort() {
+        const portField = document.getElementById('network_server_port');
+        if (!portField) return;
+
+        if (NETWORK_PROTOCOL_TYPE === NETWORK_PROTOCOL_TCP) {
+            portField.value = String(NETWORK_PORT_TCP);
+            portField.readOnly = true;
+        } else if (NETWORK_PROTOCOL_TYPE === NETWORK_PROTOCOL_OP) {
+            portField.value = String(NETWORK_PORT_OP);
+            portField.readOnly = true;
+        } else {
+            // RTU 沒有固定 TCP Server Port，保留目前設定值。
+            portField.readOnly = false;
+        }
+    }
+
     window.NETWORK_SETTING_I18N = {
         save: <?php echo json_encode((string)$text['save'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
         saving: <?php echo json_encode((string)$text['network_saving'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
@@ -199,6 +230,9 @@ $networkPort = isset($networkSetting['port']) ? (int)$networkSetting['port'] : 5
         const staticIp = String(document.getElementById('network_static_ip')?.value || '').trim();
         const mask = String(document.getElementById('network_subnet_mask')?.value || '').trim();
         const gateway = String(document.getElementById('network_gateway_ip')?.value || '').trim();
+
+        // 儲存前再次依通訊協議校正 Port，避免 DOM 被手動修改。
+        applyProtocolServerPort();
         const portText = String(document.getElementById('network_server_port')?.value || '').trim();
         const port = Number(portText);
         const i18n = window.NETWORK_SETTING_I18N || {};
@@ -259,6 +293,7 @@ $networkPort = isset($networkSetting['port']) ? (int)$networkSetting['port'] : 5
 
     document.addEventListener('DOMContentLoaded', function () {
         toggleNetworkModeFields();
+        applyProtocolServerPort();
     });
 })();
 </script>

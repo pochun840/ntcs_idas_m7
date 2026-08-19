@@ -1,5 +1,92 @@
-/* Single-codebase JavaScript */
-(function () {
-    const source = window.IS_ICONTROLLER ? "var G_InitialCntFlg = 0;\nfunction init(){\n    if (G_InitialCntFlg == 0){\n        G_ButtonMode = 1;\n        document.getElementById('HistoryDisplay').setAttribute(\"style\", \"display:block\");\n        document.getElementById('ExportdataDisplay').setAttribute(\"style\",\"display:none\");\n    }\n\n    G_InitialCntFlg ++;\n\n}\n\nfunction OpenButton(ButtonMode){\n\n    if (ButtonMode == \"History\"){\n        document.getElementById('HistoryDisplay').setAttribute(\"style\", \"display:block\");\n        document.getElementById('ExportdataDisplay').setAttribute(\"style\",\"display:none\");\n        document.getElementById('bnt1').classList.add(\"active\");\n        document.getElementById('bnt2').classList.remove(\"active\");\n\n        document.getElementById('data_select').setAttribute(\"style\", \"display:block\");\n    }else if (ButtonMode == \"Exportdata\"){\n        document.getElementById('ExportdataDisplay').setAttribute(\"style\",\"display:block;\");\n        document.getElementById('HistoryDisplay').setAttribute(\"style\", \"display:none\");\n        document.getElementById('bnt2').classList.add(\"active\");\n        document.getElementById('bnt1').classList.remove(\"active\");\n\n        document.getElementById('data_select').setAttribute(\"style\", \"display:none\");\n    }else if(ButtonMode == \"Export_Data_download\"){\n        downloadCSVZip();\n    }else if(ButtonMode == \"Customize\"){\n        window.location.href = \"?url=Customize\";\n        return;\n    }else{\n        alert(\"Function [\"+ ButtonMode +\"] is under constructing ...\");\n    }\n}\n\n\n\n\n\n\n" : "var G_InitialCntFlg = 0;\nfunction init(){\n    if (G_InitialCntFlg == 0){\n        G_ButtonMode = 1;\n        document.getElementById('HistoryDisplay').setAttribute(\"style\", \"display:block\");\n        document.getElementById('ExportdataDisplay').setAttribute(\"style\",\"display:none\");\n    }\n\n    G_InitialCntFlg ++;\n\n}\n\nfunction OpenButton(ButtonMode) {\n\n    if (ButtonMode == \"History\") {\n        document.getElementById('HistoryDisplay').setAttribute(\"style\", \"display:block\");\n        document.getElementById('ExportdataDisplay').setAttribute(\"style\", \"display:none\");\n\n        document.getElementById('data_bnt1').classList.add(\"active\");\n        document.getElementById('data_bnt2').classList.remove(\"active\");\n\n        document.getElementById('data_select').setAttribute(\"style\", \"display:block\");\n\n    } else if (ButtonMode == \"Exportdata\") {\n        document.getElementById('ExportdataDisplay').setAttribute(\"style\", \"display:block\");\n        document.getElementById('HistoryDisplay').setAttribute(\"style\", \"display:none\");\n\n        document.getElementById('data_bnt2').classList.add(\"active\");\n        document.getElementById('data_bnt1').classList.remove(\"active\");\n\n        document.getElementById('data_select').setAttribute(\"style\", \"display:none\");\n\n    } else if (ButtonMode == \"Export_Data_download\") {\n        downloadCSVZip();\n\n    } else if (ButtonMode == \"Customize\") {\n        window.location.href = \"?url=Customize\";\n        return;\n\n    } else if (ButtonMode == \"Torque_line_chart\") {\n        window.location.href = \"?url=Data/drawLineChart\";\n        return;\n\n    } else {\n        alert(\"Function [\" + ButtonMode + \"] is under constructing ...\");\n    }\n}\n\n\n\n\n\n\n";
-    (0, eval)(source);
-})();
+/*
+ * Single-codebase JavaScript (no eval)
+ * /home/kls/upgrade/icontroller = 1 -> i-controller
+ * otherwise -> NTCS
+ */
+if (window.IS_ICONTROLLER) {
+var G_InitialCntFlg = 0;
+function init(){
+    if (G_InitialCntFlg == 0){
+        G_ButtonMode = 1;
+        document.getElementById('HistoryDisplay').setAttribute("style", "display:block");
+        document.getElementById('ExportdataDisplay').setAttribute("style","display:none");
+    }
+
+    G_InitialCntFlg ++;
+
+}
+
+function OpenButton(ButtonMode){
+
+    if (ButtonMode == "History"){
+        document.getElementById('HistoryDisplay').setAttribute("style", "display:block");
+        document.getElementById('ExportdataDisplay').setAttribute("style","display:none");
+        document.getElementById('bnt1').classList.add("active");
+        document.getElementById('bnt2').classList.remove("active");
+
+        document.getElementById('data_select').setAttribute("style", "display:block");
+    }else if (ButtonMode == "Exportdata"){
+        document.getElementById('ExportdataDisplay').setAttribute("style","display:block;");
+        document.getElementById('HistoryDisplay').setAttribute("style", "display:none");
+        document.getElementById('bnt2').classList.add("active");
+        document.getElementById('bnt1').classList.remove("active");
+
+        document.getElementById('data_select').setAttribute("style", "display:none");
+    }else if(ButtonMode == "Export_Data_download"){
+        downloadCSVZip();
+    }else if(ButtonMode == "Customize"){
+        window.location.href = "?url=Customize";
+        return;
+    }else{
+        alert("Function ["+ ButtonMode +"] is under constructing ...");
+    }
+}
+} else {
+var G_InitialCntFlg = 0;
+function init(){
+    if (G_InitialCntFlg == 0){
+        G_ButtonMode = 1;
+        document.getElementById('HistoryDisplay').setAttribute("style", "display:block");
+        document.getElementById('ExportdataDisplay').setAttribute("style","display:none");
+    }
+
+    G_InitialCntFlg ++;
+
+}
+
+function OpenButton(ButtonMode) {
+
+    if (ButtonMode == "History") {
+        document.getElementById('HistoryDisplay').setAttribute("style", "display:block");
+        document.getElementById('ExportdataDisplay').setAttribute("style", "display:none");
+
+        document.getElementById('data_bnt1').classList.add("active");
+        document.getElementById('data_bnt2').classList.remove("active");
+
+        document.getElementById('data_select').setAttribute("style", "display:block");
+
+    } else if (ButtonMode == "Exportdata") {
+        document.getElementById('ExportdataDisplay').setAttribute("style", "display:block");
+        document.getElementById('HistoryDisplay').setAttribute("style", "display:none");
+
+        document.getElementById('data_bnt2').classList.add("active");
+        document.getElementById('data_bnt1').classList.remove("active");
+
+        document.getElementById('data_select').setAttribute("style", "display:none");
+
+    } else if (ButtonMode == "Export_Data_download") {
+        downloadCSVZip();
+
+    } else if (ButtonMode == "Customize") {
+        window.location.href = "?url=Customize";
+        return;
+
+    } else if (ButtonMode == "Torque_line_chart") {
+        window.location.href = "?url=Data/drawLineChart";
+        return;
+
+    } else {
+        alert("Function [" + ButtonMode + "] is under constructing ...");
+    }
+}
+}

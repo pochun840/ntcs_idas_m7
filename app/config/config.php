@@ -45,6 +45,61 @@ function is_i_controller(): bool
 define('IS_ICONTROLLER', is_i_controller());
 define('IDAS_PLATFORM', IS_ICONTROLLER ? 'icontroller' : 'ntcs');
 
+/*
+ * ============================================================
+ * Central platform / protocol policy
+ * ============================================================
+ */
+define('IDAS_PROTOCOL_TCP', 0);
+define('IDAS_PROTOCOL_RTU', 1);
+define('IDAS_PROTOCOL_OP',  2);
+
+define('IDAS_SERVER_PORT_TCP', 502);
+define('IDAS_SERVER_PORT_OP',  4545);
+
+function idas_is_icontroller(): bool
+{
+    return IS_ICONTROLLER;
+}
+
+function idas_network_settings_enabled(): bool
+{
+    return IS_ICONTROLLER;
+}
+
+function idas_controller_identity_editable(): bool
+{
+    return IS_ICONTROLLER;
+}
+
+function idas_protocol_editable(): bool
+{
+    return IS_ICONTROLLER;
+}
+
+function idas_protocol_has_fixed_server_port(int $protocol): bool
+{
+    return in_array($protocol, [IDAS_PROTOCOL_TCP, IDAS_PROTOCOL_OP], true);
+}
+
+/**
+ * TCP -> 502
+ * OP  -> 4545
+ * RTU -> preserve current value (or null when not supplied)
+ */
+function idas_protocol_server_port(int $protocol, ?int $currentPort = null): ?int
+{
+    if ($protocol === IDAS_PROTOCOL_TCP) {
+        return IDAS_SERVER_PORT_TCP;
+    }
+
+    if ($protocol === IDAS_PROTOCOL_OP) {
+        return IDAS_SERVER_PORT_OP;
+    }
+
+    return $currentPort;
+}
+
 /** Resolve an i-controller variant file when enabled. */
 function idas_platform_app_file(string $relative): string
 {

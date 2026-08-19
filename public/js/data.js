@@ -1,5 +1,968 @@
-/* Single-codebase JavaScript */
+/*
+ * Single-codebase JavaScript (no eval)
+ * /home/kls/upgrade/icontroller = 1 -> i-controller
+ * otherwise -> NTCS
+ */
+if (window.IS_ICONTROLLER) {
+function exportData() {
+    var radioButtons = document.querySelectorAll('input[name="export-option"]');
+    var isChecked = false;
+    var expert_val = '';
+
+    for (var i = 0; i < radioButtons.length; i++) {
+        if (radioButtons[i].checked) {
+            isChecked = true;
+            expert_val = radioButtons[i].value;
+            break;
+        }
+    }
+
+    if (!isChecked) {
+        alertify.alert("請選擇一個選項");
+        return;
+    }
+
+    var start_date = document.getElementById('start_date').value;
+    var end_date   = document.getElementById('end_date').value;
+
+    if (start_date === '' || end_date === '') {
+        alertify.alert("請選擇開始日期與結束日期");
+        return;
+    }
+
+    if (start_date > end_date) {
+        alertify.alert("開始日期必須小於結束日期");
+        return;
+    }
+
+    // =====================================
+    // ⭐ 取得瀏覽器當前時間（YYYYMMDDHHmmss）
+    // =====================================
+    function getBrowserTimestamp() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+
+        return (
+            d.getFullYear() +
+            pad(d.getMonth() + 1) +
+            pad(d.getDate()) +
+            pad(d.getHours()) +
+            pad(d.getMinutes()) +
+            pad(d.getSeconds())
+        );
+    }
+
+    $.ajax({
+        url: "?url=Data/exportData",
+        method: "POST",
+        data: {
+            start_date: start_date,
+            end_date: end_date,
+            expert_val: expert_val,
+            client_ts: getBrowserTimestamp() // ⭐⭐⭐ 關鍵新增
+        },
+        xhrFields: {
+            responseType: 'blob'
+        },
+        success: function(response, status, xhr) {
+            const disposition = xhr.getResponseHeader('Content-Disposition');
+            let filename = 'downloaded_file';
+
+            if (disposition && disposition.indexOf('filename=') !== -1) {
+                const matches = disposition.match(/filename="?([^"]+)"?/);
+                if (matches && matches.length > 1) {
+                    filename = matches[1];
+                }
+            }
+
+            const contentType = xhr.getResponseHeader('Content-Type');
+            const blob = new Blob([response], { type: contentType });
+
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX 請求失敗:", status, error);
+            alertify.alert("發生錯誤，無法導出資料");
+        }
+    });
+}
+
+
+
+
+function downloadCSVZip() {
+  const url = "?url=Data/download_file";
+  const $btn = document.getElementById('bnt2') || null;
+
+  // ---- i18n ----
+  const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||
+                  document.documentElement.getAttribute('lang') || 'en-us';
+  const l = String(rawLang).toLowerCase();
+  const dict = (function (lang) {
+    if (lang === 'zh-tw' || lang.includes('hant') || lang.includes('tw') || lang.includes('hk') || lang.includes('mo')) {
+      return { ok:'確定', info:'提示', error:'錯誤', done:'下載完成：', noCurve:'沒有曲線圖的資料可以下載', genericFail:'沒有曲線圖的資料可以下載', httpFail:'下載發生錯誤' };
+    } else if (lang === 'zh-cn' || lang.includes('hans') || lang.includes('cn') || lang.includes('sg')) {
+      return { ok:'确定', info:'提示', error:'错误', done:'下载完成：', noCurve:'没有曲线图的资料可以下载', genericFail:'没有曲线图的资料可以下载', httpFail:'下载发生错误' };
+    }
+    return { ok:'OK', info:'Notice', error:'Error', done:'Downloaded: ', noCurve:'No curve data available to download.', genericFail:'No curve data available to download', httpFail:'An error occurred while downloading.' };
+  })(l);
+
+  // 預設 OK 文案（雙保險）
+  if (window.alertify?.defaults?.glossary) {
+    try { alertify.defaults.glossary.ok = dict.ok; } catch (e) {}
+  }
+
+  if ($btn) $btn.disabled = true;
+
+  // =========================
+  // Helpers (含除錯工具)
+  // =========================
+
+  // 總開關：要看 console 設 true
+  const DBG = true;
+  const dbg = (...args) => { if (DBG) console.log('[downloadCSVZip]', ...args); };
+
+  // 跨 realm 也有效的 Blob 偵測（含兜底）
+  const isBlobLike = (v) => {
+    if (!v) return false;
+    const tag = Object.prototype.toString.call(v);
+    if (tag === '[object Blob]' || tag === '[object File]') return true;
+    return typeof v === 'object'
+        && typeof v.size === 'number'
+        && typeof v.slice === 'function'
+        && (!('type' in v) || typeof v.type === 'string');
+  };
+
+  // 讀整個 Blob 為文字
+  const readBlobAsText = (blob) =>
+    new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = (e) => reject(e);
+      fr.readAsText(blob);
+    });
+
+  // 僅讀前 firstKB 的文字預覽
+  async function readBlobTextPreview(blob, firstKB = 64) {
+    try {
+      const slice = blob.slice(0, Math.min(blob.size, firstKB * 1024));
+      const text = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result || ''));
+        fr.onerror = reject;
+        fr.readAsText(slice);
+      });
+      return text;
+    } catch {
+      return null;
+    }
+  }
+
+  // 讀前 maxBytes 的十六進位預覽
+  async function readBlobHexPreview(blob, maxBytes = 64) {
+    try {
+      const slice = blob.slice(0, Math.min(blob.size, maxBytes));
+      const buf = await slice.arrayBuffer();
+      const view = new Uint8Array(buf);
+      const hex = Array.from(view).map(v => v.toString(16).padStart(2,'0')).join(' ');
+      return hex;
+    } catch {
+      return null;
+    }
+  }
+
+  // 主 debug：把 Blob 的資訊印出來
+  async function debugBlob(label, blob, extra = {}) {
+    const tag = Object.prototype.toString.call(blob);
+    const type = blob?.type;
+    const size = blob?.size;
+    const textPreview = await readBlobTextPreview(blob, 64);   // 64KB 文字預覽
+    const hexPreview  = await readBlobHexPreview(blob, 64);    // 64 bytes 十六進位
+    dbg(`${label} -> tag=${tag} type=${type} size=${size}`, extra);
+    if (textPreview !== null) dbg(`${label} textPreview(64KB):`, textPreview.slice(0, 1000));
+    if (hexPreview  !== null) dbg(`${label} hexPreview(64B):`, hexPreview);
+  }
+
+  // 小 Blob 嘗試 parse JSON（避免誤讀大檔）
+  async function tryParseJsonFromBlob(blob, maxKB = 512) {
+    try {
+      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;
+      const text = await readBlobAsText(blob);
+      return JSON.parse(text);
+    } catch { return null; }
+  }
+
+  // 小 Blob 讀文字
+  async function tryReadTextFromBlob(blob, maxKB = 1024) {
+    try {
+      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;
+      return await readBlobAsText(blob);
+    } catch { return null; }
+  }
+
+  // 後端語意偵測（JSON）
+  function isNoCurveByJson(json) {
+    const code = json?.res_code || json?.code || '';
+    const msg  = json?.res_msg  || json?.message || '';
+    const typ  = (json?.res_type || '').toLowerCase();
+    return code === 'NO_CURVE_DATA'
+        || (typ === 'info' && /no\s*curve\s*data/i.test(msg))
+        || /沒有可供下載|没有可供下载|no.+csv|no.+data/i.test(msg)
+        || /沒有曲線圖|没有曲线图/i.test(msg);
+  }
+
+  // 後端語意偵測（純文字）
+  function isNoCurveByText(text) {
+    const t = String(text || '');
+    return /沒有曲線圖|没有曲线图|沒有可供下載|没有可供下载|no\s+curve\s+data/i.test(t);
+  }
+
+  // 專治 [object Blob] 的安全 alert（統一出入口）
+  const safeAlert = async (title, msg) => {
+    const tag = Object.prototype.toString.call(msg);
+    if (isBlobLike(msg) || tag === '[object Blob]' || tag === '[object File]') {
+      await debugBlob('safeAlert-blob', msg);
+      const text = await readBlobTextPreview(msg, 1024); // 1MB 上限
+      alertify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });
+      return;
+    }
+    if (msg && typeof msg === 'object') {
+      alertify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))
+              .set('labels', { ok: dict.ok });
+      return;
+    }
+    alertify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });
+  };
+
+  // =========================
+  // AJAX
+  // =========================
+  $.ajax({
+    url,
+    method: "GET",
+    xhrFields: { responseType: 'blob' }, // 成功/失敗都可能是 Blob
+    headers: { 'Accept': 'application/zip, application/json, text/plain, text/html' },
+
+    success: async function (data, textStatus, jqXHR) {
+      try {
+        const ct = (jqXHR.getResponseHeader('Content-Type') || '').toLowerCase();
+        dbg('success', { ct, status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());
+        if (isBlobLike(data)) await debugBlob('success-data', data, { ct });
+
+        // 1) 明確是 JSON：讀出與判斷
+        if (ct.includes('application/json')) {
+          const text = await readBlobAsText(data);
+          let json = {};
+          try { json = JSON.parse(text || '{}'); } catch {}
+          const title = isNoCurveByJson(json) ? dict.info : dict.error;
+          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.genericFail);
+          await safeAlert(title, msg);
+          return;
+        }
+
+        // 2) 可能是 text/plain / text/html / application/octet-stream（小檔）：先讀成文字
+        if (ct.includes('text/plain') || ct.includes('text/html') || ct.includes('application/octet-stream')) {
+          const text = await tryReadTextFromBlob(data, 1024);
+          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }
+          if (text && text.trim() && !ct.includes('application/zip')) { // 明顯錯誤字串
+            await safeAlert(dict.error, text.trim()); return;
+          }
+          // 否則繼續往下當作 ZIP
+        }
+
+        // 3) 嗅探小 Blob 是否其實是 JSON
+        const sniff = await tryParseJsonFromBlob(data, 512);
+        if (sniff) {
+          const title = isNoCurveByJson(sniff) ? dict.info : dict.error;
+          const msg   = isNoCurveByJson(sniff) ? dict.noCurve : (sniff?.res_msg || dict.genericFail);
+          await safeAlert(title, msg);
+          return;
+        }
+
+        // 4) 真的就是 ZIP：下載
+        let filename = 'csv_bundle.zip';
+        const cd = jqXHR.getResponseHeader('Content-Disposition') || '';
+        const match = cd.match(/filename\*?=(?:UTF-8'')?("?)([^";]+)\1/i);
+        if (match && match[2]) filename = decodeURIComponent(match[2]);
+
+        const blobUrl = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(blobUrl);
+        a.remove();
+
+        // 如需提示成功可開啟
+        // await safeAlert(dict.info, dict.done + filename);
+
+      } catch (err) {
+        dbg('success-catch', err);
+        await safeAlert(dict.error, dict.genericFail);
+      } finally {
+        if ($btn) $btn.disabled = false;
+      }
+    },
+
+    error: async function (jqXHR) {
+      try {
+        dbg('error', { status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());
+
+        // ★★★ 特例：jQuery 把錯誤訊息變成字串 "[object Blob]" 的狀況
+        // 某些環境下 jqXHR.response 可能拿不到 / 不是 blob-like，但 responseText 卻是這個字串
+        if (typeof jqXHR.responseText === 'string' && /^\s*\[object Blob\]\s*$/i.test(jqXHR.responseText)) {
+        await safeAlert(dict.info, dict.noCurve); // 多語系：「沒有曲線圖的資料可以下載」
+        return; // 結束 error handler，避免再往下跑
+        }
+        
+
+        // A) 錯誤回應是 Blob：先試 JSON，再試文字
+        if (isBlobLike(jqXHR.response)) {
+          await debugBlob('error-response', jqXHR.response, { status: jqXHR.status });
+          const json = await tryParseJsonFromBlob(jqXHR.response, 512);
+          if (json) {
+            const title = isNoCurveByJson(json) ? dict.info : dict.error;
+            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);
+            await safeAlert(title, msg);
+            return;
+          }
+          const text = await tryReadTextFromBlob(jqXHR.response, 1024);
+          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }
+          if (text && text.trim())           { await safeAlert(dict.error, text.trim()); return; }
+          await safeAlert(dict.error, dict.httpFail);
+          return;
+        }
+
+        // B) 有 responseText（字串）
+        if (typeof jqXHR.responseText === 'string' && jqXHR.responseText.length) {
+          dbg('error-responseText', jqXHR.responseText.slice(0, 1000));
+          try {
+            const json = JSON.parse(jqXHR.responseText);
+            const title = isNoCurveByJson(json) ? dict.info : dict.error;
+            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);
+            await safeAlert(title, msg);
+          } catch {
+            await safeAlert(dict.error, jqXHR.responseText);
+          }
+          return;
+        }
+
+        // C) jQuery 幫忙 parse 的 JSON
+        if (jqXHR.responseJSON) {
+          dbg('error-responseJSON', jqXHR.responseJSON);
+          const json = jqXHR.responseJSON;
+          const title = isNoCurveByJson(json) ? dict.info : dict.error;
+          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);
+          await safeAlert(title, msg);
+          return;
+        }
+
+        // D) Fallback
+        await safeAlert(dict.error, dict.httpFail);
+      } finally {
+        if ($btn) $btn.disabled = false;
+      }
+    }
+  });
+}
+} else {
+function exportData() {
+    var radioButtons = document.querySelectorAll('input[name="export-option"]');
+    var isChecked = false;
+    var expert_val = '';
+
+    for (var i = 0; i < radioButtons.length; i++) {
+        if (radioButtons[i].checked) {
+            isChecked = true;
+            expert_val = radioButtons[i].value;
+            break;
+        }
+    }
+
+    if (!isChecked) {
+        alertify.alert("請選擇一個選項");
+        return;
+    }
+
+    var start_date = document.getElementById('start_date').value;
+    var end_date   = document.getElementById('end_date').value;
+
+    if (start_date === '' || end_date === '') {
+        alertify.alert("請選擇開始日期與結束日期");
+        return;
+    }
+
+    if (start_date > end_date) {
+        alertify.alert("開始日期必須小於結束日期");
+        return;
+    }
+
+    // =====================================
+    // ⭐ 取得瀏覽器當前時間（YYYYMMDDHHmmss）
+    // =====================================
+    function getBrowserTimestamp() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+
+        return (
+            d.getFullYear() +
+            pad(d.getMonth() + 1) +
+            pad(d.getDate()) +
+            pad(d.getHours()) +
+            pad(d.getMinutes()) +
+            pad(d.getSeconds())
+        );
+    }
+
+    $.ajax({
+        url: "?url=Data/exportData",
+        method: "POST",
+        data: {
+            start_date: start_date,
+            end_date: end_date,
+            expert_val: expert_val,
+            client_ts: getBrowserTimestamp() // ⭐⭐⭐ 關鍵新增
+        },
+        xhrFields: {
+            responseType: 'blob'
+        },
+        success: function(response, status, xhr) {
+            const disposition = xhr.getResponseHeader('Content-Disposition');
+            let filename = 'downloaded_file';
+
+            if (disposition && disposition.indexOf('filename=') !== -1) {
+                const matches = disposition.match(/filename="?([^"]+)"?/);
+                if (matches && matches.length > 1) {
+                    filename = matches[1];
+                }
+            }
+
+            const contentType = xhr.getResponseHeader('Content-Type');
+            const blob = new Blob([response], { type: contentType });
+
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX 請求失敗:", status, error);
+            alertify.alert("發生錯誤，無法導出資料");
+        }
+    });
+}
+
+
+
+
+function downloadCSVZip() {
+  const url = "?url=Data/download_file";
+  const $btn = document.getElementById('bnt2') || null;
+
+  // ---- i18n ----
+  const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||
+                  document.documentElement.getAttribute('lang') || 'en-us';
+  const l = String(rawLang).toLowerCase();
+  const dict = (function (lang) {
+    if (lang === 'zh-tw' || lang.includes('hant') || lang.includes('tw') || lang.includes('hk') || lang.includes('mo')) {
+      return { ok:'確定', info:'提示', error:'錯誤', done:'下載完成：', noCurve:'沒有曲線圖的資料可以下載', genericFail:'沒有曲線圖的資料可以下載', httpFail:'下載發生錯誤' };
+    } else if (lang === 'zh-cn' || lang.includes('hans') || lang.includes('cn') || lang.includes('sg')) {
+      return { ok:'确定', info:'提示', error:'错误', done:'下载完成：', noCurve:'没有曲线图的资料可以下载', genericFail:'没有曲线图的资料可以下载', httpFail:'下载发生错误' };
+    }
+    return { ok:'OK', info:'Notice', error:'Error', done:'Downloaded: ', noCurve:'No curve data available to download.', genericFail:'No curve data available to download', httpFail:'An error occurred while downloading.' };
+  })(l);
+
+  // 預設 OK 文案（雙保險）
+  if (window.alertify?.defaults?.glossary) {
+    try { alertify.defaults.glossary.ok = dict.ok; } catch (e) {}
+  }
+
+  if ($btn) $btn.disabled = true;
+
+  // =========================
+  // Helpers (含除錯工具)
+  // =========================
+
+  // 總開關：要看 console 設 true
+  const DBG = true;
+  const dbg = (...args) => { if (DBG) console.log('[downloadCSVZip]', ...args); };
+
+  // 跨 realm 也有效的 Blob 偵測（含兜底）
+  const isBlobLike = (v) => {
+    if (!v) return false;
+    const tag = Object.prototype.toString.call(v);
+    if (tag === '[object Blob]' || tag === '[object File]') return true;
+    return typeof v === 'object'
+        && typeof v.size === 'number'
+        && typeof v.slice === 'function'
+        && (!('type' in v) || typeof v.type === 'string');
+  };
+
+  // 讀整個 Blob 為文字
+  const readBlobAsText = (blob) =>
+    new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = (e) => reject(e);
+      fr.readAsText(blob);
+    });
+
+  // 僅讀前 firstKB 的文字預覽
+  async function readBlobTextPreview(blob, firstKB = 64) {
+    try {
+      const slice = blob.slice(0, Math.min(blob.size, firstKB * 1024));
+      const text = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result || ''));
+        fr.onerror = reject;
+        fr.readAsText(slice);
+      });
+      return text;
+    } catch {
+      return null;
+    }
+  }
+
+  // 讀前 maxBytes 的十六進位預覽
+  async function readBlobHexPreview(blob, maxBytes = 64) {
+    try {
+      const slice = blob.slice(0, Math.min(blob.size, maxBytes));
+      const buf = await slice.arrayBuffer();
+      const view = new Uint8Array(buf);
+      const hex = Array.from(view).map(v => v.toString(16).padStart(2,'0')).join(' ');
+      return hex;
+    } catch {
+      return null;
+    }
+  }
+
+  // 主 debug：把 Blob 的資訊印出來
+  async function debugBlob(label, blob, extra = {}) {
+    const tag = Object.prototype.toString.call(blob);
+    const type = blob?.type;
+    const size = blob?.size;
+    const textPreview = await readBlobTextPreview(blob, 64);   // 64KB 文字預覽
+    const hexPreview  = await readBlobHexPreview(blob, 64);    // 64 bytes 十六進位
+    dbg(`${label} -> tag=${tag} type=${type} size=${size}`, extra);
+    if (textPreview !== null) dbg(`${label} textPreview(64KB):`, textPreview.slice(0, 1000));
+    if (hexPreview  !== null) dbg(`${label} hexPreview(64B):`, hexPreview);
+  }
+
+  // 小 Blob 嘗試 parse JSON（避免誤讀大檔）
+  async function tryParseJsonFromBlob(blob, maxKB = 512) {
+    try {
+      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;
+      const text = await readBlobAsText(blob);
+      return JSON.parse(text);
+    } catch { return null; }
+  }
+
+  // 小 Blob 讀文字
+  async function tryReadTextFromBlob(blob, maxKB = 1024) {
+    try {
+      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;
+      return await readBlobAsText(blob);
+    } catch { return null; }
+  }
+
+  // 後端語意偵測（JSON）
+  function isNoCurveByJson(json) {
+    const code = json?.res_code || json?.code || '';
+    const msg  = json?.res_msg  || json?.message || '';
+    const typ  = (json?.res_type || '').toLowerCase();
+    return code === 'NO_CURVE_DATA'
+        || (typ === 'info' && /no\s*curve\s*data/i.test(msg))
+        || /沒有可供下載|没有可供下载|no.+csv|no.+data/i.test(msg)
+        || /沒有曲線圖|没有曲线图/i.test(msg);
+  }
+
+  // 後端語意偵測（純文字）
+  function isNoCurveByText(text) {
+    const t = String(text || '');
+    return /沒有曲線圖|没有曲线图|沒有可供下載|没有可供下载|no\s+curve\s+data/i.test(t);
+  }
+
+  // 專治 [object Blob] 的安全 alert（統一出入口）
+  const safeAlert = async (title, msg) => {
+    const tag = Object.prototype.toString.call(msg);
+    if (isBlobLike(msg) || tag === '[object Blob]' || tag === '[object File]') {
+      await debugBlob('safeAlert-blob', msg);
+      const text = await readBlobTextPreview(msg, 1024); // 1MB 上限
+      alertify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });
+      return;
+    }
+    if (msg && typeof msg === 'object') {
+      alertify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))
+              .set('labels', { ok: dict.ok });
+      return;
+    }
+    alertify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });
+  };
+
+  // =========================
+  // AJAX
+  // =========================
+  $.ajax({
+    url,
+    method: "GET",
+    xhrFields: { responseType: 'blob' }, // 成功/失敗都可能是 Blob
+    headers: { 'Accept': 'application/zip, application/json, text/plain, text/html' },
+
+    success: async function (data, textStatus, jqXHR) {
+      try {
+        const ct = (jqXHR.getResponseHeader('Content-Type') || '').toLowerCase();
+        dbg('success', { ct, status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());
+        if (isBlobLike(data)) await debugBlob('success-data', data, { ct });
+
+        // 1) 明確是 JSON：讀出與判斷
+        if (ct.includes('application/json')) {
+          const text = await readBlobAsText(data);
+          let json = {};
+          try { json = JSON.parse(text || '{}'); } catch {}
+          const title = isNoCurveByJson(json) ? dict.info : dict.error;
+          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.genericFail);
+          await safeAlert(title, msg);
+          return;
+        }
+
+        // 2) 可能是 text/plain / text/html / application/octet-stream（小檔）：先讀成文字
+        if (ct.includes('text/plain') || ct.includes('text/html') || ct.includes('application/octet-stream')) {
+          const text = await tryReadTextFromBlob(data, 1024);
+          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }
+          if (text && text.trim() && !ct.includes('application/zip')) { // 明顯錯誤字串
+            await safeAlert(dict.error, text.trim()); return;
+          }
+          // 否則繼續往下當作 ZIP
+        }
+
+        // 3) 嗅探小 Blob 是否其實是 JSON
+        const sniff = await tryParseJsonFromBlob(data, 512);
+        if (sniff) {
+          const title = isNoCurveByJson(sniff) ? dict.info : dict.error;
+          const msg   = isNoCurveByJson(sniff) ? dict.noCurve : (sniff?.res_msg || dict.genericFail);
+          await safeAlert(title, msg);
+          return;
+        }
+
+        // 4) 真的就是 ZIP：下載
+        let filename = 'csv_bundle.zip';
+        const cd = jqXHR.getResponseHeader('Content-Disposition') || '';
+        const match = cd.match(/filename\*?=(?:UTF-8'')?("?)([^";]+)\1/i);
+        if (match && match[2]) filename = decodeURIComponent(match[2]);
+
+        const blobUrl = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(blobUrl);
+        a.remove();
+
+        // 如需提示成功可開啟
+        // await safeAlert(dict.info, dict.done + filename);
+
+      } catch (err) {
+        dbg('success-catch', err);
+        await safeAlert(dict.error, dict.genericFail);
+      } finally {
+        if ($btn) $btn.disabled = false;
+      }
+    },
+
+    error: async function (jqXHR) {
+      try {
+        dbg('error', { status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());
+
+        // ★★★ 特例：jQuery 把錯誤訊息變成字串 "[object Blob]" 的狀況
+        // 某些環境下 jqXHR.response 可能拿不到 / 不是 blob-like，但 responseText 卻是這個字串
+        if (typeof jqXHR.responseText === 'string' && /^\s*\[object Blob\]\s*$/i.test(jqXHR.responseText)) {
+        await safeAlert(dict.info, dict.noCurve); // 多語系：「沒有曲線圖的資料可以下載」
+        return; // 結束 error handler，避免再往下跑
+        }
+        
+
+        // A) 錯誤回應是 Blob：先試 JSON，再試文字
+        if (isBlobLike(jqXHR.response)) {
+          await debugBlob('error-response', jqXHR.response, { status: jqXHR.status });
+          const json = await tryParseJsonFromBlob(jqXHR.response, 512);
+          if (json) {
+            const title = isNoCurveByJson(json) ? dict.info : dict.error;
+            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);
+            await safeAlert(title, msg);
+            return;
+          }
+          const text = await tryReadTextFromBlob(jqXHR.response, 1024);
+          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }
+          if (text && text.trim())           { await safeAlert(dict.error, text.trim()); return; }
+          await safeAlert(dict.error, dict.httpFail);
+          return;
+        }
+
+        // B) 有 responseText（字串）
+        if (typeof jqXHR.responseText === 'string' && jqXHR.responseText.length) {
+          dbg('error-responseText', jqXHR.responseText.slice(0, 1000));
+          try {
+            const json = JSON.parse(jqXHR.responseText);
+            const title = isNoCurveByJson(json) ? dict.info : dict.error;
+            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);
+            await safeAlert(title, msg);
+          } catch {
+            await safeAlert(dict.error, jqXHR.responseText);
+          }
+          return;
+        }
+
+        // C) jQuery 幫忙 parse 的 JSON
+        if (jqXHR.responseJSON) {
+          dbg('error-responseJSON', jqXHR.responseJSON);
+          const json = jqXHR.responseJSON;
+          const title = isNoCurveByJson(json) ? dict.info : dict.error;
+          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);
+          await safeAlert(title, msg);
+          return;
+        }
+
+        // D) Fallback
+        await safeAlert(dict.error, dict.httpFail);
+      } finally {
+        if ($btn) $btn.disabled = false;
+      }
+    }
+  });
+}
+
+
+
+/* =========================================================
+ * Operator(law = 3) download/export guard
+ * ---------------------------------------------------------
+ * - Backend still blocks direct API access in Data.php.
+ * - This client guard makes the Torque Line Chart export button
+ *   behave the same as the Data export/download buttons.
+ * ========================================================= */
 (function () {
-    const source = window.IS_ICONTROLLER ? "function exportData() {\n    var radioButtons = document.querySelectorAll('input[name=\"export-option\"]');\n    var isChecked = false;\n    var expert_val = '';\n\n    for (var i = 0; i < radioButtons.length; i++) {\n        if (radioButtons[i].checked) {\n            isChecked = true;\n            expert_val = radioButtons[i].value;\n            break;\n        }\n    }\n\n    if (!isChecked) {\n        alertify.alert(\"\u8acb\u9078\u64c7\u4e00\u500b\u9078\u9805\");\n        return;\n    }\n\n    var start_date = document.getElementById('start_date').value;\n    var end_date   = document.getElementById('end_date').value;\n\n    if (start_date === '' || end_date === '') {\n        alertify.alert(\"\u8acb\u9078\u64c7\u958b\u59cb\u65e5\u671f\u8207\u7d50\u675f\u65e5\u671f\");\n        return;\n    }\n\n    if (start_date > end_date) {\n        alertify.alert(\"\u958b\u59cb\u65e5\u671f\u5fc5\u9808\u5c0f\u65bc\u7d50\u675f\u65e5\u671f\");\n        return;\n    }\n\n    // =====================================\n    // \u2b50 \u53d6\u5f97\u700f\u89bd\u5668\u7576\u524d\u6642\u9593\uff08YYYYMMDDHHmmss\uff09\n    // =====================================\n    function getBrowserTimestamp() {\n        const d = new Date();\n        const pad = n => String(n).padStart(2, '0');\n\n        return (\n            d.getFullYear() +\n            pad(d.getMonth() + 1) +\n            pad(d.getDate()) +\n            pad(d.getHours()) +\n            pad(d.getMinutes()) +\n            pad(d.getSeconds())\n        );\n    }\n\n    $.ajax({\n        url: \"?url=Data/exportData\",\n        method: \"POST\",\n        data: {\n            start_date: start_date,\n            end_date: end_date,\n            expert_val: expert_val,\n            client_ts: getBrowserTimestamp() // \u2b50\u2b50\u2b50 \u95dc\u9375\u65b0\u589e\n        },\n        xhrFields: {\n            responseType: 'blob'\n        },\n        success: function(response, status, xhr) {\n            const disposition = xhr.getResponseHeader('Content-Disposition');\n            let filename = 'downloaded_file';\n\n            if (disposition && disposition.indexOf('filename=') !== -1) {\n                const matches = disposition.match(/filename=\"?([^\"]+)\"?/);\n                if (matches && matches.length > 1) {\n                    filename = matches[1];\n                }\n            }\n\n            const contentType = xhr.getResponseHeader('Content-Type');\n            const blob = new Blob([response], { type: contentType });\n\n            const link = document.createElement('a');\n            link.href = window.URL.createObjectURL(blob);\n            link.setAttribute('download', filename);\n            document.body.appendChild(link);\n            link.click();\n            document.body.removeChild(link);\n        },\n        error: function(xhr, status, error) {\n            console.error(\"AJAX \u8acb\u6c42\u5931\u6557:\", status, error);\n            alertify.alert(\"\u767c\u751f\u932f\u8aa4\uff0c\u7121\u6cd5\u5c0e\u51fa\u8cc7\u6599\");\n        }\n    });\n}\n\n\n\n\nfunction downloadCSVZip() {\n  const url = \"?url=Data/download_file\";\n  const $btn = document.getElementById('bnt2') || null;\n\n  // ---- i18n ----\n  const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||\n                  document.documentElement.getAttribute('lang') || 'en-us';\n  const l = String(rawLang).toLowerCase();\n  const dict = (function (lang) {\n    if (lang === 'zh-tw' || lang.includes('hant') || lang.includes('tw') || lang.includes('hk') || lang.includes('mo')) {\n      return { ok:'\u78ba\u5b9a', info:'\u63d0\u793a', error:'\u932f\u8aa4', done:'\u4e0b\u8f09\u5b8c\u6210\uff1a', noCurve:'\u6c92\u6709\u66f2\u7dda\u5716\u7684\u8cc7\u6599\u53ef\u4ee5\u4e0b\u8f09', genericFail:'\u6c92\u6709\u66f2\u7dda\u5716\u7684\u8cc7\u6599\u53ef\u4ee5\u4e0b\u8f09', httpFail:'\u4e0b\u8f09\u767c\u751f\u932f\u8aa4' };\n    } else if (lang === 'zh-cn' || lang.includes('hans') || lang.includes('cn') || lang.includes('sg')) {\n      return { ok:'\u786e\u5b9a', info:'\u63d0\u793a', error:'\u9519\u8bef', done:'\u4e0b\u8f7d\u5b8c\u6210\uff1a', noCurve:'\u6ca1\u6709\u66f2\u7ebf\u56fe\u7684\u8d44\u6599\u53ef\u4ee5\u4e0b\u8f7d', genericFail:'\u6ca1\u6709\u66f2\u7ebf\u56fe\u7684\u8d44\u6599\u53ef\u4ee5\u4e0b\u8f7d', httpFail:'\u4e0b\u8f7d\u53d1\u751f\u9519\u8bef' };\n    }\n    return { ok:'OK', info:'Notice', error:'Error', done:'Downloaded: ', noCurve:'No curve data available to download.', genericFail:'No curve data available to download', httpFail:'An error occurred while downloading.' };\n  })(l);\n\n  // \u9810\u8a2d OK \u6587\u6848\uff08\u96d9\u4fdd\u96aa\uff09\n  if (window.alertify?.defaults?.glossary) {\n    try { alertify.defaults.glossary.ok = dict.ok; } catch (e) {}\n  }\n\n  if ($btn) $btn.disabled = true;\n\n  // =========================\n  // Helpers (\u542b\u9664\u932f\u5de5\u5177)\n  // =========================\n\n  // \u7e3d\u958b\u95dc\uff1a\u8981\u770b console \u8a2d true\n  const DBG = true;\n  const dbg = (...args) => { if (DBG) console.log('[downloadCSVZip]', ...args); };\n\n  // \u8de8 realm \u4e5f\u6709\u6548\u7684 Blob \u5075\u6e2c\uff08\u542b\u515c\u5e95\uff09\n  const isBlobLike = (v) => {\n    if (!v) return false;\n    const tag = Object.prototype.toString.call(v);\n    if (tag === '[object Blob]' || tag === '[object File]') return true;\n    return typeof v === 'object'\n        && typeof v.size === 'number'\n        && typeof v.slice === 'function'\n        && (!('type' in v) || typeof v.type === 'string');\n  };\n\n  // \u8b80\u6574\u500b Blob \u70ba\u6587\u5b57\n  const readBlobAsText = (blob) =>\n    new Promise((resolve, reject) => {\n      const fr = new FileReader();\n      fr.onload = () => resolve(String(fr.result || ''));\n      fr.onerror = (e) => reject(e);\n      fr.readAsText(blob);\n    });\n\n  // \u50c5\u8b80\u524d firstKB \u7684\u6587\u5b57\u9810\u89bd\n  async function readBlobTextPreview(blob, firstKB = 64) {\n    try {\n      const slice = blob.slice(0, Math.min(blob.size, firstKB * 1024));\n      const text = await new Promise((resolve, reject) => {\n        const fr = new FileReader();\n        fr.onload = () => resolve(String(fr.result || ''));\n        fr.onerror = reject;\n        fr.readAsText(slice);\n      });\n      return text;\n    } catch {\n      return null;\n    }\n  }\n\n  // \u8b80\u524d maxBytes \u7684\u5341\u516d\u9032\u4f4d\u9810\u89bd\n  async function readBlobHexPreview(blob, maxBytes = 64) {\n    try {\n      const slice = blob.slice(0, Math.min(blob.size, maxBytes));\n      const buf = await slice.arrayBuffer();\n      const view = new Uint8Array(buf);\n      const hex = Array.from(view).map(v => v.toString(16).padStart(2,'0')).join(' ');\n      return hex;\n    } catch {\n      return null;\n    }\n  }\n\n  // \u4e3b debug\uff1a\u628a Blob \u7684\u8cc7\u8a0a\u5370\u51fa\u4f86\n  async function debugBlob(label, blob, extra = {}) {\n    const tag = Object.prototype.toString.call(blob);\n    const type = blob?.type;\n    const size = blob?.size;\n    const textPreview = await readBlobTextPreview(blob, 64);   // 64KB \u6587\u5b57\u9810\u89bd\n    const hexPreview  = await readBlobHexPreview(blob, 64);    // 64 bytes \u5341\u516d\u9032\u4f4d\n    dbg(`${label} -> tag=${tag} type=${type} size=${size}`, extra);\n    if (textPreview !== null) dbg(`${label} textPreview(64KB):`, textPreview.slice(0, 1000));\n    if (hexPreview  !== null) dbg(`${label} hexPreview(64B):`, hexPreview);\n  }\n\n  // \u5c0f Blob \u5617\u8a66 parse JSON\uff08\u907f\u514d\u8aa4\u8b80\u5927\u6a94\uff09\n  async function tryParseJsonFromBlob(blob, maxKB = 512) {\n    try {\n      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;\n      const text = await readBlobAsText(blob);\n      return JSON.parse(text);\n    } catch { return null; }\n  }\n\n  // \u5c0f Blob \u8b80\u6587\u5b57\n  async function tryReadTextFromBlob(blob, maxKB = 1024) {\n    try {\n      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;\n      return await readBlobAsText(blob);\n    } catch { return null; }\n  }\n\n  // \u5f8c\u7aef\u8a9e\u610f\u5075\u6e2c\uff08JSON\uff09\n  function isNoCurveByJson(json) {\n    const code = json?.res_code || json?.code || '';\n    const msg  = json?.res_msg  || json?.message || '';\n    const typ  = (json?.res_type || '').toLowerCase();\n    return code === 'NO_CURVE_DATA'\n        || (typ === 'info' && /no\\s*curve\\s*data/i.test(msg))\n        || /\u6c92\u6709\u53ef\u4f9b\u4e0b\u8f09|\u6ca1\u6709\u53ef\u4f9b\u4e0b\u8f7d|no.+csv|no.+data/i.test(msg)\n        || /\u6c92\u6709\u66f2\u7dda\u5716|\u6ca1\u6709\u66f2\u7ebf\u56fe/i.test(msg);\n  }\n\n  // \u5f8c\u7aef\u8a9e\u610f\u5075\u6e2c\uff08\u7d14\u6587\u5b57\uff09\n  function isNoCurveByText(text) {\n    const t = String(text || '');\n    return /\u6c92\u6709\u66f2\u7dda\u5716|\u6ca1\u6709\u66f2\u7ebf\u56fe|\u6c92\u6709\u53ef\u4f9b\u4e0b\u8f09|\u6ca1\u6709\u53ef\u4f9b\u4e0b\u8f7d|no\\s+curve\\s+data/i.test(t);\n  }\n\n  // \u5c08\u6cbb [object Blob] \u7684\u5b89\u5168 alert\uff08\u7d71\u4e00\u51fa\u5165\u53e3\uff09\n  const safeAlert = async (title, msg) => {\n    const tag = Object.prototype.toString.call(msg);\n    if (isBlobLike(msg) || tag === '[object Blob]' || tag === '[object File]') {\n      await debugBlob('safeAlert-blob', msg);\n      const text = await readBlobTextPreview(msg, 1024); // 1MB \u4e0a\u9650\n      alertify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });\n      return;\n    }\n    if (msg && typeof msg === 'object') {\n      alertify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))\n              .set('labels', { ok: dict.ok });\n      return;\n    }\n    alertify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });\n  };\n\n  // =========================\n  // AJAX\n  // =========================\n  $.ajax({\n    url,\n    method: \"GET\",\n    xhrFields: { responseType: 'blob' }, // \u6210\u529f/\u5931\u6557\u90fd\u53ef\u80fd\u662f Blob\n    headers: { 'Accept': 'application/zip, application/json, text/plain, text/html' },\n\n    success: async function (data, textStatus, jqXHR) {\n      try {\n        const ct = (jqXHR.getResponseHeader('Content-Type') || '').toLowerCase();\n        dbg('success', { ct, status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());\n        if (isBlobLike(data)) await debugBlob('success-data', data, { ct });\n\n        // 1) \u660e\u78ba\u662f JSON\uff1a\u8b80\u51fa\u8207\u5224\u65b7\n        if (ct.includes('application/json')) {\n          const text = await readBlobAsText(data);\n          let json = {};\n          try { json = JSON.parse(text || '{}'); } catch {}\n          const title = isNoCurveByJson(json) ? dict.info : dict.error;\n          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.genericFail);\n          await safeAlert(title, msg);\n          return;\n        }\n\n        // 2) \u53ef\u80fd\u662f text/plain / text/html / application/octet-stream\uff08\u5c0f\u6a94\uff09\uff1a\u5148\u8b80\u6210\u6587\u5b57\n        if (ct.includes('text/plain') || ct.includes('text/html') || ct.includes('application/octet-stream')) {\n          const text = await tryReadTextFromBlob(data, 1024);\n          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }\n          if (text && text.trim() && !ct.includes('application/zip')) { // \u660e\u986f\u932f\u8aa4\u5b57\u4e32\n            await safeAlert(dict.error, text.trim()); return;\n          }\n          // \u5426\u5247\u7e7c\u7e8c\u5f80\u4e0b\u7576\u4f5c ZIP\n        }\n\n        // 3) \u55c5\u63a2\u5c0f Blob \u662f\u5426\u5176\u5be6\u662f JSON\n        const sniff = await tryParseJsonFromBlob(data, 512);\n        if (sniff) {\n          const title = isNoCurveByJson(sniff) ? dict.info : dict.error;\n          const msg   = isNoCurveByJson(sniff) ? dict.noCurve : (sniff?.res_msg || dict.genericFail);\n          await safeAlert(title, msg);\n          return;\n        }\n\n        // 4) \u771f\u7684\u5c31\u662f ZIP\uff1a\u4e0b\u8f09\n        let filename = 'csv_bundle.zip';\n        const cd = jqXHR.getResponseHeader('Content-Disposition') || '';\n        const match = cd.match(/filename\\*?=(?:UTF-8'')?(\"?)([^\";]+)\\1/i);\n        if (match && match[2]) filename = decodeURIComponent(match[2]);\n\n        const blobUrl = URL.createObjectURL(data);\n        const a = document.createElement('a');\n        a.style.display = 'none';\n        a.href = blobUrl;\n        a.download = filename;\n        document.body.appendChild(a);\n        a.click();\n        URL.revokeObjectURL(blobUrl);\n        a.remove();\n\n        // \u5982\u9700\u63d0\u793a\u6210\u529f\u53ef\u958b\u555f\n        // await safeAlert(dict.info, dict.done + filename);\n\n      } catch (err) {\n        dbg('success-catch', err);\n        await safeAlert(dict.error, dict.genericFail);\n      } finally {\n        if ($btn) $btn.disabled = false;\n      }\n    },\n\n    error: async function (jqXHR) {\n      try {\n        dbg('error', { status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());\n\n        // \u2605\u2605\u2605 \u7279\u4f8b\uff1ajQuery \u628a\u932f\u8aa4\u8a0a\u606f\u8b8a\u6210\u5b57\u4e32 \"[object Blob]\" \u7684\u72c0\u6cc1\n        // \u67d0\u4e9b\u74b0\u5883\u4e0b jqXHR.response \u53ef\u80fd\u62ff\u4e0d\u5230 / \u4e0d\u662f blob-like\uff0c\u4f46 responseText \u537b\u662f\u9019\u500b\u5b57\u4e32\n        if (typeof jqXHR.responseText === 'string' && /^\\s*\\[object Blob\\]\\s*$/i.test(jqXHR.responseText)) {\n        await safeAlert(dict.info, dict.noCurve); // \u591a\u8a9e\u7cfb\uff1a\u300c\u6c92\u6709\u66f2\u7dda\u5716\u7684\u8cc7\u6599\u53ef\u4ee5\u4e0b\u8f09\u300d\n        return; // \u7d50\u675f error handler\uff0c\u907f\u514d\u518d\u5f80\u4e0b\u8dd1\n        }\n        \n\n        // A) \u932f\u8aa4\u56de\u61c9\u662f Blob\uff1a\u5148\u8a66 JSON\uff0c\u518d\u8a66\u6587\u5b57\n        if (isBlobLike(jqXHR.response)) {\n          await debugBlob('error-response', jqXHR.response, { status: jqXHR.status });\n          const json = await tryParseJsonFromBlob(jqXHR.response, 512);\n          if (json) {\n            const title = isNoCurveByJson(json) ? dict.info : dict.error;\n            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);\n            await safeAlert(title, msg);\n            return;\n          }\n          const text = await tryReadTextFromBlob(jqXHR.response, 1024);\n          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }\n          if (text && text.trim())           { await safeAlert(dict.error, text.trim()); return; }\n          await safeAlert(dict.error, dict.httpFail);\n          return;\n        }\n\n        // B) \u6709 responseText\uff08\u5b57\u4e32\uff09\n        if (typeof jqXHR.responseText === 'string' && jqXHR.responseText.length) {\n          dbg('error-responseText', jqXHR.responseText.slice(0, 1000));\n          try {\n            const json = JSON.parse(jqXHR.responseText);\n            const title = isNoCurveByJson(json) ? dict.info : dict.error;\n            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);\n            await safeAlert(title, msg);\n          } catch {\n            await safeAlert(dict.error, jqXHR.responseText);\n          }\n          return;\n        }\n\n        // C) jQuery \u5e6b\u5fd9 parse \u7684 JSON\n        if (jqXHR.responseJSON) {\n          dbg('error-responseJSON', jqXHR.responseJSON);\n          const json = jqXHR.responseJSON;\n          const title = isNoCurveByJson(json) ? dict.info : dict.error;\n          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);\n          await safeAlert(title, msg);\n          return;\n        }\n\n        // D) Fallback\n        await safeAlert(dict.error, dict.httpFail);\n      } finally {\n        if ($btn) $btn.disabled = false;\n      }\n    }\n  });\n}\n\n" : "function exportData() {\n    var radioButtons = document.querySelectorAll('input[name=\"export-option\"]');\n    var isChecked = false;\n    var expert_val = '';\n\n    for (var i = 0; i < radioButtons.length; i++) {\n        if (radioButtons[i].checked) {\n            isChecked = true;\n            expert_val = radioButtons[i].value;\n            break;\n        }\n    }\n\n    if (!isChecked) {\n        alertify.alert(\"\u8acb\u9078\u64c7\u4e00\u500b\u9078\u9805\");\n        return;\n    }\n\n    var start_date = document.getElementById('start_date').value;\n    var end_date   = document.getElementById('end_date').value;\n\n    if (start_date === '' || end_date === '') {\n        alertify.alert(\"\u8acb\u9078\u64c7\u958b\u59cb\u65e5\u671f\u8207\u7d50\u675f\u65e5\u671f\");\n        return;\n    }\n\n    if (start_date > end_date) {\n        alertify.alert(\"\u958b\u59cb\u65e5\u671f\u5fc5\u9808\u5c0f\u65bc\u7d50\u675f\u65e5\u671f\");\n        return;\n    }\n\n    // =====================================\n    // \u2b50 \u53d6\u5f97\u700f\u89bd\u5668\u7576\u524d\u6642\u9593\uff08YYYYMMDDHHmmss\uff09\n    // =====================================\n    function getBrowserTimestamp() {\n        const d = new Date();\n        const pad = n => String(n).padStart(2, '0');\n\n        return (\n            d.getFullYear() +\n            pad(d.getMonth() + 1) +\n            pad(d.getDate()) +\n            pad(d.getHours()) +\n            pad(d.getMinutes()) +\n            pad(d.getSeconds())\n        );\n    }\n\n    $.ajax({\n        url: \"?url=Data/exportData\",\n        method: \"POST\",\n        data: {\n            start_date: start_date,\n            end_date: end_date,\n            expert_val: expert_val,\n            client_ts: getBrowserTimestamp() // \u2b50\u2b50\u2b50 \u95dc\u9375\u65b0\u589e\n        },\n        xhrFields: {\n            responseType: 'blob'\n        },\n        success: function(response, status, xhr) {\n            const disposition = xhr.getResponseHeader('Content-Disposition');\n            let filename = 'downloaded_file';\n\n            if (disposition && disposition.indexOf('filename=') !== -1) {\n                const matches = disposition.match(/filename=\"?([^\"]+)\"?/);\n                if (matches && matches.length > 1) {\n                    filename = matches[1];\n                }\n            }\n\n            const contentType = xhr.getResponseHeader('Content-Type');\n            const blob = new Blob([response], { type: contentType });\n\n            const link = document.createElement('a');\n            link.href = window.URL.createObjectURL(blob);\n            link.setAttribute('download', filename);\n            document.body.appendChild(link);\n            link.click();\n            document.body.removeChild(link);\n        },\n        error: function(xhr, status, error) {\n            console.error(\"AJAX \u8acb\u6c42\u5931\u6557:\", status, error);\n            alertify.alert(\"\u767c\u751f\u932f\u8aa4\uff0c\u7121\u6cd5\u5c0e\u51fa\u8cc7\u6599\");\n        }\n    });\n}\n\n\n\n\nfunction downloadCSVZip() {\n  const url = \"?url=Data/download_file\";\n  const $btn = document.getElementById('bnt2') || null;\n\n  // ---- i18n ----\n  const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||\n                  document.documentElement.getAttribute('lang') || 'en-us';\n  const l = String(rawLang).toLowerCase();\n  const dict = (function (lang) {\n    if (lang === 'zh-tw' || lang.includes('hant') || lang.includes('tw') || lang.includes('hk') || lang.includes('mo')) {\n      return { ok:'\u78ba\u5b9a', info:'\u63d0\u793a', error:'\u932f\u8aa4', done:'\u4e0b\u8f09\u5b8c\u6210\uff1a', noCurve:'\u6c92\u6709\u66f2\u7dda\u5716\u7684\u8cc7\u6599\u53ef\u4ee5\u4e0b\u8f09', genericFail:'\u6c92\u6709\u66f2\u7dda\u5716\u7684\u8cc7\u6599\u53ef\u4ee5\u4e0b\u8f09', httpFail:'\u4e0b\u8f09\u767c\u751f\u932f\u8aa4' };\n    } else if (lang === 'zh-cn' || lang.includes('hans') || lang.includes('cn') || lang.includes('sg')) {\n      return { ok:'\u786e\u5b9a', info:'\u63d0\u793a', error:'\u9519\u8bef', done:'\u4e0b\u8f7d\u5b8c\u6210\uff1a', noCurve:'\u6ca1\u6709\u66f2\u7ebf\u56fe\u7684\u8d44\u6599\u53ef\u4ee5\u4e0b\u8f7d', genericFail:'\u6ca1\u6709\u66f2\u7ebf\u56fe\u7684\u8d44\u6599\u53ef\u4ee5\u4e0b\u8f7d', httpFail:'\u4e0b\u8f7d\u53d1\u751f\u9519\u8bef' };\n    }\n    return { ok:'OK', info:'Notice', error:'Error', done:'Downloaded: ', noCurve:'No curve data available to download.', genericFail:'No curve data available to download', httpFail:'An error occurred while downloading.' };\n  })(l);\n\n  // \u9810\u8a2d OK \u6587\u6848\uff08\u96d9\u4fdd\u96aa\uff09\n  if (window.alertify?.defaults?.glossary) {\n    try { alertify.defaults.glossary.ok = dict.ok; } catch (e) {}\n  }\n\n  if ($btn) $btn.disabled = true;\n\n  // =========================\n  // Helpers (\u542b\u9664\u932f\u5de5\u5177)\n  // =========================\n\n  // \u7e3d\u958b\u95dc\uff1a\u8981\u770b console \u8a2d true\n  const DBG = true;\n  const dbg = (...args) => { if (DBG) console.log('[downloadCSVZip]', ...args); };\n\n  // \u8de8 realm \u4e5f\u6709\u6548\u7684 Blob \u5075\u6e2c\uff08\u542b\u515c\u5e95\uff09\n  const isBlobLike = (v) => {\n    if (!v) return false;\n    const tag = Object.prototype.toString.call(v);\n    if (tag === '[object Blob]' || tag === '[object File]') return true;\n    return typeof v === 'object'\n        && typeof v.size === 'number'\n        && typeof v.slice === 'function'\n        && (!('type' in v) || typeof v.type === 'string');\n  };\n\n  // \u8b80\u6574\u500b Blob \u70ba\u6587\u5b57\n  const readBlobAsText = (blob) =>\n    new Promise((resolve, reject) => {\n      const fr = new FileReader();\n      fr.onload = () => resolve(String(fr.result || ''));\n      fr.onerror = (e) => reject(e);\n      fr.readAsText(blob);\n    });\n\n  // \u50c5\u8b80\u524d firstKB \u7684\u6587\u5b57\u9810\u89bd\n  async function readBlobTextPreview(blob, firstKB = 64) {\n    try {\n      const slice = blob.slice(0, Math.min(blob.size, firstKB * 1024));\n      const text = await new Promise((resolve, reject) => {\n        const fr = new FileReader();\n        fr.onload = () => resolve(String(fr.result || ''));\n        fr.onerror = reject;\n        fr.readAsText(slice);\n      });\n      return text;\n    } catch {\n      return null;\n    }\n  }\n\n  // \u8b80\u524d maxBytes \u7684\u5341\u516d\u9032\u4f4d\u9810\u89bd\n  async function readBlobHexPreview(blob, maxBytes = 64) {\n    try {\n      const slice = blob.slice(0, Math.min(blob.size, maxBytes));\n      const buf = await slice.arrayBuffer();\n      const view = new Uint8Array(buf);\n      const hex = Array.from(view).map(v => v.toString(16).padStart(2,'0')).join(' ');\n      return hex;\n    } catch {\n      return null;\n    }\n  }\n\n  // \u4e3b debug\uff1a\u628a Blob \u7684\u8cc7\u8a0a\u5370\u51fa\u4f86\n  async function debugBlob(label, blob, extra = {}) {\n    const tag = Object.prototype.toString.call(blob);\n    const type = blob?.type;\n    const size = blob?.size;\n    const textPreview = await readBlobTextPreview(blob, 64);   // 64KB \u6587\u5b57\u9810\u89bd\n    const hexPreview  = await readBlobHexPreview(blob, 64);    // 64 bytes \u5341\u516d\u9032\u4f4d\n    dbg(`${label} -> tag=${tag} type=${type} size=${size}`, extra);\n    if (textPreview !== null) dbg(`${label} textPreview(64KB):`, textPreview.slice(0, 1000));\n    if (hexPreview  !== null) dbg(`${label} hexPreview(64B):`, hexPreview);\n  }\n\n  // \u5c0f Blob \u5617\u8a66 parse JSON\uff08\u907f\u514d\u8aa4\u8b80\u5927\u6a94\uff09\n  async function tryParseJsonFromBlob(blob, maxKB = 512) {\n    try {\n      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;\n      const text = await readBlobAsText(blob);\n      return JSON.parse(text);\n    } catch { return null; }\n  }\n\n  // \u5c0f Blob \u8b80\u6587\u5b57\n  async function tryReadTextFromBlob(blob, maxKB = 1024) {\n    try {\n      if (!isBlobLike(blob) || blob.size > maxKB * 1024) return null;\n      return await readBlobAsText(blob);\n    } catch { return null; }\n  }\n\n  // \u5f8c\u7aef\u8a9e\u610f\u5075\u6e2c\uff08JSON\uff09\n  function isNoCurveByJson(json) {\n    const code = json?.res_code || json?.code || '';\n    const msg  = json?.res_msg  || json?.message || '';\n    const typ  = (json?.res_type || '').toLowerCase();\n    return code === 'NO_CURVE_DATA'\n        || (typ === 'info' && /no\\s*curve\\s*data/i.test(msg))\n        || /\u6c92\u6709\u53ef\u4f9b\u4e0b\u8f09|\u6ca1\u6709\u53ef\u4f9b\u4e0b\u8f7d|no.+csv|no.+data/i.test(msg)\n        || /\u6c92\u6709\u66f2\u7dda\u5716|\u6ca1\u6709\u66f2\u7ebf\u56fe/i.test(msg);\n  }\n\n  // \u5f8c\u7aef\u8a9e\u610f\u5075\u6e2c\uff08\u7d14\u6587\u5b57\uff09\n  function isNoCurveByText(text) {\n    const t = String(text || '');\n    return /\u6c92\u6709\u66f2\u7dda\u5716|\u6ca1\u6709\u66f2\u7ebf\u56fe|\u6c92\u6709\u53ef\u4f9b\u4e0b\u8f09|\u6ca1\u6709\u53ef\u4f9b\u4e0b\u8f7d|no\\s+curve\\s+data/i.test(t);\n  }\n\n  // \u5c08\u6cbb [object Blob] \u7684\u5b89\u5168 alert\uff08\u7d71\u4e00\u51fa\u5165\u53e3\uff09\n  const safeAlert = async (title, msg) => {\n    const tag = Object.prototype.toString.call(msg);\n    if (isBlobLike(msg) || tag === '[object Blob]' || tag === '[object File]') {\n      await debugBlob('safeAlert-blob', msg);\n      const text = await readBlobTextPreview(msg, 1024); // 1MB \u4e0a\u9650\n      alertify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });\n      return;\n    }\n    if (msg && typeof msg === 'object') {\n      alertify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))\n              .set('labels', { ok: dict.ok });\n      return;\n    }\n    alertify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });\n  };\n\n  // =========================\n  // AJAX\n  // =========================\n  $.ajax({\n    url,\n    method: \"GET\",\n    xhrFields: { responseType: 'blob' }, // \u6210\u529f/\u5931\u6557\u90fd\u53ef\u80fd\u662f Blob\n    headers: { 'Accept': 'application/zip, application/json, text/plain, text/html' },\n\n    success: async function (data, textStatus, jqXHR) {\n      try {\n        const ct = (jqXHR.getResponseHeader('Content-Type') || '').toLowerCase();\n        dbg('success', { ct, status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());\n        if (isBlobLike(data)) await debugBlob('success-data', data, { ct });\n\n        // 1) \u660e\u78ba\u662f JSON\uff1a\u8b80\u51fa\u8207\u5224\u65b7\n        if (ct.includes('application/json')) {\n          const text = await readBlobAsText(data);\n          let json = {};\n          try { json = JSON.parse(text || '{}'); } catch {}\n          const title = isNoCurveByJson(json) ? dict.info : dict.error;\n          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.genericFail);\n          await safeAlert(title, msg);\n          return;\n        }\n\n        // 2) \u53ef\u80fd\u662f text/plain / text/html / application/octet-stream\uff08\u5c0f\u6a94\uff09\uff1a\u5148\u8b80\u6210\u6587\u5b57\n        if (ct.includes('text/plain') || ct.includes('text/html') || ct.includes('application/octet-stream')) {\n          const text = await tryReadTextFromBlob(data, 1024);\n          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }\n          if (text && text.trim() && !ct.includes('application/zip')) { // \u660e\u986f\u932f\u8aa4\u5b57\u4e32\n            await safeAlert(dict.error, text.trim()); return;\n          }\n          // \u5426\u5247\u7e7c\u7e8c\u5f80\u4e0b\u7576\u4f5c ZIP\n        }\n\n        // 3) \u55c5\u63a2\u5c0f Blob \u662f\u5426\u5176\u5be6\u662f JSON\n        const sniff = await tryParseJsonFromBlob(data, 512);\n        if (sniff) {\n          const title = isNoCurveByJson(sniff) ? dict.info : dict.error;\n          const msg   = isNoCurveByJson(sniff) ? dict.noCurve : (sniff?.res_msg || dict.genericFail);\n          await safeAlert(title, msg);\n          return;\n        }\n\n        // 4) \u771f\u7684\u5c31\u662f ZIP\uff1a\u4e0b\u8f09\n        let filename = 'csv_bundle.zip';\n        const cd = jqXHR.getResponseHeader('Content-Disposition') || '';\n        const match = cd.match(/filename\\*?=(?:UTF-8'')?(\"?)([^\";]+)\\1/i);\n        if (match && match[2]) filename = decodeURIComponent(match[2]);\n\n        const blobUrl = URL.createObjectURL(data);\n        const a = document.createElement('a');\n        a.style.display = 'none';\n        a.href = blobUrl;\n        a.download = filename;\n        document.body.appendChild(a);\n        a.click();\n        URL.revokeObjectURL(blobUrl);\n        a.remove();\n\n        // \u5982\u9700\u63d0\u793a\u6210\u529f\u53ef\u958b\u555f\n        // await safeAlert(dict.info, dict.done + filename);\n\n      } catch (err) {\n        dbg('success-catch', err);\n        await safeAlert(dict.error, dict.genericFail);\n      } finally {\n        if ($btn) $btn.disabled = false;\n      }\n    },\n\n    error: async function (jqXHR) {\n      try {\n        dbg('error', { status: jqXHR.status }, jqXHR.getAllResponseHeaders?.());\n\n        // \u2605\u2605\u2605 \u7279\u4f8b\uff1ajQuery \u628a\u932f\u8aa4\u8a0a\u606f\u8b8a\u6210\u5b57\u4e32 \"[object Blob]\" \u7684\u72c0\u6cc1\n        // \u67d0\u4e9b\u74b0\u5883\u4e0b jqXHR.response \u53ef\u80fd\u62ff\u4e0d\u5230 / \u4e0d\u662f blob-like\uff0c\u4f46 responseText \u537b\u662f\u9019\u500b\u5b57\u4e32\n        if (typeof jqXHR.responseText === 'string' && /^\\s*\\[object Blob\\]\\s*$/i.test(jqXHR.responseText)) {\n        await safeAlert(dict.info, dict.noCurve); // \u591a\u8a9e\u7cfb\uff1a\u300c\u6c92\u6709\u66f2\u7dda\u5716\u7684\u8cc7\u6599\u53ef\u4ee5\u4e0b\u8f09\u300d\n        return; // \u7d50\u675f error handler\uff0c\u907f\u514d\u518d\u5f80\u4e0b\u8dd1\n        }\n        \n\n        // A) \u932f\u8aa4\u56de\u61c9\u662f Blob\uff1a\u5148\u8a66 JSON\uff0c\u518d\u8a66\u6587\u5b57\n        if (isBlobLike(jqXHR.response)) {\n          await debugBlob('error-response', jqXHR.response, { status: jqXHR.status });\n          const json = await tryParseJsonFromBlob(jqXHR.response, 512);\n          if (json) {\n            const title = isNoCurveByJson(json) ? dict.info : dict.error;\n            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);\n            await safeAlert(title, msg);\n            return;\n          }\n          const text = await tryReadTextFromBlob(jqXHR.response, 1024);\n          if (text && isNoCurveByText(text)) { await safeAlert(dict.info, dict.noCurve); return; }\n          if (text && text.trim())           { await safeAlert(dict.error, text.trim()); return; }\n          await safeAlert(dict.error, dict.httpFail);\n          return;\n        }\n\n        // B) \u6709 responseText\uff08\u5b57\u4e32\uff09\n        if (typeof jqXHR.responseText === 'string' && jqXHR.responseText.length) {\n          dbg('error-responseText', jqXHR.responseText.slice(0, 1000));\n          try {\n            const json = JSON.parse(jqXHR.responseText);\n            const title = isNoCurveByJson(json) ? dict.info : dict.error;\n            const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);\n            await safeAlert(title, msg);\n          } catch {\n            await safeAlert(dict.error, jqXHR.responseText);\n          }\n          return;\n        }\n\n        // C) jQuery \u5e6b\u5fd9 parse \u7684 JSON\n        if (jqXHR.responseJSON) {\n          dbg('error-responseJSON', jqXHR.responseJSON);\n          const json = jqXHR.responseJSON;\n          const title = isNoCurveByJson(json) ? dict.info : dict.error;\n          const msg   = isNoCurveByJson(json) ? dict.noCurve : (json?.res_msg || dict.httpFail);\n          await safeAlert(title, msg);\n          return;\n        }\n\n        // D) Fallback\n        await safeAlert(dict.error, dict.httpFail);\n      } finally {\n        if ($btn) $btn.disabled = false;\n      }\n    }\n  });\n}\n\n\n\n/* =========================================================\n * Operator(law = 3) download/export guard\n * ---------------------------------------------------------\n * - Backend still blocks direct API access in Data.php.\n * - This client guard makes the Torque Line Chart export button\n *   behave the same as the Data export/download buttons.\n * ========================================================= */\n(function () {\n  'use strict';\n\n  const COOKIE_FLAG = 'ntcs_operator_download_block';\n  const LAW_KEYS = ['user_law', 'law', 'userLaw', 'user_level', 'permission', 'role_law'];\n  const ROLE_KEYS = ['role', 'user_role', 'account_role', 'permission_name'];\n\n  function readCookie(name) {\n    const parts = String(document.cookie || '').split(';');\n    for (let i = 0; i < parts.length; i++) {\n      const part = parts[i].trim();\n      if (!part) continue;\n      const eq = part.indexOf('=');\n      const key = eq >= 0 ? part.slice(0, eq) : part;\n      if (key === name) {\n        const val = eq >= 0 ? part.slice(eq + 1) : '';\n        try { return decodeURIComponent(val); } catch (e) { return val; }\n      }\n    }\n    return '';\n  }\n\n  function isOperatorLogin() {\n    // Data/index.php \u6703\u6ce8\u5165\u6b64\u5e38\u6578\uff1b\u76ee\u524d\u9801\u9762\u6709\u660e\u78ba\u503c\u6642\uff0c\u4ee5\u5b83\u70ba\u6e96\u3002\n    // \u9019\u6a23 guest/admin \u4e0d\u6703\u88ab\u820a cookie user_law=3 \u6216 ntcs_operator_download_block=1 \u8aa4\u5224\u3002\n    if (window.IS_OPERATOR_LOGIN === true) return true;\n    if (window.IS_OPERATOR_LOGIN === false) return false;\n\n    if (readCookie(COOKIE_FLAG) === '1') return true;\n\n    for (const key of LAW_KEYS) {\n      const v = readCookie(key);\n      if (v !== '' && !Number.isNaN(Number(v)) && Number(v) === 3) return true;\n    }\n\n    for (const key of ROLE_KEYS) {\n      const v = String(readCookie(key) || '').trim().toLowerCase();\n      if (v === 'operator') return true;\n    }\n\n    return false;\n  }\n\n  function getLang() {\n    const lang = (readCookie('language') || document.documentElement.getAttribute('lang') || 'zh-tw').toLowerCase();\n    if (lang.includes('cn') || lang.includes('hans')) return 'zh-cn';\n    if (lang.includes('en')) return 'en-us';\n    return 'zh-tw';\n  }\n\n  function denyMessage() {\n    const lang = getLang();\n    if (lang === 'zh-cn') return { title: '\u6743\u9650\u4e0d\u8db3', msg: 'Operator \u6743\u9650\u4e0d\u5141\u8bb8\u4e0b\u8f7d\u6216\u6c47\u51fa\u6863\u6848\u3002' };\n    if (lang === 'en-us') return { title: 'Permission denied', msg: 'Operator permission is not allowed to download or export files.' };\n    return { title: '\u6b0a\u9650\u4e0d\u8db3', msg: 'Operator \u6b0a\u9650\u4e0d\u5141\u8a31\u4e0b\u8f09\u6216\u532f\u51fa\u6a94\u6848\u3002' };\n  }\n\n  function showDenied() {\n    // Operator \u4e0d\u5141\u8a31\u4e0b\u8f09/\u532f\u51fa\u6642\uff0c\u524d\u7aef\u53ea\u963b\u64cb\u52d5\u4f5c\uff0c\u4e0d\u986f\u793a\u5f48\u7a97\u3002\n    return false;\n  }\n\n  function stopEvent(e) {\n    if (e) {\n      e.preventDefault();\n      e.stopPropagation();\n      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();\n    }\n    showDenied();\n    return false;\n  }\n\n  function pageLooksLikeTorqueLineChart() {\n    const text = String(document.body ? document.body.innerText : '').slice(0, 3000);\n    const url = String(location.href || '');\n    return /drawLineChart|Torque_line_chart|export_drawline_chart_csv/i.test(url)\n        || /\u626d\u529b\u6298\u7dda\u5716|\u626d\u529b\u6298\u7ebf\u56fe|Torque\\s*Line\\s*Chart/i.test(text);\n  }\n\n  function elementText(el) {\n    if (!el) return '';\n    return [\n      el.id,\n      el.name,\n      el.className,\n      el.title,\n      el.value,\n      el.getAttribute && el.getAttribute('href'),\n      el.getAttribute && el.getAttribute('onclick'),\n      el.textContent\n    ].filter(Boolean).join(' ');\n  }\n\n  function looksLikeDownloadExport(el) {\n    const s = elementText(el).toLowerCase();\n    return /export|download|csv|zip|\u532f\u51fa|\u6c47\u51fa|\u4e0b\u8f09|\u4e0b\u8f7d/.test(s)\n        || /exportdata|downloadcsvzip|export_drawline_chart_csv|exportdrawline/i.test(s);\n  }\n\n  function shouldBlockElement(el) {\n    if (!el) return false;\n\n    const s = elementText(el);\n\n    // \u660e\u78ba API / function \u540d\u7a31\uff1a\u6240\u6709 Data \u4e0b\u8f09\u8207\u532f\u51fa\u90fd\u64cb\u3002\n    if (/Data\\/(exportData|download_file|export_drawline_chart_csv)/i.test(s)) return true;\n    if (/exportData\\s*\\(|downloadCSVZip\\s*\\(|export_drawline_chart_csv|exportDrawLine/i.test(s)) return true;\n\n    // \u626d\u529b\u6298\u7dda\u5716\u9801\u9762\u5167\u7684\u300c\u532f\u51fa\u300d\u6309\u9215\u3002\n    if (pageLooksLikeTorqueLineChart() && looksLikeDownloadExport(el)) return true;\n\n    return false;\n  }\n\n  function markRestrictedButton(el) {\n    if (!el || el.dataset.operatorDownloadRestricted === '1') return;\n    el.dataset.operatorDownloadRestricted = '1';\n    el.classList.add('download-restricted');\n    el.setAttribute('aria-disabled', 'true');\n    if ('disabled' in el) el.disabled = true;\n    el.setAttribute('tabindex', '-1');\n  }\n\n  function markCurrentPageButtons() {\n    if (!isOperatorLogin()) return;\n\n    const candidates = document.querySelectorAll('button, a, input[type=\"button\"], input[type=\"submit\"]');\n    candidates.forEach(function (el) {\n      if (shouldBlockElement(el)) markRestrictedButton(el);\n    });\n  }\n\n  function installClickGuard() {\n    if (window.__operatorDownloadClickGuardInstalled) return;\n    window.__operatorDownloadClickGuardInstalled = true;\n\n    document.addEventListener('click', function (e) {\n      if (!isOperatorLogin()) return;\n      const el = e.target && e.target.closest\n        ? e.target.closest('button, a, input[type=\"button\"], input[type=\"submit\"], .button, .btn')\n        : null;\n      if (shouldBlockElement(el)) stopEvent(e);\n    }, true);\n\n    document.addEventListener('submit', function (e) {\n      if (!isOperatorLogin()) return;\n      const form = e.target;\n      const action = form && form.getAttribute ? String(form.getAttribute('action') || '') : '';\n      if (/Data\\/(exportData|download_file|export_drawline_chart_csv)/i.test(action)) stopEvent(e);\n    }, true);\n  }\n\n  function wrapDownloadFunction(name) {\n    const fn = window[name];\n    if (typeof fn !== 'function' || fn.__operatorDownloadGuarded) return;\n\n    const wrapped = function () {\n      if (isOperatorLogin()) return false;\n      return fn.apply(this, arguments);\n    };\n    wrapped.__operatorDownloadGuarded = true;\n    window[name] = wrapped;\n  }\n\n  function installFunctionGuards() {\n    [\n      'exportData',\n      'downloadCSVZip',\n      'exportDrawLineChartCsv',\n      'exportLineChartCsv',\n      'exportTorqueLineChartCsv',\n      'downloadDrawLineChartCsv',\n      'downloadLineChartCsv',\n      'export_drawline_chart_csv'\n    ].forEach(wrapDownloadFunction);\n  }\n\n  function refreshGuards() {\n    if (!isOperatorLogin()) return;\n    installClickGuard();\n    installFunctionGuards();\n    markCurrentPageButtons();\n  }\n\n  document.addEventListener('DOMContentLoaded', refreshGuards);\n  window.addEventListener('load', refreshGuards);\n\n  // \u90e8\u5206\u9801\u9762\u6703\u52d5\u614b\u5efa\u7acb\u6309\u9215\u6216\u5f8c\u8f09\u5165 inline function\uff0c\u77ed\u6642\u9593\u5167\u591a\u88dc\u5e7e\u6b21\u3002\n  let times = 0;\n  const timer = setInterval(function () {\n    refreshGuards();\n    times += 1;\n    if (times >= 10) clearInterval(timer);\n  }, 500);\n\n  // \u7d66 PHP inline onclick \u5171\u7528\uff1bOperator \u53ea\u963b\u64cb\uff0c\u4e0d\u986f\u793a\u5f48\u7a97\u3002\n  window.denyDownloadByOperator = function () { return false; };\n})();\n\n(function () {\n  if (document.getElementById('operator-download-restricted-style')) return;\n  const style = document.createElement('style');\n  style.id = 'operator-download-restricted-style';\n  style.textContent = `\n    .download-restricted {\n      background-color: #8a8f93 !important;\n      border-color: #8a8f93 !important;\n      color: #ffffff !important;\n      cursor: not-allowed !important;\n      opacity: 0.75;\n    }\n  `;\n  (document.head || document.documentElement).appendChild(style);\n})();\n";
-    (0, eval)(source);
+  'use strict';
+
+  const COOKIE_FLAG = 'ntcs_operator_download_block';
+  const LAW_KEYS = ['user_law', 'law', 'userLaw', 'user_level', 'permission', 'role_law'];
+  const ROLE_KEYS = ['role', 'user_role', 'account_role', 'permission_name'];
+
+  function readCookie(name) {
+    const parts = String(document.cookie || '').split(';');
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+      const eq = part.indexOf('=');
+      const key = eq >= 0 ? part.slice(0, eq) : part;
+      if (key === name) {
+        const val = eq >= 0 ? part.slice(eq + 1) : '';
+        try { return decodeURIComponent(val); } catch (e) { return val; }
+      }
+    }
+    return '';
+  }
+
+  function isOperatorLogin() {
+    // Data/index.php 會注入此常數；目前頁面有明確值時，以它為準。
+    // 這樣 guest/admin 不會被舊 cookie user_law=3 或 ntcs_operator_download_block=1 誤判。
+    if (window.IS_OPERATOR_LOGIN === true) return true;
+    if (window.IS_OPERATOR_LOGIN === false) return false;
+
+    if (readCookie(COOKIE_FLAG) === '1') return true;
+
+    for (const key of LAW_KEYS) {
+      const v = readCookie(key);
+      if (v !== '' && !Number.isNaN(Number(v)) && Number(v) === 3) return true;
+    }
+
+    for (const key of ROLE_KEYS) {
+      const v = String(readCookie(key) || '').trim().toLowerCase();
+      if (v === 'operator') return true;
+    }
+
+    return false;
+  }
+
+  function getLang() {
+    const lang = (readCookie('language') || document.documentElement.getAttribute('lang') || 'zh-tw').toLowerCase();
+    if (lang.includes('cn') || lang.includes('hans')) return 'zh-cn';
+    if (lang.includes('en')) return 'en-us';
+    return 'zh-tw';
+  }
+
+  function denyMessage() {
+    const lang = getLang();
+    if (lang === 'zh-cn') return { title: '权限不足', msg: 'Operator 权限不允许下载或汇出档案。' };
+    if (lang === 'en-us') return { title: 'Permission denied', msg: 'Operator permission is not allowed to download or export files.' };
+    return { title: '權限不足', msg: 'Operator 權限不允許下載或匯出檔案。' };
+  }
+
+  function showDenied() {
+    // Operator 不允許下載/匯出時，前端只阻擋動作，不顯示彈窗。
+    return false;
+  }
+
+  function stopEvent(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    }
+    showDenied();
+    return false;
+  }
+
+  function pageLooksLikeTorqueLineChart() {
+    const text = String(document.body ? document.body.innerText : '').slice(0, 3000);
+    const url = String(location.href || '');
+    return /drawLineChart|Torque_line_chart|export_drawline_chart_csv/i.test(url)
+        || /扭力折線圖|扭力折线图|Torque\s*Line\s*Chart/i.test(text);
+  }
+
+  function elementText(el) {
+    if (!el) return '';
+    return [
+      el.id,
+      el.name,
+      el.className,
+      el.title,
+      el.value,
+      el.getAttribute && el.getAttribute('href'),
+      el.getAttribute && el.getAttribute('onclick'),
+      el.textContent
+    ].filter(Boolean).join(' ');
+  }
+
+  function looksLikeDownloadExport(el) {
+    const s = elementText(el).toLowerCase();
+    return /export|download|csv|zip|匯出|汇出|下載|下载/.test(s)
+        || /exportdata|downloadcsvzip|export_drawline_chart_csv|exportdrawline/i.test(s);
+  }
+
+  function shouldBlockElement(el) {
+    if (!el) return false;
+
+    const s = elementText(el);
+
+    // 明確 API / function 名稱：所有 Data 下載與匯出都擋。
+    if (/Data\/(exportData|download_file|export_drawline_chart_csv)/i.test(s)) return true;
+    if (/exportData\s*\(|downloadCSVZip\s*\(|export_drawline_chart_csv|exportDrawLine/i.test(s)) return true;
+
+    // 扭力折線圖頁面內的「匯出」按鈕。
+    if (pageLooksLikeTorqueLineChart() && looksLikeDownloadExport(el)) return true;
+
+    return false;
+  }
+
+  function markRestrictedButton(el) {
+    if (!el || el.dataset.operatorDownloadRestricted === '1') return;
+    el.dataset.operatorDownloadRestricted = '1';
+    el.classList.add('download-restricted');
+    el.setAttribute('aria-disabled', 'true');
+    if ('disabled' in el) el.disabled = true;
+    el.setAttribute('tabindex', '-1');
+  }
+
+  function markCurrentPageButtons() {
+    if (!isOperatorLogin()) return;
+
+    const candidates = document.querySelectorAll('button, a, input[type="button"], input[type="submit"]');
+    candidates.forEach(function (el) {
+      if (shouldBlockElement(el)) markRestrictedButton(el);
+    });
+  }
+
+  function installClickGuard() {
+    if (window.__operatorDownloadClickGuardInstalled) return;
+    window.__operatorDownloadClickGuardInstalled = true;
+
+    document.addEventListener('click', function (e) {
+      if (!isOperatorLogin()) return;
+      const el = e.target && e.target.closest
+        ? e.target.closest('button, a, input[type="button"], input[type="submit"], .button, .btn')
+        : null;
+      if (shouldBlockElement(el)) stopEvent(e);
+    }, true);
+
+    document.addEventListener('submit', function (e) {
+      if (!isOperatorLogin()) return;
+      const form = e.target;
+      const action = form && form.getAttribute ? String(form.getAttribute('action') || '') : '';
+      if (/Data\/(exportData|download_file|export_drawline_chart_csv)/i.test(action)) stopEvent(e);
+    }, true);
+  }
+
+  function wrapDownloadFunction(name) {
+    const fn = window[name];
+    if (typeof fn !== 'function' || fn.__operatorDownloadGuarded) return;
+
+    const wrapped = function () {
+      if (isOperatorLogin()) return false;
+      return fn.apply(this, arguments);
+    };
+    wrapped.__operatorDownloadGuarded = true;
+    window[name] = wrapped;
+  }
+
+  function installFunctionGuards() {
+    [
+      'exportData',
+      'downloadCSVZip',
+      'exportDrawLineChartCsv',
+      'exportLineChartCsv',
+      'exportTorqueLineChartCsv',
+      'downloadDrawLineChartCsv',
+      'downloadLineChartCsv',
+      'export_drawline_chart_csv'
+    ].forEach(wrapDownloadFunction);
+  }
+
+  function refreshGuards() {
+    if (!isOperatorLogin()) return;
+    installClickGuard();
+    installFunctionGuards();
+    markCurrentPageButtons();
+  }
+
+  document.addEventListener('DOMContentLoaded', refreshGuards);
+  window.addEventListener('load', refreshGuards);
+
+  // 部分頁面會動態建立按鈕或後載入 inline function，短時間內多補幾次。
+  let times = 0;
+  const timer = setInterval(function () {
+    refreshGuards();
+    times += 1;
+    if (times >= 10) clearInterval(timer);
+  }, 500);
+
+  // 給 PHP inline onclick 共用；Operator 只阻擋，不顯示彈窗。
+  window.denyDownloadByOperator = function () { return false; };
 })();
+
+(function () {
+  if (document.getElementById('operator-download-restricted-style')) return;
+  const style = document.createElement('style');
+  style.id = 'operator-download-restricted-style';
+  style.textContent = `
+    .download-restricted {
+      background-color: #8a8f93 !important;
+      border-color: #8a8f93 !important;
+      color: #ffffff !important;
+      cursor: not-allowed !important;
+      opacity: 0.75;
+    }
+  `;
+  (document.head || document.documentElement).appendChild(style);
+})();
+}

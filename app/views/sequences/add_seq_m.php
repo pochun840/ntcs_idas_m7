@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <link rel="stylesheet" type="text/css" href="<?php echo URLROOT; ?>css/add_seq_step_m.css">
 <style type="text/css">
 .form-control

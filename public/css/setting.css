@@ -1053,3 +1053,43 @@ html.icontroller .ajs-dialog .network-setting-alert-message{
     line-height: 1.65;
     text-align: left;
 }
+
+
+/* Desktop connect setting layout fix */
+#Connect_Setting .connect-inline-row{
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+}
+
+#Connect_Setting .connect-input-wrap{
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#Connect_Setting .connect-input-wrap .form-control{
+    width: 100%;
+}
+
+#Connect_Setting .connect-input-wrap .invalid-feedback{
+    display: block;
+    min-height: 1.2em;
+}
+
+#Connect_Setting .connect-save-btn{
+    flex: 0 0 auto;
+    white-space: nowrap;
+    margin-top: 0;
+}
+
+@media (max-width: 1200px){
+    #Connect_Setting .connect-inline-row{
+        flex-wrap: wrap;
+    }
+
+    #Connect_Setting .connect-save-btn{
+        margin-left: 0;
+    }
+}

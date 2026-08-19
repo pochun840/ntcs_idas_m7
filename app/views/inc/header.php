@@ -16,7 +16,7 @@
     <title><?php echo SITENAME; ?></title>    
     
 <script>
-window.IS_ICONTROLLER = <?php echo (defined('IS_ICONTROLLER') && IS_ICONTROLLER) ? 'true' : 'false'; ?>;
+window.IS_ICONTROLLER = <?php echo (idas_is_icontroller()) ? 'true' : 'false'; ?>;
 document.documentElement.classList.toggle('icontroller', window.IS_ICONTROLLER);
 document.documentElement.classList.toggle('ntcs', !window.IS_ICONTROLLER);
 </script>

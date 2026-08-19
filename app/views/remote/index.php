@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <?php 
     if($_SESSION['language'] == 'en-us'){
         $calendar_lang = 'Please Select Seq';

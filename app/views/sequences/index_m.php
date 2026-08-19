@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <div class="container-ms">
     <div class="w3-text-white w3-center">
         <div class="w3-text-white w3-center">

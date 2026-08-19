@@ -4,7 +4,7 @@
  * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
  * 0 / missing / invalid -> NTCS implementation
  */
-if (defined('IS_ICONTROLLER') && IS_ICONTROLLER) {
+if (idas_is_icontroller()) {
 class Settings extends Controller
 {
     private $SettingModel;
@@ -142,6 +142,20 @@ class Settings extends Controller
         $mask = trim((string)($_POST['mask'] ?? ''));
         $gateway = trim((string)($_POST['gateway'] ?? ''));
         $portRaw = trim((string)($_POST['server_port'] ?? ''));
+
+        // Server Port 必須與目前通訊協議一致。
+        // 0 = TCP  -> 502
+        // 2 = OP   -> 4545
+        // 1 = RTU  -> 保留前端設定值
+        $controllerInfo = (array)($this->SettingModel->GetControllerInfo() ?? []);
+        $controllerModbusType = isset($controllerInfo['modbus_type'])
+            ? (int)$controllerInfo['modbus_type']
+            : IDAS_PROTOCOL_TCP;
+
+        $policyPort = idas_protocol_server_port($controllerModbusType, null);
+        if ($policyPort !== null) {
+            $portRaw = (string)$policyPort;
+        }
 
         if (!in_array($mode, [1, 2], true)) {
             echo json_encode(['ok' => false, 'message' => $msg('network_invalid_mode', 'Invalid network mode.')], JSON_UNESCAPED_UNICODE);
@@ -684,6 +698,75 @@ class Settings extends Controller
             ], 500);
         }
 
+        /*
+         * 通訊協議切換時，同步更新 Network wifi 內的 Server Port。
+         * TCP(0) => 502
+         * OP(2)  => 4545
+         * RTU(1) 不強制修改。
+         */
+        $networkPortSynced = true;
+        $networkPortSyncError = '';
+
+        $requiredPort = idas_protocol_server_port($newModbusType, null);
+
+        if ($requiredPort !== null) {
+            $networkSetting = (array)($this->SettingModel->GetNetworkSetting() ?? []);
+
+            if ((int)($networkSetting['port'] ?? 0) !== $requiredPort) {
+                $networkSave = $this->SettingModel->SaveNetworkSetting([
+                    'mode' => (int)($networkSetting['mode'] ?? 1),
+                    'static_ip' => (string)($networkSetting['static_ip'] ?? ''),
+                    'mask' => (string)($networkSetting['mask'] ?? '255.255.255.0'),
+                    'gateway' => (string)($networkSetting['gateway'] ?? ''),
+                    'port' => $requiredPort,
+                ]);
+
+                $networkPortSynced = !empty($networkSave['ok']);
+                $networkPortSyncError = (string)($networkSave['error'] ?? '');
+
+                $this->logMessage(
+                    '[ControllerSetting] protocol port sync modbus_type='
+                    . $newModbusType
+                    . ', port=' . $requiredPort
+                    . ', success=' . ($networkPortSynced ? '1' : '0')
+                    . ($networkPortSyncError !== '' ? ', error=' . $networkPortSyncError : '')
+                );
+            }
+        }
+
+        if (!$networkPortSynced) {
+            /*
+             * SaveNetworkSetting() already rolls both wifi DBs back internally.
+             * Restore Controller identity/protocol too, so the request cannot
+             * end in "protocol changed but required port was not persisted".
+             */
+            $rollbackSetting = $con_setting;
+            $rollbackSetting['control_id'] = $control_id_new;
+            $rollbackSetting['control_id_new'] = $control_id_old;
+            $rollbackSetting['modbus_type'] = $oldModbusType;
+
+            $identityRollbackOk = $this->SettingModel->Controller_Setting(
+                $rollbackSetting
+            );
+
+            $this->logMessage(
+                '[ControllerSetting] network port sync failed; identity rollback='
+                . ($identityRollbackOk ? 'success' : 'failed')
+                . ', error=' . $networkPortSyncError
+            );
+
+            $this->respondControllerSettingJson([
+                'success' => false,
+                'res_type' => $text['fail'] ?? 'Fail',
+                'res_msg' => 'Protocol/Network port synchronization failed.',
+                'network_port_synced' => false,
+                'network_port_sync_error' => $networkPortSyncError,
+                'identity_rollback_ok' => $identityRollbackOk,
+                'restart_required' => false,
+                'restart_scheduled' => false
+            ], 500);
+        }
+
         $restartRequired = (
             PHP_OS_FAMILY === 'Linux'
             && ($is_change_id || $modbusTypeChanged)
@@ -723,6 +806,9 @@ class Settings extends Controller
             'old_modbus_type' => $oldModbusType,
             'new_modbus_type' => $newModbusType,
             'modbus_type_changed' => $modbusTypeChanged,
+            'network_port_synced' => $networkPortSynced,
+            'network_port_sync_error' => $networkPortSyncError,
+            'server_port' => idas_protocol_server_port($newModbusType, null),
             'controller_device_db_synced' => (
                 PHP_OS_FAMILY !== 'Linux'
                 || $ok
@@ -5120,7 +5206,7 @@ class Settings extends Controller
          * Device ID 與通訊協議為唯讀。
          * 即使前端被繞過直接送 POST，也強制保留目前 Controller 值。
          */
-        if (!defined('IS_ICONTROLLER') || !IS_ICONTROLLER) {
+        if (!idas_is_icontroller()) {
             $currentDeviceId = $currentControllerInfo['device_id'] ?? null;
             if ($currentDeviceId !== null && $currentDeviceId !== '') {
                 $control_id_old = $currentDeviceId;
@@ -5138,7 +5224,7 @@ class Settings extends Controller
 
         $modbusTypeRaw = $get('modbus_type', null);
 
-        if (!defined('IS_ICONTROLLER') || !IS_ICONTROLLER) {
+        if (!idas_is_icontroller()) {
             // NTCS 模式禁止修改通訊協議，永遠保留目前值。
             $modbusTypeRaw = (string)$currentModbusType;
         }

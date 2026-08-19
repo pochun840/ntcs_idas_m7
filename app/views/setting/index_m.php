@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 
 <link rel="stylesheet" href="<?php echo URLROOT; ?>css/setting_m.css" type="text/css">
 

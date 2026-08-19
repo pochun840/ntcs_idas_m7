@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <?php
 $idasUpdateLangRaw = strtolower(trim((string)(
     $_SESSION['language']

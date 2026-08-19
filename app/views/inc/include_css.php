@@ -1,4 +1,4 @@
-<?php if (defined('IS_ICONTROLLER') && IS_ICONTROLLER): ?>
+<?php if (idas_is_icontroller()): ?>
 <?php 
 // 共用：條件式載入 CSS / JS（根據 URL 第一層）
 function include_asset($part, $fileName) {
