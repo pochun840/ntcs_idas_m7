@@ -33,6 +33,150 @@ class Settings extends Controller
     }
 
     // 取得所有info
+
+    /**
+     * Hidden read-only maintenance page.
+     * Guest can view the complete platform / protocol / DB diagnostics.
+     *
+     * URL: ?url=Settings/platform_debug
+     */
+    public function platform_debug()
+    {
+        require_once '../app/libraries/PlatformDebug.php';
+        require_once '../app/libraries/FullDebug.php';
+
+        $debug = PlatformDebug::collect();
+        $debug = FullDebug::merge($debug, FullDebug::collect());
+
+        $this->view('setting/platform_debug', [
+            'debug' => $debug,
+        ]);
+    }
+
+    /**
+     * Download complete read-only Debug Report as JSON.
+     */
+    public function platform_debug_report()
+    {
+        require_once '../app/libraries/PlatformDebug.php';
+        require_once '../app/libraries/FullDebug.php';
+
+        $debug = PlatformDebug::collect();
+        $debug = FullDebug::merge($debug, FullDebug::collect());
+
+        $filename = 'idas_debug_report_' . date('Ymd_His') . '.json';
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        echo json_encode(
+            $debug,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
+
+    /**
+     * Manual READ-ONLY Controller communication diagnostics.
+     * This is intentionally NOT called during ordinary Platform Debug load.
+     */
+    public function platform_debug_controller_test()
+    {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        $started = microtime(true);
+        $info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+
+        $unitId = (int)($info['device_id'] ?? ($this->deviceId ?? 1));
+        if ($unitId < 1 || $unitId > 255) {
+            $unitId = 1;
+        }
+
+        $modbusType = (int)($info['modbus_type'] ?? IDAS_PROTOCOL_TCP);
+        $protocolName = $modbusType === IDAS_PROTOCOL_OP
+            ? 'OP'
+            : ($modbusType === IDAS_PROTOCOL_RTU ? 'RTU' : 'TCP');
+
+        $host = $this->getProtocolHost();
+        $port = $this->getControllerTcpPort(
+            $modbusType === IDAS_PROTOCOL_OP ? IDAS_SERVER_PORT_OP : IDAS_SERVER_PORT_TCP
+        );
+
+        $socketOk = false;
+        $socketError = '';
+        $socketMs = null;
+
+        $socketStarted = microtime(true);
+        $errno = 0;
+        $errstr = '';
+        $fp = @fsockopen($host, $port, $errno, $errstr, 2.0);
+        $socketMs = round((microtime(true) - $socketStarted) * 1000, 1);
+
+        if (is_resource($fp)) {
+            $socketOk = true;
+            fclose($fp);
+        } else {
+            $socketError = trim($errstr . ($errno ? ' (' . $errno . ')' : ''));
+        }
+
+        $registers = [
+            '29002' => null,
+            '29003' => null,
+            '29004' => null,
+        ];
+        $readOk = false;
+        $readError = '';
+        $readMs = null;
+
+        try {
+            $readStarted = microtime(true);
+            $values = $this->protocol_read_registers($unitId, 29002, 3);
+            $readMs = round((microtime(true) - $readStarted) * 1000, 1);
+
+            if (count($values) >= 3) {
+                $registers['29002'] = $values[0] ?? null;
+                $registers['29003'] = $values[1] ?? null;
+                $registers['29004'] = $values[2] ?? null;
+                $readOk = true;
+            } else {
+                $readError = 'Expected 3 registers, received ' . count($values) . '.';
+            }
+        } catch (Throwable $e) {
+            $readMs = round((microtime(true) - $started) * 1000, 1);
+            $readError = get_class($e) . ': ' . $e->getMessage();
+        }
+
+        echo json_encode([
+            'ok' => ($socketOk && $readOk),
+            'read_only' => true,
+            'platform' => idas_is_icontroller() ? 'i-controller' : 'KL-NTCS',
+            'protocol' => $protocolName,
+            'modbus_type' => $modbusType,
+            'device_id' => $unitId,
+            'host' => $host,
+            'port' => $port,
+            'tcp_connect' => [
+                'ok' => $socketOk,
+                'response_ms' => $socketMs,
+                'error' => $socketError,
+            ],
+            'register_read' => [
+                'ok' => $readOk,
+                'response_ms' => $readMs,
+                'error' => $readError,
+                'registers' => $registers,
+            ],
+            'total_ms' => round((microtime(true) - $started) * 1000, 1),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     public function index(){
 
 
@@ -4861,6 +5005,150 @@ class Settings extends Controller
     }
 
     // 取得所有info
+
+    /**
+     * Hidden read-only maintenance page.
+     * Guest can view the complete platform / protocol / DB diagnostics.
+     *
+     * URL: ?url=Settings/platform_debug
+     */
+    public function platform_debug()
+    {
+        require_once '../app/libraries/PlatformDebug.php';
+        require_once '../app/libraries/FullDebug.php';
+
+        $debug = PlatformDebug::collect();
+        $debug = FullDebug::merge($debug, FullDebug::collect());
+
+        $this->view('setting/platform_debug', [
+            'debug' => $debug,
+        ]);
+    }
+
+    /**
+     * Download complete read-only Debug Report as JSON.
+     */
+    public function platform_debug_report()
+    {
+        require_once '../app/libraries/PlatformDebug.php';
+        require_once '../app/libraries/FullDebug.php';
+
+        $debug = PlatformDebug::collect();
+        $debug = FullDebug::merge($debug, FullDebug::collect());
+
+        $filename = 'idas_debug_report_' . date('Ymd_His') . '.json';
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        echo json_encode(
+            $debug,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
+
+    /**
+     * Manual READ-ONLY Controller communication diagnostics.
+     * This is intentionally NOT called during ordinary Platform Debug load.
+     */
+    public function platform_debug_controller_test()
+    {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+        }
+
+        $started = microtime(true);
+        $info = (array)($this->SettingModel->GetControllerInfo() ?? []);
+
+        $unitId = (int)($info['device_id'] ?? ($this->deviceId ?? 1));
+        if ($unitId < 1 || $unitId > 255) {
+            $unitId = 1;
+        }
+
+        $modbusType = (int)($info['modbus_type'] ?? IDAS_PROTOCOL_TCP);
+        $protocolName = $modbusType === IDAS_PROTOCOL_OP
+            ? 'OP'
+            : ($modbusType === IDAS_PROTOCOL_RTU ? 'RTU' : 'TCP');
+
+        $host = $this->getProtocolHost();
+        $port = $this->getControllerTcpPort(
+            $modbusType === IDAS_PROTOCOL_OP ? IDAS_SERVER_PORT_OP : IDAS_SERVER_PORT_TCP
+        );
+
+        $socketOk = false;
+        $socketError = '';
+        $socketMs = null;
+
+        $socketStarted = microtime(true);
+        $errno = 0;
+        $errstr = '';
+        $fp = @fsockopen($host, $port, $errno, $errstr, 2.0);
+        $socketMs = round((microtime(true) - $socketStarted) * 1000, 1);
+
+        if (is_resource($fp)) {
+            $socketOk = true;
+            fclose($fp);
+        } else {
+            $socketError = trim($errstr . ($errno ? ' (' . $errno . ')' : ''));
+        }
+
+        $registers = [
+            '29002' => null,
+            '29003' => null,
+            '29004' => null,
+        ];
+        $readOk = false;
+        $readError = '';
+        $readMs = null;
+
+        try {
+            $readStarted = microtime(true);
+            $values = $this->protocol_read_registers($unitId, 29002, 3);
+            $readMs = round((microtime(true) - $readStarted) * 1000, 1);
+
+            if (count($values) >= 3) {
+                $registers['29002'] = $values[0] ?? null;
+                $registers['29003'] = $values[1] ?? null;
+                $registers['29004'] = $values[2] ?? null;
+                $readOk = true;
+            } else {
+                $readError = 'Expected 3 registers, received ' . count($values) . '.';
+            }
+        } catch (Throwable $e) {
+            $readMs = round((microtime(true) - $started) * 1000, 1);
+            $readError = get_class($e) . ': ' . $e->getMessage();
+        }
+
+        echo json_encode([
+            'ok' => ($socketOk && $readOk),
+            'read_only' => true,
+            'platform' => idas_is_icontroller() ? 'i-controller' : 'KL-NTCS',
+            'protocol' => $protocolName,
+            'modbus_type' => $modbusType,
+            'device_id' => $unitId,
+            'host' => $host,
+            'port' => $port,
+            'tcp_connect' => [
+                'ok' => $socketOk,
+                'response_ms' => $socketMs,
+                'error' => $socketError,
+            ],
+            'register_read' => [
+                'ok' => $readOk,
+                'response_ms' => $readMs,
+                'error' => $readError,
+                'registers' => $registers,
+            ],
+            'total_ms' => round((microtime(true) - $started) * 1000, 1),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     public function index(){
 
         // 同步控制器資料庫（ntcs_data.db）至 iDAS
