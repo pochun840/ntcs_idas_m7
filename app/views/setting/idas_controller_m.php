@@ -1,3 +1,153 @@
+<style>
+/* Controller Setting mobile layout. Scoped to this page only. */
+@media (max-width: 768px) {
+    #Controller_Setting {
+        width: 100%;
+        min-height: auto !important;
+        padding: 14px 16px calc(28px + env(safe-area-inset-bottom));
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+    }
+    #Controller_Setting > .col.t1 {
+        width: 100%;
+        padding: 0 0 14px !important;
+        font-size: 19px;
+        line-height: 1.35;
+    }
+    #Controller_Setting .setting_scrollbar,
+    #Controller_Setting .setting_force-overflow {
+        width: 100%;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    #Controller_Setting .setting_force-overflow > .col.t1 {
+        width: 100%;
+        padding: 14px 0 9px !important;
+        font-size: 17px;
+        font-weight: 700;
+    }
+    #Controller_Setting .row.t2 {
+        display: block;
+        width: 100%;
+        margin: 0 0 16px;
+    }
+    #Controller_Setting .row.t2 > .t1,
+    #Controller_Setting .row.t2 > .t2 {
+        width: 100%;
+        max-width: none;
+        flex: 0 0 100%;
+        padding: 0;
+    }
+    #Controller_Setting .row.t2 > .t1 {
+        margin-bottom: 7px;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+    #Controller_Setting input.form-control,
+    #Controller_Setting select {
+        display: block;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 46px;
+        padding: 9px 12px;
+        border-radius: 6px;
+        box-sizing: border-box;
+        font-size: 16px;
+    }
+    #Controller_Setting input:disabled,
+    #Controller_Setting input[readonly] {
+        opacity: 1;
+        color: #70777d;
+        background: #eef1f3;
+        -webkit-text-fill-color: #70777d;
+    }
+    #Controller_Setting .row.t2 > .t2 {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    #Controller_Setting .protocol-options {
+        display: flex !important;
+    }
+    #Controller_Setting .form-check-inline {
+        display: flex;
+        align-items: center;
+        width: calc(50% - 5px) !important;
+        min-width: 0;
+        min-height: 48px;
+        margin: 0 !important;
+        padding: 0 10px;
+        border: 1px solid #cbd3da;
+        border-radius: 7px;
+        background: #fff;
+        box-sizing: border-box;
+    }
+    #Controller_Setting .form-check-input {
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        margin: 0 8px 0 0;
+    }
+    #Controller_Setting .form-check-label {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-height: 46px;
+        margin: 0;
+        font-size: 15px;
+        cursor: pointer;
+    }
+    #Controller_Setting .protocol-options .form-check-inline {
+        width: calc(33.333% - 7px) !important;
+    }
+    #Controller_Setting .protocol-server-port-hint {
+        margin-top: 6px;
+        color: #687078;
+        font-size: 13px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+    #Controller_Setting hr.hr {
+        margin: 24px 0 8px;
+    }
+    #Controller_Setting button.all-btn {
+        width: 100%;
+        min-height: 48px;
+        padding: 10px 18px;
+        border-radius: 7px;
+        font-size: 17px;
+        font-weight: 600;
+        touch-action: manipulation;
+    }
+    #Controller_Setting button.all-btn:disabled {
+        opacity: .65;
+        cursor: wait;
+    }
+}
+
+@media (max-width: 380px) {
+    #Controller_Setting {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    #Controller_Setting .protocol-options {
+        display: block !important;
+    }
+    #Controller_Setting .form-check-inline {
+        width: 100% !important;
+    }
+    #Controller_Setting .protocol-options .form-check-inline {
+        width: 100% !important;
+        margin-bottom: 8px !important;
+    }
+    #Controller_Setting .row.t2 > .t2 .form-check-inline:not(:last-child) {
+        margin-bottom: 8px !important;
+    }
+}
+</style>
 <?php if (idas_is_icontroller()): ?>
 <div id="Controller_Setting" class="divMode">
     <div class="col t1" style="font-weight: bold; padding-top: 1%;">
@@ -217,6 +367,38 @@
                 </div>
             </div>
 
+            <?php
+                $controller_network_port = isset($data['network_setting']['port'])
+                    ? (int)$data['network_setting']['port']
+                    : 502;
+                $controller_server_port = idas_protocol_server_port(
+                    $controller_modbus_type,
+                    $controller_network_port
+                );
+                $server_port_label = $text['server_port']
+                    ?? $text['system_server_port']
+                    ?? (($idas_lang === 'en-us') ? 'Server Port' : (($idas_lang === 'zh-cn') ? '服务器端口' : '伺服器連接埠'));
+                $server_port_hint = ($idas_lang === 'en-us')
+                    ? 'TCP default 502 (editable) / RTU keeps current port (editable) / OP fixed at 4545 (read-only)'
+                    : (($idas_lang === 'zh-cn')
+                        ? 'TCP 默认 502（可修改） / RTU 保留当前端口（可修改） / OP 固定 4545（不可修改）'
+                        : 'TCP 預設 502（可修改） / RTU 保留目前連接埠（可修改） / OP 固定 4545（不可修改）');
+            ?>
+            <div class="row t2 protocol-server-port-row">
+                <div class="col-6 t1"><?php echo htmlspecialchars((string)$server_port_label, ENT_QUOTES, 'UTF-8'); ?>:</div>
+                <div class="col t2">
+                    <input id="controller_server_port"
+                           type="number"
+                           class="t3 form-control protocol-server-port-input protocol-server-port-editable"
+                           value="<?php echo (int)$controller_server_port; ?>"
+                           data-rtu-port="<?php echo (int)$controller_network_port; ?>"
+                           min="1"
+                           max="65535"
+                           inputmode="numeric">
+                    <div class="protocol-server-port-hint"><?php echo htmlspecialchars($server_port_hint, ENT_QUOTES, 'UTF-8'); ?></div>
+                </div>
+            </div>
+
             <div class="col t1" style="font-weight: bold; padding-top: 1%;">
                 <?php echo $text['Downshift']; ?>
             </div>
@@ -250,7 +432,7 @@
             <div style="text-align: center; margin-top: 20px;">
                 <button class="all-btn w3-button w3-border w3-round-large"
                         id="downshift_save"
-                        onclick="controller_save()">
+                        onclick="window.controller_save()">
                     <?php echo $text['save']; ?>
                 </button>
             </div>
@@ -680,6 +862,29 @@ function input_check_setting(argument) {
                 </div>
             </div>
 
+            <?php
+                $controller_network_port = isset($data['network_setting']['port'])
+                    ? (int)$data['network_setting']['port']
+                    : 502;
+                $controller_server_port = $controller_network_port;
+                $server_port_label = $text['server_port']
+                    ?? $text['system_server_port']
+                    ?? (($idas_lang === 'en-us') ? 'Server Port' : (($idas_lang === 'zh-cn') ? '服务器端口' : '伺服器連接埠'));
+            ?>
+            <div class="row t2 protocol-server-port-row">
+                <div class="col-6 t1"><?php echo htmlspecialchars((string)$server_port_label, ENT_QUOTES, 'UTF-8'); ?>:</div>
+                <div class="col t2">
+                    <input id="controller_server_port"
+                           type="number"
+                           class="t3 form-control protocol-server-port-input"
+                           value="<?php echo (int)$controller_server_port; ?>"
+                           data-rtu-port="<?php echo (int)$controller_network_port; ?>"
+                           readonly
+                           aria-readonly="true"
+                           inputmode="numeric">
+                </div>
+            </div>
+
             <div class="col t1" style="font-weight: bold; padding-top: 1%;">
                 <?php echo $text['Downshift']; ?>
             </div>
@@ -713,7 +918,7 @@ function input_check_setting(argument) {
             <div style="text-align: center; margin-top: 20px;">
                 <button class="all-btn w3-button w3-border w3-round-large"
                         id="downshift_save"
-                        onclick="controller_save()">
+                        onclick="window.controller_save()">
                     <?php echo $text['save']; ?>
                 </button>
             </div>

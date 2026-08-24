@@ -108,7 +108,8 @@ window.IDAS_UPDATE_I18N = <?php echo json_encode($idasUpdateI18n, JSON_UNESCAPED
 
     <div style="text-align: center;margin-top:50px;">
         <input id="idas-upload-btn" class="all-btn w3-submit w3-border w3-round-large idas-btn-disabled" type="button" value="<?php echo $text['system_idas_upload_file'];?>" onclick='idas_update();' disabled>
-    </div> 
+    </div>
+    <?php require '../app/views/setting/idas_database_maintenance.php'; ?>
 </div>
 <?php else: ?>
 <?php
@@ -227,6 +228,7 @@ if ($idasCurrentVersionDisplay !== '' && preg_match('/^(\d+\.\d+)\.0(_[A-Za-z0-9
 
     <div style="text-align: center;margin-top:50px;">
         <input id="idas-upload-btn" class="all-btn w3-submit w3-border w3-round-large idas-btn-disabled" type="button" value="<?php echo $text['system_idas_upload_file'];?>" onclick='idas_update();' disabled>
-    </div> 
+    </div>
+    <?php require '../app/views/setting/idas_database_maintenance.php'; ?>
 </div>
 <?php endif; ?>

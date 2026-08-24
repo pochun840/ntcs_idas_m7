@@ -11,7 +11,7 @@ class Core
 
     public function __construct()
     {
-        
+
         //加入登入驗證
         $loginFile = idas_platform_app_file('controllers/Logins.php');
         require_once $loginFile;
@@ -71,7 +71,7 @@ class Core
                 $this->currentMethod = $url[1];
             } else {
                 http_response_code(404);
-                require_once '../app/views/errors/404.php';
+                require_once __DIR__ . '/../views/errors/404.php';
                 exit;
             }
         }

@@ -1,0 +1,211 @@
+/*
+ * iDAS global interaction feedback
+ * Lightweight, dependency-free and shared by desktop/mobile + NTCS/iController.
+ */
+:root {
+    --idas-ui-accent: #1976d2;
+    --idas-ui-success: #2e9d50;
+    --idas-ui-danger: #d33b32;
+    --idas-ui-ring: rgba(25, 118, 210, .22);
+    --idas-ui-speed: 180ms;
+}
+
+html.idas-ui-enhanced body {
+    /* Do not retain the final transform: a transformed body changes the
+       containing block of position:fixed footers in desktop browsers. */
+    animation: idas-page-enter 220ms ease-out;
+}
+
+button,
+.button,
+.all-btn,
+.w3-button,
+input[type="button"],
+input[type="submit"],
+[role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform var(--idas-ui-speed) ease,
+                box-shadow var(--idas-ui-speed) ease,
+                filter var(--idas-ui-speed) ease,
+                background-color var(--idas-ui-speed) ease,
+                border-color var(--idas-ui-speed) ease;
+}
+
+button:not(:disabled):active,
+.button:not(:disabled):active,
+.all-btn:not(:disabled):active,
+.w3-button:not(:disabled):active,
+input[type="button"]:not(:disabled):active,
+input[type="submit"]:not(:disabled):active,
+[role="button"][aria-disabled="false"]:active {
+    transform: translateY(1px) scale(.985);
+}
+
+button:focus-visible,
+.button:focus-visible,
+.all-btn:focus-visible,
+.w3-button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+    outline: 2px solid var(--idas-ui-accent) !important;
+    outline-offset: 2px;
+}
+
+input:not([type="radio"]):not([type="checkbox"]),
+select,
+textarea,
+.form-control {
+    transition: border-color var(--idas-ui-speed) ease,
+                box-shadow var(--idas-ui-speed) ease,
+                background-color var(--idas-ui-speed) ease;
+}
+
+input:not([type="radio"]):not([type="checkbox"]):focus,
+select:focus,
+textarea:focus,
+.form-control:focus {
+    border-color: var(--idas-ui-accent) !important;
+    box-shadow: 0 0 0 3px var(--idas-ui-ring) !important;
+}
+
+.form-check,
+.form-check-inline,
+label {
+    transition: color var(--idas-ui-speed) ease,
+                background-color var(--idas-ui-speed) ease,
+                border-color var(--idas-ui-speed) ease,
+                box-shadow var(--idas-ui-speed) ease;
+}
+
+.form-check.idas-option-selected,
+.form-check-inline.idas-option-selected {
+    border-color: var(--idas-ui-accent) !important;
+    background-color: rgba(25, 118, 210, .08) !important;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, .10);
+}
+
+tr.idas-row-pressed,
+.selected {
+    transition: background-color var(--idas-ui-speed) ease,
+                box-shadow var(--idas-ui-speed) ease;
+}
+
+.idas-click-locked {
+    pointer-events: none !important;
+    filter: saturate(.82);
+}
+
+.idas-action-busy {
+    position: relative;
+    cursor: wait !important;
+}
+
+.idas-scope-busy [onclick*="closebutton"],
+.idas-scope-busy .closebtn,
+.idas-scope-busy .w3-display-topright {
+    pointer-events: none !important;
+    opacity: .55 !important;
+}
+
+.idas-action-busy::after {
+    content: "";
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    margin-left: 8px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -2px;
+    animation: idas-ui-spin .65s linear infinite;
+}
+
+/* Successful actions keep the green confirmation state, but intentionally
+   do not append a checkmark icon. */
+.idas-action-success {
+    border-color: var(--idas-ui-success) !important;
+    background-color: var(--idas-ui-success) !important;
+    color: #fff !important;
+}
+
+.idas-action-failure {
+    border-color: var(--idas-ui-danger) !important;
+    background-color: var(--idas-ui-danger) !important;
+    color: #fff !important;
+    animation: idas-action-failure-pulse 260ms ease-out;
+}
+
+.idas-action-failure::after {
+    content: "!";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    margin-left: 7px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.is-invalid.idas-invalid-pulse,
+[aria-invalid="true"].idas-invalid-pulse {
+    animation: idas-invalid-shake 260ms ease-out both;
+}
+
+.alertify .ajs-dialog {
+    animation-duration: 180ms !important;
+}
+
+@keyframes idas-page-enter {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes idas-ui-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes idas-invalid-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+}
+
+@keyframes idas-action-failure-pulse {
+    0%, 100% { transform: translateX(0); }
+    35% { transform: translateX(-3px); }
+    70% { transform: translateX(3px); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    button:not(:disabled):hover,
+    .button:not(:disabled):hover,
+    .all-btn:not(:disabled):hover,
+    .w3-button:not(:disabled):hover,
+    [role="button"]:not([aria-disabled="true"]):hover {
+        filter: brightness(1.04);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, .14);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.idas-ui-enhanced body,
+    .idas-action-busy::after,
+    .is-invalid.idas-invalid-pulse,
+    [aria-invalid="true"].idas-invalid-pulse,
+    .idas-action-failure,
+    .alertify .ajs-dialog {
+        animation: none !important;
+    }
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+    }
+}

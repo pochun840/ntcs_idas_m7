@@ -10,11 +10,25 @@
     <div class="row t2 align-items-center">
         <div class="col-3 t1"><?php echo $text['system_agent_ip'];?>:</div>
         <div class="col">
-                <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
-                    value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
-                <div class="invalid-feedback"></div>
-                <span style="margin-left: 10px;"></span>
-                <input type="button"  onclick="agent_ip_save()"  value="<?php echo $text['save']; ?>" class="all-btn w3-submit w3-border w3-round-large" >
+            <div style="display:flex; align-items:flex-start; gap:12px; width:100%; max-width:100%; flex-wrap:wrap;">
+                <div style="flex:0 1 420px; max-width:420px; min-width:220px;">
+                    <input type="text"
+                        name="agent_server_ip"
+                        id="agent_server_ip"
+                        size="15"
+                        value='<?php echo $data['agent_server_ip'];?>'
+                        required
+                        class="form-control"
+                        style="width:100%;">
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                <input type="button"
+                    onclick="agent_ip_save()"
+                    value="<?php echo $text['save']; ?>"
+                    class="all-btn w3-submit w3-border w3-round-large"
+                    style="flex:0 0 auto; white-space:nowrap;">
+            </div>
         </div>
     </div>
 

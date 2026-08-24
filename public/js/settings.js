@@ -1,3 +1,83 @@
+
+/* ===== Shared NTCS / i-controller Protocol -> Server Port preview ===== */
+(function installControllerProtocolPortPreview() {
+  function getPortInput() {
+    return document.getElementById('controller_server_port');
+  }
+
+  function resolvePort(protocol, input) {
+    if (String(protocol) === '0') return 502;
+    if (String(protocol) === '2') return 4545;
+
+    const rtuPort = Number(input?.dataset?.rtuPort || input?.value || 502);
+    return Number.isInteger(rtuPort) && rtuPort >= 1 && rtuPort <= 65535
+      ? rtuPort
+      : 502;
+  }
+
+  function refreshControllerProtocolServerPort() {
+    const input = getPortInput();
+    const selected = document.querySelector('input[name="modbus_type"]:checked');
+
+    if (!input || !selected) return;
+
+    const protocol = String(selected.value);
+
+    if (window.IS_ICONTROLLER) {
+      /*
+       * i-controller owns Protocol / Server Port editing.
+       * Only i-controller applies protocol-based frontend defaults.
+       */
+      input.value = String(resolvePort(protocol, input));
+
+      const opLocked = protocol === '2';
+      input.readOnly = opLocked;
+      input.setAttribute('aria-readonly', opLocked ? 'true' : 'false');
+      input.classList.toggle('protocol-server-port-editable', !opLocked);
+      input.classList.toggle('protocol-server-port-locked', opLocked);
+    } else {
+      /*
+       * NTCS is Controller-master.
+       * IMPORTANT: never rewrite the PHP/DB-rendered Server Port here.
+       * Example: Controller/iDAS DB Port = 501 must stay 501, not be reset to TCP default 502.
+       */
+      input.readOnly = true;
+      input.setAttribute('aria-readonly', 'true');
+      input.classList.remove('protocol-server-port-editable');
+      input.classList.add('protocol-server-port-locked');
+    }
+  }
+
+  document.addEventListener('change', function(event) {
+    const target = event.target;
+    if (target?.matches?.('input[name="modbus_type"]')) {
+      refreshControllerProtocolServerPort();
+    }
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', refreshControllerProtocolServerPort, { once: true });
+  } else {
+    refreshControllerProtocolServerPort();
+  }
+
+  window.refreshControllerProtocolServerPort = refreshControllerProtocolServerPort;
+})();
+
+// iController performs verified DB synchronization followed by an automatic
+// five-second reboot. It must not restore NTCS/manual-reboot Banner state.
+if (window.IS_ICONTROLLER) {
+  try {
+    localStorage.removeItem('idas_device_identity_wait_manual_reboot_v2');
+  } catch (_) {}
+  document.addEventListener('DOMContentLoaded', function () {
+    var legacyBanner = document.getElementById('rebootBanner');
+    if (legacyBanner && legacyBanner.parentNode) {
+      legacyBanner.parentNode.removeChild(legacyBanner);
+    }
+  });
+}
+
 /*
  * Single-codebase JavaScript (no eval)
  * /home/kls/upgrade/icontroller = 1 -> i-controller
@@ -192,53 +272,414 @@ function getSettingsLanguage() {
   }
   return 'en-us';
 }
+window.getSettingsLanguage = getSettingsLanguage;
+
+// Shared only by iController automatic-restart flows. NTCS keeps its
+// controller-master/manual-reboot workflow and never enters this manager.
+window.iDASRestartManager = (function () {
+  let active = false;
+
+  const esc = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+  function start(options) {
+    if (window.IS_ICONTROLLER !== true || active || !window.alertify || !window.jQuery) return false;
+    active = true;
+    const delay = Math.max(1, Number(options.delay) || 5);
+    const dialog = alertify.alert();
+    const footer = (show) => {
+      if (dialog?.elements?.footer) dialog.elements.footer.style.display = show ? '' : 'none';
+    };
+    const release = () => {
+      active = false;
+      if (options.saveButton) options.saveButton.disabled = false;
+    };
+    const countdownHtml = (seconds) => {
+      const n = Math.max(0, Number(seconds) || 0);
+      const width = Math.max(0, Math.min(100, (n / delay) * 100));
+      return '<div style="text-align:center;line-height:1.55">'
+        + '<div aria-live="polite" style="font-size:52px;font-weight:700;color:#d2322d;line-height:1.1;margin:4px 0 12px">' + n + '</div>'
+        + '<div style="height:8px;background:#e7e7e7;border-radius:8px;overflow:hidden;margin:0 0 14px"><div style="height:100%;width:' + width + '%;background:#d2322d;border-radius:8px;transition:width .2s linear"></div></div>'
+        + '<div>' + esc(options.countdown(n)) + '</div></div>';
+    };
+    const waitingHtml = (message) => '<style>@keyframes idasRestartSpin{to{transform:rotate(360deg)}}</style>'
+      + '<div style="text-align:center;line-height:1.55;padding:10px 0"><div role="status" aria-live="polite" style="width:42px;height:42px;margin:2px auto 18px;border:5px solid #dfe4e8;border-top-color:#2b80c5;border-radius:50%;animation:idasRestartSpin .9s linear infinite"></div><div>' + esc(message) + '</div></div>';
+    const timeoutHtml = () => '<div style="text-align:center;line-height:1.55;padding:8px 0"><div style="color:#d2322d;margin-bottom:18px">' + esc(options.timeout) + '</div>'
+      + '<button type="button" onclick="window.location.reload()" style="padding:9px 18px;margin:4px;border:0;border-radius:5px;background:#2b80c5;color:#fff">' + esc(options.retry) + '</button>'
+      + '<button type="button" onclick="window.location.href=\'?url=Dashboards\'" style="padding:9px 18px;margin:4px;border:1px solid #aaa;border-radius:5px;background:#fff;color:#333">' + esc(options.home) + '</button></div>';
+
+    function waitForRecovery() {
+      const startedAt = Date.now();
+      const basePath = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname.replace(/[^/]*$/, '');
+      let offlineObserved = false;
+      let finished = false;
+      const probe = () => {
+        if (finished) return;
+        if (Date.now() - startedAt >= 90000) {
+          finished = true;
+          dialog.setContent(timeoutHtml());
+          footer(true);
+          release();
+          return;
+        }
+        const origin = offlineObserved && options.targetOrigin ? options.targetOrigin : window.location.origin;
+        const image = new Image();
+        let settled = false;
+        const next = () => { if (!finished) setTimeout(probe, 1000); };
+        const probeTimeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          offlineObserved = true;
+          next();
+        }, 2500);
+        image.onerror = () => {
+          if (settled || finished) return;
+          settled = true; clearTimeout(probeTimeout); offlineObserved = true; next();
+        };
+        image.onload = () => {
+          if (settled || finished) return;
+          settled = true; clearTimeout(probeTimeout);
+          if (!offlineObserved) { next(); return; }
+          if (options.targetOrigin) {
+            finished = true;
+            dialog.setContent(waitingHtml(options.recovered));
+            setTimeout(() => { window.location.href = options.targetOrigin + basePath + '?url=Settings%2Findex'; }, 500);
+            return;
+          }
+          $.ajax({
+            url: '?url=Settings/restart_ready&scope=' + encodeURIComponent(options.scope || 'controller'),
+            method: 'GET', dataType: 'json', timeout: 2500, cache: false
+          }).done((ready) => {
+            if (!ready || ready.ready !== true) { next(); return; }
+            finished = true;
+            dialog.setContent(waitingHtml(options.recovered));
+            setTimeout(() => window.location.reload(), 500);
+          }).fail(next);
+        };
+        image.src = origin + basePath + 'font/img/touch-icon.png?_idas_restart_probe=' + Date.now();
+      };
+      setTimeout(probe, 500);
+    }
+
+    let shown = false;
+    dialog.setHeader(options.title);
+    dialog.setContent(countdownHtml(delay));
+    dialog.set({ closable: false, movable: false, pinnable: false, resizable: false, onshow: function () {
+      if (shown) return;
+      shown = true;
+      footer(false);
+      setTimeout(() => $.ajax({ url: options.scheduleUrl, method: 'POST', dataType: 'json', timeout: 5000 })
+        .done((scheduled) => {
+          if (!scheduled || scheduled.success !== true || scheduled.restart_scheduled !== true) {
+            dialog.setContent(esc(options.failed + (scheduled?.res_msg ? ' (' + scheduled.res_msg + ')' : '')));
+            footer(true); release(); return;
+          }
+          if (options.saveButton) options.saveButton.disabled = true;
+          // Use a wall-clock deadline; background-tab timer throttling cannot
+          // stretch or repeat the five-second countdown.
+          const deadline = Date.now() + delay * 1000;
+          let last = delay;
+          const tick = () => {
+            const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+            if (remaining !== last) { last = remaining; dialog.setContent(countdownHtml(remaining)); }
+            if (remaining <= 0) { dialog.setContent(waitingHtml(options.rebooting)); waitForRecovery(); return; }
+            setTimeout(tick, 200);
+          };
+          tick();
+        }).fail((xhr) => {
+          const serverMessage = xhr?.responseJSON?.res_msg || '';
+          dialog.setContent(esc(options.failed + (serverMessage ? ' (' + serverMessage + ')' : '')));
+          footer(true); release();
+        }), 100);
+    }});
+    dialog.show();
+    return true;
+  }
+  return { start: start, isActive: () => active };
+})();
 
 function getControllerIdentityRestartMessages(language, seconds, result) {
   const delay = Number.isFinite(Number(seconds)) && Number(seconds) > 0 ? Math.round(Number(seconds)) : 5;
   const idChanged = result?.device_id_changed === true || result?.device_id_changed === 'true' || result?.device_id_changed == 1;
   const protocolChanged = result?.modbus_type_changed === true || result?.modbus_type_changed === 'true' || result?.modbus_type_changed == 1;
+  const portChanged = result?.server_port_changed === true || result?.server_port_changed === 'true' || result?.server_port_changed == 1;
   const oldId = result?.old_device_id ?? '';
   const newId = result?.new_device_id ?? '';
   const protocolName = (v) => ({0:'TCP', 1:'RTU', 2:'OP'}[Number(v)] ?? String(v ?? ''));
   const oldProtocol = protocolName(result?.old_modbus_type);
   const newProtocol = protocolName(result?.new_modbus_type);
+  const oldPort = result?.old_server_port ?? '';
+  const newPort = result?.server_port ?? '';
+
+  function buildDetail(lang) {
+    const parts = [];
+    if (idChanged) {
+      parts.push(lang === 'zh-cn'
+        ? `控制器 ID 已由 ${oldId} 变更为 ${newId}`
+        : lang === 'zh-tw'
+          ? `控制器 ID 已由 ${oldId} 變更為 ${newId}`
+          : `Controller ID changed from ${oldId} to ${newId}`);
+    }
+    if (protocolChanged) {
+      parts.push(lang === 'zh-cn'
+        ? `通讯协议已由 ${oldProtocol} 变更为 ${newProtocol}`
+        : lang === 'zh-tw'
+          ? `通訊協議已由 ${oldProtocol} 變更為 ${newProtocol}`
+          : `communication protocol changed from ${oldProtocol} to ${newProtocol}`);
+    }
+    if (portChanged) {
+      parts.push(lang === 'zh-cn'
+        ? `Server Port 已由 ${oldPort} 变更为 ${newPort}`
+        : lang === 'zh-tw'
+          ? `Server Port 已由 ${oldPort} 變更為 ${newPort}`
+          : `Server Port changed from ${oldPort} to ${newPort}`);
+    }
+    if (!parts.length) return '';
+    return parts.join(lang === 'en-us' ? ', ' : '，') + (lang === 'en-us' ? '.' : '。');
+  }
 
   const detail = {
-    'zh-tw': idChanged && protocolChanged
-      ? `控制器 ID 已由 ${oldId} 變更為 ${newId}，通訊協議已由 ${oldProtocol} 變更為 ${newProtocol}。`
-      : idChanged
-        ? `控制器 ID 已由 ${oldId} 變更為 ${newId}。`
-        : `通訊協議已由 ${oldProtocol} 變更為 ${newProtocol}。`,
-    'zh-cn': idChanged && protocolChanged
-      ? `控制器 ID 已由 ${oldId} 变更为 ${newId}，通讯协议已由 ${oldProtocol} 变更为 ${newProtocol}。`
-      : idChanged
-        ? `控制器 ID 已由 ${oldId} 变更为 ${newId}。`
-        : `通讯协议已由 ${oldProtocol} 变更为 ${newProtocol}。`,
-    'en-us': idChanged && protocolChanged
-      ? `Controller ID changed from ${oldId} to ${newId}, and communication protocol changed from ${oldProtocol} to ${newProtocol}.`
-      : idChanged
-        ? `Controller ID changed from ${oldId} to ${newId}.`
-        : `Communication protocol changed from ${oldProtocol} to ${newProtocol}.`
+    'zh-tw': buildDetail('zh-tw'),
+    'zh-cn': buildDetail('zh-cn'),
+    'en-us': buildDetail('en-us')
   };
 
   const messages = {
     'zh-tw': {
       title: '控制器重新啟動',
       scheduled: detail['zh-tw'] + ` 兩個資料庫已同步更新，控制器將於約 ${delay} 秒後自動重新啟動。`,
+      preparing: detail['zh-tw'] + ` 兩個資料庫已同步更新，控制器將在 ${delay} 秒後自動重新啟動。`,
+      rebooting: detail['zh-tw'] + ' 控制器正在重新啟動，請稍候。',
+      recovered: '控制器已重新上線，正在自動重新載入頁面。',
+      timeout: '尚未偵測到控制器重新上線，請確認控制器狀態後重試。',
+      retry: '立即重試',
+      home: '返回首頁',
       failed: detail['zh-tw'] + ' 兩個資料庫已同步更新，但無法自動排程重新啟動，請手動重新啟動控制器。'
     },
     'zh-cn': {
       title: '控制器重新启动',
       scheduled: detail['zh-cn'] + ` 两个数据库已同步更新，控制器将于约 ${delay} 秒后自动重新启动。`,
+      preparing: detail['zh-cn'] + ` 两个数据库已同步更新，控制器将在 ${delay} 秒后自动重新启动。`,
+      rebooting: detail['zh-cn'] + ' 控制器正在重新启动，请稍候。',
+      recovered: '控制器已重新上线，正在自动重新加载页面。',
+      timeout: '尚未检测到控制器重新上线，请确认控制器状态后重试。',
+      retry: '立即重试',
+      home: '返回首页',
       failed: detail['zh-cn'] + ' 两个数据库已同步更新，但无法自动安排重新启动，请手动重新启动控制器。'
     },
     'en-us': {
       title: 'Controller Restart',
       scheduled: detail['en-us'] + ` Both databases were updated successfully. Controller will restart automatically in about ${delay} seconds.`,
+      preparing: detail['en-us'] + ` Both databases were updated successfully. Controller will restart automatically in ${delay} seconds.`,
+      rebooting: detail['en-us'] + ' The controller is restarting. Please wait.',
+      recovered: 'The controller is online again. Reloading the page automatically.',
+      timeout: 'The controller has not returned online. Check its status and try again.',
+      retry: 'Retry now',
+      home: 'Back to Home',
       failed: detail['en-us'] + ' Both databases were updated successfully, but automatic restart could not be scheduled. Please restart the controller manually.'
     }
   };
   return messages[language] || messages['en-us'];
+}
+
+function showControllerRestartDialogAndSchedule(result, saveButton) {
+  if (window.IS_ICONTROLLER !== true) return;
+  const language = getSettingsLanguage();
+  const delay = Number(result?.restart_delay_seconds) > 0
+    ? Number(result.restart_delay_seconds)
+    : 5;
+  const text = getControllerIdentityRestartMessages(language, delay, result);
+  const manualBannerV20 = document.getElementById('rebootBanner');
+  if (manualBannerV20?.parentNode) manualBannerV20.parentNode.removeChild(manualBannerV20);
+  try { localStorage.removeItem('idas_device_identity_wait_manual_reboot_v2'); } catch (_) {}
+  if (window.iDASRestartManager) {
+    window.iDASRestartManager.start({
+      scope: 'controller',
+      delay: delay,
+      title: text.title,
+      countdown: (seconds) => getControllerIdentityRestartMessages(language, seconds, result).preparing,
+      rebooting: text.rebooting,
+      recovered: text.recovered,
+      timeout: text.timeout,
+      retry: text.retry,
+      home: text.home,
+      failed: text.failed,
+      scheduleUrl: '?url=Settings/schedule_controller_restart',
+      saveButton: saveButton
+    });
+    return;
+  }
+
+  // Compatibility fallback for older pages that did not load the shared
+  // manager. Current V20 pages always return above.
+  let remaining = delay;
+  let timer = null;
+  let scheduleStarted = false;
+
+  const escapeRestartHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  const countdownContent = (message, seconds) => {
+    const safeSeconds = Math.max(0, Number(seconds) || 0);
+    const progress = Math.max(0, Math.min(100, (safeSeconds / delay) * 100));
+    return `
+      <div style="text-align:center;line-height:1.55">
+        <div aria-live="polite" aria-label="${safeSeconds}" style="font-size:52px;font-weight:700;color:#d2322d;line-height:1.1;margin:4px 0 12px">${safeSeconds}</div>
+        <div style="height:8px;background:#e7e7e7;border-radius:8px;overflow:hidden;margin:0 0 14px">
+          <div style="height:100%;width:${progress}%;background:#d2322d;border-radius:8px;transition:width .95s linear"></div>
+        </div>
+        <div>${escapeRestartHtml(message)}</div>
+      </div>`;
+  };
+
+  const waitingContent = (message) => `
+    <style>@keyframes idasControllerRestartSpin { to { transform: rotate(360deg); } }</style>
+    <div style="text-align:center;line-height:1.55;padding:10px 0">
+      <div role="status" aria-live="polite" style="width:42px;height:42px;margin:2px auto 18px;border:5px solid #dfe4e8;border-top-color:#2b80c5;border-radius:50%;animation:idasControllerRestartSpin .9s linear infinite"></div>
+      <div>${escapeRestartHtml(message)}</div>
+    </div>`;
+
+  const timeoutContent = () => `
+    <div style="text-align:center;line-height:1.55;padding:8px 0">
+      <div style="color:#d2322d;margin-bottom:18px">${escapeRestartHtml(text.timeout)}</div>
+      <button type="button" onclick="window.location.reload()" style="padding:9px 18px;margin:4px;border:0;border-radius:5px;background:#2b80c5;color:#fff;cursor:pointer">${escapeRestartHtml(text.retry)}</button>
+      <button type="button" onclick="window.location.href='?url=Dashboards'" style="padding:9px 18px;margin:4px;border:1px solid #aaa;border-radius:5px;background:#fff;color:#333;cursor:pointer">${escapeRestartHtml(text.home)}</button>
+    </div>`;
+
+
+  // iController reboots itself. Never leave the NTCS/manual-reboot Banner on
+  // screen while showing the automatic restart countdown.
+  var manualBanner = document.getElementById('rebootBanner');
+  if (manualBanner && manualBanner.parentNode) {
+    manualBanner.parentNode.removeChild(manualBanner);
+  }
+  try {
+    localStorage.removeItem('idas_device_identity_wait_manual_reboot_v2');
+  } catch (_) {}
+
+  // Configure the lifecycle callback BEFORE show(). Calling
+  // alertify.alert(title, message) first may display the modal immediately,
+  // causing a subsequently registered onshow handler to be missed.
+  const dialog = alertify.alert();
+  const setDialogFooterVisible = (visible) => {
+    if (dialog?.elements?.footer) {
+      dialog.elements.footer.style.display = visible ? '' : 'none';
+    }
+  };
+  const waitForControllerBack = () => {
+    const startedAt = Date.now();
+    let offlineObserved = false;
+    let finished = false;
+    const basePath = window.location.pathname.endsWith('/')
+      ? window.location.pathname
+      : window.location.pathname.replace(/[^/]*$/, '');
+
+    const probe = () => {
+      if (finished) return;
+      if ((Date.now() - startedAt) >= 90000) {
+        finished = true;
+        dialog.setContent(timeoutContent());
+        return;
+      }
+
+      const image = new Image();
+      let settled = false;
+      const next = () => { if (!finished) setTimeout(probe, 1000); };
+      const timeoutId = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        offlineObserved = true;
+        next();
+      }, 2500);
+
+      image.onload = function () {
+        if (settled || finished) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        if (!offlineObserved) {
+          next();
+          return;
+        }
+        finished = true;
+        dialog.setContent(waitingContent(text.recovered));
+        setTimeout(function () { window.location.reload(); }, 800);
+      };
+      image.onerror = function () {
+        if (settled || finished) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        offlineObserved = true;
+        next();
+      };
+      image.src = basePath + 'font/img/touch-icon.png?_idas_restart_probe=' + Date.now();
+    };
+
+    setTimeout(probe, 700);
+  };
+  dialog.setHeader(text.title);
+  dialog.setContent(countdownContent(text.preparing, remaining));
+  dialog.set({
+    closable: false,
+    movable: false,
+    pinnable: false,
+    resizable: false,
+    onshow: function () {
+      if (scheduleStarted) return;
+      scheduleStarted = true;
+      setDialogFooterVisible(false);
+
+      // Let the browser paint the dialog first. Then ask PHP to start the same
+      // proven background reboot task used by Network Setting
+      // (nohup -> sleep 5 -> sudo systemctl reboot). The visible countdown
+      // starts only after PHP confirms that task was launched.
+      setTimeout(function () {
+        $.ajax({
+          url: '?url=Settings/schedule_controller_restart',
+          method: 'POST',
+          dataType: 'json',
+          timeout: 5000,
+          success: function (restartResult) {
+            if (!restartResult || restartResult.success !== true || restartResult.restart_scheduled !== true) {
+              dialog.setContent(text.failed + (restartResult?.res_msg ? ` (${restartResult.res_msg})` : ''));
+              setDialogFooterVisible(true);
+              if (saveButton) saveButton.disabled = false;
+              return;
+            }
+
+            if (saveButton) saveButton.disabled = true;
+            timer = setInterval(function () {
+              remaining -= 1;
+              if (remaining <= 0) {
+                clearInterval(timer);
+                dialog.setContent(waitingContent(text.rebooting));
+                waitForControllerBack();
+                return;
+              }
+              dialog.setContent(countdownContent(
+                getControllerIdentityRestartMessages(language, remaining, result).preparing,
+                remaining
+              ));
+            }, 1000);
+          },
+          error: function (xhr) {
+            let serverMessage = '';
+            try {
+              serverMessage = xhr.responseJSON?.res_msg || JSON.parse(xhr.responseText || '{}').res_msg || '';
+            } catch (_) {}
+            dialog.setContent(text.failed + (serverMessage ? ` (${serverMessage})` : ''));
+            setDialogFooterVisible(true);
+            if (saveButton) saveButton.disabled = false;
+          }
+        });
+      }, 100);
+    }
+  });
+  dialog.show();
 }
 
 function controller_save(){
@@ -257,12 +698,23 @@ function controller_save(){
   const blackout_recovery_val = trim(document.querySelector('input[name="blackout_recovery"]:checked')?.value);
   const buzzer_val            = trim(document.querySelector('input[name="buzzer_mode"]:checked')?.value);
   const modbus_type_val       = trim(document.querySelector('input[name="modbus_type"]:checked')?.value ?? '0');
+  const controller_server_port = trim(document.getElementById('controller_server_port')?.value);
   const global_downshift_torque = trim(document.getElementById('global_downshift_torque')?.value);
   const global_downshift_speed  = trim(document.getElementById('global_downshift_speed')?.value);
 
   // 你的原本驗證
   let check = input_check_setting();
   if (!check) return;
+
+  // NTCS Server Port is editable; i-controller remains readonly.
+  const controllerServerPortEl = document.getElementById('controller_server_port');
+  if (controllerServerPortEl && !controllerServerPortEl.readOnly) {
+    const serverPortNumber = Number(controller_server_port);
+    if (!Number.isInteger(serverPortNumber) || serverPortNumber < 1 || serverPortNumber > 65535) {
+      alertify.alert('Error', 'Server Port must be between 1 and 65535.');
+      return;
+    }
+  }
 
   // 只有當使用者真的改了 ID，才送 control_id_new；否則送空字串（後端視為不更改）
   const control_id_new = (control_id !== control_id_old) ? control_id : '';
@@ -292,6 +744,7 @@ function controller_save(){
       blackout_recovery: blackout_recovery_val,
       buzzer_mode: buzzer_val,
       modbus_type: modbus_type_val,
+      server_port: controller_server_port,
       global_downshift_torque: global_downshift_torque,
       global_downshift_speed: global_downshift_speed
     },
@@ -308,7 +761,10 @@ function controller_save(){
         }
       }
 
-      if (result && result.success === true) {
+      const responseFlag = (value) => value === true || value === 1 || value === '1' || value === 'true';
+      const requestSucceeded = result && (responseFlag(result.success) || result.res_type === 'OK');
+
+      if (requestSucceeded) {
         // 後端已同步驗證兩個 DB；立即把隱藏的 old ID 更新成新 ID，避免自動 reboot 排程失敗時再次 Save 還拿舊 ID 當 WHERE。
         if (result.new_device_id != null && result.new_device_id !== '') {
           const oldIdEl = document.getElementById('control_id_old');
@@ -318,12 +774,32 @@ function controller_save(){
         }
       }
 
-      if (result && result.success === true && result.restart_required === true) {
-        const language = getSettingsLanguage();
-        const text = getControllerIdentityRestartMessages(language, result.restart_delay_seconds, result);
-        const message = result.restart_scheduled ? text.scheduled : text.failed;
-        keepSaveDisabled = !!result.restart_scheduled;
-        alertify.alert(text.title, message);
+      if (requestSucceeded && result.server_port != null) {
+        const portEl = document.getElementById('controller_server_port');
+        if (portEl) {
+          portEl.value = String(result.server_port);
+          if (String(result.modbus_type) === '1') {
+            portEl.dataset.rtuPort = String(result.server_port);
+          }
+        }
+      }
+
+      const identityChanged = result && (
+        responseFlag(result.device_id_changed)
+        || responseFlag(result.modbus_type_changed)
+        || responseFlag(result.server_port_changed)
+      );
+      const shouldAutoRestart = window.IS_ICONTROLLER === true
+        && requestSucceeded
+        && (responseFlag(result.restart_required) || identityChanged);
+
+      if (shouldAutoRestart) {
+        if (!responseFlag(result.both_databases_verified)) {
+          alertify.alert('Error', 'Controller/iDAS database verification failed. Restart was cancelled.');
+          return;
+        }
+        keepSaveDisabled = true;
+        showControllerRestartDialogAndSchedule(result, saveButton);
         return;
       }
 
@@ -345,6 +821,11 @@ function controller_save(){
     }
   });
 }
+
+// Inline HTML handlers execute in the global Window scope. A function
+// declared inside the i-controller platform block is block-scoped in modern
+// browsers, so expose the supported save entry point explicitly.
+window.controller_save = controller_save;
 
 
 
@@ -1277,10 +1758,21 @@ function renderIdasPackCheckState(payload) {
         requires_confirm: !!payload.requires_confirm,
         status_key: payload.status_key || '',
         pack_version: payload.pack_version || '',
-        current_version: payload.current_version || ''
+        current_version: payload.current_version || '',
+        disk_blocked: !!payload.disk_blocked,
+        database_free_mb: Number(payload.database_free_mb || 0),
+        required_free_mb: Number(payload.required_free_mb || 50)
     };
 
-    setIdasUploadEnabled(true);
+    if (payload.disk_blocked) {
+        statusText += ' / Free ' + Number(payload.database_free_mb || 0).toFixed(1)
+            + ' MB, required ' + Number(payload.required_free_mb || 50).toFixed(1) + ' MB';
+        if (statusEl) {
+            statusEl.textContent = statusText;
+            statusEl.className = 'idas-version-status error';
+        }
+    }
+    setIdasUploadEnabled(!payload.disk_blocked);
 }
 
 function initIdasPackVersionCheck() {
@@ -2313,88 +2805,7 @@ function getModbusRestartMessages(language, seconds) {
   return messages[language] || messages['en-us'];
 }
 
-function controller_save(){
-  // 取值 & 去除前後空白
-  const trim = (v) => (v == null ? '' : String(v).trim());
 
-  const control_id_old = trim(document.getElementById('control_id_old')?.value); // 舊ID（'' 代表 NULL）
-  const control_id     = trim(document.getElementById('control_id')?.value);     // 螢幕上顯示的 ID（當新ID）
-  const control_name   = trim(document.getElementById('control_name')?.value);
-  const storage_warning = trim(document.getElementById('storage_warning')?.value);
-  const torque_filter   = trim(document.getElementById('torque_filter')?.value);
-  const lang_val        = trim(document.getElementById('select_language')?.value);
-  const unit_val        = trim(document.getElementById('select_torque_unit')?.value);
-  const counting_method_val   = trim(document.querySelector('input[name="counting_method"]:checked')?.value);
-  const circular_archive_val  = trim(document.querySelector('input[name="circular_archive"]:checked')?.value);
-  const blackout_recovery_val = trim(document.querySelector('input[name="blackout_recovery"]:checked')?.value);
-  const buzzer_val            = trim(document.querySelector('input[name="buzzer_mode"]:checked')?.value);
-  const modbus_type_val       = trim(document.querySelector('input[name="modbus_type"]:checked')?.value ?? '0');
-  const global_downshift_torque = trim(document.getElementById('global_downshift_torque')?.value);
-  const global_downshift_speed  = trim(document.getElementById('global_downshift_speed')?.value);
-
-  // 你的原本驗證
-  let check = input_check_setting();
-  if (!check) return;
-
-  // 只有當使用者真的改了 ID，才送 control_id_new；否則送空字串（後端視為不更改）
-  const control_id_new = (control_id !== control_id_old) ? control_id : '';
-
-  $.ajax({
-    url: "?url=Settings/control_setting",
-    method: "POST",
-    data: {
-      // 後端會把 '' 視為 NULL（舊ID可為 NULL；新ID空字串代表不改）
-      control_id: control_id_old,
-      control_id_new: control_id_new,
-
-      control_name: control_name,
-      lang_val: lang_val,
-      unit_val: unit_val,
-      storage_warning: storage_warning,
-      torque_filter: torque_filter,
-      counting_method: counting_method_val,
-      circular_archive: circular_archive_val,
-      blackout_recovery: blackout_recovery_val,
-      buzzer_mode: buzzer_val,
-      modbus_type: modbus_type_val,
-      global_downshift_torque: global_downshift_torque,
-      global_downshift_speed: global_downshift_speed
-    },
-    success: function(response) {
-      suppressRangeHints(true);
-
-      let result = response;
-      if (typeof result === 'string') {
-        try {
-          result = JSON.parse(result);
-        } catch (error) {
-          handleAjaxResponse(response);
-          return;
-        }
-      }
-
-      if (result && result.success === true && result.restart_required === true) {
-        const language = getSettingsLanguage();
-        const text = getModbusRestartMessages(language, result.restart_delay_seconds);
-        const message = result.restart_scheduled ? text.scheduled : text.manual;
-        const saveButton = document.getElementById('downshift_save');
-        if (saveButton) saveButton.disabled = true;
-        alertify.alert(text.title, message);
-        return;
-      }
-
-      handleAjaxResponse(typeof response === 'string' ? response : JSON.stringify(response));
-    },
-    error: function(xhr, status, error) {
-      let message = 'There was an issue with the request.';
-      try {
-        const result = JSON.parse(xhr.responseText || '{}');
-        if (result.res_msg) message = result.res_msg;
-      } catch (_) {}
-      alertify.alert('Error', message);
-    }
-  });
-}
 
 
 
@@ -3288,10 +3699,21 @@ function renderIdasPackCheckState(payload) {
         requires_confirm: !!payload.requires_confirm,
         status_key: payload.status_key || '',
         pack_version: payload.pack_version || '',
-        current_version: payload.current_version || ''
+        current_version: payload.current_version || '',
+        disk_blocked: !!payload.disk_blocked,
+        database_free_mb: Number(payload.database_free_mb || 0),
+        required_free_mb: Number(payload.required_free_mb || 50)
     };
 
-    setIdasUploadEnabled(true);
+    if (payload.disk_blocked) {
+        statusText += ' / Free ' + Number(payload.database_free_mb || 0).toFixed(1)
+            + ' MB, required ' + Number(payload.required_free_mb || 50).toFixed(1) + ' MB';
+        if (statusEl) {
+            statusEl.textContent = statusText;
+            statusEl.className = 'idas-version-status error';
+        }
+    }
+    setIdasUploadEnabled(!payload.disk_blocked);
 }
 
 function initIdasPackVersionCheck() {
@@ -4114,4 +4536,47 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[Barcode switch]', ds.jobId, ds);
   });
 })();
+}
+function idasRenderDatabaseStorage(payload) {
+    var panel = document.getElementById('idas-storage-panel');
+    var free = document.getElementById('idas-storage-free');
+    var last = document.getElementById('idas-storage-last');
+    var i18n = window.IDAS_STORAGE_I18N || {};
+    if (!panel) return;
+    panel.classList.toggle('is-warning', !!payload.disk_warning && !payload.disk_blocked);
+    panel.classList.toggle('is-blocked', !!payload.disk_blocked);
+    if (free) free.textContent = Number(payload.free_mb || 0).toFixed(1) + ' MB';
+    if (last) last.textContent = payload.last_maintenance_at || i18n.never || '-';
+}
+
+function idasLoadDatabaseStorage() {
+    var panel = document.getElementById('idas-storage-panel');
+    if (!panel || panel.closest('[hidden]') || typeof $ === 'undefined') return;
+    $.ajax({url:'?url=Settings/idas_database_maintenance',method:'POST',data:{action:'status'},dataType:'json',cache:false})
+        .done(function(resp){ if (resp) idasRenderDatabaseStorage(resp); });
+}
+
+function idasRunSafeDatabaseCleanup() {
+    var i18n = window.IDAS_STORAGE_I18N || {};
+    if (!window.confirm(i18n.confirm || 'Run safe cleanup?')) return;
+    var btn = document.getElementById('idas-storage-cleanup-btn');
+    if (btn) btn.disabled = true;
+    $.ajax({url:'?url=Settings/idas_database_maintenance',method:'POST',data:{action:'cleanup'},dataType:'json',cache:false})
+        .done(function(resp){
+            if (resp) idasRenderDatabaseStorage(resp);
+            var freed = Number((resp && resp.freed_mb) || 0).toFixed(1);
+            window.alert(((resp && resp.success) ? (i18n.completed || 'Safe cleanup completed') : (i18n.failed || 'Cleanup is busy or failed')) + '\n' + (i18n.freed || 'Freed') + ': ' + freed + ' MB');
+            var uploader = document.getElementById('file-uploader');
+            if (resp && resp.success && uploader && uploader.files && uploader.files.length) {
+                uploader.dispatchEvent(new Event('change'));
+            }
+        })
+        .fail(function(){ window.alert('Safe cleanup failed.'); })
+        .always(function(){ if (btn) btn.disabled = false; });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', idasLoadDatabaseStorage);
+} else {
+    idasLoadDatabaseStorage();
 }

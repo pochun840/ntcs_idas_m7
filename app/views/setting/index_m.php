@@ -18,7 +18,10 @@
                 <button id="bnt2" name="System_Display" class="t4 button" onclick="OpenButton('System')"><?php echo $text['system_setting'];?></button>
                 <button id="bnt3" name="Barcode_Display" class="t4 button" onclick="OpenButton('Barcode')"><?php echo $text['system_barcode_setting'] ;?></button>
                 <button id="bnt4" name="Connect_Display" class="t4 button" onclick="OpenButton('Connect')"><?php echo $text['system_connect_setting'];?></button>
-                <button id="bnt5" name="iDas_Display" class="t4 button" onclick="OpenButton('Update')">iDAS</button>
+                <?php if (idas_network_settings_enabled()): ?>
+                <button id="bnt5" name="Network_Display" class="t4 button" onclick="OpenButton('Network')"><?php echo $text['network_setting'];?></button>
+                <?php endif; ?>
+                <button id="bnt6" name="iDas_Display" class="t4 button" onclick="OpenButton('Update')">iDAS</button>
             </div>
 
         
@@ -39,6 +42,12 @@
             <!-- idas_agent OP -->
                 <?php require_once '../app/views/setting/idas_agent.php';?>
             <!-- idas_agent ED -->
+
+            <?php if (idas_network_settings_enabled()): ?>
+            <!-- idas_network mobile OP -->
+                <?php require_once '../app/views/setting/idas_network_m.php';?>
+            <!-- idas_network mobile ED -->
+            <?php endif; ?>
 
             
             <!-- idas_update OP -->
@@ -250,7 +259,10 @@ $idasSettingIsOperator = ($idasSettingUserLaw === '3');
                 <button id="bnt2" name="System_Display" class="t4 button" onclick="OpenButton('System')"><?php echo $text['system_setting'];?></button>
                 <button id="bnt3" name="Barcode_Display" class="t4 button" onclick="OpenButton('Barcode')"><?php echo $text['system_barcode_setting'] ;?></button>
                 <button id="bnt4" name="Connect_Display" class="t4 button" onclick="OpenButton('Connect')"><?php echo $text['system_connect_setting'];?></button>
-                <button id="bnt5" name="iDas_Display" class="t4 button" onclick="OpenButton('Update')">iDAS</button>
+                <?php if (idas_network_settings_enabled()): ?>
+                <button id="bnt5" name="Network_Display" class="t4 button" onclick="OpenButton('Network')"><?php echo $text['network_setting'];?></button>
+                <?php endif; ?>
+                <button id="bnt6" name="iDas_Display" class="t4 button" onclick="OpenButton('Update')">iDAS</button>
             </div>
 
         
@@ -271,6 +283,12 @@ $idasSettingIsOperator = ($idasSettingUserLaw === '3');
             <!-- idas_agent OP -->
                 <?php require_once '../app/views/setting/idas_agent.php';?>
             <!-- idas_agent ED -->
+
+            <?php if (idas_network_settings_enabled()): ?>
+            <!-- idas_network mobile OP -->
+                <?php require_once '../app/views/setting/idas_network_m.php';?>
+            <!-- idas_network mobile ED -->
+            <?php endif; ?>
 
             
             <!-- idas_update OP -->

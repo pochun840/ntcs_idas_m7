@@ -150,6 +150,44 @@
         </div>
     </div>
 
+    <?php
+        $controller_network_port = isset($data['network_setting']['port'])
+            ? (int)$data['network_setting']['port']
+            : 502;
+
+        $controller_server_port = idas_protocol_server_port(
+            $controller_modbus_type,
+            $controller_network_port
+        );
+
+        $server_port_label = $text['server_port']
+            ?? $text['system_server_port']
+            ?? (($idas_lang === 'en-us') ? 'Server Port' : (($idas_lang === 'zh-cn') ? '服务器端口' : '伺服器連接埠'));
+        $server_port_hint = ($idas_lang === 'en-us')
+            ? 'TCP default 502 (editable) / RTU keeps current port (editable) / OP fixed at 4545 (read-only)'
+            : (($idas_lang === 'zh-cn')
+                ? 'TCP 默认 502（可修改） / RTU 保留当前端口（可修改） / OP 固定 4545（不可修改）'
+                : 'TCP 預設 502（可修改） / RTU 保留目前連接埠（可修改） / OP 固定 4545（不可修改）');
+    ?>
+    <div class="row t2 protocol-server-port-row">
+        <div class="col-3 t1"><?php echo htmlspecialchars((string)$server_port_label, ENT_QUOTES, 'UTF-8'); ?>:</div>
+        <div class="col-3 t2">
+            <input
+                id="controller_server_port"
+                type="number"
+                class="t3 form-control protocol-server-port-input protocol-server-port-editable"
+                value="<?php echo (int)$controller_server_port; ?>"
+                data-rtu-port="<?php echo (int)$controller_network_port; ?>"
+                min="1"
+                max="65535"
+                inputmode="numeric">
+            <div class="protocol-server-port-hint">
+                <?php echo htmlspecialchars($server_port_hint, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        </div>
+    </div>
+
+
  
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
@@ -170,7 +208,7 @@
     </div>
 
     <div style="text-align: center;margin-top: 30px;">
-        <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="controller_save()"><?php echo $text['save'];?></button>
+        <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="window.controller_save()"><?php echo $text['save'];?></button>
     </div>
     <hr class="hr">
 
@@ -438,6 +476,35 @@
         </div>
     </div>
 
+    <?php
+        $controller_network_port = isset($data['network_setting']['port'])
+            ? (int)$data['network_setting']['port']
+            : 502;
+
+        // NTCS displays the value that was actually mirrored into iDAS DB.
+        // NTCS Controller-master: display actual mirrored DB Server Port.
+        // Do not force TCP back to default 502.
+        $controller_server_port = $controller_network_port;
+
+        $server_port_label = $text['server_port']
+            ?? $text['system_server_port']
+            ?? (($idas_lang === 'en-us') ? 'Server Port' : (($idas_lang === 'zh-cn') ? '服务器端口' : '伺服器連接埠'));
+    ?>
+    <div class="row t2 protocol-server-port-row">
+        <div class="col-3 t1"><?php echo htmlspecialchars((string)$server_port_label, ENT_QUOTES, 'UTF-8'); ?>:</div>
+        <div class="col-3 t2">
+            <input
+                id="controller_server_port"
+                type="number"
+                class="t3 form-control protocol-server-port-input"
+                value="<?php echo (int)$controller_server_port; ?>"
+                data-rtu-port="<?php echo (int)$controller_network_port; ?>"
+                readonly
+                aria-readonly="true">
+        </div>
+    </div>
+
+
  
 
     <div class="col t1" style="padding-left: 3%;font-weight: bold; padding-top: 1%"><?php echo $text['Downshift'];?></div>
@@ -458,7 +525,7 @@
     </div>
 
     <div style="text-align: center;margin-top: 30px;">
-        <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="controller_save()"><?php echo $text['save'];?></button>
+        <button class="all-btn w3-button w3-border w3-round-large" id="downshift_save" onclick="window.controller_save()"><?php echo $text['save'];?></button>
     </div>
     <hr class="hr">
 

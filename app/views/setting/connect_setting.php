@@ -11,7 +11,7 @@
         <div class="col-3 t1"><?php echo $text['system_agent_ip'];?>:</div>
         <div class="col">
                 <div class="connect-inline-row">
-                    <div class="connect-input-wrap">
+                    <div class="connect-input-wrap connect-agent-ip-wrap">
                         <input type="text" name="agent_server_ip" id="agent_server_ip" size="15"
                             value='<?php echo $data['agent_server_ip'];?>' required class="form-control">
                         <div class="invalid-feedback"></div>

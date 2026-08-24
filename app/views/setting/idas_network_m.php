@@ -16,8 +16,164 @@ $controllerModbusType = isset($data['controller_info']['modbus_type'])
 // Protocol / Port policy is centralized in app/config/config.php.
 $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
 ?>
+<style>
+/* Network Setting RWD — scoped to this page so desktop/controller layouts and
+   the restart/DB workflow are not affected. */
+#Network_Setting {
+    box-sizing: border-box;
+}
+#Network_Setting .network-setting-title {
+    padding-left: 3%;
+    padding-top: 1%;
+    font-weight: bold;
+}
+#Network_Setting .network-setting-row {
+    align-items: center;
+}
+#Network_Setting .network-setting-input {
+    min-height: 38px;
+}
+#Network_Setting .network-mode-options {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+#Network_Setting .network-mode-options .form-check-inline {
+    margin-right: 0;
+}
+#Network_Setting .network-setting-actions {
+    text-align: center;
+    margin: 30px 0 20px;
+}
+
+@media (max-width: 768px) {
+    #Network_Setting {
+        width: 100%;
+        min-height: auto !important;
+        padding: 14px 16px calc(24px + env(safe-area-inset-bottom));
+        overflow-x: hidden !important;
+    }
+    #Network_Setting .network-setting-title {
+        width: 100%;
+        padding: 0 0 14px;
+        font-size: 19px;
+        line-height: 1.35;
+    }
+    #Network_Setting .network-setting-row {
+        display: block;
+        width: 100%;
+        margin: 0 0 16px;
+    }
+    #Network_Setting .network-setting-row > .t1,
+    #Network_Setting .network-setting-row > .t2 {
+        width: 100%;
+        max-width: none;
+        flex: 0 0 100%;
+        padding: 0;
+    }
+    #Network_Setting .network-setting-row > .t1 {
+        margin-bottom: 7px;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+    #Network_Setting .network-setting-input {
+        display: block;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 46px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 16px; /* Prevents automatic zoom on iOS Safari. */
+        box-sizing: border-box;
+    }
+    #Network_Setting .network-mode-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+    #Network_Setting .network-mode-options .form-check-inline {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        min-height: 48px;
+        margin: 0;
+        padding: 0 12px;
+        border: 1px solid #cbd3da;
+        border-radius: 7px;
+        background: #fff;
+    }
+    #Network_Setting .network-mode-options .form-check-input {
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        margin: 0 9px 0 0;
+    }
+    #Network_Setting .network-mode-options .form-check-label {
+        display: flex;
+        align-items: center;
+        min-height: 46px;
+        width: 100%;
+        margin: 0;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    #Network_Setting .network-field-disabled,
+    #Network_Setting input:disabled {
+        opacity: 1;
+        color: #70777d;
+        background: #eef1f3;
+        -webkit-text-fill-color: #70777d;
+    }
+    #Network_Setting .network-setting-actions {
+        width: 100%;
+        margin: 22px 0 0;
+    }
+    #Network_Setting #network_setting_save {
+        width: 100%;
+        min-height: 48px;
+        padding: 10px 18px;
+        border-radius: 7px;
+        font-size: 17px;
+        font-weight: 600;
+        touch-action: manipulation;
+    }
+    #Network_Setting #network_setting_save:disabled {
+        opacity: .65;
+        cursor: wait;
+    }
+    .ajs-dialog.network-setting-alertify-dialog,
+    .network-setting-alertify-dialog .ajs-dialog {
+        width: calc(100vw - 28px) !important;
+        max-width: 520px !important;
+        margin: 14px auto !important;
+    }
+    .network-setting-alertify-dialog .ajs-content {
+        max-height: 65vh;
+        overflow-y: auto;
+        overflow-wrap: anywhere;
+        -webkit-overflow-scrolling: touch;
+    }
+    .network-setting-alertify-dialog .ajs-footer .ajs-button {
+        min-width: 88px;
+        min-height: 44px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 380px) {
+    #Network_Setting {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    #Network_Setting .network-mode-options {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 <div id="Network_Setting" class="divMode" style="display: none; overflow-x: hidden;">
-    <div class="col t1" style="padding-left: 3%; font-weight: bold; padding-top: 1%;">
+    <div class="col t1 network-setting-title">
         <?php echo htmlspecialchars((string)$text['network_setting'], ENT_QUOTES, 'UTF-8'); ?>
     </div>
 
@@ -55,7 +211,7 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
     <div class="row t2 network-setting-row">
         <div class="col-3 t1"><?php echo htmlspecialchars((string)$text['network_static_ip'], ENT_QUOTES, 'UTF-8'); ?>:</div>
         <div class="col-3 t2">
-            <input id="network_static_ip" type="text" maxlength="15"
+            <input id="network_static_ip" type="text" maxlength="15" inputmode="decimal"
                 value="<?php echo htmlspecialchars($staticNetworkIp, ENT_QUOTES, 'UTF-8'); ?>"
                 class="t3 form-control network-setting-input" autocomplete="off">
         </div>
@@ -64,7 +220,7 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
     <div class="row t2 network-setting-row">
         <div class="col-3 t1"><?php echo htmlspecialchars((string)$text['network_subnet_mask'], ENT_QUOTES, 'UTF-8'); ?>:</div>
         <div class="col-3 t2">
-            <input id="network_subnet_mask" type="text" maxlength="15"
+            <input id="network_subnet_mask" type="text" maxlength="15" inputmode="decimal"
                 value="<?php echo htmlspecialchars($networkMask, ENT_QUOTES, 'UTF-8'); ?>"
                 class="t3 form-control network-setting-input" autocomplete="off">
         </div>
@@ -73,14 +229,14 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
     <div class="row t2 network-setting-row">
         <div class="col-3 t1"><?php echo htmlspecialchars((string)$text['network_gateway_ip'], ENT_QUOTES, 'UTF-8'); ?>:</div>
         <div class="col-3 t2">
-            <input id="network_gateway_ip" type="text" maxlength="15"
+            <input id="network_gateway_ip" type="text" maxlength="15" inputmode="decimal"
                 value="<?php echo htmlspecialchars($networkGateway, ENT_QUOTES, 'UTF-8'); ?>"
                 class="t3 form-control network-setting-input" autocomplete="off">
         </div>
     </div>
     <!-- Server Port is managed by Controller Setting. -->
 
-    <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
+    <div class="network-setting-actions">
         <button class="all-btn w3-button w3-border w3-round-large" id="network_setting_save" onclick="saveNetworkSetting()">
             <?php echo htmlspecialchars((string)$text['save'], ENT_QUOTES, 'UTF-8'); ?>
         </button>

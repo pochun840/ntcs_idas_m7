@@ -4,6 +4,339 @@
  * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
  * 0 / missing / invalid -> NTCS implementation
  */
+
+/**
+ * Login user-table sync runs before platform branch selection and before
+ * either LoginModel is constructed.
+ *
+ * Source of truth:
+ *   /home/kls/NTCS7/KLS_NTCS.Lin : user
+ *
+ * Target:
+ *   /var/www/html/database/KLS_NTCS_IDAS.Lin : user
+ */
+function idas_sync_login_user_table_from_controller(): array
+{
+    static $done = false;
+    static $lastResult = null;
+
+    if ($done && is_array($lastResult)) {
+        return $lastResult;
+    }
+
+    $done = true;
+
+    $sourcePath = '/home/kls/NTCS7/KLS_NTCS.Lin';
+    $targetPath = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+
+    $result = [
+        'status' => 'skipped',
+        'changed' => false,
+        'source' => $sourcePath,
+        'target' => $targetPath,
+        'table' => 'user',
+        'source_rows' => 0,
+        'target_rows_before' => 0,
+        'target_rows_after' => 0,
+        'message' => '',
+    ];
+
+    if (PHP_OS_FAMILY !== 'Linux') {
+        $result['message'] = 'non_linux';
+        return $lastResult = $result;
+    }
+
+    try {
+        if (!is_file($sourcePath) || (int)@filesize($sourcePath) <= 0) {
+            $result['status'] = 'failed';
+            $result['message'] = 'source_missing_or_empty';
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        if (!is_readable($sourcePath)) {
+            $result['status'] = 'failed';
+            $result['message'] = 'source_not_readable';
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        $targetDir = dirname($targetPath);
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0777, true);
+        }
+
+        // If target DB does not exist or is 0KB, recover the complete DB first.
+        if (!is_file($targetPath) || (int)@filesize($targetPath) <= 0) {
+            $tmp = $targetPath . '.login_sync_' . getmypid() . '.tmp';
+
+            if (!@copy($sourcePath, $tmp) || (int)@filesize($tmp) <= 0) {
+                @unlink($tmp);
+                $result['status'] = 'failed';
+                $result['message'] = 'target_recovery_copy_failed';
+                error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+                return $lastResult = $result;
+            }
+
+            @chmod($tmp, 0666);
+
+            if (!@rename($tmp, $targetPath)) {
+                @unlink($tmp);
+                $result['status'] = 'failed';
+                $result['message'] = 'target_recovery_rename_failed';
+                error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+                return $lastResult = $result;
+            }
+
+            @chmod($targetPath, 0666);
+            clearstatcache(true, $targetPath);
+
+            $result['status'] = 'synced';
+            $result['changed'] = true;
+            $result['message'] = 'target_db_recovered_from_controller';
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        if (!is_readable($targetPath) || !is_writable($targetPath)) {
+            $result['status'] = 'failed';
+            $result['message'] = 'target_not_readable_or_writable';
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        $db = new PDO('sqlite:' . $targetPath);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $db->exec('PRAGMA busy_timeout = 5000');
+
+        // Attach Controller DB read-only using URI mode.
+        $sourceUri = 'file:' . $sourcePath . '?mode=ro';
+        $db->exec("ATTACH DATABASE " . $db->quote($sourceUri) . " AS controller");
+
+        $mainExists = (bool)$db->query(
+            "SELECT 1 FROM main.sqlite_master WHERE type='table' AND name='user' LIMIT 1"
+        )->fetchColumn();
+
+        $sourceExists = (bool)$db->query(
+            "SELECT 1 FROM controller.sqlite_master WHERE type='table' AND name='user' LIMIT 1"
+        )->fetchColumn();
+
+        if (!$sourceExists) {
+            $db->exec('DETACH DATABASE controller');
+            $result['status'] = 'failed';
+            $result['message'] = 'source_user_table_missing';
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        $sourceColumns = $db->query(
+            "PRAGMA controller.table_info('user')"
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        $targetColumns = $mainExists
+            ? $db->query("PRAGMA main.table_info('user')")->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+
+        $signature = static function(array $columns): array {
+            $out = [];
+            foreach ($columns as $column) {
+                $out[] = [
+                    'name' => (string)($column['name'] ?? ''),
+                    'type' => strtoupper(trim((string)($column['type'] ?? ''))),
+                    'notnull' => (int)($column['notnull'] ?? 0),
+                    'dflt_value' => $column['dflt_value'] ?? null,
+                    'pk' => (int)($column['pk'] ?? 0),
+                ];
+            }
+            return $out;
+        };
+
+        $schemaSame = $mainExists
+            && $signature($sourceColumns) === $signature($targetColumns);
+
+        $sourceCreateSql = (string)$db->query(
+            "SELECT sql FROM controller.sqlite_master
+             WHERE type='table' AND name='user' LIMIT 1"
+        )->fetchColumn();
+
+        if (trim($sourceCreateSql) === '') {
+            $db->exec('DETACH DATABASE controller');
+            $result['status'] = 'failed';
+            $result['message'] = 'source_user_create_sql_missing';
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        $columnNames = array_map(
+            static fn(array $column): string => (string)$column['name'],
+            $sourceColumns
+        );
+
+        $quotedColumns = array_map(
+            static fn(string $name): string => '"' . str_replace('"', '""', $name) . '"',
+            $columnNames
+        );
+
+        $columnsSql = implode(', ', $quotedColumns);
+
+        $result['source_rows'] = (int)$db->query(
+            'SELECT COUNT(*) FROM controller."user"'
+        )->fetchColumn();
+
+        $result['target_rows_before'] = $mainExists
+            ? (int)$db->query('SELECT COUNT(*) FROM main."user"')->fetchColumn()
+            : 0;
+
+        $same = false;
+
+        if ($schemaSame) {
+            // Compare as sets in both directions; row order does not matter.
+            $diffTarget = (int)$db->query(
+                'SELECT COUNT(*) FROM ('
+                . 'SELECT ' . $columnsSql . ' FROM main."user" '
+                . 'EXCEPT '
+                . 'SELECT ' . $columnsSql . ' FROM controller."user"'
+                . ')'
+            )->fetchColumn();
+
+            $diffSource = (int)$db->query(
+                'SELECT COUNT(*) FROM ('
+                . 'SELECT ' . $columnsSql . ' FROM controller."user" '
+                . 'EXCEPT '
+                . 'SELECT ' . $columnsSql . ' FROM main."user"'
+                . ')'
+            )->fetchColumn();
+
+            $same = $diffTarget === 0
+                && $diffSource === 0
+                && $result['source_rows'] === $result['target_rows_before'];
+        }
+
+        if ($same) {
+            $result['status'] = 'same';
+            $result['target_rows_after'] = $result['target_rows_before'];
+            $result['message'] = 'already_in_sync';
+
+            $db->exec('DETACH DATABASE controller');
+            $db = null;
+
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        // Retry on SQLITE_BUSY/locked conditions.
+        $lastError = null;
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                $db->exec('BEGIN IMMEDIATE');
+
+                if (!$schemaSame) {
+                    $db->exec('DROP TABLE IF EXISTS main."user"');
+                    $db->exec($sourceCreateSql);
+                } else {
+                    $db->exec('DELETE FROM main."user"');
+                }
+
+                $db->exec(
+                    'INSERT INTO main."user" (' . $columnsSql . ') '
+                    . 'SELECT ' . $columnsSql . ' FROM controller."user"'
+                );
+
+                $db->exec('COMMIT');
+                $lastError = null;
+                break;
+            } catch (Throwable $e) {
+                $lastError = $e;
+
+                try {
+                    if ($db->inTransaction()) {
+                        $db->exec('ROLLBACK');
+                    }
+                } catch (Throwable $rollbackError) {
+                }
+
+                if ($attempt < 3) {
+                    usleep(200000);
+                }
+            }
+        }
+
+        if ($lastError !== null) {
+            try {
+                $db->exec('DETACH DATABASE controller');
+            } catch (Throwable $detachError) {
+            }
+
+            $result['status'] = 'failed';
+            $result['message'] = 'sync_write_failed: ' . $lastError->getMessage();
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        $result['target_rows_after'] = (int)$db->query(
+            'SELECT COUNT(*) FROM main."user"'
+        )->fetchColumn();
+
+        $verifyTarget = (int)$db->query(
+            'SELECT COUNT(*) FROM ('
+            . 'SELECT ' . $columnsSql . ' FROM main."user" '
+            . 'EXCEPT '
+            . 'SELECT ' . $columnsSql . ' FROM controller."user"'
+            . ')'
+        )->fetchColumn();
+
+        $verifySource = (int)$db->query(
+            'SELECT COUNT(*) FROM ('
+            . 'SELECT ' . $columnsSql . ' FROM controller."user" '
+            . 'EXCEPT '
+            . 'SELECT ' . $columnsSql . ' FROM main."user"'
+            . ')'
+        )->fetchColumn();
+
+        if (
+            $verifyTarget !== 0
+            || $verifySource !== 0
+            || $result['source_rows'] !== $result['target_rows_after']
+        ) {
+            $db->exec('DETACH DATABASE controller');
+            $db = null;
+
+            $result['status'] = 'failed';
+            $result['message'] = 'post_sync_verify_failed';
+            error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+            return $lastResult = $result;
+        }
+
+        $db->exec('DETACH DATABASE controller');
+        $db = null;
+
+        @chmod($targetPath, 0666);
+        clearstatcache(true, $targetPath);
+
+        $result['status'] = 'synced';
+        $result['changed'] = true;
+        $result['message'] = $schemaSame
+            ? 'rows_synced_from_controller'
+            : 'schema_and_rows_synced_from_controller';
+
+        error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+
+        return $lastResult = $result;
+
+    } catch (Throwable $e) {
+        $result['status'] = 'failed';
+        $result['message'] = get_class($e) . ': ' . $e->getMessage();
+        error_log('[LOGIN USER SYNC V3] ' . json_encode($result));
+        return $lastResult = $result;
+    }
+}
+
+// Run before selecting i-controller / NTCS class implementation.
+// Therefore both platform branches receive the synchronized iDAS user table.
+$IDAS_LOGIN_USER_SYNC_RESULT = idas_sync_login_user_table_from_controller();
+
 if (idas_is_icontroller()) {
 class Logins extends Controller
 {
@@ -13,6 +346,15 @@ class Logins extends Controller
     Private $deviceId;
 
     // 在建構子中將 Post 物件（Model）實例化
+
+    public function getLoginUserSyncStatus(): array
+    {
+        global $IDAS_LOGIN_USER_SYNC_RESULT;
+        return is_array($IDAS_LOGIN_USER_SYNC_RESULT)
+            ? $IDAS_LOGIN_USER_SYNC_RESULT
+            : [];
+    }
+
     public function __construct()
     {
         $this->LoginModel = $this->model('Login');
@@ -510,6 +852,15 @@ class Logins extends Controller
     private $currentUserLaw = 1;
 
     // 在建構子中將 Post 物件（Model）實例化
+
+    public function getLoginUserSyncStatus(): array
+    {
+        global $IDAS_LOGIN_USER_SYNC_RESULT;
+        return is_array($IDAS_LOGIN_USER_SYNC_RESULT)
+            ? $IDAS_LOGIN_USER_SYNC_RESULT
+            : [];
+    }
+
     public function __construct()
     {
         $this->LoginModel = $this->model('Login');
@@ -907,7 +1258,7 @@ class Logins extends Controller
         //   admin / 0734 / law=1
         //   guest / 000  / law=1
         // Required by Account login / QR login / account management flows.
-        $this->ensureDefaultLoginUsersDatabases();
+        // Login user table is synchronized globally from Controller before branch selection.
 
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();

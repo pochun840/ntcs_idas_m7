@@ -234,5 +234,7 @@ th{background:#fafbfc;width:28%}.code{font-family:Consolas,"Courier New",monospa
 }
 
 
-require_once '../app/bootstrap.php';
+require_once __DIR__ . '/../app/bootstrap.php';
+
+// bootstrap.php already loads Controller and Core explicitly.
 $init = new Core();

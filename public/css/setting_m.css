@@ -927,3 +927,4 @@ html.icontroller .ajs-dialog .idas-update-confirm-message .idas-update-alert-mes
     max-height: none;
     overflow: visible;
 }
+.idas-storage-row{margin-top:20px}.idas-storage-panel{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:12px;border:1px solid #ccd5dd;border-radius:8px;background:#f7f9fb}.idas-storage-panel.is-warning{border-color:#e0a800;background:#fff8db}.idas-storage-panel.is-blocked{border-color:#c9302c;background:#ffe8e7}.idas-storage-panel button{width:100%;min-height:44px}.idas-storage-panel button:disabled{opacity:.55;cursor:not-allowed}

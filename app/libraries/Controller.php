@@ -4,8 +4,7 @@
  * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
  * 0 / missing / invalid -> NTCS implementation
  */
-if (idas_is_icontroller()) {
-class Controller
+class IControllerBaseController
 {
     // OP protocol runtime cache: avoid reading SQLite / retrying fallback endpoints on every command.
     protected static $opProtocolCandidatesCache = null;
@@ -2349,8 +2348,8 @@ class Controller
 
 
 }
-} else {
-class Controller
+
+class NtcsBaseController
 {
     // OP protocol runtime cache: avoid reading SQLite / retrying fallback endpoints on every command.
     protected static $opProtocolCandidatesCache = null;
@@ -2540,7 +2539,7 @@ class Controller
         $tempDbPath    = '/var/www/html/database/ntcs_device_temp.db';// iDAS 暫存
         $idasDbPath    = '/var/www/html/database/ntcs_device_IDAS.db';// iDAS 正式用的 device DB
 
-        // === 0) 先用 cookie 快取，避免每次都重跑整個流程 ===
+        // === 0) Cookie 只有在仍與 Controller DB 相同時才能使用 ===
         $cacheTtl = 10; // 秒
 
         if (
@@ -2551,8 +2550,16 @@ class Controller
             $ts  = (int)$_COOKIE['temp_device_id_ts'];
 
             if ($cid >= 1 && $cid <= 255 && $ts > 0 && (time() - $ts) < $cacheTtl) {
-                // 在快取有效時間內 → 直接回傳，完全不打 DB / Modbus
-                return $cid;
+                $controllerIdNow = $this->readDeviceIdFromDb($srcController);
+                if ($controllerIdNow !== null && $controllerIdNow === $cid) {
+                    return $cid;
+                }
+
+                // Controller ID has changed. Never communicate with the stale
+                // cached unit id during the identity transition.
+                setcookie('temp_device_id', '', time() - 3600, '/', '', false, true);
+                setcookie('temp_device_id_ts', '', time() - 3600, '/', '', false, true);
+                unset($_COOKIE['temp_device_id'], $_COOKIE['temp_device_id_ts']);
             }
         }
 
@@ -2590,9 +2597,9 @@ class Controller
                     $modbusOk      = true;
                     $finalDeviceId = $deviceIdFromTemp;
 
-                    // 2-3) ✅ 不再整個 copy DB
-                    //      改成只同步 ntcs_device_test 這張表的內容
-                    $this->syncTempDeviceIdToIdas();  // ★ 關鍵在這行
+                    // Do not update the iDAS identity mirror here. Check.php
+                    // must still see the difference, ask for confirmation,
+                    // then synchronize ID / protocol / TCP port together.
                 }
             }
         }
@@ -2905,8 +2912,8 @@ class Controller
         ] as $dbPath) {
             $endpoint = $this->readControllerWifiEndpointFromDb($dbPath, 4545);
             if ($endpoint) {
-                // OP standard port is 4545. Also add 4545 explicitly in case DB still contains 502.
-                $add($endpoint['host'], $endpoint['port']);
+                // wifi supplies the controller IP only. OP is always 4545 and
+                // its port is intentionally not stored in the DB.
                 $add($endpoint['host'], 4545);
             }
         }
@@ -4582,4 +4589,24 @@ class Controller
 
 
 }
+
+/*
+ * Deterministic platform base-controller alias.
+ * Both implementations are declared unconditionally. Platform selection
+ * only chooses which implementation is exposed as Controller.
+ */
+$selectedControllerBase = idas_is_icontroller()
+    ? 'IControllerBaseController'
+    : 'NtcsBaseController';
+
+if (!class_exists($selectedControllerBase, false)) {
+    throw new RuntimeException('Selected iDAS base Controller implementation is unavailable: ' . $selectedControllerBase);
+}
+
+if (!class_exists('Controller', false)) {
+    class_alias($selectedControllerBase, 'Controller');
+}
+
+if (!class_exists('Controller', false)) {
+    throw new RuntimeException('iDAS Controller alias initialization failed.');
 }

@@ -8,18 +8,58 @@
 }
 
 /* Header */
-#header
+.container-ms > .w3-text-white.w3-center
 {
-    min-height: 40px;
-    background-color: hsl(0, 60%, 50%);
-    font-size: 30px;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
+    width: 100%;
+    min-height: 55px;
+    margin: 0;
+    padding: 0;
+    background-color: hsl(0, 60%, 50%);
+    z-index: 1000;
+    box-sizing: border-box;
+}
+
+.container-ms > .w3-text-white.w3-center > .no-border
+{
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+/* Keep title centered while reserving the Home icon area on the right. */
+.container-ms > .w3-text-white.w3-center > .no-border #header td:first-child
+{
+    width: auto !important;
+}
+
+.container-ms > .w3-text-white.w3-center > .no-border #header td:last-child
+{
+    width: 64px;
+    min-width: 64px;
+    padding: 0 8px 0 0;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.container-ms > .w3-text-white.w3-center > .no-border #header td:last-child img
+{
+    display: inline-block;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+#header
+{
+    min-height: 40px;
+    background-color: transparent;
+    font-size: 30px;
+    position: static;
     text-align: center;
     width: 100%;
-    z-index: 1000;
 }
 
 body
@@ -1093,3 +1133,65 @@ html.icontroller .ajs-dialog .network-setting-alert-message{
         margin-left: 0;
     }
 }
+
+
+/* NTCS Desktop Connect Setting - compact Agent Server IP field */
+#Connect_Setting .connect-agent-ip-wrap{
+    flex: 0 1 420px;
+    max-width: 420px;
+    min-width: 260px;
+}
+
+#Connect_Setting .connect-agent-ip-wrap .form-control{
+    width: 100%;
+}
+
+@media (max-width: 1200px){
+    #Connect_Setting .connect-agent-ip-wrap{
+        flex: 1 1 320px;
+        max-width: 100%;
+        min-width: 220px;
+    }
+}
+
+
+/* ===== Controller Setting: shared Protocol / Server Port ===== */
+.protocol-server-port-row {
+    margin-top: 2px;
+}
+
+.protocol-server-port-input[readonly] {
+    background-color: #f4f6f8;
+    color: #1f2937;
+    cursor: default;
+}
+
+.protocol-server-port-hint {
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .protocol-server-port-hint {
+        white-space: normal;
+    }
+}
+
+
+/* NTCS Controller Setting: Server Port is user-editable. */
+.protocol-server-port-editable {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    cursor: text !important;
+}
+
+
+.protocol-server-port-locked {
+    background-color: #f4f6f8 !important;
+    color: #1f2937 !important;
+    cursor: default !important;
+}
+.idas-storage-row{margin-top:28px}.idas-storage-panel{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 14px;border:1px solid #ccd5dd;border-radius:8px;background:#f7f9fb}.idas-storage-panel.is-warning{border-color:#e0a800;background:#fff8db}.idas-storage-panel.is-blocked{border-color:#c9302c;background:#ffe8e7}.idas-storage-panel button{min-height:38px;padding:6px 16px}.idas-storage-panel button:disabled{opacity:.55;cursor:not-allowed}

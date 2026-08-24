@@ -202,6 +202,7 @@ class Setting{
         }
 
         try {
+            // Always open a fresh connection so post-sync reads cannot reuse stale state.
             $pdo = new PDO('sqlite:' . $path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 3000');
@@ -220,11 +221,22 @@ class Setting{
                 return null;
             }
 
+            // ntcs_device_test contains exactly one configuration row.
+            $rowCount = (int)$pdo->query(
+                "SELECT COUNT(*) FROM ntcs_device_test"
+            )->fetchColumn();
+            if ($rowCount !== 1) {
+                return null;
+            }
+
             $value = $pdo->query(
-                "SELECT wifi FROM ntcs_device_test ORDER BY rowid ASC LIMIT 1"
+                "SELECT wifi FROM ntcs_device_test LIMIT 1"
             )->fetchColumn();
 
-            return ($value === false || $value === null) ? null : (string)$value;
+            return ($value === false || $value === null)
+                ? null
+                : (string)$value;
+
         } catch (Throwable $e) {
             return null;
         }
@@ -1280,6 +1292,234 @@ class Setting{
         return $row;
     }
 
+
+    public function GetNetworkSetting()
+    {
+        /*
+         * NTCS UI displays the synchronized iDAS mirror.
+         * Controller remains the master, but Check.php must copy it to iDAS first.
+         */
+        // NTCS UI reads synchronized iDAS mirror first.
+        $paths = [
+            '/var/www/html/database/ntcs_device_IDAS.db',
+            '/home/kls/NTCS7/ntcs_device.db',
+        ];
+
+        foreach ($paths as $path) {
+            $wifi = $this->readWifiValueFromDb($path);
+            if ($wifi !== null && trim($wifi) !== '') {
+                return $this->parseWifiSetting($wifi);
+            }
+        }
+
+        return $this->parseWifiSetting('');
+    }
+
+    /**
+     * 同步儲存 Controller DB 與 iDAS DB 的 wifi 欄位。
+     * 任一端寫入/驗證失敗時，會嘗試恢復兩端原值，避免設定只更新一半。
+     */
+    public function SaveNetworkSetting(array $setting)
+    {
+        $mode = isset($setting['mode']) ? (int)$setting['mode'] : 1;
+        $staticIp = trim((string)($setting['static_ip'] ?? ''));
+        $port = isset($setting['port']) ? (int)$setting['port'] : 502;
+        $mask = trim((string)($setting['mask'] ?? ''));
+        $gateway = trim((string)($setting['gateway'] ?? ''));
+
+        $wifi = implode('_', [$mode, $staticIp, $port, $mask, $gateway]);
+
+        $paths = [
+            'controller' => '/home/kls/NTCS7/ntcs_device.db',
+            'idas'       => '/var/www/html/database/ntcs_device_IDAS.db',
+        ];
+
+        $pdo = [];
+        $old = [];
+        $committed = [];
+
+        try {
+            foreach ($paths as $key => $path) {
+                if (!is_file($path) || !is_readable($path) || !is_writable($path)) {
+                    throw new RuntimeException($key . '_db_not_writable');
+                }
+
+                $pdo[$key] = new PDO('sqlite:' . $path);
+                $pdo[$key]->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $pdo[$key]->exec('PRAGMA busy_timeout = 5000');
+
+                $tableExists = (bool)$pdo[$key]->query(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ntcs_device_test' LIMIT 1"
+                )->fetchColumn();
+                if (!$tableExists) {
+                    throw new RuntimeException($key . '_missing_table');
+                }
+
+                $columnExists = (bool)$pdo[$key]->query(
+                    "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name='wifi' LIMIT 1"
+                )->fetchColumn();
+                if (!$columnExists) {
+                    throw new RuntimeException($key . '_missing_wifi');
+                }
+
+                $rowCount = (int)$pdo[$key]->query('SELECT COUNT(*) FROM ntcs_device_test')->fetchColumn();
+                if ($rowCount <= 0) {
+                    throw new RuntimeException($key . '_missing_row');
+                }
+
+                $old[$key] = $pdo[$key]->query(
+                    "SELECT wifi FROM ntcs_device_test ORDER BY rowid ASC LIMIT 1"
+                )->fetchColumn();
+                if ($old[$key] === false || $old[$key] === null) {
+                    $old[$key] = '';
+                }
+
+                $pdo[$key]->beginTransaction();
+                $stmt = $pdo[$key]->prepare('UPDATE ntcs_device_test SET wifi = :wifi');
+                $stmt->execute([':wifi' => $wifi]);
+            }
+
+            // Controller 是實際來源，先 commit；第二端失敗時會恢復第一端。
+            foreach (['controller', 'idas'] as $key) {
+                $pdo[$key]->commit();
+                $committed[] = $key;
+            }
+
+            // 寫後讀回驗證。
+            foreach ($paths as $key => $path) {
+                $saved = $this->readWifiValueFromDb($path);
+                if ((string)$saved !== $wifi) {
+                    throw new RuntimeException($key . '_verify_failed');
+                }
+                @chmod($path, 0777);
+            }
+
+            return [
+                'ok' => true,
+                'wifi' => $wifi,
+                'changed' => ((string)($old['controller'] ?? '') !== $wifi) || ((string)($old['idas'] ?? '') !== $wifi),
+                'old_controller_wifi' => (string)($old['controller'] ?? ''),
+                'old_idas_wifi' => (string)($old['idas'] ?? ''),
+            ];
+        } catch (Throwable $e) {
+            foreach ($pdo as $key => $db) {
+                try {
+                    if ($db->inTransaction()) {
+                        $db->rollBack();
+                    }
+                } catch (Throwable $ignore) {
+                }
+            }
+
+            // 如果其中一端已經 commit，再用舊值補償式 rollback。
+            foreach ($committed as $key) {
+                try {
+                    if (isset($pdo[$key])) {
+                        $pdo[$key]->beginTransaction();
+                        $stmt = $pdo[$key]->prepare('UPDATE ntcs_device_test SET wifi = :wifi');
+                        $stmt->execute([':wifi' => (string)($old[$key] ?? '')]);
+                        $pdo[$key]->commit();
+                    }
+                } catch (Throwable $ignore) {
+                    try {
+                        if (isset($pdo[$key]) && $pdo[$key]->inTransaction()) {
+                            $pdo[$key]->rollBack();
+                        }
+                    } catch (Throwable $ignore2) {
+                    }
+                }
+            }
+
+            return [
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function readWifiValueFromDb($path)
+    {
+        if (!is_file($path) || !is_readable($path)) {
+            return null;
+        }
+
+        try {
+            // Always open a fresh connection so post-sync reads cannot reuse stale state.
+            $pdo = new PDO('sqlite:' . $path);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->exec('PRAGMA busy_timeout = 3000');
+
+            $tableExists = (bool)$pdo->query(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ntcs_device_test' LIMIT 1"
+            )->fetchColumn();
+            if (!$tableExists) {
+                return null;
+            }
+
+            $columnExists = (bool)$pdo->query(
+                "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name='wifi' LIMIT 1"
+            )->fetchColumn();
+            if (!$columnExists) {
+                return null;
+            }
+
+            // ntcs_device_test contains exactly one configuration row.
+            $rowCount = (int)$pdo->query(
+                "SELECT COUNT(*) FROM ntcs_device_test"
+            )->fetchColumn();
+            if ($rowCount !== 1) {
+                return null;
+            }
+
+            $value = $pdo->query(
+                "SELECT wifi FROM ntcs_device_test LIMIT 1"
+            )->fetchColumn();
+
+            return ($value === false || $value === null)
+                ? null
+                : (string)$value;
+
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    private function parseWifiSetting($wifi)
+    {
+        $defaults = [
+            'mode' => 1,
+            'static_ip' => '',
+            'port' => 502,
+            'mask' => '255.255.255.0',
+            'gateway' => '',
+            'raw' => (string)$wifi,
+        ];
+
+        $wifi = trim((string)$wifi);
+        if ($wifi === '') {
+            return $defaults;
+        }
+
+        $parts = explode('_', $wifi);
+        if (count($parts) < 5) {
+            return $defaults;
+        }
+
+        $mode = (int)$parts[0];
+        $staticIp = trim((string)$parts[1]);
+        $port = (int)$parts[2];
+        $mask = trim((string)$parts[3]);
+        $gateway = trim((string)$parts[4]);
+
+        return [
+            'mode' => in_array($mode, [1, 2], true) ? $mode : 1,
+            'static_ip' => filter_var($staticIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) ? $staticIp : '',
+            'port' => ($port >= 1 && $port <= 65535) ? $port : 502,
+            'mask' => filter_var($mask, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) ? $mask : '255.255.255.0',
+            'gateway' => filter_var($gateway, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) ? $gateway : '',
+            'raw' => $wifi,
+        ];
+    }
 
     public function GetControllerInfo_count($control_id){
 

@@ -197,7 +197,10 @@ th, td
 .buttonbox input
 {
     width: 100px;
-    height: 60px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0 12px;
+    line-height: 1.2;
     background: #333333;
     color: #fff;
     font-size: 20px;

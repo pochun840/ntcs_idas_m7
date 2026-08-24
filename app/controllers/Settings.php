@@ -178,6 +178,15 @@ class Settings extends Controller
     }
 
     public function index(){
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        // iController uses its own automatic-restart workflow. Remove any
+        // legacy NTCS manual-reboot marker left by v11 so it cannot create a
+        // red "manual reboot" Banner on this platform.
+        idas_clear_identity_state('idas_controller_restart_pending');
+
 
 
         // 同步控制器資料庫（ntcs_data.db）至 iDAS
@@ -285,34 +294,36 @@ class Settings extends Controller
         $staticIp = trim((string)($_POST['static_ip'] ?? ''));
         $mask = trim((string)($_POST['mask'] ?? ''));
         $gateway = trim((string)($_POST['gateway'] ?? ''));
-        $portRaw = trim((string)($_POST['server_port'] ?? ''));
 
-        // Server Port 必須與目前通訊協議一致。
-        // 0 = TCP  -> 502
-        // 2 = OP   -> 4545
-        // 1 = RTU  -> 保留前端設定值
+        /*
+         * Server Port belongs to Controller Setting.
+         * Network Setting saves only mode/IP/mask/gateway.
+         *
+         * OP  -> fixed 4545
+         * TCP -> preserve current saved port (502 is only the default)
+         * RTU -> preserve current saved port
+         */
         $controllerInfo = (array)($this->SettingModel->GetControllerInfo() ?? []);
         $controllerModbusType = isset($controllerInfo['modbus_type'])
             ? (int)$controllerInfo['modbus_type']
             : IDAS_PROTOCOL_TCP;
 
-        $policyPort = idas_protocol_server_port($controllerModbusType, null);
-        if ($policyPort !== null) {
-            $portRaw = (string)$policyPort;
+        $currentNetworkSetting = (array)($this->SettingModel->GetNetworkSetting() ?? []);
+        $currentPort = isset($currentNetworkSetting['port'])
+            ? (int)$currentNetworkSetting['port']
+            : IDAS_SERVER_PORT_TCP;
+
+        $port = idas_protocol_server_port(
+            $controllerModbusType,
+            $currentPort
+        );
+
+        if ($port === null || $port < 1 || $port > 65535) {
+            $port = IDAS_SERVER_PORT_TCP;
         }
 
         if (!in_array($mode, [1, 2], true)) {
             echo json_encode(['ok' => false, 'message' => $msg('network_invalid_mode', 'Invalid network mode.')], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-
-        if ($portRaw === '' || !ctype_digit($portRaw)) {
-            echo json_encode(['ok' => false, 'message' => $msg('network_invalid_port', 'Server port must be between 1 and 65535.')], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-        $port = (int)$portRaw;
-        if ($port < 1 || $port > 65535) {
-            echo json_encode(['ok' => false, 'message' => $msg('network_invalid_port', 'Server port must be between 1 and 65535.')], JSON_UNESCAPED_UNICODE);
             return;
         }
 
@@ -375,25 +386,28 @@ class Settings extends Controller
             ', changed=' . ($changed ? '1' : '0')
         );
 
-        $restartResult = [
-            'scheduled' => false,
-            'message' => '',
-        ];
-
+        // Save a verified pending marker only. The browser must render the
+        // restart dialog first; its onshow callback starts the same background
+        // reboot mechanism used by Controller Setting.
+        $restartPendingSaved = true;
         if ($changed && PHP_OS_FAMILY === 'Linux') {
-            $restartResult = $this->scheduleModbusTypeLinuxRestart();
-
-            $this->logMessage(
-                '[NetworkSetting] auto restart scheduled=' .
-                (!empty($restartResult['scheduled']) ? '1' : '0') .
-                ', message=' . (string)($restartResult['message'] ?? '')
+            $restartPendingSaved = idas_write_identity_state(
+                'idas_icontroller_network_restart_pending',
+                [
+                    'changed' => true,
+                    'mode' => $mode,
+                    'static_ip' => $staticIp,
+                    'mask' => $mask,
+                    'gateway' => $gateway,
+                    'server_port' => $port,
+                ]
             );
         }
 
-        $restartScheduled = !empty($restartResult['scheduled']);
+        $restartScheduled = false;
 
         if ($changed) {
-            if ($restartScheduled) {
+            if ($restartPendingSaved) {
                 $message = $msg(
                     'network_save_success_auto_reboot',
                     'Network settings saved. The controller will restart automatically in 5 seconds.'
@@ -412,14 +426,79 @@ class Settings extends Controller
             'ok' => true,
             'changed' => $changed,
             'requires_reboot' => $changed,
+            'restart_pending_saved' => $restartPendingSaved,
             'restart_scheduled' => $restartScheduled,
-            'restart_delay_seconds' => $restartScheduled ? 5 : 0,
-            'restart_message' => (string)($restartResult['message'] ?? ''),
+            'restart_delay_seconds' => ($changed && $restartPendingSaved) ? 5 : 0,
+            'restart_message' => $restartPendingSaved
+                ? 'Waiting for the restart dialog.'
+                : 'Unable to save network restart state.',
             'mode' => $mode,
             'static_ip' => $staticIp,
             'server_port' => $port,
             'wifi' => (string)($result['wifi'] ?? ''),
             'message' => $message,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /** Start Network Setting reboot only after its countdown dialog is visible. */
+    public function schedule_network_restart(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+
+        if (!idas_is_icontroller()) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'res_msg' => 'Automatic restart is available only in iController mode.']);
+            return;
+        }
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'res_msg' => 'POST is required.']);
+            return;
+        }
+
+        $pending = idas_read_identity_state('idas_icontroller_network_restart_pending') ?? [];
+        $updatedAt = (int)($pending['updated_at'] ?? 0);
+        if (!empty($pending['restart_scheduled_at'])) {
+            echo json_encode([
+                'success' => true,
+                'restart_scheduled' => true,
+                'restart_delay_seconds' => 5,
+                'res_msg' => 'Linux restart is already scheduled.'
+            ]);
+            return;
+        }
+
+        if (empty($pending['changed']) || $updatedAt <= 0 || (time() - $updatedAt) > 120) {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'restart_scheduled' => false,
+                'res_msg' => 'No recent verified network change is waiting for restart.'
+            ]);
+            return;
+        }
+
+        $restartResult = $this->scheduleModbusTypeLinuxRestart();
+        $scheduled = !empty($restartResult['scheduled']);
+        $saved = false;
+        if ($scheduled) {
+            $pending['restart_scheduled_at'] = time();
+            $pending['restart_method'] = 'network_setting_background_reboot';
+            $saved = idas_write_identity_state('idas_icontroller_network_restart_pending', $pending);
+        }
+        if (!$scheduled || !$saved) {
+            http_response_code(500);
+        }
+
+        echo json_encode([
+            'success' => ($scheduled && $saved),
+            'restart_scheduled' => ($scheduled && $saved),
+            'restart_delay_seconds' => ($scheduled && $saved) ? 5 : 0,
+            'res_msg' => ($scheduled && $saved)
+                ? 'Linux restart scheduled in 5 seconds by PHP.'
+                : (string)($restartResult['message'] ?? 'Unable to schedule network restart.')
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
@@ -851,31 +930,53 @@ class Settings extends Controller
         $networkPortSynced = true;
         $networkPortSyncError = '';
 
-        $requiredPort = idas_protocol_server_port($newModbusType, null);
+        $networkSetting = (array)($this->SettingModel->GetNetworkSetting() ?? []);
+        $currentNetworkPort = isset($networkSetting['port'])
+            ? (int)$networkSetting['port']
+            : 502;
 
-        if ($requiredPort !== null) {
-            $networkSetting = (array)($this->SettingModel->GetNetworkSetting() ?? []);
+        // i-controller: Communication Protocol and Server Port are both editable.
+        /*
+         * i-controller Server Port:
+         * - OP  -> fixed 4545, bypass normal input validation.
+         * - TCP/RTU -> validate submitted value (1~65535).
+         */
+        if ($newModbusType === IDAS_PROTOCOL_OP) {
+            $serverPort = IDAS_SERVER_PORT_OP;
+        } else {
+            $serverPortRaw = trim((string)($_POST['server_port'] ?? ''));
 
-            if ((int)($networkSetting['port'] ?? 0) !== $requiredPort) {
-                $networkSave = $this->SettingModel->SaveNetworkSetting([
-                    'mode' => (int)($networkSetting['mode'] ?? 1),
-                    'static_ip' => (string)($networkSetting['static_ip'] ?? ''),
-                    'mask' => (string)($networkSetting['mask'] ?? '255.255.255.0'),
-                    'gateway' => (string)($networkSetting['gateway'] ?? ''),
-                    'port' => $requiredPort,
-                ]);
-
-                $networkPortSynced = !empty($networkSave['ok']);
-                $networkPortSyncError = (string)($networkSave['error'] ?? '');
-
-                $this->logMessage(
-                    '[ControllerSetting] protocol port sync modbus_type='
-                    . $newModbusType
-                    . ', port=' . $requiredPort
-                    . ', success=' . ($networkPortSynced ? '1' : '0')
-                    . ($networkPortSyncError !== '' ? ', error=' . $networkPortSyncError : '')
-                );
+            if (
+                $serverPortRaw === ''
+                || !ctype_digit($serverPortRaw)
+                || (int)$serverPortRaw < 1
+                || (int)$serverPortRaw > 65535
+            ) {
+                $this->respondControllerSettingJson([
+                    'success' => false,
+                    'res_type' => $text['fail'] ?? 'Fail',
+                    'res_msg' => 'Server Port must be between 1 and 65535.',
+                    'restart_required' => false,
+                    'restart_scheduled' => false,
+                ], 400);
             }
+
+            $serverPort = (int)$serverPortRaw;
+        }
+
+        $serverPortChanged = ($currentNetworkPort !== $serverPort);
+
+        if ($serverPortChanged) {
+            $networkSave = $this->SettingModel->SaveNetworkSetting([
+                'mode' => (int)($networkSetting['mode'] ?? 1),
+                'static_ip' => (string)($networkSetting['static_ip'] ?? ''),
+                'mask' => (string)($networkSetting['mask'] ?? '255.255.255.0'),
+                'gateway' => (string)($networkSetting['gateway'] ?? ''),
+                'port' => $serverPort,
+            ]);
+
+            $networkPortSynced = !empty($networkSave['ok']);
+            $networkPortSyncError = (string)($networkSave['error'] ?? '');
         }
 
         if (!$networkPortSynced) {
@@ -913,32 +1014,46 @@ class Settings extends Controller
 
         $restartRequired = (
             PHP_OS_FAMILY === 'Linux'
-            && ($is_change_id || $modbusTypeChanged)
+            && ($is_change_id || $modbusTypeChanged || $serverPortChanged)
         );
 
+        if ($is_change_id || $modbusTypeChanged || $serverPortChanged) {
+            idas_write_identity_state('idas_icontroller_restart_pending', [
+                'id_changed' => $is_change_id,
+                'modbus_type_changed' => $modbusTypeChanged,
+                'server_port_changed' => $serverPortChanged,
+                'old_device_id' => $control_id_old,
+                'device_id' => $control_id_new,
+                'old_modbus_type' => $oldModbusType,
+                'modbus_type' => $newModbusType,
+                'old_server_port' => $currentNetworkPort,
+                'server_port' => $serverPort,
+            ]);
+
+            // Both physical DBs have already passed write/read-back
+            // verification. Advance the shared observation baseline now so
+            // iController is not mistaken for an NTCS external/manual change
+            // while the five-second automatic reboot dialog is displayed.
+            idas_write_identity_state('idas_controller_identity_baseline', [
+                'device_id' => $control_id_new,
+                'modbus_type' => $newModbusType,
+                'server_port' => $serverPort,
+            ]);
+            idas_clear_identity_state('idas_controller_restart_pending');
+        }
+
+        /*
+         * Do not schedule reboot here. The browser must first render the
+         * confirmation dialog. The browser starts its visible five-second
+         * countdown only after that dialog is rendered, then calls the
+         * immediate reboot endpoint at zero.
+         */
         $restartResult = [
             'scheduled' => false,
-            'message' => ''
+            'message' => $restartRequired
+                ? 'Waiting for restart confirmation dialog.'
+                : ''
         ];
-
-        if ($restartRequired) {
-            $restartResult =
-                $this->scheduleModbusTypeLinuxRestart();
-
-            $this->logMessage(
-                sprintf(
-                    'Controller identity changed: device_id %s -> %s, modbus_type %d -> %d; id_changed=%s; protocol_changed=%s; restart scheduled=%s; message=%s',
-                    (string)$control_id_old,
-                    (string)$control_id_new,
-                    $oldModbusType,
-                    $newModbusType,
-                    $is_change_id ? 'true' : 'false',
-                    $modbusTypeChanged ? 'true' : 'false',
-                    !empty($restartResult['scheduled']) ? 'true' : 'false',
-                    (string)($restartResult['message'] ?? '')
-                )
-            );
-        }
 
         $this->respondControllerSettingJson([
             'success' => true,
@@ -952,11 +1067,14 @@ class Settings extends Controller
             'modbus_type_changed' => $modbusTypeChanged,
             'network_port_synced' => $networkPortSynced,
             'network_port_sync_error' => $networkPortSyncError,
-            'server_port' => idas_protocol_server_port($newModbusType, null),
+            'old_server_port' => $currentNetworkPort,
+            'server_port' => $serverPort,
+            'server_port_changed' => $serverPortChanged,
             'controller_device_db_synced' => (
                 PHP_OS_FAMILY !== 'Linux'
                 || $ok
             ),
+            'both_databases_verified' => ($ok && $networkPortSynced),
             'controller_device_db_path' => (
                 PHP_OS_FAMILY === 'Linux'
                     ? '/home/kls/NTCS7/ntcs_device.db'
@@ -974,6 +1092,258 @@ class Settings extends Controller
                 ?? ''
             )
         ]);
+    }
+
+    /**
+     * Called only after the i-controller restart dialog has been rendered.
+     * The pending marker proves that ID / protocol / port was written first.
+     */
+    public function schedule_controller_restart(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+
+        if (!idas_is_icontroller()) {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'res_type' => 'ERROR',
+                'res_msg' => 'Automatic restart is available only in iController mode.'
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode([
+                'success' => false,
+                'res_type' => 'ERROR',
+                'res_msg' => 'POST is required.'
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        $pending = idas_read_identity_state('idas_icontroller_restart_pending');
+        $updatedAt = (int)($pending['updated_at'] ?? 0);
+        $hasChange = !empty($pending['id_changed'])
+            || !empty($pending['modbus_type_changed'])
+            || !empty($pending['server_port_changed']);
+
+        // The browser may retry when the HTTP response is lost. Report the
+        // existing schedule instead of starting a second reboot process.
+        if (!empty($pending['restart_scheduled_at'])) {
+            echo json_encode([
+                'success' => true,
+                'res_type' => 'OK',
+                'restart_scheduled' => true,
+                'restart_delay_seconds' => 5,
+                'res_msg' => 'Linux restart is already scheduled.'
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        if (!$hasChange || $updatedAt <= 0 || (time() - $updatedAt) > 120) {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'res_type' => 'ERROR',
+                'res_msg' => 'No verified controller setting change is waiting for restart.'
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        // Reuse the exact Linux restart mechanism already proven by Network
+        // Setting: nohup -> sleep 5 -> sudo systemctl reboot. This endpoint is
+        // called from the dialog's onshow callback, so the popup is visible
+        // before the server-side five-second delay begins.
+        $restartResult = $this->scheduleModbusTypeLinuxRestart();
+        $scheduled = !empty($restartResult['scheduled']);
+        $saved = false;
+        if ($scheduled) {
+            $pending['restart_scheduled_at'] = time();
+            $pending['restart_method'] = 'network_setting_background_reboot';
+            $saved = idas_write_identity_state('idas_icontroller_restart_pending', $pending);
+        }
+
+        if (!$scheduled || !$saved) {
+            http_response_code(500);
+        }
+        echo json_encode([
+            'success' => ($scheduled && $saved),
+            'res_type' => ($scheduled && $saved) ? 'OK' : 'ERROR',
+            'restart_scheduled' => ($scheduled && $saved),
+            'restart_delay_seconds' => ($scheduled && $saved) ? 5 : 0,
+            'res_msg' => ($scheduled && $saved)
+                ? 'Linux restart scheduled in 5 seconds by PHP.'
+                : (string)($restartResult['message'] ?? 'Unable to schedule controller restart.')
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Browser recovery gate: a successful response proves Apache, PHP, the
+     * router and this controller are ready after reboot. Static assets alone
+     * are not sufficient. The verified pending marker is cleared only here.
+     */
+    public function restart_ready(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+
+        if (!idas_is_icontroller()) {
+            http_response_code(409);
+            echo json_encode(['ready' => false, 'res_msg' => 'Not in iController mode.']);
+            return;
+        }
+
+        $scope = strtolower(trim((string)($_GET['scope'] ?? 'controller')));
+        $stateName = $scope === 'network'
+            ? 'idas_icontroller_network_restart_pending'
+            : 'idas_icontroller_restart_pending';
+        $pending = idas_read_identity_state($stateName) ?? [];
+        $scheduled = !empty($pending['restart_scheduled_at']);
+        $cleared = !$scheduled || idas_clear_identity_state($stateName);
+
+        echo json_encode([
+            'success' => true,
+            'ready' => true,
+            'scope' => $scope === 'network' ? 'network' : 'controller',
+            'state_cleared' => $cleared,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /** Execute the iController host reboot when the visible countdown ends. */
+    public function reboot_controller_now(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'res_msg' => 'POST is required.']);
+            return;
+        }
+
+        $pending = idas_read_identity_state('idas_icontroller_restart_pending') ?? [];
+        $pendingAt = (int)($pending['updated_at'] ?? 0);
+        $hasVerifiedChange = !empty($pending['id_changed'])
+            || !empty($pending['modbus_type_changed'])
+            || !empty($pending['server_port_changed']);
+        if (!$hasVerifiedChange || $pendingAt <= 0 || (time() - $pendingAt) > 180) {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'res_msg' => 'No recent verified controller setting change is waiting for restart.'
+            ]);
+            return;
+        }
+
+        if (!empty($pending['reboot_requested_at'])) {
+            echo json_encode(['success' => true, 'res_msg' => 'Controller reboot was already requested.']);
+            return;
+        }
+
+        // Persist the request before executing. A successful reboot may stop
+        // PHP before it has a chance to write another state file or response.
+        $pending['reboot_requested_at'] = time();
+        idas_write_identity_state('idas_icontroller_restart_pending', $pending);
+
+        $result = $this->executeControllerLinuxRestartNow();
+        if (!empty($result['success'])) {
+            $pending['reboot_command'] = (string)($result['command'] ?? '');
+            idas_write_identity_state('idas_icontroller_restart_pending', $pending);
+        } else {
+            unset($pending['reboot_requested_at']);
+            idas_write_identity_state('idas_icontroller_restart_pending', $pending);
+            http_response_code(500);
+        }
+
+        echo json_encode([
+            'success' => !empty($result['success']),
+            'res_type' => !empty($result['success']) ? 'OK' : 'ERROR',
+            'res_msg' => (string)($result['message'] ?? 'Controller reboot failed.')
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function executeControllerLinuxRestartNow(): array
+    {
+        $logPath = '/var/www/html/database/idas_icontroller_reboot.log';
+        $log = static function (string $message) use ($logPath): void {
+            idas_rotate_database_log($logPath, 524288, 3);
+            @file_put_contents(
+                $logPath,
+                '[' . date('c') . '] ' . $message . PHP_EOL,
+                FILE_APPEND | LOCK_EX
+            );
+        };
+
+        if (PHP_OS_FAMILY !== 'Linux' || !function_exists('exec')) {
+            $log('Linux reboot unavailable: platform or exec().');
+            return ['success' => false, 'message' => 'Linux reboot command is unavailable.'];
+        }
+
+        $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
+        if (in_array('exec', $disabled, true)) {
+            $log('Linux reboot unavailable: exec() is disabled.');
+            return ['success' => false, 'message' => 'PHP exec() is disabled.'];
+        }
+
+        $sudo = is_executable('/usr/bin/sudo')
+            ? '/usr/bin/sudo'
+            : (is_executable('/bin/sudo') ? '/bin/sudo' : '');
+        if ($sudo === '') {
+            $log('sudo was not found.');
+            return ['success' => false, 'message' => 'sudo was not found.'];
+        }
+
+        $candidates = [
+            ['/usr/bin/systemctl', ['reboot']],
+            ['/bin/systemctl', ['reboot']],
+            ['/usr/sbin/reboot', []],
+            ['/sbin/reboot', []],
+            ['/usr/sbin/shutdown', ['-r', 'now']],
+            ['/sbin/shutdown', ['-r', 'now']],
+        ];
+
+        foreach ($candidates as [$binary, $arguments]) {
+            if (!is_executable($binary)) {
+                continue;
+            }
+            $commandParts = array_merge([$binary], $arguments);
+            $escapedCommand = implode(' ', array_map('escapeshellarg', $commandParts));
+            $permissionOutput = [];
+            $permissionCode = 1;
+            exec(
+                escapeshellarg($sudo) . ' -n -l ' . $escapedCommand . ' 2>&1',
+                $permissionOutput,
+                $permissionCode
+            );
+            if ($permissionCode !== 0) {
+                $log('Permission denied for ' . $escapedCommand . ': ' . implode(' ', $permissionOutput));
+                continue;
+            }
+
+            $output = [];
+            $exitCode = 1;
+            $log('Executing ' . $escapedCommand);
+            exec(
+                escapeshellarg($sudo) . ' -n ' . $escapedCommand . ' 2>&1',
+                $output,
+                $exitCode
+            );
+            $log('Exit=' . $exitCode . ' output=' . implode(' ', $output));
+            if ($exitCode === 0) {
+                return [
+                    'success' => true,
+                    'command' => $escapedCommand,
+                    'message' => 'Controller reboot command accepted.'
+                ];
+            }
+        }
+
+        return [
+            'success' => false,
+            'message' => 'No permitted controller reboot command succeeded.'
+        ];
     }
 
     private function scheduleModbusTypeLinuxRestart(): array
@@ -2494,6 +2864,30 @@ class Settings extends Controller
      * 前端選檔後呼叫，用來自動判斷是否為降版本並顯示提示。
      * 正式上傳時 iDas_Update() 仍會再次驗證，避免前端被繞過。
      */
+    public function idas_database_maintenance() {
+        header('Content-Type: application/json; charset=utf-8');
+        $action = strtolower(trim((string)($_POST['action'] ?? 'status')));
+        $before = idas_database_free_bytes();
+        $cleanup = null;
+        if ($action === 'cleanup') {
+            $cleanup = idas_safe_database_cleanup(true);
+        }
+        $after = idas_database_free_bytes();
+        $stamp = '/var/www/html/database/.idas_database_maintenance.stamp';
+        echo json_encode([
+            'success' => $cleanup === null || !empty($cleanup['ok']),
+            'res_type' => ($cleanup !== null && empty($cleanup['ok'])) ? 'Error' : 'OK',
+            'free_bytes' => $after,
+            'free_mb' => round($after / 1048576, 1),
+            'disk_warning' => $after < 100 * 1048576,
+            'disk_blocked' => $after < 50 * 1048576,
+            'last_maintenance_at' => is_file($stamp) ? date('Y-m-d H:i:s', (int)@filemtime($stamp)) : null,
+            'cleanup' => $cleanup,
+            'freed_mb' => $cleanup ? round(((int)($cleanup['freed_bytes'] ?? 0)) / 1048576, 1) : 0,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     public function check_idas_pack_version() {
         header('Content-Type: application/json; charset=utf-8');
 
@@ -2535,9 +2929,19 @@ class Settings extends Controller
             $currentRaw = (string)$this->AdminModel->Get_Das_Config('idas_version');
             $targetRaw  = (string)$packInfo['idas_version'];
             $state      = $this->buildIdasVersionState($currentRaw, $targetRaw);
+            $diskBytes  = $this->getIDasDatabaseFreeBytes();
+            $packSpace  = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
 
             return $this->sendJsonResponse(true, '', array_merge($state, [
                 'filename' => $uploadedFilename,
+                'database_free_bytes' => $diskBytes,
+                'database_free_mb' => round($diskBytes / 1048576, 1),
+                'disk_warning' => $diskBytes < 100 * 1048576,
+                'disk_blocked' => $diskBytes < max(50 * 1048576, $requiredBytes),
+                'pack_uncompressed_bytes' => (int)($packSpace['uncompressed_bytes'] ?? 0),
+                'required_free_bytes' => $requiredBytes,
+                'required_free_mb' => round($requiredBytes / 1048576, 1),
             ]));
         } catch (Throwable $e) {
             return $this->sendJsonResponse(false, $e->getMessage());
@@ -2592,6 +2996,32 @@ class Settings extends Controller
             }
 
             $lockHandle = $this->acquireIdasUpdateLock();
+
+            $spaceResult = $this->prepareIDasDatabaseSpaceForUpdate();
+            if (empty($spaceResult['ok'])) {
+                return $this->sendResponseWithCode(
+                    'Error',
+                    $this->databaseSpaceText('blocked', (float)$spaceResult['free_mb']),
+                    'DATABASE_SPACE_LOW',
+                    $spaceResult
+                );
+            }
+            if (!empty($spaceResult['warning'])) {
+                error_log('[iDAS UPDATE] database space warning: ' . json_encode($spaceResult, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
+            $packSpace = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
+            if ($this->getIDasDatabaseFreeBytes() < $requiredBytes) {
+                return $this->sendResponseWithCode('Error',
+                    'Update requires at least ' . round($requiredBytes / 1048576, 1) . ' MB free working space.',
+                    'DATABASE_WORKSPACE_LOW', ['required_free_mb' => round($requiredBytes / 1048576, 1)]);
+            }
+            $dbCheck = idas_quick_check_production_databases();
+            if (empty($dbCheck['ok'])) {
+                return $this->sendResponseWithCode('Error', 'Database quick_check failed. Update was stopped.',
+                    'DATABASE_QUICK_CHECK_FAILED', $dbCheck);
+            }
 
             $packSha256 = @hash_file('sha256', (string)$_FILES['file']['tmp_name']) ?: 'UNKNOWN';
             $packSize   = (string)($_FILES['file']['size'] ?? 0);
@@ -2802,6 +3232,12 @@ class Settings extends Controller
                 }
             }
 
+            if ($backupPath !== '') {
+                $backupPath = $this->markIDasPreUpdateBackup($backupPath, 'success');
+                $this->cleanupIDasPreUpdateBackups(dirname($backupPath), 3, 14);
+                $this->logMessage("[iDAS UPDATE] successful backup retained: {$backupPath}");
+            }
+
             $this->setting_logout();
 
             if ($debug) {
@@ -2812,6 +3248,10 @@ class Settings extends Controller
 
         } catch (Throwable $e) {
             $this->logMessage('[iDAS UPDATE] transaction failed: ' . $e->getMessage());
+            if ($backupPath !== '') {
+                $backupPath = $this->markIDasPreUpdateBackup($backupPath, 'failed');
+                $this->logMessage("[iDAS UPDATE] failed-update backup preserved: {$backupPath}");
+            }
             $rollbackErrors = [];
 
             if ($deploymentStarted) {
@@ -2891,6 +3331,45 @@ class Settings extends Controller
         foreach ($dirs as $dir) {
             $this->deleteDirectory($dir);
         }
+    }
+
+    private function getIDasDatabaseFreeBytes(): int {
+        if (PHP_OS_FAMILY !== 'Linux') return 1024 * 1024 * 1024 * 1024;
+        $bytes = @disk_free_space('/var/www/html/database');
+        return ($bytes === false) ? 0 : max(0, (int)$bytes);
+    }
+
+    private function databaseSpaceText(string $type, float $freeMb): string {
+        $lang = strtolower((string)($_COOKIE['language'] ?? ($_SESSION['language'] ?? 'en-us')));
+        if ($lang === 'en') $lang = 'en-us';
+        $free = number_format($freeMb, 1);
+        $messages = [
+            'zh-tw' => "資料庫儲存空間不足（剩餘 {$free} MB）。安全清理後仍低於 50 MB，已停止更新；正式 DB、失敗備份及 Pending 備份均未刪除。",
+            'zh-cn' => "数据库存储空间不足（剩余 {$free} MB）。安全清理后仍低于 50 MB，已停止更新；正式 DB、失败备份及 Pending 备份均未删除。",
+            'en-us' => "Database storage is low ({$free} MB free). Safe cleanup could not restore 50 MB, so the update was stopped. Production databases and failed/pending backups were not deleted.",
+        ];
+        return $messages[$lang] ?? $messages['en-us'];
+    }
+
+    private function prepareIDasDatabaseSpaceForUpdate(): array {
+        $warnBytes = 100 * 1048576;
+        $blockBytes = 50 * 1048576;
+        $before = $this->getIDasDatabaseFreeBytes();
+        $cleanup = $before < 100 * 1048576
+            ? idas_safe_database_cleanup($before < 50 * 1048576, true)
+            : ['free_bytes_before' => $before, 'free_bytes' => $before, 'actions' => [], 'busy' => false];
+        $after = (int)($cleanup['free_bytes'] ?? $before);
+        return [
+            'ok' => $after >= $blockBytes,
+            'warning' => $after < $warnBytes,
+            'free_bytes_before' => (int)($cleanup['free_bytes_before'] ?? $before),
+            'free_bytes' => $after,
+            'free_mb' => round($after / 1048576, 1),
+            'warning_mb' => 100,
+            'blocking_mb' => 50,
+            'cleanup_actions' => $cleanup['actions'] ?? [],
+            'cleanup_busy' => !empty($cleanup['busy']),
+        ];
     }
 
 
@@ -3103,14 +3582,15 @@ class Settings extends Controller
         }
 
         $backupDir = $databaseDir . '/update_backups';
-        if (!is_dir($backupDir) && !@mkdir($backupDir, 0777, true) && !is_dir($backupDir)) {
+        if (!is_dir($backupDir) && !@mkdir($backupDir, 0770, true) && !is_dir($backupDir)) {
             throw new Exception("Cannot create backup directory: {$backupDir}");
         }
+        @chmod($backupDir, 0770);
 
         $safeCurrent = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $currentVersion ?: 'unknown');
         $safeTarget  = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $targetVersion ?: 'unknown');
         $ts = date('Ymd_His');
-        $zipName = "idas_backup_before_update_{$safeCurrent}_to_{$safeTarget}_{$ts}.zip";
+        $zipName = "idas_backup_before_update_{$safeCurrent}_to_{$safeTarget}_{$ts}.pending.zip";
         $zipPath = $backupDir . '/' . $zipName;
 
         $zip = new ZipArchive();
@@ -3151,23 +3631,36 @@ class Settings extends Controller
             throw new Exception("Backup zip not generated: {$zipPath}");
         }
 
-        @chmod($zipPath, 0666);
-        $this->cleanupIDasPreUpdateBackups($backupDir, 5);
+        $verifyZip = new ZipArchive();
+        $verifyResult = $verifyZip->open($zipPath, ZipArchive::CHECKCONS);
+        if ($added < 1 || $verifyResult !== true || $verifyZip->locateName('backup_info.json') === false) {
+            if ($verifyResult === true) $verifyZip->close();
+            @rename($zipPath, preg_replace('/\.pending\.zip$/', '.failed-invalid.zip', $zipPath));
+            throw new Exception("Backup ZIP verification failed: {$zipPath}");
+        }
+        $verifyZip->close();
+
+        @chmod($zipPath, 0660);
 
         return $zipPath;
     }
 
-    private function cleanupIDasPreUpdateBackups(string $backupDir, int $keep = 5): void {
-        $files = glob(rtrim($backupDir, '/') . '/idas_backup_before_update_*.zip') ?: [];
-        usort($files, function($a, $b) {
-            return filemtime($b) <=> filemtime($a);
-        });
-
-        foreach (array_slice($files, max(0, $keep)) as $old) {
-            if (is_file($old)) {
-                @unlink($old);
-            }
+    private function markIDasPreUpdateBackup(string $backupPath, string $status): string {
+        if ($backupPath === '' || !is_file($backupPath)) return $backupPath;
+        $status = ($status === 'success') ? 'success' : 'failed';
+        $target = preg_replace('/\.pending\.zip$/', '.' . $status . '.zip', $backupPath);
+        if (!is_string($target) || $target === $backupPath) {
+            $target = preg_replace('/\.zip$/', '.' . $status . '.zip', $backupPath);
         }
+        if (is_string($target) && $target !== $backupPath && @rename($backupPath, $target)) {
+            @chmod($target, 0660);
+            return $target;
+        }
+        return $backupPath;
+    }
+
+    private function cleanupIDasPreUpdateBackups(string $backupDir, int $keep = 3, int $maxAgeDays = 14): void {
+        idas_cleanup_update_backups($backupDir, $keep, $maxAgeDays);
     }
 
     /**
@@ -5150,6 +5643,10 @@ class Settings extends Controller
     }
 
     public function index(){
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
 
         // 同步控制器資料庫（ntcs_data.db）至 iDAS
         $this->ntcs_data_db_sysnc();
@@ -5175,6 +5672,7 @@ class Settings extends Controller
         $torque_unit = $this->MiscellaneousModel->details('torque_unit');
         $sample_rate = $this->MiscellaneousModel->details('sample_rate');
         $controller_info = $this->SettingModel->GetControllerInfo();
+        $network_setting = $this->SettingModel->GetNetworkSetting();
         $active_session = $this->AdminModel->GetActiveSession();
         $iDas_Vesion = $this->normalizeIdasVersionDisplay($this->AdminModel->Get_Das_Config('idas_version'));
         $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
@@ -5194,6 +5692,7 @@ class Settings extends Controller
         $data = array(
             'lang_arr'        => $lang,
             'controller_info' => $controller_info,
+            'network_setting' => $network_setting,
             'active_session'  => $active_session,
             'iDas_Vesion'     => $iDas_Vesion,
             'max_user'        => $max_user,
@@ -5491,8 +5990,8 @@ class Settings extends Controller
 
         /*
          * NTCS 模式（icontroller = 0）：
-         * Device ID 與通訊協議為唯讀。
-         * 即使前端被繞過直接送 POST，也強制保留目前 Controller 值。
+         * Device ID 維持唯讀；Communication Protocol 改為可修改。
+         * 即使前端被繞過直接送 Device ID POST，也強制保留目前 Controller 值。
          */
         if (!idas_is_icontroller()) {
             $currentDeviceId = $currentControllerInfo['device_id'] ?? null;
@@ -5513,7 +6012,7 @@ class Settings extends Controller
         $modbusTypeRaw = $get('modbus_type', null);
 
         if (!idas_is_icontroller()) {
-            // NTCS 模式禁止修改通訊協議，永遠保留目前值。
+            // NTCS: Communication Protocol is read-only.
             $modbusTypeRaw = (string)$currentModbusType;
         }
 
@@ -5583,34 +6082,92 @@ class Settings extends Controller
         if($con_setting["blackout_recovery"] ==1){
             $con_setting["blackout_recovery"] = "1_1";
         }
-        // ===== 執行更新（Model 需為先前已修改的版本：支援 :device_id_new，且 WHERE 可處理 IS NULL）=====
+        // ===== 執行 Controller / iDAS device DB 更新 =====
         $ok = $this->SettingModel->Controller_Setting($con_setting);
 
-        if ($ok) {
-            $res_type = $text['success'] ?? 'Success';
-            $res_msg  = $text['success'] ?? 'Success';
-
-            // Keep the legacy res_type/res_msg fields, but also expose structured
-            // metadata for settings.js. Protocol changes require a manual controller
-            // reboot; do not pretend an automatic reboot was scheduled.
-            echo json_encode([
-                'res_type' => $res_type,
-                'res_msg' => $res_msg,
-                'success' => true,
-                'modbus_type' => (int)$con_setting['modbus_type'],
-                'modbus_type_changed' => $modbusTypeChanged,
-                'restart_required' => $modbusTypeChanged,
-                'restart_scheduled' => false,
-                'manual_reboot_required' => $modbusTypeChanged,
-                'restart_delay_seconds' => 0,
-            ], JSON_UNESCAPED_UNICODE);
+        if (!$ok) {
+            $res_type = $text['fail'] ?? 'Fail';
+            $res_msg  = $text['fail'] ?? 'Fail';
+            $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
             return;
         }
 
-        $res_type = $text['fail'] ?? 'Fail';
-        $res_msg  = $text['fail'] ?? 'Fail';
-        $this->MiscellaneousModel->generateErrorResponse($res_type, $res_msg);
+        /*
+         * NTCS iDAS / i-controller 共用規則：
+         * TCP(0) -> Server Port 502
+         * RTU(1) -> 保留目前 Server Port
+         * OP (2) -> Server Port 4545
+         */
+        $newModbusType = (int)$con_setting['modbus_type'];
+        $networkSetting = (array)($this->SettingModel->GetNetworkSetting() ?? []);
+        $currentNetworkPort = isset($networkSetting['port'])
+            ? (int)$networkSetting['port']
+            : 502;
+
+        /*
+         * NTCS iDAS:
+         * Communication Protocol and Server Port are both read-only.
+         * Preserve current DB values even if crafted POST values are sent.
+         */
+        $networkSetting = (array)($this->SettingModel->GetNetworkSetting() ?? []);
+        $currentNetworkPort = isset($networkSetting['port'])
+            ? (int)$networkSetting['port']
+            : 502;
+
+        $serverPort = $currentNetworkPort;
+        $networkPortSynced = true;
+        $networkPortSyncError = '';
+
+        if (!$networkPortSynced) {
+            // Avoid protocol/port mismatch: restore the previous protocol.
+            $rollbackSetting = $con_setting;
+            $rollbackSetting['modbus_type'] = $currentModbusType;
+            $rollbackSetting['control_id'] = $control_id_new;
+            $rollbackSetting['control_id_new'] = $control_id_old;
+
+            $rollbackOk = $this->SettingModel->Controller_Setting($rollbackSetting);
+
+            error_log(
+                '[ControllerSetting] NTCS protocol/port sync failed; rollback='
+                . ($rollbackOk ? 'success' : 'failed')
+                . '; error=' . $networkPortSyncError
+            );
+
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'res_type' => $text['fail'] ?? 'Fail',
+                'res_msg' => 'Protocol/Network port synchronization failed.',
+                'modbus_type' => $currentModbusType,
+                'modbus_type_changed' => false,
+                'network_port_synced' => false,
+                'network_port_sync_error' => $networkPortSyncError,
+                'identity_rollback_ok' => $rollbackOk,
+                'restart_required' => false,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        $res_type = $text['success'] ?? 'Success';
+        $res_msg  = $text['success'] ?? 'Success';
+
+        echo json_encode([
+            'res_type' => $res_type,
+            'res_msg' => $res_msg,
+            'success' => true,
+            'modbus_type' => $newModbusType,
+            'modbus_type_changed' => $modbusTypeChanged,
+            'server_port' => $serverPort,
+            'network_port_synced' => true,
+            'restart_required' => $modbusTypeChanged,
+            'restart_scheduled' => false,
+            'manual_reboot_required' => $modbusTypeChanged,
+            'restart_delay_seconds' => 0,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return;
     }
+
 
     public function edit_system_date() {
 
@@ -6967,6 +7524,26 @@ class Settings extends Controller
      * This endpoint only reads info.json from the uploaded .pack and does not install it.
      * It is used by the UI to automatically show the downgrade confirmation only when needed.
      */
+    public function idas_database_maintenance(){
+        header('Content-Type: application/json; charset=utf-8');
+        $action = strtolower(trim((string)($_POST['action'] ?? 'status')));
+        $cleanup = $action === 'cleanup' ? idas_safe_database_cleanup(true) : null;
+        $free = idas_database_free_bytes();
+        $stamp = '/var/www/html/database/.idas_database_maintenance.stamp';
+        echo json_encode([
+            'success' => $cleanup === null || !empty($cleanup['ok']),
+            'res_type' => ($cleanup !== null && empty($cleanup['ok'])) ? 'Error' : 'OK',
+            'free_bytes' => $free,
+            'free_mb' => round($free / 1048576, 1),
+            'disk_warning' => $free < 100 * 1048576,
+            'disk_blocked' => $free < 50 * 1048576,
+            'last_maintenance_at' => is_file($stamp) ? date('Y-m-d H:i:s', (int)@filemtime($stamp)) : null,
+            'cleanup' => $cleanup,
+            'freed_mb' => $cleanup ? round(((int)($cleanup['freed_bytes'] ?? 0)) / 1048576, 1) : 0,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     public function check_idas_pack_version(){
 
         header('Content-Type: application/json; charset=utf-8');
@@ -7021,6 +7598,9 @@ class Settings extends Controller
             $isProfileSwitch = ($currentProfile !== $targetProfile);
             $requiresDbRebuild = $this->shouldRebuildDbForUpdate($currentProfile, $targetProfile, $isDowngrade);
             $requiresConfirm   = $this->shouldRequireUpdateConfirm($currentProfile, $targetProfile, $isDowngrade);
+            $diskBytes = $this->getIDasDatabaseFreeBytes();
+            $packSpace = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
 
             if ($currentProfile === 'SA349' && $targetProfile !== 'SA349') {
                 $statusKey = 'STATUS_SA349_TO_STANDARD_REBUILD';
@@ -7053,6 +7633,13 @@ class Settings extends Controller
                 'status_key'          => $statusKey,
                 'status_text'         => $this->t($statusKey),
                 'db_action_text'      => $this->t($requiresDbRebuild ? 'DB_ACTION_REBUILD' : 'DB_ACTION_KEEP'),
+                'database_free_bytes' => $diskBytes,
+                'database_free_mb'    => round($diskBytes / 1048576, 1),
+                'disk_warning'        => $diskBytes < 100 * 1048576,
+                'disk_blocked'        => $diskBytes < max(50 * 1048576, $requiredBytes),
+                'pack_uncompressed_bytes' => (int)($packSpace['uncompressed_bytes'] ?? 0),
+                'required_free_bytes' => $requiredBytes,
+                'required_free_mb' => round($requiredBytes / 1048576, 1),
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
 
@@ -7109,6 +7696,24 @@ class Settings extends Controller
         try {
             // 5. 後端更新鎖：避免兩個瀏覽器 / 兩個 request 同時執行更新。
             $updateLockFp = $this->acquireIdasUpdateLock();
+
+            $spaceResult = $this->prepareIDasDatabaseSpaceForUpdate();
+            if (empty($spaceResult['ok'])) {
+                return $this->sendResponse('Error', $this->databaseSpaceText('blocked', (float)$spaceResult['free_mb']));
+            }
+            if (!empty($spaceResult['warning'])) {
+                error_log('[iDAS UPDATE] database space warning: ' . json_encode($spaceResult, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
+            $packSpace = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
+            if ($this->getIDasDatabaseFreeBytes() < $requiredBytes) {
+                return $this->sendResponse('Error', 'Update requires at least ' . round($requiredBytes / 1048576, 1) . ' MB free working space.');
+            }
+            $dbCheck = idas_quick_check_production_databases();
+            if (empty($dbCheck['ok'])) {
+                return $this->sendResponse('Error', 'Database quick_check failed. Update was stopped.');
+            }
 
             // 6. 驗證上傳
             if (empty($_FILES['file'])) {
@@ -7467,6 +8072,39 @@ class Settings extends Controller
         }
         $value = strtolower(trim((string)$value));
         return in_array($value, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    private function getIDasDatabaseFreeBytes(): int {
+        if (PHP_OS_FAMILY !== 'Linux') return 1024 * 1024 * 1024 * 1024;
+        $bytes = @disk_free_space('/var/www/html/database');
+        return ($bytes === false) ? 0 : max(0, (int)$bytes);
+    }
+
+    private function databaseSpaceText(string $type, float $freeMb): string {
+        $lang = strtolower((string)($_COOKIE['language'] ?? ($_SESSION['language'] ?? 'en-us')));
+        if ($lang === 'en') $lang = 'en-us';
+        $free = number_format($freeMb, 1);
+        $messages = [
+            'zh-tw' => "資料庫儲存空間不足（剩餘 {$free} MB）。安全清理後仍低於 50 MB，已停止更新；正式 DB、失敗備份及 Pending 備份均未刪除。",
+            'zh-cn' => "数据库存储空间不足（剩余 {$free} MB）。安全清理后仍低于 50 MB，已停止更新；正式 DB、失败备份及 Pending 备份均未删除。",
+            'en-us' => "Database storage is low ({$free} MB free). Safe cleanup could not restore 50 MB, so the update was stopped. Production databases and failed/pending backups were not deleted.",
+        ];
+        return $messages[$lang] ?? $messages['en-us'];
+    }
+
+    private function prepareIDasDatabaseSpaceForUpdate(): array {
+        $warnBytes = 100 * 1048576;
+        $blockBytes = 50 * 1048576;
+        $before = $this->getIDasDatabaseFreeBytes();
+        $cleanup = $before < $warnBytes
+            ? idas_safe_database_cleanup($before < $blockBytes, true)
+            : ['free_bytes_before' => $before, 'free_bytes' => $before, 'actions' => [], 'busy' => false];
+        $after = (int)($cleanup['free_bytes'] ?? $before);
+        return ['ok' => $after >= $blockBytes, 'warning' => $after < $warnBytes,
+            'free_bytes_before' => (int)($cleanup['free_bytes_before'] ?? $before),
+            'free_bytes' => $after, 'free_mb' => round($after / 1048576, 1),
+            'warning_mb' => 100, 'blocking_mb' => 50, 'cleanup_actions' => $cleanup['actions'] ?? [],
+            'cleanup_busy' => !empty($cleanup['busy'])];
     }
 
     private function acquireIdasUpdateLock()
