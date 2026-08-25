@@ -123,7 +123,7 @@ class IControllerBaseController
     public function LoginCheck($value='')
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/database/das.db'); 
+            $con_db = new PDO('sqlite:' . idas_path('database_root', 'das.db')); 
         }else{
             $con_db = new PDO('sqlite:../data.db'); 
         }
@@ -144,7 +144,7 @@ class IControllerBaseController
     {
         /*try {
             if (PHP_OS_FAMILY === 'Linux') {
-                $db_path = '/var/www/html/database/data_device.db';
+                $db_path = idas_path('database_root', 'data_device.db');
             } else {
                 $db_path = '../data_device.db';
             }
@@ -181,9 +181,9 @@ class IControllerBaseController
     public function ntcs_device_db_sysnc($forceRefresh = false){
 
         // 路徑集中放這裡
-        $srcController = '/home/kls/NTCS7/ntcs_device.db';            // 控制器端 ntcs_device.db
-        $tempDbPath    = '/var/www/html/database/ntcs_device_temp.db';// iDAS 暫存
-        $idasDbPath    = '/var/www/html/database/ntcs_device_IDAS.db';// iDAS 正式用的 device DB
+        $srcController = idas_path('controller_root', 'ntcs_device.db');            // 控制器端 ntcs_device.db
+        $tempDbPath    = idas_path('database_root', 'ntcs_device_temp.db');// iDAS 暫存
+        $idasDbPath    = idas_path('database_root', 'ntcs_device_IDAS.db');// iDAS 正式用的 device DB
 
         // === 0) 先用 cookie 快取，避免每次都重跑整個流程 ===
         $cacheTtl = 10; // 秒
@@ -388,9 +388,9 @@ class IControllerBaseController
      */
     public function get_modbus_type_from_controller(): int
     {
-        $controllerDb = '/home/kls/NTCS7/ntcs_device.db';
-        $idasDb       = '/var/www/html/database/ntcs_device_IDAS.db';
-        $tempDb       = '/var/www/html/database/ntcs_device_temp.db';
+        $controllerDb = idas_path('controller_root', 'ntcs_device.db');
+        $idasDb       = idas_path('database_root', 'ntcs_device_IDAS.db');
+        $tempDb       = idas_path('database_root', 'ntcs_device_temp.db');
 
         // 優先以 Controller 實際 DB 為準，讓 iDAS 通訊可立即切到正確協議；
         // 但不要在這裡同步寫回 iDAS DB，避免 Check 偵測不到差異。
@@ -434,9 +434,9 @@ class IControllerBaseController
     protected function getControllerTcpPort(int $defaultPort = 502): int
     {
         foreach ([
-            '/home/kls/NTCS7/ntcs_device.db',
-            '/var/www/html/database/ntcs_device_IDAS.db',
-            '/var/www/html/database/ntcs_device_temp.db',
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db'),
+            idas_path('database_root', 'ntcs_device_temp.db'),
         ] as $dbPath) {
             $port = $this->readControllerTcpPortFromDb($dbPath);
             if ($port !== null) {
@@ -610,9 +610,9 @@ class IControllerBaseController
         }
 
         foreach ([
-            '/home/kls/NTCS7/ntcs_device.db',
-            '/var/www/html/database/ntcs_device_IDAS.db',
-            '/var/www/html/database/ntcs_device_temp.db',
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db'),
+            idas_path('database_root', 'ntcs_device_temp.db'),
         ] as $dbPath) {
             $endpoint = $this->readControllerWifiEndpointFromDb($dbPath, 4545);
             if ($endpoint) {
@@ -1232,8 +1232,8 @@ class IControllerBaseController
      */
     public function syncTempDeviceIdToIdas(){
         
-        $tempDbPath = '/var/www/html/database/ntcs_device_temp.db';
-        $idasDbPath = '/var/www/html/database/ntcs_device_IDAS.db';
+        $tempDbPath = idas_path('database_root', 'ntcs_device_temp.db');
+        $idasDbPath = idas_path('database_root', 'ntcs_device_IDAS.db');
 
         // 1) 基本檔案存在檢查
         if (!file_exists($tempDbPath)) {
@@ -1599,8 +1599,8 @@ class IControllerBaseController
 
     public function ntcs_data_db_sysnc() {
         $this->sync_db(
-            '/home/kls/NTCS7/ntcs_data.db',
-            '/var/www/html/database/ntcs_data.db'
+            idas_path('controller_root', 'ntcs_data.db'),
+            idas_path('database_root', 'ntcs_data.db')
         );
 
         $this->sync_ntcs_tool_data();
@@ -1611,8 +1611,8 @@ class IControllerBaseController
 
     public function ntcs_device_db_load() {
         $this->sync_db(
-            '/home/kls/NTCS7/ntcs_device.db',
-            '/var/www/html/database/ntcs_device_IDAS.db'
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db')
         );
     }
 
@@ -1633,8 +1633,8 @@ class IControllerBaseController
 
 
     public function sync_ntcs_tool_data() {
-        $srcDB = '/home/kls/NTCS7/ntcs_device.db';
-        $dstDB = '/var/www/html/database/ntcs_device_IDAS.db';
+        $srcDB = idas_path('controller_root', 'ntcs_device.db');
+        $dstDB = idas_path('database_root', 'ntcs_device_IDAS.db');
 
         if (!file_exists($srcDB) || !file_exists($dstDB)) {
             return;
@@ -1701,7 +1701,7 @@ class IControllerBaseController
         
         try {
             if (PHP_OS_FAMILY === 'Linux') {
-                $db_path = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+                $db_path = idas_path('database_root', 'KLS_NTCS_IDAS.Lin');
             } else {
                 $db_path = '../KLS_NTCS_IDAS.Lin';
             }
@@ -1742,7 +1742,7 @@ class IControllerBaseController
             }
 
             // 連接 ntcs_tool_test 所在的資料庫
-            $db_path = '/var/www/html/database/ntcs_device_IDAS.db';
+            $db_path = idas_path('database_root', 'ntcs_device_IDAS.db');
             if (!file_exists($db_path)) {
                 throw new Exception("❌ ntcs_tool_test 資料庫不存在: $db_path");
             }
@@ -1786,7 +1786,7 @@ class IControllerBaseController
         }
 
         // 超過 2 秒還沒連上 / 連線失敗 → 啟動 agent
-        $cmd = 'sudo /usr/bin/php /var/www/html/idas/service/agent_initial.php > /dev/null 2>&1 &';
+        $cmd = 'sudo /usr/bin/php ' . escapeshellarg(idas_path('service_root', 'agent_initial.php')) . ' > /dev/null 2>&1 &';
         shell_exec($cmd);
 
         return [
@@ -1836,7 +1836,7 @@ class IControllerBaseController
 
     public function get_torque_unit_from_controller() {
 
-        $srcDB = '/home/kls/NTCS7/ntcs_device.db';
+        $srcDB = idas_path('controller_root', 'ntcs_device.db');
 
         if (!file_exists($srcDB)) {
             //error_log("⚠ ntcs_device.db 不存在");
@@ -1982,10 +1982,10 @@ class IControllerBaseController
             return false;
         }
 
-        $srcDb    = '/home/kls/NTCS7/ntcs_device.db';
-        $destDb   = '/var/www/html/database/ntcs_device_IDAS.db';
-        $stateFn  = '/var/www/html/database/.tool_spec_sync.json';
-        $stableFn = '/var/www/html/database/.tool_spec_stable.json';
+        $srcDb    = idas_path('controller_root', 'ntcs_device.db');
+        $destDb   = idas_path('database_root', 'ntcs_device_IDAS.db');
+        $stateFn  = idas_path('database_root', '.tool_spec_sync.json');
+        $stableFn = idas_path('database_root', '.tool_spec_stable.json');
 
         if (!is_file($srcDb) || !is_file($destDb)) {
             $this->toolSpecDebug('db_file_missing', [
@@ -2187,7 +2187,7 @@ class IControllerBaseController
             return false;
         }
 
-        $stateFn = '/var/www/html/database/.tool_spec_sync.json';
+        $stateFn = idas_path('database_root', '.tool_spec_sync.json');
 
         // 從未同步過 → 允許
         if (!is_file($stateFn)) {
@@ -2262,7 +2262,7 @@ class IControllerBaseController
     
     public function get_tools_temp(): ?array{
 
-        $destDb = '/home/kls/NTCS7/ntcs_device.db';
+        $destDb = idas_path('controller_root', 'ntcs_device.db');
         if (!is_file($destDb)) {
             return null;
         }
@@ -2299,7 +2299,7 @@ class IControllerBaseController
 
     public function getControllerDeviceSN(): ?string
     {
-        $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+        $dbPath = idas_path('controller_root', 'ntcs_device.db');
 
         // ---------- 基本檢查 ----------
         if (!is_file($dbPath) || !is_readable($dbPath)) {
@@ -2477,7 +2477,7 @@ class NtcsBaseController
     public function LoginCheck($value='')
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:/var/www/html/database/das.db'); 
+            $con_db = new PDO('sqlite:' . idas_path('database_root', 'das.db')); 
         }else{
             $con_db = new PDO('sqlite:../data.db'); 
         }
@@ -2498,7 +2498,7 @@ class NtcsBaseController
     {
         /*try {
             if (PHP_OS_FAMILY === 'Linux') {
-                $db_path = '/var/www/html/database/data_device.db';
+                $db_path = idas_path('database_root', 'data_device.db');
             } else {
                 $db_path = '../data_device.db';
             }
@@ -2535,9 +2535,9 @@ class NtcsBaseController
     public function ntcs_device_db_sysnc($forceRefresh = false){
 
         // 路徑集中放這裡
-        $srcController = '/home/kls/NTCS7/ntcs_device.db';            // 控制器端 ntcs_device.db
-        $tempDbPath    = '/var/www/html/database/ntcs_device_temp.db';// iDAS 暫存
-        $idasDbPath    = '/var/www/html/database/ntcs_device_IDAS.db';// iDAS 正式用的 device DB
+        $srcController = idas_path('controller_root', 'ntcs_device.db');            // 控制器端 ntcs_device.db
+        $tempDbPath    = idas_path('database_root', 'ntcs_device_temp.db');// iDAS 暫存
+        $idasDbPath    = idas_path('database_root', 'ntcs_device_IDAS.db');// iDAS 正式用的 device DB
 
         // === 0) Cookie 只有在仍與 Controller DB 相同時才能使用 ===
         $cacheTtl = 10; // 秒
@@ -2750,9 +2750,9 @@ class NtcsBaseController
      */
     public function get_modbus_type_from_controller(): int
     {
-        $controllerDb = '/home/kls/NTCS7/ntcs_device.db';
-        $idasDb       = '/var/www/html/database/ntcs_device_IDAS.db';
-        $tempDb       = '/var/www/html/database/ntcs_device_temp.db';
+        $controllerDb = idas_path('controller_root', 'ntcs_device.db');
+        $idasDb       = idas_path('database_root', 'ntcs_device_IDAS.db');
+        $tempDb       = idas_path('database_root', 'ntcs_device_temp.db');
 
         // 優先以 Controller 實際 DB 為準，讓 iDAS 通訊可立即切到正確協議；
         // 但不要在這裡同步寫回 iDAS DB，避免 Check 偵測不到差異。
@@ -2906,9 +2906,9 @@ class NtcsBaseController
         }
 
         foreach ([
-            '/home/kls/NTCS7/ntcs_device.db',
-            '/var/www/html/database/ntcs_device_IDAS.db',
-            '/var/www/html/database/ntcs_device_temp.db',
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db'),
+            idas_path('database_root', 'ntcs_device_temp.db'),
         ] as $dbPath) {
             $endpoint = $this->readControllerWifiEndpointFromDb($dbPath, 4545);
             if ($endpoint) {
@@ -3487,8 +3487,8 @@ class NtcsBaseController
      */
     public function syncTempDeviceIdToIdas(){
         
-        $tempDbPath = '/var/www/html/database/ntcs_device_temp.db';
-        $idasDbPath = '/var/www/html/database/ntcs_device_IDAS.db';
+        $tempDbPath = idas_path('database_root', 'ntcs_device_temp.db');
+        $idasDbPath = idas_path('database_root', 'ntcs_device_IDAS.db');
 
         // 1) 基本檔案存在檢查
         if (!file_exists($tempDbPath)) {
@@ -3840,8 +3840,8 @@ class NtcsBaseController
 
     public function ntcs_data_db_sysnc() {
         $this->sync_db(
-            '/home/kls/NTCS7/ntcs_data.db',
-            '/var/www/html/database/ntcs_data.db'
+            idas_path('controller_root', 'ntcs_data.db'),
+            idas_path('database_root', 'ntcs_data.db')
         );
 
         $this->sync_ntcs_tool_data();
@@ -3852,8 +3852,8 @@ class NtcsBaseController
 
     public function ntcs_device_db_load() {
         $this->sync_db(
-            '/home/kls/NTCS7/ntcs_device.db',
-            '/var/www/html/database/ntcs_device_IDAS.db'
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db')
         );
     }
 
@@ -3874,8 +3874,8 @@ class NtcsBaseController
 
 
     public function sync_ntcs_tool_data() {
-        $srcDB = '/home/kls/NTCS7/ntcs_device.db';
-        $dstDB = '/var/www/html/database/ntcs_device_IDAS.db';
+        $srcDB = idas_path('controller_root', 'ntcs_device.db');
+        $dstDB = idas_path('database_root', 'ntcs_device_IDAS.db');
 
         if (!file_exists($srcDB) || !file_exists($dstDB)) {
             return;
@@ -3942,7 +3942,7 @@ class NtcsBaseController
         
         try {
             if (PHP_OS_FAMILY === 'Linux') {
-                $db_path = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+                $db_path = idas_path('database_root', 'KLS_NTCS_IDAS.Lin');
             } else {
                 $db_path = '../KLS_NTCS_IDAS.Lin';
             }
@@ -3983,7 +3983,7 @@ class NtcsBaseController
             }
 
             // 連接 ntcs_tool_test 所在的資料庫
-            $db_path = '/var/www/html/database/ntcs_device_IDAS.db';
+            $db_path = idas_path('database_root', 'ntcs_device_IDAS.db');
             if (!file_exists($db_path)) {
                 throw new Exception("❌ ntcs_tool_test 資料庫不存在: $db_path");
             }
@@ -4027,7 +4027,7 @@ class NtcsBaseController
         }
 
         // 超過 2 秒還沒連上 / 連線失敗 → 啟動 agent
-        $cmd = 'sudo /usr/bin/php /var/www/html/idas/service/agent_initial.php > /dev/null 2>&1 &';
+        $cmd = 'sudo /usr/bin/php ' . escapeshellarg(idas_path('service_root', 'agent_initial.php')) . ' > /dev/null 2>&1 &';
         shell_exec($cmd);
 
         return [
@@ -4077,7 +4077,7 @@ class NtcsBaseController
 
     public function get_torque_unit_from_controller() {
 
-        $srcDB = '/home/kls/NTCS7/ntcs_device.db';
+        $srcDB = idas_path('controller_root', 'ntcs_device.db');
 
         if (!file_exists($srcDB)) {
             //error_log("⚠ ntcs_device.db 不存在");
@@ -4223,10 +4223,10 @@ class NtcsBaseController
             return false;
         }
 
-        $srcDb    = '/home/kls/NTCS7/ntcs_device.db';
-        $destDb   = '/var/www/html/database/ntcs_device_IDAS.db';
-        $stateFn  = '/var/www/html/database/.tool_spec_sync.json';
-        $stableFn = '/var/www/html/database/.tool_spec_stable.json';
+        $srcDb    = idas_path('controller_root', 'ntcs_device.db');
+        $destDb   = idas_path('database_root', 'ntcs_device_IDAS.db');
+        $stateFn  = idas_path('database_root', '.tool_spec_sync.json');
+        $stableFn = idas_path('database_root', '.tool_spec_stable.json');
 
         if (!is_file($srcDb) || !is_file($destDb)) {
             $this->toolSpecDebug('db_file_missing', [
@@ -4428,7 +4428,7 @@ class NtcsBaseController
             return false;
         }
 
-        $stateFn = '/var/www/html/database/.tool_spec_sync.json';
+        $stateFn = idas_path('database_root', '.tool_spec_sync.json');
 
         // 從未同步過 → 允許
         if (!is_file($stateFn)) {
@@ -4503,7 +4503,7 @@ class NtcsBaseController
     
     public function get_tools_temp(): ?array{
 
-        $destDb = '/home/kls/NTCS7/ntcs_device.db';
+        $destDb = idas_path('controller_root', 'ntcs_device.db');
         if (!is_file($destDb)) {
             return null;
         }
@@ -4540,7 +4540,7 @@ class NtcsBaseController
 
     public function getControllerDeviceSN(): ?string
     {
-        $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+        $dbPath = idas_path('controller_root', 'ntcs_device.db');
 
         // ---------- 基本檢查 ----------
         if (!is_file($dbPath) || !is_readable($dbPath)) {

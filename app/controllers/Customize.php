@@ -62,7 +62,8 @@ class Customize extends Controller
      *   ]
      * 失敗（檔案不存在/不可讀/表頭不符）則回傳 null
      */
-    public function load_customize_csv_arrays(string $file = '/var/www/html/temp/customize.csv'): ?array{
+    public function load_customize_csv_arrays(?string $file = null): ?array{
+        $file = $file ?: idas_path('temp_root', 'customize.csv');
 
         if (!is_file($file) || !is_readable($file)) return null;
         $fh = @fopen($file, 'r');
@@ -179,7 +180,7 @@ class Customize extends Controller
 
         // === 空設定：清空伺服端資料 ===
         if ($clear || $compatAllEmpty) {
-            $csvFile = '/var/www/html/temp/customize.csv';
+            $csvFile = idas_path('temp_root', 'customize.csv');
             $ok = true;
 
             if (is_file($csvFile)) {
@@ -360,7 +361,7 @@ class Customize extends Controller
         } catch (\Throwable $e) { /* 忽略 */ }
 
         // --- 固定 Linux 路徑與對外 URL ---
-        $baseDir = '/var/www/html/temp';
+        $baseDir = IDAS_PATH_TEMP_ROOT;
         $baseUrl = '/temp';
 
         $dirCheck = self::ensureExportDir($baseDir, 0777, 'www-data', 'www-data');
@@ -926,7 +927,8 @@ class Customize extends Controller
     }
 
 
-    public function fillCsvResults(string $csvPath = '/var/www/html/temp/customize.csv'): array{
+    public function fillCsvResults(?string $csvPath = null): array{
+        $csvPath = $csvPath ?: idas_path('temp_root', 'customize.csv');
         // 1) 取 DB 最新一筆（用你的 Model）
         $lastRow = null;
         try {
@@ -1160,7 +1162,8 @@ class Customize extends Controller
      *   ]
      * 失敗（檔案不存在/不可讀/表頭不符）則回傳 null
      */
-    public function load_customize_csv_arrays(string $file = '/var/www/html/temp/customize.csv'): ?array{
+    public function load_customize_csv_arrays(?string $file = null): ?array{
+        $file = $file ?: idas_path('temp_root', 'customize.csv');
 
         if (!is_file($file) || !is_readable($file)) return null;
         $fh = @fopen($file, 'r');
@@ -1283,7 +1286,7 @@ class Customize extends Controller
 
         // === 空設定：清空伺服端資料 ===
         if ($clear || $compatAllEmpty) {
-            $csvFile = '/var/www/html/temp/customize.csv';
+            $csvFile = idas_path('temp_root', 'customize.csv');
             $ok = true;
 
             if (is_file($csvFile)) {
@@ -1464,7 +1467,7 @@ class Customize extends Controller
         } catch (\Throwable $e) { /* 忽略 */ }
 
         // --- 固定 Linux 路徑與對外 URL ---
-        $baseDir = '/var/www/html/temp';
+        $baseDir = IDAS_PATH_TEMP_ROOT;
         $baseUrl = '/temp';
 
         $dirCheck = self::ensureExportDir($baseDir, 0777, 'www-data', 'www-data');
@@ -2030,7 +2033,8 @@ class Customize extends Controller
     }
 
 
-    public function fillCsvResults(string $csvPath = '/var/www/html/temp/customize.csv'): array{
+    public function fillCsvResults(?string $csvPath = null): array{
+        $csvPath = $csvPath ?: idas_path('temp_root', 'customize.csv');
         // 1) 取 DB 最新一筆（用你的 Model）
         $lastRow = null;
         try {

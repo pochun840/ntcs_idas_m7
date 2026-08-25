@@ -362,6 +362,7 @@ $text['total_screw_count'] = 'Total Count';
 $text['fasten_status'] = 'Fastening Result';
 $text['error_message'] = 'Error Message';
 $text['info_fasten_direction'] = 'Screwdriver Direction';
+$text['fasten_direction'] = 'Screwdriver Direction';
 $text['rpm'] = 'Fastening Speed (RPM)';
 $text['hi_torque'] = 'Torque Upper Limit';
 $text['lo_torque'] = 'Torque Lower Limit';

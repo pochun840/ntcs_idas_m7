@@ -26,8 +26,8 @@ function idas_sync_login_user_table_from_controller(): array
 
     $done = true;
 
-    $sourcePath = '/home/kls/NTCS7/KLS_NTCS.Lin';
-    $targetPath = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+    $sourcePath = idas_path('controller_root', 'KLS_NTCS.Lin');
+    $targetPath = idas_path('database_root', 'KLS_NTCS_IDAS.Lin');
 
     $result = [
         'status' => 'skipped',
@@ -382,7 +382,7 @@ class Logins extends Controller
         $account = $this->LoginModel->get_account();
 
 
-        $targetDir = '/var/www/html/extracted';
+        $targetDir = IDAS_PATH_EXTRACTED_ROOT;
         $this->deleteDirectory($targetDir);
 
        
@@ -430,7 +430,7 @@ class Logins extends Controller
                 // Note:     非 cron；沒有 request 就不會自動同步
                 if ($this->shouldRunToolSpecSync(10)) {
                     $this->runOnceWithFlag(
-                        '/var/www/html/database',        // lock / state 檔案目錄
+                        IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                         '.tool_spec_sync',               // 任務鎖名稱（key）
                         fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
                     );
@@ -438,7 +438,7 @@ class Logins extends Controller
 
 
                 if (PHP_OS_FAMILY === 'Linux') {
-                    $dir = '/mnt/ramdisk/ftp';
+                    $dir = IDAS_PATH_RAMDISK_FTP;
 
                     if (@chmod($dir, 0777)) {
                         echo json_encode([
@@ -674,7 +674,7 @@ class Logins extends Controller
      */
     private function isIdasUpdateLocked(): bool
     {
-        $lockPath = '/var/www/html/database/.idas_update.lock';
+        $lockPath = idas_path('database_root', '.idas_update.lock');
         if (!is_file($lockPath)) {
             return false;
         }
@@ -704,7 +704,7 @@ class Logins extends Controller
             return false;
         }
 
-        $info_json_url = '/var/www/html/idas/info.json';
+        $info_json_url = idas_path('idas_root', 'info.json');
         $verify_data = json_decode(@file_get_contents($info_json_url), true);
         if (!is_array($verify_data) || empty($verify_data['idas_version'])) {
             error_log('[iDAS] login set_ver skipped: invalid or missing info.json');
@@ -727,8 +727,8 @@ class Logins extends Controller
      */
     private function checkAndRepairDatabaseFiles(): array
     {
-        $baseDir = '/var/www/html/database/';
-        $srcDir  = '/home/kls/NTCS7/';
+        $baseDir = IDAS_PATH_DATABASE_ROOT . '/';
+        $srcDir  = IDAS_PATH_CONTROLLER_ROOT . '/';
 
         $files = [
             'KLS_NTCS_IDAS.Lin'     => 'KLS_NTCS.Lin',
@@ -788,8 +788,8 @@ class Logins extends Controller
     private function checkAndRepairBarcodeSingleJobSchema(): array
     {
         $paths = [
-            'idas' => '/var/www/html/database/ntcs_barcode_IDAS.db',
-            'controller' => '/home/kls/NTCS7/ntcs_barcode.db',
+            'idas' => idas_path('database_root', 'ntcs_barcode_IDAS.db'),
+            'controller' => idas_path('controller_root', 'ntcs_barcode.db'),
         ];
         $result = ['status'=>'ok','policy'=>'single_barcode_per_job','databases'=>[]];
         if (PHP_OS_FAMILY !== 'Linux') { $result['status']='skipped'; return $result; }
@@ -1276,7 +1276,7 @@ class Logins extends Controller
         $account = $this->LoginModel->get_account();
 
 
-        $targetDir = '/var/www/html/extracted';
+        $targetDir = IDAS_PATH_EXTRACTED_ROOT;
         $this->deleteDirectory($targetDir);
 
        
@@ -1349,7 +1349,7 @@ class Logins extends Controller
                 // Note:     非 cron；沒有 request 就不會自動同步
                 if ($this->shouldRunToolSpecSync(10)) {
                     $this->runOnceWithFlag(
-                        '/var/www/html/database',        // lock / state 檔案目錄
+                        IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                         '.tool_spec_sync',               // 任務鎖名稱（key）
                         fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
                     );
@@ -1357,7 +1357,7 @@ class Logins extends Controller
 
 
                 if (PHP_OS_FAMILY === 'Linux') {
-                    $dir = '/mnt/ramdisk/ftp';
+                    $dir = IDAS_PATH_RAMDISK_FTP;
 
                     if (@chmod($dir, 0777)) {
                         // chmod 成功即可，不要在 redirect 前 echo，避免 headers already sent。
@@ -1760,7 +1760,7 @@ class Logins extends Controller
     // #IDAS上傳 20250624 修改：僅保留步驟 10 與 12
     public function set_ver($debug = false) {
 
-        $info_json_url ='/var/www/html/idas/info.json';
+        $info_json_url =idas_path('idas_root', 'info.json');
         $verify_data = json_decode(@file_get_contents($info_json_url), true);
 
         $iDas_Version = $this->AdminModel->Get_Das_Config('idas_version');
@@ -1792,8 +1792,8 @@ class Logins extends Controller
         if (PHP_OS_FAMILY === 'Linux') {
             // Linux is case-sensitive. The production path is KLS_NTCS.Lin; keep .lin as fallback only.
             $controllerCandidates = [
-                '/home/kls/NTCS7/KLS_NTCS.Lin',
-                '/home/kls/NTCS7/KLS_NTCS.lin',
+                idas_path('controller_root', 'KLS_NTCS.Lin'),
+                idas_path('controller_root', 'KLS_NTCS.lin'),
             ];
 
             $controllerPath = $controllerCandidates[0];
@@ -1805,7 +1805,7 @@ class Logins extends Controller
             }
 
             $paths['controller'] = $controllerPath;
-            $paths['idas']       = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+            $paths['idas']       = idas_path('database_root', 'KLS_NTCS_IDAS.Lin');
         } else {
             // Development / Windows fallback paths.
             $paths['controller'] = __DIR__ . '/../../database/KLS_NTCS.Lin';
@@ -1846,7 +1846,7 @@ class Logins extends Controller
 
         // Fallback: if config is empty, use /var/www/html/idas/info.json.
         if ($version === '') {
-            $infoJson = '/var/www/html/idas/info.json';
+            $infoJson = idas_path('idas_root', 'info.json');
             $info = json_decode((string)@file_get_contents($infoJson), true);
             if (is_array($info) && isset($info['idas_version'])) {
                 $version = trim((string)$info['idas_version']);
@@ -2050,8 +2050,8 @@ class Logins extends Controller
      */
     private function checkAndRepairDatabaseFiles(): array
     {
-        $baseDir = '/var/www/html/database/';
-        $srcDir  = '/home/kls/NTCS7/';
+        $baseDir = IDAS_PATH_DATABASE_ROOT . '/';
+        $srcDir  = IDAS_PATH_CONTROLLER_ROOT . '/';
 
         $files = [
             'KLS_NTCS_IDAS.Lin'     => 'KLS_NTCS.Lin',
@@ -2110,7 +2110,7 @@ class Logins extends Controller
 
     private function checkAndRepairBarcodeOneToOneSchema(): array
     {
-        $targetPath = '/var/www/html/database/ntcs_barcode_IDAS.db';
+        $targetPath = idas_path('database_root', 'ntcs_barcode_IDAS.db');
 
         if (PHP_OS_FAMILY !== 'Linux') {
             return [

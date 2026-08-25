@@ -335,7 +335,7 @@ class Check extends Controller
      */
     private function getControllerDeviceIdentity(): array
     {
-        return $this->readDeviceIdentityFromDb('/home/kls/NTCS7/ntcs_device.db');
+        return $this->readDeviceIdentityFromDb(idas_path('controller_root', 'ntcs_device.db'));
     }
 
 
@@ -345,7 +345,7 @@ class Check extends Controller
      */
     private function getIdasDeviceIdentity(): array
     {
-        return $this->readDeviceIdentityFromDb('/var/www/html/database/ntcs_device_IDAS.db');
+        return $this->readDeviceIdentityFromDb(idas_path('database_root', 'ntcs_device_IDAS.db'));
     }
 
 
@@ -445,7 +445,7 @@ class Check extends Controller
     // =========================
     private function getControllerDeviceIdOnly1(): ?int
     {
-        $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+        $dbPath = idas_path('controller_root', 'ntcs_device.db');
 
         // 檔案存在 + 可讀
         if (!is_file($dbPath) || !is_readable($dbPath)) {
@@ -546,7 +546,7 @@ class Check extends Controller
     private function writeDeviceIdToIdasDb(int $deviceId): bool
     {
         try {
-            $idasDb = '/var/www/html/database/ntcs_device_IDAS.db';
+            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
 
             if (!is_file($idasDb)) {
                 return false;
@@ -587,7 +587,7 @@ class Check extends Controller
         }
 
         try {
-            $idasDb = '/var/www/html/database/ntcs_device_IDAS.db';
+            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
 
             if (!is_file($idasDb) || !is_readable($idasDb) || !is_writable($idasDb)) {
                 return false;
@@ -799,10 +799,10 @@ class Check extends Controller
              * contain identical Device ID / Protocol / Server Port values.
              */
             $controllerVerify = $this->readDeviceIdentityFromDb(
-                '/home/kls/NTCS7/ntcs_device.db'
+                idas_path('controller_root', 'ntcs_device.db')
             );
             $idasVerify = $this->readDeviceIdentityFromDb(
-                '/var/www/html/database/ntcs_device_IDAS.db'
+                idas_path('database_root', 'ntcs_device_IDAS.db')
             );
 
             $deviceIdEqual = (
@@ -1241,7 +1241,7 @@ class Check extends Controller
      */
     private function getControllerDeviceIdentity(): array
     {
-        return $this->readDeviceIdentityFromDb('/home/kls/NTCS7/ntcs_device.db');
+        return $this->readDeviceIdentityFromDb(idas_path('controller_root', 'ntcs_device.db'));
     }
 
 
@@ -1251,7 +1251,7 @@ class Check extends Controller
      */
     private function getIdasDeviceIdentity(): array
     {
-        return $this->readDeviceIdentityFromDb('/var/www/html/database/ntcs_device_IDAS.db');
+        return $this->readDeviceIdentityFromDb(idas_path('database_root', 'ntcs_device_IDAS.db'));
     }
 
 
@@ -1365,7 +1365,7 @@ class Check extends Controller
     // =========================
     private function getControllerDeviceIdOnly1(): ?int
     {
-        $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+        $dbPath = idas_path('controller_root', 'ntcs_device.db');
 
         // 檔案存在 + 可讀
         if (!is_file($dbPath) || !is_readable($dbPath)) {
@@ -1466,7 +1466,7 @@ class Check extends Controller
     private function writeDeviceIdToIdasDb(int $deviceId): bool
     {
         try {
-            $idasDb = '/var/www/html/database/ntcs_device_IDAS.db';
+            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
 
             if (!is_file($idasDb)) {
                 return false;
@@ -1507,7 +1507,7 @@ class Check extends Controller
         }
 
         try {
-            $idasDb = '/var/www/html/database/ntcs_device_IDAS.db';
+            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
 
             if (!is_file($idasDb) || !is_readable($idasDb) || !is_writable($idasDb)) {
                 return false;
@@ -1553,7 +1553,7 @@ class Check extends Controller
             return false;
         }
 
-        $idasDb = '/var/www/html/database/ntcs_device_IDAS.db';
+        $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
         if (!is_file($idasDb) || !is_readable($idasDb) || !is_writable($idasDb)) {
             return false;
         }

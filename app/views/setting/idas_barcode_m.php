@@ -154,7 +154,7 @@ function fetchSeqList(jobId = null, selectedSeqId = null) {
 
             let seqList = [];
             try {
-                seqList = JSON.parse(response) || [];
+                seqList = ((typeof response === 'string') ? JSON.parse(response) : response) || [];
             } catch (e) {
                 console.error('Invalid JSON:', response);
                 return;
@@ -274,7 +274,7 @@ function delete_barcode_item() {
         .filter(n => Number.isInteger(n) && n > 0);
 
     if (barcodeIds.length === 0) {
-        alertify.alert(i18n.info, i18n.noSelect);
+        IdasNotify.alert(i18n.info, i18n.noSelect);
         setTimeout(() => alertify.closeAll(), 3000);
         return;
     }
@@ -296,7 +296,7 @@ function delete_barcode_item() {
                     const res_type = response?.res_type || i18n.info;
                     const res_msg = response?.res_msg || '';
 
-                    alertify.alert(res_type, res_msg, function () {
+                    IdasNotify.alert(res_type, res_msg, function () {
                         sessionStorage.setItem('Barcode_Setting', 'block');
                         sessionStorage.setItem('Controller_Setting', 'none');
                     });
@@ -312,7 +312,7 @@ function delete_barcode_item() {
                             },
                             error: function () {
                                 console.error("刷新條碼失敗");
-                                alertify.error(i18n.refreshFail);
+                                IdasNotify.error(i18n.refreshFail);
                                 setTimeout(() => alertify.closeAll(), 3000);
                                 location.reload();
                             }
@@ -322,7 +322,7 @@ function delete_barcode_item() {
                 error: function(xhr, status, error) {
                     if (spinner) spinner.style.display = 'none';
                     console.error("刪除時發生錯誤:", error, xhr?.responseText);
-                    alertify.alert(i18n.error, i18n.deleteFail);
+                    IdasNotify.alert(i18n.error, i18n.deleteFail);
                     setTimeout(() => alertify.closeAll(), 3000);
                 }
             });
@@ -469,7 +469,7 @@ function fetchSeqList(jobId = null, selectedSeqId = null) {
 
             let seqList = [];
             try {
-                seqList = JSON.parse(response) || [];
+                seqList = ((typeof response === 'string') ? JSON.parse(response) : response) || [];
             } catch (e) {
                 console.error('Invalid JSON:', response);
                 return;
@@ -586,7 +586,7 @@ function delete_barcode_item() {
         .filter(n => Number.isInteger(n) && n > 0);
 
     if (jobIds.length === 0) {
-        alertify.alert(i18n.info, i18n.noSelect);
+        IdasNotify.alert(i18n.info, i18n.noSelect);
         setTimeout(() => alertify.closeAll(), 3000);
         return;
     }
@@ -608,7 +608,7 @@ function delete_barcode_item() {
                     const res_type = response?.res_type || i18n.info;
                     const res_msg = response?.res_msg || '';
 
-                    alertify.alert(res_type, res_msg, function () {
+                    IdasNotify.alert(res_type, res_msg, function () {
                         sessionStorage.setItem('Barcode_Setting', 'block');
                         sessionStorage.setItem('Controller_Setting', 'none');
                     });
@@ -624,7 +624,7 @@ function delete_barcode_item() {
                             },
                             error: function () {
                                 console.error("刷新條碼失敗");
-                                alertify.error(i18n.refreshFail);
+                                IdasNotify.error(i18n.refreshFail);
                                 setTimeout(() => alertify.closeAll(), 3000);
                                 location.reload();
                             }
@@ -634,7 +634,7 @@ function delete_barcode_item() {
                 error: function(xhr, status, error) {
                     if (spinner) spinner.style.display = 'none';
                     console.error("刪除時發生錯誤:", error, xhr?.responseText);
-                    alertify.alert(i18n.error, i18n.deleteFail);
+                    IdasNotify.alert(i18n.error, i18n.deleteFail);
                     setTimeout(() => alertify.closeAll(), 3000);
                 }
             });

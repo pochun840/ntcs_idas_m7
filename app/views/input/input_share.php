@@ -193,12 +193,12 @@ function toggleUnifiedWithDB() {
             if (resp.focused_jobid != null) window.BOOT_FOCUSED_JOBID = String(resp.focused_jobid);
             } else {
             const msg = (resp && (resp.msg || resp.message)) || 'Failed to update unified state.';
-            if (window.alertify) alertify.error(msg);
+            if (window.alertify) IdasNotify.error(msg);
             }
         },
         'json' // 告訴 jQuery 期待 JSON（需後端回傳可被當作 JSON 解析）
         ).fail(function (xhr) {
-        if (window.alertify) alertify.error('Request failed.');
+        if (window.alertify) IdasNotify.error('Request failed.');
         console.error('set_input_unified error:', xhr.responseText || xhr);
     });
 }
@@ -261,7 +261,7 @@ function getLanguageMessage(cookieName) {
     } else {
         message =  'Please select the event to delete';
     }
-    alertify.alert(message);
+    IdasNotify.alert(message);
 }
 
 
@@ -541,7 +541,7 @@ function edit_input_id() {
             },
             error: function (xhr, status, error) {
                 console.error("edit_input_event failed:", status, error);
-                alertify.alert("Error", "Failed to update input event.");
+                IdasNotify.alert("Error", "Failed to update input event.");
             }
         });
     }
@@ -670,7 +670,7 @@ function delete_input_id(job_id, input_event) {
             );
           },
           error: function () {
-            alertify.error(errMsg);
+            IdasNotify.error(errMsg);
             document.querySelector(".main-content")?.classList.remove("overlay-active");
             document.getElementById('spinner').style.display = 'none';
           }
@@ -680,7 +680,7 @@ function delete_input_id(job_id, input_event) {
         closeModals(); // 取消時也關掉
         document.querySelector(".main-content")?.classList.remove("overlay-active");
         hideOverlay();
-        // alertify.message(cancelledMsg);
+        // IdasNotify.message(cancelledMsg);
       }
     )
     .set('labels', { ok: okText, cancel: cancelText });
@@ -779,7 +779,7 @@ function crud_job_event(action) {
                         // ✅ 用快取判斷來源是否有任何事件
                         if (!hasAnySourceEvents(job_id)) {
                             if (typeof alertify !== 'undefined') {
-                            alertify.alert(msg);
+                            IdasNotify.alert(msg);
                             setTimeout(() => alertify.closeAll(), 3000);
                             }
                             document.querySelector(".main-content")?.classList.remove("overlay-active");
@@ -911,7 +911,7 @@ function grayAndDisableBanEventOption(selectEl) {
 
 function handleEditJobEvent() {
   if (!input_event) {
-    if (window.alertify) alertify.alert('請先選擇要編輯的事件');
+    if (window.alertify) IdasNotify.alert('請先選擇要編輯的事件');
     return;
   }
 
@@ -1241,7 +1241,7 @@ function create_input_id(){
 
     if (!sel || sel.selectedIndex < 0) return;
     if (sel.options[sel.selectedIndex].disabled) {
-      if (window.alertify) alertify.alert(tip);
+      if (window.alertify) IdasNotify.alert(tip);
       return;
     }
     
@@ -1333,7 +1333,7 @@ function copy_input_id() {
 
   // ✅ 來源沒有任何事件 → 直接擋下
   if (!hasAnySourceEvents(job_id)) {
-    alertify.alert(noneMsg);
+    IdasNotify.alert(noneMsg);
     setTimeout(() => alertify.closeAll(), 2500);
     return;
   }
@@ -1342,7 +1342,7 @@ function copy_input_id() {
     .confirm(text_info, function (confirmed) {
       clearTimeout(autoCancelTimer);
       if (!confirmed) {
-        alertify.message(cancelledMsg);
+        IdasNotify.message(cancelledMsg);
         return;
       }
 
@@ -1351,7 +1351,7 @@ function copy_input_id() {
 
       // ✅ 防呆：不可複製到自己
       if (String(to_job_id) === String(job_id)) {
-        alertify.alert(labels[language]?.same || 'Target job must be different.');
+        IdasNotify.alert(labels[language]?.same || 'Target job must be different.');
         setTimeout(() => alertify.closeAll(), 2500);
         return;
       }
@@ -1367,7 +1367,7 @@ function copy_input_id() {
           hideOverlay();
         },
         error: function () {
-          alertify.error(errMsg);
+          IdasNotify.error(errMsg);
           document.getElementById('spinner').style.display = 'none';
           document.querySelector(".main-content").classList.remove("overlay-active");
         }

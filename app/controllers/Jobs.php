@@ -57,7 +57,7 @@ class Jobs extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         if ($this->shouldRunToolSpecSync(10)) {
             $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
+                IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                 '.tool_spec_sync',               // 任務鎖名稱（key）
                 fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
             );
@@ -625,7 +625,7 @@ class Jobs extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         if ($this->shouldRunToolSpecSync(10)) {
             $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
+                IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                 '.tool_spec_sync',               // 任務鎖名稱（key）
                 fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
             );

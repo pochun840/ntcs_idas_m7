@@ -83,7 +83,7 @@ function button_save_password_gust(){
 
             },
             success: function(response) {
-                alert(response);
+                IdasNotify.alert(response);
                 history.go(0);
             },
             error: function(xhr, status, error) {
@@ -91,7 +91,7 @@ function button_save_password_gust(){
             }
         });   
     }else{
-        alert('密碼格式不符合要求');
+        IdasNotify.alert('密碼格式不符合要求');
     }
     
 }
@@ -121,12 +121,12 @@ function idas_update() {
         $('#overlay').addClass('hidden');
 
         if (result.message != '') {
-            Swal.fire({ // DB sync notice
+            IdasNotify.swal({ // DB sync notice
                 title: 'Error',
                 text: result.message,
             })
         } else {
-            Swal.fire('', '', 'success');
+            IdasNotify.swal('', '', 'success');
             setTimeout(function() {history.go(0)}, 2000);
         }
         document.getElementById("file-uploader").value = '';
@@ -423,7 +423,7 @@ function button_save_password_gust(){
 
             },
             success: function(response) {
-                alert(response);
+                IdasNotify.alert(response);
                 history.go(0);
             },
             error: function(xhr, status, error) {
@@ -431,7 +431,7 @@ function button_save_password_gust(){
             }
         });   
     }else{
-        alert('密碼格式不符合要求');
+        IdasNotify.alert('密碼格式不符合要求');
     }
     
 }
@@ -461,12 +461,12 @@ function idas_update() {
         $('#overlay').addClass('hidden');
 
         if (result.message != '') {
-            Swal.fire({ // DB sync notice
+            IdasNotify.swal({ // DB sync notice
                 title: 'Error',
                 text: result.message,
             })
         } else {
-            Swal.fire('', '', 'success');
+            IdasNotify.swal('', '', 'success');
             setTimeout(function() {history.go(0)}, 2000);
         }
         document.getElementById("file-uploader").value = '';

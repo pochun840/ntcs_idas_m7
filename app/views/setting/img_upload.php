@@ -205,9 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================
     function showInfo(message) {
         if (window.alertify) {
-            alertify.alert(message);
+            IdasNotify.alert(message);
         } else {
-            alert(message);
+            IdasNotify.alert(message);
         }
     }
 

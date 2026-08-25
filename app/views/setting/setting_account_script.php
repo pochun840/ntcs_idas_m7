@@ -473,11 +473,11 @@ function cleanupSettingAccountAlertifyTitle() {
 
 function settingAccountAlert(message) {
     configureSettingAccountAlertifyNoTitle();
-    if (window.alertify && typeof alertify.alert === 'function') {
-        alertify.alert(message);
+    if (window.alertify && typeof IdasNotify.alert === 'function') {
+        IdasNotify.alert(message);
         cleanupSettingAccountAlertifyTitle();
     } else {
-        alert(String(message).replace(/<[^>]*>/g, ''));
+        IdasNotify.alert(String(message).replace(/<[^>]*>/g, ''));
     }
 }
 
@@ -2798,7 +2798,7 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
             if (typeof settingAccountAlert === 'function') {
                 settingAccountAlert(finalSaTextV11('account_select_one', 'Please select one account.'));
             } else {
-                alert(finalSaTextV11('account_select_one', 'Please select one account.'));
+                IdasNotify.alert(finalSaTextV11('account_select_one', 'Please select one account.'));
             }
             return false;
         }

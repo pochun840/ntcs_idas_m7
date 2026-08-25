@@ -43,7 +43,7 @@ class Data extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         if ($this->shouldRunToolSpecSync(10)) {
             $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
+                IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                 '.tool_spec_sync',               // 任務鎖名稱（key）
                 fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
             );
@@ -56,7 +56,7 @@ class Data extends Controller
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
         // 取得當前年份
         if (PHP_OS_FAMILY === 'Linux') {
-            $db_path = "/var/www/html/database/data".date('Y').".db";
+            $db_path = IDAS_PATH_DATABASE_ROOT . "/data".date('Y').".db";
 
             // 檢查資料庫是否存在
             $db_exists = file_exists($db_path);
@@ -240,13 +240,7 @@ class Data extends Controller
         * Headers
         * ===================================================== */
         $csv_headers      = array_keys($dataset[0]);
-        $csv_headers_temp = $csv_headers;
-
-        if (!empty($text) && is_array($text)) {
-            foreach ($csv_headers as $i => $key) {
-                $csv_headers_temp[$i] = $text[$key] ?? $key;
-            }
-        }
+        $csv_headers_temp = DataExportService::localizedHeaders($csv_headers, is_array($text ?? null) ? $text : []);
 
         /* =====================================================
         * Filename
@@ -289,26 +283,10 @@ class Data extends Controller
             fputcsv($out, $csv_headers_temp);
 
             foreach ($dataset as $row) {
-                $ordered = [];
-
-                foreach ($csv_headers as $idx => $key) {
-
-                    // O 欄（index 14）Torque Unit
-                    if ($idx === 14) {
-                        $code     = (int)($row[$key] ?? -1);
-                        $unitKey  = $unitMap[$code] ?? '';
-                        $ordered[] = $this->unitText($unitKey);
-
-                    // AA 欄（index 26）Status
-                    } elseif ($idx === 26) {
-                        $code = (int)($row[$key] ?? -1);
-                        $ordered[] = $status_arr[$code] ?? $code;
-
-                    } else {
-                        $ordered[] = $row[$key] ?? '';
-                    }
-                }
-
+                $ordered = DataExportService::orderedRow(
+                    $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
+                    function ($unitKey) { return $this->unitText($unitKey); }
+                );
                 fputcsv($out, $ordered);
             }
 
@@ -326,25 +304,10 @@ class Data extends Controller
             fputcsv($fh, $csv_headers_temp);
 
             foreach ($dataset as $row) {
-                $ordered = [];
-
-                foreach ($csv_headers as $idx => $key) {
-
-                    /*if ($idx === 14) {
-                        $code     = (int)($row[$key] ?? -1);
-                        $unitKey  = $unitMap[$code] ?? '';
-                        $ordered[] = $this->unitText($unitKey);
-
-                    } elseif ($idx === 26) {
-                        $code = (int)($row[$key] ?? -1);
-                        $ordered[] = $status_arr[$code] ?? $code;
-
-                    } else {
-                        $ordered[] = $row[$key] ?? '';
-                    }*/
-                    $ordered[] = $row[$key] ?? '';
-                }
-
+                $ordered = DataExportService::orderedRow(
+                    $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
+                    function ($unitKey) { return $this->unitText($unitKey); }
+                );
                 fputcsv($fh, $ordered);
             }
 
@@ -386,7 +349,7 @@ class Data extends Controller
 
         // 根據系統設定路徑
         if(PHP_OS_FAMILY  ==="Linux"){
-            $base_path = '/home/kls/NTCS7/';
+            $base_path = IDAS_PATH_CONTROLLER_ROOT . '/';
         }else{
             $base_path =  '../';
         }
@@ -499,7 +462,7 @@ class Data extends Controller
             return $this->respondError('Error', '只支援在 Linux 環境下下載 CSV 壓縮包。');
         }
 
-        $dir = '/mnt/ramdisk/ftp';
+        $dir = IDAS_PATH_RAMDISK_FTP;
         if (!is_dir($dir) || !is_readable($dir)) {
             return $this->respondError('Error', "資料夾無法讀取：{$dir}");
         }
@@ -655,7 +618,7 @@ class Data extends Controller
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
         // 取得當前年份
         if (PHP_OS_FAMILY === 'Linux') {
-            $db_path = "/var/www/html/database/data".date('Y').".db";
+            $db_path = IDAS_PATH_DATABASE_ROOT . "/data".date('Y').".db";
 
             // 檢查資料庫是否存在
             $db_exists = file_exists($db_path);
@@ -771,7 +734,7 @@ class Data extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         if ($this->shouldRunToolSpecSync(10)) {
             $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
+                IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                 '.tool_spec_sync',               // 任務鎖名稱（key）
                 fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
             );
@@ -784,7 +747,7 @@ class Data extends Controller
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
         // 取得當前年份
         if (PHP_OS_FAMILY === 'Linux') {
-            $db_path = "/var/www/html/database/data".date('Y').".db";
+            $db_path = IDAS_PATH_DATABASE_ROOT . "/data".date('Y').".db";
 
             // 檢查資料庫是否存在
             $db_exists = file_exists($db_path);
@@ -1131,13 +1094,7 @@ class Data extends Controller
         * Headers
         * ===================================================== */
         $csv_headers      = array_keys($dataset[0]);
-        $csv_headers_temp = $csv_headers;
-
-        if (!empty($text) && is_array($text)) {
-            foreach ($csv_headers as $i => $key) {
-                $csv_headers_temp[$i] = $text[$key] ?? $key;
-            }
-        }
+        $csv_headers_temp = DataExportService::localizedHeaders($csv_headers, is_array($text ?? null) ? $text : []);
 
         /* =====================================================
         * Filename
@@ -1180,26 +1137,10 @@ class Data extends Controller
             fputcsv($out, $csv_headers_temp);
 
             foreach ($dataset as $row) {
-                $ordered = [];
-
-                foreach ($csv_headers as $idx => $key) {
-
-                    // O 欄（index 14）Torque Unit
-                    if ($idx === 14) {
-                        $code     = (int)($row[$key] ?? -1);
-                        $unitKey  = $unitMap[$code] ?? '';
-                        $ordered[] = $this->unitText($unitKey);
-
-                    // AA 欄（index 26）Status
-                    } elseif ($idx === 26) {
-                        $code = (int)($row[$key] ?? -1);
-                        $ordered[] = $status_arr[$code] ?? $code;
-
-                    } else {
-                        $ordered[] = $row[$key] ?? '';
-                    }
-                }
-
+                $ordered = DataExportService::orderedRow(
+                    $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
+                    function ($unitKey) { return $this->unitText($unitKey); }
+                );
                 fputcsv($out, $ordered);
             }
 
@@ -1217,25 +1158,10 @@ class Data extends Controller
             fputcsv($fh, $csv_headers_temp);
 
             foreach ($dataset as $row) {
-                $ordered = [];
-
-                foreach ($csv_headers as $idx => $key) {
-
-                    /*if ($idx === 14) {
-                        $code     = (int)($row[$key] ?? -1);
-                        $unitKey  = $unitMap[$code] ?? '';
-                        $ordered[] = $this->unitText($unitKey);
-
-                    } elseif ($idx === 26) {
-                        $code = (int)($row[$key] ?? -1);
-                        $ordered[] = $status_arr[$code] ?? $code;
-
-                    } else {
-                        $ordered[] = $row[$key] ?? '';
-                    }*/
-                    $ordered[] = $row[$key] ?? '';
-                }
-
+                $ordered = DataExportService::orderedRow(
+                    $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
+                    function ($unitKey) { return $this->unitText($unitKey); }
+                );
                 fputcsv($fh, $ordered);
             }
 
@@ -1296,7 +1222,7 @@ class Data extends Controller
 
         // 根據系統設定路徑
         if(PHP_OS_FAMILY  ==="Linux"){
-            $base_path = '/home/kls/NTCS7/';
+            $base_path = IDAS_PATH_CONTROLLER_ROOT . '/';
         }else{
             $base_path =  '../';
         }
@@ -1412,7 +1338,7 @@ class Data extends Controller
             return $this->respondError('Error', '只支援在 Linux 環境下下載 CSV 壓縮包。');
         }
 
-        $dir = '/mnt/ramdisk/ftp';
+        $dir = IDAS_PATH_RAMDISK_FTP;
         if (!is_dir($dir) || !is_readable($dir)) {
             return $this->respondError('Error', "資料夾無法讀取：{$dir}");
         }
@@ -1568,7 +1494,7 @@ class Data extends Controller
         $decimals_arr = $this->MiscellaneousModel->details("decimals");
         // 取得當前年份
         if (PHP_OS_FAMILY === 'Linux') {
-            $db_path = "/var/www/html/database/data".date('Y').".db";
+            $db_path = IDAS_PATH_DATABASE_ROOT . "/data".date('Y').".db";
 
             // 檢查資料庫是否存在
             $db_exists = file_exists($db_path);
@@ -1713,7 +1639,7 @@ class Data extends Controller
         $db_path   = '';
 
         if (PHP_OS_FAMILY === 'Linux') {
-            $db_path = '/var/www/html/database/data' . date('Y') . '.db';
+            $db_path = IDAS_PATH_DATABASE_ROOT . '/data' . date('Y') . '.db';
             $db_exists = file_exists($db_path);
         }
 

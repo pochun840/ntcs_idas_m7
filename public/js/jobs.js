@@ -14,7 +14,7 @@ function cound_job(action) {
 
     // 若需要 jobid 的操作卻沒選取列
     if (needJobid.includes(action) && !jobid) {
-        //alertify.warning("Please select a job first.");
+        //IdasNotify.warning("Please select a job first.");
         return;
     }
 
@@ -35,7 +35,7 @@ function cound_job(action) {
             copy_job(jobid);
             break;
         default:
-            alertify.error("Unknown action: " + action);
+            IdasNotify.error("Unknown action: " + action);
             document.querySelector(".main-content").classList.remove("overlay-active");
     }
 }
@@ -85,8 +85,8 @@ function updatejob(){
             success: function(response) {   
 
                 
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                var responseData = (typeof response === 'string') ? JSON.parse(response) : response;
+                IdasNotify.alert(responseData.res_type, responseData.res_msg, function() {
                     localStorage.setItem('jobid', jobid);
                     localStorage.setItem('jobname', jobname);
                     history.go(0);

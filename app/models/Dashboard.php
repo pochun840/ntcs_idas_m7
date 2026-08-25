@@ -87,7 +87,7 @@ class Dashboard{
 
     public function get_info($id) {
 
-        $csv_folder = "/mnt/ramdisk/ftp/";
+        $csv_folder = IDAS_PATH_RAMDISK_FTP . '/';
         $files = glob($csv_folder . $id . "_*.csv");
 
         if (!$files) {
@@ -147,7 +147,7 @@ class Dashboard{
 
 
     public function get_step_only($id) {
-        $csv_folder = "/mnt/ramdisk/ftp/";
+        $csv_folder = IDAS_PATH_RAMDISK_FTP . '/';
         $csv_files = glob($csv_folder . $id . "_*.csv");
         if (empty($csv_files)) return [];
 
@@ -175,7 +175,7 @@ class Dashboard{
 
     public function get_csv_first_column($id) {
         $first_column = array();
-        $folder = "/mnt/ramdisk/ftp/";
+        $folder = IDAS_PATH_RAMDISK_FTP . '/';
 
         // 取得所有以指定 ID 開頭且結尾為 .csv 的檔案
         $file_list = glob($folder . $id . "_*.csv");

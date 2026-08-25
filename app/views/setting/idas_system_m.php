@@ -133,9 +133,9 @@ function deleteSelectedFiles() {
 
   if (del_year_id.length === 0) {
     if (window.alertify) {
-      alertify.alert(T.selectNoneTitle, T.selectNoneMsg);
+      IdasNotify.alert(T.selectNoneTitle, T.selectNoneMsg);
     } else {
-      alert(T.selectNoneMsg);
+      IdasNotify.alert(T.selectNoneMsg);
     }
     return;
   }
@@ -162,7 +162,7 @@ function deleteSelectedFiles() {
           if (typeof showAlert === 'function') {
             showAlert("successTitle", res.res_msg || texts.successMsg, 2);
           } else if (window.alertify) {
-            alertify.success(res.res_msg || texts.successMsg);
+            IdasNotify.success(res.res_msg || texts.successMsg);
           }
 
           // 重整前打旗標：重整後自動切到 System
@@ -174,9 +174,9 @@ function deleteSelectedFiles() {
           if (typeof showAlert === 'function') {
             showAlert("errorTitle", msg, 3);
           } else if (window.alertify) {
-            alertify.error(msg);
+            IdasNotify.error(msg);
           } else {
-            alert(msg);
+            IdasNotify.alert(msg);
           }
         }
       },
@@ -184,9 +184,9 @@ function deleteSelectedFiles() {
       error: function (xhr, status, error) {
         console.error("刪除失敗", error);
         if (window.alertify) {
-          alertify.error(T.ajaxErrorPrefix + error);
+          IdasNotify.error(T.ajaxErrorPrefix + error);
         } else {
-          alert(T.ajaxErrorPrefix + error);
+          IdasNotify.alert(T.ajaxErrorPrefix + error);
         }
       },
 
@@ -226,11 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const texts = i18nAlert[language] || i18nAlert['en-us'];
         const title = texts[titleKey] || titleKey;
 
-        alertify.alert(title, message).set({ closable: false });
+        IdasNotify.alert(title, message).set({ closable: false });
 
         if (autoCloseSec > 0) {
             setTimeout(function () {
-                alertify.alert().close();
+                IdasNotify.alert().close();
             }, autoCloseSec * 1000);
         }
     }

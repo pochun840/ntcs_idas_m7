@@ -97,12 +97,12 @@ body
 
                     document.getElementById('activate_key').value = '';
                     if (data.error_message != '') {
-                        Swal.fire({ // DB sync notice
+                        IdasNotify.swal({ // DB sync notice
                             title: 'Error',
                             text: data.error_message,
                         })
                     } else {
-                        Swal.fire('success!', '', '');
+                        IdasNotify.swal('success!', '', '');
                         window.location = window.location.href;
                     }
                 }).fail(function() {

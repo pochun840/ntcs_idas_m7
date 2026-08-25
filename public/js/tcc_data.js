@@ -38,7 +38,7 @@ function OpenButton(ButtonMode){
         window.location.href = "?url=Customize";
         return;
     }else{
-        alert("Function ["+ ButtonMode +"] is under constructing ...");
+        IdasNotify.alert("Function ["+ ButtonMode +"] is under constructing ...");
     }
 }
 } else {
@@ -86,7 +86,7 @@ function OpenButton(ButtonMode) {
         return;
 
     } else {
-        alert("Function [" + ButtonMode + "] is under constructing ...");
+        IdasNotify.alert("Function [" + ButtonMode + "] is under constructing ...");
     }
 }
 }

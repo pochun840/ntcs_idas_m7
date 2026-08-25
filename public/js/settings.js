@@ -142,7 +142,7 @@ function change_datetime() {
     var msg = messages[language] || messages['default'];
 
     if (!newTime) {
-        alert(msg.select);
+        IdasNotify.alert(msg.select);
         return;
     }
 
@@ -157,9 +157,9 @@ function change_datetime() {
             document.getElementById('spinner').style.display = 'none';
 
             if (response.error) {
-                alertify.alert(msg.fail, response.error);
+                IdasNotify.alert(msg.fail, response.error);
             } else {
-                alertify.alert(msg.success, msg.success);
+                IdasNotify.alert(msg.success, msg.success);
                 setTimeout(function () {
                     alertify.closeAll();
                     location.reload(); // ✅ 自動重整
@@ -171,7 +171,7 @@ function change_datetime() {
         },
         error: function() {
             document.getElementById('spinner').style.display = 'none';
-            alertify.alert(msg.fail, msg.error);
+            IdasNotify.alert(msg.fail, msg.error);
         }
     });
 }
@@ -287,7 +287,7 @@ window.iDASRestartManager = (function () {
     if (window.IS_ICONTROLLER !== true || active || !window.alertify || !window.jQuery) return false;
     active = true;
     const delay = Math.max(1, Number(options.delay) || 5);
-    const dialog = alertify.alert();
+    const dialog = IdasNotify.alert();
     const footer = (show) => {
       if (dialog?.elements?.footer) dialog.elements.footer.style.display = show ? '' : 'none';
     };
@@ -563,9 +563,9 @@ function showControllerRestartDialogAndSchedule(result, saveButton) {
   } catch (_) {}
 
   // Configure the lifecycle callback BEFORE show(). Calling
-  // alertify.alert(title, message) first may display the modal immediately,
+  // IdasNotify.alert(title, message) first may display the modal immediately,
   // causing a subsequently registered onshow handler to be missed.
-  const dialog = alertify.alert();
+  const dialog = IdasNotify.alert();
   const setDialogFooterVisible = (visible) => {
     if (dialog?.elements?.footer) {
       dialog.elements.footer.style.display = visible ? '' : 'none';
@@ -711,7 +711,7 @@ function controller_save(){
   if (controllerServerPortEl && !controllerServerPortEl.readOnly) {
     const serverPortNumber = Number(controller_server_port);
     if (!Number.isInteger(serverPortNumber) || serverPortNumber < 1 || serverPortNumber > 65535) {
-      alertify.alert('Error', 'Server Port must be between 1 and 65535.');
+      IdasNotify.alert('Error', 'Server Port must be between 1 and 65535.');
       return;
     }
   }
@@ -795,7 +795,7 @@ function controller_save(){
 
       if (shouldAutoRestart) {
         if (!responseFlag(result.both_databases_verified)) {
-          alertify.alert('Error', 'Controller/iDAS database verification failed. Restart was cancelled.');
+          IdasNotify.alert('Error', 'Controller/iDAS database verification failed. Restart was cancelled.');
           return;
         }
         keepSaveDisabled = true;
@@ -811,7 +811,7 @@ function controller_save(){
         const result = JSON.parse(xhr.responseText || '{}');
         if (result.res_msg) message = result.res_msg;
       } catch (_) {}
-      alertify.alert('Error', message);
+      IdasNotify.alert('Error', message);
     },
     complete: function() {
       if (saveButton) {
@@ -1035,7 +1035,7 @@ function save_pwd(){
         !isValidInput(enablePwd) || 
         !isValidInput(disablePwd) || 
         !isValidInput(skipPwd)) {
-        //alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
+        //IdasNotify.alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
         return; // 如果驗證失敗，停止函式執行
     }
     document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
@@ -1055,7 +1055,7 @@ function save_pwd(){
             handleAjaxResponse(responseData);
         },
         error: function() {
-            alert("發生錯誤，請重試。");
+            IdasNotify.alert("發生錯誤，請重試。");
         }
     });
 }
@@ -1152,7 +1152,7 @@ function Export_SystemConfig() {
          * 1) HTTP status check
          * =============================== */
         if (xhr.status !== 200) {
-            alert("Export failed (HTTP " + xhr.status + "). Please check controller / Modbus.");
+            IdasNotify.alert("Export failed (HTTP " + xhr.status + "). Please check controller / Modbus.");
             return;
         }
 
@@ -1163,10 +1163,10 @@ function Export_SystemConfig() {
         if (!ct.includes("application/zip")) {
             try {
                 xhr.response.text().then(function (msg) {
-                    alert("Export failed: " + (msg || "response is not a ZIP file"));
+                    IdasNotify.alert("Export failed: " + (msg || "response is not a ZIP file"));
                 });
             } catch (e) {
-                alert("Export failed: response is not a ZIP file.");
+                IdasNotify.alert("Export failed: response is not a ZIP file.");
             }
             return;
         }
@@ -1175,7 +1175,7 @@ function Export_SystemConfig() {
          * 3) Size sanity check
          * =============================== */
         if (!xhr.response || xhr.response.size < 50) {
-            alert("Export failed: ZIP is too small.");
+            IdasNotify.alert("Export failed: ZIP is too small.");
             return;
         }
 
@@ -1206,7 +1206,7 @@ function Export_SystemConfig() {
     };
 
     xhr.onerror = function () {
-        alert("Export failed: network error.");
+        IdasNotify.alert("Export failed: network error.");
     };
 
     /* ===============================
@@ -1257,7 +1257,7 @@ function Import_SystemConfig() {
     var t = msg[language] || msg['en-us'];
 
     if (!import_file) {
-        alertify.alert(t.title, t.noFile);
+        IdasNotify.alert(t.title, t.noFile);
         return;
     }
 
@@ -1265,7 +1265,7 @@ function Import_SystemConfig() {
     // Example: con_NTR211859_20260813141200.Lin
     var fileNamePattern = /^con_[A-Za-z0-9_-]+_\d{14}\.Lin$/;
     if (!fileNamePattern.test(import_file.name)) {
-        alertify.alert(t.title, t.badName);
+        IdasNotify.alert(t.title, t.badName);
         if (uploader) uploader.value = '';
         return;
     }
@@ -1288,7 +1288,7 @@ function Import_SystemConfig() {
             success: function(responseData) {
                 setTimeout(function() {
                     document.getElementById('spinner').style.display = 'none';
-                    alertify.alert(responseData.res_type || t.title, responseData.res_msg || '', function() {
+                    IdasNotify.alert(responseData.res_type || t.title, responseData.res_msg || '', function() {
                         if (responseData.res_type === 'Success') {
                             history.go(0);
                         }
@@ -1298,7 +1298,7 @@ function Import_SystemConfig() {
             error: function(xhr) {
                 document.getElementById('spinner').style.display = 'none';
                 var responseData = xhr && xhr.responseJSON ? xhr.responseJSON : null;
-                alertify.alert(
+                IdasNotify.alert(
                     responseData && responseData.res_type ? responseData.res_type : 'Error',
                     responseData && responseData.res_msg ? responseData.res_msg : t.network
                 );
@@ -1354,14 +1354,14 @@ function Firmware_Update() {
     var msg = messages[language] || messages['en-us'];
 
     if (!bb_file) {
-        alertify.alert(msg.title, msg.empty);
+        IdasNotify.alert(msg.title, msg.empty);
         return;
     }
 
     // Keep the original firmware filename. Controller R481~R500 carries the filename stem (max 40 bytes).
     var firmwareName = String(bb_file.name || '');
     if (!/\.zip$/i.test(firmwareName)) {
-        alertify.alert(msg.failed, idasFormatAlertifyMessage(msg.invalidType));
+        IdasNotify.alert(msg.failed, idasFormatAlertifyMessage(msg.invalidType));
         return;
     }
 
@@ -1371,19 +1371,19 @@ function Firmware_Update() {
         : unescape(encodeURIComponent(firmwareStem)).length;
 
     if (stemBytes > 40) {
-        alertify.alert(msg.failed, idasFormatAlertifyMessage(msg.nameTooLong));
+        IdasNotify.alert(msg.failed, idasFormatAlertifyMessage(msg.nameTooLong));
         return;
     }
 
     if (!/^[\x20-\x7E]+$/.test(firmwareStem)) {
-        alertify.alert(msg.failed, idasFormatAlertifyMessage(msg.invalidName));
+        IdasNotify.alert(msg.failed, idasFormatAlertifyMessage(msg.invalidName));
         return;
     }
 
     // Keep the browser-side limit aligned with PHP: 512 MiB per firmware ZIP.
     var maxFirmwareBytes = 512 * 1024 * 1024;
     if (bb_file.size > maxFirmwareBytes) {
-        alertify.alert(msg.failed, idasFormatAlertifyMessage(msg.tooLarge));
+        IdasNotify.alert(msg.failed, idasFormatAlertifyMessage(msg.tooLarge));
         return;
     }
 
@@ -1430,7 +1430,7 @@ function Firmware_Update() {
 
         if (!result || result.error) {
             var errorText = result && result.error ? String(result.error) : msg.networkError;
-            alertify.alert(msg.failed, idasFormatAlertifyMessage(errorText));
+            IdasNotify.alert(msg.failed, idasFormatAlertifyMessage(errorText));
             return;
         }
 
@@ -1438,7 +1438,7 @@ function Firmware_Update() {
         if (result.protocol) {
             detail += '\nProtocol: ' + result.protocol;
         }
-        alertify.alert(msg.title, idasFormatAlertifyMessage(detail));
+        IdasNotify.alert(msg.title, idasFormatAlertifyMessage(detail));
     })
     .fail(function(xhr) {
         finishFirmwareUpload();
@@ -1450,7 +1450,7 @@ function Firmware_Update() {
         } catch (_) {
             if (xhr.responseText) detail = String(xhr.responseText);
         }
-        alertify.alert(msg.failed, idasFormatAlertifyMessage(detail));
+        IdasNotify.alert(msg.failed, idasFormatAlertifyMessage(detail));
     });
 }
 
@@ -1519,7 +1519,7 @@ function set_max_link(argument) {
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
+                IdasNotify.alert(response);
                 //history.go(0);
             },
             error: function(xhr, status, error) {
@@ -1543,7 +1543,7 @@ function set_agent_ip_22(){
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
+                IdasNotify.alert(response);
     
             },
             error: function(xhr, status, error) {
@@ -1568,7 +1568,7 @@ function set_agent_type(argument) {
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
+                IdasNotify.alert(response);
                 //history.go(0);
             },
             error: function(xhr, status, error) {
@@ -1918,7 +1918,7 @@ function idasShowDbSchemaMismatchAlert(responseData, language, fallbackTitle) {
 
     msg = idasFormatAlertifyMessage(msg);
 
-    alertify.alert(title, msg, function () {
+    IdasNotify.alert(title, msg, function () {
         setIdasUploadEnabled(true);
     });
 }
@@ -1969,23 +1969,23 @@ function idas_update() {
     }
 
     if (!import_file) {
-        alertify.alert(title, empty_file_text);
+        IdasNotify.alert(title, empty_file_text);
         return;
     }
 
     if (uploadBtn && uploadBtn.disabled) {
-        alertify.alert(title, disabled_text);
+        IdasNotify.alert(title, disabled_text);
         return;
     }
 
     var packCheck = window.IDAS_PACK_CHECK || {};
     if (!packCheck.checked) {
-        alertify.alert(title, check_wait_text);
+        IdasNotify.alert(title, check_wait_text);
         return;
     }
 
     if (!packCheck.success) {
-        alertify.alert(title, check_failed_text);
+        IdasNotify.alert(title, check_failed_text);
         return;
     }
 
@@ -2035,7 +2035,7 @@ function idas_update() {
                 var resType = responseData?.res_type || 'Error';
                 var resMsg  = responseData?.res_msg || upload_error_text;
 
-                alertify.alert(resType, idasFormatAlertifyMessage(resMsg), function () {
+                IdasNotify.alert(resType, idasFormatAlertifyMessage(resMsg), function () {
                     if (String(resType).toLowerCase() === 'success') {
                         forceLogoutAllTabs(login_redirect_url);
                     } else {
@@ -2066,7 +2066,7 @@ function idas_update() {
                     console.warn('parse xhr failed:', e);
                 }
 
-                alertify.alert('Error', idasFormatAlertifyMessage(msg));
+                IdasNotify.alert('Error', idasFormatAlertifyMessage(msg));
                 console.error("上傳錯誤：", status, error, xhr.responseText);
             }
         });
@@ -2232,17 +2232,17 @@ function update_barcode() {
    * 表單驗證
    * ===================================================== */
   if (barcode_job === "-1") {
-    alertify.alert(i18n.titleInfo, i18n.v_job);
+    IdasNotify.alert(i18n.titleInfo, i18n.v_job);
     return;
   }
 
   if (barcode_mode === "3" && barcode_seq === "-1") {
-    alertify.alert(i18n.titleInfo, i18n.v_seq);
+    IdasNotify.alert(i18n.titleInfo, i18n.v_seq);
     return;
   }
 
   if (!barcode_name) {
-    alertify.alert(i18n.titleInfo, i18n.v_name);
+    IdasNotify.alert(i18n.titleInfo, i18n.v_name);
     return;
   }
 
@@ -2277,7 +2277,7 @@ function update_barcode() {
         responseData = (typeof response === 'object') ? response : JSON.parse(response);
       } catch (e) {
         if (spinner) spinner.style.display = 'none';
-        alertify.alert(i18n.titleError, i18n.ajaxParseFail);
+        IdasNotify.alert(i18n.titleError, i18n.ajaxParseFail);
         return;
       }
 
@@ -2290,7 +2290,7 @@ function update_barcode() {
 
         const resMsg = responseData?.res_msg ?? '';
 
-        alertify.alert(resType, resMsg, () => {
+        IdasNotify.alert(resType, resMsg, () => {
           sessionStorage.setItem('Barcode_Setting', 'block');
           sessionStorage.setItem('Controller_Setting', 'none');
         });
@@ -2322,7 +2322,7 @@ function update_barcode() {
               }
             },
             error: function () {
-              alertify.alert(i18n.titleError, i18n.ajaxFail);
+              IdasNotify.alert(i18n.titleError, i18n.ajaxFail);
             }
           });
 
@@ -2333,7 +2333,7 @@ function update_barcode() {
     error: function (xhr, status, error) {
       if (spinner) spinner.style.display = 'none';
       console.error('[Update_Barcode]', status, error, xhr?.responseText);
-      alertify.alert(i18n.titleError, i18n.ajaxFail);
+      IdasNotify.alert(i18n.titleError, i18n.ajaxFail);
     }
   });
 }
@@ -2414,7 +2414,7 @@ function agent_ip_save() {
     data: { agent_server_ip: ip },
     success: function (response) {
       let res = {};
-      try { res = JSON.parse(response) || {}; } catch {}
+      try { res = ((typeof response === 'string') ? JSON.parse(response) : response) || {}; } catch {}
 
       if (spinner) spinner.style.display = 'none';
 
@@ -2470,7 +2470,7 @@ function agent_type_save() {
     data: { agent_type },
     success: function (response) {
       let res = {};
-      try { res = JSON.parse(response) || {}; } catch {}
+      try { res = ((typeof response === 'string') ? JSON.parse(response) : response) || {}; } catch {}
 
       // 改用 confirm → 有 OK + Cancel
       alertify.confirm(
@@ -2655,7 +2655,7 @@ function change_datetime() {
     var msg = messages[language] || messages['default'];
 
     if (!newTime) {
-        alert(msg.select);
+        IdasNotify.alert(msg.select);
         return;
     }
 
@@ -2670,9 +2670,9 @@ function change_datetime() {
             document.getElementById('spinner').style.display = 'none';
 
             if (response.error) {
-                alertify.alert(msg.fail, response.error);
+                IdasNotify.alert(msg.fail, response.error);
             } else {
-                alertify.alert(msg.success, msg.success);
+                IdasNotify.alert(msg.success, msg.success);
                 setTimeout(function () {
                     alertify.closeAll();
                     location.reload(); // ✅ 自動重整
@@ -2684,7 +2684,7 @@ function change_datetime() {
         },
         error: function() {
             document.getElementById('spinner').style.display = 'none';
-            alertify.alert(msg.fail, msg.error);
+            IdasNotify.alert(msg.fail, msg.error);
         }
     });
 }
@@ -3015,7 +3015,7 @@ function save_pwd(){
         !isValidInput(enablePwd) || 
         !isValidInput(disablePwd) || 
         !isValidInput(skipPwd)) {
-        //alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
+        //IdasNotify.alert("請確保所有欄位都只包含 0-9 的數字，並且最多四位。");
         return; // 如果驗證失敗，停止函式執行
     }
     document.getElementById('spinner').style.display = 'block'; // 顯示加載動畫
@@ -3035,7 +3035,7 @@ function save_pwd(){
             handleAjaxResponse(responseData);
         },
         error: function() {
-            alert("發生錯誤，請重試。");
+            IdasNotify.alert("發生錯誤，請重試。");
         }
     });
 }
@@ -3132,7 +3132,7 @@ function Export_SystemConfig() {
          * 1) HTTP status check
          * =============================== */
         if (xhr.status !== 200) {
-            alert("Export failed (HTTP " + xhr.status + "). Please check controller / Modbus.");
+            IdasNotify.alert("Export failed (HTTP " + xhr.status + "). Please check controller / Modbus.");
             return;
         }
 
@@ -3143,10 +3143,10 @@ function Export_SystemConfig() {
         if (!ct.includes("application/zip")) {
             try {
                 xhr.response.text().then(function (msg) {
-                    alert("Export failed: " + (msg || "response is not a ZIP file"));
+                    IdasNotify.alert("Export failed: " + (msg || "response is not a ZIP file"));
                 });
             } catch (e) {
-                alert("Export failed: response is not a ZIP file.");
+                IdasNotify.alert("Export failed: response is not a ZIP file.");
             }
             return;
         }
@@ -3155,7 +3155,7 @@ function Export_SystemConfig() {
          * 3) Size sanity check
          * =============================== */
         if (!xhr.response || xhr.response.size < 50) {
-            alert("Export failed: ZIP is too small.");
+            IdasNotify.alert("Export failed: ZIP is too small.");
             return;
         }
 
@@ -3186,7 +3186,7 @@ function Export_SystemConfig() {
     };
 
     xhr.onerror = function () {
-        alert("Export failed: network error.");
+        IdasNotify.alert("Export failed: network error.");
     };
 
     /* ===============================
@@ -3250,7 +3250,7 @@ function Validate_Import_Config_File(input) {
 
     if (!isValidImportConfigFilename(file.name)) {
         input.value = '';
-        alertify.alert(texts.title, texts.badName);
+        IdasNotify.alert(texts.title, texts.badName);
         return false;
     }
 
@@ -3263,14 +3263,14 @@ function Import_SystemConfig() {
     var texts = getImportConfigTexts();
 
     if (!import_file) {
-        alertify.alert(texts.title, texts.noFile);
+        IdasNotify.alert(texts.title, texts.noFile);
         return;
     }
 
     // accept 只是檔案選擇器過濾，仍必須在 JS / PHP 再做一次完整驗證。
     if (!isValidImportConfigFilename(import_file.name)) {
         input.value = '';
-        alertify.alert(texts.title, texts.badName);
+        IdasNotify.alert(texts.title, texts.badName);
         return;
     }
 
@@ -3294,7 +3294,7 @@ function Import_SystemConfig() {
                     var type = (responseData && responseData.res_type) ? responseData.res_type : 'Error';
                     var msg = (responseData && responseData.res_msg) ? responseData.res_msg : texts.requestError;
 
-                    alertify.alert(type, msg, function() {
+                    IdasNotify.alert(type, msg, function() {
                         if (String(type).toLowerCase() === 'success') {
                             history.go(0);
                         }
@@ -3309,7 +3309,7 @@ function Import_SystemConfig() {
                 if (xhr && xhr.responseJSON && xhr.responseJSON.res_msg) {
                     msg = xhr.responseJSON.res_msg;
                 }
-                alertify.alert('Error', msg);
+                IdasNotify.alert('Error', msg);
             }
         });
     }, function() {
@@ -3429,7 +3429,7 @@ function set_max_link(argument) {
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
+                IdasNotify.alert(response);
                 //history.go(0);
             },
             error: function(xhr, status, error) {
@@ -3453,7 +3453,7 @@ function set_agent_ip_22(){
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
+                IdasNotify.alert(response);
     
             },
             error: function(xhr, status, error) {
@@ -3478,7 +3478,7 @@ function set_agent_type(argument) {
             },
             success: function(response) {
                 console.log(response);
-                alert(response);
+                IdasNotify.alert(response);
                 //history.go(0);
             },
             error: function(xhr, status, error) {
@@ -3560,7 +3560,7 @@ function StatusCheck(action) {
             url: url,
             success: function(response) {
                 console.log(response);
-                alert(response);
+                IdasNotify.alert(response);
                 document.getElementById("file-uploader").value = '';
             },
             error: function(xhr, status, error) {
@@ -3864,7 +3864,7 @@ function idasShowDbSchemaMismatchAlert(responseData, language, fallbackTitle) {
 
     msg = idasFormatAlertifyMessage(msg);
 
-    alertify.alert(title, msg, function () {
+    IdasNotify.alert(title, msg, function () {
         setIdasUploadEnabled(true);
     });
 }
@@ -3915,23 +3915,23 @@ function idas_update() {
     }
 
     if (!import_file) {
-        alertify.alert(title, empty_file_text);
+        IdasNotify.alert(title, empty_file_text);
         return;
     }
 
     if (uploadBtn && uploadBtn.disabled) {
-        alertify.alert(title, disabled_text);
+        IdasNotify.alert(title, disabled_text);
         return;
     }
 
     var packCheck = window.IDAS_PACK_CHECK || {};
     if (!packCheck.checked) {
-        alertify.alert(title, check_wait_text);
+        IdasNotify.alert(title, check_wait_text);
         return;
     }
 
     if (!packCheck.success) {
-        alertify.alert(title, check_failed_text);
+        IdasNotify.alert(title, check_failed_text);
         return;
     }
 
@@ -3981,7 +3981,7 @@ function idas_update() {
                 var resType = responseData?.res_type || 'Error';
                 var resMsg  = responseData?.res_msg || upload_error_text;
 
-                alertify.alert(resType, idasFormatAlertifyMessage(resMsg), function () {
+                IdasNotify.alert(resType, idasFormatAlertifyMessage(resMsg), function () {
                     if (String(resType).toLowerCase() === 'success') {
                         forceLogoutAllTabs(login_redirect_url);
                     } else {
@@ -4012,7 +4012,7 @@ function idas_update() {
                     console.warn('parse xhr failed:', e);
                 }
 
-                alertify.alert('Error', idasFormatAlertifyMessage(msg));
+                IdasNotify.alert('Error', idasFormatAlertifyMessage(msg));
                 console.error("上傳錯誤：", status, error, xhr.responseText);
             }
         });
@@ -4178,17 +4178,17 @@ function update_barcode() {
    * 表單驗證
    * ===================================================== */
   if (barcode_job === "-1") {
-    alertify.alert(i18n.titleInfo, i18n.v_job);
+    IdasNotify.alert(i18n.titleInfo, i18n.v_job);
     return;
   }
 
   if (barcode_mode === "3" && barcode_seq === "-1") {
-    alertify.alert(i18n.titleInfo, i18n.v_seq);
+    IdasNotify.alert(i18n.titleInfo, i18n.v_seq);
     return;
   }
 
   if (!barcode_name) {
-    alertify.alert(i18n.titleInfo, i18n.v_name);
+    IdasNotify.alert(i18n.titleInfo, i18n.v_name);
     return;
   }
 
@@ -4223,7 +4223,7 @@ function update_barcode() {
         responseData = (typeof response === 'object') ? response : JSON.parse(response);
       } catch (e) {
         if (spinner) spinner.style.display = 'none';
-        alertify.alert(i18n.titleError, i18n.ajaxParseFail);
+        IdasNotify.alert(i18n.titleError, i18n.ajaxParseFail);
         return;
       }
 
@@ -4236,7 +4236,7 @@ function update_barcode() {
 
         const resMsg = responseData?.res_msg ?? '';
 
-        alertify.alert(resType, resMsg, () => {
+        IdasNotify.alert(resType, resMsg, () => {
           sessionStorage.setItem('Barcode_Setting', 'block');
           sessionStorage.setItem('Controller_Setting', 'none');
         });
@@ -4266,7 +4266,7 @@ function update_barcode() {
               }
             },
             error: function () {
-              alertify.alert(i18n.titleError, i18n.ajaxFail);
+              IdasNotify.alert(i18n.titleError, i18n.ajaxFail);
             }
           });
 
@@ -4277,7 +4277,7 @@ function update_barcode() {
     error: function (xhr, status, error) {
       if (spinner) spinner.style.display = 'none';
       console.error('[Update_Barcode]', status, error, xhr?.responseText);
-      alertify.alert(i18n.titleError, i18n.ajaxFail);
+      IdasNotify.alert(i18n.titleError, i18n.ajaxFail);
     }
   });
 }
@@ -4358,7 +4358,7 @@ function agent_ip_save() {
     data: { agent_server_ip: ip },
     success: function (response) {
       let res = {};
-      try { res = JSON.parse(response) || {}; } catch {}
+      try { res = ((typeof response === 'string') ? JSON.parse(response) : response) || {}; } catch {}
 
       if (spinner) spinner.style.display = 'none';
 
@@ -4414,7 +4414,7 @@ function agent_type_save() {
     data: { agent_type },
     success: function (response) {
       let res = {};
-      try { res = JSON.parse(response) || {}; } catch {}
+      try { res = ((typeof response === 'string') ? JSON.parse(response) : response) || {}; } catch {}
 
       // 改用 confirm → 有 OK + Cancel
       alertify.confirm(

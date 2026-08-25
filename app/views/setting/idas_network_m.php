@@ -307,8 +307,8 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
         const dialogTitle = title || i18n.dialogTitle || 'Network Setting';
         const okLabel = i18n.ok || 'OK';
 
-        if (window.alertify && typeof alertify.alert === 'function') {
-            const dialog = alertify.alert(dialogTitle, formatNetworkDialogMessage(message));
+        if (window.alertify && typeof IdasNotify.alert === 'function') {
+            const dialog = IdasNotify.alert(dialogTitle, formatNetworkDialogMessage(message));
             dialog.set({
                 labels: { ok: okLabel },
                 closable: false,
@@ -327,7 +327,7 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
         }
 
         // 理論上設定頁已載入 Alertify；保留 fallback 避免 library 載入失敗時無提示。
-        alert(dialogTitle + '\n\n' + String(message || ''));
+        IdasNotify.alert(dialogTitle + '\n\n' + String(message || ''));
         return null;
     }
 
@@ -404,7 +404,7 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
             + '<button type="button" onclick="window.location.reload()" style="padding:9px 18px;margin:4px;border:0;border-radius:5px;background:#2b80c5;color:#fff">' + esc(messages.retry) + '</button>'
             + '<button type="button" onclick="window.location.href=\'?url=Dashboards\'" style="padding:9px 18px;margin:4px;border:1px solid #aaa;border-radius:5px;background:#fff;color:#333">' + esc(messages.home) + '</button></div>';
 
-        const dialog = alertify.alert();
+        const dialog = IdasNotify.alert();
         const footer = (show) => { if (dialog?.elements?.footer) dialog.elements.footer.style.display = show ? '' : 'none'; };
         const basePath = window.location.pathname.endsWith('/')
             ? window.location.pathname

@@ -59,8 +59,8 @@ class Setting{
     public function GetNetworkSetting()
     {
         $paths = [
-            '/home/kls/NTCS7/ntcs_device.db',
-            '/var/www/html/database/ntcs_device_IDAS.db',
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db'),
         ];
 
         foreach ($paths as $path) {
@@ -88,8 +88,8 @@ class Setting{
         $wifi = implode('_', [$mode, $staticIp, $port, $mask, $gateway]);
 
         $paths = [
-            'controller' => '/home/kls/NTCS7/ntcs_device.db',
-            'idas'       => '/var/www/html/database/ntcs_device_IDAS.db',
+            'controller' => idas_path('controller_root', 'ntcs_device.db'),
+            'idas'       => idas_path('database_root', 'ntcs_device_IDAS.db'),
         ];
 
         $pdo = [];
@@ -292,7 +292,7 @@ class Setting{
 
     public function system_storage(){
         
-        $EMMC_BASE = "/var/www/html/database/";
+        $EMMC_BASE = IDAS_PATH_DATABASE_ROOT . '/';
         $TOTAL_CAPACITY_GB = 1.1;  // 預設總容量（可從 config 抽出）
 
         $percent = 'X';
@@ -492,7 +492,7 @@ class Setting{
         }
 
         $controllerDbPath =
-            '/home/kls/NTCS7/ntcs_device.db';
+            idas_path('controller_root', 'ntcs_device.db');
 
         $attachAlias = 'controller_device_db';
         $attached = false;
@@ -803,7 +803,7 @@ class Setting{
     public function Get_Controller_DB_version()
     {
         // code...
-        $Controller_db_con = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/data.db'); //測試機
+        $Controller_db_con = new PDO('sqlite:' . idas_path('controller_resource_root', 'data.db')); //測試機
         $sql = "SELECT * FROM `device` ";
         $statement = $Controller_db_con->prepare($sql);
         $results = $statement->execute();
@@ -1301,8 +1301,8 @@ class Setting{
          */
         // NTCS UI reads synchronized iDAS mirror first.
         $paths = [
-            '/var/www/html/database/ntcs_device_IDAS.db',
-            '/home/kls/NTCS7/ntcs_device.db',
+            idas_path('database_root', 'ntcs_device_IDAS.db'),
+            idas_path('controller_root', 'ntcs_device.db'),
         ];
 
         foreach ($paths as $path) {
@@ -1330,8 +1330,8 @@ class Setting{
         $wifi = implode('_', [$mode, $staticIp, $port, $mask, $gateway]);
 
         $paths = [
-            'controller' => '/home/kls/NTCS7/ntcs_device.db',
-            'idas'       => '/var/www/html/database/ntcs_device_IDAS.db',
+            'controller' => idas_path('controller_root', 'ntcs_device.db'),
+            'idas'       => idas_path('database_root', 'ntcs_device_IDAS.db'),
         ];
 
         $pdo = [];
@@ -1534,7 +1534,7 @@ class Setting{
 
     public function system_storage(){
         
-        $EMMC_BASE = "/var/www/html/database/";
+        $EMMC_BASE = IDAS_PATH_DATABASE_ROOT . '/';
         $TOTAL_CAPACITY_GB = 1.1;  // 預設總容量（可從 config 抽出）
 
         $percent = 'X';
@@ -1734,7 +1734,7 @@ class Setting{
         }
 
         $controllerDbPath =
-            '/home/kls/NTCS7/ntcs_device.db';
+            idas_path('controller_root', 'ntcs_device.db');
 
         $attachAlias = 'controller_device_db';
         $attached = false;
@@ -1876,7 +1876,7 @@ class Setting{
     public function Get_Controller_DB_version()
     {
         // code...
-        $Controller_db_con = new PDO('sqlite:/home/kls/tcc/resource/db_emmc/data.db'); //測試機
+        $Controller_db_con = new PDO('sqlite:' . idas_path('controller_resource_root', 'data.db')); //測試機
         $sql = "SELECT * FROM `device` ";
         $statement = $Controller_db_con->prepare($sql);
         $results = $statement->execute();
@@ -2558,7 +2558,7 @@ class Setting{
             $limit = 100;
         }
 
-        $csvPath = '/home/kls/NTCS7/ntcs_log.csv';
+        $csvPath = idas_path('controller_root', 'ntcs_log.csv');
         if (!is_file($csvPath) || !is_readable($csvPath)) {
             return [];
         }

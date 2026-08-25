@@ -235,10 +235,10 @@ function settingAccountApi(path) {
 }
 
 function settingAccountAlert(message) {
-    if (window.alertify && typeof alertify.alert === 'function') {
-        alertify.alert(message);
+    if (window.alertify && typeof IdasNotify.alert === 'function') {
+        IdasNotify.alert(message);
     } else {
-        alert(message);
+        IdasNotify.alert(message);
     }
 }
 

@@ -39,7 +39,7 @@
     $(document).ready(function () {
         <?php 
             if($data['error_message'] != ''){
-                echo "alert('",$data['error_message'],"')";
+                echo "IdasNotify.alert('",$data['error_message'],"')";
             }
         ?>
     });

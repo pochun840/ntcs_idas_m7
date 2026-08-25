@@ -102,7 +102,7 @@ function copy_seq_by_id() {
 
     // ===== 基本檢查 =====
     if (!newseqid || !newseqname) {
-        alertify.error(needNameMsg);
+        IdasNotify.error(needNameMsg);
         return;
     }
 
@@ -139,7 +139,7 @@ function copy_seq_by_id() {
                             catch(e) { data = { res_type: 'Info', res_msg: resp || 'Done.' }; }
 
                             // 顯示 alert
-                            var dlg = alertify.alert(data.res_type, data.res_msg, function () {
+                            var dlg = IdasNotify.alert(data.res_type, data.res_msg, function () {
                                 history.go(0);
                             });
 
@@ -150,7 +150,7 @@ function copy_seq_by_id() {
                             }, 3000);
                         },
                         error: function(xhr, status, error) {
-                            alertify.error((lang === 'zh-tw')
+                            IdasNotify.error((lang === 'zh-tw')
                                 ? '複製失敗：' + error
                                 : (lang === 'zh-cn') ? '复制失败：' + error
                                 : 'Copy failed: ' + error
@@ -164,7 +164,7 @@ function copy_seq_by_id() {
 
                 },
                 function onCancel() {
-                    /*alertify.message(
+                    /*IdasNotify.message(
                         (lang === 'zh-tw') ? '已取消' :
                         (lang === 'zh-cn') ? '已取消' : 'Cancelled'
                     );*/
@@ -173,7 +173,7 @@ function copy_seq_by_id() {
               .set('labels', { ok: okText, cancel: cancelText });
         },
         error: function(xhr, status, error) {
-            alertify.error(
+            IdasNotify.error(
                 (lang === 'zh-tw') ? ('預檢失敗：' + error) :
                 (lang === 'zh-cn') ? ('预检失败：' + error) :
                 ('Pre-check failed: ' + error)
@@ -187,7 +187,7 @@ function copy_seq_by_id() {
 function create_seq() {
     const job_id = '<?php echo $data['job_id']; ?>';
     if (!job_id) {
-        //alert('Job ID 無效，無法進入 Sequence 設定');
+        //IdasNotify.alert('Job ID 無效，無法進入 Sequence 設定');
         return;
     }
 
@@ -239,7 +239,7 @@ function delete_seqid(seqid) {
                     success_response(response, 'spinner', true); // 自動關閉 + 刷新
                 },
                 error: function (xhr, status, error) {
-                    alertify.error("Delete failed: " + error);
+                    IdasNotify.error("Delete failed: " + error);
                     document.querySelector('.main-content').classList.remove('overlay-active');
                     document.getElementById('spinner').style.display = 'none';
                 }

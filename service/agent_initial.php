@@ -1,7 +1,9 @@
 <?php
 
-if (file_exists('/var/www/html/database/das.db') && PHP_OS_FAMILY == 'Linux') {
-	$db_iDas = new PDO('sqlite:/var/www/html/database/das.db'); //das設定DB
+require_once dirname(__DIR__) . '/app/config/paths.php';
+
+if (file_exists(idas_path('database_root', 'das.db')) && PHP_OS_FAMILY == 'Linux') {
+	$db_iDas = new PDO('sqlite:' . idas_path('database_root', 'das.db')); //das設定DB
 
 	
 	$result = $db_iDas->query("SELECT * FROM config WHERE config_name = 'agent_type' ");
@@ -18,14 +20,13 @@ if (file_exists('/var/www/html/database/das.db') && PHP_OS_FAMILY == 'Linux') {
 	if( $agent_type == 1 && $agent_server_ip != '' ){// client
         // $pgrepCommand = "php /var/www/html/client2.php";
         // exec($pgrepCommand, $pidList);
-        exec('bash -c "exec nohup setsid php /var/www/html/idas/service/agent_client.php > /dev/null 2>&1 &"');
+        exec('bash -c "exec nohup setsid php ' . escapeshellarg(idas_path('service_root', 'agent_client.php')) . ' > /dev/null 2>&1 &"');
 	}
 
 	if($agent_type == 2){// server
 		// $pgrepCommand = "php /var/www/html/server.php";
         // exec($pgrepCommand, $pidList);
-        exec('bash -c "exec nohup setsid php /var/www/html/idas/service/agent_server.php > /dev/null 2>&1 &"');
-        exec('bash -c "exec nohup setsid php /var/www/html/idas/service/agent_client.php > /dev/null 2>&1 &"');
+        exec('bash -c "exec nohup setsid php ' . escapeshellarg(idas_path('service_root', 'agent_server.php')) . ' > /dev/null 2>&1 &"');
+        exec('bash -c "exec nohup setsid php ' . escapeshellarg(idas_path('service_root', 'agent_client.php')) . ' > /dev/null 2>&1 &"');
 	}
 }
-

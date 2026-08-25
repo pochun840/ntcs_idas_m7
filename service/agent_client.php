@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/config/paths.php';
+
 use Swoole\Coroutine;
 use Swoole\Coroutine\Http\Client;
 use function Swoole\Coroutine\run;
@@ -12,7 +14,7 @@ defined('WEBSOCKET_OPCODE_PONG') || define('WEBSOCKET_OPCODE_PONG', 10);
 defined('SOCKET_ETIMEDOUT')      || define('SOCKET_ETIMEDOUT', 110);
 
 /* ===== 讀取 iDAS 設定，決定 AGENT_IP ===== */
-$db_iDas = new PDO('sqlite:/var/www/html/database/das.db');
+$db_iDas = new PDO('sqlite:' . idas_path('database_root', 'das.db'));
 $db_iDas->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $agent_type = (int)($db_iDas->query("SELECT config_value FROM config WHERE config_name='agent_type'")
@@ -129,12 +131,12 @@ function connectAndStream(string $host, int $port, callable $payloadFn, ?callabl
 
 /* ===== 你的資料來源 #1：DB 最新一筆 ===== */
 function GetLastResult(): string {
-    if (!file_exists('/home/kls/NTCS7/ntcs_data.db')) {
+    if (!file_exists(idas_path('controller_root', 'ntcs_data.db'))) {
         return json_encode(['message' => 'data db not found'], JSON_UNESCAPED_UNICODE);
     }
 
     try {
-        $db = new PDO('sqlite:/home/kls/NTCS7/ntcs_data.db');
+        $db = new PDO('sqlite:' . idas_path('controller_root', 'ntcs_data.db'));
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $row = $db->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
         $db = null;
@@ -145,7 +147,7 @@ function GetLastResult(): string {
 
     // 裝置名稱
     try {
-        $d = new PDO('sqlite:/home/kls/NTCS7/ntcs_device.db');
+        $d = new PDO('sqlite:' . idas_path('controller_root', 'ntcs_device.db'));
         $device_name = (string)($d->query("SELECT device_name FROM ntcs_device_test")->fetchColumn() ?? 'unknown');
         $d = null;
     } catch (Throwable $e) {
@@ -167,7 +169,7 @@ function GetLastResult(): string {
 /* ===== 你的資料來源 #2：CSV 自定義 ===== */
 function csvNoHeaderToJson(){
 
-    $csvPath = '/var/www/html/temp/customize.csv';
+    $csvPath = idas_path('temp_root', 'customize.csv');
     
     if (!is_file($csvPath)) {
         return json_encode(['error' => 'csv not found'], JSON_UNESCAPED_UNICODE);
@@ -177,7 +179,7 @@ function csvNoHeaderToJson(){
         return json_encode(['error' => 'cannot open csv'], JSON_UNESCAPED_UNICODE);
     }
 
-    $dbh = new PDO('sqlite:/home/kls/NTCS7/ntcs_data.db');
+    $dbh = new PDO('sqlite:' . idas_path('controller_root', 'ntcs_data.db'));
     $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $res = $dbh->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
 

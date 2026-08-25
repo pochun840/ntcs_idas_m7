@@ -15,8 +15,8 @@ class Database
         $isLinux = PHP_OS_FAMILY === 'Linux';
         $isLocal = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1']);
 
-        $sourceBase = $isLinux && !$isLocal ? '/home/kls/NTCS7/' : '../';
-        $targetBase = $isLinux && !$isLocal ? '/var/www/html/database/' : '../';
+        $sourceBase = $isLinux && !$isLocal ? IDAS_PATH_CONTROLLER_ROOT . '/' : '../';
+        $targetBase = $isLinux && !$isLocal ? IDAS_PATH_DATABASE_ROOT . '/' : '../';
 
         $fileMap = [
             'KLS_NTCS.Lin'      => 'KLS_NTCS_IDAS.Lin',
@@ -41,7 +41,7 @@ class Database
 
         $db_paths = [
             'data'        => $isLinux && !$isLocal 
-                                ? '/home/kls/NTCS7/ntcs_data.db' 
+                                ? idas_path('controller_root', 'ntcs_data.db') 
                                 : '../ntcs_data.db',
             'iDas'        => BASE_PATH . 'KLS_NTCS_IDAS.Lin',
             'iDas_login'  => BASE_PATH . 'das.db',

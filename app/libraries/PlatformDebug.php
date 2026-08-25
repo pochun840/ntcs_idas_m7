@@ -11,9 +11,9 @@
  */
 class PlatformDebug
 {
-    private const FLAG_FILE = '/home/kls/upgrade/icontroller';
-    private const CONTROLLER_DB = '/home/kls/NTCS7/ntcs_device.db';
-    private const IDAS_DB = '/var/www/html/database/ntcs_device_IDAS.db';
+    private const FLAG_FILE = IDAS_PATH_UPGRADE_ROOT . '/icontroller';
+    private const CONTROLLER_DB = IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db';
+    private const IDAS_DB = IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db';
     private const DEVICE_TABLE = 'ntcs_device_test';
 
     public static function collect(): array

@@ -189,7 +189,7 @@
 
                 if (!response || response.error || !response.result) {
                     if (!silent && window.alertify) {
-                        alertify.alert('Get Job Failed', response?.msg || response?.error || 'protocol fail');
+                        IdasNotify.alert('Get Job Failed', response?.msg || response?.error || 'protocol fail');
                     }
                     return;
                 }
@@ -236,9 +236,9 @@
                 if (response && response.error) {
                     const msg = response.msg || response.error || 'protocol fail';
                     if (window.alertify) {
-                        alertify.alert('Change Job Failed', msg);
+                        IdasNotify.alert('Change Job Failed', msg);
                     } else {
-                        alert(msg);
+                        IdasNotify.alert(msg);
                     }
                     return;
                 }
@@ -264,7 +264,7 @@
             error: function(xhr, status, error) {
                 console.log("fail", status, error, xhr.responseText);
                 if (window.alertify) {
-                    alertify.alert('Change Job Failed', error || status || 'request failed');
+                    IdasNotify.alert('Change Job Failed', error || status || 'request failed');
                 }
             }
         });
@@ -495,7 +495,7 @@
 
                 if (!response || response.error || !response.result) {
                     if (!silent && window.alertify) {
-                        alertify.alert('Get Job Failed', response?.msg || response?.error || 'protocol fail');
+                        IdasNotify.alert('Get Job Failed', response?.msg || response?.error || 'protocol fail');
                     }
                     return;
                 }
@@ -543,9 +543,9 @@
                 if (response && response.error) {
                     const msg = response.msg || response.error || 'protocol fail';
                     if (window.alertify) {
-                        alertify.alert('Change Job Failed', msg);
+                        IdasNotify.alert('Change Job Failed', msg);
                     } else {
-                        alert(msg);
+                        IdasNotify.alert(msg);
                     }
                     return;
                 }
@@ -571,7 +571,7 @@
             error: function(xhr, status, error) {
                 console.log("fail", status, error, xhr.responseText);
                 if (window.alertify) {
-                    alertify.alert('Change Job Failed', error || status || 'request failed');
+                    IdasNotify.alert('Change Job Failed', error || status || 'request failed');
                 }
             }
         });

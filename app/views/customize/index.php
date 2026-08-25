@@ -926,8 +926,8 @@ function forbidMsg(digit){
       const rows = getDataRows();
       const selected = rows.filter(r => r.querySelector('.row-ck')?.checked);
       if (!selected.length) {
-        if (window.alertify) alertify.alert('Info', L['none_selected'] || 'Please select at least one row.');
-        else alert(L['none_selected'] || 'Please select at least one row.');
+        if (window.alertify) IdasNotify.alert('Info', L['none_selected'] || 'Please select at least one row.');
+        else IdasNotify.alert(L['none_selected'] || 'Please select at least one row.');
         return;
       }
 
@@ -1108,8 +1108,8 @@ function forbidMsg(digit){
         for (const rule of SPECIAL_MUTEX){
         if (String(idx) === rule.dbIndex && hasManualOf(rule.manualValues, td)){
             const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '此欄位已被使用或與手動值互斥。';
-            if (window.alertify) alertify.alert(L['title_error'] || 'Error', msg);
-            else alert(msg);
+            if (window.alertify) IdasNotify.alert(L['title_error'] || 'Error', msg);
+            else IdasNotify.alert(msg);
             return; // 不指派
         }
         }
@@ -1352,11 +1352,11 @@ function forbidMsg(digit){
     function _softToast416x(msg){
       try {
         if (typeof alertify !== 'undefined' && alertify) {
-          if (typeof alertify.alert === 'function') { alertify.alert(L['title_info'] || 'Info', msg); return; }
-          if (typeof alertify.message === 'function') { alertify.message(msg); return; }
+          if (typeof IdasNotify.alert === 'function') { IdasNotify.alert(L['title_info'] || 'Info', msg); return; }
+          if (typeof IdasNotify.message === 'function') { IdasNotify.message(msg); return; }
         }
       } catch (e) {}
-      alert(msg); // 最終保險
+      IdasNotify.alert(msg); // 最終保險
     }
 
     // 標記紅框（保持到輸入變回不衝突）
@@ -1560,7 +1560,7 @@ function forbidMsg(digit){
 
     /* 在第 pos 個位置插入一列（1-based） */
     function insertRowAt(pos, readVal = '', inputVal = '', resultVal = '') {
-        if (getRowCount() >= MAX_ROWS) { if (window.alertify) alertify.alert('Info', MSG_MAX_ROWS); else alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
+        if (getRowCount() >= MAX_ROWS) { if (window.alertify) IdasNotify.alert('Info', MSG_MAX_ROWS); else IdasNotify.alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
         const tr = addRow(readVal, inputVal, resultVal); if (!tr) return null;
 
         const dataRows = tbody.querySelectorAll('tr:not(.insert-marker)');
@@ -1670,7 +1670,7 @@ function forbidMsg(digit){
   // 若你原本已經有 validateMutexRules()，就用這個覆蓋原本版本即可。
 
     function addRow(readVal = '', inputVal = '', resultVal = '') {
-        if (getRowCount() >= MAX_ROWS) { if (window.alertify) alertify.alert('Info', MSG_MAX_ROWS); else alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
+        if (getRowCount() >= MAX_ROWS) { if (window.alertify) IdasNotify.alert('Info', MSG_MAX_ROWS); else IdasNotify.alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
 
         const tr = document.createElement('tr');
         const rowId = 'r' + (ROW_UID++); tr.dataset.rowId = rowId;
@@ -1831,7 +1831,7 @@ function forbidMsg(digit){
 
     function deleteSelectedRows(){
         const rows = [...tbody.querySelectorAll('.row-ck:checked')].map(ck => ck.closest('tr')).filter(Boolean);
-        if (rows.length === 0) { if (window.alertify) alertify.alert('Info', L['none_selected']); else alert(L['none_selected']); return; }
+        if (rows.length === 0) { if (window.alertify) IdasNotify.alert('Info', L['none_selected']); else IdasNotify.alert(L['none_selected']); return; }
 
         const doRemove = () => {
         rows.forEach(tr => {
@@ -1903,7 +1903,7 @@ function forbidMsg(digit){
         if (!hasData) {
           if (!ALLOW_EMPTY_SAVE) {
             const msg = L['nothing_to_save'] || 'Nothing to save. Please add at least one row.';
-            if (window.alertify) alertify.alert(L['title_info'] || 'Info', msg); else alert(msg);
+            if (window.alertify) IdasNotify.alert(L['title_info'] || 'Info', msg); else IdasNotify.alert(msg);
             return;
           }
           // 允許空白儲存 → 詢問是否清空伺服端資料
@@ -1928,16 +1928,16 @@ function forbidMsg(digit){
         // 有資料時才需要做驗證（空白清空可略過）
         if (hasData) {
           if (!validateNumericRows()) {
-            if (window.alertify) alertify.alert('Error', L['num_only']); else alert(L['num_only']);
+            if (window.alertify) IdasNotify.alert('Error', L['num_only']); else IdasNotify.alert(L['num_only']);
             return;
           }
           if (!validateUniqueColumns()) {
-            if (window.alertify) alertify.alert('Error', L['no_dup']); else alert(L['no_dup']);
+            if (window.alertify) IdasNotify.alert('Error', L['no_dup']); else IdasNotify.alert(L['no_dup']);
             return;
           }
           if (!validateMutexRules()){
             const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '欄位與手動值互斥，請移除其中之一。';
-            if (window.alertify) alertify.alert(L['title_error'] || 'Error', msg); else alert(msg);
+            if (window.alertify) IdasNotify.alert(L['title_error'] || 'Error', msg); else IdasNotify.alert(msg);
             return;
           }
         }
@@ -1978,11 +1978,11 @@ function forbidMsg(digit){
             const msg = (!hasData)
               ? (L['saved_empty'] || 'Saved (empty configuration).')
               : (L['saved'] || 'Saved successfully');
-            if (window.alertify) alertify.alert(L['title_ok'] || 'OK', msg);
+            if (window.alertify) IdasNotify.alert(L['title_ok'] || 'OK', msg);
           },
           error: function(xhr){
             if (spinner) spinner.style.display = 'none';
-            if (window.alertify) alertify.alert('Error', L['save_fail']); else alert(L['save_fail']);
+            if (window.alertify) IdasNotify.alert('Error', L['save_fail']); else IdasNotify.alert(L['save_fail']);
             console.error('Save error:', xhr?.responseText || xhr);
           }
         });
@@ -3325,8 +3325,8 @@ function forbidMsg(digit){
       const rows = getDataRows();
       const selected = rows.filter(r => r.querySelector('.row-ck')?.checked);
       if (!selected.length) {
-        if (window.alertify) alertify.alert('Info', L['none_selected'] || 'Please select at least one row.');
-        else alert(L['none_selected'] || 'Please select at least one row.');
+        if (window.alertify) IdasNotify.alert('Info', L['none_selected'] || 'Please select at least one row.');
+        else IdasNotify.alert(L['none_selected'] || 'Please select at least one row.');
         return;
       }
 
@@ -3514,8 +3514,8 @@ function forbidMsg(digit){
         for (const rule of SPECIAL_MUTEX){
         if (String(idx) === rule.dbIndex && hasManualOf(rule.manualValues, td)){
             const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '此欄位已被使用或與手動值互斥。';
-            if (window.alertify) alertify.alert(L['title_error'] || 'Error', msg);
-            else alert(msg);
+            if (window.alertify) IdasNotify.alert(L['title_error'] || 'Error', msg);
+            else IdasNotify.alert(msg);
             return; // 不指派
         }
         }
@@ -3758,11 +3758,11 @@ function forbidMsg(digit){
     function _softToast416x(msg){
       try {
         if (typeof alertify !== 'undefined' && alertify) {
-          if (typeof alertify.alert === 'function') { alertify.alert(L['title_info'] || 'Info', msg); return; }
-          if (typeof alertify.message === 'function') { alertify.message(msg); return; }
+          if (typeof IdasNotify.alert === 'function') { IdasNotify.alert(L['title_info'] || 'Info', msg); return; }
+          if (typeof IdasNotify.message === 'function') { IdasNotify.message(msg); return; }
         }
       } catch (e) {}
-      alert(msg); // 最終保險
+      IdasNotify.alert(msg); // 最終保險
     }
 
     // 標記紅框（保持到輸入變回不衝突）
@@ -3971,7 +3971,7 @@ function forbidMsg(digit){
 
     /* 在第 pos 個位置插入一列（1-based） */
     function insertRowAt(pos, readVal = '', inputVal = '', resultVal = '') {
-        if (getRowCount() >= MAX_ROWS) { if (window.alertify) alertify.alert('Info', MSG_MAX_ROWS); else alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
+        if (getRowCount() >= MAX_ROWS) { if (window.alertify) IdasNotify.alert('Info', MSG_MAX_ROWS); else IdasNotify.alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
         const tr = addRow(readVal, inputVal, resultVal); if (!tr) return null;
 
         const dataRows = tbody.querySelectorAll('tr:not(.insert-marker)');
@@ -4081,7 +4081,7 @@ function forbidMsg(digit){
   // 若你原本已經有 validateMutexRules()，就用這個覆蓋原本版本即可。
 
     function addRow(readVal = '', inputVal = '', resultVal = '') {
-        if (getRowCount() >= MAX_ROWS) { if (window.alertify) alertify.alert('Info', MSG_MAX_ROWS); else alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
+        if (getRowCount() >= MAX_ROWS) { if (window.alertify) IdasNotify.alert('Info', MSG_MAX_ROWS); else IdasNotify.alert(MSG_MAX_ROWS); if (btnAdd) btnAdd.disabled = true; return null; }
 
         const tr = document.createElement('tr');
         const rowId = 'r' + (ROW_UID++); tr.dataset.rowId = rowId;
@@ -4282,7 +4282,7 @@ function forbidMsg(digit){
 
     function deleteSelectedRows(){
         const rows = [...tbody.querySelectorAll('.row-ck:checked')].map(ck => ck.closest('tr')).filter(Boolean);
-        if (rows.length === 0) { if (window.alertify) alertify.alert('Info', L['none_selected']); else alert(L['none_selected']); return; }
+        if (rows.length === 0) { if (window.alertify) IdasNotify.alert('Info', L['none_selected']); else IdasNotify.alert(L['none_selected']); return; }
 
         const doRemove = () => {
         rows.forEach(tr => {
@@ -4355,7 +4355,7 @@ function forbidMsg(digit){
         if (!hasData) {
           if (!ALLOW_EMPTY_SAVE) {
             const msg = L['nothing_to_save'] || 'Nothing to save. Please add at least one row.';
-            if (window.alertify) alertify.alert(L['title_info'] || 'Info', msg); else alert(msg);
+            if (window.alertify) IdasNotify.alert(L['title_info'] || 'Info', msg); else IdasNotify.alert(msg);
             return;
           }
           // 允許空白儲存 → 詢問是否清空伺服端資料
@@ -4380,16 +4380,16 @@ function forbidMsg(digit){
         // 有資料時才需要做驗證（空白清空可略過）
         if (hasData) {
           if (!validateNumericRows()) {
-            if (window.alertify) alertify.alert('Error', L['num_only']); else alert(L['num_only']);
+            if (window.alertify) IdasNotify.alert('Error', L['num_only']); else IdasNotify.alert(L['num_only']);
             return;
           }
           if (!validateUniqueColumns()) {
-            if (window.alertify) alertify.alert('Error', L['no_dup']); else alert(L['no_dup']);
+            if (window.alertify) IdasNotify.alert('Error', L['no_dup']); else IdasNotify.alert(L['no_dup']);
             return;
           }
           if (!validateMutexRules()){
             const msg = (L && (L['in_use'] || L['forbidden_idx'])) || '欄位與手動值互斥，請移除其中之一。';
-            if (window.alertify) alertify.alert(L['title_error'] || 'Error', msg); else alert(msg);
+            if (window.alertify) IdasNotify.alert(L['title_error'] || 'Error', msg); else IdasNotify.alert(msg);
             return;
           }
         }
@@ -4430,11 +4430,11 @@ function forbidMsg(digit){
             const msg = (!hasData)
               ? (L['saved_empty'] || 'Saved (empty configuration).')
               : (L['saved'] || 'Saved successfully');
-            if (window.alertify) alertify.alert(L['title_ok'] || 'OK', msg);
+            if (window.alertify) IdasNotify.alert(L['title_ok'] || 'OK', msg);
           },
           error: function(xhr){
             if (spinner) spinner.style.display = 'none';
-            if (window.alertify) alertify.alert('Error', L['save_fail']); else alert(L['save_fail']);
+            if (window.alertify) IdasNotify.alert('Error', L['save_fail']); else IdasNotify.alert(L['save_fail']);
             console.error('Save error:', xhr?.responseText || xhr);
           }
         });

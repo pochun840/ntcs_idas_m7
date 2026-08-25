@@ -126,12 +126,12 @@
             url: "?url=Admins/EditMaxLink",
         }).done(function(notice) { //成功且有回傳值才會執行
             if (notice.error != '') {
-                Swal.fire({ // DB sync notice
+                IdasNotify.swal({ // DB sync notice
                     title: 'Error',
                     text: notice.error,
                 })
             } else {
-                Swal.fire('Saved!', '', 'success');
+                IdasNotify.swal('Saved!', '', 'success');
                 document.getElementById('max_user').value = '';
                 window.location = window.location.href;
             }
@@ -157,16 +157,16 @@
                     // $('#overlay').addClass('hidden');
                 }, 1000);
                 if (data.error != '') {
-                    alert('sync error');
+                    IdasNotify.alert('sync error');
                 }else{
-                    Swal.fire('Saved!', '', 'success');
+                    IdasNotify.swal('Saved!', '', 'success');
                     document.getElementById('new_password').value = '';
                     document.getElementById('comfirm_password').value = '';
                     // window.location = window.location.href;
                 }
             });
         } else {
-            Swal.fire('<?php echo $text['system_password_diff']; ?>', '', 'warning');
+            IdasNotify.swal('<?php echo $text['system_password_diff']; ?>', '', 'warning');
         }
     }
 
@@ -180,12 +180,12 @@
             url: "?url=Admins/SetAgentIp",
         }).done(function(notice) { //成功且有回傳值才會執行
             if (notice.error != '') {
-                Swal.fire({ // DB sync notice
+                IdasNotify.swal({ // DB sync notice
                     title: 'Error',
                     text: notice.error,
                 })
             } else {
-                Swal.fire('Saved!', '', 'success');
+                IdasNotify.swal('Saved!', '', 'success');
                 document.getElementById('agent_server_ip').value = '';
                 window.location = window.location.href;
             }
@@ -201,12 +201,12 @@
             url: "?url=Admins/SetAgentType",
         }).done(function(notice) { //成功且有回傳值才會執行
             if (notice.error != '') {
-                Swal.fire({ // DB sync notice
+                IdasNotify.swal({ // DB sync notice
                     title: 'Error',
                     text: notice.error,
                 })
             } else {
-                Swal.fire('Saved!', '', 'success');
+                IdasNotify.swal('Saved!', '', 'success');
             }
         });
     }

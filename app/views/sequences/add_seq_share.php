@@ -157,7 +157,7 @@
             data = buildSequenceFormData(); // 預期回傳 FormData
         } catch (e) {
             console.error('buildSequenceFormData error:', e);
-            alertify.error(i18nErr);
+            IdasNotify.error(i18nErr);
             return;
         }
 
@@ -182,7 +182,7 @@
             },
             error: function (xhr, status, error) {
             console.error('save_sequence error:', status, error);
-            alertify.error(i18nErr);
+            IdasNotify.error(i18nErr);
             // 出錯時手動關 spinner
             document.getElementById('spinner').style.display = 'none';
             },
@@ -216,7 +216,7 @@
             data = buildSequenceFormData(); // 應為 FormData
         } catch (e) {
             console.error('buildSequenceFormData error:', e);
-            alertify.error(i18nErr);
+            IdasNotify.error(i18nErr);
             return;
         }
 
@@ -240,7 +240,7 @@
             },
             error: function (xhr, status, error) {
             console.error('edit_sequence error:', status, error);
-            alertify.error(i18nErr);
+            IdasNotify.error(i18nErr);
             // 失敗時關 spinner
             document.getElementById('spinner').style.display = 'none';
             },

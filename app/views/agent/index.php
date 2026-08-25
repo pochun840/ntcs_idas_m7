@@ -141,6 +141,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const DEVICE_TYPE_11 = <?php echo json_encode(defined('DEVICE_TYPE_11') ? DEVICE_TYPE_11 : 'KL-NTCS-M7'); ?>;
     const ICONMODE = <?php echo json_encode(defined('ICONMODE') ? ICONMODE : 0); ?>;
 
+    /** ---------- 機型名稱與登入頁集中設定 ---------- */
+    const DEVICE_TYPE_CONFIG = Object.freeze({
+        7:  Object.freeze({ name: 'GTCS-10', path: '/das/public/index.php?url=In' }),
+        8:  Object.freeze({ name: 'NTCS-10', path: '/idas/public/?url=In' }),
+        9:  Object.freeze({ name: 'TCC-HMI', path: '/idas/public/?url=In' }),
+        10: Object.freeze({ name: 'MTCS', path: null }),
+        11: Object.freeze({ name: DEVICE_TYPE_11 || 'KL-NTCS-M7', path: '/idas/public/?url=In' })
+    });
+
     /** ---------- DataTable 初始化 ---------- */
     const table2 = $('#data-table').DataTable({
         autoWidth: false,
@@ -166,7 +175,18 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 data: 'device_type_name',
                 width: "10%",
-                render: d => `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${d || ''}">${d || ''}</span>`
+                render: function (d, type, row) {
+                    const label = escapeAgentHtml(d || '');
+                    const href = getDevicePageUrl(row?.device_type, row?.client_ip);
+                    if (!href) {
+                        return `<span data-bs-toggle="tooltip" data-bs-placement="top" title="${label}">${label}</span>`;
+                    }
+                    const tooltip = escapeAgentHtml(`${d || ''} - ${row?.client_ip || ''}`);
+                    return `<a href="${escapeAgentHtml(href)}" target="_blank" rel="noopener noreferrer" `
+                        + `class="agent-device-link" data-bs-toggle="tooltip" data-bs-placement="top" `
+                        + `title="${tooltip}" aria-label="${tooltip}">${label} `
+                        + `<i class="fa fa-external-link" aria-hidden="true" style="font-size:.8em;margin-left:4px"></i></a>`;
+                }
             },
             {
                 data: 'device_name',
@@ -272,27 +292,56 @@ document.addEventListener('DOMContentLoaded', function () {
     const serverUrl = `ws://${server_ip}:9501`;
 
     function getDeviceTypeName(deviceType) {
-        const typeNum = Number(deviceType);
-        const iconModeNum = Number(ICONMODE);
+        const config = DEVICE_TYPE_CONFIG[Number(deviceType)];
+        return config ? config.name : (deviceType ?? '');
+    }
 
-        switch (typeNum) {
-            case 7:
-                // SUMAKE 品牌下，device_type 7 顯示 SMT-C3
-                return iconModeNum === 5 ? 'SMT-C3' : 'KL-NTCS-M7';
-                return iconModeNum === 2 ? 'KL-EPNC-M7' : 'KL-NTCS-M7';
+    function escapeAgentHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, function (character) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character];
+        });
+    }
 
-            case 8:
-                return 'NTCS-10';
+    function normalizeDeviceHost(clientIp) {
+        let host = String(clientIp ?? '').trim();
+        if (!host || /[\s/?#@]/.test(host)) return '';
 
-            case 9:
-                return 'TCC-HMI';
-
-            case 11:
-                return DEVICE_TYPE_11 || 'KL-NTCS-M7';
-
-            default:
-                return deviceType ?? '';
+        if (host.startsWith('[') && host.endsWith(']')) {
+            host = host.slice(1, -1);
         }
+
+        const ipv4Parts = host.split('.');
+        if (ipv4Parts.length === 4 && ipv4Parts.every(part => /^\d{1,3}$/.test(part))) {
+            return ipv4Parts.every(part => Number(part) <= 255 && String(Number(part)) === part)
+                ? host
+                : '';
+        }
+
+        if (host.includes(':')) {
+            try {
+                const parsed = new URL(`http://[${host}]/`);
+                return parsed.hostname === `[${host.toLowerCase()}]` ? `[${host}]` : '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        if (host.length > 253) return '';
+        const labels = host.split('.');
+        const validHostname = labels.every(label =>
+            label.length >= 1
+            && label.length <= 63
+            && /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(label)
+        );
+        return validHostname ? host.toLowerCase() : '';
+    }
+
+    function getDevicePageUrl(deviceType, clientIp) {
+        const config = DEVICE_TYPE_CONFIG[Number(deviceType)];
+        if (!config || !config.path) return '';
+
+        const host = normalizeDeviceHost(clientIp);
+        return host ? `http://${host}${config.path}` : '';
     }
 
     function formatDataTime(raw) {
@@ -312,6 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const deviceType = Number(payload.device_type);
 
         const rowData = {
+            device_type: deviceType,
             device_type_name: getDeviceTypeName(payload.device_type),
             device_name: payload.device_name ?? '',
             client_ip: payload.client_ip ?? '',

@@ -7,8 +7,8 @@
  */
 class FullDebug
 {
-    private const CONTROLLER_DB = '/home/kls/NTCS7/ntcs_device.db';
-    private const IDAS_DB = '/var/www/html/database/ntcs_device_IDAS.db';
+    private const CONTROLLER_DB = IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db';
+    private const IDAS_DB = IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db';
     private const DEVICE_TABLE = 'ntcs_device_test';
 
     public static function collect(): array
@@ -271,10 +271,10 @@ class FullDebug
     private static function inspectDisks(): array
     {
         $targets = [
-            ['/var/www/html/idas', false],
-            ['/var/www/html/database', true],
-            ['/mnt/ramdisk', true],
-            ['/mnt/ramdisk/ftp', true],
+            [IDAS_PATH_IDAS_ROOT, false],
+            [IDAS_PATH_DATABASE_ROOT, true],
+            [IDAS_PATH_RAMDISK_ROOT, true],
+            [IDAS_PATH_RAMDISK_FTP, true],
         ];
 
         $result = [];
@@ -288,10 +288,10 @@ class FullDebug
             $freePercent = ($total && $free !== null) ? round(($free / $total) * 100, 2) : null;
 
             $mounted = null;
-            if ($path === '/mnt/ramdisk' && self::canExec()) {
+            if ($path === IDAS_PATH_RAMDISK_ROOT && self::canExec()) {
                 $out = [];
                 $code = 1;
-                @exec('/usr/bin/mountpoint -q /mnt/ramdisk 2>/dev/null', $out, $code);
+                @exec('/usr/bin/mountpoint -q ' . escapeshellarg(IDAS_PATH_RAMDISK_ROOT) . ' 2>/dev/null', $out, $code);
                 if ($code === 127 || !is_executable('/usr/bin/mountpoint')) {
                     $mounted = null;
                 } else {
@@ -326,13 +326,13 @@ class FullDebug
         $ramdisk = [
             'id' => 'ramdisk',
             'name' => 'RAMDISK',
-            'status' => is_dir('/mnt/ramdisk') ? 'ok' : 'ng',
-            'detail' => is_dir('/mnt/ramdisk') ? '/mnt/ramdisk exists' : '/mnt/ramdisk missing',
+            'status' => is_dir(IDAS_PATH_RAMDISK_ROOT) ? 'ok' : 'ng',
+            'detail' => is_dir(IDAS_PATH_RAMDISK_ROOT) ? IDAS_PATH_RAMDISK_ROOT . ' exists' : IDAS_PATH_RAMDISK_ROOT . ' missing',
         ];
         if (self::canExec() && is_executable('/usr/bin/mountpoint')) {
             $out = [];
             $code = 1;
-            @exec('/usr/bin/mountpoint -q /mnt/ramdisk 2>/dev/null', $out, $code);
+            @exec('/usr/bin/mountpoint -q ' . escapeshellarg(IDAS_PATH_RAMDISK_ROOT) . ' 2>/dev/null', $out, $code);
             $ramdisk['status'] = $code === 0 ? 'ok' : 'warning';
             $ramdisk['detail'] = $code === 0 ? '/mnt/ramdisk mounted' : '/mnt/ramdisk exists but mountpoint check failed';
         }
@@ -435,11 +435,11 @@ class FullDebug
 
         $db = self::readDeviceVersionFields(self::CONTROLLER_DB);
 
-        $flagPath = '/home/kls/upgrade/icontroller';
+        $flagPath = idas_path('upgrade_root', 'icontroller');
         $flagRaw = is_readable($flagPath) ? trim((string)@file_get_contents($flagPath)) : null;
 
         $upgradeFiles = [];
-        $upgradeDir = '/home/kls/upgrade';
+        $upgradeDir = IDAS_PATH_UPGRADE_ROOT;
         if (is_dir($upgradeDir) && is_readable($upgradeDir)) {
             $items = @scandir($upgradeDir);
             if (is_array($items)) {
@@ -707,8 +707,8 @@ class FullDebug
             ['PHP Error Log', $phpErrorLog],
             ['Apache Error Log', '/var/log/apache2/error.log'],
             ['Syslog', '/var/log/syslog'],
-            ['iDAS App Log', '/var/www/html/idas/app/log/logfile.log'],
-            ['iDAS Log', '/var/www/html/idas/log/logfile.log'],
+            ['iDAS App Log', idas_path('idas_root', 'app/log/logfile.log')],
+            ['iDAS Log', idas_path('idas_root', 'log/logfile.log')],
         ];
 
         $result = [];

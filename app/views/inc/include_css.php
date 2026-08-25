@@ -285,6 +285,7 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4">
     <?php
         $route = explode('/', trim((string)($_GET['url'] ?? ''), '/'))[0] ?? '';
 
@@ -311,6 +312,7 @@ function include_css() {
     <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
+    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4"></script>
 
 
 
@@ -562,7 +564,7 @@ function showReloadPopup(res){
     deviceReloadDialogShown=true;
     hideRebootBanner();
 
-    alertify.alert(
+    IdasNotify.alert(
         t(TEXT.reloadTitle),
         getReloadMessage(res || {})
     ).set({
@@ -595,8 +597,8 @@ function syncDeviceIdentityThenReload(context){
         showRebootBanner(popupContext);
         saveRebootWaitState();
 
-        if(window.alertify && alertify.error){
-            alertify.error('Sync failed');
+        if(window.alertify && IdasNotify.error){
+            IdasNotify.error('Sync failed');
         }
     }, "json").fail(function(){
         try { $('#overlay').addClass('hidden'); } catch(e) {}
@@ -605,8 +607,8 @@ function syncDeviceIdentityThenReload(context){
         showRebootBanner(popupContext);
         saveRebootWaitState();
 
-        if(window.alertify && alertify.error){
-            alertify.error('Sync failed');
+        if(window.alertify && IdasNotify.error){
+            IdasNotify.error('Sync failed');
         }
     });
 }
@@ -867,6 +869,7 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4">
     <?php
         $route = explode('/', trim((string)($_GET['url'] ?? ''), '/'))[0] ?? '';
 
@@ -893,6 +896,7 @@ function include_css() {
     <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
+    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4"></script>
 
 
 
@@ -1270,7 +1274,7 @@ function showReloadPopup(id, needSync, changeType){
         ? t(TEXT.syncReloadMsg(id, changeType || getFlowPayload().change_type || "device_id"))
         : t(TEXT.reloadMsg(id));
 
-    alertify.alert(
+    IdasNotify.alert(
         t(TEXT.reloadTitle),
         msg
     ).set({

@@ -348,6 +348,7 @@ $text['total_screw_count'] = '總顆數';
 $text['fasten_status'] = '鎖附結果';
 $text['error_message'] = '錯誤訊息';
 $text['info_fasten_direction'] = '鎖附起子轉向';
+$text['fasten_direction'] = '鎖附起子轉向';
 $text['rpm'] = '鎖附轉速';
 $text['hi_torque'] = '鎖附扭力上限';
 $text['lo_torque'] = '鎖附扭力下限';

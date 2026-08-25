@@ -201,7 +201,7 @@ class Settings extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         if ($this->shouldRunToolSpecSync(10)) {
             $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
+                IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                 '.tool_spec_sync',               // 任務鎖名稱（key）
                 fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
             );
@@ -1077,7 +1077,7 @@ class Settings extends Controller
             'both_databases_verified' => ($ok && $networkPortSynced),
             'controller_device_db_path' => (
                 PHP_OS_FAMILY === 'Linux'
-                    ? '/home/kls/NTCS7/ntcs_device.db'
+                    ? IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db'
                     : ''
             ),
             'restart_required' => $restartRequired,
@@ -1266,7 +1266,7 @@ class Settings extends Controller
 
     private function executeControllerLinuxRestartNow(): array
     {
-        $logPath = '/var/www/html/database/idas_icontroller_reboot.log';
+        $logPath = IDAS_PATH_DATABASE_ROOT . '/idas_icontroller_reboot.log';
         $log = static function (string $message) use ($logPath): void {
             idas_rotate_database_log($logPath, 524288, 3);
             @file_put_contents(
@@ -1638,7 +1638,7 @@ class Settings extends Controller
 
         $this->logMessage('[FirmwareUpdate] start original=' . $originalName . ', protocol=' . $protocolName . ', unitId=' . $unitId);
 
-        $ftpDir = '/mnt/ramdisk/ftp';
+        $ftpDir = IDAS_PATH_RAMDISK_FTP;
         if (!is_dir($ftpDir) || !is_writable($ftpDir)) {
             $respond(['error' => 'Firmware upload directory is not writable: ' . $ftpDir], 500);
         }
@@ -1800,6 +1800,11 @@ class Settings extends Controller
 
     public function export_sysytem_config(){
 
+        return SystemConfigExportService::download(
+            (array)($this->SettingModel->GetControllerInfo() ?? []),
+            function (string $message): void { $this->logMessage($message); }
+        );
+
         /* =====================================================
         * Platform check
         * ===================================================== */
@@ -1830,26 +1835,26 @@ class Settings extends Controller
         * ZIP name
         * ===================================================== */
         $zipFileName = "NTCS_Config_{$sn}_{$clientTs}.zip";
-        $zipPath     = "/mnt/ramdisk/ftp/{$zipFileName}";
+        $zipPath     = IDAS_PATH_RAMDISK_FTP . "/{$zipFileName}";
 
         /* =====================================================
         * File names in ZIP
         * ===================================================== */
         $linNameInZip     = "con_{$sn}_{$clientTs}.Lin";
         $barcodeNameInZip = "bc_{$sn}_{$clientTs}.db";
-        $logNameInZip     = "ntcs_log_{$clientTs}.csv";
+        $logNameInZip     = "datalog_{$clientTs}.csv";
         $syslogNameInZip  = "syslog_{$clientTs}.log";
 
         /* =====================================================
         * Source paths
         * ===================================================== */
-        $srcLin     = "/home/kls/NTCS7/KLS_NTCS.Lin";
-        $barcodeDb = "/var/www/html/database/ntcs_barcode_IDAS.db";
-        $logCsv    = "/home/kls/NTCS7/ntcs_log.csv";
+        $srcLin     = IDAS_PATH_CONTROLLER_ROOT . "/KLS_NTCS.Lin";
+        $barcodeDb = IDAS_PATH_DATABASE_ROOT . "/ntcs_barcode_IDAS.db";
+        $logCsv    = IDAS_PATH_CONTROLLER_ROOT . "/ntcs_log.csv";
 
         // syslog（需 sudo）
         $syslogSrc = "/var/log/syslog";
-        $syslogTmp = "/mnt/ramdisk/ftp/syslog_snapshot_{$clientTs}.log";
+        $syslogTmp = IDAS_PATH_RAMDISK_FTP . "/syslog_snapshot_{$clientTs}.log";
 
         /* =====================================================
         * Create ZIP
@@ -1939,7 +1944,7 @@ class Settings extends Controller
         $year = date("Y");
 
         if( PHP_OS_FAMILY == 'Linux'){
-            $folderPath = "/home/kls/tcc/resource/db_emmc/"; // 修改為你的資料夾路徑
+            $folderPath = IDAS_PATH_CONTROLLER_RESOURCE_ROOT . '/'; // 修改為你的資料夾路徑
         }else{
             $folderPath = "../"; // 修改為你的資料夾路徑
         }
@@ -2065,8 +2070,8 @@ class Settings extends Controller
         // 3. compare
         $notice = '';
         $warning = '';
-        $Das_DB_Location = '/var/www/html/database/iDas-tcscon.db';
-        $Con_DB_Location = '/var/www/html/database/tcscon.db';
+        $Das_DB_Location = IDAS_PATH_DATABASE_ROOT . '/iDas-tcscon.db';
+        $Con_DB_Location = IDAS_PATH_DATABASE_ROOT . '/tcscon.db';
 
         if($this->LoginCheck() == 1){
             echo json_encode(array('warning' => $text['system_sync_warning_login']));
@@ -2212,16 +2217,16 @@ class Settings extends Controller
 
         $argument = $_POST['argument'] ?? '';
 
-        $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
-        $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
+        $src1         = IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin';
+        $finalPath1   = IDAS_PATH_RAMDISK_FTP . '/11.Lin';
+        $renamedPath1 = IDAS_PATH_RAMDISK_FTP . '/11_tmp.Lin';
 
-        $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
-        $finalPath2   = '/mnt/ramdisk/ftp/11.db';
-        $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
+        $src2         = IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db';
+        $finalPath2   = IDAS_PATH_RAMDISK_FTP . '/11.db';
+        $renamedPath2 = IDAS_PATH_RAMDISK_FTP . '/11_db_temp.db';
 
-        $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
-        $dst3         = '/home/kls/NTCS7/ntcs_device.db';
+        $src3         = IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db';
+        $dst3         = IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db';
 
 
         // 取得 正確的 Modbus id
@@ -2343,10 +2348,10 @@ class Settings extends Controller
 
         // 定義來源與目的地檔案清單（Controller → iDAS）
         $fileList = [
-            '/home/kls/NTCS7/KLS_NTCS.Lin'      => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/home/kls/NTCS7/ntcs_barcode.db'   => '/var/www/html/database/ntcs_barcode_IDAS.db',
-            '/home/kls/NTCS7/ntcs_device.db'    => '/var/www/html/database/ntcs_device_IDAS.db',
-            '/home/kls/NTCS7/ntcs_data.db'      => '/var/www/html/database/ntcs_data.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin'      => IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_barcode.db'   => IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db'    => IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_data.db'      => IDAS_PATH_DATABASE_ROOT . '/ntcs_data.db',
         ];
 
         if ($argument === 'C2D') {
@@ -2390,6 +2395,12 @@ class Settings extends Controller
      * 安全複製檔案，若 copy 失敗會寫 log
      */
     private function safeCopy($src, $dst) {
+        return ControllerSyncService::atomicCopy(
+            (string)$src,
+            (string)$dst,
+            function (string $message): void { $this->logMessage($message); }
+        );
+        /* Legacy implementation retained below for branch compatibility. */
         if (copy($src, $dst)) {
             $this->logMessage("Copied: $src -> $dst");
             return true;
@@ -2540,7 +2551,7 @@ class Settings extends Controller
     //get barcode
     public function GetBarcodes(){
 
-        $this->ensureBarcodeSingleJobPolicy('/var/www/html/database/ntcs_barcode_IDAS.db');
+        $this->ensureBarcodeSingleJobPolicy(IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db');
         $barcodes = $this->SettingModel->GetAllBarcodes();
         return $barcodes;
     }
@@ -2548,7 +2559,7 @@ class Settings extends Controller
 
     public function show_Barcodes(){
         
-        $this->ensureBarcodeSingleJobPolicy('/var/www/html/database/ntcs_barcode_IDAS.db');
+        $this->ensureBarcodeSingleJobPolicy(IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db');
         $barcodes = $this->SettingModel->GetAllBarcodes();
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
 
@@ -2666,7 +2677,7 @@ class Settings extends Controller
         $currentRowId = $isEdit ? (int)$barcode['barcode_id'] : 0;
         $targetJobId  = (int)$barcode['barcode_job'];
 
-        if (!$this->ensureBarcodeSingleJobPolicy('/var/www/html/database/ntcs_barcode_IDAS.db')) {
+        if (!$this->ensureBarcodeSingleJobPolicy(IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db')) {
             echo json_encode(['res_type' => 'error', 'res_msg' => 'Barcode database single-JOB policy check failed.']);
             exit;
         }
@@ -2826,7 +2837,7 @@ class Settings extends Controller
         }
 
         // CRUD 前保證 schema 符合同 JOB 單一 Barcode。
-        if (!$this->ensureBarcodeSingleJobPolicy('/var/www/html/database/ntcs_barcode_IDAS.db')) {
+        if (!$this->ensureBarcodeSingleJobPolicy(IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db')) {
             echo json_encode([
                 'res_type' => 'error',
                 'res_msg'  => 'Barcode database single-JOB policy check failed.'
@@ -2873,14 +2884,14 @@ class Settings extends Controller
             $cleanup = idas_safe_database_cleanup(true);
         }
         $after = idas_database_free_bytes();
-        $stamp = '/var/www/html/database/.idas_database_maintenance.stamp';
+        $stamp = IDAS_PATH_DATABASE_ROOT . '/.idas_database_maintenance.stamp';
         echo json_encode([
             'success' => $cleanup === null || !empty($cleanup['ok']),
             'res_type' => ($cleanup !== null && empty($cleanup['ok'])) ? 'Error' : 'OK',
             'free_bytes' => $after,
             'free_mb' => round($after / 1048576, 1),
-            'disk_warning' => $after < 100 * 1048576,
-            'disk_blocked' => $after < 50 * 1048576,
+            'disk_warning' => $after < DiskSpaceService::WARNING_BYTES,
+            'disk_blocked' => $after < DiskSpaceService::BLOCKING_BYTES,
             'last_maintenance_at' => is_file($stamp) ? date('Y-m-d H:i:s', (int)@filemtime($stamp)) : null,
             'cleanup' => $cleanup,
             'freed_mb' => $cleanup ? round(((int)($cleanup['freed_bytes'] ?? 0)) / 1048576, 1) : 0,
@@ -2931,14 +2942,14 @@ class Settings extends Controller
             $state      = $this->buildIdasVersionState($currentRaw, $targetRaw);
             $diskBytes  = $this->getIDasDatabaseFreeBytes();
             $packSpace  = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
-            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? DiskSpaceService::BLOCKING_BYTES);
 
             return $this->sendJsonResponse(true, '', array_merge($state, [
                 'filename' => $uploadedFilename,
                 'database_free_bytes' => $diskBytes,
                 'database_free_mb' => round($diskBytes / 1048576, 1),
-                'disk_warning' => $diskBytes < 100 * 1048576,
-                'disk_blocked' => $diskBytes < max(50 * 1048576, $requiredBytes),
+                'disk_warning' => $diskBytes < DiskSpaceService::WARNING_BYTES,
+                'disk_blocked' => $diskBytes < max(DiskSpaceService::BLOCKING_BYTES, $requiredBytes),
                 'pack_uncompressed_bytes' => (int)($packSpace['uncompressed_bytes'] ?? 0),
                 'required_free_bytes' => $requiredBytes,
                 'required_free_mb' => round($requiredBytes / 1048576, 1),
@@ -2960,7 +2971,7 @@ class Settings extends Controller
         $iDas_Version = (string)$this->AdminModel->Get_Das_Config('idas_version');
         $allowDowngrade = $this->isTruthyFlag($_POST['allow_downgrade'] ?? false);
 
-        $file_location = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/' : rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/') . '/';
+        $file_location = (PHP_OS_FAMILY === 'Linux') ? IDAS_PATH_WEB_ROOT . '/' : rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/') . '/';
         $extract_path  = $file_location . 'extracted/';
         $main_folder   = '';
         $lockHandle    = null;
@@ -3011,7 +3022,7 @@ class Settings extends Controller
             }
 
             $packSpace = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
-            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? DiskSpaceService::BLOCKING_BYTES);
             if ($this->getIDasDatabaseFreeBytes() < $requiredBytes) {
                 return $this->sendResponseWithCode('Error',
                     'Update requires at least ' . round($requiredBytes / 1048576, 1) . ' MB free working space.',
@@ -3234,7 +3245,7 @@ class Settings extends Controller
 
             if ($backupPath !== '') {
                 $backupPath = $this->markIDasPreUpdateBackup($backupPath, 'success');
-                $this->cleanupIDasPreUpdateBackups(dirname($backupPath), 3, 14);
+                $this->cleanupIDasPreUpdateBackups(dirname($backupPath));
                 $this->logMessage("[iDAS UPDATE] successful backup retained: {$backupPath}");
             }
 
@@ -3334,9 +3345,7 @@ class Settings extends Controller
     }
 
     private function getIDasDatabaseFreeBytes(): int {
-        if (PHP_OS_FAMILY !== 'Linux') return 1024 * 1024 * 1024 * 1024;
-        $bytes = @disk_free_space('/var/www/html/database');
-        return ($bytes === false) ? 0 : max(0, (int)$bytes);
+        return DiskSpaceService::databaseFreeBytes();
     }
 
     private function databaseSpaceText(string $type, float $freeMb): string {
@@ -3352,24 +3361,7 @@ class Settings extends Controller
     }
 
     private function prepareIDasDatabaseSpaceForUpdate(): array {
-        $warnBytes = 100 * 1048576;
-        $blockBytes = 50 * 1048576;
-        $before = $this->getIDasDatabaseFreeBytes();
-        $cleanup = $before < 100 * 1048576
-            ? idas_safe_database_cleanup($before < 50 * 1048576, true)
-            : ['free_bytes_before' => $before, 'free_bytes' => $before, 'actions' => [], 'busy' => false];
-        $after = (int)($cleanup['free_bytes'] ?? $before);
-        return [
-            'ok' => $after >= $blockBytes,
-            'warning' => $after < $warnBytes,
-            'free_bytes_before' => (int)($cleanup['free_bytes_before'] ?? $before),
-            'free_bytes' => $after,
-            'free_mb' => round($after / 1048576, 1),
-            'warning_mb' => 100,
-            'blocking_mb' => 50,
-            'cleanup_actions' => $cleanup['actions'] ?? [],
-            'cleanup_busy' => !empty($cleanup['busy']),
-        ];
+        return DiskSpaceService::prepareForUpdate(true);
     }
 
 
@@ -3378,7 +3370,7 @@ class Settings extends Controller
      * 建立 iDAS 更新鎖，避免多個請求同時執行更新。
      */
     private function acquireIdasUpdateLock() {
-        $lockDir = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/database' : sys_get_temp_dir();
+        $lockDir = (PHP_OS_FAMILY === 'Linux') ? IDAS_PATH_DATABASE_ROOT : sys_get_temp_dir();
         if (!is_dir($lockDir)) {
             @mkdir($lockDir, 0777, true);
         }
@@ -3572,95 +3564,25 @@ class Settings extends Controller
         string $packFilename,
         string $packSha256
     ): string {
-        if (PHP_OS_FAMILY !== 'Linux') {
-            return '';
-        }
-
-        $databaseDir = '/var/www/html/database';
-        if (!is_dir($databaseDir)) {
-            return '';
-        }
-
-        $backupDir = $databaseDir . '/update_backups';
-        if (!is_dir($backupDir) && !@mkdir($backupDir, 0770, true) && !is_dir($backupDir)) {
-            throw new Exception("Cannot create backup directory: {$backupDir}");
-        }
-        @chmod($backupDir, 0770);
-
-        $safeCurrent = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $currentVersion ?: 'unknown');
-        $safeTarget  = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $targetVersion ?: 'unknown');
-        $ts = date('Ymd_His');
-        $zipName = "idas_backup_before_update_{$safeCurrent}_to_{$safeTarget}_{$ts}.pending.zip";
-        $zipPath = $backupDir . '/' . $zipName;
-
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new Exception("Cannot create backup zip: {$zipPath}");
-        }
-
-        $files = [
-            'KLS_NTCS_IDAS.Lin',
-            'ntcs_barcode_IDAS.db',
-            'ntcs_device_IDAS.db',
-            'ntcs_data.db',
-            'das.db',
-        ];
-
-        $added = 0;
-        foreach ($files as $file) {
-            $path = $databaseDir . '/' . $file;
-            if (is_file($path) && is_readable($path)) {
-                $zip->addFile($path, 'database/' . $file);
-                $added++;
-            }
-        }
-
-        $meta = [
-            'generated_at'    => date('Y-m-d H:i:s'),
-            'current_version' => $currentVersion,
-            'target_version'  => $targetVersion,
-            'reason'          => $reason,
-            'pack_filename'   => $packFilename,
-            'pack_sha256'     => $packSha256,
-            'db_file_count'   => $added,
-        ];
-        $zip->addFromString('backup_info.json', json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        $zip->close();
-
-        if (!is_file($zipPath) || filesize($zipPath) <= 0) {
-            throw new Exception("Backup zip not generated: {$zipPath}");
-        }
-
-        $verifyZip = new ZipArchive();
-        $verifyResult = $verifyZip->open($zipPath, ZipArchive::CHECKCONS);
-        if ($added < 1 || $verifyResult !== true || $verifyZip->locateName('backup_info.json') === false) {
-            if ($verifyResult === true) $verifyZip->close();
-            @rename($zipPath, preg_replace('/\.pending\.zip$/', '.failed-invalid.zip', $zipPath));
-            throw new Exception("Backup ZIP verification failed: {$zipPath}");
-        }
-        $verifyZip->close();
-
-        @chmod($zipPath, 0660);
-
-        return $zipPath;
+        return DatabaseBackupService::createPreUpdateBackupZip(
+            $currentVersion,
+            $targetVersion,
+            $reason,
+            $packFilename,
+            $packSha256
+        );
     }
 
     private function markIDasPreUpdateBackup(string $backupPath, string $status): string {
-        if ($backupPath === '' || !is_file($backupPath)) return $backupPath;
-        $status = ($status === 'success') ? 'success' : 'failed';
-        $target = preg_replace('/\.pending\.zip$/', '.' . $status . '.zip', $backupPath);
-        if (!is_string($target) || $target === $backupPath) {
-            $target = preg_replace('/\.zip$/', '.' . $status . '.zip', $backupPath);
-        }
-        if (is_string($target) && $target !== $backupPath && @rename($backupPath, $target)) {
-            @chmod($target, 0660);
-            return $target;
-        }
-        return $backupPath;
+        return DatabaseBackupService::markPreUpdateBackup($backupPath, $status);
     }
 
-    private function cleanupIDasPreUpdateBackups(string $backupDir, int $keep = 3, int $maxAgeDays = 14): void {
-        idas_cleanup_update_backups($backupDir, $keep, $maxAgeDays);
+    private function cleanupIDasPreUpdateBackups(
+        string $backupDir,
+        int $keep = DatabaseBackupService::DEFAULT_BACKUP_KEEP,
+        int $maxAgeDays = DatabaseBackupService::DEFAULT_BACKUP_MAX_AGE_DAYS
+    ): void {
+        DatabaseBackupService::cleanupUpdateBackups($backupDir, $keep, $maxAgeDays);
     }
 
     /**
@@ -3675,10 +3597,10 @@ class Settings extends Controller
         }
 
         $pairs = [
-            'KLS_NTCS.Lin'    => ['/home/kls/NTCS7/KLS_NTCS.Lin',    '/var/www/html/database/KLS_NTCS_IDAS.Lin'],
-            'ntcs_barcode.db' => ['/home/kls/NTCS7/ntcs_barcode.db', '/var/www/html/database/ntcs_barcode_IDAS.db'],
-            'ntcs_device.db'  => ['/home/kls/NTCS7/ntcs_device.db',  '/var/www/html/database/ntcs_device_IDAS.db'],
-            'ntcs_data.db'    => ['/home/kls/NTCS7/ntcs_data.db',    '/var/www/html/database/ntcs_data.db'],
+            'KLS_NTCS.Lin'    => [IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin',    IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin'],
+            'ntcs_barcode.db' => [IDAS_PATH_CONTROLLER_ROOT . '/ntcs_barcode.db', IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db'],
+            'ntcs_device.db'  => [IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db',  IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db'],
+            'ntcs_data.db'    => [IDAS_PATH_CONTROLLER_ROOT . '/ntcs_data.db',    IDAS_PATH_DATABASE_ROOT . '/ntcs_data.db'],
         ];
 
         $diffs = [];
@@ -3931,10 +3853,10 @@ class Settings extends Controller
         }
 
         foreach ([
-            '/home/kls/NTCS7/KLS_NTCS.Lin',
-            '/home/kls/NTCS7/ntcs_barcode.db',
-            '/home/kls/NTCS7/ntcs_device.db',
-            '/home/kls/NTCS7/ntcs_data.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_barcode.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_data.db',
         ] as $sourcePath) {
             if (!is_file($sourcePath) || !is_readable($sourcePath) || (int)@filesize($sourcePath) <= 0) {
                 throw new Exception("DB rebuild source missing/unreadable/empty: {$sourcePath}");
@@ -3952,18 +3874,18 @@ class Settings extends Controller
             return '';
         }
 
-        $baseDir = '/var/www/html/database';
+        $baseDir = IDAS_PATH_DATABASE_ROOT;
         $snapshotDir = $baseDir . '/.idas_update_rollback_' . date('Ymd_His') . '_' . getmypid();
         if (!@mkdir($snapshotDir, 0777, true) && !is_dir($snapshotDir)) {
             throw new Exception("Cannot create rollback snapshot: {$snapshotDir}");
         }
 
         $items = [
-            '/var/www/html/database/KLS_NTCS_IDAS.Lin'    => 'database/KLS_NTCS_IDAS.Lin',
-            '/var/www/html/database/ntcs_barcode_IDAS.db'=> 'database/ntcs_barcode_IDAS.db',
-            '/var/www/html/database/ntcs_device_IDAS.db' => 'database/ntcs_device_IDAS.db',
-            '/var/www/html/database/ntcs_data.db'        => 'database/ntcs_data.db',
-            '/home/kls/NTCS7/KLS_NTCS.Lin'               => 'controller/KLS_NTCS.Lin',
+            IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin'    => 'database/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db'=> 'database/ntcs_barcode_IDAS.db',
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db' => 'database/ntcs_device_IDAS.db',
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_data.db'        => 'database/ntcs_data.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin'               => 'controller/KLS_NTCS.Lin',
         ];
 
         $manifest = [];
@@ -4094,8 +4016,8 @@ class Settings extends Controller
             throw new Exception('Database rebuild is only supported on Linux.');
         }
 
-        $sourceDir   = '/home/kls/NTCS7';
-        $databaseDir = '/var/www/html/database';
+        $sourceDir   = IDAS_PATH_CONTROLLER_ROOT;
+        $databaseDir = IDAS_PATH_DATABASE_ROOT;
         $copyMap = [
             'KLS_NTCS.Lin'    => 'KLS_NTCS_IDAS.Lin',
             'ntcs_barcode.db' => 'ntcs_barcode_IDAS.db',
@@ -4210,8 +4132,8 @@ class Settings extends Controller
         }
 
         $dbList = [
-            '/home/kls/NTCS7/KLS_NTCS.Lin',
-            '/var/www/html/database/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin',
+            IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin',
         ];
 
         $this->logMessage("[iDAS UPDATE] remove admin user start for non-SA349 version: {$activeVersion}");
@@ -4512,7 +4434,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
     private function assertIdasPostUpdateHealthy(string $targetDirectory, string $targetVersion, bool $dbWasRebuilt): void {
         $this->assertIdasInstalledProgramHealthy($targetDirectory, $targetVersion);
 
-        $databaseDir = '/var/www/html/database';
+        $databaseDir = IDAS_PATH_DATABASE_ROOT;
         $dbFiles = [
             'KLS_NTCS_IDAS.Lin',
             'ntcs_barcode_IDAS.db',
@@ -4530,10 +4452,10 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
         if ($dbWasRebuilt) {
             $pairs = [
-                ['/home/kls/NTCS7/KLS_NTCS.Lin',    $databaseDir . '/KLS_NTCS_IDAS.Lin'],
-                ['/home/kls/NTCS7/ntcs_barcode.db', $databaseDir . '/ntcs_barcode_IDAS.db'],
-                ['/home/kls/NTCS7/ntcs_device.db',  $databaseDir . '/ntcs_device_IDAS.db'],
-                ['/home/kls/NTCS7/ntcs_data.db',    $databaseDir . '/ntcs_data.db'],
+                [IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin',    $databaseDir . '/KLS_NTCS_IDAS.Lin'],
+                [IDAS_PATH_CONTROLLER_ROOT . '/ntcs_barcode.db', $databaseDir . '/ntcs_barcode_IDAS.db'],
+                [IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db',  $databaseDir . '/ntcs_device_IDAS.db'],
+                [IDAS_PATH_CONTROLLER_ROOT . '/ntcs_data.db',    $databaseDir . '/ntcs_data.db'],
             ];
             foreach ($pairs as [$sourceDb, $idasDb]) {
                 $diff = $this->diffSqliteSchemaSignature(
@@ -4789,6 +4711,56 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
     }
 
 
+    /** Normalize legacy kls account in an uploaded LIN before import. */
+    private function normalizeUploadedLinServiceAccount(PDO $db): array
+    {
+        return SystemConfigImportService::normalizeServiceAccount($db);
+        /* Legacy implementation retained below for branch compatibility. */
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $hasUserTable = (bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='user' LIMIT 1")->fetchColumn();
+        if (!$hasUserTable) return ['changed' => false, 'reason' => 'user_table_missing'];
+
+        $columns = $db->query('PRAGMA table_info("user")')->fetchAll(PDO::FETCH_ASSOC);
+        $columnNames = array_map(static function (array $column): string {
+            return strtolower((string)($column['name'] ?? ''));
+        }, $columns);
+        if (!in_array('name', $columnNames, true)) {
+            throw new RuntimeException('Uploaded LIN user table does not contain the name column.');
+        }
+
+        $find = $db->prepare('SELECT COUNT(*) FROM "user" WHERE LOWER(TRIM("name")) = :name');
+        $find->execute([':name' => 'kls']);
+        $klsCount = (int)$find->fetchColumn();
+        if ($klsCount === 0) return ['changed' => false, 'reason' => 'kls_not_found'];
+        $find->execute([':name' => 'service']);
+        $serviceCount = (int)$find->fetchColumn();
+
+        $db->beginTransaction();
+        try {
+            if ($serviceCount > 0) {
+                $stmt = $db->prepare('DELETE FROM "user" WHERE LOWER(TRIM("name")) = :name');
+                $stmt->execute([':name' => 'kls']);
+                $action = 'removed_duplicate_kls';
+            } else {
+                $stmt = $db->prepare('UPDATE "user" SET "name" = :service WHERE LOWER(TRIM("name")) = :kls');
+                $stmt->execute([':service' => 'service', ':kls' => 'kls']);
+                $action = 'renamed_kls_to_service';
+            }
+            $find->execute([':name' => 'kls']);
+            $remainingKls = (int)$find->fetchColumn();
+            $find->execute([':name' => 'service']);
+            $remainingService = (int)$find->fetchColumn();
+            if ($remainingKls !== 0 || $remainingService < 1) {
+                throw new RuntimeException('Uploaded LIN service account verification failed.');
+            }
+            $db->commit();
+            return ['changed' => true, 'action' => $action, 'legacy_rows' => $klsCount];
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+
     public function Import_Config(){
 
         header('Content-Type: application/json; charset=utf-8');
@@ -4821,6 +4793,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
                 'protocol_error'=> 'Controller communication failed.',
                 'controller_logged_in' => 'Please log out of the Controller before importing system data.',
                 'controller_status_error' => 'Unable to confirm the Controller login status.',
+                'account_migration_fail' => 'Failed to convert the legacy kls account to service.',
             ],
             'zh-tw' => [
                 'no_file'       => '請上傳正確的設定檔格式。',
@@ -4836,6 +4809,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
                 'protocol_error'=> '控制器通訊失敗。',
                 'controller_logged_in' => '匯入系統資料前，請先將控制器登出。',
                 'controller_status_error' => '無法確認控制器登入狀態。',
+                'account_migration_fail' => '無法將舊版 kls 帳號轉換為 service。',
             ],
             'zh-cn' => [
                 'no_file'       => '请上传正确的设置文件格式。',
@@ -4851,6 +4825,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
                 'protocol_error'=> '控制器通讯失败。',
                 'controller_logged_in' => '导入系统资料前，请先将控制器登出。',
                 'controller_status_error' => '无法确认控制器登录状态。',
+                'account_migration_fail' => '无法将旧版 kls 帐号转换为 service。',
             ],
         ];
         $T = $msg[$lang];
@@ -4895,6 +4870,8 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
             );
             $stmt->execute([':table' => 'SEQ_type']);
             $hasSeqType = (bool)$stmt->fetchColumn();
+            $stmt->closeCursor();
+            $stmt = null;
             $checkDb = null;
         } catch (Throwable $e) {
             $this->logMessage('[Import_Config] SQLite validation failed: ' . $e->getMessage());
@@ -4903,6 +4880,32 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
         if (!$hasSeqType) {
             return $fail('missing_table');
+        }
+
+        try {
+            $accountDb = new PDO('sqlite:' . $tmpFile, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $accountResult = $this->normalizeUploadedLinServiceAccount($accountDb);
+            if (!empty($accountResult['changed'])) {
+                $this->logMessage('[Import_Config] uploaded LIN account normalized: ' . (string)$accountResult['action']);
+                // Uploaded NTCS LIN files use WAL mode. Merge the -wal content into
+                // the main .Lin before replaceSqliteDbFile() copies that single file.
+                $accountDb->exec('PRAGMA busy_timeout = 3000');
+                $checkpoint = $accountDb->query('PRAGMA wal_checkpoint(FULL)')->fetch(PDO::FETCH_NUM);
+                if (!is_array($checkpoint) || (int)($checkpoint[0] ?? 1) !== 0) {
+                    throw new RuntimeException('Uploaded LIN WAL checkpoint is busy.');
+                }
+                $journalMode = strtolower((string)$accountDb->query('PRAGMA journal_mode=DELETE')->fetchColumn());
+                if ($journalMode !== 'delete') {
+                    throw new RuntimeException('Unable to finalize uploaded LIN as a single SQLite file.');
+                }
+                $accountDb = null;
+                $this->assertSqliteHealthy($tmpFile);
+            } else {
+                $accountDb = null;
+            }
+        } catch (Throwable $e) {
+            $this->logMessage('[Import_Config] kls -> service conversion failed: ' . $e->getMessage());
+            return $fail('account_migration_fail');
         }
 
         // 3. Controller must be logged out before DB replacement / notification.
@@ -4932,7 +4935,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         }
 
         // 4. Replace local iDAS DB first. Existing DB is backed up by replaceSqliteDbFile().
-        $idasDb = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        $idasDb = IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin';
         try {
             $this->replaceSqliteDbFile($tmpFile, $idasDb, true);
             $this->assertSqliteHealthy($idasDb);
@@ -4942,7 +4945,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         }
 
         // 5. Prepare the exact DB that Controller will read: /mnt/ramdisk/ftp/11.Lin.
-        $ftpDir = '/mnt/ramdisk/ftp';
+        $ftpDir = IDAS_PATH_RAMDISK_FTP;
         $linPath = $ftpDir . '/11.Lin';
 
         if (!is_dir($ftpDir) && !@mkdir($ftpDir, 0777, true)) {
@@ -4965,6 +4968,22 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
                 throw new RuntimeException('11.Lin size verification failed');
             }
             $this->assertSqliteHealthy($linPath);
+            $stagedDb = new PDO('sqlite:' . $linPath, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $stagedKls = (int)$stagedDb->query(
+                "SELECT COUNT(*) FROM \"user\" WHERE LOWER(TRIM(\"name\")) = 'kls'"
+            )->fetchColumn();
+            if ($stagedKls !== 0) {
+                throw new RuntimeException('11.Lin still contains the legacy kls account.');
+            }
+            if (!empty($accountResult['changed'])) {
+                $stagedService = (int)$stagedDb->query(
+                    "SELECT COUNT(*) FROM \"user\" WHERE LOWER(TRIM(\"name\")) = 'service'"
+                )->fetchColumn();
+                if ($stagedService < 1) {
+                    throw new RuntimeException('11.Lin does not contain the service account.');
+                }
+            }
+            $stagedDb = null;
         } catch (Throwable $e) {
             $this->logMessage('[Import_Config] 11.Lin verification failed: ' . $e->getMessage());
             return $fail('copy_fail');
@@ -5334,8 +5353,8 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
         // LIN
         $this->safeCopy(
-            '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/mnt/ramdisk/ftp/11.Lin'
+            IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_RAMDISK_FTP . '/11.Lin'
         );
         $this->notifyModbus($modbus, [1, 12593], 'LIN');
         if ($this->is_op_protocol_enabled()) {
@@ -5344,8 +5363,8 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
         // Barcode
         $this->safeCopy(
-            '/var/www/html/database/ntcs_barcode_IDAS.db',
-            '/mnt/ramdisk/ftp/11.db'
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db',
+            IDAS_PATH_RAMDISK_FTP . '/11.db'
         );
         $this->notifyModbus($modbus, [1, 12593], 'DB');
     }
@@ -5400,6 +5419,50 @@ class Settings extends Controller
         $this->deviceId = $this->ntcs_device_db_sysnc();
 
 
+    }
+
+    /** Normalize legacy kls account in an uploaded LIN before import. */
+    private function normalizeUploadedLinServiceAccount(PDO $db): array
+    {
+        return SystemConfigImportService::normalizeServiceAccount($db);
+        /* Legacy implementation retained below for branch compatibility. */
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $hasUserTable = (bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='user' LIMIT 1")->fetchColumn();
+        if (!$hasUserTable) return ['changed' => false, 'reason' => 'user_table_missing'];
+        $columns = $db->query('PRAGMA table_info("user")')->fetchAll(PDO::FETCH_ASSOC);
+        $columnNames = array_map(static function (array $column): string {
+            return strtolower((string)($column['name'] ?? ''));
+        }, $columns);
+        if (!in_array('name', $columnNames, true)) throw new RuntimeException('Uploaded LIN user table does not contain the name column.');
+
+        $find = $db->prepare('SELECT COUNT(*) FROM "user" WHERE LOWER(TRIM("name")) = :name');
+        $find->execute([':name' => 'kls']);
+        $klsCount = (int)$find->fetchColumn();
+        if ($klsCount === 0) return ['changed' => false, 'reason' => 'kls_not_found'];
+        $find->execute([':name' => 'service']);
+        $serviceCount = (int)$find->fetchColumn();
+        $db->beginTransaction();
+        try {
+            if ($serviceCount > 0) {
+                $stmt = $db->prepare('DELETE FROM "user" WHERE LOWER(TRIM("name")) = :name');
+                $stmt->execute([':name' => 'kls']);
+                $action = 'removed_duplicate_kls';
+            } else {
+                $stmt = $db->prepare('UPDATE "user" SET "name" = :service WHERE LOWER(TRIM("name")) = :kls');
+                $stmt->execute([':service' => 'service', ':kls' => 'kls']);
+                $action = 'renamed_kls_to_service';
+            }
+            $find->execute([':name' => 'kls']);
+            $remainingKls = (int)$find->fetchColumn();
+            $find->execute([':name' => 'service']);
+            $remainingService = (int)$find->fetchColumn();
+            if ($remainingKls !== 0 || $remainingService < 1) throw new RuntimeException('Uploaded LIN service account verification failed.');
+            $db->commit();
+            return ['changed' => true, 'action' => $action, 'legacy_rows' => $klsCount];
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
     }
 
     /**
@@ -5660,7 +5723,7 @@ class Settings extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         // if ($this->shouldRunToolSpecSync(10)) {
         //     $this->runOnceWithFlag(
-        //         '/var/www/html/database',        // lock / state 檔案目錄
+        //         IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
         //         '.tool_spec_sync',               // 任務鎖名稱（key）
         //         fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
         //     );
@@ -6236,7 +6299,7 @@ class Settings extends Controller
             exit();
         }
 
-        $destination = "/mnt/ramdisk/ftp/" . $originalName;
+        $destination = IDAS_PATH_RAMDISK_FTP . "/" . $originalName;
 
         if (!move_uploaded_file($_FILES['file']['tmp_name'], $destination)) {
             $this->logMessage('upload fail');
@@ -6326,6 +6389,11 @@ class Settings extends Controller
  
     public function export_sysytem_config(){
 
+        return SystemConfigExportService::download(
+            (array)($this->SettingModel->GetControllerInfo() ?? []),
+            function (string $message): void { $this->logMessage($message); }
+        );
+
         /* =====================================================
         * Platform check
         * ===================================================== */
@@ -6356,26 +6424,26 @@ class Settings extends Controller
         * ZIP name
         * ===================================================== */
         $zipFileName = "NTCS_Config_{$sn}_{$clientTs}.zip";
-        $zipPath     = "/mnt/ramdisk/ftp/{$zipFileName}";
+        $zipPath     = IDAS_PATH_RAMDISK_FTP . "/{$zipFileName}";
 
         /* =====================================================
         * File names in ZIP
         * ===================================================== */
         $linNameInZip     = "con_{$sn}_{$clientTs}.Lin";
         $barcodeNameInZip = "bc_{$sn}_{$clientTs}.db";
-        $logNameInZip     = "ntcs_log_{$clientTs}.csv";
+        $logNameInZip     = "datalog_{$clientTs}.csv";
         $syslogNameInZip  = "syslog_{$clientTs}.log";
 
         /* =====================================================
         * Source paths
         * ===================================================== */
-        $srcLin     = "/home/kls/NTCS7/KLS_NTCS.Lin";
-        $barcodeDb = "/var/www/html/database/ntcs_barcode_IDAS.db";
-        $logCsv    = "/home/kls/NTCS7/ntcs_log.csv";
+        $srcLin     = IDAS_PATH_CONTROLLER_ROOT . "/KLS_NTCS.Lin";
+        $barcodeDb = IDAS_PATH_DATABASE_ROOT . "/ntcs_barcode_IDAS.db";
+        $logCsv    = IDAS_PATH_CONTROLLER_ROOT . "/ntcs_log.csv";
 
         // syslog（需 sudo）
         $syslogSrc = "/var/log/syslog";
-        $syslogTmp = "/mnt/ramdisk/ftp/syslog_snapshot_{$clientTs}.log";
+        $syslogTmp = IDAS_PATH_RAMDISK_FTP . "/syslog_snapshot_{$clientTs}.log";
 
         /* =====================================================
         * Create ZIP
@@ -6465,7 +6533,7 @@ class Settings extends Controller
         $year = date("Y");
 
         if( PHP_OS_FAMILY == 'Linux'){
-            $folderPath = "/home/kls/tcc/resource/db_emmc/"; // 修改為你的資料夾路徑
+            $folderPath = IDAS_PATH_CONTROLLER_RESOURCE_ROOT . '/'; // 修改為你的資料夾路徑
         }else{
             $folderPath = "../"; // 修改為你的資料夾路徑
         }
@@ -6580,8 +6648,8 @@ class Settings extends Controller
         // 3. compare
         $notice = '';
         $warning = '';
-        $Das_DB_Location = '/var/www/html/database/iDas-tcscon.db';
-        $Con_DB_Location = '/var/www/html/database/tcscon.db';
+        $Das_DB_Location = IDAS_PATH_DATABASE_ROOT . '/iDas-tcscon.db';
+        $Con_DB_Location = IDAS_PATH_DATABASE_ROOT . '/tcscon.db';
 
         if($this->LoginCheck() == 1){
             echo json_encode(array('warning' => $text['system_sync_warning_login']));
@@ -6935,16 +7003,16 @@ class Settings extends Controller
 
         $argument = $_POST['argument'] ?? '';
 
-        $src1         = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-        $finalPath1   = '/mnt/ramdisk/ftp/11.Lin';
-        $renamedPath1 = '/mnt/ramdisk/ftp/11_tmp.Lin';
+        $src1         = IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin';
+        $finalPath1   = IDAS_PATH_RAMDISK_FTP . '/11.Lin';
+        $renamedPath1 = IDAS_PATH_RAMDISK_FTP . '/11_tmp.Lin';
 
-        $src2         = '/var/www/html/database/ntcs_barcode_IDAS.db';
-        $finalPath2   = '/mnt/ramdisk/ftp/11.db';
-        $renamedPath2 = '/mnt/ramdisk/ftp/11_db_temp.db';
+        $src2         = IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db';
+        $finalPath2   = IDAS_PATH_RAMDISK_FTP . '/11.db';
+        $renamedPath2 = IDAS_PATH_RAMDISK_FTP . '/11_db_temp.db';
 
-        $src3         = '/var/www/html/database/ntcs_device_IDAS.db';
-        $dst3         = '/home/kls/NTCS7/ntcs_device.db';
+        $src3         = IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db';
+        $dst3         = IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db';
 
 
         // 取得 正確的 Modbus id
@@ -7117,10 +7185,10 @@ class Settings extends Controller
 
         // 定義來源與目的地檔案清單（Controller → iDAS）
         $fileList = [
-            '/home/kls/NTCS7/KLS_NTCS.Lin'      => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/home/kls/NTCS7/ntcs_barcode.db'   => '/var/www/html/database/ntcs_barcode_IDAS.db',
-            '/home/kls/NTCS7/ntcs_device.db'    => '/var/www/html/database/ntcs_device_IDAS.db',
-            '/home/kls/NTCS7/ntcs_data.db'      => '/var/www/html/database/ntcs_data.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin'      => IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_barcode.db'   => IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db'    => IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_data.db'      => IDAS_PATH_DATABASE_ROOT . '/ntcs_data.db',
         ];
 
         $auditExtra = [
@@ -7178,7 +7246,7 @@ class Settings extends Controller
             $auditExtra['copied_count'] = $copiedCount;
 
             try {
-                $barcodeDst = '/var/www/html/database/ntcs_barcode_IDAS.db';
+                $barcodeDst = IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db';
                 $auditExtra['barcode_one_to_one'] = $this->ensureBarcodeOneToOneDb($barcodeDst);
             } catch (Throwable $e) {
                 $auditExtra['failed_stage'] = 'barcode_one_to_one_after_c2d';
@@ -7202,6 +7270,12 @@ class Settings extends Controller
      * 安全複製檔案，若 copy 失敗會寫 log
      */
     private function safeCopy($src, $dst) {
+        return ControllerSyncService::atomicCopy(
+            (string)$src,
+            (string)$dst,
+            function (string $message): void { $this->logMessage($message); }
+        );
+        /* Legacy implementation retained below for branch compatibility. */
         if (copy($src, $dst)) {
             $this->logMessage("Copied: $src -> $dst");
             return true;
@@ -7529,14 +7603,14 @@ class Settings extends Controller
         $action = strtolower(trim((string)($_POST['action'] ?? 'status')));
         $cleanup = $action === 'cleanup' ? idas_safe_database_cleanup(true) : null;
         $free = idas_database_free_bytes();
-        $stamp = '/var/www/html/database/.idas_database_maintenance.stamp';
+        $stamp = IDAS_PATH_DATABASE_ROOT . '/.idas_database_maintenance.stamp';
         echo json_encode([
             'success' => $cleanup === null || !empty($cleanup['ok']),
             'res_type' => ($cleanup !== null && empty($cleanup['ok'])) ? 'Error' : 'OK',
             'free_bytes' => $free,
             'free_mb' => round($free / 1048576, 1),
-            'disk_warning' => $free < 100 * 1048576,
-            'disk_blocked' => $free < 50 * 1048576,
+            'disk_warning' => $free < DiskSpaceService::WARNING_BYTES,
+            'disk_blocked' => $free < DiskSpaceService::BLOCKING_BYTES,
             'last_maintenance_at' => is_file($stamp) ? date('Y-m-d H:i:s', (int)@filemtime($stamp)) : null,
             'cleanup' => $cleanup,
             'freed_mb' => $cleanup ? round(((int)($cleanup['freed_bytes'] ?? 0)) / 1048576, 1) : 0,
@@ -7600,7 +7674,7 @@ class Settings extends Controller
             $requiresConfirm   = $this->shouldRequireUpdateConfirm($currentProfile, $targetProfile, $isDowngrade);
             $diskBytes = $this->getIDasDatabaseFreeBytes();
             $packSpace = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
-            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? DiskSpaceService::BLOCKING_BYTES);
 
             if ($currentProfile === 'SA349' && $targetProfile !== 'SA349') {
                 $statusKey = 'STATUS_SA349_TO_STANDARD_REBUILD';
@@ -7635,8 +7709,8 @@ class Settings extends Controller
                 'db_action_text'      => $this->t($requiresDbRebuild ? 'DB_ACTION_REBUILD' : 'DB_ACTION_KEEP'),
                 'database_free_bytes' => $diskBytes,
                 'database_free_mb'    => round($diskBytes / 1048576, 1),
-                'disk_warning'        => $diskBytes < 100 * 1048576,
-                'disk_blocked'        => $diskBytes < max(50 * 1048576, $requiredBytes),
+                'disk_warning'        => $diskBytes < DiskSpaceService::WARNING_BYTES,
+                'disk_blocked'        => $diskBytes < max(DiskSpaceService::BLOCKING_BYTES, $requiredBytes),
                 'pack_uncompressed_bytes' => (int)($packSpace['uncompressed_bytes'] ?? 0),
                 'required_free_bytes' => $requiredBytes,
                 'required_free_mb' => round($requiredBytes / 1048576, 1),
@@ -7682,7 +7756,7 @@ class Settings extends Controller
         $iDas_Version = (string)$this->AdminModel->Get_Das_Config('idas_version');
 
         // 4. 設定路徑
-        $file_location = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/' : $_SERVER['DOCUMENT_ROOT'] . '/';
+        $file_location = (PHP_OS_FAMILY === 'Linux') ? IDAS_PATH_WEB_ROOT . '/' : $_SERVER['DOCUMENT_ROOT'] . '/';
         $extract_path  = $file_location . 'extracted/';
         $main_folder   = '';
         $updateLockFp  = null;
@@ -7706,7 +7780,7 @@ class Settings extends Controller
             }
 
             $packSpace = idas_update_pack_space_requirement((string)$_FILES['file']['tmp_name'], (int)$_FILES['file']['size']);
-            $requiredBytes = (int)($packSpace['required_bytes'] ?? 50 * 1048576);
+            $requiredBytes = (int)($packSpace['required_bytes'] ?? DiskSpaceService::BLOCKING_BYTES);
             if ($this->getIDasDatabaseFreeBytes() < $requiredBytes) {
                 return $this->sendResponse('Error', 'Update requires at least ' . round($requiredBytes / 1048576, 1) . ' MB free working space.');
             }
@@ -8075,9 +8149,7 @@ class Settings extends Controller
     }
 
     private function getIDasDatabaseFreeBytes(): int {
-        if (PHP_OS_FAMILY !== 'Linux') return 1024 * 1024 * 1024 * 1024;
-        $bytes = @disk_free_space('/var/www/html/database');
-        return ($bytes === false) ? 0 : max(0, (int)$bytes);
+        return DiskSpaceService::databaseFreeBytes();
     }
 
     private function databaseSpaceText(string $type, float $freeMb): string {
@@ -8093,23 +8165,12 @@ class Settings extends Controller
     }
 
     private function prepareIDasDatabaseSpaceForUpdate(): array {
-        $warnBytes = 100 * 1048576;
-        $blockBytes = 50 * 1048576;
-        $before = $this->getIDasDatabaseFreeBytes();
-        $cleanup = $before < $warnBytes
-            ? idas_safe_database_cleanup($before < $blockBytes, true)
-            : ['free_bytes_before' => $before, 'free_bytes' => $before, 'actions' => [], 'busy' => false];
-        $after = (int)($cleanup['free_bytes'] ?? $before);
-        return ['ok' => $after >= $blockBytes, 'warning' => $after < $warnBytes,
-            'free_bytes_before' => (int)($cleanup['free_bytes_before'] ?? $before),
-            'free_bytes' => $after, 'free_mb' => round($after / 1048576, 1),
-            'warning_mb' => 100, 'blocking_mb' => 50, 'cleanup_actions' => $cleanup['actions'] ?? [],
-            'cleanup_busy' => !empty($cleanup['busy'])];
+        return DiskSpaceService::prepareForUpdate(true);
     }
 
     private function acquireIdasUpdateLock()
     {
-        $lockDir = (PHP_OS_FAMILY === 'Linux') ? '/var/www/html/database' : sys_get_temp_dir();
+        $lockDir = (PHP_OS_FAMILY === 'Linux') ? IDAS_PATH_DATABASE_ROOT : sys_get_temp_dir();
         if (!is_dir($lockDir) || !is_writable($lockDir)) {
             throw new Exception('Update lock directory is not writable: ' . $lockDir);
         }
@@ -8137,10 +8198,10 @@ class Settings extends Controller
     private function getIdasDbRebuildFileMapFromNtcs7(): array
     {
         return [
-            '/home/kls/NTCS7/KLS_NTCS.Lin'    => '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/home/kls/NTCS7/ntcs_barcode.db' => '/var/www/html/database/ntcs_barcode_IDAS.db',
-            '/home/kls/NTCS7/ntcs_device.db'  => '/var/www/html/database/ntcs_device_IDAS.db',
-            '/home/kls/NTCS7/ntcs_data.db'    => '/var/www/html/database/ntcs_data.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin'    => IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_barcode.db' => IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_device.db'  => IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_data.db'    => IDAS_PATH_DATABASE_ROOT . '/ntcs_data.db',
         ];
     }
 
@@ -8806,6 +8867,7 @@ class Settings extends Controller
                 'success'       => 'Import successful.',
                 'modbus_error'  => 'Controller communication failed.',
                 'controller_logged_in' => 'Please log out of the controller before importing system data.',
+                'account_migration_fail' => 'Failed to convert the legacy kls account to service.',
             ],
             'zh-tw' => [
                 'invalid_config_format' => '請上傳正確的設定檔格式。',
@@ -8820,6 +8882,7 @@ class Settings extends Controller
                 'success'       => '匯入成功。',
                 'modbus_error'  => '控制器通訊失敗。',
                 'controller_logged_in' => '請先將控制器登出，再匯入系統資料。',
+                'account_migration_fail' => '無法將舊版 kls 帳號轉換為 service。',
             ],
             'zh-cn' => [
                 'invalid_config_format' => '请上传正确的设置文件格式。',
@@ -8834,6 +8897,7 @@ class Settings extends Controller
                 'success'       => '导入成功。',
                 'modbus_error'  => '控制器通讯失败。',
                 'controller_logged_in' => '请先将控制器登出，再导入系统资料。',
+                'account_migration_fail' => '无法将旧版 kls 帐号转换为 service。',
             ],
         ];
         $T = $msg[$lang];
@@ -8881,6 +8945,8 @@ class Settings extends Controller
             $stmt = $checkDb->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = :table LIMIT 1");
             $stmt->execute([':table' => 'SEQ_type']);
             $hasSeqType = (bool)$stmt->fetchColumn();
+            $stmt->closeCursor();
+            $stmt = null;
             $checkDb = null;
         } catch (Throwable $e) {
             error_log('[Import_Config] SQLite validate failed: ' . $e->getMessage());
@@ -8889,6 +8955,35 @@ class Settings extends Controller
 
         if (!$hasSeqType) {
             return $fail('missing_table');
+        }
+
+        try {
+            $accountDb = new PDO('sqlite:' . $tmpFile, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $accountResult = $this->normalizeUploadedLinServiceAccount($accountDb);
+            if (!empty($accountResult['changed'])) {
+                $this->logMessage('[Import_Config] uploaded LIN account normalized: ' . (string)$accountResult['action']);
+                // The source LIN is WAL-mode. Checkpoint before move_uploaded_file(),
+                // otherwise the account update remains in tmpFile-wal and is lost.
+                $accountDb->exec('PRAGMA busy_timeout = 3000');
+                $checkpoint = $accountDb->query('PRAGMA wal_checkpoint(FULL)')->fetch(PDO::FETCH_NUM);
+                if (!is_array($checkpoint) || (int)($checkpoint[0] ?? 1) !== 0) {
+                    throw new RuntimeException('Uploaded LIN WAL checkpoint is busy.');
+                }
+                $journalMode = strtolower((string)$accountDb->query('PRAGMA journal_mode=DELETE')->fetchColumn());
+                if ($journalMode !== 'delete') {
+                    throw new RuntimeException('Unable to finalize uploaded LIN as a single SQLite file.');
+                }
+                $accountDb = null;
+                $verifyDb = new PDO('sqlite:' . $tmpFile);
+                $verify = strtolower(trim((string)$verifyDb->query('PRAGMA integrity_check')->fetchColumn()));
+                $verifyDb = null;
+                if ($verify !== 'ok') throw new RuntimeException('Uploaded LIN integrity check failed after account conversion.');
+            } else {
+                $accountDb = null;
+            }
+        } catch (Throwable $e) {
+            $this->logMessage('[Import_Config] kls -> service conversion failed: ' . $e->getMessage());
+            return $fail('account_migration_fail');
         }
 
         // 匯入前控制器必須登出。29002 由統一 protocol layer 讀取，
@@ -8903,7 +8998,7 @@ class Settings extends Controller
             return $fail('controller_logged_in');
         }
 
-        $ftpDir = '/mnt/ramdisk/ftp/';
+        $ftpDir = IDAS_PATH_RAMDISK_FTP . '/';
         if (!is_dir($ftpDir) && !@mkdir($ftpDir, 0777, true)) {
             return $fail('bad_dir');
         }
@@ -8921,6 +9016,26 @@ class Settings extends Controller
             return $fail('move_fail');
         }
         @chmod($linPath, 0666);
+
+        // Verify the exact single file that will be read by the Controller.
+        try {
+            $stagedDb = new PDO('sqlite:' . $linPath, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $stagedIntegrity = strtolower(trim((string)$stagedDb->query('PRAGMA integrity_check')->fetchColumn()));
+            if ($stagedIntegrity !== 'ok') {
+                throw new RuntimeException('Staged LIN integrity check failed.');
+            }
+            $stagedKls = (int)$stagedDb->query(
+                "SELECT COUNT(*) FROM \"user\" WHERE LOWER(TRIM(\"name\")) = 'kls'"
+            )->fetchColumn();
+            if ($stagedKls !== 0) {
+                throw new RuntimeException('Staged LIN still contains the legacy kls account.');
+            }
+            $stagedDb = null;
+        } catch (Throwable $e) {
+            $this->logMessage('[Import_Config] staged LIN account verification failed: ' . $e->getMessage());
+            @unlink($linPath);
+            return $fail('account_migration_fail');
+        }
 
         $unitId = $device_id;
 
@@ -9258,15 +9373,15 @@ class Settings extends Controller
 
         // LIN
         $this->safeCopy(
-            '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/mnt/ramdisk/ftp/11.Lin'
+            IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_RAMDISK_FTP . '/11.Lin'
         );
         $this->notifyModbus($modbus, [1, 12593], 'LIN');
 
         // Barcode
         $this->safeCopy(
-            '/var/www/html/database/ntcs_barcode_IDAS.db',
-            '/mnt/ramdisk/ftp/11.db'
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_barcode_IDAS.db',
+            IDAS_PATH_RAMDISK_FTP . '/11.db'
         );
         $this->notifyModbus($modbus, [1, 12593], 'DB');
     }
@@ -9277,7 +9392,7 @@ class Settings extends Controller
     // ===============================
     private function getSeqImgDir(): string
     {
-        return '/home/kls/NTCS7/Message';
+        return IDAS_PATH_CONTROLLER_ROOT . '/Message';
     }
 
     // ===============================
@@ -9909,9 +10024,9 @@ class Settings extends Controller
         $candidates = [];
 
         if (PHP_OS_FAMILY === 'Linux') {
-            $candidates[] = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-            $candidates[] = '/home/kls/NTCS7/KLS_NTCS.Lin';
-            $candidates[] = '/home/kls/NTCS7/KLS_NTCS.Lin';
+            $candidates[] = IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin';
+            $candidates[] = IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin';
+            $candidates[] = IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin';
         } else {
             $candidates[] = __DIR__ . '/../../database/KLS_NTCS_IDAS.Lin';
             $candidates[] = __DIR__ . '/../../../database/KLS_NTCS_IDAS.Lin';
@@ -9924,7 +10039,7 @@ class Settings extends Controller
             }
         }
 
-        return $candidates[0] ?? '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        return $candidates[0] ?? IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin';
     }
 
     private function accountUserDb(): PDO
@@ -10113,7 +10228,7 @@ class Settings extends Controller
     private function accountUserIdasDbPathStrict(): string
     {
         if (PHP_OS_FAMILY === 'Linux') {
-            return '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+            return IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin';
         }
 
         return $this->accountUserDbPath();
@@ -10122,7 +10237,7 @@ class Settings extends Controller
     private function accountUserControllerDbPath(): string
     {
         if (PHP_OS_FAMILY === 'Linux') {
-            return '/home/kls/NTCS7/KLS_NTCS.Lin';
+            return IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin';
         }
 
         return __DIR__ . '/../../../database/KLS_NTCS.Lin';
@@ -10889,12 +11004,12 @@ class Settings extends Controller
     private function openOperationAuditDb(): ?array
     {
        $dbPaths = [
-            '/var/www/html/database/das.db',
-            '/var/www/html/database/KLS_NTCS_IDAS.Lin',
-            '/var/www/html/database/ntcs_device_IDAS.db',
-            '/var/www/html/database/ntcs_data.db',
-            '/home/kls/NTCS7/KLS_NTCS.Lin',
-            '/home/kls/NTCS7/ntcs_data.db',
+            IDAS_PATH_DATABASE_ROOT . '/das.db',
+            IDAS_PATH_DATABASE_ROOT . '/KLS_NTCS_IDAS.Lin',
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_device_IDAS.db',
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_data.db',
+            IDAS_PATH_CONTROLLER_ROOT . '/KLS_NTCS.Lin',
+            IDAS_PATH_CONTROLLER_ROOT . '/ntcs_data.db',
             __DIR__ . '/../../../database/das.db',
             __DIR__ . '/../../../database/KLS_NTCS_IDAS.Lin',
             __DIR__ . '/../../../database/operation_audit_log.db',
@@ -11154,9 +11269,9 @@ class Settings extends Controller
     private function getAppOperationLogCsvPath(): string
     {
         $paths = [
-            '/home/kls/NTCS/ntcs_log.csv',
-            '/mnt/ramdisk/ftp/ntcs_log.csv',
-            '/var/www/html/database/ntcs_log.csv',
+            idas_path('legacy_controller_root', 'ntcs_log.csv'),
+            IDAS_PATH_RAMDISK_FTP . '/ntcs_log.csv',
+            IDAS_PATH_DATABASE_ROOT . '/ntcs_log.csv',
         ];
 
         foreach ($paths as $path) {

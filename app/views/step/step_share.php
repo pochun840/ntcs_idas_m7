@@ -29,7 +29,7 @@ function cound_step(action) {
 
     // 有選取列時才執行這些操作
     if (requiresSelection && !stepid) {
-        //alert("請先選擇一筆 Step 資料！");
+        //IdasNotify.alert("請先選擇一筆 Step 資料！");
         return;
     }
 
@@ -106,8 +106,8 @@ function copy_step_by_id_ajax(){
                 stepid_new: stepid_new
             },
             success: function(response) {
-                var responseData = JSON.parse(response);
-                alertify.alert(responseData.res_type, responseData.res_msg, function() {
+                var responseData = (typeof response === 'string') ? JSON.parse(response) : response;
+                IdasNotify.alert(responseData.res_type, responseData.res_msg, function() {
                     history.go(0);
                 });
             },
@@ -159,7 +159,7 @@ function del_stepid(stepid) {
                     success_response_seq(response, 'spinner', `../public/?url=Step/index/${jobid}/${seqid}`);
                 },
                 error: function (xhr, status, error) {
-                    alertify.alert("Error", "Delete failed: " + error);
+                    IdasNotify.alert("Error", "Delete failed: " + error);
                 }
             });
         }, function () {

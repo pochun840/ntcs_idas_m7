@@ -1,5 +1,15 @@
 <?php
 
+require_once __DIR__ . '/paths.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/DiskSpaceService.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/DatabaseBackupService.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/SystemConfigExportService.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/SystemConfigImportService.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/ControllerSyncService.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/LocalizationService.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/ApiResponseService.php';
+require_once IDAS_PATH_IDAS_ROOT . '/service/DataExportService.php';
+
 //sudo chmod -R 777 /var/www/html/idas
 // sudo chmod -R 777  var/www/html/idas/public/ftp
 //sudo chmod -R 777 /var/www/html/database
@@ -21,7 +31,7 @@ define('APPROOT', dirname(dirname(__FILE__)) . '/');
  *   0 / missing / invalid => NTCS (default, existing behavior)
  *   1                   => i-controller variant files
  * ============================================================ */
-define('ICONTROLLER_FLAG_FILE', '/home/kls/upgrade/icontroller');
+define('ICONTROLLER_FLAG_FILE', idas_path('upgrade_root', 'icontroller'));
 
 function is_i_controller(): bool
 {
@@ -141,7 +151,7 @@ function idas_asset_url(string $relative): string
 /** Persistent Controller identity baseline used by NTCS change detection. */
 function idas_identity_state_path(string $name): string
 {
-    return '/var/www/html/database/' . $name . '.json';
+    return IDAS_PATH_DATABASE_ROOT . '/' . $name . '.json';
 }
 
 function idas_read_identity_state(string $name): ?array
@@ -183,7 +193,7 @@ function idas_clear_identity_state(string $name): void
 function idas_rotate_database_log(string $path, int $maxBytes = 524288, int $keep = 3): bool
 {
     if (PHP_OS_FAMILY !== 'Linux' || $maxBytes < 1024 || $keep < 1) return false;
-    $databaseDir = '/var/www/html/database/';
+    $databaseDir = IDAS_PATH_DATABASE_ROOT . '/';
     $realDir = realpath(dirname($path));
     if ($realDir === false || rtrim($realDir, '/') . '/' !== $databaseDir || !is_file($path)) return false;
     clearstatcache(true, $path);
@@ -216,56 +226,25 @@ function idas_rotate_database_log(string $path, int $maxBytes = 524288, int $kee
 }
 
 /** Clean successful/legacy update backups while preserving failed/pending files. */
-function idas_cleanup_update_backups(string $backupDir, int $keep = 3, int $maxAgeDays = 14): int
+function idas_cleanup_update_backups(
+    string $backupDir,
+    int $keep = DatabaseBackupService::DEFAULT_BACKUP_KEEP,
+    int $maxAgeDays = DatabaseBackupService::DEFAULT_BACKUP_MAX_AGE_DAYS
+): int
 {
-    if (PHP_OS_FAMILY !== 'Linux' || !is_dir($backupDir)) return 0;
-    $files = glob(rtrim($backupDir, '/') . '/idas_backup_before_update_*.zip') ?: [];
-    $files = array_values(array_filter($files, static function(string $path): bool {
-        $name = basename($path);
-        return strpos($name, '.failed') === false && strpos($name, '.pending') === false;
-    }));
-    usort($files, static function(string $a, string $b): int {
-        return (int)@filemtime($b) <=> (int)@filemtime($a);
-    });
-
-    $deleted = 0;
-    $cutoff = time() - max(1, $maxAgeDays) * 86400;
-    foreach ($files as $index => $path) {
-        // Always retain at least the newest successful/legacy backup.
-        if ($index === 0) continue;
-        $tooMany = $index >= max(1, $keep);
-        $tooOld = (int)@filemtime($path) < $cutoff;
-        if (($tooMany || $tooOld) && is_file($path) && @unlink($path)) $deleted++;
-    }
-    return $deleted;
+    return DatabaseBackupService::cleanupUpdateBackups($backupDir, $keep, $maxAgeDays);
 }
 
 /** Return free bytes for the production database filesystem. */
 function idas_database_free_bytes(): int
 {
-    if (PHP_OS_FAMILY !== 'Linux') return 1024 * 1024 * 1024 * 1024;
-    $bytes = @disk_free_space('/var/www/html/database');
-    return $bytes === false ? 0 : max(0, (int)$bytes);
+    return DiskSpaceService::databaseFreeBytes();
 }
 
 /** Recursively remove only a previously validated update temporary directory. */
 function idas_remove_update_temp_directory(string $path): bool
 {
-    $base = '/var/www/html/database/';
-    $normalized = rtrim(str_replace('\\', '/', $path), '/') . '/';
-    if (strpos($normalized, $base . '.idas_update_rollback_') !== 0 || !is_dir($path)) return false;
-    $items = @scandir($path);
-    if (!is_array($items)) return false;
-    foreach ($items as $item) {
-        if ($item === '.' || $item === '..') continue;
-        $child = rtrim($path, '/\\') . DIRECTORY_SEPARATOR . $item;
-        if (is_dir($child) && !is_link($child)) {
-            if (!idas_remove_update_temp_directory($child)) return false;
-        } elseif (!@unlink($child)) {
-            return false;
-        }
-    }
-    return @rmdir($path);
+    return DatabaseBackupService::removeUpdateTempDirectory($path);
 }
 
 /**
@@ -274,142 +253,26 @@ function idas_remove_update_temp_directory(string $path): bool
  */
 function idas_safe_database_cleanup(bool $aggressive = false, bool $updateLockOwned = false): array
 {
-    $dir = '/var/www/html/database';
-    $before = idas_database_free_bytes();
-    $result = [
-        'ok' => true, 'busy' => false, 'free_bytes_before' => $before,
-        'free_bytes' => $before, 'freed_bytes' => 0, 'actions' => [],
-        'pending_marked_failed' => 0,
-    ];
-    if (PHP_OS_FAMILY !== 'Linux' || !is_dir($dir) || !is_writable($dir)) return $result;
-
-    $updateGuard = null;
-    if (!$updateLockOwned) {
-        $updateGuard = @fopen($dir . '/.idas_update.lock', 'c');
-        if (!$updateGuard || !@flock($updateGuard, LOCK_EX | LOCK_NB)) {
-            if ($updateGuard) @fclose($updateGuard);
-            $result['ok'] = false;
-            $result['busy'] = true;
-            return $result;
-        }
-    }
-
-    $lock = @fopen($dir . '/.idas_database_cleanup.lock', 'c');
-    if (!$lock || !@flock($lock, LOCK_EX | LOCK_NB)) {
-        if ($lock) @fclose($lock);
-        if ($updateGuard) {
-            @flock($updateGuard, LOCK_UN);
-            @fclose($updateGuard);
-        }
-        $result['ok'] = false;
-        $result['busy'] = true;
-        return $result;
-    }
-
-    try {
-        $deletedBackups = idas_cleanup_update_backups($dir . '/update_backups', $aggressive ? 1 : 3, 14);
-        if ($deletedBackups > 0) $result['actions'][] = 'successful_backups:' . $deletedBackups;
-
-        // A pending backup older than 24h represents an interrupted update. Preserve it and mark it failed.
-        $cutoff = time() - 86400;
-        foreach (glob($dir . '/update_backups/*.pending.zip') ?: [] as $pending) {
-            if ((int)@filemtime($pending) >= $cutoff) continue;
-            $failed = substr($pending, 0, -strlen('.pending.zip')) . '.failed-stale.zip';
-            if (!file_exists($failed) && @rename($pending, $failed)) {
-                $result['pending_marked_failed']++;
-                $result['actions'][] = 'pending_marked_failed:' . basename($failed);
-            }
-        }
-
-        $generations = $aggressive ? [3, 2, 1] : [3];
-        foreach (['idas_icontroller_reboot.log', 'idas_update.log', 'lin_refresh.log'] as $logName) {
-            foreach ($generations as $generation) {
-                $path = $dir . '/' . $logName . '.' . $generation;
-                if (is_file($path) && @unlink($path)) $result['actions'][] = 'log:' . basename($path);
-            }
-        }
-
-        foreach ([$dir . '/*.tmp.*', $dir . '/.*.tmp.*', $dir . '/.*.preflight_*'] as $pattern) {
-            foreach (glob($pattern) ?: [] as $path) {
-                if (is_file($path) && (int)@filemtime($path) < $cutoff && @unlink($path)) {
-                    $result['actions'][] = 'stale_temp:' . basename($path);
-                }
-            }
-        }
-        foreach (glob($dir . '/.idas_update_rollback_*', GLOB_ONLYDIR) ?: [] as $rollbackDir) {
-            if ((int)@filemtime($rollbackDir) < $cutoff && idas_remove_update_temp_directory($rollbackDir)) {
-                $result['actions'][] = 'stale_rollback:' . basename($rollbackDir);
-            }
-        }
-        clearstatcache();
-        $result['free_bytes'] = idas_database_free_bytes();
-        $result['freed_bytes'] = max(0, $result['free_bytes'] - $before);
-        @touch($dir . '/.idas_database_maintenance.stamp');
-        @chmod($dir . '/.idas_database_maintenance.stamp', 0660);
-
-        $logLine = date('Y-m-d H:i:s') . ' [DB CLEANUP] mode=' . ($aggressive ? 'aggressive' : 'normal')
-            . ' before=' . $before . ' after=' . $result['free_bytes']
-            . ' freed=' . $result['freed_bytes'] . ' actions=' . implode(',', $result['actions']) . PHP_EOL;
-        @file_put_contents($dir . '/idas_update.log', $logLine, FILE_APPEND | LOCK_EX);
-        @chmod($dir . '/idas_update.log', 0660);
-        return $result;
-    } finally {
-        @flock($lock, LOCK_UN);
-        @fclose($lock);
-        if ($updateGuard) {
-            @flock($updateGuard, LOCK_UN);
-            @fclose($updateGuard);
-        }
-    }
+    return DatabaseBackupService::safeCleanup($aggressive, $updateLockOwned);
 }
 
 /** Validate readable production SQLite databases before an update mutates files. */
 function idas_quick_check_production_databases(): array
 {
-    $dir = PHP_OS_FAMILY === 'Linux' ? '/var/www/html/database' : dirname(__DIR__, 2);
-    $candidates = ['das.db', 'KLS_NTCS_IDAS.Lin', 'ntcs_barcode_IDAS.db', 'ntcs_device_IDAS.db', 'ntcs_data.db'];
-    $checked = [];
-    $errors = [];
-    foreach ($candidates as $name) {
-        $path = rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . $name;
-        if (!is_file($path)) continue;
-        try {
-            $pdo = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $rows = $pdo->query('PRAGMA quick_check')->fetchAll(PDO::FETCH_COLUMN);
-            $checked[] = $name;
-            if (count($rows) !== 1 || strtolower(trim((string)$rows[0])) !== 'ok') {
-                $errors[$name] = implode('; ', array_map('strval', $rows));
-            }
-        } catch (Throwable $e) {
-            $errors[$name] = $e->getMessage();
-        }
-    }
-    return ['ok' => empty($errors), 'checked' => $checked, 'errors' => $errors];
+    return DatabaseBackupService::quickCheckProductionDatabases();
 }
 
 /** Calculate a conservative update working-space requirement from ZIP metadata. */
 function idas_update_pack_space_requirement(string $zipPath, int $uploadBytes = 0): array
 {
-    $uncompressed = 0;
-    $zip = new ZipArchive();
-    if ($zip->open($zipPath) !== true) {
-        return ['ok' => false, 'uncompressed_bytes' => 0, 'required_bytes' => 0];
-    }
-    for ($index = 0; $index < $zip->numFiles; $index++) {
-        $stat = $zip->statIndex($index);
-        if (is_array($stat)) $uncompressed += max(0, (int)($stat['size'] ?? 0));
-    }
-    $zip->close();
-    // Upload + extracted tree + staged deployment + 20 MB operating reserve.
-    $required = max(50 * 1048576, $uploadBytes + ($uncompressed * 2) + (20 * 1048576));
-    return ['ok' => true, 'uncompressed_bytes' => $uncompressed, 'required_bytes' => $required];
+    return DiskSpaceService::updatePackSpaceRequirement($zipPath, $uploadBytes);
 }
 
 /** Best-effort log maintenance, throttled to once every five minutes. */
 function idas_database_maintenance_tick(): void
 {
     if (PHP_OS_FAMILY !== 'Linux') return;
-    $dir = '/var/www/html/database';
+    $dir = IDAS_PATH_DATABASE_ROOT;
     if (!is_dir($dir) || !is_writable($dir)) return;
     $stamp = $dir . '/.idas_database_maintenance.stamp';
     if (is_file($stamp) && (time() - (int)@filemtime($stamp)) < 300) return;
@@ -484,7 +347,7 @@ define('CONTROLLER_IP', '127.0.0.1');
 // 每次刷新都取最新時間，避免快取
 // Release suffix guarantees that browsers do not reuse the pre-fix
 // settings.js whose platform block was skipped before IS_ICONTROLLER existed.
-define('ASSET_VERSION', date('YmdHi') . '-v20-ui13');
+define('ASSET_VERSION', (string)(@filemtime(__FILE__) ?: '20260825') . '-v20-ui14');
 
 //table - barcode 
 define('TABLE_NTCS_BARCODE', 'ntcs_barcode_test');
@@ -609,7 +472,7 @@ function get_iconmode_from_ver()
         return 0; // 預設 Kilews
     }
 
-    $verFile = '/home/kls/NTCS7/version';
+    $verFile = IDAS_PATH_CONTROLLER_ROOT . '/version';
     if (!is_file($verFile) || !is_readable($verFile)) {
         return 0;
     }

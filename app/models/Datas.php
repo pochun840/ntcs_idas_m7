@@ -19,7 +19,7 @@ class Datas{
 
     public function getData($type) {
         if (PHP_OS_FAMILY === 'Linux') {
-            $directory = '/home/kls'; // 指定目錄路徑
+            $directory = IDAS_PATH_HOME_ROOT; // 指定目錄路徑
 
             // 取得目錄中的檔案和子目錄列表
             $fileList = scandir($directory);
@@ -154,7 +154,7 @@ class Datas{
 
     public function getData($type) {
         if (PHP_OS_FAMILY === 'Linux') {
-            $directory = '/home/kls'; // 指定目錄路徑
+            $directory = IDAS_PATH_HOME_ROOT; // 指定目錄路徑
 
             // 取得目錄中的檔案和子目錄列表
             $fileList = scandir($directory);

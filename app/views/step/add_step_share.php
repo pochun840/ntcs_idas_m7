@@ -590,7 +590,7 @@
                 const errors = Array.isArray(resObj?.errors) ? resObj.errors : [];
                 if (errors.length) {
                 console.warn('server errors:', errors);
-                // 這裡可顯示 alertify.error(...) 等
+                // 這裡可顯示 IdasNotify.error(...) 等
                 }
                 // 原流程
                 success_response_seq(response, 'spinner', `../public/?url=Step/index/${job_id}/${seq_id}`);
@@ -767,7 +767,7 @@
                 seqid: seq_id,
                 stepid: step_id
             }, function (response) {
-                let res = JSON.parse(response);
+                let res = (typeof response === 'string') ? JSON.parse(response) : response;
                 if (res.is_last === "N") {
                     disableDownshiftFields();
                 }
@@ -1581,12 +1581,12 @@
                 const msg = msgByReason();
 
                 if (window.alertify?.alert) {
-                alertify.alert(TITLE, msg, function () {
+                IdasNotify.alert(TITLE, msg, function () {
                     try { el.focus(); el.select?.(); } catch {}
                     window[key] = false;
                 }).set('labels', { ok: OK_LABEL });
                 } else {
-                alert(`${TITLE}\n${msg}`);
+                IdasNotify.alert(`${TITLE}\n${msg}`);
                 window[key] = false;
                 try { el.focus(); el.select?.(); } catch {}
                 }
@@ -1740,7 +1740,7 @@
 
                     if (!window.__alert_offset_opt2__) {
                         window.__alert_offset_opt2__ = true;
-                        alertify.alert(TITLE, msg, () => {
+                        IdasNotify.alert(TITLE, msg, () => {
                             try { offEl.focus(); offEl.select?.(); } catch {}
                             window.__alert_offset_opt2__ = false;
                         }).set('labels', { ok: OKTXT });
@@ -2106,7 +2106,7 @@
 
             // 彈跳視窗（關閉後聚焦到 StepAngle）
             if (typeof alertify !== 'undefined' && alertify?.alert) {
-                alertify.alert(mm, function () {
+                IdasNotify.alert(mm, function () {
                 try { elAngle.focus({ preventScroll: false }); } catch (_) {}
                 });
             } else {
@@ -2308,8 +2308,8 @@
                 if (!(dsVal < tqVal)) {
                     dsEl.classList.add("is-invalid");
                     
-                    // ⚠️ 改成 alertify.alert 視窗
-                    alertify.alert("Validation Error", msg);
+                    // ⚠️ 改成 IdasNotify.alert 視窗
+                    IdasNotify.alert("Validation Error", msg);
 
                     isValid = false;
                     errorList.push('StepTorqueDownShift');
@@ -3080,7 +3080,7 @@
 
         
 
-        // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepHiTorque（用 alertify.alert）----
+        // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepHiTorque（用 IdasNotify.alert）----
         (function enforceLoTorqueLessThanHiTorqueForOption2() {
         if (StepOption !== 2) return;
 
@@ -3215,7 +3215,7 @@
                 const alertOnce = (flag, msg, focusEl) => {
                     if (window[flag]) return;
                     window[flag] = true;
-                    alertify.alert(TITLE, msg, () => {
+                    IdasNotify.alert(TITLE, msg, () => {
                         try { focusEl?.focus(); focusEl?.select?.(); } catch {}
                         window[flag] = false;
                     }).set('labels', { ok: OKTXT });
@@ -3378,9 +3378,9 @@
             };
 
             if (typeof alertify !== 'undefined' && alertify?.alert) {
-                alertify.alert(T.title, T.msg, refocus).set('labels', { ok: OK });
+                IdasNotify.alert(T.title, T.msg, refocus).set('labels', { ok: OK });
             } else {
-                alert(`${T.title}\n\n${T.msg}`);
+                IdasNotify.alert(`${T.title}\n\n${T.msg}`);
                 refocus();
             }
 
@@ -3741,12 +3741,12 @@
             if (!window._alertingDSTorqueVsTarget_Opt1) {
                 window._alertingDSTorqueVsTarget_Opt1 = true;
                 if (typeof alertify !== 'undefined' && alertify?.alert) {
-                alertify.alert(I18N.title, I18N.msg, function () {
+                IdasNotify.alert(I18N.title, I18N.msg, function () {
                     try { dsEl.focus(); dsEl.select?.(); } catch {}
                     window._alertingDSTorqueVsTarget_Opt1 = false;
                 }).set('labels', { ok: OK_LABEL });
                 } else {
-                alert(`${I18N.title}\n\n${I18N.msg}`);
+                IdasNotify.alert(`${I18N.title}\n\n${I18N.msg}`);
                 try { dsEl.focus(); dsEl.select?.(); } catch {}
                 window._alertingDSTorqueVsTarget_Opt1 = false;
                 }
@@ -3933,7 +3933,7 @@
                     })
                     .set('labels', { ok });
                 } else {
-                    alert(`${title}\n${msg}`);
+                    IdasNotify.alert(`${title}\n${msg}`);
                     window._alertingHiVsToolLo = false;
                 }
                 };
@@ -4382,11 +4382,11 @@
                     tqEl.classList.add('is-invalid');
 
                     if (window.alertify?.alert) {
-                        alertify.alert(TITLE, msg, function () {
+                        IdasNotify.alert(TITLE, msg, function () {
                             try { tqEl.focus(); tqEl.select?.(); } catch {}
                         }).set('labels', { ok: OK });
                     } else {
-                        alert(`${TITLE}\n${msg}`);
+                        IdasNotify.alert(`${TITLE}\n${msg}`);
                     }
 
                     window.isValid = false;
@@ -4423,11 +4423,11 @@
                     tqEl.classList.add('is-invalid');
 
                     if (window.alertify?.alert) {
-                        alertify.alert(TITLE, msg, function () {
+                        IdasNotify.alert(TITLE, msg, function () {
                             try { tqEl.focus(); tqEl.select?.(); } catch {}
                         }).set('labels', { ok: OK });
                     } else {
-                        alert(`${TITLE}\n${msg}`);
+                        IdasNotify.alert(`${TITLE}\n${msg}`);
                     }
 
                     window.isValid = false;
@@ -4764,12 +4764,12 @@
             if (_alerting) return;
             _alerting = true;
             try {
-            alertify.alert(TITLE, msg, () => {
+            IdasNotify.alert(TITLE, msg, () => {
                 _alerting = false;
                 try { focusEl?.focus(); focusEl?.select?.(); } catch {}
             }).set('labels', { ok: OKTXT });
             } catch {
-            alert(msg);
+            IdasNotify.alert(msg);
             _alerting = false;
             try { focusEl?.focus(); focusEl?.select?.(); } catch {}
             }
@@ -5280,7 +5280,7 @@ function getLangAndUnit() {
 
     const unit = (UNIT_LABELS[code]?.[lang]) || UNIT_LABELS[1][lang]; // fallback N·m
 
-    // 也一併回傳按鈕字（給 alertify.alert/confirm 使用）
+    // 也一併回傳按鈕字（給 IdasNotify.alert/confirm 使用）
     const ui = {
         title: (lang === 'en-us') ? 'Notification' : '提示',
         ok:    (lang === 'zh-tw') ? '確定' : (lang === 'zh-cn' ? '确定' : 'OK'),
@@ -6340,7 +6340,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                 const errors = Array.isArray(resObj?.errors) ? resObj.errors : [];
                 if (errors.length) {
                 console.warn('server errors:', errors);
-                // 這裡可顯示 alertify.error(...) 等
+                // 這裡可顯示 IdasNotify.error(...) 等
                 }
                 // 原流程
                 success_response_seq(response, 'spinner', `../public/?url=Step/index/${job_id}/${seq_id}`);
@@ -6517,7 +6517,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                 seqid: seq_id,
                 stepid: step_id
             }, function (response) {
-                let res = JSON.parse(response);
+                let res = (typeof response === 'string') ? JSON.parse(response) : response;
                 if (res.is_last === "N") {
                     disableDownshiftFields();
                 }
@@ -7331,12 +7331,12 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                 const msg = msgByReason();
 
                 if (window.alertify?.alert) {
-                alertify.alert(TITLE, msg, function () {
+                IdasNotify.alert(TITLE, msg, function () {
                     try { el.focus(); el.select?.(); } catch {}
                     window[key] = false;
                 }).set('labels', { ok: OK_LABEL });
                 } else {
-                alert(`${TITLE}\n${msg}`);
+                IdasNotify.alert(`${TITLE}\n${msg}`);
                 window[key] = false;
                 try { el.focus(); el.select?.(); } catch {}
                 }
@@ -7490,7 +7490,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
 
                     if (!window.__alert_offset_opt2__) {
                         window.__alert_offset_opt2__ = true;
-                        alertify.alert(TITLE, msg, () => {
+                        IdasNotify.alert(TITLE, msg, () => {
                             try { offEl.focus(); offEl.select?.(); } catch {}
                             window.__alert_offset_opt2__ = false;
                         }).set('labels', { ok: OKTXT });
@@ -7856,7 +7856,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
 
             // 彈跳視窗（關閉後聚焦到 StepAngle）
             if (typeof alertify !== 'undefined' && alertify?.alert) {
-                alertify.alert(mm, function () {
+                IdasNotify.alert(mm, function () {
                 try { elAngle.focus({ preventScroll: false }); } catch (_) {}
                 });
             } else {
@@ -8024,8 +8024,8 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                 if (!(dsVal < tqVal)) {
                     dsEl.classList.add("is-invalid");
                     
-                    // ⚠️ 改成 alertify.alert 視窗
-                    alertify.alert("Validation Error", msg);
+                    // ⚠️ 改成 IdasNotify.alert 視窗
+                    IdasNotify.alert("Validation Error", msg);
 
                     isValid = false;
                     errorList.push('StepTorqueDownShift');
@@ -8796,7 +8796,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
 
         
 
-        // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepHiTorque（用 alertify.alert）----
+        // ---- 交叉驗證：StepOption==2 時，StepLoTorque 必須小於 StepHiTorque（用 IdasNotify.alert）----
         (function enforceLoTorqueLessThanHiTorqueForOption2() {
         if (StepOption !== 2) return;
 
@@ -8931,7 +8931,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                 const alertOnce = (flag, msg, focusEl) => {
                     if (window[flag]) return;
                     window[flag] = true;
-                    alertify.alert(TITLE, msg, () => {
+                    IdasNotify.alert(TITLE, msg, () => {
                         try { focusEl?.focus(); focusEl?.select?.(); } catch {}
                         window[flag] = false;
                     }).set('labels', { ok: OKTXT });
@@ -9096,9 +9096,9 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
             };
 
             if (typeof alertify !== 'undefined' && alertify?.alert) {
-                alertify.alert(T.title, T.msg, refocus).set('labels', { ok: OK });
+                IdasNotify.alert(T.title, T.msg, refocus).set('labels', { ok: OK });
             } else {
-                alert(`${T.title}\n\n${T.msg}`);
+                IdasNotify.alert(`${T.title}\n\n${T.msg}`);
                 refocus();
             }
 
@@ -9459,12 +9459,12 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
             if (!window._alertingDSTorqueVsTarget_Opt1) {
                 window._alertingDSTorqueVsTarget_Opt1 = true;
                 if (typeof alertify !== 'undefined' && alertify?.alert) {
-                alertify.alert(I18N.title, I18N.msg, function () {
+                IdasNotify.alert(I18N.title, I18N.msg, function () {
                     try { dsEl.focus(); dsEl.select?.(); } catch {}
                     window._alertingDSTorqueVsTarget_Opt1 = false;
                 }).set('labels', { ok: OK_LABEL });
                 } else {
-                alert(`${I18N.title}\n\n${I18N.msg}`);
+                IdasNotify.alert(`${I18N.title}\n\n${I18N.msg}`);
                 try { dsEl.focus(); dsEl.select?.(); } catch {}
                 window._alertingDSTorqueVsTarget_Opt1 = false;
                 }
@@ -9651,7 +9651,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                     })
                     .set('labels', { ok });
                 } else {
-                    alert(`${title}\n${msg}`);
+                    IdasNotify.alert(`${title}\n${msg}`);
                     window._alertingHiVsToolLo = false;
                 }
                 };
@@ -10100,11 +10100,11 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                     tqEl.classList.add('is-invalid');
 
                     if (window.alertify?.alert) {
-                        alertify.alert(TITLE, msg, function () {
+                        IdasNotify.alert(TITLE, msg, function () {
                             try { tqEl.focus(); tqEl.select?.(); } catch {}
                         }).set('labels', { ok: OK });
                     } else {
-                        alert(`${TITLE}\n${msg}`);
+                        IdasNotify.alert(`${TITLE}\n${msg}`);
                     }
 
                     window.isValid = false;
@@ -10141,11 +10141,11 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                     tqEl.classList.add('is-invalid');
 
                     if (window.alertify?.alert) {
-                        alertify.alert(TITLE, msg, function () {
+                        IdasNotify.alert(TITLE, msg, function () {
                             try { tqEl.focus(); tqEl.select?.(); } catch {}
                         }).set('labels', { ok: OK });
                     } else {
-                        alert(`${TITLE}\n${msg}`);
+                        IdasNotify.alert(`${TITLE}\n${msg}`);
                     }
 
                     window.isValid = false;
@@ -10394,7 +10394,7 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
                 const flag = `_alertingFinal_${fieldId}_${valueType}_${targetId}`;
                 if (!window[flag]) {
                     window[flag] = true;
-                    alertify.alert(TITLE, msg, function () {
+                    IdasNotify.alert(TITLE, msg, function () {
                         try { el.focus(); el.select?.(); } catch {}
                         window[flag] = false;
                     }).set('labels', { ok: OK });
@@ -10597,12 +10597,12 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
             if (_alerting) return;
             _alerting = true;
             try {
-            alertify.alert(TITLE, msg, () => {
+            IdasNotify.alert(TITLE, msg, () => {
                 _alerting = false;
                 try { focusEl?.focus(); focusEl?.select?.(); } catch {}
             }).set('labels', { ok: OKTXT });
             } catch {
-            alert(msg);
+            IdasNotify.alert(msg);
             _alerting = false;
             try { focusEl?.focus(); focusEl?.select?.(); } catch {}
             }
@@ -11153,7 +11153,7 @@ function getLangAndUnit() {
 
     const unit = (UNIT_LABELS[code]?.[lang]) || UNIT_LABELS[1][lang]; // fallback N·m
 
-    // 也一併回傳按鈕字（給 alertify.alert/confirm 使用）
+    // 也一併回傳按鈕字（給 IdasNotify.alert/confirm 使用）
     const ui = {
         title: (lang === 'en-us') ? 'Notification' : '提示',
         ok:    (lang === 'zh-tw') ? '確定' : (lang === 'zh-cn' ? '确定' : 'OK'),

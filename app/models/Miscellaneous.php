@@ -551,22 +551,12 @@ class Miscellaneous{
 
 
     public function lang_load(){
-
-        $language = $_COOKIE['language'] ?? 'en-us';
-        $language = preg_replace('/[^a-zA-Z0-9_-]/', '', $language); 
-    
-        $language_file = '../app/language/' . $language . '.php';
-        return  $language_file;
-     
+        return LocalizationService::languageFile();
     }
 
-    public function generateErrorResponse($errorType, $errorMessage) {
-        $response = array(
-            'res_type' => $errorType,
-            'res_msg'  => $errorMessage
-        );
-        echo json_encode($response);
-        exit;
+    public function generateErrorResponse($errorType, $errorMessage, $legacyExtra = null) {
+        $extra = $legacyExtra === null ? [] : ['res_data' => $legacyExtra];
+        ApiResponseService::send((string)$errorType, (string)$errorMessage, null, $extra);
     }
 
 
@@ -693,7 +683,7 @@ class Miscellaneous{
     public function get_controller_device_info(){
 
         // 1) DB 路徑
-        $dbPath = '/home/kls/NTCS7/ntcs_device.db';
+        $dbPath = idas_path('controller_root', 'ntcs_device.db');
 
 
         // 檔案不存在就直接回傳 null

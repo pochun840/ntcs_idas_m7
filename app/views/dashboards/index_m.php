@@ -258,7 +258,7 @@ function DB_sync_idas(argument) {
     }
 
     function showAlertAutoClose(title, message, delay = 3000) {
-        const dialog = alertify.alert(title, message);
+        const dialog = IdasNotify.alert(title, message);
         dialog.set('onshow', function () {
             setTimeout(() => alertify.dismissAll(), delay);
         });
@@ -743,7 +743,7 @@ function DB_sync_idas(argument) {
     }
 
     function showAlertAutoClose(title, message, delay = 3000) {
-        const dialog = alertify.alert(title, message);
+        const dialog = IdasNotify.alert(title, message);
         dialog.set('onshow', function () {
             setTimeout(() => alertify.dismissAll(), delay);
         });
@@ -920,6 +920,9 @@ function DB_sync_idas(argument) {
 </style>
 <?php endif; ?>
 
+<link rel="stylesheet" href="<?php echo URLROOT; ?>css/sync_progress.css?v=20260825_4">
+<script src="<?php echo URLROOT; ?>js/sync_progress.js?v=20260825_4"></script>
+
 <?php
 $platformLabel = (idas_is_icontroller())
     ? 'i-controller'
@@ -947,4 +950,3 @@ $platformLabel = (idas_is_icontroller())
     user-select: none;
 }
 </style>
-

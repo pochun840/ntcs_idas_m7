@@ -302,19 +302,19 @@ function closebutton_io(elementId) {
 
 
 function success_response(response, spinnerId = 'spinner', autoClose = false) {
-    const responseData = JSON.parse(response);
+    const responseData = (typeof response === 'string') ? JSON.parse(response) : response;
 
     setTimeout(() => {
         document.getElementById(spinnerId).style.display = 'none';
 
         if (autoClose) {
-            alertify.alert(responseData.res_type, responseData.res_msg);
+            IdasNotify.alert(responseData.res_type, responseData.res_msg);
             setTimeout(() => {
                 alertify.closeAll();
                 history.go(0);
             }, 3000);
         } else {
-            alertify.alert(responseData.res_type, responseData.res_msg, function () {
+            IdasNotify.alert(responseData.res_type, responseData.res_msg, function () {
                 alertify.closeAll();
                 history.go(0);
             });
@@ -349,7 +349,7 @@ function checkAuthToken() {
     // 檢查 auth_token 是否存在
     const authToken = getCookie('auth_token');
     if (!authToken) {
-        alert(titleText + "\n\n" + msg);
+        IdasNotify.alert(titleText + "\n\n" + msg);
         window.location.href = "/login";
     }
 }
@@ -401,11 +401,11 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
     }
 
     // ====== 兼容處理：偵測是否支援 (title, message) 兩參數 ======
-    const supportsTitleParam = typeof alertify.alert === 'function' && alertify.alert.length >= 2;
+    const supportsTitleParam = typeof IdasNotify.alert === 'function' && IdasNotify.alert.length >= 2;
 
     let dlg;
     if (supportsTitleParam) {
-      // v1.x 正規 API：alert(title, message)
+      // v1.x 正規 API：IdasNotify.alert(title, message)
       dlg = alertify
         .alert(title, msg, function () {
           clearTimeout(autoTimer);
@@ -459,7 +459,7 @@ function handleAjaxResponse(responseData) {
         setTimeout(function () {
             document.getElementById('spinner').style.display = 'none';
 
-            alertify.alert(res.res_type, res.res_msg, function () {
+            IdasNotify.alert(res.res_type, res.res_msg, function () {
                 history.go(0);
             });
 
@@ -469,7 +469,7 @@ function handleAjaxResponse(responseData) {
         }, 1000);
     } catch (e) {
         console.error("JSON parse error:", e);
-        alert("回傳格式錯誤");
+        IdasNotify.alert("回傳格式錯誤");
     }
 }
 } else {
@@ -817,19 +817,19 @@ function closebutton_io(elementId) {
 
 
 function success_response(response, spinnerId = 'spinner', autoClose = false) {
-    const responseData = JSON.parse(response);
+    const responseData = (typeof response === 'string') ? JSON.parse(response) : response;
 
     setTimeout(() => {
         document.getElementById(spinnerId).style.display = 'none';
 
         if (autoClose) {
-            alertify.alert(responseData.res_type, responseData.res_msg);
+            IdasNotify.alert(responseData.res_type, responseData.res_msg);
             setTimeout(() => {
                 alertify.closeAll();
                 history.go(0);
             }, 3000);
         } else {
-            alertify.alert(responseData.res_type, responseData.res_msg, function () {
+            IdasNotify.alert(responseData.res_type, responseData.res_msg, function () {
                 alertify.closeAll();
                 history.go(0);
             });
@@ -864,7 +864,7 @@ function checkAuthToken() {
     // 檢查 auth_token 是否存在
     const authToken = getCookie('auth_token');
     if (!authToken) {
-        alert(titleText + "\n\n" + msg);
+        IdasNotify.alert(titleText + "\n\n" + msg);
         window.location.href = "/login";
     }
 }
@@ -916,11 +916,11 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
     }
 
     // ====== 兼容處理：偵測是否支援 (title, message) 兩參數 ======
-    const supportsTitleParam = typeof alertify.alert === 'function' && alertify.alert.length >= 2;
+    const supportsTitleParam = typeof IdasNotify.alert === 'function' && IdasNotify.alert.length >= 2;
 
     let dlg;
     if (supportsTitleParam) {
-      // v1.x 正規 API：alert(title, message)
+      // v1.x 正規 API：IdasNotify.alert(title, message)
       dlg = alertify
         .alert(title, msg, function () {
           clearTimeout(autoTimer);
@@ -974,7 +974,7 @@ function handleAjaxResponse(responseData) {
         setTimeout(function () {
             document.getElementById('spinner').style.display = 'none';
 
-            alertify.alert(res.res_type, res.res_msg, function () {
+            IdasNotify.alert(res.res_type, res.res_msg, function () {
                 history.go(0);
             });
 
@@ -984,7 +984,7 @@ function handleAjaxResponse(responseData) {
         }, 1000);
     } catch (e) {
         console.error("JSON parse error:", e);
-        alert("回傳格式錯誤");
+        IdasNotify.alert("回傳格式錯誤");
     }
 }
 

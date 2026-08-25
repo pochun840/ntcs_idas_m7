@@ -10,8 +10,8 @@
         $candidates = [];
 
         if (PHP_OS_FAMILY === 'Linux') {
-            $candidates[] = '/var/www/html/database/KLS_NTCS_IDAS.Lin';
-            $candidates[] = '/home/kls/NTCS7/KLS_NTCS.Lin';
+            $candidates[] = idas_path('database_root', 'KLS_NTCS_IDAS.Lin');
+            $candidates[] = idas_path('controller_root', 'KLS_NTCS.Lin');
         } else {
             $candidates[] = __DIR__ . '/../../database/KLS_NTCS_IDAS.Lin';
             $candidates[] = __DIR__ . '/../../../database/KLS_NTCS_IDAS.Lin';
@@ -25,7 +25,7 @@
         }
 
         // default path for error display
-        return $candidates[0] ?? '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+        return $candidates[0] ?? idas_path('database_root', 'KLS_NTCS_IDAS.Lin');
     }
 
     private function accountUserDb(): PDO
@@ -167,7 +167,7 @@
     private function accountUserIdasDbPathStrict(): string
     {
         if (PHP_OS_FAMILY === 'Linux') {
-            return '/var/www/html/database/KLS_NTCS_IDAS.Lin';
+            return idas_path('database_root', 'KLS_NTCS_IDAS.Lin');
         }
 
         return $this->accountUserDbPath();
@@ -176,7 +176,7 @@
     private function accountUserControllerDbPath(): string
     {
         if (PHP_OS_FAMILY === 'Linux') {
-            return '/home/kls/NTCS7/KLS_NTCS.Lin';
+            return idas_path('controller_root', 'KLS_NTCS.Lin');
         }
 
         return __DIR__ . '/../../../database/KLS_NTCS.Lin';

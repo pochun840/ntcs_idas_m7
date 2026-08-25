@@ -134,7 +134,7 @@ function agent_ip_save_new() {
         data: { agent_server_ip: ip },
         success: function (response) {
         let res = {};
-        try { res = JSON.parse(response) || {}; } catch {}
+        try { res = ((typeof response === 'string') ? JSON.parse(response) : response) || {}; } catch {}
 
         if (spinner) spinner.style.display = 'none';
 

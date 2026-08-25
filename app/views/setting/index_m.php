@@ -84,7 +84,7 @@ function edit_password(){
 
             },
             success: function(response) {
-                alert(response);
+                IdasNotify.alert(response);
                 history.go(0);
             },
             error: function(xhr, status, error) {
@@ -92,7 +92,7 @@ function edit_password(){
             }
         });   
     }else{
-        alert("請確認密碼");
+        IdasNotify.alert("請確認密碼");
         return false;
     }
 }
@@ -107,11 +107,11 @@ function button_save_password_gust() {
   var pattern = /^\d{4}$/;
 
   if (pass_guest1 !== pass_guest2) {
-    alert('兩次輸入的密碼不一致');
+    IdasNotify.alert('兩次輸入的密碼不一致');
     return;
   }
   if (!pattern.test(pass_guest1)) {
-    alert('密碼必須為 4 位數字（0-9）');
+    IdasNotify.alert('密碼必須為 4 位數字（0-9）');
     return;
   }
 
@@ -123,11 +123,11 @@ function button_save_password_gust() {
       new_password: pass_guest1
     },
     success: function (response) {
-      alert(response);
+      IdasNotify.alert(response);
       history.go(0);
     },
     error: function (xhr, status, error) {
-      alert('更新失敗：' + (error || status));
+      IdasNotify.alert('更新失敗：' + (error || status));
     }
   });
 }
@@ -203,7 +203,7 @@ function OpenButton(ButtonMode){
     }
     else
     {
-        //alert("Function ["+ ButtonMode +"] is under constructing ...");
+        //IdasNotify.alert("Function ["+ ButtonMode +"] is under constructing ...");
     }
 }
 
@@ -464,7 +464,7 @@ function edit_password(){
 
             },
             success: function(response) {
-                alert(response);
+                IdasNotify.alert(response);
                 history.go(0);
             },
             error: function(xhr, status, error) {
@@ -472,7 +472,7 @@ function edit_password(){
             }
         });   
     }else{
-        alert("請確認密碼");
+        IdasNotify.alert("請確認密碼");
         return false;
     }
 }
@@ -487,11 +487,11 @@ function button_save_password_gust() {
   var pattern = /^\d{4}$/;
 
   if (pass_guest1 !== pass_guest2) {
-    alert('兩次輸入的密碼不一致');
+    IdasNotify.alert('兩次輸入的密碼不一致');
     return;
   }
   if (!pattern.test(pass_guest1)) {
-    alert('密碼必須為 4 位數字（0-9）');
+    IdasNotify.alert('密碼必須為 4 位數字（0-9）');
     return;
   }
 
@@ -503,11 +503,11 @@ function button_save_password_gust() {
       new_password: pass_guest1
     },
     success: function (response) {
-      alert(response);
+      IdasNotify.alert(response);
       history.go(0);
     },
     error: function (xhr, status, error) {
-      alert('更新失敗：' + (error || status));
+      IdasNotify.alert('更新失敗：' + (error || status));
     }
   });
 }
@@ -583,7 +583,7 @@ function OpenButton(ButtonMode){
     }
     else
     {
-        //alert("Function ["+ ButtonMode +"] is under constructing ...");
+        //IdasNotify.alert("Function ["+ ButtonMode +"] is under constructing ...");
     }
 }
 

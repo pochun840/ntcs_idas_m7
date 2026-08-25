@@ -34,7 +34,7 @@ class Tools extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         if ($this->shouldRunToolSpecSync(10)) {
             $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
+                IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                 '.tool_spec_sync',               // 任務鎖名稱（key）
                 fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
             );
@@ -43,7 +43,7 @@ class Tools extends Controller
         // ===== Tool Spec Sync UI Status =====
         $tool_sync_state = 'synced'; // 預設：已套用
 
-        $stateFn = '/var/www/html/database/.tool_spec_sync.json';
+        $stateFn = idas_path('database_root', '.tool_spec_sync.json');
         if (is_file($stateFn)) {
             $state = json_decode((string)@file_get_contents($stateFn), true);
             if (is_array($state)) {
@@ -451,7 +451,8 @@ class Tools extends Controller
         return long2ip($bL);
     }
 
-    public function get_upgrade_version(string $path = '/home/kls/upgrade/version'): string{
+    public function get_upgrade_version(?string $path = null): string{
+        $path = $path ?: idas_path('upgrade_root', 'version');
         $cmd = 'sudo cat ' . escapeshellarg($path) . ' 2>/dev/null';
         $txt = shell_exec($cmd) ?? '';
         return preg_split('/\R/', trim(ltrim($txt, '_')))[0] ?? '';
@@ -635,7 +636,8 @@ class Tools extends Controller
         }
 
         $cmd = sprintf(
-            'sudo /home/kls/NTCS7/Ethernet_Setting -i %s -b %s 2>&1',
+            'sudo %s -i %s -b %s 2>&1',
+            escapeshellarg(idas_path('controller_root', 'Ethernet_Setting')),
             escapeshellarg($ip),
             escapeshellarg($bArg)
         );

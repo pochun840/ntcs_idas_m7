@@ -939,7 +939,7 @@ function crud_job_event(argument) {
 
             if (!output_event) {
                  if (typeof alertify !== 'undefined') {
-                    alertify.alert(msg, function() {
+                    IdasNotify.alert(msg, function() {
                         // callback：使用者按下 OK 時
                     });
 
@@ -1172,7 +1172,7 @@ function delete_output_id(job_id, del_output_val,output_pinval) {
             hideOverlay();
         },
         error: function(xhr, status, error) {
-          alertify.error(errMsg);
+          IdasNotify.error(errMsg);
           document.querySelector(".main-content")?.classList.remove("overlay-active");
           document.getElementById('spinner').style.display = 'none';
         }
@@ -1181,7 +1181,7 @@ function delete_output_id(job_id, del_output_val,output_pinval) {
     function onCancel() {
       document.querySelector(".main-content")?.classList.remove("overlay-active");
       hideOverlay();
-      alertify.message(cancelledMsg);
+      IdasNotify.message(cancelledMsg);
     }
   ).set('labels', { ok: okText, cancel: cancelText });
 }
@@ -1554,14 +1554,14 @@ function edit_output_id() {
 
   var output_event = select.value; // 新事件（目標）
   var pinval = collectPinValues('input[name="edit_pin_option"]');
-  if (!pinval || !pinval.length) { alertify && alertify.alert('請先選擇要編輯的輸出腳位'); return; }
+  if (!pinval || !pinval.length) { alertify && IdasNotify.alert('請先選擇要編輯的輸出腳位'); return; }
 
   var pin_old    = pinval[0]['id'];                 // e.g. "edit_pin2_1"
   var wave       = pinval[0]['value'];              // 0/1/2...
   var match      = pin_old.match(/\d+/);
   var output_pin = match ? parseInt(match[0], 10) : null;
 
-  if (!job_id || !output_pin) { alertify && alertify.alert('資料不完整，請重新選取事件/腳位'); return; }
+  if (!job_id || !output_pin) { alertify && IdasNotify.alert('資料不完整，請重新選取事件/腳位'); return; }
 
   var time_ms_id = 'edit_time' + output_pin;
   var wave_on_el = document.getElementById(time_ms_id);
@@ -1580,10 +1580,10 @@ function edit_output_id() {
   // wave==1 才檢查 time
   if (Number(wave) === 1) {
     var v = String(wave_on ?? '').trim();
-    if (v === '') { alertify && alertify.alert(MSG[LANG].empty(output_pin, MIN, MAX)); wave_on_el && wave_on_el.focus(); return; }
+    if (v === '') { alertify && IdasNotify.alert(MSG[LANG].empty(output_pin, MIN, MAX)); wave_on_el && wave_on_el.focus(); return; }
     var n = Number(v);
     if (!Number.isFinite(n) || !Number.isInteger(n) || n < MIN || n > MAX) {
-      alertify && alertify.alert(MSG[LANG].range(output_pin, MIN, MAX));
+      alertify && IdasNotify.alert(MSG[LANG].range(output_pin, MIN, MAX));
       wave_on_el && wave_on_el.focus();
       return;
     }
@@ -1628,7 +1628,7 @@ function edit_output_id() {
       },
       error: function (xhr, status, error) {
         console.error("[edit_output_id] save failed:", status, error);
-        alertify && alertify.alert('編輯失敗，請稍後再試');
+        alertify && IdasNotify.alert('編輯失敗，請稍後再試');
       },
       complete: function () { hideOverlay(); } // ✅ 不論成功/失敗都關遮罩
     });
@@ -2055,7 +2055,7 @@ function getLanguageMessage(cookieName) {
     } else {
       message =  'Please select the event to delete';
     }
-   alertify.alert(message);
+   IdasNotify.alert(message);
 }
 
 
@@ -2089,12 +2089,12 @@ function output_success_res(response, job_id, callbackFn, hideElementId = 'newin
 
   // 顯示彈窗
   try {
-    if (window.alertify && typeof alertify.alert === 'function') {
-      const dlg = alertify.alert(title, msg);
+    if (window.alertify && typeof IdasNotify.alert === 'function') {
+      const dlg = IdasNotify.alert(title, msg);
       try { dlg.set('basic', false).set('movable', false); } catch (e) {}
       try { dlg.set('labels', { ok: okLabel }); } catch (e) {}
     } else {
-      alert(msg);
+      IdasNotify.alert(msg);
     }
   } catch (e) {
     console.error('[output_success_res] show alert failed:', e);

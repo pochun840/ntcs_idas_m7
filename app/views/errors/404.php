@@ -399,11 +399,11 @@ function copyRoute(){
   const msg = "Copied: " + route;
   try{
     navigator.clipboard.writeText(route).then(() => {
-      if (window.alertify?.success) alertify.success(msg);
-      else alert(msg);
+      if (window.alertify?.success) IdasNotify.success(msg);
+      else IdasNotify.alert(msg);
     });
   }catch(e){
-    alert(msg);
+    IdasNotify.alert(msg);
   }
 }
 

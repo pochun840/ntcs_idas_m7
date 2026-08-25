@@ -108,7 +108,7 @@ function savejob() {
         lang === 'zh-tw' ? ('新增失敗：' + error) :
         lang === 'zh-cn' ? ('新增失败：' + error) :
                            ('Create failed: ' + error);
-      alertify.error(errMsg);
+      IdasNotify.error(errMsg);
       document.querySelector('.main-content')?.classList.remove('overlay-active');
       document.getElementById('spinner').style.display = 'none';
     }
@@ -143,7 +143,7 @@ function updatejob() {
         lang === 'zh-tw' ? ('更新失敗：' + error) :
         lang === 'zh-cn' ? ('更新失败：' + error) :
                            ('Update failed: ' + error);
-      alertify.error(errMsg);
+      IdasNotify.error(errMsg);
       document.querySelector('.main-content')?.classList.remove('overlay-active');
       document.getElementById('spinner').style.display = 'none';
     }
@@ -177,7 +177,7 @@ function delete_jobid(jobid) {
           success_response(response, 'spinner', true);
         },
         error: function () {
-          alertify.error(errMsg);
+          IdasNotify.error(errMsg);
           document.querySelector('.main-content')?.classList.remove('overlay-active');
           document.getElementById('spinner').style.display = 'none';
         }
@@ -242,11 +242,11 @@ function copy_job_by_id(jobid) {
 
   // 基本檢查
   if (!new_jobid || !new_jobname) {
-    alertify.error(i18n.needBoth);
+    IdasNotify.error(i18n.needBoth);
     return;
   }
   if (String(new_jobid) === String(from_jobid)) {
-    alertify.error(i18n.sameJob);
+    IdasNotify.error(i18n.sameJob);
     return;
   }
 
@@ -280,7 +280,7 @@ function copy_job_by_id(jobid) {
             error: function (xhr, status, error) {
               document.getElementById("spinner").style.display = "none";
               document.querySelector(".main-content")?.classList.remove("overlay-active");
-              alertify.error(i18n.copyFail);
+              IdasNotify.error(i18n.copyFail);
               console.error("Copy error:", error);
             }
           });
@@ -288,12 +288,12 @@ function copy_job_by_id(jobid) {
         function onCancel() {
           // 取消 → 移除遮罩
           document.querySelector(".main-content")?.classList.remove("overlay-active");
-          //alertify.message(i18n.cancelled);
+          //IdasNotify.message(i18n.cancelled);
         }
       );
     },
     error: function () {
-      alertify.error(i18n.precheckFail);
+      IdasNotify.error(i18n.precheckFail);
     }
   });
 }

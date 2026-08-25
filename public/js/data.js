@@ -18,7 +18,7 @@ function exportData() {
     }
 
     if (!isChecked) {
-        alertify.alert("請選擇一個選項");
+        IdasNotify.alert("請選擇一個選項");
         return;
     }
 
@@ -26,12 +26,12 @@ function exportData() {
     var end_date   = document.getElementById('end_date').value;
 
     if (start_date === '' || end_date === '') {
-        alertify.alert("請選擇開始日期與結束日期");
+        IdasNotify.alert("請選擇開始日期與結束日期");
         return;
     }
 
     if (start_date > end_date) {
-        alertify.alert("開始日期必須小於結束日期");
+        IdasNotify.alert("開始日期必須小於結束日期");
         return;
     }
 
@@ -87,7 +87,7 @@ function exportData() {
         },
         error: function(xhr, status, error) {
             console.error("AJAX 請求失敗:", status, error);
-            alertify.alert("發生錯誤，無法導出資料");
+            IdasNotify.alert("發生錯誤，無法導出資料");
         }
     });
 }
@@ -228,15 +228,15 @@ function downloadCSVZip() {
     if (isBlobLike(msg) || tag === '[object Blob]' || tag === '[object File]') {
       await debugBlob('safeAlert-blob', msg);
       const text = await readBlobTextPreview(msg, 1024); // 1MB 上限
-      alertify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });
+      IdasNotify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });
       return;
     }
     if (msg && typeof msg === 'object') {
-      alertify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))
+      IdasNotify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))
               .set('labels', { ok: dict.ok });
       return;
     }
-    alertify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });
+    IdasNotify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });
   };
 
   // =========================
@@ -387,7 +387,7 @@ function exportData() {
     }
 
     if (!isChecked) {
-        alertify.alert("請選擇一個選項");
+        IdasNotify.alert("請選擇一個選項");
         return;
     }
 
@@ -395,12 +395,12 @@ function exportData() {
     var end_date   = document.getElementById('end_date').value;
 
     if (start_date === '' || end_date === '') {
-        alertify.alert("請選擇開始日期與結束日期");
+        IdasNotify.alert("請選擇開始日期與結束日期");
         return;
     }
 
     if (start_date > end_date) {
-        alertify.alert("開始日期必須小於結束日期");
+        IdasNotify.alert("開始日期必須小於結束日期");
         return;
     }
 
@@ -456,7 +456,7 @@ function exportData() {
         },
         error: function(xhr, status, error) {
             console.error("AJAX 請求失敗:", status, error);
-            alertify.alert("發生錯誤，無法導出資料");
+            IdasNotify.alert("發生錯誤，無法導出資料");
         }
     });
 }
@@ -597,15 +597,15 @@ function downloadCSVZip() {
     if (isBlobLike(msg) || tag === '[object Blob]' || tag === '[object File]') {
       await debugBlob('safeAlert-blob', msg);
       const text = await readBlobTextPreview(msg, 1024); // 1MB 上限
-      alertify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });
+      IdasNotify.alert(title, String(text || '[blob]')).set('labels', { ok: dict.ok });
       return;
     }
     if (msg && typeof msg === 'object') {
-      alertify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))
+      IdasNotify.alert(title, String(msg.res_msg || msg.message || JSON.stringify(msg, null, 2)))
               .set('labels', { ok: dict.ok });
       return;
     }
-    alertify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });
+    IdasNotify.alert(title, String(msg || '')).set('labels', { ok: dict.ok });
   };
 
   // =========================

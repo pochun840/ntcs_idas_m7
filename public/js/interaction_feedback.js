@@ -18,8 +18,13 @@
     function actionDescriptor(button) {
         return [
             button.id || '', button.name || '', button.getAttribute('onclick') || '',
-            button.getAttribute('data-action') || '', button.className || ''
+            button.getAttribute('data-action') || '', button.className || '',
+            button.textContent || '', button.value || ''
         ].join(' ');
+    }
+
+    function usesDialogErrorFeedback(button) {
+        return !!button && /save|create|add|new|edit|update|copy|delete|remove|新增|儲存|保存|編輯|修改|複製|刪除/i.test(actionDescriptor(button));
     }
 
     function shouldLock(button) {
@@ -71,6 +76,7 @@
         var scope = button.closest('.modal, form, .setting-content, .settings-content');
         if (enabled) button.classList.remove('idas-action-success', 'idas-action-failure');
         button.dataset.idasAjaxBusy = enabled ? '1' : '0';
+        button.dataset.idasState = enabled ? 'busy' : 'idle';
         button.classList.toggle('idas-action-busy', enabled);
         button.classList.toggle('idas-click-locked', enabled);
         button.setAttribute('aria-busy', enabled ? 'true' : 'false');
@@ -93,20 +99,33 @@
         if (typeof value === 'string') {
             try { value = JSON.parse(value); } catch (ignore) { return true; }
         }
-        if (!value || typeof value !== 'object' || typeof value.res_type === 'undefined') return true;
-        var type = String(value.res_type).toLowerCase();
-        return type === 'ok' || type === 'success' || type === 'true' || type === '1';
+        if (!value || typeof value !== 'object') return true;
+
+        // 新版 API 明確提供 success 時，以 success 為準。
+        if (typeof value.success !== 'undefined') {
+            var success = String(value.success).toLowerCase();
+            return value.success === true || value.success === 1 || success === 'true' || success === '1';
+        }
+
+        // 舊版常以 Info 當作新增成功的提示標題，不能視為失敗。
+        // 只有明確的錯誤代碼或錯誤類型才顯示紅色。
+        var code = String(value.code || '').toLowerCase();
+        if (code && /(^|_)(fail|failed|error|ng|invalid|denied|timeout)($|_)/.test(code)) return false;
+
+        var type = String(value.res_type || '').toLowerCase();
+        if (type === 'fail' || type === 'failed' || type === 'error' || type === 'ng' || type === 'false' || type === '0') return false;
+        return true;
     }
 
-    function beginAsyncAction(request) {
-        if (!pendingActionButton || (Date.now() - pendingActionAt) > AJAX_ACTION_WINDOW_MS) return null;
-        var button = pendingActionButton;
+    function beginAsyncAction(request, explicitButton) {
+        var button = explicitButton || pendingActionButton;
+        if (!button || (!explicitButton && (Date.now() - pendingActionAt) > AJAX_ACTION_WINDOW_MS)) return null;
         var context = { button: button, request: request || null, finished: false, succeeded: true, timer: null };
         if (request) request._idasFeedbackContext = context;
         var count = Number(button.dataset.idasAjaxCount || 0) + 1;
         button.dataset.idasAjaxCount = String(count);
         setAjaxBusy(button, true);
-        context.timer = window.setTimeout(function () { finishAsyncAction(context, false); }, ACTION_TIMEOUT_MS);
+        context.timer = window.setTimeout(function () { finishAsyncAction(context, null); }, ACTION_TIMEOUT_MS);
         return context;
     }
 
@@ -123,6 +142,7 @@
         setAjaxBusy(button, false);
         delete button.dataset.idasAjaxCount;
         delete button.dataset.idasAjaxResult;
+        if (succeeded === null) return;
         if (failed) showActionFailure(button);
         else window.iDASInteractionFeedback.success(button);
         pendingActionButton = null;
@@ -131,8 +151,20 @@
     function showActionFailure(button, duration) {
         if (!button) return;
         button.classList.remove('idas-action-busy');
+        // 新增、儲存、編輯、複製與刪除可能接續多個背景 AJAX；
+        // 輔助請求不應讓操作按鈕短暫變紅，錯誤仍由 alert／欄位驗證呈現。
+        if (usesDialogErrorFeedback(button)) {
+            button.classList.remove('idas-action-failure');
+            return;
+        }
         button.classList.add('idas-action-failure');
-        window.setTimeout(function () { button.classList.remove('idas-action-failure'); }, Number(duration) || 1200);
+        button.dataset.idasState = 'failure';
+        var live = document.getElementById('idas-action-status');
+        if (live) live.textContent = 'Action failed';
+        window.setTimeout(function () {
+            button.classList.remove('idas-action-failure');
+            button.dataset.idasState = 'idle';
+        }, Number(duration) || 1200);
     }
 
     function installAjaxFeedback() {
@@ -141,9 +173,11 @@
             .on('ajaxSend.idasFeedback', function (_event, xhr) {
                 var settings = arguments[2] || {};
                 var method = String(settings.type || settings.method || 'GET').toUpperCase();
-                if (method === 'GET') return;
+                if (method === 'GET' || settings.idasFeedback === false) return;
                 lastJqueryAjaxAt = Date.now();
-                beginAsyncAction(xhr);
+                var explicit = settings.idasButton;
+                if (typeof explicit === 'string') explicit = document.querySelector(explicit);
+                beginAsyncAction(xhr, explicit && explicit.nodeType === 1 ? explicit : null);
             })
             .on('ajaxSuccess.idasFeedback', function (_event, _xhr, _settings, data) {
                 var context = _xhr._idasFeedbackContext;
@@ -232,7 +266,13 @@
             if (!button) return;
             setAjaxBusy(button, false);
             button.classList.add('idas-action-success');
-            window.setTimeout(function () { button.classList.remove('idas-action-success'); }, Number(duration) || 1100);
+            button.dataset.idasState = 'success';
+            var live = document.getElementById('idas-action-status');
+            if (live) live.textContent = 'Action completed';
+            window.setTimeout(function () {
+                button.classList.remove('idas-action-success');
+                button.dataset.idasState = 'idle';
+            }, Number(duration) || 1100);
         },
         failure: showActionFailure,
         error: pulseInvalid,
@@ -241,7 +281,22 @@
 
     function initialize() {
         document.documentElement.classList.add('idas-ui-enhanced');
+        if (!document.getElementById('idas-action-status')) {
+            var live = document.createElement('div');
+            live.id = 'idas-action-status';
+            live.setAttribute('aria-live', 'polite');
+            live.setAttribute('aria-atomic', 'true');
+            live.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;';
+            document.body.appendChild(live);
+        }
         refreshOptions(document);
+        document.querySelectorAll('button, input[type="button"], input[type="submit"], [role="button"]').forEach(function (button) {
+            if (button.dataset.idasAction) return;
+            var descriptor = actionDescriptor(button);
+            var match = descriptor.match(/save|create|add|new|edit|update|copy|delete|remove/i);
+            if (match) button.dataset.idasAction = match[0].toLowerCase();
+            if (!button.dataset.idasState) button.dataset.idasState = 'idle';
+        });
         installInvalidObserver();
         installAjaxFeedback();
         installFetchFeedback();

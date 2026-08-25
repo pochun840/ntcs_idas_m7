@@ -43,7 +43,7 @@ class Dashboards extends Controller
         // Note:     非 cron；沒有 request 就不會自動同步
         if ($this->shouldRunToolSpecSync(10)) {
             $this->runOnceWithFlag(
-                '/var/www/html/database',        // lock / state 檔案目錄
+                IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
                 '.tool_spec_sync',               // 任務鎖名稱（key）
                 fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
             );
@@ -280,7 +280,7 @@ class Dashboards extends Controller
 
     public function get_latest_csv() {
 
-        $dir = "/var/www/html/idas/public/ftp";
+        $dir = IDAS_PATH_PUBLIC_FTP;
         $files = glob($dir . "/*.csv");
 
         if (!$files) {
@@ -347,8 +347,8 @@ class Dashboards extends Controller
 
     public function auto_fix_and_sync_csv(){
 
-        $sourceDir = '/mnt/ramdisk/ftp';
-        $targetDir = '/var/www/html/idas/public/ftp';
+        $sourceDir = IDAS_PATH_RAMDISK_FTP;
+        $targetDir = IDAS_PATH_PUBLIC_FTP;
 
         // Debug log
         @mkdir($targetDir, 0777, true);
@@ -457,7 +457,7 @@ class Dashboards extends Controller
 
     public function cleanCsvKeepLast10Core(){
 
-        $dir = '/var/www/html/idas/public/ftp';
+        $dir = IDAS_PATH_PUBLIC_FTP;
 
         if (!is_dir($dir)) {
             return [false, "目錄不存在：{$dir}"];
