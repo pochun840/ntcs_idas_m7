@@ -4,8 +4,29 @@
  * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
  * 0 / missing / invalid -> NTCS implementation
  */
+trait LazyDeviceIdResolver
+{
+    private static $lazyDeviceIdResolved = false;
+    private static $lazyDeviceIdValue = null;
+
+    /** Resolve Controller Device ID only when a feature actually needs it. */
+    protected function lazyDeviceId($fallback = null)
+    {
+        if (!self::$lazyDeviceIdResolved) {
+            self::$lazyDeviceIdResolved = true;
+            $value = $this->ntcs_device_db_sysnc();
+            self::$lazyDeviceIdValue = ($value !== null && (int)$value >= 1 && (int)$value <= 255)
+                ? (int)$value
+                : null;
+        }
+
+        return self::$lazyDeviceIdValue ?? $fallback;
+    }
+}
+
 class IControllerBaseController
 {
+    use LazyDeviceIdResolver;
     // OP protocol runtime cache: avoid reading SQLite / retrying fallback endpoints on every command.
     protected static $opProtocolCandidatesCache = null;
     protected static $opLastEndpoint = null;
@@ -2351,6 +2372,7 @@ class IControllerBaseController
 
 class NtcsBaseController
 {
+    use LazyDeviceIdResolver;
     // OP protocol runtime cache: avoid reading SQLite / retrying fallback endpoints on every command.
     protected static $opProtocolCandidatesCache = null;
     protected static $opLastEndpoint = null;

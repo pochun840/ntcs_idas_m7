@@ -20,7 +20,6 @@ class Customize extends Controller
         $this->MiscellaneousModel = $this->model('Miscellaneous');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
@@ -512,7 +511,7 @@ class Customize extends Controller
         require_once '../app/config/config.php';
 
         // Modbus slave ID 合理範圍通常是 1~255
-        $unitId = (int)$this->deviceId;
+        $unitId = (int)$this->lazyDeviceId(1);
         if ($unitId < 1 || $unitId > 255) {
             $unitId = 1;
         }
@@ -1051,7 +1050,6 @@ class Customize extends Controller
         $this->MiscellaneousModel = $this->model('Miscellaneous');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
@@ -1618,7 +1616,7 @@ class Customize extends Controller
         require_once '../app/config/config.php';
 
         // Modbus slave ID 合理範圍通常是 1~255
-        $unitId = (int)$this->deviceId;
+        $unitId = (int)$this->lazyDeviceId(1);
         if ($unitId < 1 || $unitId > 255) {
             $unitId = 1;
         }

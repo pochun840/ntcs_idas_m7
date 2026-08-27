@@ -27,7 +27,6 @@ class Settings extends Controller
         $this->stepModel = $this->model('Steptcc');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
 
     }
@@ -93,7 +92,7 @@ class Settings extends Controller
         $started = microtime(true);
         $info = (array)($this->SettingModel->GetControllerInfo() ?? []);
 
-        $unitId = (int)($info['device_id'] ?? ($this->deviceId ?? 1));
+        $unitId = (int)($info['device_id'] ?? $this->lazyDeviceId(1));
         if ($unitId < 1 || $unitId > 255) {
             $unitId = 1;
         }
@@ -1631,7 +1630,7 @@ class Settings extends Controller
             $zip->close();
         }
 
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
+        $device_id = (int)$this->lazyDeviceId(1);
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
         $isOp = $this->is_op_protocol_enabled();
         $protocolName = $isOp ? 'OP' : 'MODBUS TCP';
@@ -1997,7 +1996,7 @@ class Settings extends Controller
         $temp_del_year = $del_year_id[0]; // 只處理第一筆
 
         // 檢查是否可以刪除（Modbus 狀態檢查）
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
+        $device_id = (int)$this->lazyDeviceId(1);
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
         $idas_result = $this->idas_check( $unitId);
 
@@ -2230,7 +2229,7 @@ class Settings extends Controller
 
 
         // 取得 正確的 Modbus id
-        $device_id = isset($this->deviceId) ? (int)$this->deviceId : 1;
+        $device_id = (int)$this->lazyDeviceId(1);
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
 
@@ -4909,7 +4908,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         }
 
         // 3. Controller must be logged out before DB replacement / notification.
-        $unitId = isset($this->deviceId) ? (int)$this->deviceId : 1;
+        $unitId = (int)$this->lazyDeviceId(1);
         if ($unitId < 1 || $unitId > 255) {
             $controllerInfo = (array)($this->SettingModel->GetControllerInfo() ?? []);
             $unitId = (int)($controllerInfo['device_id'] ?? 1);
@@ -5204,9 +5203,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         $device_sn       = preg_replace('/[^A-Za-z0-9_\-]/', '_', $device_sn_raw);
 
         // ✅ 檢查是否可同步（Modbus 工具狀態）
-        $device_id = isset($this->deviceId)
-            ? (int)$this->deviceId
-            : 1; // 防呆，沒有就給 1 (依你實際情況調整)
+        $device_id = (int)$this->lazyDeviceId(1);
 
         $idas_result = $this->idas_check($device_id);
 
@@ -5416,7 +5413,6 @@ class Settings extends Controller
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id
         // 使用 Modbus TCP 時必須先解析實際 unitId，避免預設 1 造成 Protocol read failed。
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
 
     }
@@ -5492,9 +5488,7 @@ class Settings extends Controller
     {
         $candidates = [];
 
-        if (isset($this->deviceId) && $this->deviceId !== null && $this->deviceId !== '') {
-            $candidates[] = (int)$this->deviceId;
-        }
+        $candidates[] = (int)$this->lazyDeviceId(1);
 
         if (!empty($_COOKIE['temp_device_id'])) {
             $candidates[] = (int)$_COOKIE['temp_device_id'];
@@ -5621,7 +5615,7 @@ class Settings extends Controller
         $started = microtime(true);
         $info = (array)($this->SettingModel->GetControllerInfo() ?? []);
 
-        $unitId = (int)($info['device_id'] ?? ($this->deviceId ?? 1));
+        $unitId = (int)($info['device_id'] ?? $this->lazyDeviceId(1));
         if ($unitId < 1 || $unitId > 255) {
             $unitId = 1;
         }

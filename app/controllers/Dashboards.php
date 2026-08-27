@@ -22,7 +22,6 @@ class Dashboards extends Controller
         $this->ToolModel = $this->model('Tool');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
         $this->device_torque_unit = $this->get_torque_unit_from_controller();
         

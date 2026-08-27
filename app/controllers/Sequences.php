@@ -24,7 +24,6 @@ class Sequences extends Controller
         $this->stepModel = $this->model('Steptcc');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
@@ -783,7 +782,6 @@ class Sequences extends Controller
         $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
@@ -958,7 +956,7 @@ class Sequences extends Controller
                 'user_id'      => $operator,
                 'operator'     => $operator,
                 'client_ip'    => $_SERVER['REMOTE_ADDR'] ?? '',
-                'device_id'    => $this->deviceId ?? null,
+                'device_id'    => $this->lazyDeviceId(),
                 'module'       => 'SEQ',
                 'status'       => 'SUCCESS',
                 'request_json' => $_POST,

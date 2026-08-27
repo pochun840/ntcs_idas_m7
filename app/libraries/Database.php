@@ -66,7 +66,7 @@ class Database
                 $this->setUtf8Encoding($pdo);
                 $this->{'db_' . $key} = $pdo;
             } catch (PDOException $e) {
-                //error_log("❌ Failed to connect to DB [$key]: " . $e->getMessage());
+                error_log('[iDAS DB] Failed to connect [' . $key . '] path=' . $path . ': ' . $e->getMessage());
             }
         }
     }

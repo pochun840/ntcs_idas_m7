@@ -14,7 +14,6 @@ class Tools extends Controller
         $this->DataModel = $this->model('Datas');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
 
     }
@@ -66,7 +65,7 @@ class Tools extends Controller
 
         $controllers_info = $this->ToolModel->GetControllerInfo();
 
-        $device_id = isset( $this->deviceId) ? (int) $this->deviceId : 1; 
+        $device_id = (int)$this->lazyDeviceId(1); 
         $unitId = ($device_id >= 1 && $device_id <= 255) ? $device_id : 1;
 
         $MAC      = $this->getMacAddress();

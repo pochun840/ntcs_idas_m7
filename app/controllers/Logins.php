@@ -362,7 +362,6 @@ class Logins extends Controller
         $this->AdminModel = $this->model('Admin');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
@@ -869,7 +868,6 @@ class Logins extends Controller
         $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
@@ -1615,7 +1613,7 @@ class Logins extends Controller
                 'user_id'      => $operator,
                 'operator'     => $operator,
                 'client_ip'    => $this->getClientIp(),
-                'device_id'    => $this->deviceId ?? null,
+                'device_id'    => $this->lazyDeviceId(),
                 'module'       => 'AUTH',
                 'status'       => 'SUCCESS',
                 'target'       => $username !== '' ? $this->loginAuditText('USER_TARGET', ['user' => $username]) : '-',

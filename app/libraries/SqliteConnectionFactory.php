@@ -10,12 +10,10 @@ final class SqliteConnectionFactory
         $defaults = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
         ];
 
         $pdo = new PDO('sqlite:' . $path, null, null, $options + $defaults);
         $pdo->exec('PRAGMA busy_timeout = ' . self::BUSY_TIMEOUT_MS);
-        $pdo->exec('PRAGMA foreign_keys = ON');
         $pdo->exec('PRAGMA encoding = "UTF-8"');
         return $pdo;
     }

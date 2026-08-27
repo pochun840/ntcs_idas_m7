@@ -22,7 +22,6 @@ class Data extends Controller
         $this->SettingModel = $this->model('Setting');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
     }
 
@@ -709,7 +708,6 @@ class Data extends Controller
         $this->SettingModel = $this->model('Setting');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
         // 給前端 JS 使用的 Operator 下載限制旗標（非敏感資料）。
         // 目的：Data 主頁、扭力折線圖頁面的匯出/下載按鈕都能立即被前端擋下。

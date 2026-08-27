@@ -22,7 +22,6 @@ class Remotes extends Controller
         $this->ToolModel = $this->model('Tool');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
 
     }
@@ -78,7 +77,7 @@ class Remotes extends Controller
             $error_message .= "seq_id,";
         }
 
-        $device_id = (int)$this->deviceId;
+        $device_id = (int)$this->lazyDeviceId(1);
         if ($device_id < 1 || $device_id > 255) {
             $input_check = false;
             $error_message .= 'device_id,';
@@ -171,7 +170,7 @@ class Remotes extends Controller
     public function get_current_job($value=''){
 
         $error_message = '';
-        $device_id = (int)$this->deviceId;
+        $device_id = (int)$this->lazyDeviceId(1);
 
         if ($device_id < 1 || $device_id > 255) {
             $error_message = 'device_id,';
@@ -220,7 +219,6 @@ class Remotes extends Controller
         $this->ToolModel = $this->model('Tool');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
 
     }
@@ -376,7 +374,7 @@ class Remotes extends Controller
             $error_message .= "seq_id,";
         }
 
-        $device_id = (int)$this->deviceId;
+        $device_id = (int)$this->lazyDeviceId(1);
         if ($device_id < 1 || $device_id > 255) {
             $input_check = false;
             $error_message .= 'device_id,';
@@ -456,7 +454,7 @@ class Remotes extends Controller
     public function get_current_job($value=''){
 
         $error_message = '';
-        $device_id = (int)$this->deviceId;
+        $device_id = (int)$this->lazyDeviceId(1);
 
         if ($device_id < 1 || $device_id > 255) {
             $error_message = 'device_id,';

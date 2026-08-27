@@ -32,7 +32,6 @@ class Jobs extends Controller
         $this->OutputModel = $this->model('Output');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
         # 啟動 agent 
         //$this->res_agent =  $this->runAgentInitial();
@@ -532,7 +531,6 @@ class Jobs extends Controller
         $this->AuditModel = $this->model('OperationAudit');
 
         #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-        $this->deviceId = $this->ntcs_device_db_sysnc();
 
         # 啟動 agent 
         //$this->res_agent =  $this->runAgentInitial();
@@ -584,7 +582,7 @@ class Jobs extends Controller
                 'user_id'      => $operator,
                 'operator'     => $operator,
                 'client_ip'    => $_SERVER['REMOTE_ADDR'] ?? '',
-                'device_id'    => $this->deviceId ?? null,
+                'device_id'    => $this->lazyDeviceId(),
                 'module'       => 'JOB',
                 'status'       => 'SUCCESS',
                 'request_json' => $_POST,
