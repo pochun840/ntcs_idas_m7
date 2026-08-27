@@ -1,5 +1,7 @@
 <?php
 
+require_once dirname(__DIR__) . '/config/paths.php';
+
 class Database
 {
     private $db_data;
@@ -60,7 +62,7 @@ class Database
                 continue;
             }
             try {
-                $pdo = new PDO('sqlite:' . $path);
+                $pdo = idas_sqlite_connect($path);
                 $this->setUtf8Encoding($pdo);
                 $this->{'db_' . $key} = $pdo;
             } catch (PDOException $e) {

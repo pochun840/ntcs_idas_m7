@@ -367,7 +367,7 @@ class Check extends Controller
         }
 
         try {
-            $db = new PDO('sqlite:' . $dbPath, null, null, [
+            $db = idas_sqlite_connect($dbPath, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_TIMEOUT => 2,
             ]);
@@ -453,7 +453,7 @@ class Check extends Controller
         }
 
         try {
-            $db = new PDO('sqlite:' . $dbPath, null, null, [
+            $db = idas_sqlite_connect($dbPath, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 // SQLite 讀取偶發鎖住時，稍等一下（毫秒）
                 PDO::ATTR_TIMEOUT => 2,
@@ -552,7 +552,7 @@ class Check extends Controller
                 return false;
             }
 
-            $db = new PDO('sqlite:' . $idasDb);
+            $db = idas_sqlite_connect($idasDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // ⭐ 直接更新第一筆
@@ -593,7 +593,7 @@ class Check extends Controller
                 return false;
             }
 
-            $db = new PDO('sqlite:' . $idasDb);
+            $db = idas_sqlite_connect($idasDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $db->exec('PRAGMA busy_timeout = 3000');
 
@@ -1274,7 +1274,7 @@ class Check extends Controller
         }
 
         try {
-            $db = new PDO('sqlite:' . $dbPath, null, null, [
+            $db = idas_sqlite_connect($dbPath, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_TIMEOUT => 2,
             ]);
@@ -1373,7 +1373,7 @@ class Check extends Controller
         }
 
         try {
-            $db = new PDO('sqlite:' . $dbPath, null, null, [
+            $db = idas_sqlite_connect($dbPath, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 // SQLite 讀取偶發鎖住時，稍等一下（毫秒）
                 PDO::ATTR_TIMEOUT => 2,
@@ -1472,7 +1472,7 @@ class Check extends Controller
                 return false;
             }
 
-            $db = new PDO('sqlite:' . $idasDb);
+            $db = idas_sqlite_connect($idasDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // ⭐ 直接更新第一筆
@@ -1513,7 +1513,7 @@ class Check extends Controller
                 return false;
             }
 
-            $db = new PDO('sqlite:' . $idasDb);
+            $db = idas_sqlite_connect($idasDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $db->exec('PRAGMA busy_timeout = 3000');
 
@@ -1559,7 +1559,7 @@ class Check extends Controller
         }
 
         try {
-            $db = new PDO('sqlite:' . $idasDb);
+            $db = idas_sqlite_connect($idasDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $db->exec('PRAGMA busy_timeout = 3000');
 
@@ -1626,7 +1626,7 @@ class Check extends Controller
 
             // Fresh connection for verification prevents reading a stale PDO snapshot.
             $db = null;
-            $verifyDb = new PDO('sqlite:' . $idasDb);
+            $verifyDb = idas_sqlite_connect($idasDb);
             $verifyDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $verifyDb->exec('PRAGMA busy_timeout = 3000');
 

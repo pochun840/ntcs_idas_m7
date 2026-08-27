@@ -102,7 +102,7 @@ class Setting{
                     throw new RuntimeException($key . '_db_not_writable');
                 }
 
-                $pdo[$key] = new PDO('sqlite:' . $path);
+                $pdo[$key] = idas_sqlite_connect($path);
                 $pdo[$key]->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $pdo[$key]->exec('PRAGMA busy_timeout = 5000');
 
@@ -203,7 +203,7 @@ class Setting{
 
         try {
             // Always open a fresh connection so post-sync reads cannot reuse stale state.
-            $pdo = new PDO('sqlite:' . $path);
+            $pdo = idas_sqlite_connect($path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 3000');
 
@@ -803,7 +803,7 @@ class Setting{
     public function Get_Controller_DB_version()
     {
         // code...
-        $Controller_db_con = new PDO('sqlite:' . idas_path('controller_resource_root', 'data.db')); //測試機
+        $Controller_db_con = idas_sqlite_connect(idas_path('controller_resource_root', 'data.db')); //測試機
         $sql = "SELECT * FROM `device` ";
         $statement = $Controller_db_con->prepare($sql);
         $results = $statement->execute();
@@ -1344,7 +1344,7 @@ class Setting{
                     throw new RuntimeException($key . '_db_not_writable');
                 }
 
-                $pdo[$key] = new PDO('sqlite:' . $path);
+                $pdo[$key] = idas_sqlite_connect($path);
                 $pdo[$key]->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $pdo[$key]->exec('PRAGMA busy_timeout = 5000');
 
@@ -1445,7 +1445,7 @@ class Setting{
 
         try {
             // Always open a fresh connection so post-sync reads cannot reuse stale state.
-            $pdo = new PDO('sqlite:' . $path);
+            $pdo = idas_sqlite_connect($path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 3000');
 
@@ -1876,7 +1876,7 @@ class Setting{
     public function Get_Controller_DB_version()
     {
         // code...
-        $Controller_db_con = new PDO('sqlite:' . idas_path('controller_resource_root', 'data.db')); //測試機
+        $Controller_db_con = idas_sqlite_connect(idas_path('controller_resource_root', 'data.db')); //測試機
         $sql = "SELECT * FROM `device` ";
         $statement = $Controller_db_con->prepare($sql);
         $results = $statement->execute();

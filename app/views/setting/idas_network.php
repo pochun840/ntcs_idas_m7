@@ -305,7 +305,7 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
                     offlineObserved = true;
                     next();
                 };
-                image.src = probeOrigin + basePath + 'font/img/touch-icon.png?_idas_restart_probe=' + Date.now();
+                image.src = probeOrigin + basePath + 'img/touch-icon.png?_idas_restart_probe=' + Date.now();
             };
 
             setTimeout(probe, 700);

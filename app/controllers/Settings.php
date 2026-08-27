@@ -2196,7 +2196,7 @@ class Settings extends Controller
     private function assertSqliteHealthy(string $dbPath): void
     {
         try {
-            $db = new PDO('sqlite:' . $dbPath);
+            $db = idas_sqlite_connect($dbPath);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // PRAGMA integrity_check 會回傳 'ok' 或錯誤描述
@@ -2493,7 +2493,7 @@ class Settings extends Controller
 
         $tableName = 'ntcs_barcode_test';
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
@@ -3643,7 +3643,7 @@ class Settings extends Controller
      * 比對 table 名稱、欄位名稱、欄位型別、notnull、pk。
      */
     private function getSqliteSchemaSignature(string $dbPath): array {
-        $pdo = new PDO('sqlite:' . $dbPath);
+        $pdo = idas_sqlite_connect($dbPath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $tableStmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
@@ -4162,7 +4162,7 @@ class Settings extends Controller
         }
 
         try {
-            $db = new PDO('sqlite:' . $dbPath, null, null, [
+            $db = idas_sqlite_connect($dbPath, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_TIMEOUT => 3,
             ]);
@@ -4863,7 +4863,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         try {
             $this->assertSqliteHealthy($tmpFile);
 
-            $checkDb = new PDO('sqlite:' . $tmpFile);
+            $checkDb = idas_sqlite_connect($tmpFile);
             $checkDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $stmt = $checkDb->prepare(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name=:table LIMIT 1"
@@ -4883,7 +4883,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         }
 
         try {
-            $accountDb = new PDO('sqlite:' . $tmpFile, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $accountDb = idas_sqlite_connect($tmpFile, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             $accountResult = $this->normalizeUploadedLinServiceAccount($accountDb);
             if (!empty($accountResult['changed'])) {
                 $this->logMessage('[Import_Config] uploaded LIN account normalized: ' . (string)$accountResult['action']);
@@ -4968,7 +4968,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
                 throw new RuntimeException('11.Lin size verification failed');
             }
             $this->assertSqliteHealthy($linPath);
-            $stagedDb = new PDO('sqlite:' . $linPath, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $stagedDb = idas_sqlite_connect($linPath, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             $stagedKls = (int)$stagedDb->query(
                 "SELECT COUNT(*) FROM \"user\" WHERE LOWER(TRIM(\"name\")) = 'kls'"
             )->fetchColumn();
@@ -5029,7 +5029,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
     // 連接到SQLite資料庫
     function connectToSQLite($dbPath) {
          try {
-             $pdo = new PDO("sqlite:$dbPath");
+             $pdo = idas_sqlite_connect($dbPath);
              $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
              return $pdo;
          } catch (PDOException $e) {
@@ -5278,10 +5278,10 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
             throw new Exception("iDAS DB not found");
         }
 
-        $cDb = new PDO('sqlite:' . $controllerDbPath);
+        $cDb = idas_sqlite_connect($controllerDbPath);
         $cDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $iDb = new PDO('sqlite:' . $idasDbPath);
+        $iDb = idas_sqlite_connect($idasDbPath);
         $iDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         /* ---------- 讀 Controller ---------- */
@@ -6774,7 +6774,7 @@ class Settings extends Controller
     private function assertSqliteHealthy(string $dbPath): void
     {
         try {
-            $db = new PDO('sqlite:' . $dbPath);
+            $db = idas_sqlite_connect($dbPath);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // PRAGMA integrity_check 會回傳 'ok' 或錯誤描述
@@ -6875,8 +6875,8 @@ class Settings extends Controller
         $this->assertSqliteHealthy($controllerDb);
         $this->assertSqliteHealthy($idasDb);
 
-        $controllerPdo = new PDO('sqlite:' . $controllerDb);
-        $idasPdo       = new PDO('sqlite:' . $idasDb);
+        $controllerPdo = idas_sqlite_connect($controllerDb);
+        $idasPdo       = idas_sqlite_connect($idasDb);
 
         foreach ([$controllerPdo, $idasPdo] as $pdo) {
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -8299,7 +8299,7 @@ class Settings extends Controller
             throw new Exception('KLS_NTCS_IDAS.Lin is missing or not writable: ' . $linPath);
         }
 
-        $db = new PDO('sqlite:' . $linPath);
+        $db = idas_sqlite_connect($linPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->exec('PRAGMA busy_timeout = 3000;');
 
@@ -8933,7 +8933,7 @@ class Settings extends Controller
 
         // 必須是完整 SQLite DB，且含 NTCS 設定 DB 的識別 table SEQ_type。
         try {
-            $checkDb = new PDO('sqlite:' . $tmpFile);
+            $checkDb = idas_sqlite_connect($tmpFile);
             $checkDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $integrity = $checkDb->query('PRAGMA integrity_check')->fetchColumn();
@@ -8958,7 +8958,7 @@ class Settings extends Controller
         }
 
         try {
-            $accountDb = new PDO('sqlite:' . $tmpFile, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $accountDb = idas_sqlite_connect($tmpFile, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             $accountResult = $this->normalizeUploadedLinServiceAccount($accountDb);
             if (!empty($accountResult['changed'])) {
                 $this->logMessage('[Import_Config] uploaded LIN account normalized: ' . (string)$accountResult['action']);
@@ -8974,7 +8974,7 @@ class Settings extends Controller
                     throw new RuntimeException('Unable to finalize uploaded LIN as a single SQLite file.');
                 }
                 $accountDb = null;
-                $verifyDb = new PDO('sqlite:' . $tmpFile);
+                $verifyDb = idas_sqlite_connect($tmpFile);
                 $verify = strtolower(trim((string)$verifyDb->query('PRAGMA integrity_check')->fetchColumn()));
                 $verifyDb = null;
                 if ($verify !== 'ok') throw new RuntimeException('Uploaded LIN integrity check failed after account conversion.');
@@ -9019,7 +9019,7 @@ class Settings extends Controller
 
         // Verify the exact single file that will be read by the Controller.
         try {
-            $stagedDb = new PDO('sqlite:' . $linPath, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $stagedDb = idas_sqlite_connect($linPath, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             $stagedIntegrity = strtolower(trim((string)$stagedDb->query('PRAGMA integrity_check')->fetchColumn()));
             if ($stagedIntegrity !== 'ok') {
                 throw new RuntimeException('Staged LIN integrity check failed.');
@@ -9085,7 +9085,7 @@ class Settings extends Controller
     // 連接到SQLite資料庫
     function connectToSQLite($dbPath) {
          try {
-             $pdo = new PDO("sqlite:$dbPath");
+             $pdo = idas_sqlite_connect($dbPath);
              $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
              return $pdo;
          } catch (PDOException $e) {
@@ -9298,10 +9298,10 @@ class Settings extends Controller
             throw new Exception("iDAS DB not found");
         }
 
-        $cDb = new PDO('sqlite:' . $controllerDbPath);
+        $cDb = idas_sqlite_connect($controllerDbPath);
         $cDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $iDb = new PDO('sqlite:' . $idasDbPath);
+        $iDb = idas_sqlite_connect($idasDbPath);
         $iDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         /* ---------- 讀 Controller ---------- */
@@ -10050,7 +10050,7 @@ class Settings extends Controller
             throw new Exception('Account DB not found: ' . $dbPath);
         }
 
-        $db = new PDO('sqlite:' . $dbPath);
+        $db = idas_sqlite_connect($dbPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
@@ -10252,7 +10252,7 @@ class Settings extends Controller
             throw new Exception('DB file is not readable: ' . $dbPath);
         }
 
-        $db = new PDO('sqlite:' . $dbPath);
+        $db = idas_sqlite_connect($dbPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
@@ -11029,7 +11029,7 @@ class Settings extends Controller
             }
 
             try {
-                $db = new PDO('sqlite:' . $path);
+                $db = idas_sqlite_connect($path);
                 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 

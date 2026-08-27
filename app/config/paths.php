@@ -76,3 +76,5 @@ if (!function_exists('idas_path')) {
             : $paths[$key] . '/' . ltrim(str_replace('\\', '/', $append), '/');
     }
 }
+
+require_once dirname(__DIR__) . '/libraries/SqliteConnectionFactory.php';

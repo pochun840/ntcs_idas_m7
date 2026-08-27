@@ -697,7 +697,7 @@ class PlatformDebug
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $path);
+            $pdo = idas_sqlite_connect($path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 1500');
             $result['sqlite_open'] = true;

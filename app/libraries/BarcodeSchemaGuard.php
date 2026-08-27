@@ -94,7 +94,7 @@ class BarcodeSchemaGuard
 
     private static function openDatabase(string $dbPath): PDO
     {
-        $pdo = new PDO('sqlite:' . $dbPath);
+        $pdo = idas_sqlite_connect($dbPath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $pdo->exec('PRAGMA busy_timeout = 5000');

@@ -105,7 +105,7 @@ function idas_sync_login_user_table_from_controller(): array
             return $lastResult = $result;
         }
 
-        $db = new PDO('sqlite:' . $targetPath);
+        $db = idas_sqlite_connect($targetPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $db->exec('PRAGMA busy_timeout = 5000');
@@ -808,7 +808,7 @@ class Logins extends Controller
         $ret=['status'=>'ok','path'=>$dbPath,'duplicates_removed'=>0,'seq_id_added'=>false,'unique_index'=>false];
         if (!is_file($dbPath) || filesize($dbPath)<=0) { $ret['status']='missing'; return $ret; }
         try {
-            $pdo=new PDO('sqlite:'.$dbPath);
+            $pdo=idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
             $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
             $st=$pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=:name LIMIT 1");
@@ -1879,7 +1879,7 @@ class Logins extends Controller
                 return 'db_not_writable';
             }
 
-            $db = new PDO('sqlite:' . $dbPath);
+            $db = idas_sqlite_connect($dbPath);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $db->exec('PRAGMA busy_timeout = 3000');
@@ -1982,7 +1982,7 @@ class Logins extends Controller
                 return 'remove_restricted_db_not_writable';
             }
 
-            $db = new PDO('sqlite:' . $dbPath);
+            $db = idas_sqlite_connect($dbPath);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $db->exec('PRAGMA busy_timeout = 3000');

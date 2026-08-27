@@ -218,7 +218,7 @@ class DatabaseBackupService
                 continue;
             }
             try {
-                $pdo = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                $pdo = idas_sqlite_connect($path, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
                 $rows = $pdo->query('PRAGMA quick_check')->fetchAll(PDO::FETCH_COLUMN);
                 $checked[] = $name;
                 if (count($rows) !== 1 || strtolower(trim((string)$rows[0])) !== 'ok') {

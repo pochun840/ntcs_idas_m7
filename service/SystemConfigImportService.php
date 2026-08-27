@@ -18,7 +18,7 @@ final class SystemConfigImportService
         if (!preg_match('/^con_[A-Za-z0-9_-]+_[0-9]{14}\.Lin$/i', $name)) return ['ok' => false, 'error' => 'bad_name'];
         if ($tmp === '' || !is_uploaded_file($tmp)) return ['ok' => false, 'error' => 'bad_upload'];
         try {
-            $db = new PDO('sqlite:' . $tmp);
+            $db = idas_sqlite_connect($tmp);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             if (strtolower((string)$db->query('PRAGMA integrity_check')->fetchColumn()) !== 'ok') return ['ok' => false, 'error' => 'not_sqlite'];
             $table = $db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='SEQ_type' LIMIT 1")->fetchColumn();

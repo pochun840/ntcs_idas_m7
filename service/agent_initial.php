@@ -3,7 +3,7 @@
 require_once dirname(__DIR__) . '/app/config/paths.php';
 
 if (file_exists(idas_path('database_root', 'das.db')) && PHP_OS_FAMILY == 'Linux') {
-	$db_iDas = new PDO('sqlite:' . idas_path('database_root', 'das.db')); //das設定DB
+	$db_iDas = idas_sqlite_connect(idas_path('database_root', 'das.db')); //das設定DB
 
 	
 	$result = $db_iDas->query("SELECT * FROM config WHERE config_name = 'agent_type' ");

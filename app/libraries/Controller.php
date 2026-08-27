@@ -123,9 +123,9 @@ class IControllerBaseController
     public function LoginCheck($value='')
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:' . idas_path('database_root', 'das.db')); 
+            $con_db = idas_sqlite_connect(idas_path('database_root', 'das.db')); 
         }else{
-            $con_db = new PDO('sqlite:../data.db'); 
+            $con_db = idas_sqlite_connect('../data.db'); 
         }
 
         $con_db->exec('set names utf-8'); 
@@ -153,7 +153,7 @@ class IControllerBaseController
                 throw new Exception("❌ Database file not found: $db_path");
             }
 
-            $con_db = new PDO('sqlite:' . $db_path);
+            $con_db = idas_sqlite_connect($db_path);
             $con_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $con_db->exec('PRAGMA encoding = "UTF-8"');
 
@@ -272,7 +272,7 @@ class IControllerBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $sql  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
@@ -306,7 +306,7 @@ class IControllerBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 2000');
 
@@ -347,7 +347,7 @@ class IControllerBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 3000');
 
@@ -457,7 +457,7 @@ class IControllerBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 2000');
 
@@ -544,7 +544,7 @@ class IControllerBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 2000');
 
@@ -1261,7 +1261,7 @@ class IControllerBaseController
 
         // 3) 寫回 IDAS DB
         try {
-            $pdoIdas = new PDO('sqlite:' . $idasDbPath);
+            $pdoIdas = idas_sqlite_connect($idasDbPath);
             $pdoIdas->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 3-1) 檢查目前 IDAS 的 ntcs_device_test 是否已有資料
@@ -1642,7 +1642,7 @@ class IControllerBaseController
 
         try {
             // 1) 連到來源 DB
-            $src = new PDO("sqlite:" . $srcDB);
+            $src = idas_sqlite_connect($srcDB);
             $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 1a) 取 device_id 和 device_version
@@ -1655,7 +1655,7 @@ class IControllerBaseController
             $src = null;
 
             // 2) 連到目標 DB
-            $dst = new PDO("sqlite:" . $dstDB);
+            $dst = idas_sqlite_connect($dstDB);
             $dst->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 2a) 覆蓋 ntcs_tool_test
@@ -1710,7 +1710,7 @@ class IControllerBaseController
                 throw new Exception("❌ Database file not found: $db_path");
             }
 
-            $con_db = new PDO('sqlite:' . $db_path);
+            $con_db = idas_sqlite_connect($db_path);
             $con_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $con_db->exec('PRAGMA encoding = "UTF-8"');
 
@@ -1747,7 +1747,7 @@ class IControllerBaseController
                 throw new Exception("❌ ntcs_tool_test 資料庫不存在: $db_path");
             }
 
-            $pdo = new PDO('sqlite:' . $db_path);
+            $pdo = idas_sqlite_connect($db_path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 更新語句：直接更新整張表（假設所有列都需更新）
@@ -1844,7 +1844,7 @@ class IControllerBaseController
         }
 
         try {
-            $src = new PDO("sqlite:" . $srcDB);
+            $src = idas_sqlite_connect($srcDB);
             $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $torque_unit = $src->query("
@@ -1999,7 +1999,7 @@ class IControllerBaseController
             /* =====================================================
             * 1) 讀取 controller DB
             * ===================================================== */
-            $srcPdo = new PDO('sqlite:' . $srcDb, null, null, [
+            $srcPdo = idas_sqlite_connect($srcDb, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
@@ -2070,7 +2070,7 @@ class IControllerBaseController
             /* =====================================================
             * 4) 更新 iDAS DB
             * ===================================================== */
-            $destPdo = new PDO('sqlite:' . $destDb, null, null, [
+            $destPdo = idas_sqlite_connect($destDb, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
@@ -2227,7 +2227,7 @@ class IControllerBaseController
             throw new Exception("{$side} DB not found: {$dbPath}");
         }
 
-        $db = new PDO('sqlite:' . $dbPath);
+        $db = idas_sqlite_connect($dbPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         // ---------- ntcs_device_test ----------
@@ -2268,7 +2268,7 @@ class IControllerBaseController
         }
 
         try {
-            $db = new PDO('sqlite:' . $destDb);
+            $db = idas_sqlite_connect($destDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // ⚠️ 明確指定欄位，不用 LIMIT 1 也可視情況加
@@ -2308,7 +2308,7 @@ class IControllerBaseController
 
         try {
             // ---------- 開啟 SQLite ----------
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // ---------- 查詢 	device_id ----------
@@ -2477,9 +2477,9 @@ class NtcsBaseController
     public function LoginCheck($value='')
     {
         if( PHP_OS_FAMILY == 'Linux'){
-            $con_db = new PDO('sqlite:' . idas_path('database_root', 'das.db')); 
+            $con_db = idas_sqlite_connect(idas_path('database_root', 'das.db')); 
         }else{
-            $con_db = new PDO('sqlite:../data.db'); 
+            $con_db = idas_sqlite_connect('../data.db'); 
         }
 
         $con_db->exec('set names utf-8'); 
@@ -2507,7 +2507,7 @@ class NtcsBaseController
                 throw new Exception("❌ Database file not found: $db_path");
             }
 
-            $con_db = new PDO('sqlite:' . $db_path);
+            $con_db = idas_sqlite_connect($db_path);
             $con_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $con_db->exec('PRAGMA encoding = "UTF-8"');
 
@@ -2634,7 +2634,7 @@ class NtcsBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $sql  = "SELECT device_id FROM ntcs_device_test LIMIT 1";
@@ -2668,7 +2668,7 @@ class NtcsBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 2000');
 
@@ -2709,7 +2709,7 @@ class NtcsBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 3000');
 
@@ -2840,7 +2840,7 @@ class NtcsBaseController
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 2000');
 
@@ -3516,7 +3516,7 @@ class NtcsBaseController
 
         // 3) 寫回 IDAS DB
         try {
-            $pdoIdas = new PDO('sqlite:' . $idasDbPath);
+            $pdoIdas = idas_sqlite_connect($idasDbPath);
             $pdoIdas->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 3-1) 檢查目前 IDAS 的 ntcs_device_test 是否已有資料
@@ -3883,7 +3883,7 @@ class NtcsBaseController
 
         try {
             // 1) 連到來源 DB
-            $src = new PDO("sqlite:" . $srcDB);
+            $src = idas_sqlite_connect($srcDB);
             $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 1a) 取 device_id 和 device_version
@@ -3896,7 +3896,7 @@ class NtcsBaseController
             $src = null;
 
             // 2) 連到目標 DB
-            $dst = new PDO("sqlite:" . $dstDB);
+            $dst = idas_sqlite_connect($dstDB);
             $dst->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 2a) 覆蓋 ntcs_tool_test
@@ -3951,7 +3951,7 @@ class NtcsBaseController
                 throw new Exception("❌ Database file not found: $db_path");
             }
 
-            $con_db = new PDO('sqlite:' . $db_path);
+            $con_db = idas_sqlite_connect($db_path);
             $con_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $con_db->exec('PRAGMA encoding = "UTF-8"');
 
@@ -3988,7 +3988,7 @@ class NtcsBaseController
                 throw new Exception("❌ ntcs_tool_test 資料庫不存在: $db_path");
             }
 
-            $pdo = new PDO('sqlite:' . $db_path);
+            $pdo = idas_sqlite_connect($db_path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 更新語句：直接更新整張表（假設所有列都需更新）
@@ -4085,7 +4085,7 @@ class NtcsBaseController
         }
 
         try {
-            $src = new PDO("sqlite:" . $srcDB);
+            $src = idas_sqlite_connect($srcDB);
             $src->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $torque_unit = $src->query("
@@ -4240,7 +4240,7 @@ class NtcsBaseController
             /* =====================================================
             * 1) 讀取 controller DB
             * ===================================================== */
-            $srcPdo = new PDO('sqlite:' . $srcDb, null, null, [
+            $srcPdo = idas_sqlite_connect($srcDb, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
@@ -4311,7 +4311,7 @@ class NtcsBaseController
             /* =====================================================
             * 4) 更新 iDAS DB
             * ===================================================== */
-            $destPdo = new PDO('sqlite:' . $destDb, null, null, [
+            $destPdo = idas_sqlite_connect($destDb, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
@@ -4468,7 +4468,7 @@ class NtcsBaseController
             throw new Exception("{$side} DB not found: {$dbPath}");
         }
 
-        $db = new PDO('sqlite:' . $dbPath);
+        $db = idas_sqlite_connect($dbPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         // ---------- ntcs_device_test ----------
@@ -4509,7 +4509,7 @@ class NtcsBaseController
         }
 
         try {
-            $db = new PDO('sqlite:' . $destDb);
+            $db = idas_sqlite_connect($destDb);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // ⚠️ 明確指定欄位，不用 LIMIT 1 也可視情況加
@@ -4549,7 +4549,7 @@ class NtcsBaseController
 
         try {
             // ---------- 開啟 SQLite ----------
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // ---------- 查詢 	device_id ----------

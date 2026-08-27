@@ -694,7 +694,7 @@ class Miscellaneous{
 
         try {
             // 2) 建立 SQLite 連線
-            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo = idas_sqlite_connect($dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // 3) 讀取 table: ntcs_device_test

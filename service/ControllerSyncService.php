@@ -7,7 +7,7 @@ final class ControllerSyncService
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         if (!in_array($extension, ['db', 'lin', 'sqlite', 'sqlite3'], true)) return true;
         try {
-            $pdo = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $pdo = idas_sqlite_connect($path, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             return strtolower(trim((string)$pdo->query('PRAGMA quick_check')->fetchColumn())) === 'ok';
         } catch (Throwable $e) {
             return false;

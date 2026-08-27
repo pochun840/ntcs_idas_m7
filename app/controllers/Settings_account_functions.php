@@ -36,7 +36,7 @@
             throw new Exception('Account DB not found: ' . $dbPath);
         }
 
-        $db = new PDO('sqlite:' . $dbPath);
+        $db = idas_sqlite_connect($dbPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
@@ -191,7 +191,7 @@
             throw new Exception('DB file is not readable: ' . $dbPath);
         }
 
-        $db = new PDO('sqlite:' . $dbPath);
+        $db = idas_sqlite_connect($dbPath);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 

@@ -230,7 +230,7 @@ class FullDebug
         }
 
         try {
-            $pdo = new PDO('sqlite:' . $path);
+            $pdo = idas_sqlite_connect($path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA busy_timeout = 1500');
 
@@ -477,7 +477,7 @@ class FullDebug
         if (!is_file($path) || !is_readable($path)) return [];
 
         try {
-            $pdo = new PDO('sqlite:' . $path);
+            $pdo = idas_sqlite_connect($path);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $fields = [

@@ -22,6 +22,7 @@
             },
             syncing: { D2C: '正在上傳資料至控制器…', C2D: '正在儲存控制器資料…' },
             checking: '正在確認控制器狀態…', success: '同步完成',
+            controllerLoggedIn: '目前控制器尚未登出，請先登出控制器後再進行同步。',
             loginCheck: '無法確認控制器登入狀態', invalid: '伺服器回傳資料格式錯誤',
             failed: '同步失敗，請稍後再試', timeout: '同步請求逾時，後端可能仍在處理，請稍後確認資料。',
             ok: '確定', cancel: '取消'
@@ -34,6 +35,7 @@
             },
             syncing: { D2C: '正在上传资料至控制器…', C2D: '正在储存控制器资料…' },
             checking: '正在确认控制器状态…', success: '同步完成',
+            controllerLoggedIn: '目前控制器尚未登出，请先登出控制器后再进行同步。',
             loginCheck: '无法确认控制器登入状态', invalid: '服务器回传资料格式错误',
             failed: '同步失败，请稍后再试', timeout: '同步请求逾时，后端可能仍在处理，请稍后确认资料。',
             ok: '确定', cancel: '取消'
@@ -46,6 +48,7 @@
             },
             syncing: { D2C: 'Uploading data to controller…', C2D: 'Saving controller data…' },
             checking: 'Checking controller status…', success: 'Synchronization completed',
+            controllerLoggedIn: 'The controller is still logged in. Log out of the controller before synchronizing.',
             loginCheck: 'Unable to verify controller login status', invalid: 'Invalid response from server',
             failed: 'Synchronization failed. Please try again later.',
             timeout: 'The request timed out. Processing may still continue on the server; verify the data shortly.',
@@ -75,6 +78,30 @@
 
     function responseMessage(response, fallback) {
         return (response && (response.message || response.res_msg)) || fallback;
+    }
+
+    function loginCheckAllowed(response) {
+        if (!response || typeof response.result === 'undefined') return null;
+        if (response.result === true || response.result === 1) return true;
+        if (response.result === false || response.result === 0) return false;
+        var value = String(response.result).trim().toLowerCase();
+        if (value === 'true' || value === '1' || value === 'yes') return true;
+        if (value === 'false' || value === '0' || value === 'no' || value === '') return false;
+        return null;
+    }
+
+    function showLoginError(title, message) {
+        removeProgress();
+        lockButtons(false);
+        syncBusy = false;
+        activeRequest = null;
+        if (window.IdasNotify && typeof window.IdasNotify.show === 'function') {
+            window.IdasNotify.show({ title: title, message: message, type: 'error', duration: 6000 });
+        } else if (window.IdasNotify && typeof window.IdasNotify.alert === 'function') {
+            window.IdasNotify.alert(title, message);
+        } else {
+            window.alertify.alert(title, message);
+        }
     }
 
     function syncUrl(direction) {
@@ -244,22 +271,22 @@
                     url: '?url=Settings/get_controller_login', method: 'POST', timeout: 15000, global: false
                 }).done(function (response) {
                 var result = parseResponse(response);
-                if (!result || typeof result.result === 'undefined') {
-                    finishProgress('failure', copy.invalid);
-                    cleanup(3200, false);
+                var allowed = loginCheckAllowed(result);
+                if (allowed === null) {
+                    showLoginError(copy.title[direction], copy.invalid);
                     return;
                 }
-                if (!result.result) {
-                    var message = responseMessage(result, copy.loginCheck);
-                    finishProgress('failure', message);
-                    cleanup(3200, false);
+                if (!allowed) {
+                    var message = Number(result.login) === 1
+                        ? copy.controllerLoggedIn
+                        : responseMessage(result, copy.loginCheck);
+                    showLoginError(copy.title[direction], message);
                     return;
                 }
                 startSync(direction, copy);
                 }).fail(function (xhr, status) {
                 var message = status === 'timeout' ? copy.timeout : copy.loginCheck;
-                finishProgress(status === 'timeout' ? 'timeout' : 'failure', message);
-                cleanup(status === 'timeout' ? 5000 : 3200, false);
+                showLoginError(copy.title[direction], message);
                 });
             }, 260);
         }, function () {}).set('labels', { ok: copy.ok, cancel: copy.cancel });

@@ -14,7 +14,7 @@ defined('WEBSOCKET_OPCODE_PONG') || define('WEBSOCKET_OPCODE_PONG', 10);
 defined('SOCKET_ETIMEDOUT')      || define('SOCKET_ETIMEDOUT', 110);
 
 /* ===== 讀取 iDAS 設定，決定 AGENT_IP ===== */
-$db_iDas = new PDO('sqlite:' . idas_path('database_root', 'das.db'));
+$db_iDas = idas_sqlite_connect(idas_path('database_root', 'das.db'));
 $db_iDas->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $agent_type = (int)($db_iDas->query("SELECT config_value FROM config WHERE config_name='agent_type'")
@@ -136,7 +136,7 @@ function GetLastResult(): string {
     }
 
     try {
-        $db = new PDO('sqlite:' . idas_path('controller_root', 'ntcs_data.db'));
+        $db = idas_sqlite_connect(idas_path('controller_root', 'ntcs_data.db'));
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $row = $db->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
         $db = null;
@@ -147,7 +147,7 @@ function GetLastResult(): string {
 
     // 裝置名稱
     try {
-        $d = new PDO('sqlite:' . idas_path('controller_root', 'ntcs_device.db'));
+        $d = idas_sqlite_connect(idas_path('controller_root', 'ntcs_device.db'));
         $device_name = (string)($d->query("SELECT device_name FROM ntcs_device_test")->fetchColumn() ?? 'unknown');
         $d = null;
     } catch (Throwable $e) {
@@ -179,7 +179,7 @@ function csvNoHeaderToJson(){
         return json_encode(['error' => 'cannot open csv'], JSON_UNESCAPED_UNICODE);
     }
 
-    $dbh = new PDO('sqlite:' . idas_path('controller_root', 'ntcs_data.db'));
+    $dbh = idas_sqlite_connect(idas_path('controller_root', 'ntcs_data.db'));
     $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $res = $dbh->query("SELECT * FROM ntcs_data ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
 

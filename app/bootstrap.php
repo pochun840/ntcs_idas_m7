@@ -1,6 +1,8 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+$idasDebugMode = filter_var(getenv('IDAS_DEBUG') ?: '0', FILTER_VALIDATE_BOOLEAN);
+ini_set('display_errors', $idasDebugMode ? '1' : '0');
+ini_set('display_startup_errors', $idasDebugMode ? '1' : '0');
+ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
 if (!function_exists('idas_startup_retry_page')) {

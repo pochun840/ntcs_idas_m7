@@ -357,7 +357,7 @@ window.iDASRestartManager = (function () {
             setTimeout(() => window.location.reload(), 500);
           }).fail(next);
         };
-        image.src = origin + basePath + 'font/img/touch-icon.png?_idas_restart_probe=' + Date.now();
+        image.src = origin + basePath + 'img/touch-icon.png?_idas_restart_probe=' + Date.now();
       };
       setTimeout(probe, 500);
     }
@@ -616,7 +616,7 @@ function showControllerRestartDialogAndSchedule(result, saveButton) {
         offlineObserved = true;
         next();
       };
-      image.src = basePath + 'font/img/touch-icon.png?_idas_restart_probe=' + Date.now();
+      image.src = basePath + 'img/touch-icon.png?_idas_restart_probe=' + Date.now();
     };
 
     setTimeout(probe, 700);
