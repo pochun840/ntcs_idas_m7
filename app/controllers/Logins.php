@@ -337,512 +337,103 @@ function idas_sync_login_user_table_from_controller(): array
 // Therefore both platform branches receive the synchronized iDAS user table.
 $IDAS_LOGIN_USER_SYNC_RESULT = idas_sync_login_user_table_from_controller();
 
-if (idas_is_icontroller()) {
 class Logins extends Controller
 {
-    private $AdminModel;
-    private $LoginModel;
-    private $stepModel;
-    Private $deviceId;
-
-    // 在建構子中將 Post 物件（Model）實例化
-
-    public function getLoginUserSyncStatus(): array
-    {
-        global $IDAS_LOGIN_USER_SYNC_RESULT;
-        return is_array($IDAS_LOGIN_USER_SYNC_RESULT)
-            ? $IDAS_LOGIN_USER_SYNC_RESULT
-            : [];
-    }
-
-    public function __construct()
-    {
-        $this->LoginModel = $this->model('Login');
-        $this->stepModel = $this->model('Steptcc');
-        $this->AdminModel = $this->model('Admin');
-
-        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-
-    }
-
-
-    public function index($url){
-
-        //先做資料庫檔案完整性檢查
-        $repairResult = $this->checkAndRepairDatabaseFiles();
-        // 登入時強制恢復『同一個 JOB 只能一筆 Barcode』規則。
-        $repairResult['ntcs_barcode_schema'] = $this->checkAndRepairBarcodeSingleJobSchema();
-
-        session_start();
-        $_SESSION['sessionid'] = session_id();
-        $_SESSION['privilege'] = '';
-        $error_message = '';
-        $authToken = '';
-        $account = $this->LoginModel->get_account();
-
-
-        $targetDir = IDAS_PATH_EXTRACTED_ROOT;
-        $this->deleteDirectory($targetDir);
-
-       
-        $data = [
-            'error_message' => $error_message,
-            'account' => $account
-        ];
-
-        //例外狀況，切換語系
-        $exception = false;
-        if(isset($url[1])){
-            if($url[0] == 'Dashboards' && $url[1] == 'change_language' ){
-                $exception = true;
-            }
-        }
-
-        //判斷有沒有post password
-        //有post就驗證password
-        //沒有就單純檢查cookies
-        if( !empty($_POST['password']) && isset($_POST['password'])  ){
-            //login attempt
-            $_POST['username'] = trim($_POST['username']);
-            $_POST['password'] = trim($_POST['password']);
-        
-            $this->logLoginAttempt();
-
-            $username = $_POST['username'];
-            $password = $_POST['password'];
-            $authToken = hash('sha256', $password);
-            
-
-            
-            if($this->verifyCredentials($username,$authToken)){
-                                
-                // 同步控制器資料庫（ntcs_data.db）至 iDAS
-                $this->ntcs_data_db_sysnc();
-                $this->set_ver();
-
-                // ------------------------------
-                // Tool Spec Sync (Web-triggered)
-                // ------------------------------
-                // Gate(10s): 限制同步檢查頻率，避免每個 request 都打 DB
-                // Lock:     使用 flock 防止多 request 同步造成重複/競態
-                // Sync:     只在來源(controller)與目的(iDAS)值不同時才更新
-                // Note:     非 cron；沒有 request 就不會自動同步
-                if ($this->shouldRunToolSpecSync(10)) {
-                    $this->runOnceWithFlag(
-                        IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
-                        '.tool_spec_sync',               // 任務鎖名稱（key）
-                        fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
-                    );
-                }
-
-
-                if (PHP_OS_FAMILY === 'Linux') {
-                    $dir = IDAS_PATH_RAMDISK_FTP;
-
-                    if (@chmod($dir, 0777)) {
-                        echo json_encode([
-                            "status" => "success",
-                            "message" => "✅ PHP chmod 成功"
-                        ]);
-                    } else {
-                        // 如果 PHP chmod 失敗 → 改用 sudo
-                        $cmd = 'sudo chmod 777 ' . escapeshellarg($dir);
-                        $output = shell_exec($cmd . ' 2>&1');
-
-                        // 檢查結果
-                        clearstatcache(); // 清快取
-                        $perms = substr(sprintf('%o', fileperms($dir)), -4);
-                        if ($perms == '0777') {
-                            /*echo json_encode([
-                                "status" => "success",
-                                "message" => "✅ sudo chmod 成功"
-                            ]);*/
-                        } else {
-                            echo json_encode([
-                                "status" => "error",
-                                "message" => "❌ sudo chmod 失敗，結果：" . $output
-                            ]);
-                        }
-                    }
-                }
-
-
-                setcookie('username', $username, time() + 600, '/');
-                setcookie('auth_token', $authToken, time() + 600, '/');
-
-                header('Location: /idas/public/?url=Dashboards');
-                exit;
-            }else{
-                // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
-                $this->logout();
-                $this->view('login/index', $data);
-                exit();
-            }
-
-        }else{
-
-            if ($this->isAuthenticated() || $exception ) { //切換語系例外
-                // 用戶已登錄，繼續處理其他操作
-                return true;
-            } else {
-                // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
-                $this->logout();
-                $this->view('login/index', $data);
-                exit();
-            }
-        }
-
-    }
-
-    public function isAuthenticated() {
-        if (isset($_COOKIE['auth_token']) && isset($_COOKIE['username'])) {
-            $authToken = $_COOKIE['auth_token'];
-            
-            // 解密和驗證令牌的有效性，根據需要進行自定義驗證
-            $username = $_COOKIE['username'];
-            $valid_check = $this->verifyCredentials($username,$authToken);
-
-            if ($valid_check !== false) {
-                // 令牌有效，可以根據需要刷新 Cookie 的過期時間
-                setcookie('username', $username, time() + 600, '/');
-                setcookie('auth_token', $authToken, time() + 600, '/');
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-
-    public function logout() {
-        setcookie('username', '', time() - 3600, '/');
-        setcookie('auth_token', '', time() - 3600, '/');
-
-    }
-
-    // 验证用户提交的用户名和密码
-    public function verifyCredentials($username,$authToken) {
-        // 自定義的身份驗證邏輯，根據實際情況進行驗證
-        // 返回 true 表示驗證成功，false 表示驗證失敗
-        // 可以與數據庫或其他存儲進行比對驗證
-        $pwd = $this->LoginModel->getpwd($username); //控制器密碼
-        // $pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
-        $input = $authToken;
-        $output = hash('sha256', $pwd['passwd']);
-        // $output2 = hash('sha256', $pwd2['password']);
-
-        if($input == $output){
-            //登入成功寫入 active_sessions 資料庫
-            $reslut = $this->active_sessions('admin');
-
-            if($reslut){
-                $_SESSION['privilege'] = 'admin';
-                return true;
-            }else{
-                return false;
-            }
-        }else{
-            return false;
-        }
-    }
-
-    public function logLoginAttempt()
-    {
-        if (!empty($_SERVER["HTTP_CLIENT_IP"])){
-            $ip = $_SERVER["HTTP_CLIENT_IP"];
-        }elseif(!empty($_SERVER["HTTP_X_FORWARDED_FOR"])){
-            $ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
-        }else{
-            $ip = $_SERVER["REMOTE_ADDR"];
-        }
-        $this->LoginModel->logLoginAttempt($ip);
-    }
-    
-    public function active_sessions($username)
-    {
-        //0.先清理過期的session
-        //1.先確認是否達連線上限
-        //2.如果已達連線上限，回傳false
-        //3.如果未達連線上限，寫入db
-        //4.檢查session id是否存在
-        //5.如果存在update time
-        //6.如果不存在insert
-        //$max_concurrent_users = $this->Max_User();//連線數量限制
-        $session_id = session_id();
-
-        if (!empty($_SERVER["HTTP_CLIENT_IP"])){
-            $ip = $_SERVER["HTTP_CLIENT_IP"];
-        }elseif(!empty($_SERVER["HTTP_X_FORWARDED_FOR"])){
-            $ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
-        }else{
-            $ip = $_SERVER["REMOTE_ADDR"];
-        }
-
-        //清理過期的session
-        $this->LoginModel->cleanExpiredSessions();
-        //確認目前連線數量，排除目前的session_id
-        $concurrent_users = $this->LoginModel->GetConcurrentUsers($session_id);
-
-        if( $username == 'guest'){
-            $this->Users_Uplimit();
-            return false;
-        }else{
-            $this->LoginModel->active_sessions($username,$session_id,$ip);
-            return true;
-        }
-
-    }
-
-    //連線數達到上限時，直接從這邊跳回登入畫面，並帶error message
-    public function Users_Uplimit()
-    {
-        $error_message = '連線數已達上限';
-        $authToken = '';
-        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
-        $data = [
-            'error_message' => $error_message,
-            'iDas_Vesion' => $iDas_Vesion,
-        ];
-
-        $this->logout();
-        $this->view('login/index', $data);
-        exit();
-    }
-
     public function Max_User()
-    {
-        $reslut = $this->LoginModel->get_max_user();
-        return $reslut;
-    }
-
-    public function Activation_Check()
-    {
-        //判斷是否已授權，如果未授權就導回登入頁
-        $auth_status = $this->AdminModel->Get_Das_Config('activate_status');
-        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
-        $data = [
-            'error_message' => '',
-            'iDas_Vesion' => $iDas_Vesion,
-        ];
-
-        if($auth_status == 0){//未授權
-            $data['error_message'] = 'inactive';
-            $this->logout();
-            $this->view('login/index', $data);
-            exit();
-        }else if($auth_status == 1){//試用版，要再判斷到期日
-            // date_default_timezone_set('UTC');
-            $expired_date = $this->AdminModel->Get_Das_Config('expired_date');
-            $today = date("Y-m-d");
-            if($today > $expired_date){
-                $data['error_message'] = 'expired';
-                $this->logout();
-                $this->view('login/index', $data);
-                exit();
-            }else{
-                return true;
-            }
-
-        }else if($auth_status == 2){//永久授權
-            return true;
-        }else{
-            $data['error_message'] = 'inactive';
-            $this->logout();
-            $this->view('login/index', $data);
-            exit();
-        }
-    }
-
-
-    public function deleteDirectory($dir) {
-
-        if (!file_exists($dir)) return true;
-        if (!is_dir($dir)) return unlink($dir);
-
-        foreach (scandir($dir) as $item) {
-            if ($item === '.' || $item === '..') continue;
-            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) return false;
+        {
+            $reslut = $this->LoginModel->get_max_user();
+            return $reslut;
         }
 
-        return rmdir($dir);
-    }
-
-    /**
-     * 判斷 iDAS Update 是否正持有更新鎖。
-     * 更新期間禁止登入流程自行依 info.json 改寫 idas_version，避免版本號早於 transaction commit。
-     */
-    private function isIdasUpdateLocked(): bool
-    {
-        $lockPath = idas_path('database_root', '.idas_update.lock');
-        if (!is_file($lockPath)) {
-            return false;
-        }
-
-        $handle = @fopen($lockPath, 'c');
-        if (!$handle) {
-            // 無法確認時採保守策略，避免更新途中寫版本。
-            return true;
-        }
-
-        $acquired = @flock($handle, LOCK_SH | LOCK_NB);
-        if ($acquired) {
-            @flock($handle, LOCK_UN);
-            @fclose($handle);
-            return false;
-        }
-
-        @fclose($handle);
-        return true;
-    }
-
-    // #IDAS上傳：版本同步僅在沒有 Update transaction 時執行。
-    public function set_ver($debug = false) {
-
-        if ($this->isIdasUpdateLocked()) {
-            error_log('[iDAS UPDATE] login set_ver skipped: update lock is active');
-            return false;
-        }
-
-        $info_json_url = idas_path('idas_root', 'info.json');
-        $verify_data = json_decode(@file_get_contents($info_json_url), true);
-        if (!is_array($verify_data) || empty($verify_data['idas_version'])) {
-            error_log('[iDAS] login set_ver skipped: invalid or missing info.json');
-            return false;
-        }
-
-        $currentVersion = (string)$this->AdminModel->Get_Das_Config('idas_version');
-        $targetVersion  = (string)$verify_data['idas_version'];
-        if ($currentVersion === $targetVersion) {
-            return true;
-        }
-
-        return (bool)$this->AdminModel->Set_Das_Config('idas_version', $targetVersion);
-    }
-
-
-    /**
-     * 檢查 database 目錄底下 IDAS 檔案是否為 0KB
-     * 若為 0KB 或不存在，則從 controller 端複製來源檔案覆蓋
-     */
     private function checkAndRepairDatabaseFiles(): array
-    {
-        $baseDir = IDAS_PATH_DATABASE_ROOT . '/';
-        $srcDir  = IDAS_PATH_CONTROLLER_ROOT . '/';
+        {
+            $baseDir = IDAS_PATH_DATABASE_ROOT . '/';
+            $srcDir  = IDAS_PATH_CONTROLLER_ROOT . '/';
 
-        $files = [
-            'KLS_NTCS_IDAS.Lin'     => 'KLS_NTCS.Lin',
-            'ntcs_barcode_IDAS.db'  => 'ntcs_barcode.db',
-            'ntcs_device_IDAS.db'   => 'ntcs_device.db',
-        ];
+            $files = [
+                'KLS_NTCS_IDAS.Lin'     => 'KLS_NTCS.Lin',
+                'ntcs_barcode_IDAS.db'  => 'ntcs_barcode.db',
+                'ntcs_device_IDAS.db'   => 'ntcs_device.db',
+            ];
 
-        $result = [];
+            $result = [];
 
-        // 確保目標目錄存在
-        if (!is_dir($baseDir)) {
-            mkdir($baseDir, 0777, true);
-        }
-
-        foreach ($files as $targetName => $sourceName) {
-
-            $targetPath = $baseDir . $targetName;
-            $sourcePath = $srcDir  . $sourceName;
-
-            $needsRepair = false;
-
-            // 檔案不存在
-            if (!file_exists($targetPath)) {
-                $needsRepair = true;
-            }
-            // 檔案大小為 0
-            elseif (filesize($targetPath) === 0) {
-                $needsRepair = true;
+            // 確保目標目錄存在
+            if (!is_dir($baseDir)) {
+                mkdir($baseDir, 0777, true);
             }
 
-            if ($needsRepair) {
+            foreach ($files as $targetName => $sourceName) {
 
-                if (file_exists($sourcePath) && filesize($sourcePath) > 0) {
+                $targetPath = $baseDir . $targetName;
+                $sourcePath = $srcDir  . $sourceName;
 
-                    if (copy($sourcePath, $targetPath)) {
-                        $result[$targetName] = 'repaired';
+                $needsRepair = false;
+
+                // 檔案不存在
+                if (!file_exists($targetPath)) {
+                    $needsRepair = true;
+                }
+                // 檔案大小為 0
+                elseif (filesize($targetPath) === 0) {
+                    $needsRepair = true;
+                }
+
+                if ($needsRepair) {
+
+                    if (file_exists($sourcePath) && filesize($sourcePath) > 0) {
+
+                        if (copy($sourcePath, $targetPath)) {
+                            $result[$targetName] = 'repaired';
+                        } else {
+                            $result[$targetName] = 'copy_failed';
+                        }
+
                     } else {
-                        $result[$targetName] = 'copy_failed';
+                        $result[$targetName] = 'source_missing';
                     }
 
                 } else {
-                    $result[$targetName] = 'source_missing';
+                    $result[$targetName] = 'ok';
                 }
-
-            } else {
-                $result[$targetName] = 'ok';
             }
+
+            return $result;
         }
 
-        return $result;
-    }
+    public function deleteDirectory($dir) {
 
+            if (!file_exists($dir)) return true;
+            if (!is_dir($dir)) return unlink($dir);
 
-
-
-    /** 登入時套用「同一個 JOB 只能一筆 Barcode」規則。 */
-    private function checkAndRepairBarcodeSingleJobSchema(): array
-    {
-        $paths = [
-            'idas' => idas_path('database_root', 'ntcs_barcode_IDAS.db'),
-            'controller' => idas_path('controller_root', 'ntcs_barcode.db'),
-        ];
-        $result = ['status'=>'ok','policy'=>'single_barcode_per_job','databases'=>[]];
-        if (PHP_OS_FAMILY !== 'Linux') { $result['status']='skipped'; return $result; }
-        foreach ($paths as $name=>$path) {
-            $r=$this->normalizeBarcodeSingleJobDb($path);
-            $result['databases'][$name]=$r;
-            if (($r['status'] ?? '') === 'failed') $result['status']='failed';
-        }
-        error_log('[BarcodeSingle] '.json_encode($result, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
-        return $result;
-    }
-
-    private function normalizeBarcodeSingleJobDb(string $dbPath): array
-    {
-        $table='ntcs_barcode_test';
-        $ret=['status'=>'ok','path'=>$dbPath,'duplicates_removed'=>0,'seq_id_added'=>false,'unique_index'=>false];
-        if (!is_file($dbPath) || filesize($dbPath)<=0) { $ret['status']='missing'; return $ret; }
-        try {
-            $pdo=idas_sqlite_connect($dbPath);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-            $st=$pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=:name LIMIT 1");
-            $st->execute([':name'=>$table]);
-            if (!$st->fetch(PDO::FETCH_ASSOC)) { $ret['status']='failed'; $ret['message']='table_missing'; return $ret; }
-            $cols=$pdo->query('PRAGMA table_info('.$table.')')->fetchAll(PDO::FETCH_ASSOC);
-            $hasJob=false; $hasSeq=false; $jobPk=false;
-            foreach ($cols as $c) {
-                $n=strtolower((string)($c['name'] ?? ''));
-                if ($n==='job_id') { $hasJob=true; $jobPk=((int)($c['pk'] ?? 0))>0; }
-                if ($n==='seq_id') $hasSeq=true;
+            foreach (scandir($dir) as $item) {
+                if ($item === '.' || $item === '..') continue;
+                if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) return false;
             }
-            if (!$hasJob) { $ret['status']='failed'; $ret['message']='job_id_missing'; return $ret; }
-            $pdo->beginTransaction();
-            if (!$hasSeq) { $pdo->exec('ALTER TABLE '.$table.' ADD COLUMN seq_id INTEGER DEFAULT -1'); $ret['seq_id_added']=true; }
-            $dup=(int)$pdo->query('SELECT COALESCE(SUM(cnt-1),0) FROM (SELECT COUNT(*) cnt FROM '.$table.' WHERE job_id IS NOT NULL GROUP BY job_id HAVING COUNT(*)>1)')->fetchColumn();
-            if ($dup>0) {
-                $pdo->exec('DELETE FROM '.$table.' WHERE rowid NOT IN (SELECT MIN(rowid) FROM '.$table.' WHERE job_id IS NOT NULL GROUP BY job_id) AND job_id IS NOT NULL');
-                $ret['duplicates_removed']=$dup;
-            }
-            if (!$jobPk) { $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS ux_ntcs_barcode_test_job_id ON '.$table.' (job_id)'); $ret['unique_index']=true; }
-            $pdo->commit();
-            return $ret;
-        } catch (Throwable $e) {
-            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
-            $ret['status']='failed'; $ret['message']=$e->getMessage(); return $ret;
+
+            return rmdir($dir);
         }
-    }
 
-}
-} else {
-/* Default Login Accounts Fix V2 + Login Cookie Cleanup + Short Animation V1 */
+    public function getLoginUserSyncStatus(): array
+        {
+            global $IDAS_LOGIN_USER_SYNC_RESULT;
+            return is_array($IDAS_LOGIN_USER_SYNC_RESULT)
+                ? $IDAS_LOGIN_USER_SYNC_RESULT
+                : [];
+        }
 
-class Logins extends Controller
-{
+    public function logLoginAttempt()
+        {
+            if (!empty($_SERVER["HTTP_CLIENT_IP"])){
+                $ip = $_SERVER["HTTP_CLIENT_IP"];
+            }elseif(!empty($_SERVER["HTTP_X_FORWARDED_FOR"])){
+                $ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
+            }else{
+                $ip = $_SERVER["REMOTE_ADDR"];
+            }
+            $this->LoginModel->logLoginAttempt($ip);
+        }
+
     private $AdminModel;
     private $LoginModel;
     private $stepModel;
@@ -852,15 +443,26 @@ class Logins extends Controller
 
     // 在建構子中將 Post 物件（Model）實例化
 
-    public function getLoginUserSyncStatus(): array
+    public function __construct(...$args)
     {
-        global $IDAS_LOGIN_USER_SYNC_RESULT;
-        return is_array($IDAS_LOGIN_USER_SYNC_RESULT)
-            ? $IDAS_LOGIN_USER_SYNC_RESULT
-            : [];
+        if (idas_is_icontroller()) {
+            $this->__construct__icontroller(...$args);
+            return;
+        }
+        $this->__construct__ntcs(...$args);
     }
 
-    public function __construct()
+    private function __construct__icontroller()
+    {
+        $this->LoginModel = $this->model('Login');
+        $this->stepModel = $this->model('Steptcc');
+        $this->AdminModel = $this->model('Admin');
+
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
+
+    }
+
+    private function __construct__ntcs()
     {
         $this->LoginModel = $this->model('Login');
         $this->stepModel = $this->model('Steptcc');
@@ -901,7 +503,6 @@ class Logins extends Controller
         ], $extra), JSON_UNESCAPED_UNICODE);
         exit();
     }
-
 
     private function isLogoutRequest(array $url): bool
     {
@@ -1063,13 +664,6 @@ class Logins extends Controller
         return 'PASSWORD_ERROR';
     }
 
-
-    /**
-     * QR Code login payload support.
-     * 支援 QR 內容：{"usr":"abcd123","pwd":"0734"}
-     * 也支援部分掃碼槍輸出格式：usr=abcd123,pwd=0734 / usr:abcd123,pwd:0734。
-     * 最後統一轉成既有 username / password 登入流程。
-     */
     private function normalizeQrLoginPost(): void
     {
         $qrData = [];
@@ -1115,13 +709,6 @@ class Logins extends Controller
         }
     }
 
-    /**
-     * 掃碼槍內容容錯解析：
-     * 1. 標準 JSON：{"usr":"abcd123","pwd":"0734"}
-     * 2. 單引號：{'usr':'abcd123','pwd':'0734'}
-     * 3. key/value：usr=abcd123,pwd=0734 或 usr:abcd123,pwd:0734
-     * 4. URL encoded：%7B%22usr%22...
-     */
     private function parseQrLoginPayload(string $raw): array
     {
         $payload = trim($raw);
@@ -1190,8 +777,6 @@ class Logins extends Controller
         return [];
     }
 
-
-
     private function loginCookiePaths(): array
     {
         return ['/', '/idas', '/idas/public'];
@@ -1242,7 +827,140 @@ class Logins extends Controller
         $this->clearLoginCookie('user_law');
     }
 
-    public function index($url){
+    public function index(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->index__icontroller(...$args);
+        }
+        return $this->index__ntcs(...$args);
+    }
+
+    private function index__icontroller($url){
+
+        //先做資料庫檔案完整性檢查
+        $repairResult = $this->checkAndRepairDatabaseFiles();
+        // 登入時強制恢復『同一個 JOB 只能一筆 Barcode』規則。
+        $repairResult['ntcs_barcode_schema'] = $this->checkAndRepairBarcodeSingleJobSchema();
+
+        session_start();
+        $_SESSION['sessionid'] = session_id();
+        $_SESSION['privilege'] = '';
+        $error_message = '';
+        $authToken = '';
+        $account = $this->LoginModel->get_account();
+
+        $targetDir = IDAS_PATH_EXTRACTED_ROOT;
+        $this->deleteDirectory($targetDir);
+
+       
+        $data = [
+            'error_message' => $error_message,
+            'account' => $account
+        ];
+
+        //例外狀況，切換語系
+        $exception = false;
+        if(isset($url[1])){
+            if($url[0] == 'Dashboards' && $url[1] == 'change_language' ){
+                $exception = true;
+            }
+        }
+
+        //判斷有沒有post password
+        //有post就驗證password
+        //沒有就單純檢查cookies
+        if( !empty($_POST['password']) && isset($_POST['password'])  ){
+            //login attempt
+            $_POST['username'] = trim($_POST['username']);
+            $_POST['password'] = trim($_POST['password']);
+        
+            $this->logLoginAttempt();
+
+            $username = $_POST['username'];
+            $password = $_POST['password'];
+            $authToken = hash('sha256', $password);
+            
+
+            
+            if($this->verifyCredentials($username,$authToken)){
+                                
+                // 同步控制器資料庫（ntcs_data.db）至 iDAS
+                $this->ntcs_data_db_sysnc();
+                $this->set_ver();
+
+                // ------------------------------
+                // Tool Spec Sync (Web-triggered)
+                // ------------------------------
+                // Gate(10s): 限制同步檢查頻率，避免每個 request 都打 DB
+                // Lock:     使用 flock 防止多 request 同步造成重複/競態
+                // Sync:     只在來源(controller)與目的(iDAS)值不同時才更新
+                // Note:     非 cron；沒有 request 就不會自動同步
+                if ($this->shouldRunToolSpecSync(10)) {
+                    $this->runOnceWithFlag(
+                        IDAS_PATH_DATABASE_ROOT,        // lock / state 檔案目錄
+                        '.tool_spec_sync',               // 任務鎖名稱（key）
+                        fn() => $this->check_tools_info()// 同步 ntcs_tool_test 規格值
+                    );
+                }
+
+                if (PHP_OS_FAMILY === 'Linux') {
+                    $dir = IDAS_PATH_RAMDISK_FTP;
+
+                    if (@chmod($dir, 0777)) {
+                        echo json_encode([
+                            "status" => "success",
+                            "message" => "✅ PHP chmod 成功"
+                        ]);
+                    } else {
+                        // 如果 PHP chmod 失敗 → 改用 sudo
+                        $cmd = 'sudo chmod 777 ' . escapeshellarg($dir);
+                        $output = shell_exec($cmd . ' 2>&1');
+
+                        // 檢查結果
+                        clearstatcache(); // 清快取
+                        $perms = substr(sprintf('%o', fileperms($dir)), -4);
+                        if ($perms == '0777') {
+                            /*echo json_encode([
+                                "status" => "success",
+                                "message" => "✅ sudo chmod 成功"
+                            ]);*/
+                        } else {
+                            echo json_encode([
+                                "status" => "error",
+                                "message" => "❌ sudo chmod 失敗，結果：" . $output
+                            ]);
+                        }
+                    }
+                }
+
+                setcookie('username', $username, time() + 600, '/');
+                setcookie('auth_token', $authToken, time() + 600, '/');
+
+                header('Location: /idas/public/?url=Dashboards');
+                exit;
+            }else{
+                // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
+                $this->logout();
+                $this->view('login/index', $data);
+                exit();
+            }
+
+        }else{
+
+            if ($this->isAuthenticated() || $exception ) { //切換語系例外
+                // 用戶已登錄，繼續處理其他操作
+                return true;
+            } else {
+                // 用戶未登錄或身份驗證超時，跳轉到登錄頁面
+                $this->logout();
+                $this->view('login/index', $data);
+                exit();
+            }
+        }
+
+    }
+
+    private function index__ntcs($url){
         $url = is_array($url) ? $url : [];
 
         //先做資料庫檔案完整性檢查
@@ -1272,7 +990,6 @@ class Logins extends Controller
         $error_message = '';
         $authToken = '';
         $account = $this->LoginModel->get_account();
-
 
         $targetDir = IDAS_PATH_EXTRACTED_ROOT;
         $this->deleteDirectory($targetDir);
@@ -1353,7 +1070,6 @@ class Logins extends Controller
                     );
                 }
 
-
                 if (PHP_OS_FAMILY === 'Linux') {
                     $dir = IDAS_PATH_RAMDISK_FTP;
 
@@ -1384,7 +1100,6 @@ class Logins extends Controller
                         }
                     }
                 }
-
 
                 // 非無痕模式可能殘留舊路徑 Cookie（/idas、/idas/public），先清掉再寫入新登入狀態。
                 $cookieSeconds = 600;
@@ -1471,7 +1186,34 @@ class Logins extends Controller
 
     }
 
-    public function isAuthenticated() {
+    public function isAuthenticated(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->isAuthenticated__icontroller(...$args);
+        }
+        return $this->isAuthenticated__ntcs(...$args);
+    }
+
+    private function isAuthenticated__icontroller() {
+        if (isset($_COOKIE['auth_token']) && isset($_COOKIE['username'])) {
+            $authToken = $_COOKIE['auth_token'];
+            
+            // 解密和驗證令牌的有效性，根據需要進行自定義驗證
+            $username = $_COOKIE['username'];
+            $valid_check = $this->verifyCredentials($username,$authToken);
+
+            if ($valid_check !== false) {
+                // 令牌有效，可以根據需要刷新 Cookie 的過期時間
+                setcookie('username', $username, time() + 600, '/');
+                setcookie('auth_token', $authToken, time() + 600, '/');
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isAuthenticated__ntcs() {
         if (isset($_COOKIE['auth_token']) && isset($_COOKIE['username'])) {
             $authToken = $_COOKIE['auth_token'];
             
@@ -1492,8 +1234,21 @@ class Logins extends Controller
         return false;
     }
 
+    public function logout(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->logout__icontroller(...$args);
+        }
+        return $this->logout__ntcs(...$args);
+    }
 
-    public function logout($writeAudit = true) {
+    private function logout__icontroller() {
+        setcookie('username', '', time() - 3600, '/');
+        setcookie('auth_token', '', time() - 3600, '/');
+
+    }
+
+    private function logout__ntcs($writeAudit = true) {
         $username = (string)($_POST['username'] ?? ($_GET['username'] ?? ($_COOKIE['username'] ?? '')));
 
         if ($writeAudit && $username !== '') {
@@ -1516,8 +1271,40 @@ class Logins extends Controller
 
     }
 
-    // 验证用户提交的用户名和密码
-    public function verifyCredentials($username, $authToken) {
+    public function verifyCredentials(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->verifyCredentials__icontroller(...$args);
+        }
+        return $this->verifyCredentials__ntcs(...$args);
+    }
+
+    private function verifyCredentials__icontroller($username,$authToken) {
+        // 自定義的身份驗證邏輯，根據實際情況進行驗證
+        // 返回 true 表示驗證成功，false 表示驗證失敗
+        // 可以與數據庫或其他存儲進行比對驗證
+        $pwd = $this->LoginModel->getpwd($username); //控制器密碼
+        // $pwd2 = $this->LoginModel->GetiDasPwd(); //idas密碼
+        $input = $authToken;
+        $output = hash('sha256', $pwd['passwd']);
+        // $output2 = hash('sha256', $pwd2['password']);
+
+        if($input == $output){
+            //登入成功寫入 active_sessions 資料庫
+            $reslut = $this->active_sessions('admin');
+
+            if($reslut){
+                $_SESSION['privilege'] = 'admin';
+                return true;
+            }else{
+                return false;
+            }
+        }else{
+            return false;
+        }
+    }
+
+    private function verifyCredentials__ntcs($username, $authToken) {
         $pwd = $this->LoginModel->getpwd($username);
 
         // 找不到帳號或 DB 讀取失敗時，直接驗證失敗，不輸出 Notice。
@@ -1556,19 +1343,6 @@ class Logins extends Controller
 
         return false;
     }
-
-    public function logLoginAttempt()
-    {
-        if (!empty($_SERVER["HTTP_CLIENT_IP"])){
-            $ip = $_SERVER["HTTP_CLIENT_IP"];
-        }elseif(!empty($_SERVER["HTTP_X_FORWARDED_FOR"])){
-            $ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
-        }else{
-            $ip = $_SERVER["REMOTE_ADDR"];
-        }
-        $this->LoginModel->logLoginAttempt($ip);
-    }
-    
 
     private function getClientIp(): string
     {
@@ -1632,7 +1406,50 @@ class Logins extends Controller
         }
     }
 
-    public function active_sessions($username)
+    public function active_sessions(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->active_sessions__icontroller(...$args);
+        }
+        return $this->active_sessions__ntcs(...$args);
+    }
+
+    private function active_sessions__icontroller($username)
+    {
+        //0.先清理過期的session
+        //1.先確認是否達連線上限
+        //2.如果已達連線上限，回傳false
+        //3.如果未達連線上限，寫入db
+        //4.檢查session id是否存在
+        //5.如果存在update time
+        //6.如果不存在insert
+        //$max_concurrent_users = $this->Max_User();//連線數量限制
+        $session_id = session_id();
+
+        if (!empty($_SERVER["HTTP_CLIENT_IP"])){
+            $ip = $_SERVER["HTTP_CLIENT_IP"];
+        }elseif(!empty($_SERVER["HTTP_X_FORWARDED_FOR"])){
+            $ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
+        }else{
+            $ip = $_SERVER["REMOTE_ADDR"];
+        }
+
+        //清理過期的session
+        $this->LoginModel->cleanExpiredSessions();
+        //確認目前連線數量，排除目前的session_id
+        $concurrent_users = $this->LoginModel->GetConcurrentUsers($session_id);
+
+        if( $username == 'guest'){
+            $this->Users_Uplimit();
+            return false;
+        }else{
+            $this->LoginModel->active_sessions($username,$session_id,$ip);
+            return true;
+        }
+
+    }
+
+    private function active_sessions__ntcs($username)
     {
         //0.先清理過期的session
         //1.先確認是否達連線上限
@@ -1681,8 +1498,30 @@ class Logins extends Controller
         }
     }
 
-    //連線數達到上限時，直接從這邊跳回登入畫面，並帶error message
-    public function Users_Uplimit()
+    public function Users_Uplimit(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->Users_Uplimit__icontroller(...$args);
+        }
+        return $this->Users_Uplimit__ntcs(...$args);
+    }
+
+    private function Users_Uplimit__icontroller()
+    {
+        $error_message = '連線數已達上限';
+        $authToken = '';
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        $data = [
+            'error_message' => $error_message,
+            'iDas_Vesion' => $iDas_Vesion,
+        ];
+
+        $this->logout();
+        $this->view('login/index', $data);
+        exit();
+    }
+
+    private function Users_Uplimit__ntcs()
     {
         $error_message = '連線數已達上限';
         $authToken = '';
@@ -1697,13 +1536,53 @@ class Logins extends Controller
         exit();
     }
 
-    public function Max_User()
+    public function Activation_Check(...$args)
     {
-        $reslut = $this->LoginModel->get_max_user();
-        return $reslut;
+        if (idas_is_icontroller()) {
+            return $this->Activation_Check__icontroller(...$args);
+        }
+        return $this->Activation_Check__ntcs(...$args);
     }
 
-    public function Activation_Check()
+    private function Activation_Check__icontroller()
+    {
+        //判斷是否已授權，如果未授權就導回登入頁
+        $auth_status = $this->AdminModel->Get_Das_Config('activate_status');
+        $iDas_Vesion = $this->AdminModel->Get_Das_Config('idas_version');
+        $data = [
+            'error_message' => '',
+            'iDas_Vesion' => $iDas_Vesion,
+        ];
+
+        if($auth_status == 0){//未授權
+            $data['error_message'] = 'inactive';
+            $this->logout();
+            $this->view('login/index', $data);
+            exit();
+        }else if($auth_status == 1){//試用版，要再判斷到期日
+            // date_default_timezone_set('UTC');
+            $expired_date = $this->AdminModel->Get_Das_Config('expired_date');
+            $today = date("Y-m-d");
+            if($today > $expired_date){
+                $data['error_message'] = 'expired';
+                $this->logout();
+                $this->view('login/index', $data);
+                exit();
+            }else{
+                return true;
+            }
+
+        }else if($auth_status == 2){//永久授權
+            return true;
+        }else{
+            $data['error_message'] = 'inactive';
+            $this->logout();
+            $this->view('login/index', $data);
+            exit();
+        }
+    }
+
+    private function Activation_Check__ntcs()
     {
         //判斷是否已授權，如果未授權就導回登入頁
         $auth_status = $this->AdminModel->Get_Das_Config('activate_status');
@@ -1741,22 +1620,38 @@ class Logins extends Controller
         }
     }
 
-
-    public function deleteDirectory($dir) {
-
-        if (!file_exists($dir)) return true;
-        if (!is_dir($dir)) return unlink($dir);
-
-        foreach (scandir($dir) as $item) {
-            if ($item === '.' || $item === '..') continue;
-            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) return false;
+    public function set_ver(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->set_ver__icontroller(...$args);
         }
-
-        return rmdir($dir);
+        return $this->set_ver__ntcs(...$args);
     }
 
-    // #IDAS上傳 20250624 修改：僅保留步驟 10 與 12
-    public function set_ver($debug = false) {
+    private function set_ver__icontroller($debug = false) {
+
+        if ($this->isIdasUpdateLocked()) {
+            error_log('[iDAS UPDATE] login set_ver skipped: update lock is active');
+            return false;
+        }
+
+        $info_json_url = idas_path('idas_root', 'info.json');
+        $verify_data = json_decode(@file_get_contents($info_json_url), true);
+        if (!is_array($verify_data) || empty($verify_data['idas_version'])) {
+            error_log('[iDAS] login set_ver skipped: invalid or missing info.json');
+            return false;
+        }
+
+        $currentVersion = (string)$this->AdminModel->Get_Das_Config('idas_version');
+        $targetVersion  = (string)$verify_data['idas_version'];
+        if ($currentVersion === $targetVersion) {
+            return true;
+        }
+
+        return (bool)$this->AdminModel->Set_Das_Config('idas_version', $targetVersion);
+    }
+
+    private function set_ver__ntcs($debug = false) {
 
         $info_json_url =idas_path('idas_root', 'info.json');
         $verify_data = json_decode(@file_get_contents($info_json_url), true);
@@ -1765,23 +1660,6 @@ class Logins extends Controller
         $this->AdminModel->Set_Das_Config('idas_version', $verify_data['idas_version']);  
     }
 
-
-
-    /**
-     * Login 時依目前 iDAS 版本同步 user table 預設帳號。
-     *
-     * 規則：
-     * - 版本字串包含 SA349：保留 / 補齊 admin、guest。
-     * - 版本字串不包含 SA349：只保留 / 補齊 guest，並從下列 DB 的 user table 移除 admin 與 law=3 使用者。
-     *
-     * Controller DB:
-     *   /home/kls/NTCS7/KLS_NTCS.Lin
-     * iDAS DB:
-     *   /var/www/html/database/KLS_NTCS_IDAS.Lin
-     *
-     * This method is intentionally best-effort: login page must not crash if a DB
-     * is temporarily missing, locked, or has a different schema. Errors are logged.
-     */
     private function ensureDefaultLoginUsersDatabases(): array
     {
         $paths = [];
@@ -1960,13 +1838,6 @@ class Logins extends Controller
         }
     }
 
-    /**
-     * 非 SA349 iDAS 登入防呆：移除 SA349 專用帳號資料。
-     *
-     * 規則：
-     * - 移除 name = admin。
-     * - 移除 law = 3 的所有 Operator 帳號。
-     */
     private function removeSa349RestrictedUsersFromLoginUserDb(string $dbPath): string
     {
         try {
@@ -2042,70 +1913,6 @@ class Logins extends Controller
         }
     }
 
-    /**
-     * 檢查 database 目錄底下 IDAS 檔案是否為 0KB
-     * 若為 0KB 或不存在，則從 controller 端複製來源檔案覆蓋
-     */
-    private function checkAndRepairDatabaseFiles(): array
-    {
-        $baseDir = IDAS_PATH_DATABASE_ROOT . '/';
-        $srcDir  = IDAS_PATH_CONTROLLER_ROOT . '/';
-
-        $files = [
-            'KLS_NTCS_IDAS.Lin'     => 'KLS_NTCS.Lin',
-            'ntcs_barcode_IDAS.db'  => 'ntcs_barcode.db',
-            'ntcs_device_IDAS.db'   => 'ntcs_device.db',
-        ];
-
-        $result = [];
-
-        // 確保目標目錄存在
-        if (!is_dir($baseDir)) {
-            mkdir($baseDir, 0777, true);
-        }
-
-        foreach ($files as $targetName => $sourceName) {
-
-            $targetPath = $baseDir . $targetName;
-            $sourcePath = $srcDir  . $sourceName;
-
-            $needsRepair = false;
-
-            // 檔案不存在
-            if (!file_exists($targetPath)) {
-                $needsRepair = true;
-            }
-            // 檔案大小為 0
-            elseif (filesize($targetPath) === 0) {
-                $needsRepair = true;
-            }
-
-            if ($needsRepair) {
-
-                if (file_exists($sourcePath) && filesize($sourcePath) > 0) {
-
-                    if (copy($sourcePath, $targetPath)) {
-                        $result[$targetName] = 'repaired';
-                    } else {
-                        $result[$targetName] = 'copy_failed';
-                    }
-
-                } else {
-                    $result[$targetName] = 'source_missing';
-                }
-
-            } else {
-                $result[$targetName] = 'ok';
-            }
-        }
-
-        return $result;
-    }
-
-
-
-
-
     private function checkAndRepairBarcodeOneToOneSchema(): array
     {
         $targetPath = idas_path('database_root', 'ntcs_barcode_IDAS.db');
@@ -2130,5 +1937,81 @@ class Logins extends Controller
         return $result;
     }
 
+    private function isIdasUpdateLocked(): bool
+    {
+        $lockPath = idas_path('database_root', '.idas_update.lock');
+        if (!is_file($lockPath)) {
+            return false;
+        }
+
+        $handle = @fopen($lockPath, 'c');
+        if (!$handle) {
+            // 無法確認時採保守策略，避免更新途中寫版本。
+            return true;
+        }
+
+        $acquired = @flock($handle, LOCK_SH | LOCK_NB);
+        if ($acquired) {
+            @flock($handle, LOCK_UN);
+            @fclose($handle);
+            return false;
+        }
+
+        @fclose($handle);
+        return true;
+    }
+
+    private function checkAndRepairBarcodeSingleJobSchema(): array
+    {
+        $paths = [
+            'idas' => idas_path('database_root', 'ntcs_barcode_IDAS.db'),
+            'controller' => idas_path('controller_root', 'ntcs_barcode.db'),
+        ];
+        $result = ['status'=>'ok','policy'=>'single_barcode_per_job','databases'=>[]];
+        if (PHP_OS_FAMILY !== 'Linux') { $result['status']='skipped'; return $result; }
+        foreach ($paths as $name=>$path) {
+            $r=$this->normalizeBarcodeSingleJobDb($path);
+            $result['databases'][$name]=$r;
+            if (($r['status'] ?? '') === 'failed') $result['status']='failed';
+        }
+        error_log('[BarcodeSingle] '.json_encode($result, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        return $result;
+    }
+
+    private function normalizeBarcodeSingleJobDb(string $dbPath): array
+    {
+        $table='ntcs_barcode_test';
+        $ret=['status'=>'ok','path'=>$dbPath,'duplicates_removed'=>0,'seq_id_added'=>false,'unique_index'=>false];
+        if (!is_file($dbPath) || filesize($dbPath)<=0) { $ret['status']='missing'; return $ret; }
+        try {
+            $pdo=idas_sqlite_connect($dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+            $st=$pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=:name LIMIT 1");
+            $st->execute([':name'=>$table]);
+            if (!$st->fetch(PDO::FETCH_ASSOC)) { $ret['status']='failed'; $ret['message']='table_missing'; return $ret; }
+            $cols=$pdo->query('PRAGMA table_info('.$table.')')->fetchAll(PDO::FETCH_ASSOC);
+            $hasJob=false; $hasSeq=false; $jobPk=false;
+            foreach ($cols as $c) {
+                $n=strtolower((string)($c['name'] ?? ''));
+                if ($n==='job_id') { $hasJob=true; $jobPk=((int)($c['pk'] ?? 0))>0; }
+                if ($n==='seq_id') $hasSeq=true;
+            }
+            if (!$hasJob) { $ret['status']='failed'; $ret['message']='job_id_missing'; return $ret; }
+            $pdo->beginTransaction();
+            if (!$hasSeq) { $pdo->exec('ALTER TABLE '.$table.' ADD COLUMN seq_id INTEGER DEFAULT -1'); $ret['seq_id_added']=true; }
+            $dup=(int)$pdo->query('SELECT COALESCE(SUM(cnt-1),0) FROM (SELECT COUNT(*) cnt FROM '.$table.' WHERE job_id IS NOT NULL GROUP BY job_id HAVING COUNT(*)>1)')->fetchColumn();
+            if ($dup>0) {
+                $pdo->exec('DELETE FROM '.$table.' WHERE rowid NOT IN (SELECT MIN(rowid) FROM '.$table.' WHERE job_id IS NOT NULL GROUP BY job_id) AND job_id IS NOT NULL');
+                $ret['duplicates_removed']=$dup;
+            }
+            if (!$jobPk) { $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS ux_ntcs_barcode_test_job_id ON '.$table.' (job_id)'); $ret['unique_index']=true; }
+            $pdo->commit();
+            return $ret;
+        } catch (Throwable $e) {
+            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
+            $ret['status']='failed'; $ret['message']=$e->getMessage(); return $ret;
+        }
+    }
 }
-}
+

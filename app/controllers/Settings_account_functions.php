@@ -70,7 +70,7 @@
 
     private function accountUserProtectedName(string $name): bool
     {
-        return in_array(strtolower(trim($name)), ['kls', 'guest', 'admin'], true);
+        return in_array(strtolower(trim($name)), ['service', 'guest', 'admin'], true);
     }
 
     private function accountUserProtectedMessage(string $type = 'delete'): string
@@ -433,7 +433,7 @@
             $username = isset($_POST['username']) ? $this->accountUserClean((string)$_POST['username']) : '';
             $this->accountUserValidateText($username, 'Username');
 
-            // kls must be visible/readable in Account setting, but cannot be saved/deleted.
+            // service must be visible/readable in Account setting, but cannot be saved/deleted.
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
 
@@ -522,7 +522,7 @@
             $newLower = strtolower($name);
 
             if ($this->accountUserProtectedName($oldName)) {
-                if ($oldLower === 'kls') {
+                if ($oldLower === 'service') {
                     throw new Exception($this->accountUserProtectedMessage('save'));
                 }
                 if ($newLower !== $oldLower) {

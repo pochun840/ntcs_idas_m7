@@ -4,9 +4,224 @@
  * /home/kls/upgrade/icontroller = 1 -> i-controller implementation
  * 0 / missing / invalid -> NTCS implementation
  */
-if (idas_is_icontroller()) {
+
 class Check extends Controller
 {
+    public function __construct(){
+
+            $this->DataModel = $this->model('Datas');
+            $this->SettingModel = $this->model('Setting');
+            $this->MiscellaneousModel = $this->model('Miscellaneous');
+
+            // ❌ 絕對不要在 constructor sync
+            $this->deviceId = null;
+        }
+
+    public function ajax_apply_device_id(): void{
+            
+            header('Content-Type: application/json; charset=utf-8');
+
+            try {
+                $id = isset($_POST['device_id']) ? (int)$_POST['device_id'] : 0;
+
+                if ($id <= 0) {
+                    echo json_encode(['res_type'=>'ERROR','reason'=>'invalid_id']);
+                    exit;
+                }
+
+                $ok = $this->writeDeviceIdToIdasDb($id);
+
+                $modbusType = null;
+                $modbusTypeOk = true;
+                if (isset($_POST['modbus_type']) && $_POST['modbus_type'] !== '') {
+                    $modbusType = (int)$_POST['modbus_type'];
+                    if (!in_array($modbusType, [0, 1, 2], true)) {
+                        echo json_encode(['res_type'=>'ERROR','reason'=>'invalid_modbus_type']);
+                        exit;
+                    }
+                    $modbusTypeOk = $this->writeModbusTypeToIdasDb($modbusType);
+                }
+
+                echo json_encode([
+                    'res_type'           => ($ok && $modbusTypeOk) ? 'OK' : 'ERROR',
+                    'device_id'          => $id,
+                    'modbus_type'        => $modbusType,
+                    'modbus_type_synced' => $modbusTypeOk
+                ]);
+                exit;
+
+            } catch (Throwable $e) {
+                echo json_encode(['res_type'=>'ERROR']);
+                exit;
+            }
+        }
+
+    public function ajax_set_device_id_session(){
+
+            session_start();
+            $_SESSION['device_id'] = $_POST['device_id'] ?? null;
+            echo json_encode(['res_type'=>'OK']);
+        }
+
+    private function canConnectTcp(string $host, int $port, float $timeout = 0.7): bool
+        {
+            $host = trim($host);
+            if ($host === '' || $port <= 0 || $port > 65535) {
+                return false;
+            }
+
+            $errno = 0;
+            $errstr = '';
+            $client = @stream_socket_client(
+                'tcp://' . $host . ':' . $port,
+                $errno,
+                $errstr,
+                max(0.1, $timeout),
+                STREAM_CLIENT_CONNECT
+            );
+
+            if (is_resource($client)) {
+                fclose($client);
+                return true;
+            }
+
+            return false;
+        }
+
+    private function getControllerDeviceIdOnly1(): ?int
+        {
+            $dbPath = idas_path('controller_root', 'ntcs_device.db');
+
+            // 檔案存在 + 可讀
+            if (!is_file($dbPath) || !is_readable($dbPath)) {
+                return null;
+            }
+
+            try {
+                $db = idas_sqlite_connect($dbPath, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    // SQLite 讀取偶發鎖住時，稍等一下（毫秒）
+                    PDO::ATTR_TIMEOUT => 2,
+                ]);
+
+                // 更明確：若被鎖，等待 2000ms
+                $db->exec('PRAGMA busy_timeout = 2000');
+
+                // 若表可能多筆，建議指定排序依據（你可改成你們最可靠的欄位）
+                $stmt = $db->query("
+                    SELECT device_id
+                    FROM ntcs_device_test
+                    WHERE device_id IS NOT NULL
+                    ORDER BY rowid DESC
+                    LIMIT 1
+                ");
+
+                $val = $stmt->fetchColumn();
+
+                // fetchColumn 可能回 false / null / string
+                if ($val === false || $val === null || $val === '') {
+                    return null;
+                }
+
+                // 嚴格數字檢查，避免 'NULL' / 'abc' 之類的髒資料
+                if (!is_numeric($val)) {
+                    return null;
+                }
+
+                return (int)$val;
+
+            } catch (Throwable $e) {
+                return null;
+            }
+        }
+
+    private function getControllerDeviceIdentity(): array
+        {
+            return $this->readDeviceIdentityFromDb(idas_path('controller_root', 'ntcs_device.db'));
+        }
+
+    private function getIdasDeviceIdentity(): array
+        {
+            return $this->readDeviceIdentityFromDb(idas_path('database_root', 'ntcs_device_IDAS.db'));
+        }
+
+    public function index()
+        {
+            // 使用者真正進頁 / reload 時才同步
+            //$this->deviceId = $this->ntcs_device_db_sysnc();
+        }
+
+    private function writeDeviceIdToIdasDb(int $deviceId): bool
+        {
+            try {
+                $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
+
+                if (!is_file($idasDb)) {
+                    return false;
+                }
+
+                $db = idas_sqlite_connect($idasDb);
+                $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+                // ⭐ 直接更新第一筆
+                $stmt = $db->prepare("
+                    UPDATE ntcs_device_test
+                    SET device_id = :id
+                    WHERE rowid = 1
+                ");
+
+                $stmt->execute([
+                    ':id' => $deviceId
+                ]);
+
+                return true;
+
+            } catch (Throwable $e) {
+                return false;
+            }
+        }
+
+    private function writeModbusTypeToIdasDb(int $modbusType): bool
+        {
+            if (!in_array($modbusType, [0, 1, 2], true)) {
+                return false;
+            }
+
+            try {
+                $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
+
+                if (!is_file($idasDb) || !is_readable($idasDb) || !is_writable($idasDb)) {
+                    return false;
+                }
+
+                $db = idas_sqlite_connect($idasDb);
+                $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $db->exec('PRAGMA busy_timeout = 3000');
+
+                $columnExists = (bool)$db->query(
+                    "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name = 'modbus_type' LIMIT 1"
+                )->fetchColumn();
+
+                if (!$columnExists) {
+                    return false;
+                }
+
+                $stmt = $db->prepare("
+                    UPDATE ntcs_device_test
+                    SET modbus_type = :modbus_type
+                    WHERE rowid = 1
+                ");
+
+                $stmt->bindValue(':modbus_type', $modbusType, PDO::PARAM_INT);
+                $stmt->execute();
+
+                return true;
+
+            } catch (Throwable $e) {
+                return false;
+            }
+        }
+
     private $DataModel;
     private $SettingModel;
     private $MiscellaneousModel;
@@ -14,26 +229,17 @@ class Check extends Controller
     private static $onlineCache = null;
     private static $onlineCacheTime = 0;
 
-
-    public function __construct(){
-
-        $this->DataModel = $this->model('Datas');
-        $this->SettingModel = $this->model('Setting');
-        $this->MiscellaneousModel = $this->model('Miscellaneous');
-
-        // ❌ 絕對不要在 constructor sync
-        $this->deviceId = null;
-    }
-
-
     // 頁面入口（只有這裡才 sync）
-    public function index()
+
+    public function sync_device_identity(...$args)
     {
-        // 使用者真正進頁 / reload 時才同步
-        //$this->deviceId = $this->ntcs_device_db_sysnc();
+        if (idas_is_icontroller()) {
+            return $this->sync_device_identity__icontroller(...$args);
+        }
+        return $this->sync_device_identity__ntcs(...$args);
     }
 
-    public function sync_device_identity(){
+    private function sync_device_identity__icontroller(){
 
         header('Content-Type: application/json; charset=utf-8');
 
@@ -115,617 +321,7 @@ class Check extends Controller
         }
     }
 
-
-
-    
-    public function ajax_check_device_id(){
-        
-        header('Content-Type: application/json; charset=utf-8');
-
-        try {
-
-            /* =====================================================
-            * 1️⃣ 讀 Controller identity：device_id + modbus_type
-            * ===================================================== */
-            $controllerIdentity = $this->getControllerDeviceIdentity();
-            $controllerId       = $controllerIdentity['device_id'];
-            $controllerType     = $controllerIdentity['modbus_type'];
-            $pendingChange      = idas_read_identity_state('idas_controller_restart_pending') ?? [];
-
-            if ($controllerId === null && $controllerType === null) {
-                echo json_encode([
-                    'res_type'             => 'OK',
-                    'online'               => false,
-                    'device_id'            => null,
-                    'idas_id'              => null,
-                    'modbus_type'          => null,
-                    'idas_modbus_type'     => null,
-                    'changed'              => false,
-                    'id_changed'           => false,
-                    'modbus_type_changed'  => false,
-                    'change_type'          => 'none',
-                    'initialized'          => false,
-                    'idas_db_exists'       => null,
-                    'idas_db_ok'           => null,
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            /* =====================================================
-            * 2️⃣ 讀 iDAS identity：device_id + modbus_type
-            * ===================================================== */
-            $idasIdentity = $this->getIdasDeviceIdentity();
-            $idasId       = $idasIdentity['device_id'];
-            $idasType     = $idasIdentity['modbus_type'];
-            $idasDbExists = $idasIdentity['db_exists'];
-            $idasDbOk     = $idasIdentity['db_ok'];
-
-            /*
-             * Server-side baseline survives browser refresh and Controller reboot.
-             * It detects changes even when another save path updates both DB files
-             * before this polling request can compare them.
-             */
-            $serverBaseline = idas_read_identity_state('idas_controller_identity_baseline');
-            if ($serverBaseline === null) {
-                idas_write_identity_state('idas_controller_identity_baseline', [
-                    'device_id' => $idasId ?? $controllerId,
-                    'modbus_type' => $idasType ?? $controllerType,
-                ]);
-                $serverBaseline = [
-                    'device_id' => $idasId ?? $controllerId,
-                    'modbus_type' => $idasType ?? $controllerType,
-                ];
-            }
-
-            $baselineIdChanged = isset($serverBaseline['device_id'])
-                && $controllerId !== null
-                && (int)$serverBaseline['device_id'] !== (int)$controllerId;
-            $baselineTypeChanged = isset($serverBaseline['modbus_type'])
-                && $controllerType !== null
-                && (int)$serverBaseline['modbus_type'] !== (int)$controllerType;
-
-            /* =====================================================
-            * 3️⃣ 判斷 Controller 是否在線
-            * ===================================================== */
-            $online = $this->isControllerOnline();
-
-            /* =====================================================
-            * 4️⃣ 第一次初始化（iDAS DB 不存在 / table 不存在 / device_id 尚未寫入）
-            * ===================================================== */
-            if ($idasId === null) {
-                echo json_encode([
-                    'res_type'             => 'OK',
-                    'device_id'            => $controllerId,
-                    'idas_id'              => null,
-                    'modbus_type'          => $controllerType,
-                    'idas_modbus_type'     => $idasType,
-                    'online'               => $online,
-                    'changed'              => false,
-                    'id_changed'           => false,
-                    'modbus_type_changed'  => false,
-                    'change_type'          => 'none',
-                    'initialized'          => true,
-                    'idas_db_exists'       => $idasDbExists,
-                    'idas_db_ok'           => $idasDbOk,
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            /* =====================================================
-            * 5️⃣ Controller ID / MODBUS TYPE 改變
-            * ===================================================== */
-            $idChanged = $baselineIdChanged || !empty($pendingChange['id_changed']) || (
-                $controllerId !== null
-                && $idasId !== null
-                && $controllerId !== $idasId
-            );
-
-            $modbusTypeChanged = $baselineTypeChanged || !empty($pendingChange['modbus_type_changed']) || (
-                $controllerType !== null
-                && $idasType !== null
-                && $controllerType !== $idasType
-            );
-
-            $changed = ($idChanged || $modbusTypeChanged);
-
-            if ($idChanged && $modbusTypeChanged) {
-                $changeType = 'both';
-            } elseif ($idChanged) {
-                $changeType = 'device_id';
-            } elseif ($modbusTypeChanged) {
-                $changeType = 'modbus_type';
-            } else {
-                $changeType = 'none';
-            }
-
-            echo json_encode([
-                'res_type'             => 'OK',
-                'device_id'            => $controllerId,
-                'idas_id'              => $idasId,
-                'modbus_type'          => $controllerType,
-                'idas_modbus_type'     => $idasType,
-                'online'               => $online,
-                'changed'              => $changed,
-                'id_changed'           => $idChanged,
-                'modbus_type_changed'  => $modbusTypeChanged,
-                'change_type'          => $changeType,
-                'initialized'          => false,
-                'idas_db_exists'       => $idasDbExists,
-                'idas_db_ok'           => $idasDbOk,
-                // changed=true 時，前端只能顯示 Banner 並等待人工重新啟動；不可立即同步。
-                'restart_required'       => $changed,
-                'manual_reboot_required' => $changed,
-                'sync_after_popup'       => $changed,
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
-
-        } catch (Throwable $e) {
-            echo json_encode([
-                'res_type' => 'ERROR',
-                'msg'      => 'exception'
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-    }
-
-
-
-
-    // ⭐ 強制同步 controller → iDAS
-    public function ajax_force_sync_device_id(){
-        
-        header('Content-Type: application/json; charset=utf-8');
-
-        try {
-            // 舊流程相容用：實際同步邏輯與 sync_device_identity 相同。
-            // 只能在前端流程確認後呼叫，不可在偵測到 changed=true 時自動呼叫。
-            $controllerIdentity = $this->getControllerDeviceIdentity();
-            $controllerId = $controllerIdentity['device_id'] ?? null;
-            $controllerType = $controllerIdentity['modbus_type'] ?? null;
-
-            if ($controllerId === null && $controllerType === null) {
-                echo json_encode([
-                    'res_type' => 'ERROR',
-                    'msg'      => 'controller identity not found'
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            $deviceIdSynced = true;
-            if ($controllerId !== null) {
-                $deviceIdSynced = $this->writeDeviceIdToIdasDb((int)$controllerId);
-            }
-
-            $modbusTypeSynced = true;
-            if ($controllerType !== null) {
-                $modbusTypeSynced = $this->writeModbusTypeToIdasDb((int)$controllerType);
-            }
-
-            if ($controllerId !== null) {
-                $exp = time() + 86400 * 30;
-                setcookie('temp_device_id', (string)$controllerId, $exp, '/', '', false, true);
-                setcookie('temp_device_id_ts', (string)time(), $exp, '/', '', false, true);
-                $_COOKIE['temp_device_id']    = (string)$controllerId;
-                $_COOKIE['temp_device_id_ts'] = (string)time();
-            }
-
-            echo json_encode([
-                'res_type'            => ($deviceIdSynced && $modbusTypeSynced) ? 'OK' : 'ERROR',
-                'device_id'           => $controllerId,
-                'modbus_type'         => $controllerType,
-                'device_id_synced'    => $deviceIdSynced,
-                'modbus_type_synced'  => $modbusTypeSynced
-            ], JSON_UNESCAPED_UNICODE);
-
-        } catch (Throwable $e) {
-            echo json_encode([
-                'res_type' => 'ERROR'
-            ]);
-        }
-        exit;
-    }
-
-
-
-
-
-    /**
-     * 讀取 Controller 端 identity。
-     * 來源：/home/kls/NTCS7/ntcs_device.db
-     */
-    private function getControllerDeviceIdentity(): array
-    {
-        return $this->readDeviceIdentityFromDb(idas_path('controller_root', 'ntcs_device.db'));
-    }
-
-
-    /**
-     * 讀取 iDAS 端 identity。
-     * 來源：/var/www/html/database/ntcs_device_IDAS.db
-     */
-    private function getIdasDeviceIdentity(): array
-    {
-        return $this->readDeviceIdentityFromDb(idas_path('database_root', 'ntcs_device_IDAS.db'));
-    }
-
-
-    /**
-     * 一次讀取 ntcs_device_test.device_id + modbus_type。
-     * modbus_type：0 = MODBUS TCP, 1 = MODBUS RTU, 2 = OP
-     */
-    private function readDeviceIdentityFromDb(string $dbPath): array
-    {
-        $identity = [
-            'db_exists'     => is_file($dbPath) && is_readable($dbPath),
-            'db_ok'         => false,
-            'device_id'     => null,
-            'modbus_type'   => null,
-        ];
-
-        if (!$identity['db_exists']) {
-            return $identity;
-        }
-
-        try {
-            $db = idas_sqlite_connect($dbPath, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 2,
-            ]);
-
-            $db->exec('PRAGMA busy_timeout = 2000');
-
-            $tableOk = (bool)$db->query("
-                SELECT 1
-                FROM sqlite_master
-                WHERE type='table' AND name='ntcs_device_test'
-                LIMIT 1
-            ")->fetchColumn();
-
-            if (!$tableOk) {
-                return $identity;
-            }
-
-            $identity['db_ok'] = true;
-
-            $columnRows = $db->query("PRAGMA table_info('ntcs_device_test')")
-                ->fetchAll(PDO::FETCH_ASSOC);
-            $columns = array_column($columnRows, 'name');
-
-            $selectFields = ['device_id'];
-            if (in_array('modbus_type', $columns, true)) {
-                $selectFields[] = 'modbus_type';
-            }
-
-            $stmt = $db->query("
-                SELECT " . implode(', ', $selectFields) . "
-                FROM ntcs_device_test
-                ORDER BY rowid DESC
-                LIMIT 1
-            ");
-
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row) {
-                return $identity;
-            }
-
-            if (
-                isset($row['device_id'])
-                && $row['device_id'] !== null
-                && $row['device_id'] !== ''
-                && is_numeric($row['device_id'])
-            ) {
-                $deviceId = (int)$row['device_id'];
-                if ($deviceId >= 1 && $deviceId <= 255) {
-                    $identity['device_id'] = $deviceId;
-                }
-            }
-
-            if (
-                array_key_exists('modbus_type', $row)
-                && $row['modbus_type'] !== null
-                && $row['modbus_type'] !== ''
-                && is_numeric($row['modbus_type'])
-            ) {
-                $modbusType = (int)$row['modbus_type'];
-                if (in_array($modbusType, [0, 1, 2], true)) {
-                    $identity['modbus_type'] = $modbusType;
-                }
-            }
-
-            return $identity;
-
-        } catch (Throwable $e) {
-            return $identity;
-        }
-    }
-
-
-    // =========================
-    // 只讀 controller ID
-    // =========================
-    private function getControllerDeviceIdOnly1(): ?int
-    {
-        $dbPath = idas_path('controller_root', 'ntcs_device.db');
-
-        // 檔案存在 + 可讀
-        if (!is_file($dbPath) || !is_readable($dbPath)) {
-            return null;
-        }
-
-        try {
-            $db = idas_sqlite_connect($dbPath, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                // SQLite 讀取偶發鎖住時，稍等一下（毫秒）
-                PDO::ATTR_TIMEOUT => 2,
-            ]);
-
-            // 更明確：若被鎖，等待 2000ms
-            $db->exec('PRAGMA busy_timeout = 2000');
-
-            // 若表可能多筆，建議指定排序依據（你可改成你們最可靠的欄位）
-            $stmt = $db->query("
-                SELECT device_id
-                FROM ntcs_device_test
-                WHERE device_id IS NOT NULL
-                ORDER BY rowid DESC
-                LIMIT 1
-            ");
-
-            $val = $stmt->fetchColumn();
-
-            // fetchColumn 可能回 false / null / string
-            if ($val === false || $val === null || $val === '') {
-                return null;
-            }
-
-            // 嚴格數字檢查，避免 'NULL' / 'abc' 之類的髒資料
-            if (!is_numeric($val)) {
-                return null;
-            }
-
-            return (int)$val;
-
-        } catch (Throwable $e) {
-            return null;
-        }
-    }
-
-
-
-    public function ajax_set_device_id_session(){
-
-        session_start();
-        $_SESSION['device_id'] = $_POST['device_id'] ?? null;
-        echo json_encode(['res_type'=>'OK']);
-    }
-
-    public function ajax_apply_device_id(): void{
-        
-        header('Content-Type: application/json; charset=utf-8');
-
-        try {
-            $id = isset($_POST['device_id']) ? (int)$_POST['device_id'] : 0;
-
-            if ($id <= 0) {
-                echo json_encode(['res_type'=>'ERROR','reason'=>'invalid_id']);
-                exit;
-            }
-
-            $ok = $this->writeDeviceIdToIdasDb($id);
-
-            $modbusType = null;
-            $modbusTypeOk = true;
-            if (isset($_POST['modbus_type']) && $_POST['modbus_type'] !== '') {
-                $modbusType = (int)$_POST['modbus_type'];
-                if (!in_array($modbusType, [0, 1, 2], true)) {
-                    echo json_encode(['res_type'=>'ERROR','reason'=>'invalid_modbus_type']);
-                    exit;
-                }
-                $modbusTypeOk = $this->writeModbusTypeToIdasDb($modbusType);
-            }
-
-            echo json_encode([
-                'res_type'           => ($ok && $modbusTypeOk) ? 'OK' : 'ERROR',
-                'device_id'          => $id,
-                'modbus_type'        => $modbusType,
-                'modbus_type_synced' => $modbusTypeOk
-            ]);
-            exit;
-
-        } catch (Throwable $e) {
-            echo json_encode(['res_type'=>'ERROR']);
-            exit;
-        }
-    }
-
-
-    /**
-     * 將 device_id 寫入 iDAS DB（ntcs_device_IDAS.db）
-     * ntcs_device_test 永遠只有一筆 → 直接 UPDATE
-     */
-    private function writeDeviceIdToIdasDb(int $deviceId): bool
-    {
-        try {
-            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
-
-            if (!is_file($idasDb)) {
-                return false;
-            }
-
-            $db = idas_sqlite_connect($idasDb);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            // ⭐ 直接更新第一筆
-            $stmt = $db->prepare("
-                UPDATE ntcs_device_test
-                SET device_id = :id
-                WHERE rowid = 1
-            ");
-
-            $stmt->execute([
-                ':id' => $deviceId
-            ]);
-
-            return true;
-
-        } catch (Throwable $e) {
-            return false;
-        }
-    }
-
-
-
-
-    /**
-     * 將 modbus_type 寫入 iDAS DB（ntcs_device_IDAS.db）
-     * 0 = MODBUS TCP, 1 = MODBUS RTU, 2 = OP
-     */
-    private function writeModbusTypeToIdasDb(int $modbusType): bool
-    {
-        if (!in_array($modbusType, [0, 1, 2], true)) {
-            return false;
-        }
-
-        try {
-            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
-
-            if (!is_file($idasDb) || !is_readable($idasDb) || !is_writable($idasDb)) {
-                return false;
-            }
-
-            $db = idas_sqlite_connect($idasDb);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $db->exec('PRAGMA busy_timeout = 3000');
-
-            $columnExists = (bool)$db->query(
-                "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name = 'modbus_type' LIMIT 1"
-            )->fetchColumn();
-
-            if (!$columnExists) {
-                return false;
-            }
-
-            $stmt = $db->prepare("
-                UPDATE ntcs_device_test
-                SET modbus_type = :modbus_type
-                WHERE rowid = 1
-            ");
-
-            $stmt->bindValue(':modbus_type', $modbusType, PDO::PARAM_INT);
-            $stmt->execute();
-
-            return true;
-
-        } catch (Throwable $e) {
-            return false;
-        }
-    }
-
-
-    private function isControllerOnline(): bool
-    {
-        // 3 秒快取：同一個 AJAX request 內避免重複 TCP connect。
-        if (self::$onlineCache !== null && (time() - self::$onlineCacheTime) < 3) {
-            return self::$onlineCache;
-        }
-
-        $identity = $this->getControllerDeviceIdentity();
-        $controllerType = $identity['modbus_type'] ?? null;
-        if ($controllerType === null) {
-            $controllerType = $this->get_modbus_type_from_controller();
-        }
-
-        $online = false;
-
-        // MODBUS TYPE = 2：OP Protocol，優先使用 Controller DB wifi 解析出的實際 OP endpoint。
-        if ((int)$controllerType === 2) {
-            try {
-                foreach ($this->getOpProtocolCandidates(null, 4545) as $endpoint) {
-                    $host = trim((string)($endpoint['host'] ?? ''));
-                    $port = (int)($endpoint['port'] ?? 4545);
-                    if ($host === '' || $port <= 0) {
-                        continue;
-                    }
-                    if ($this->canConnectTcp($host, $port, 0.7)) {
-                        $online = true;
-                        break;
-                    }
-                }
-            } catch (Throwable $e) {
-                $online = false;
-            }
-        } else {
-            // TCP / RTU：依網路設定中的 server port 檢查。
-            $ip = defined('CONTROLLER_IP') ? (string)CONTROLLER_IP : '127.0.0.1';
-            $tcpPort = $this->getControllerTcpPort(502);
-            $online = $this->canConnectTcp($ip, $tcpPort, 0.7);
-        }
-
-        self::$onlineCache = $online;
-        self::$onlineCacheTime = time();
-
-        return self::$onlineCache;
-    }
-
-
-    private function canConnectTcp(string $host, int $port, float $timeout = 0.7): bool
-    {
-        $host = trim($host);
-        if ($host === '' || $port <= 0 || $port > 65535) {
-            return false;
-        }
-
-        $errno = 0;
-        $errstr = '';
-        $client = @stream_socket_client(
-            'tcp://' . $host . ':' . $port,
-            $errno,
-            $errstr,
-            max(0.1, $timeout),
-            STREAM_CLIENT_CONNECT
-        );
-
-        if (is_resource($client)) {
-            fclose($client);
-            return true;
-        }
-
-        return false;
-    }
-
-
-
-}
-} else {
-class Check extends Controller
-{
-    private $DataModel;
-    private $SettingModel;
-    private $MiscellaneousModel;
-    private $deviceId = null;
-    private static $onlineCache = null;
-    private static $onlineCacheTime = 0;
-
-
-    public function __construct(){
-
-        $this->DataModel = $this->model('Datas');
-        $this->SettingModel = $this->model('Setting');
-        $this->MiscellaneousModel = $this->model('Miscellaneous');
-
-        // ❌ 絕對不要在 constructor sync
-        $this->deviceId = null;
-    }
-
-
-    // 頁面入口（只有這裡才 sync）
-    public function index()
-    {
-        // 使用者真正進頁 / reload 時才同步
-        //$this->deviceId = $this->ntcs_device_db_sysnc();
-    }
-
-    public function sync_device_identity(){
+    private function sync_device_identity__ntcs(){
 
         header('Content-Type: application/json; charset=utf-8');
 
@@ -878,11 +474,6 @@ class Check extends Controller
         }
     }
 
-
-    /**
-     * Fast DB-only change detection. Never opens MODBUS/OP connections, so a
-     * newly changed ID/protocol cannot delay the red restart Banner.
-     */
     public function ajax_check_device_change_fast()
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -966,10 +557,165 @@ class Check extends Controller
         }
     }
 
+    public function ajax_check_device_id(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->ajax_check_device_id__icontroller(...$args);
+        }
+        return $this->ajax_check_device_id__ntcs(...$args);
+    }
 
+    private function ajax_check_device_id__icontroller(){
+        
+        header('Content-Type: application/json; charset=utf-8');
 
-    
-    public function ajax_check_device_id(){
+        try {
+
+            /* =====================================================
+            * 1️⃣ 讀 Controller identity：device_id + modbus_type
+            * ===================================================== */
+            $controllerIdentity = $this->getControllerDeviceIdentity();
+            $controllerId       = $controllerIdentity['device_id'];
+            $controllerType     = $controllerIdentity['modbus_type'];
+            $pendingChange      = idas_read_identity_state('idas_controller_restart_pending') ?? [];
+
+            if ($controllerId === null && $controllerType === null) {
+                echo json_encode([
+                    'res_type'             => 'OK',
+                    'online'               => false,
+                    'device_id'            => null,
+                    'idas_id'              => null,
+                    'modbus_type'          => null,
+                    'idas_modbus_type'     => null,
+                    'changed'              => false,
+                    'id_changed'           => false,
+                    'modbus_type_changed'  => false,
+                    'change_type'          => 'none',
+                    'initialized'          => false,
+                    'idas_db_exists'       => null,
+                    'idas_db_ok'           => null,
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            /* =====================================================
+            * 2️⃣ 讀 iDAS identity：device_id + modbus_type
+            * ===================================================== */
+            $idasIdentity = $this->getIdasDeviceIdentity();
+            $idasId       = $idasIdentity['device_id'];
+            $idasType     = $idasIdentity['modbus_type'];
+            $idasDbExists = $idasIdentity['db_exists'];
+            $idasDbOk     = $idasIdentity['db_ok'];
+
+            /*
+             * Server-side baseline survives browser refresh and Controller reboot.
+             * It detects changes even when another save path updates both DB files
+             * before this polling request can compare them.
+             */
+            $serverBaseline = idas_read_identity_state('idas_controller_identity_baseline');
+            if ($serverBaseline === null) {
+                idas_write_identity_state('idas_controller_identity_baseline', [
+                    'device_id' => $idasId ?? $controllerId,
+                    'modbus_type' => $idasType ?? $controllerType,
+                ]);
+                $serverBaseline = [
+                    'device_id' => $idasId ?? $controllerId,
+                    'modbus_type' => $idasType ?? $controllerType,
+                ];
+            }
+
+            $baselineIdChanged = isset($serverBaseline['device_id'])
+                && $controllerId !== null
+                && (int)$serverBaseline['device_id'] !== (int)$controllerId;
+            $baselineTypeChanged = isset($serverBaseline['modbus_type'])
+                && $controllerType !== null
+                && (int)$serverBaseline['modbus_type'] !== (int)$controllerType;
+
+            /* =====================================================
+            * 3️⃣ 判斷 Controller 是否在線
+            * ===================================================== */
+            $online = $this->isControllerOnline();
+
+            /* =====================================================
+            * 4️⃣ 第一次初始化（iDAS DB 不存在 / table 不存在 / device_id 尚未寫入）
+            * ===================================================== */
+            if ($idasId === null) {
+                echo json_encode([
+                    'res_type'             => 'OK',
+                    'device_id'            => $controllerId,
+                    'idas_id'              => null,
+                    'modbus_type'          => $controllerType,
+                    'idas_modbus_type'     => $idasType,
+                    'online'               => $online,
+                    'changed'              => false,
+                    'id_changed'           => false,
+                    'modbus_type_changed'  => false,
+                    'change_type'          => 'none',
+                    'initialized'          => true,
+                    'idas_db_exists'       => $idasDbExists,
+                    'idas_db_ok'           => $idasDbOk,
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            /* =====================================================
+            * 5️⃣ Controller ID / MODBUS TYPE 改變
+            * ===================================================== */
+            $idChanged = $baselineIdChanged || !empty($pendingChange['id_changed']) || (
+                $controllerId !== null
+                && $idasId !== null
+                && $controllerId !== $idasId
+            );
+
+            $modbusTypeChanged = $baselineTypeChanged || !empty($pendingChange['modbus_type_changed']) || (
+                $controllerType !== null
+                && $idasType !== null
+                && $controllerType !== $idasType
+            );
+
+            $changed = ($idChanged || $modbusTypeChanged);
+
+            if ($idChanged && $modbusTypeChanged) {
+                $changeType = 'both';
+            } elseif ($idChanged) {
+                $changeType = 'device_id';
+            } elseif ($modbusTypeChanged) {
+                $changeType = 'modbus_type';
+            } else {
+                $changeType = 'none';
+            }
+
+            echo json_encode([
+                'res_type'             => 'OK',
+                'device_id'            => $controllerId,
+                'idas_id'              => $idasId,
+                'modbus_type'          => $controllerType,
+                'idas_modbus_type'     => $idasType,
+                'online'               => $online,
+                'changed'              => $changed,
+                'id_changed'           => $idChanged,
+                'modbus_type_changed'  => $modbusTypeChanged,
+                'change_type'          => $changeType,
+                'initialized'          => false,
+                'idas_db_exists'       => $idasDbExists,
+                'idas_db_ok'           => $idasDbOk,
+                // changed=true 時，前端只能顯示 Banner 並等待人工重新啟動；不可立即同步。
+                'restart_required'       => $changed,
+                'manual_reboot_required' => $changed,
+                'sync_after_popup'       => $changed,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        } catch (Throwable $e) {
+            echo json_encode([
+                'res_type' => 'ERROR',
+                'msg'      => 'exception'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    private function ajax_check_device_id__ntcs(){
         
         header('Content-Type: application/json; charset=utf-8');
 
@@ -1166,11 +912,68 @@ class Check extends Controller
         }
     }
 
+    public function ajax_force_sync_device_id(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->ajax_force_sync_device_id__icontroller(...$args);
+        }
+        return $this->ajax_force_sync_device_id__ntcs(...$args);
+    }
 
+    private function ajax_force_sync_device_id__icontroller(){
+        
+        header('Content-Type: application/json; charset=utf-8');
 
+        try {
+            // 舊流程相容用：實際同步邏輯與 sync_device_identity 相同。
+            // 只能在前端流程確認後呼叫，不可在偵測到 changed=true 時自動呼叫。
+            $controllerIdentity = $this->getControllerDeviceIdentity();
+            $controllerId = $controllerIdentity['device_id'] ?? null;
+            $controllerType = $controllerIdentity['modbus_type'] ?? null;
 
-    // ⭐ 強制同步 controller → iDAS
-    public function ajax_force_sync_device_id(){
+            if ($controllerId === null && $controllerType === null) {
+                echo json_encode([
+                    'res_type' => 'ERROR',
+                    'msg'      => 'controller identity not found'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $deviceIdSynced = true;
+            if ($controllerId !== null) {
+                $deviceIdSynced = $this->writeDeviceIdToIdasDb((int)$controllerId);
+            }
+
+            $modbusTypeSynced = true;
+            if ($controllerType !== null) {
+                $modbusTypeSynced = $this->writeModbusTypeToIdasDb((int)$controllerType);
+            }
+
+            if ($controllerId !== null) {
+                $exp = time() + 86400 * 30;
+                setcookie('temp_device_id', (string)$controllerId, $exp, '/', '', false, true);
+                setcookie('temp_device_id_ts', (string)time(), $exp, '/', '', false, true);
+                $_COOKIE['temp_device_id']    = (string)$controllerId;
+                $_COOKIE['temp_device_id_ts'] = (string)time();
+            }
+
+            echo json_encode([
+                'res_type'            => ($deviceIdSynced && $modbusTypeSynced) ? 'OK' : 'ERROR',
+                'device_id'           => $controllerId,
+                'modbus_type'         => $controllerType,
+                'device_id_synced'    => $deviceIdSynced,
+                'modbus_type_synced'  => $modbusTypeSynced
+            ], JSON_UNESCAPED_UNICODE);
+
+        } catch (Throwable $e) {
+            echo json_encode([
+                'res_type' => 'ERROR'
+            ]);
+        }
+        exit;
+    }
+
+    private function ajax_force_sync_device_id__ntcs(){
         
         header('Content-Type: application/json; charset=utf-8');
 
@@ -1231,35 +1034,101 @@ class Check extends Controller
         exit;
     }
 
-
-
-
-
-    /**
-     * 讀取 Controller 端 identity。
-     * 來源：/home/kls/NTCS7/ntcs_device.db
-     */
-    private function getControllerDeviceIdentity(): array
+    private function readDeviceIdentityFromDb(...$args)
     {
-        return $this->readDeviceIdentityFromDb(idas_path('controller_root', 'ntcs_device.db'));
+        if (idas_is_icontroller()) {
+            return $this->readDeviceIdentityFromDb__icontroller(...$args);
+        }
+        return $this->readDeviceIdentityFromDb__ntcs(...$args);
     }
 
-
-    /**
-     * 讀取 iDAS 端 identity。
-     * 來源：/var/www/html/database/ntcs_device_IDAS.db
-     */
-    private function getIdasDeviceIdentity(): array
+    private function readDeviceIdentityFromDb__icontroller(string $dbPath): array
     {
-        return $this->readDeviceIdentityFromDb(idas_path('database_root', 'ntcs_device_IDAS.db'));
+        $identity = [
+            'db_exists'     => is_file($dbPath) && is_readable($dbPath),
+            'db_ok'         => false,
+            'device_id'     => null,
+            'modbus_type'   => null,
+        ];
+
+        if (!$identity['db_exists']) {
+            return $identity;
+        }
+
+        try {
+            $db = idas_sqlite_connect($dbPath, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 2,
+            ]);
+
+            $db->exec('PRAGMA busy_timeout = 2000');
+
+            $tableOk = (bool)$db->query("
+                SELECT 1
+                FROM sqlite_master
+                WHERE type='table' AND name='ntcs_device_test'
+                LIMIT 1
+            ")->fetchColumn();
+
+            if (!$tableOk) {
+                return $identity;
+            }
+
+            $identity['db_ok'] = true;
+
+            $columnRows = $db->query("PRAGMA table_info('ntcs_device_test')")
+                ->fetchAll(PDO::FETCH_ASSOC);
+            $columns = array_column($columnRows, 'name');
+
+            $selectFields = ['device_id'];
+            if (in_array('modbus_type', $columns, true)) {
+                $selectFields[] = 'modbus_type';
+            }
+
+            $stmt = $db->query("
+                SELECT " . implode(', ', $selectFields) . "
+                FROM ntcs_device_test
+                ORDER BY rowid DESC
+                LIMIT 1
+            ");
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                return $identity;
+            }
+
+            if (
+                isset($row['device_id'])
+                && $row['device_id'] !== null
+                && $row['device_id'] !== ''
+                && is_numeric($row['device_id'])
+            ) {
+                $deviceId = (int)$row['device_id'];
+                if ($deviceId >= 1 && $deviceId <= 255) {
+                    $identity['device_id'] = $deviceId;
+                }
+            }
+
+            if (
+                array_key_exists('modbus_type', $row)
+                && $row['modbus_type'] !== null
+                && $row['modbus_type'] !== ''
+                && is_numeric($row['modbus_type'])
+            ) {
+                $modbusType = (int)$row['modbus_type'];
+                if (in_array($modbusType, [0, 1, 2], true)) {
+                    $identity['modbus_type'] = $modbusType;
+                }
+            }
+
+            return $identity;
+
+        } catch (Throwable $e) {
+            return $identity;
+        }
     }
 
-
-    /**
-     * 一次讀取 ntcs_device_test.device_id + modbus_type。
-     * modbus_type：0 = MODBUS TCP, 1 = MODBUS RTU, 2 = OP
-     */
-    private function readDeviceIdentityFromDb(string $dbPath): array
+    private function readDeviceIdentityFromDb__ntcs(string $dbPath): array
     {
         $identity = [
             'db_exists'     => is_file($dbPath) && is_readable($dbPath),
@@ -1359,194 +1228,6 @@ class Check extends Controller
         }
     }
 
-
-    // =========================
-    // 只讀 controller ID
-    // =========================
-    private function getControllerDeviceIdOnly1(): ?int
-    {
-        $dbPath = idas_path('controller_root', 'ntcs_device.db');
-
-        // 檔案存在 + 可讀
-        if (!is_file($dbPath) || !is_readable($dbPath)) {
-            return null;
-        }
-
-        try {
-            $db = idas_sqlite_connect($dbPath, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                // SQLite 讀取偶發鎖住時，稍等一下（毫秒）
-                PDO::ATTR_TIMEOUT => 2,
-            ]);
-
-            // 更明確：若被鎖，等待 2000ms
-            $db->exec('PRAGMA busy_timeout = 2000');
-
-            // 若表可能多筆，建議指定排序依據（你可改成你們最可靠的欄位）
-            $stmt = $db->query("
-                SELECT device_id
-                FROM ntcs_device_test
-                WHERE device_id IS NOT NULL
-                ORDER BY rowid DESC
-                LIMIT 1
-            ");
-
-            $val = $stmt->fetchColumn();
-
-            // fetchColumn 可能回 false / null / string
-            if ($val === false || $val === null || $val === '') {
-                return null;
-            }
-
-            // 嚴格數字檢查，避免 'NULL' / 'abc' 之類的髒資料
-            if (!is_numeric($val)) {
-                return null;
-            }
-
-            return (int)$val;
-
-        } catch (Throwable $e) {
-            return null;
-        }
-    }
-
-
-
-    public function ajax_set_device_id_session(){
-
-        session_start();
-        $_SESSION['device_id'] = $_POST['device_id'] ?? null;
-        echo json_encode(['res_type'=>'OK']);
-    }
-
-    public function ajax_apply_device_id(): void{
-        
-        header('Content-Type: application/json; charset=utf-8');
-
-        try {
-            $id = isset($_POST['device_id']) ? (int)$_POST['device_id'] : 0;
-
-            if ($id <= 0) {
-                echo json_encode(['res_type'=>'ERROR','reason'=>'invalid_id']);
-                exit;
-            }
-
-            $ok = $this->writeDeviceIdToIdasDb($id);
-
-            $modbusType = null;
-            $modbusTypeOk = true;
-            if (isset($_POST['modbus_type']) && $_POST['modbus_type'] !== '') {
-                $modbusType = (int)$_POST['modbus_type'];
-                if (!in_array($modbusType, [0, 1, 2], true)) {
-                    echo json_encode(['res_type'=>'ERROR','reason'=>'invalid_modbus_type']);
-                    exit;
-                }
-                $modbusTypeOk = $this->writeModbusTypeToIdasDb($modbusType);
-            }
-
-            echo json_encode([
-                'res_type'           => ($ok && $modbusTypeOk) ? 'OK' : 'ERROR',
-                'device_id'          => $id,
-                'modbus_type'        => $modbusType,
-                'modbus_type_synced' => $modbusTypeOk
-            ]);
-            exit;
-
-        } catch (Throwable $e) {
-            echo json_encode(['res_type'=>'ERROR']);
-            exit;
-        }
-    }
-
-
-    /**
-     * 將 device_id 寫入 iDAS DB（ntcs_device_IDAS.db）
-     * ntcs_device_test 永遠只有一筆 → 直接 UPDATE
-     */
-    private function writeDeviceIdToIdasDb(int $deviceId): bool
-    {
-        try {
-            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
-
-            if (!is_file($idasDb)) {
-                return false;
-            }
-
-            $db = idas_sqlite_connect($idasDb);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            // ⭐ 直接更新第一筆
-            $stmt = $db->prepare("
-                UPDATE ntcs_device_test
-                SET device_id = :id
-                WHERE rowid = 1
-            ");
-
-            $stmt->execute([
-                ':id' => $deviceId
-            ]);
-
-            return true;
-
-        } catch (Throwable $e) {
-            return false;
-        }
-    }
-
-
-
-
-    /**
-     * 將 modbus_type 寫入 iDAS DB（ntcs_device_IDAS.db）
-     * 0 = MODBUS TCP, 1 = MODBUS RTU, 2 = OP
-     */
-    private function writeModbusTypeToIdasDb(int $modbusType): bool
-    {
-        if (!in_array($modbusType, [0, 1, 2], true)) {
-            return false;
-        }
-
-        try {
-            $idasDb = idas_path('database_root', 'ntcs_device_IDAS.db');
-
-            if (!is_file($idasDb) || !is_readable($idasDb) || !is_writable($idasDb)) {
-                return false;
-            }
-
-            $db = idas_sqlite_connect($idasDb);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $db->exec('PRAGMA busy_timeout = 3000');
-
-            $columnExists = (bool)$db->query(
-                "SELECT 1 FROM pragma_table_info('ntcs_device_test') WHERE name = 'modbus_type' LIMIT 1"
-            )->fetchColumn();
-
-            if (!$columnExists) {
-                return false;
-            }
-
-            $stmt = $db->prepare("
-                UPDATE ntcs_device_test
-                SET modbus_type = :modbus_type
-                WHERE rowid = 1
-            ");
-
-            $stmt->bindValue(':modbus_type', $modbusType, PDO::PARAM_INT);
-            $stmt->execute();
-
-            return true;
-
-        } catch (Throwable $e) {
-            return false;
-        }
-    }
-
-
-
-    /**
-     * 將 Controller Server Port 同步到 iDAS DB 的 ntcs_device_test.wifi。
-     * 只更新 wifi 第 3 欄 Port，其餘 mode / IP / mask / gateway 保留。
-     */
     private function writeServerPortToIdasDb(int $serverPort): bool
     {
         if ($serverPort < 1 || $serverPort > 65535) {
@@ -1642,14 +1323,6 @@ class Check extends Controller
         }
     }
 
-
-    /**
-     * PHP-managed token for the current system boot.
-     *
-     * /run and /dev/shm are volatile filesystems: the token remains stable
-     * across PHP/Apache restarts but disappears after a real controller reboot.
-     * PHP then creates a new token without reading /proc boot_id.
-     */
     private function getSystemBootId(): ?string
     {
         $paths = [];
@@ -1708,11 +1381,6 @@ class Check extends Controller
         return null;
     }
 
-
-    /**
-     * Confirm that the controller has actually applied its newest identity.
-     * A successful TCP connect can still be the old service before reboot.
-     */
     private function isControllerIdentityReady($deviceId, $modbusType): bool
     {
         $unitId = is_numeric($deviceId) ? (int)$deviceId : 0;
@@ -1729,8 +1397,60 @@ class Check extends Controller
         }
     }
 
+    private function isControllerOnline(...$args)
+    {
+        if (idas_is_icontroller()) {
+            return $this->isControllerOnline__icontroller(...$args);
+        }
+        return $this->isControllerOnline__ntcs(...$args);
+    }
 
-    private function isControllerOnline(): bool
+    private function isControllerOnline__icontroller(): bool
+    {
+        // 3 秒快取：同一個 AJAX request 內避免重複 TCP connect。
+        if (self::$onlineCache !== null && (time() - self::$onlineCacheTime) < 3) {
+            return self::$onlineCache;
+        }
+
+        $identity = $this->getControllerDeviceIdentity();
+        $controllerType = $identity['modbus_type'] ?? null;
+        if ($controllerType === null) {
+            $controllerType = $this->get_modbus_type_from_controller();
+        }
+
+        $online = false;
+
+        // MODBUS TYPE = 2：OP Protocol，優先使用 Controller DB wifi 解析出的實際 OP endpoint。
+        if ((int)$controllerType === 2) {
+            try {
+                foreach ($this->getOpProtocolCandidates(null, 4545) as $endpoint) {
+                    $host = trim((string)($endpoint['host'] ?? ''));
+                    $port = (int)($endpoint['port'] ?? 4545);
+                    if ($host === '' || $port <= 0) {
+                        continue;
+                    }
+                    if ($this->canConnectTcp($host, $port, 0.7)) {
+                        $online = true;
+                        break;
+                    }
+                }
+            } catch (Throwable $e) {
+                $online = false;
+            }
+        } else {
+            // TCP / RTU：依網路設定中的 server port 檢查。
+            $ip = defined('CONTROLLER_IP') ? (string)CONTROLLER_IP : '127.0.0.1';
+            $tcpPort = $this->getControllerTcpPort(502);
+            $online = $this->canConnectTcp($ip, $tcpPort, 0.7);
+        }
+
+        self::$onlineCache = $online;
+        self::$onlineCacheTime = time();
+
+        return self::$onlineCache;
+    }
+
+    private function isControllerOnline__ntcs(): bool
     {
         // 3 秒快取：同一個 AJAX request 內避免重複 TCP connect。
         if (self::$onlineCache !== null && (time() - self::$onlineCacheTime) < 3) {
@@ -1788,34 +1508,5 @@ class Check extends Controller
 
         return self::$onlineCache;
     }
-
-
-    private function canConnectTcp(string $host, int $port, float $timeout = 0.7): bool
-    {
-        $host = trim($host);
-        if ($host === '' || $port <= 0 || $port > 65535) {
-            return false;
-        }
-
-        $errno = 0;
-        $errstr = '';
-        $client = @stream_socket_client(
-            'tcp://' . $host . ':' . $port,
-            $errno,
-            $errstr,
-            max(0.1, $timeout),
-            STREAM_CLIENT_CONNECT
-        );
-
-        if (is_resource($client)) {
-            fclose($client);
-            return true;
-        }
-
-        return false;
-    }
-
-
-
 }
-}
+

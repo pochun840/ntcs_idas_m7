@@ -13,6 +13,7 @@ class Admins extends Controller
         $this->AdminModel = $this->model('Admin');
         $this->MiscellaneousModel = $this->model('Miscellaneous');
         
+        #該死的需求 去撈控制器的資料庫 同步找出modbus id 
 
         # 啟動 agent 
         //$this->res_agent =  $this->runAgentInitial();

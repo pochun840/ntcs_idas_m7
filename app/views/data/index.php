@@ -505,8 +505,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                             <th><?php echo $text['column_total']; ?></th>
                                             <th><?php echo $text['system_barcode']; ?></th>
                                             <th><?php echo $text['user_id']; ?></th>
-                                            <th><?php echo $text['job_cycle_time']; ?></th>
-                                            <th><?php echo $text['column_status']; ?></th>
+                                            <th><?php //echo $text['job_cycle_time']; ?></th>
+                                            <th><?php //echo $text['column_status']; ?></th>
                                         </tr>
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">

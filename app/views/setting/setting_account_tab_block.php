@@ -227,7 +227,7 @@ function settingAccountProtectedDeleteText() {
 }
 function settingAccountIsProtectedUser(username) {
     var name = String(username || '').trim().toLowerCase();
-    return name === 'guest' || name === 'admin' || name === 'kls';
+    return name === 'guest' || name === 'admin' || name === 'service';
 }
 
 function settingAccountApi(path) {
@@ -865,11 +865,11 @@ function closeSettingAccountModal() {
 function saveSettingAccount() {
     var oldUsername = document.getElementById('account_old_username').value.trim();
     var username = document.getElementById('account_username').value.trim();
-    if (settingAccountMode === 'edit' && String(oldUsername || '').trim().toLowerCase() === 'kls') {
+    if (settingAccountMode === 'edit' && String(oldUsername || '').trim().toLowerCase() === 'service') {
         settingAccountAlert(settingAccountProtectedSaveText());
         return;
     }
-    if (settingAccountMode === 'new' && String(username || '').trim().toLowerCase() === 'kls') {
+    if (settingAccountMode === 'new' && String(username || '').trim().toLowerCase() === 'service') {
         settingAccountAlert(settingAccountProtectedCreateText());
         return;
     }

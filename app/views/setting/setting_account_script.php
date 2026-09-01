@@ -77,7 +77,7 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_mode_confirm' => 'Select import mode:',
                 'account_import_append' => 'Append',
                 'account_import_overwrite' => 'Overwrite',
-                'account_import_overwrite_confirm' => 'Overwrite will delete all accounts except kls, guest, and admin. Continue?',
+                'account_import_overwrite_confirm' => 'Overwrite will delete all accounts except service, guest, and admin. Continue?',
                 'account_upload_confirm' => 'This will sync the iDAS user list to the controller and overwrite the controller user table. Continue?',
                 'account_upload_to_controller' => 'Sync to Controller',
                 'account_csv_template' => 'CSV Template',
@@ -147,7 +147,7 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_mode_confirm' => '請選擇匯入方式：',
                 'account_import_append' => '新增',
                 'account_import_overwrite' => '覆蓋',
-                'account_import_overwrite_confirm' => '覆蓋會刪除除了 kls、guest、admin 以外的所有帳號，確定繼續？',
+                'account_import_overwrite_confirm' => '覆蓋會刪除除了 service、guest、admin 以外的所有帳號，確定繼續？',
                 'account_upload_confirm' => '此動作會將 iDAS 使用者清單同步到控制器，並覆蓋控制器的 user table。確定繼續？',
                 'account_upload_to_controller' => '同步到控制器',
                 'account_csv_template' => 'CSV 範本',
@@ -217,7 +217,7 @@ if (!function_exists('settingAccountScriptFallbacks')) {
                 'account_import_mode_confirm' => '请选择导入方式：',
                 'account_import_append' => '新增',
                 'account_import_overwrite' => '覆盖',
-                'account_import_overwrite_confirm' => '覆盖会删除除了 kls、guest、admin 以外的所有账号，确定继续？',
+                'account_import_overwrite_confirm' => '覆盖会删除除了 service、guest、admin 以外的所有账号，确定继续？',
                 'account_upload_confirm' => '此操作会将 iDAS 使用者清单同步到控制器，并覆盖控制器的 user table。确定继续？',
                 'account_upload_to_controller' => '同步到控制器',
                 'account_csv_template' => 'CSV 范本',
@@ -838,13 +838,13 @@ function loadSettingAccountUsers() {
 
 function settingAccountIsProtectedUser(username) {
     var name = String(username || '').trim().toLowerCase();
-    return name === 'guest' || name === 'admin' || name === 'kls';
+    return name === 'guest' || name === 'admin' || name === 'service';
 }
 
 function settingAccountProtectedBadge(username) {
     var name = String(username || '').trim().toLowerCase();
 
-    // Protected status is still enforced for guest/admin/kls,
+    // Protected status is still enforced for guest/admin/service,
     // but only admin shows a visible label in the user list.
     if (name === 'admin') {
         return ' <span class="account-protected-badge">' +
@@ -948,7 +948,7 @@ function renderSettingAccountUsers(records) {
     selectedAccountLaw = '1';
     settingAccountRecordMap = {};
 
-    // kls 帳號需要顯示在列表，但儲存/刪除會被保護。
+    // service 帳號需要顯示在列表，但儲存/刪除會被保護。
     records = (records || []);
 
     var searchInput = document.getElementById('accountSearchInput');
@@ -1431,7 +1431,7 @@ function settingAccountAction(mode) {
             },
             function() {
                 settingAccountConfirm(
-                    saT('account_import_overwrite_confirm', 'Overwrite will delete all accounts except kls, guest, and admin. Continue?'),
+                    saT('account_import_overwrite_confirm', 'Overwrite will delete all accounts except service, guest, and admin. Continue?'),
                     function() {
                         importSettingAccounts('overwrite');
                     }
@@ -1588,12 +1588,12 @@ function saveSettingAccount() {
     var oldUsernameLower = String(oldUsername || '').toLowerCase();
     var usernameLower = String(username || '').toLowerCase();
 
-    if (settingAccountMode === 'new' && usernameLower === 'kls') {
+    if (settingAccountMode === 'new' && usernameLower === 'service') {
         settingAccountAlert(saT('account_protected_create_action', 'This account is protected and cannot be created.'));
         return;
     }
 
-    if (settingAccountMode === 'edit' && oldUsernameLower === 'kls') {
+    if (settingAccountMode === 'edit' && oldUsernameLower === 'service') {
         settingAccountAlert(saT('account_protected_save_action', 'This account is protected and cannot be saved.'));
         return;
     }
@@ -2305,7 +2305,7 @@ function downloadSettingAccountQrCode(username, password, event) {
         selectedAccountUser = null;
         selectedAccountPassword = '';
 
-        // kls 帳號需要顯示在列表，但儲存/刪除會被保護。
+        // service 帳號需要顯示在列表，但儲存/刪除會被保護。
         records = (records || []);
 
         var searchInput = document.getElementById('accountSearchInput');

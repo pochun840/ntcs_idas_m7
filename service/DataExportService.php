@@ -2,10 +2,14 @@
 
 final class DataExportService
 {
+    //'zh-tw' => ['fasten_direction' => '鎖附起子轉向', 'user_id' => '使用者 ID', 'job_cycle_time' => '工作週期時間'],
+    //'zh-cn' => ['fasten_direction' => '锁附起子转向', 'user_id' => '使用者 ID', 'job_cycle_time' => '工作节拍时间'],
+    //'en-us' => ['fasten_direction' => 'Screwdriver Direction', 'user_id' => 'User ID', 'job_cycle_time' => 'Job cycle time'],
+
     private const HEADER_FALLBACKS = [
-        'zh-tw' => ['fasten_direction' => '鎖附起子轉向', 'user_id' => '使用者 ID', 'job_cycle_time' => '工作週期時間'],
-        'zh-cn' => ['fasten_direction' => '锁附起子转向', 'user_id' => '使用者 ID', 'job_cycle_time' => '工作节拍时间'],
-        'en-us' => ['fasten_direction' => 'Screwdriver Direction', 'user_id' => 'User ID', 'job_cycle_time' => 'Job cycle time'],
+        'zh-tw' => ['fasten_direction' => '鎖附起子轉向'],
+        'zh-cn' => ['fasten_direction' => '锁附起子转向'],
+        'en-us' => ['fasten_direction' => 'Screwdriver Direction'],
     ];
 
     public static function localizedHeaders(array $keys, array $text): array
