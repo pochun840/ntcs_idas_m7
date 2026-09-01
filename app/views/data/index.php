@@ -31,6 +31,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <td>{$row['last_screw_count']}</td>
                 <td>{$row['total_screw_count']}</td>
                 <td class='{$class}'>{$status_arr[$status]}</td>
+                <td>{$row['barcode']}</td>
               </tr>";
     }
 }
@@ -439,6 +440,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <td>{$row['total_fasten_angle']}</td>
                 <td>{$row['last_screw_count']}</td>
                 <td>{$row['total_screw_count']}</td>
+                <td>{$row['barcode']}</td>
                 <td class='{$class}'>{$status_arr[$status]}</td>
               </tr>";
     }
@@ -504,9 +506,7 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                             <th><?php echo $text['column_count']; ?></th>
                                             <th><?php echo $text['column_total']; ?></th>
                                             <th><?php echo $text['system_barcode']; ?></th>
-                                            <th><?php echo $text['user_id']; ?></th>
-                                            <th><?php //echo $text['job_cycle_time']; ?></th>
-                                            <th><?php //echo $text['column_status']; ?></th>
+                                            <th><?php echo $text['column_status']; ?></th>
                                         </tr>
                                     </thead>
                                     <tbody id="<?php echo $config['id']; ?>_tbody" style="font-size: 16px; text-align: center;">
@@ -709,8 +709,6 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.last_screw_count}</td>
                     <td>${row.total_screw_count}</td>
                     <td>${row.barcode}</td>
-                    <td>${row.user_id}</td>
-                    <td>${row.job_cycle_time}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);
