@@ -1258,7 +1258,13 @@
         const ts = conditions.find(c => c.id === 'StepTorqueTS');
         if (ts) {
             ts.min = parseFloat(check_lo_tor_before);
-            ts.max = parseFloat((parseFloat(check_target_torque_raw) - increment).toFixed(precision));
+            // Target-angle mode validates threshold torque against the torque
+            // upper limit configured on screen, not the (inactive) target
+            // torque value.
+            const thresholdUpper = StepOption === 1
+                ? parseFloat(document.getElementById('StepHiTorque')?.value)
+                : parseFloat(check_target_torque_raw);
+            ts.max = parseFloat((thresholdUpper - increment).toFixed(precision));
             ts.integerOnly = false;
             ts.roundBeforeCompare = true;
             ts.precision = precision;
@@ -1279,7 +1285,12 @@
             const td = conditions.find(c => c.id === 'StepTorqueDownShift');
             if (td) {
                 td.min = check_lo_tor_before;
-                td.max = minStepLoTorque;
+                const downshiftUpper = StepOption === 1
+                    ? parseFloat(document.getElementById('StepHiTorque')?.value)
+                    : parseFloat(check_target_torque_raw);
+                td.max = Number.isFinite(downshiftUpper)
+                    ? parseFloat((downshiftUpper - increment).toFixed(precision))
+                    : null;
             }
         }
         if (StepEnableThreshold === "1") {
@@ -1290,7 +1301,10 @@
             const ts = conditions.find(c => c.id === 'StepTorqueTS');
             if (ts) {
                 ts.min = parseFloat(check_lo_tor_before);
-                ts.max = parseFloat((parseFloat(check_target_torque_raw) - increment).toFixed(precision));
+                const thresholdUpper = StepOption === 1
+                    ? parseFloat(document.getElementById('StepHiTorque')?.value)
+                    : parseFloat(check_target_torque_raw);
+                ts.max = parseFloat((thresholdUpper - increment).toFixed(precision));
                 ts.integerOnly = false;
                 ts.roundBeforeCompare = true;
                 ts.precision = precision;
@@ -3399,7 +3413,7 @@
             if (StepOption !== 1 || StepEnableThreshold !== "2") return;
 
             const tsEl = document.getElementById('StepTorqueTS');   // 門檻扭力
-            const hiEl = document.getElementById('check_target_tor_hi');   // 扭力上限(起子規格)
+            const hiEl = document.getElementById('StepHiTorque');    // 扭力上限（畫面設定值）
             if (!tsEl || !hiEl) return;
 
             const tsRaw = Number(tsEl.value);
@@ -3443,17 +3457,17 @@
             const I18N = {
                 'en-us': { 
                     title: 'Warning', 
-                    msg: `Threshold torque (${unit}) must be less than Target Torque`, 
+                    msg: `Threshold torque (${unit}) must be less than torque upper limit`, 
                     ok: 'OK' 
                 },
                 'zh-tw': { 
                     title: '警告',   
-                    msg: `門檻點扭力 (${unit}) 需小於 目標扭力`, 
+                    msg: `門檻點扭力 (${unit}) 需小於 扭力上限`, 
                     ok: '確定' 
                 },
                 'zh-cn': { 
                     title: '警告',   
-                    msg: `门槛点扭力 (${unit}) 需小于 目标扭力`, 
+                    msg: `门槛点扭力 (${unit}) 需小于 扭力上限`, 
                     ok: '确定' 
                 }
             };
@@ -3631,7 +3645,7 @@
 
 
 
-        // ---- 交叉驗證：StepOption==1 且「扭力降速」時，StepTorqueDownShift 必須小於 StepTorque（彈窗 + 語系 + 小數點可再輸入）----
+        // ---- 交叉驗證：StepOption==1 且「扭力降速」時，StepTorqueDownShift 必須小於 StepHiTorque（扭力上限）----
         (function enforceDSTorqueLessThanTarget_WhenOpt1() {
             const stepOpt = parseInt(document.getElementById('StepOption')?.value ?? 0, 10);
             if (stepOpt !== 1) return;
@@ -3641,12 +3655,12 @@
             if (dsMode !== "2") return;
 
             const dsEl = document.getElementById('StepTorqueDownShift'); // 降速扭力
-            const tqEl = document.getElementById('StepTorque');          // ← 目標扭力（改這裡）
-            if (!dsEl || !tqEl) return;
+            const hiEl = document.getElementById('StepHiTorque');         // 扭力上限（畫面設定值）
+            if (!dsEl || !hiEl) return;
 
             const dsVal = Number(dsEl.value?.trim() ?? "");
-            const tqVal = Number(tqEl.value?.trim() ?? "");
-            if (!Number.isFinite(dsVal) || !Number.isFinite(tqVal)) return;
+            const hiVal = Number(hiEl.value?.trim() ?? "");
+            if (!Number.isFinite(dsVal) || !Number.isFinite(hiVal)) return;
 
             // 語系
             const getCookieSafe = (name) => { try {
@@ -3659,13 +3673,13 @@
 
             const OK_LABEL = (lang === 'en-us' ? 'OK' : (lang === 'zh-cn' ? '确定' : '確定'));
             const I18N = {
-                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than Target torque.' },
-                'zh-tw': { title: '警告',   msg: '降速扭力 必須小於 目標扭力。' },
-                'zh-cn': { title: '警告',   msg: '降速扭力 必须小于 目标扭力。' }
+                'en-us': { title: 'Warning', msg: 'Downshift torque must be less than torque upper limit.' },
+                'zh-tw': { title: '警告',   msg: '降速扭力 必須小於 扭力上限。' },
+                'zh-cn': { title: '警告',   msg: '降速扭力 必须小于 扭力上限。' }
             }[lang];
 
             // 通過 → 清錯
-            if (dsVal < tqVal) {
+            if (dsVal < hiVal) {
                 dsEl.classList.remove('is-invalid');
                 const fbOK = dsEl.nextElementSibling;
                 if (fbOK?.classList.contains('invalid-feedback')) {
@@ -7008,7 +7022,13 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
         const ts = conditions.find(c => c.id === 'StepTorqueTS');
         if (ts) {
             ts.min = parseFloat(check_lo_tor_before);
-            ts.max = parseFloat((parseFloat(check_target_torque_raw) - increment).toFixed(precision));
+            // Target-angle mode validates threshold torque against the torque
+            // upper limit configured on screen, not the (inactive) target
+            // torque value.
+            const thresholdUpper = StepOption === 1
+                ? parseFloat(document.getElementById('StepHiTorque')?.value)
+                : parseFloat(check_target_torque_raw);
+            ts.max = parseFloat((thresholdUpper - increment).toFixed(precision));
             ts.integerOnly = false;
             ts.roundBeforeCompare = true;
             ts.precision = precision;
@@ -7040,7 +7060,10 @@ document.getElementById('StepTorqueDownShift')?.addEventListener('input', functi
             const ts = conditions.find(c => c.id === 'StepTorqueTS');
             if (ts) {
                 ts.min = parseFloat(check_lo_tor_before);
-                ts.max = parseFloat((parseFloat(check_target_torque_raw) - increment).toFixed(precision));
+                const thresholdUpper = StepOption === 1
+                    ? parseFloat(document.getElementById('StepHiTorque')?.value)
+                    : parseFloat(check_target_torque_raw);
+                ts.max = parseFloat((thresholdUpper - increment).toFixed(precision));
                 ts.integerOnly = false;
                 ts.roundBeforeCompare = true;
                 ts.precision = precision;

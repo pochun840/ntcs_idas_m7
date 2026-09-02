@@ -934,7 +934,7 @@ function input_check_setting(argument) {
         { id:'control_name',            label:LABELS.control_name,            pattern:/^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min:null, max:null },
         { id:'storage_warning',         label:LABELS.storage_warning,         pattern:/^\d{0,4}$/,                      min:50,   max:95   },
         { id:'torque_filter',           label:LABELS.torque_filter,           pattern:/^\d{1,3}(\.\d{1,6})?$/,          min:0.0,  max:200  },
-        { id:'global_downshift_torque', label:LABELS.global_downshift_torque, pattern:/^\d{0,5}?$/,                     min:0,    max:100  },
+        { id:'global_downshift_torque', label:LABELS.global_downshift_torque, pattern:/^\d{1,5}$/,                     min:0,    max:1000 },
         { id:'global_downshift_speed',  label:LABELS.global_downshift_speed,  pattern:/^\d{0,5}?$/,                     min:0,    max:100  },
     ];
 
@@ -2418,17 +2418,15 @@ function agent_ip_save() {
 
       if (spinner) spinner.style.display = 'none';
 
-      alertify.confirm(
-        res.res_type || 'Info',
-        res.res_msg || 'Done.',
-        function onOk() {
-          sessionStorage.setItem('Connect_Setting', 'block');
-          sessionStorage.setItem('Controller_Setting', 'none');
-        },
-        function onCancel() {
-          // 取消時不用做事
-        }
-      ).set('labels', { ok: OKLBL, cancel: CCLBL });
+      const saved = String(res.res_type || '').toLowerCase().startsWith('suc')
+        || res.success === true || res.result === true;
+      if (saved) {
+        IdasNotify.success(res.res_msg || 'Done.');
+        sessionStorage.setItem('Connect_Setting', 'block');
+        sessionStorage.setItem('Controller_Setting', 'none');
+      } else {
+        IdasNotify.alert(res.res_type || 'Error', res.res_msg || 'Request failed.');
+      }
 
       setTimeout(() => alertify.closeAll(), 3000);
 
@@ -2472,23 +2470,25 @@ function agent_type_save() {
       let res = {};
       try { res = ((typeof response === 'string') ? JSON.parse(response) : response) || {}; } catch {}
 
-      // 改用 confirm → 有 OK + Cancel
-      alertify.confirm(
-        res.res_type || 'Info',
-        res.res_msg || 'Done.',
-        function onOk() {
-          // OK：保留成功狀態
-        },
-        function onCancel() {
-          // Cancel：可以額外處理，例如還原 radio 按鈕
-        }
-      ).set('labels', { ok: OKLBL, cancel: CCLBL });
+      const saved = String(res.res_type || '').toLowerCase().startsWith('suc')
+        || res.success === true || res.result === true;
 
-      setTimeout(function () {
-        alertify.closeAll();
-        document.getElementById('spinner').style.display = 'none';
-        document.querySelector(".main-content").classList.remove("overlay-active");
-      }, 3000);
+      // 儲存完成後先解除 Loading / 灰階遮罩，再顯示全站統一提示。
+      // 否則成功提示會在 spinner / overlay 尚未解除時出現，使用者看不到綠色成功提示。
+      const spinner = document.getElementById('spinner');
+      const mainContent = document.querySelector(".main-content");
+      if (spinner) spinner.style.display = 'none';
+      if (mainContent) mainContent.classList.remove("overlay-active");
+
+      if (saved) {
+        IdasNotify.success(res.res_msg || {
+          'en-us': 'Agent type updated successfully.',
+          'zh-tw': '代理模式儲存成功。',
+          'zh-cn': '代理模式保存成功。'
+        }[lang]);
+      } else {
+        IdasNotify.alert(res.res_type || 'Error', res.res_msg || 'Request failed.');
+      }
     },
     error: function (xhr) {
       document.getElementById('spinner').style.display = 'none';
@@ -2593,6 +2593,65 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 })();
 } else {
+// NTCS uses the same form fields as i-controller, but this platform branch
+// previously had no global save handler.  The inline button therefore called
+// an undefined function and appeared to do nothing.
+window.controller_save = function controller_save_ntcs() {
+  const value = (selector) => String(document.querySelector(selector)?.value ?? '').trim();
+  const checked = (name, fallback) => String(
+    document.querySelector(`input[name="${name}"]:checked`)?.value ?? fallback ?? ''
+  ).trim();
+
+  if (typeof input_check_setting === 'function' && !input_check_setting()) return;
+
+  const saveButton = document.getElementById('downshift_save');
+  if (saveButton?.dataset?.saving === '1') return;
+  if (saveButton) {
+    saveButton.dataset.saving = '1';
+    saveButton.disabled = true;
+  }
+
+  $.ajax({
+    url: '?url=Settings/control_setting',
+    method: 'POST',
+    dataType: 'json',
+    data: {
+      control_id: value('#control_id_old'),
+      control_id_new: '',
+      control_name: value('#control_name'),
+      storage_warning: value('#storage_warning'),
+      torque_filter: value('#torque_filter'),
+      lang_val: value('#select_language'),
+      unit_val: value('#select_torque_unit'),
+      counting_method: checked('counting_method'),
+      circular_archive: checked('circular_archive'),
+      blackout_recovery: checked('blackout_recovery'),
+      buzzer_mode: checked('buzzer_mode'),
+      modbus_type: checked('modbus_type', '0'),
+      server_port: value('#controller_server_port'),
+      global_downshift_torque: value('#global_downshift_torque'),
+      global_downshift_speed: value('#global_downshift_speed')
+    },
+    success: function (result) {
+      const ok = result && (result.success === true || result.res_type === 'OK');
+      if (ok) {
+        IdasNotify.success('OK', result.res_msg || 'Saved successfully');
+      } else {
+        IdasNotify.alert('Error', result?.res_msg || 'Save failed');
+      }
+    },
+    error: function (xhr) {
+      IdasNotify.alert('Error', xhr.responseJSON?.res_msg || 'Save failed');
+    },
+    complete: function () {
+      if (saveButton) {
+        delete saveButton.dataset.saving;
+        saveButton.disabled = false;
+      }
+    }
+  });
+};
+
 $(document).ready(function () {
     /*const sectionMap = {
         "Controller": "Controller_Setting",
@@ -2914,7 +2973,7 @@ function input_check_setting(argument) {
         { id:'control_name',            label:LABELS.control_name,            pattern:/^[a-zA-Z0-9_\u4E00-\u9FA5\-]+$/, min:null, max:null },
         { id:'storage_warning',         label:LABELS.storage_warning,         pattern:/^\d{0,4}$/,                      min:50,   max:95   },
         { id:'torque_filter',           label:LABELS.torque_filter,           pattern:/^\d{1,3}(\.\d{1,6})?$/,          min:0.0,  max:200  },
-        { id:'global_downshift_torque', label:LABELS.global_downshift_torque, pattern:/^\d{0,5}?$/,                     min:0,    max:100  },
+        { id:'global_downshift_torque', label:LABELS.global_downshift_torque, pattern:/^\d{1,5}$/,                     min:0,    max:1000 },
         { id:'global_downshift_speed',  label:LABELS.global_downshift_speed,  pattern:/^\d{0,5}?$/,                     min:0,    max:100  },
     ];
 
@@ -4362,17 +4421,15 @@ function agent_ip_save() {
 
       if (spinner) spinner.style.display = 'none';
 
-      alertify.confirm(
-        res.res_type || 'Info',
-        res.res_msg || 'Done.',
-        function onOk() {
-          sessionStorage.setItem('Connect_Setting', 'block');
-          sessionStorage.setItem('Controller_Setting', 'none');
-        },
-        function onCancel() {
-          // 取消時不用做事
-        }
-      ).set('labels', { ok: OKLBL, cancel: CCLBL });
+      const saved = String(res.res_type || '').toLowerCase().startsWith('suc')
+        || res.success === true || res.result === true;
+      if (saved) {
+        IdasNotify.success(res.res_msg || 'Done.');
+        sessionStorage.setItem('Connect_Setting', 'block');
+        sessionStorage.setItem('Controller_Setting', 'none');
+      } else {
+        IdasNotify.alert(res.res_type || 'Error', res.res_msg || 'Request failed.');
+      }
 
       setTimeout(() => alertify.closeAll(), 3000);
 
@@ -4416,23 +4473,25 @@ function agent_type_save() {
       let res = {};
       try { res = ((typeof response === 'string') ? JSON.parse(response) : response) || {}; } catch {}
 
-      // 改用 confirm → 有 OK + Cancel
-      alertify.confirm(
-        res.res_type || 'Info',
-        res.res_msg || 'Done.',
-        function onOk() {
-          // OK：保留成功狀態
-        },
-        function onCancel() {
-          // Cancel：可以額外處理，例如還原 radio 按鈕
-        }
-      ).set('labels', { ok: OKLBL, cancel: CCLBL });
+      const saved = String(res.res_type || '').toLowerCase().startsWith('suc')
+        || res.success === true || res.result === true;
 
-      setTimeout(function () {
-        alertify.closeAll();
-        document.getElementById('spinner').style.display = 'none';
-        document.querySelector(".main-content").classList.remove("overlay-active");
-      }, 3000);
+      // 儲存完成後先解除 Loading / 灰階遮罩，再顯示全站統一提示。
+      // 否則成功提示會在 spinner / overlay 尚未解除時出現，使用者看不到綠色成功提示。
+      const spinner = document.getElementById('spinner');
+      const mainContent = document.querySelector(".main-content");
+      if (spinner) spinner.style.display = 'none';
+      if (mainContent) mainContent.classList.remove("overlay-active");
+
+      if (saved) {
+        IdasNotify.success(res.res_msg || {
+          'en-us': 'Agent type updated successfully.',
+          'zh-tw': '代理模式儲存成功。',
+          'zh-cn': '代理模式保存成功。'
+        }[lang]);
+      } else {
+        IdasNotify.alert(res.res_type || 'Error', res.res_msg || 'Request failed.');
+      }
     },
     error: function (xhr) {
       document.getElementById('spinner').style.display = 'none';

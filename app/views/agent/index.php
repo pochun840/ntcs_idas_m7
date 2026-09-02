@@ -277,13 +277,25 @@ document.addEventListener('DOMContentLoaded', function () {
         initTooltips();
     });
 
-    $('#data-table tbody').on('click', 'tr', function() {
+    $('#data-table tbody').on('click', 'tr', function(event) {
+        // 點擊裝置 URL / 互動元件時不要切換 DataTable selected 狀態，
+        // 避免開啟新頁籤後原列表整列持續反藍。
+        if ($(event.target).closest('a, button, input, select, textarea, label').length) {
+            return;
+        }
+
         if ($(this).hasClass('selected')) {
             $(this).removeClass('selected');
         } else {
             table2.$('tr.selected').removeClass('selected');
             $(this).addClass('selected');
         }
+    });
+
+    $('#data-table tbody').on('click', 'a.agent-device-link', function(event) {
+        event.stopPropagation();
+        table2.$('tr.selected').removeClass('selected');
+        if (typeof this.blur === 'function') this.blur();
     });
 
     /** ---------- WebSocket upsert ---------- */

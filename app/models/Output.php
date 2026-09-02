@@ -35,11 +35,19 @@ class Output{
         }
     }
 
-    public function check_job_event_conflict($output_job_id,$output_event){
-        
-        $sql = "SELECT JOBID, Pin, EvenID, signal, durate  FROM JOBOutput_lst WHERE JOBID = ?  AND EvenID =? ";
+    public function check_job_event_conflict($output_job_id, $output_event, $output_pin = null){
+        // Custom output events (12~16) may exist on more than one pin.  The
+        // selected pin must therefore participate in the lookup; otherwise
+        // fetch() returns the first matching row (commonly Pin 4).
+        $sql = "SELECT JOBID, Pin, EvenID, signal, durate FROM JOBOutput_lst WHERE JOBID = ? AND EvenID = ?";
+        $params = [$output_job_id, $output_event];
+        if ($output_pin !== null && $output_pin !== '') {
+            $sql .= " AND Pin = ?";
+            $params[] = $output_pin;
+        }
+        $sql .= " LIMIT 1";
         $statement = $this->db_iDas->prepare($sql);
-        $statement->execute([$output_job_id,$output_event]);
+        $statement->execute($params);
         $rows = $statement->fetch(PDO::FETCH_ASSOC);
         return $rows;
     }
@@ -152,6 +160,34 @@ class Output{
         $st->bindValue(':durate', $durate);
         $st->execute();
         return (int)$st->rowCount();
+    }
+
+    /** Replace one output row atomically so a failed insert restores the old row. */
+    public function replace_output_event($jobId, $oldPin, $oldEvenId, $newPin, $newEvenId, $signal, $durate) {
+        try {
+            $this->db_iDas->beginTransaction();
+
+            $delete = $this->db_iDas->prepare(
+                'DELETE FROM JOBOutput_lst WHERE JOBID = ? AND Pin = ? AND EvenID = ?'
+            );
+            $delete->execute([$jobId, $oldPin, $oldEvenId]);
+
+            $insert = $this->db_iDas->prepare(
+                'INSERT INTO JOBOutput_lst (JOBID, Pin, EvenID, signal, durate, stop_trig, cycle) '
+                . 'VALUES (?, ?, ?, ?, ?, 1, 1)'
+            );
+            $ok = $insert->execute([$jobId, $newPin, $newEvenId, $signal, $durate]);
+            if (!$ok) {
+                $this->db_iDas->rollBack();
+                return false;
+            }
+
+            $this->db_iDas->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->db_iDas->inTransaction()) $this->db_iDas->rollBack();
+            return false;
+        }
     }
 
 

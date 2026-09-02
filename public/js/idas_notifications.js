@@ -264,6 +264,14 @@
     window.IdasNotify = {
         show: show,
         alert: notifyAlert,
+        // Actionable dialogs must retain Alertify's real button/footer and
+        // lifecycle callbacks. Do not convert these into auto-closing cards.
+        dialog: function () {
+            if (typeof original.alert === 'function') {
+                return original.alert.apply(window.alertify, arguments);
+            }
+            return notifyAlert.apply(null, arguments);
+        },
         success: function (message, callback) { return notifyByType('success', message, callback); },
         error: function (message, callback) { return notifyByType('error', message, callback); },
         warning: function (message, callback) { return notifyByType('warning', message, callback); },

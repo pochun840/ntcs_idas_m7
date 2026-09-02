@@ -779,6 +779,17 @@ function crud_job_event(argument) {
             if (!selectedEditRows.length) return;
 
             if (!output_pinval) return; // 需要先有被選到的 pin (從列表 data-outputpin 來)
+
+            // Every edit must bind against the row selected this time.  The
+            // old select retained change listeners from the first edited row
+            // (often Pin 4), so later edits kept operating on that stale pin.
+            const previousEventSelect = document.getElementById('edit_event_option');
+            if (previousEventSelect && previousEventSelect.parentNode) {
+                const freshEventSelect = previousEventSelect.cloneNode(true);
+                delete freshEventSelect._bindSyncCustom;
+                delete freshEventSelect._bindEditRules;
+                previousEventSelect.parentNode.replaceChild(freshEventSelect, previousEventSelect);
+            }
             
             // 先向後端拿資料並渲染 DOM
             get_output_info(job_id, output_event, output_pinval);
@@ -1168,7 +1179,7 @@ function delete_output_id(job_id, del_output_val,output_pinval) {
         success: function(response) {
 
             // 依你現有邏輯：用通用的成功處理器
-            input_success_res(response, job_id, () => get_output_by_job_id(job_id), 'edit_output');
+            output_success_res(response, job_id, get_output_by_job_id, 'edit_output');
             hideOverlay();
         },
         error: function(xhr, status, error) {
@@ -1371,12 +1382,12 @@ function get_output_by_job_id(job_id) {
           12:'UserDefine1',13:'UserDefine2',14:'UserDefine3',15:'UserDefine4',16:'UserDefine5'
         },
         'zh-tw': {
-          1:'OK',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'完工信號',
+          1:'完成',2:'NG',3:'超出上限',4:'低於下限',5:'工序完成信號',6:'完工信號',
           7:'馬達信號',8:'啟動信號',9:'反向',10:'條碼停止',11:'條碼',
           12:'自定義1',13:'自定義2',14:'自定義3',15:'自定義4',16:'自定義5'
         },
         'zh-cn': {
-          1:'OK',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作任务完成信号',
+          1:'完成',2:'NG',3:'超出上限',4:'低于下限',5:'工序完成信号',6:'工作任务完成信号',
           7:'马达信号',8:'启动信号',9:'反向',10:'条码停止',11:'条码',
           12:'自定义1',13:'自定义2',14:'自定义3',15:'自定义4',16:'自定义5'
         }
@@ -1634,27 +1645,10 @@ function edit_output_id() {
     });
   }
 
-  // 有舊值且有變動 → 先刪「舊事件+舊腳位」，再存；否則直接存
-  var hasOld  = (old_output_event != null && old_output_event !== '');
-  var changed = hasOld && (
-      String(old_output_event) !== String(output_event) ||
-      Number(old_output_pin)   !== Number(output_pin)
-  );
-
-  if (changed && old_output_pin != null) {
-    $.ajax({
-      url: "?url=Outputs/delete_output",
-      method: "POST",
-      data: {
-        job_id: String(job_id),
-        output_event: String(old_output_event),
-        output_pin: Number(old_output_pin)
-      },
-      complete: function () { doSave(); } // 不管刪成不成功都繼續存
-    });
-  } else {
-    doSave();
-  }
+  // The backend owns replacement of the old event.  Do not delete it once in
+  // the browser and a second time in PHP; that race caused intermittent edit
+  // failures and incorrect pin selection.
+  doSave();
 }
 
 
@@ -2087,15 +2081,14 @@ function output_success_res(response, job_id, callbackFn, hideElementId = 'newin
   if (l === 'zh-tw') okLabel = '確定';
   else if (l === 'zh-cn') okLabel = '确定';
 
-  // 顯示彈窗
+  // CRUD 回應明確依結果指定圖示，避免成功文案被推斷成紅色警示。
   try {
-    if (window.alertify && typeof IdasNotify.alert === 'function') {
-      const dlg = IdasNotify.alert(title, msg);
-      try { dlg.set('basic', false).set('movable', false); } catch (e) {}
-      try { dlg.set('labels', { ok: okLabel }); } catch (e) {}
-    } else {
-      IdasNotify.alert(msg);
-    }
+    const succeeded = /^(success|ok)$/i.test(String(title));
+    IdasNotify.show({
+      type: succeeded ? 'success' : 'error',
+      title: succeeded ? 'Success' : 'Error',
+      message: msg
+    });
   } catch (e) {
     console.error('[output_success_res] show alert failed:', e);
   }

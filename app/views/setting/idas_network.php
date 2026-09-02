@@ -181,8 +181,10 @@ $networkPort = idas_protocol_server_port($controllerModbusType, $networkPort);
     }
 
     function showNetworkSuccess(message) {
-        const i18n = window.NETWORK_SETTING_I18N || {};
-        return showNetworkDialog(i18n.successTitle || i18n.dialogTitle || 'Success', message);
+        if (window.IdasNotify && typeof IdasNotify.success === 'function') {
+            return IdasNotify.success(String(message || ''));
+        }
+        return showNetworkDialog('Success', message);
     }
 
     function showNetworkRestartLifecycle(result, saveBtn, mode, staticIp, currentIp) {

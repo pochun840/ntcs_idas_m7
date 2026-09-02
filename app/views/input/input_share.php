@@ -1584,13 +1584,17 @@ function input_success_res(response, job_id, callbackFn, hideElementId = 'newinp
 
     let autoTimer;
 
-    // 顯示彈窗（單次也設 labels，雙保險）
-    alertify
-        .alert(title, msg, function () {
+    // CRUD 回應明確依結果指定圖示，避免「確認」等文字被推斷成警告。
+    const succeeded = /^(success|ok)$/i.test(String(title));
+    IdasNotify.show({
+        type: succeeded ? 'success' : 'error',
+        title: succeeded ? 'Success' : 'Error',
+        message: msg,
+        onClose: function () {
         clearTimeout(autoTimer);
         finalize();
-        })
-        .set('labels', { ok: okLabel });
+        }
+    });
 
     // 2 秒後自動關閉並收尾
     autoTimer = setTimeout(finalize, 2000);

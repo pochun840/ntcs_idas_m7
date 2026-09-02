@@ -334,6 +334,97 @@
         }
     }, true);
 
+    function installLongValueTooltips() {
+        function setTooltip(element, value) {
+            value = String(value || '').trim();
+            if (!element || !value) return;
+            if (!element.getAttribute('title')) element.setAttribute('title', value);
+        }
+
+        function syncSelectTooltip(select) {
+            if (!select || select.tagName !== 'SELECT') return;
+            var option = select.options && select.options[select.selectedIndex];
+            var value = String(option ? option.textContent : '').trim();
+            if (value) select.setAttribute('title', value);
+            else select.removeAttribute('title');
+            select.classList.toggle('idas-ellipsis-select', value.length > 16);
+        }
+
+        function wrapLongTableValue(cell) {
+            if (!cell || cell.children.length !== 0 || cell.dataset.idasEllipsisChecked === '1') return;
+            cell.dataset.idasEllipsisChecked = '1';
+            var value = String(cell.textContent || '').trim();
+            if (value.length <= 12) return;
+            var span = document.createElement('span');
+            span.className = 'idas-ellipsis';
+            span.textContent = value;
+            span.setAttribute('title', value);
+            cell.textContent = '';
+            cell.appendChild(span);
+        }
+
+        function enhance(root) {
+            var scope = root && root.querySelectorAll ? root : document;
+            Array.prototype.forEach.call(scope.querySelectorAll('table td'), function (cell) {
+                var value = String(cell.textContent || '').trim();
+                if (!value) return;
+                if (cell.children.length === 0) {
+                    wrapLongTableValue(cell);
+                }
+            });
+            Array.prototype.forEach.call(scope.querySelectorAll(
+                '.job-name, .seq-name, .sequence-name, .barcode-name, .barcode-value, [data-idas-truncate]'
+            ), function (element) {
+                var value = String(element.textContent || element.value || '').trim();
+                if (!value) return;
+                element.classList.add('idas-truncate-inline');
+                setTooltip(element, value);
+            });
+            Array.prototype.forEach.call(scope.querySelectorAll('select option'), function (option) {
+                var value = String(option.textContent || '').trim();
+                setTooltip(option, value);
+            });
+            Array.prototype.forEach.call(scope.querySelectorAll('select'), syncSelectTooltip);
+            Array.prototype.forEach.call(scope.querySelectorAll(
+                'input[readonly], input[disabled], input[id*="barcode" i], input[id*="name" i]'
+            ), function (input) {
+                var value = String(input.value || '').trim();
+                if (value.length <= 20) return;
+                input.classList.add('idas-truncate-input');
+                setTooltip(input, value);
+            });
+        }
+        enhance(document);
+        document.addEventListener('change', function (event) {
+            if (event.target && event.target.tagName === 'SELECT') syncSelectTooltip(event.target);
+        }, true);
+        document.addEventListener('input', function (event) {
+            var input = event.target;
+            if (!input || input.tagName !== 'INPUT') return;
+            var value = String(input.value || '').trim();
+            if (value.length > 20) {
+                input.classList.add('idas-truncate-input');
+                input.setAttribute('title', value);
+            } else {
+                input.classList.remove('idas-truncate-input');
+                input.removeAttribute('title');
+            }
+        }, true);
+        new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                Array.prototype.forEach.call(mutation.addedNodes || [], function (node) {
+                    if (node && node.nodeType === 1) enhance(node);
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
+    }
+
+    var originalInitialize = initialize;
+    initialize = function () {
+        originalInitialize();
+        installLongValueTooltips();
+    };
+
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, { once: true });
     else initialize();
 })();

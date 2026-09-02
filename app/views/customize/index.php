@@ -1950,8 +1950,15 @@ function forbidMsg(digit){
           type:'POST',
           data: JSON.stringify(payload),
           contentType:'application/json; charset=UTF-8',
+          dataType:'json',
           success: function(resp){
             if (spinner) spinner.style.display = 'none';
+
+            if (!resp || resp.res_type !== 'OK') {
+              const detail = resp && (resp.res_msg || resp.detail);
+              IdasNotify.alert('Error', detail || L['save_fail']);
+              return;
+            }
 
             // 回填 result（跟原本一樣）
             if (resp && Array.isArray(resp.rows)) {
@@ -1978,11 +1985,16 @@ function forbidMsg(digit){
             const msg = (!hasData)
               ? (L['saved_empty'] || 'Saved (empty configuration).')
               : (L['saved'] || 'Saved successfully');
-            if (window.alertify) IdasNotify.alert(L['title_ok'] || 'OK', msg);
+            IdasNotify.success(L['title_ok'] || 'OK', msg);
           },
           error: function(xhr){
             if (spinner) spinner.style.display = 'none';
-            if (window.alertify) IdasNotify.alert('Error', L['save_fail']); else IdasNotify.alert(L['save_fail']);
+            let detail = '';
+            try {
+              const body = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+              detail = body.detail || body.res_msg || body.message || '';
+            } catch(e) {}
+            IdasNotify.alert('Error', detail || L['save_fail']);
             console.error('Save error:', xhr?.responseText || xhr);
           }
         });
@@ -4402,8 +4414,15 @@ function forbidMsg(digit){
           type:'POST',
           data: JSON.stringify(payload),
           contentType:'application/json; charset=UTF-8',
+          dataType:'json',
           success: function(resp){
             if (spinner) spinner.style.display = 'none';
+
+            if (!resp || resp.res_type !== 'OK') {
+              const detail = resp && (resp.res_msg || resp.detail);
+              IdasNotify.alert('Error', detail || L['save_fail']);
+              return;
+            }
 
             // 回填 result（跟原本一樣）
             if (resp && Array.isArray(resp.rows)) {
@@ -4430,11 +4449,16 @@ function forbidMsg(digit){
             const msg = (!hasData)
               ? (L['saved_empty'] || 'Saved (empty configuration).')
               : (L['saved'] || 'Saved successfully');
-            if (window.alertify) IdasNotify.alert(L['title_ok'] || 'OK', msg);
+            IdasNotify.success(L['title_ok'] || 'OK', msg);
           },
           error: function(xhr){
             if (spinner) spinner.style.display = 'none';
-            if (window.alertify) IdasNotify.alert('Error', L['save_fail']); else IdasNotify.alert(L['save_fail']);
+            let detail = '';
+            try {
+              const body = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+              detail = body.detail || body.res_msg || body.message || '';
+            } catch(e) {}
+            IdasNotify.alert('Error', detail || L['save_fail']);
             console.error('Save error:', xhr?.responseText || xhr);
           }
         });

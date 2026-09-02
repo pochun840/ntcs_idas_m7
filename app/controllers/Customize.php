@@ -7,6 +7,167 @@
 
 class Customize extends Controller
 {
+    /** Ensure the custom-data CSV directory exists and is writable. */
+    private static function ensureExportDir(string $directory, int $mode = 0775, string $owner = '', string $group = ''): array
+    {
+        $directory = rtrim($directory, '/\\');
+        if ($directory === '') {
+            return ['ok' => false, 'error' => 'Export directory is empty.'];
+        }
+
+        if (!is_dir($directory)) {
+            if (!@mkdir($directory, $mode, true) && !is_dir($directory)) {
+                $error = error_get_last();
+                return ['ok' => false, 'error' => $error['message'] ?? 'Unable to create export directory.'];
+            }
+        }
+
+        // Existing installations can retain a restrictive mode from an older
+        // package.  Best-effort chmod is safe; the actual writable check below
+        // remains authoritative for the PHP worker account.
+        @chmod($directory, $mode);
+
+        if (!is_writable($directory)) {
+            return ['ok' => false, 'error' => 'Export directory is not writable: ' . $directory];
+        }
+
+        return ['ok' => true, 'error' => ''];
+    }
+
+    /**
+     * Whitelist used by the NTCS custom-data API.
+     *
+     * The UI stores the numeric item identifier (4-1 / 4-2), while the
+     * operation table is keyed by column name.  Older builds called this
+     * method without implementing it, which made both save and polling fail
+     * with a fatal error.
+     */
+    private static function ntcsColumns(): array
+    {
+        $columns = [
+            0 => 'id', 2 => 'data_time', 3 => 'info_device_type',
+            5 => 'device_sn', 6 => 'info_tool_type', 7 => 'info_tool_sn',
+            8 => 'info_tool_status', 9 => 'job_id', 10 => 'job_name',
+            11 => 'sequence_id', 12 => 'sequence_name', 13 => 'step_id',
+            14 => 'torque_unit', 15 => 'target_type', 16 => 'target_torque',
+            17 => 'target_angle', 19 => 'fasten_time',
+            20 => 'final_fasten_torque', 21 => 'final_fasten_angle',
+            22 => 'total_fasten_angle', 23 => 'count_type',
+            24 => 'last_screw_count', 25 => 'total_screw_count',
+            26 => 'fasten_status', 27 => 'error_message',
+            28 => 'info_fasten_direction', 29 => 'rpm', 30 => 'hi_torque',
+            31 => 'lo_torque', 32 => 'hi_angle', 33 => 'lo_angle',
+            35 => 'threshold_torque', 37 => 'downshift_torque',
+            39 => 'downshift_speed', 42 => 'barcode',
+        ];
+
+        $index = 43;
+        for ($step = 1; $step <= 5; $step++) {
+            $columns[$index++] = "step{$step}_last_torque";
+            $columns[$index++] = "step{$step}_last_angle";
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Build one custom-data source row.
+     * Normalize legacy ntcs_data field names and merge dedicated device/tool data.
+     */
+    private function getCustomizeSourceRow(): array
+    {
+        // This method can be called repeatedly while building one response/CSV.
+        // Cache the merged source row for this PHP request so the live status
+        // register is not read from the controller more than once.
+        static $cacheReady = false;
+        static $cachedRow = [];
+        if ($cacheReady) {
+            return $cachedRow;
+        }
+
+        $row = [];
+        try {
+            $latest = $this->DataModel->get_operation_info();
+            if (is_array($latest)) $row = $latest;
+        } catch (Throwable $e) {}
+
+        // ntcs_data uses the legacy names tool_type/tool_sn/tool_status, while
+        // the custom-data whitelist uses info_tool_type/info_tool_sn/info_tool_status.
+        // Normalize them before applying the dedicated DB/live fallbacks below.
+        if (!array_key_exists('info_tool_type', $row) && array_key_exists('tool_type', $row)) {
+            $row['info_tool_type'] = $row['tool_type'];
+        }
+        if (!array_key_exists('info_tool_sn', $row) && array_key_exists('tool_sn', $row)) {
+            $row['info_tool_sn'] = $row['tool_sn'];
+        }
+        if (!array_key_exists('info_tool_status', $row) && array_key_exists('tool_status', $row)) {
+            $row['info_tool_status'] = $row['tool_status'];
+        }
+
+        $firstValue = static function (array $source, array $keys) {
+            foreach ($keys as $key) {
+                if (array_key_exists($key, $source) && $source[$key] !== null && trim((string)$source[$key]) !== '') {
+                    return $source[$key];
+                }
+            }
+            return null;
+        };
+
+        try {
+            $tools = $this->ToolModel->GetToolInfo();
+            $tool = is_array($tools) && $tools ? end($tools) : null;
+            if (is_array($tool)) {
+                // Screwdriver identity belongs to ntcs_tool_test.
+                // Prefer the dedicated tool DB over historical fastening data.
+                $toolType = $firstValue($tool, ['tool_type', 'tools_type', 'tool_model', 'model']);
+                if ($toolType !== null) {
+                    $row['info_tool_type'] = $toolType;
+                }
+
+                $toolSn = $firstValue($tool, ['tool_sn']);
+                if ($toolSn !== null) {
+                    $row['info_tool_sn'] = $toolSn;
+                }
+
+                // Some DB versions may contain a tool-status column. Use it only
+                // when the latest fastening record does not provide tool_status.
+                $toolStatus = $firstValue($tool, ['info_tool_status', 'tool_status', 'status']);
+                if ($toolStatus !== null && $firstValue($row, ['info_tool_status']) === null) {
+                    $row['info_tool_status'] = $toolStatus;
+                }
+            }
+        } catch (Throwable $e) {}
+
+        try {
+            $device = $this->ToolModel->GetControllerInfo();
+            if (is_array($device)) {
+                if ($firstValue($row, ['device_sn']) === null) {
+                    $row['device_sn'] = $firstValue($device, ['device_sn', 'controller_sn']);
+                }
+                if ($firstValue($row, ['info_device_type']) === null) {
+                    $row['info_device_type'] = $firstValue($device, ['device_type', 'controller_type', 'model']);
+                }
+            }
+        } catch (Throwable $e) {}
+
+        // Custom item #8 (Screwdriver Status) normally comes from the latest
+        // ntcs_data.tool_status. If that value is unavailable, fall back to the
+        // existing live register 4167 through the common MODBUS/OP abstraction.
+        // A valid status value 0 must be preserved.
+        if ($firstValue($row, ['info_tool_status']) === null) {
+            try {
+                $liveToolStatus = $this->get_modbus_api(4167, 1);
+                if ($liveToolStatus !== null) {
+                    $row['info_tool_status'] = $liveToolStatus;
+                }
+            } catch (Throwable $e) {}
+        }
+
+        $cachedRow = $row;
+        $cacheReady = true;
+        return $cachedRow;
+    }
+
     public function RegMap($addr, $default = null){
 
             static $inited = false;
@@ -146,6 +307,7 @@ class Customize extends Controller
             $this->DataModel = $this->model('Datas');
             $this->SettingModel = $this->model('Setting');
             $this->MiscellaneousModel = $this->model('Miscellaneous');
+            $this->ToolModel = $this->model('Tool');
 
             #該死的需求 去撈控制器的資料庫 同步找出modbus id 
 
@@ -154,15 +316,7 @@ class Customize extends Controller
     public function fillCsvResults(?string $csvPath = null): array{
             $csvPath = $csvPath ?: idas_path('temp_root', 'customize.csv');
             // 1) 取 DB 最新一筆（用你的 Model）
-            $lastRow = null;
-            try {
-                if (isset($this->DataModel) && method_exists($this->DataModel, 'get_operation_info')) {
-                    $lastRow = $this->DataModel->get_operation_info();
-                } elseif (method_exists($this, 'get_operation_info')) {
-                    $lastRow = $this->DataModel->get_operation_info();
-                }
-                if (!is_array($lastRow)) $lastRow = null;
-            } catch (\Throwable $e) { $lastRow = null; }
+            $lastRow = $this->getCustomizeSourceRow();
 
             $toString = static function($val){
                 if (is_array($val))  return implode(',', array_map('strval', $val));
@@ -315,15 +469,7 @@ class Customize extends Controller
             $columnsWL = self::ntcsColumns();
 
             // 先抓一次最新一筆 DB 資料，供所有 DB 模式使用
-            $lastRow = null;
-            try {
-                if (isset($this->DataModel) && method_exists($this->DataModel, 'get_operation_info')) {
-                    $lastRow = $this->DataModel->get_operation_info();
-                } elseif (method_exists($this, 'get_operation_info')) {
-                    $lastRow = $this->DataModel->get_operation_info();
-                }
-                if (!is_array($lastRow)) $lastRow = null;
-            } catch (\Throwable $e) { $lastRow = null; }
+            $lastRow = $this->getCustomizeSourceRow();
 
             // 工具：把任意值轉成字串結果
             $toString = static function($val){
@@ -824,7 +970,7 @@ class Customize extends Controller
 
                 if ($col && preg_match('/^\w+$/', $col)) {
                     try {
-                        $lastRow = $this->DataModel->get_operation_info();  // 取最後一筆
+                        $lastRow = $this->getCustomizeSourceRow();
                         if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
                             $val = $lastRow[$col];
                             if (is_array($val))        $final = implode(',', array_map('strval', $val));
@@ -894,10 +1040,12 @@ class Customize extends Controller
                 }
             }
 
-            // 收集要寫入 CSV 的行（只留 NO / Read Position / result）
+            // Input Position is part of the persisted configuration.  Dropping
+            // it here made 4-1/4-2 appear saved but reload as an empty value.
             if (!($csvReadText === '' && $input === '' && $result === '')) {
                 $rowsForCsv[] = [
                     'read_pos' => $csvReadText,
+                    'input_pos' => $input,
                     'result'   => $final,   // 寫出計算後的結果
                 ];
             }
@@ -971,12 +1119,12 @@ class Customize extends Controller
             fwrite($fp, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             // 表頭（已移除 Input Position）
-            fputcsv($fp, ['NO', 'Read Position', 'result']);
+            fputcsv($fp, ['NO', 'Read Position', 'Input Position', 'result']);
 
             // 內容
             $i = 1;
             foreach ($rowsForCsv as $r) {
-                fputcsv($fp, [$i++, $r['read_pos'], $r['result'] ?? '']);
+                fputcsv($fp, [$i++, $r['read_pos'], $r['input_pos'] ?? '', $r['result'] ?? '']);
             }
 
             @flock($fp, LOCK_UN);
@@ -1135,7 +1283,7 @@ class Customize extends Controller
 
                 if ($col && preg_match('/^\w+$/', $col)) {
                     try {
-                        $lastRow = $this->DataModel->get_operation_info();  // 取最後一筆
+                        $lastRow = $this->getCustomizeSourceRow();
                         if (is_array($lastRow) && array_key_exists($col, $lastRow)) {
                             $val = $lastRow[$col];
                             if (is_array($val))        $final = implode(',', array_map('strval', $val));
@@ -1205,10 +1353,11 @@ class Customize extends Controller
                 }
             }
 
-            // 收集要寫入 CSV 的行（只留 NO / Read Position / result）
+            // Persist Input Position so 4-1/4-2 values survive reload.
             if (!($csvReadText === '' && $input === '' && $result === '')) {
                 $rowsForCsv[] = [
                     'read_pos' => $csvReadText,
+                    'input_pos' => $input,
                     'result'   => $final,   // 寫出計算後的結果
                 ];
             }
@@ -1282,12 +1431,12 @@ class Customize extends Controller
             fwrite($fp, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             // 表頭（已移除 Input Position）
-            fputcsv($fp, ['NO', 'Read Position', 'result']);
+            fputcsv($fp, ['NO', 'Read Position', 'Input Position', 'result']);
 
             // 內容
             $i = 1;
             foreach ($rowsForCsv as $r) {
-                fputcsv($fp, [$i++, $r['read_pos'], $r['result'] ?? '']);
+                fputcsv($fp, [$i++, $r['read_pos'], $r['input_pos'] ?? '', $r['result'] ?? '']);
             }
 
             @flock($fp, LOCK_UN);
@@ -1331,4 +1480,3 @@ class Customize extends Controller
         }
     }
 }
-

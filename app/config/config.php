@@ -347,7 +347,7 @@ define('CONTROLLER_IP', '127.0.0.1');
 // 每次刷新都取最新時間，避免快取
 // Release suffix guarantees that browsers do not reuse the pre-fix
 // settings.js whose platform block was skipped before IS_ICONTROLLER existed.
-define('ASSET_VERSION', (string)(@filemtime(__FILE__) ?: '20260825') . '-v20-ui14');
+define('ASSET_VERSION', (string)(@filemtime(__FILE__) ?: '20260825') . '-v32-ui26');
 
 //table - barcode 
 define('TABLE_NTCS_BARCODE', 'ntcs_barcode_test');

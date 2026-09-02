@@ -109,6 +109,9 @@ function include_css() {
     <script>
     (function installIdasBootRecovery(){
         'use strict';
+        // Startup interception was removed: it could replace a valid page and
+        // trap the user in an endless retry/home loop.
+        return;
         var RECOVERY_KEY='idas_asset_recovery_count';
         var STARTUP_KEY='idas_startup_retry_count';
         var MAX_RELOADS=1;
@@ -437,7 +440,8 @@ const TEXT = {
             ? "New controller detected (ID:"+id+") and protocol changed ("+protocolChange+"). Reload now?"
             : "New controller detected (ID:"+id+") and protocol changed. Reload now?"
     }),
-    ok:{ "zh-tw":"確定","zh-cn":"确定","en-us":"OK" }
+    ok:{ "zh-tw":"確定","zh-cn":"确定","en-us":"OK" },
+    cancel:{ "zh-tw":"取消","zh-cn":"取消","en-us":"Cancel" }
 };
 
 function getBannerText(res){
@@ -564,16 +568,39 @@ function showReloadPopup(res){
     deviceReloadDialogShown=true;
     hideRebootBanner();
 
-    IdasNotify.alert(
+    const popupContext = res || {};
+
+    // 必須使用 confirm 才會套用全站新版警告視窗樣式。
+    // Cancel 先保留給共用 enhancer 建立警告圖示/版型，onshow 後再移除，
+    // 因此使用者畫面與 DOM 最終都只會留下「確定」。
+    const dialog = alertify.confirm(
         t(TEXT.reloadTitle),
-        getReloadMessage(res || {})
-    ).set({
-        labels:{ ok:t(TEXT.ok) },
-        closable:false,movable:false,pinnable:false,resizable:false,
-        onok:function(){
-            syncDeviceIdentityThenReload(res || {});
-        }
-    });
+        getReloadMessage(popupContext),
+        function(){
+            syncDeviceIdentityThenReload(popupContext);
+        },
+        function(){}
+    );
+
+    if(dialog && typeof dialog.set === "function"){
+        dialog.set({
+            labels:{ ok:t(TEXT.ok), cancel:"" },
+            closable:false,movable:false,pinnable:false,resizable:false,
+            onshow:function(){
+                try{
+                    const root=this.elements.dialog;
+                    root.classList.add("device-reload-alert", "idas-confirm-dialog");
+                    window.setTimeout(function(){
+                        const cancel=root.querySelector('.ajs-button.ajs-cancel');
+                        if(cancel) cancel.remove();
+                    },120);
+                }catch(e){}
+            },
+            onok:function(){
+                syncDeviceIdentityThenReload(popupContext);
+            }
+        });
+    }
 }
 
 function syncDeviceIdentityThenReload(context){
@@ -754,6 +781,11 @@ $(function(){
     /* float: center; 這個其實是無效值，可以拿掉，改用 flex 或 text-align 排版 */
 }
 
+/* Controller 重新上線同步提示：此流程必須確認同步，不提供取消按鈕 */
+.device-reload-alert .ajs-footer .ajs-buttons .ajs-button.ajs-cancel {
+    display: none !important;
+}
+
 /* 只縮小 Device ID 警告視窗裡的「確定」(OK) 按鈕 */
 .device-reload-alert .ajs-footer .ajs-buttons .ajs-button.ajs-ok {
     width: auto !important;
@@ -854,7 +886,7 @@ function include_css() {
 
 ?>
 
-    <?php require __DIR__ . '/boot_recovery.php'; ?>
+    <?php // Startup recovery overlay intentionally disabled. ?>
 
     <!-- ================== 基礎 JS ================== -->
     <script src="<?php echo idas_asset_url('js/jquery-3.7.1.min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
@@ -977,7 +1009,8 @@ const TEXT = {
         "zh-cn":"同步控制器设置失败，将自动重试。",
         "en-us":"Failed to synchronize controller settings. Retrying automatically."
     },
-    ok:{ "zh-tw":"確定","zh-cn":"确定","en-us":"OK" }
+    ok:{ "zh-tw":"確定","zh-cn":"确定","en-us":"OK" },
+    cancel:{ "zh-tw":"取消","zh-cn":"取消","en-us":"Cancel" }
 };
 
 function t(obj){ return obj[getLangCode()] || obj["en-us"]; }
@@ -1260,11 +1293,14 @@ function showReloadPopup(id, needSync, changeType){
     if(deviceReloadDialogShown) return;
     deviceReloadDialogShown=true;
 
-    if(needSync){
-        const payload = Object.assign(getFlowPayload(), {
+    const payload = needSync
+        ? Object.assign(getFlowPayload(), {
             device_id: id ?? getFlowPayload().device_id ?? null,
             change_type: changeType || getFlowPayload().change_type || "device_id"
-        });
+        })
+        : null;
+
+    if(needSync){
         setFlowState(DEVICE_FLOW_WAIT_POPUP, payload);
     }else{
         hideRebootBanner();
@@ -1274,28 +1310,47 @@ function showReloadPopup(id, needSync, changeType){
         ? t(TEXT.syncReloadMsg(id, changeType || getFlowPayload().change_type || "device_id"))
         : t(TEXT.reloadMsg(id));
 
-    IdasNotify.alert(
+    // 保留 confirm，讓全站共用 enhancer 套用新版警告視窗；
+    // 顯示後移除 Cancel，最終只保留「確定」。
+    const dialog = alertify.confirm(
         t(TEXT.reloadTitle),
-        msg
-    ).set({
-        labels:{ ok:t(TEXT.ok) },
-        onshow:function(){
-            try{
-                this.elements.dialog.classList.add("device-reload-alert");
-            }catch(e){}
-        },
-        closable:false,
-        movable:false,
-        pinnable:false,
-        resizable:false,
-        onok:function(){
+        msg,
+        function(){
             if(needSync){
                 syncDeviceIdentityAndReload();
             }else{
                 location.reload();
             }
-        }
-    });
+        },
+        function(){}
+    );
+
+    if(dialog && typeof dialog.set === "function"){
+        dialog.set({
+            labels:{ ok:t(TEXT.ok), cancel:"" },
+            onshow:function(){
+                try{
+                    const root=this.elements.dialog;
+                    root.classList.add("device-reload-alert", "idas-confirm-dialog");
+                    window.setTimeout(function(){
+                        const cancel=root.querySelector('.ajs-button.ajs-cancel');
+                        if(cancel) cancel.remove();
+                    },120);
+                }catch(e){}
+            },
+            closable:false,
+            movable:false,
+            pinnable:false,
+            resizable:false,
+            onok:function(){
+                if(needSync){
+                    syncDeviceIdentityAndReload();
+                }else{
+                    location.reload();
+                }
+            }
+        });
+    }
 }
 
 function handleDeviceIdentityStatus(res){
@@ -1514,6 +1569,11 @@ $(function(){
     color: #FFFFFF;
     text-align: center;
     /* float: center; 這個其實是無效值，可以拿掉，改用 flex 或 text-align 排版 */
+}
+
+/* Controller 重新上線同步提示：此流程必須確認同步，不提供取消按鈕 */
+.device-reload-alert .ajs-footer .ajs-buttons .ajs-button.ajs-cancel {
+    display: none !important;
 }
 
 /* 只縮小 Device ID 警告視窗裡的「確定」(OK) 按鈕 */

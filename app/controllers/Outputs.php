@@ -65,6 +65,41 @@ class Outputs extends Controller
 
     public function get_output_by_job_id() {
         $event_output = $this->MiscellaneousModel->details('io_output');
+
+        // 輸出列表事件名稱使用目前語系顯示，避免 DB / 共用定義的 OK、NG
+        // 與新增 / 編輯視窗的「完成、失敗」文案不一致。
+        $lang = strtolower((string)($_COOKIE['language'] ?? 'en-us'));
+        if ($lang === 'en') {
+            $lang = 'en-us';
+        }
+        if (!in_array($lang, ['en-us', 'zh-tw', 'zh-cn'], true)) {
+            $lang = 'en-us';
+        }
+
+        $eventLabels = [
+            'en-us' => [
+                1 => 'OK', 2 => 'NG', 3 => 'NG - High', 4 => 'NG - Low',
+                5 => 'OK - Sequence', 6 => 'OK - Job', 7 => 'Tool Running',
+                8 => 'Tool Trigger', 9 => 'Reverse', 10 => 'BS', 11 => 'Barcode',
+                12 => 'UserDefine1', 13 => 'UserDefine2', 14 => 'UserDefine3',
+                15 => 'UserDefine4', 16 => 'UserDefine5',
+            ],
+            'zh-tw' => [
+                1 => '完成', 2 => '失敗', 3 => '超出上限', 4 => '低於下限',
+                5 => '工序完成信號', 6 => '完工信號', 7 => '馬達信號',
+                8 => '啟動信號', 9 => '反向', 10 => '條碼停止', 11 => '條碼',
+                12 => '自定義1', 13 => '自定義2', 14 => '自定義3',
+                15 => '自定義4', 16 => '自定義5',
+            ],
+            'zh-cn' => [
+                1 => '完成', 2 => '失败', 3 => '超出上限', 4 => '低于下限',
+                5 => '工序完成信号', 6 => '工作任务完成信号', 7 => '马达信号',
+                8 => '启动信号', 9 => '反向', 10 => '条码停止', 11 => '条码',
+                12 => '自定义1', 13 => '自定义2', 14 => '自定义3',
+                15 => '自定义4', 16 => '自定义5',
+            ],
+        ];
+
         $job_id = $_POST['job_id'] ?? null;
 
         $temp = [];
@@ -97,7 +132,8 @@ class Outputs extends Controller
                     $tempA[] = $event_id;
                 }
                         
-                $label = $event_output[$event_id] ?? '';
+                $eventKey = (int)$event_id;
+                $label = $eventLabels[$lang][$eventKey] ?? ($event_output[$event_id] ?? '');
                 if ($isMobile) {
                     $imgSrc = './img/trigger.png';
                     if ($signal == 0) $imgSrc = './img/signal01.png';
@@ -124,7 +160,7 @@ class Outputs extends Controller
             'job_outputlist' => $job_outputlist,
             'temp' => $temp,
             'tempA' => $tempA,
-            'language' => $_COOKIE['language'] ?? 'en-us',
+            'language' => $lang,
             'focused_jobid' =>  $job_id,
             'check_jobid_unified' => $check
 
@@ -381,7 +417,14 @@ class Outputs extends Controller
         }
 
         if ($input_check) {
-            $job_outputs = $this->OutputModel->check_job_event_conflict($output_job_id, $output_event);
+            $output_pin = isset($_POST['output_pin']) && $_POST['output_pin'] !== ''
+                ? $_POST['output_pin']
+                : null;
+            $job_outputs = $this->OutputModel->check_job_event_conflict(
+                $output_job_id,
+                $output_event,
+                $output_pin
+            );
 
             if (empty($job_outputs)) {
                 echo json_encode(['status' => 'no_data']);
@@ -431,12 +474,21 @@ class Outputs extends Controller
 
         if(!empty($_POST['job_id'])){
             
-            $this->OutputModel->delete_job_old_event($jobId,$_POST['old_output_event'],$_POST['old_output_pin']);
-            $this->OutputModel->insert_output_event($jobId, $pin, $newEv, $signal, $durate);
+            $oldEvent = $_POST['old_output_event'] ?? $newEv;
+            $oldPin   = $_POST['old_output_pin'] ?? $pin;
+            $saved = $this->OutputModel->replace_output_event(
+                $jobId,
+                $oldPin,
+                $oldEvent,
+                $pin,
+                $newEv,
+                $signal,
+                $durate
+            );
 
             $label = $text[$eventMap[$newEv] ?? $newEv] ?? $newEv;
-            $result['res_type'] = 'Success';
-            $result['res_msg']  = $text['edit_event'].$text['job_id'].':'.$jobId.','.$text['event'].':'.$label.'  '.$text['success'];
+            $result['res_type'] = $saved ? 'Success' : 'Error';
+            $result['res_msg']  = $text['edit_event'].$text['job_id'].':'.$jobId.','.$text['event'].':'.$label.'  '.($saved ? $text['success'] : $text['fail']);
             echo json_encode($result);
         }
 

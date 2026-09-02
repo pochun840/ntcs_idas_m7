@@ -125,7 +125,7 @@ class Admins extends Controller
         if($result){
             $res_ip = $ip;
             $res_msg = $text['Edit'].' IP:'.$res_ip."  ".$text['success'];
-            $this->MiscellaneousModel->generateErrorResponse('Succes', $res_msg,$res_ip);
+            $this->MiscellaneousModel->generateErrorResponse('Success', $res_msg,$res_ip);
 
         }else{
             $res_ip = $ip;

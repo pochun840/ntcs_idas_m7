@@ -10,6 +10,60 @@
     --idas-ui-speed: 180ms;
 }
 
+/* Keep long Job/name/barcode values on one line. The shared script adds the
+   complete value as a native hover tooltip. */
+.idas-truncate-value {
+    display: table-cell;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.idas-truncate-inline {
+    display: block;
+    min-width: 0;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Use an inner block for table values.  A max-width placed directly on a
+   table-cell is ignored by browsers while the table is using auto layout. */
+.idas-ellipsis {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 180px;
+    margin: 0 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+}
+
+select.idas-ellipsis-select {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+input.idas-truncate-input {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .idas-truncate-value,
+    .idas-truncate-inline { max-width: 150px; }
+    .idas-ellipsis { max-width: 130px; }
+    select.idas-ellipsis-select { max-width: 170px; }
+}
+
 html.idas-ui-enhanced body {
     /* Do not retain the final transform: a transformed body changes the
        containing block of position:fixed footers in desktop browsers. */
