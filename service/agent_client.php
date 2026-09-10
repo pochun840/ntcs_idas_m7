@@ -35,6 +35,7 @@ define('AGENT_TYPE_AT_START', $agent_type);
 const SEND_INTERVAL_SEC = 1;   // 每秒送一次 payload
 const PING_INTERVAL_SEC = 20;  //
 const BACKOFF_MAX       = 15;  // 最大重連回退秒數
+const AGENT_FACTORY_DEFAULT_IPV4 = '192.168.7.7'; // 出廠預設備援 IP，不顯示於 Agent
 
 /*
  * 9501 / 9502 are two coroutines in the same process.  Register the process
@@ -289,7 +290,8 @@ function isUsableAgentIpv4(string $candidate): bool
 
     return strpos($candidate, '127.') !== 0
         && strpos($candidate, '169.254.') !== 0
-        && $candidate !== '0.0.0.0';
+        && $candidate !== '0.0.0.0'
+        && $candidate !== AGENT_FACTORY_DEFAULT_IPV4;
 }
 
 function agentIpv4FromRoute(string $routeOutput): string
@@ -302,6 +304,30 @@ function agentIpv4FromRoute(string $routeOutput): string
     }
 
     return '';
+}
+
+function isAgentInterfaceActive(string $interface, callable $run, string $ipBinary): bool
+{
+    $linkOutput = trim((string)$run(
+        $ipBinary . ' -o link show dev ' . escapeshellarg($interface) . ' 2>/dev/null'
+    ));
+
+    // Keep compatibility if the platform cannot report link state.
+    if ($linkOutput === '') {
+        return true;
+    }
+
+    // An administratively enabled Ethernet interface can retain its IP and
+    // route after the cable is removed. NO-CARRIER/state DOWN must not win
+    // over an associated Wi-Fi interface.
+    if (preg_match('/\bNO-CARRIER\b/', $linkOutput)
+        || preg_match('/\bstate\s+DOWN\b/i', $linkOutput)) {
+        return false;
+    }
+
+    return preg_match('/\bLOWER_UP\b/', $linkOutput) === 1
+        || preg_match('/\bstate\s+UP\b/i', $linkOutput) === 1
+        || preg_match('/\bstate\s+UNKNOWN\b/i', $linkOutput) === 1;
 }
 
 function getIp(?callable $commandRunner = null): string
@@ -336,14 +362,30 @@ function getIp(?callable $commandRunner = null): string
     $routeOutputs[] = (string)$run($ipBinary . ' -o -4 route show default 2>/dev/null');
 
     foreach ($routeOutputs as $routeOutput) {
-        $candidate = agentIpv4FromRoute($routeOutput);
-        if ($candidate !== '') {
-            return strtoupper($candidate);
-        }
+        $routeLines = preg_split('/\r?\n/', trim($routeOutput)) ?: [];
+        foreach ($routeLines as $routeLine) {
+            if ($routeLine === '') {
+                continue;
+            }
 
-        if (preg_match('/\bdev\s+([^\s]+)/', $routeOutput, $matches)) {
-            $interface = trim((string)$matches[1]);
-            if ($interface !== '' && preg_match('/^[A-Za-z0-9_.:@-]+$/', $interface)) {
+            $interface = '';
+            if (preg_match('/\bdev\s+([^\s]+)/', $routeLine, $matches)) {
+                $interface = trim((string)$matches[1]);
+            }
+
+            if ($interface !== '') {
+                if (!preg_match('/^[A-Za-z0-9_.:@-]+$/', $interface)
+                    || !isAgentInterfaceActive($interface, $run, $ipBinary)) {
+                    continue;
+                }
+            }
+
+            $candidate = agentIpv4FromRoute($routeLine);
+            if ($candidate !== '') {
+                return strtoupper($candidate);
+            }
+
+            if ($interface !== '') {
                 $addressOutput = (string)$run(
                     $ipBinary . ' -o -4 addr show dev ' . escapeshellarg($interface)
                     . ' up scope global 2>/dev/null'
@@ -371,6 +413,9 @@ function getIp(?callable $commandRunner = null): string
             $interface = preg_replace('/@.*$/', '', (string)$match[1]);
             $candidate = trim((string)$match[2]);
             if (preg_match('/^(lo|docker\d*|br-|veth|virbr|tun|tap)/i', $interface)) {
+                continue;
+            }
+            if (!isAgentInterfaceActive($interface, $run, $ipBinary)) {
                 continue;
             }
             if (isUsableAgentIpv4($candidate)) {

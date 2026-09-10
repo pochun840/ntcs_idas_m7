@@ -1,4 +1,4 @@
-﻿.container-ms
+.container-ms
 {
     margin: 0 auto;
     padding: 0px;
@@ -172,3 +172,26 @@
 .disabled_input{ color: #999; pointer-events: none;}
 .zoom{zoom:1.2; vertical-align: middle}
 
+
+
+/* 目標角度鎖附：在 Torque 數值旁顯示 CSV 同一 Torque 資料點的 Angle */
+.torque-value-row {
+    width: 92%;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2.2vmin;
+    white-space: nowrap;
+}
+
+.torque-main-value {
+    font-size: 4vmin;
+}
+
+.torque-csv-angle {
+    align-items: baseline;
+    font-size: 2.2vmin;
+    line-height: 1;
+    font-weight: normal;
+    white-space: nowrap;
+}

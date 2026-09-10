@@ -42,7 +42,12 @@
                              <?php echo $data['text']['final_torque']; ?>
                             (<span id="Torque_Unit_Label"><?php echo $data['chart_unit_label'] ?? ($data['text'][$data['data_info']['final_torque_unit'] ?? ''] ?? ''); ?></span>)
                         </div>
-                        <div id="Target_Torque" class="w3-display-middle" style="font-size: 4vmin; margin: 5px 0;"><?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?></div>
+                        <div class="w3-display-middle torque-value-row">
+                            <span id="Target_Torque" class="torque-main-value"><?php echo $data['data_info']['final_fasten_torque'] ?? '-'; ?></span>
+                            <span id="Torque_Csv_Angle" class="torque-csv-angle" style="display:none;">
+                                <?php echo $data['text']['angle'] ?? 'Angle'; ?>: <span id="Torque_Csv_Angle_Value">-</span>°
+                            </span>
+                        </div>
                     </div>
 
                     <?php
@@ -148,6 +153,8 @@
     let myChart = null;
     let lastCsvSignature = null;
     let lastChartData = null;
+    let latestOperationInfo = null; // 最新鎖附結果：判斷是否為目標角度
+    let latestCsvRows = [];         // 最新曲線 CSV：用 Torque 找同一資料點的 Angle
 
 
     // ================================
@@ -329,6 +336,97 @@
         return palette[(Math.max(1, step) - 1) % palette.length];
     }
 
+
+    // ================================
+    // 目標角度鎖附：Torque 欄位旁顯示「該 Torque 在 CSV 同一資料點的 Angle」
+    // 注意：右側原本的 Final Angle / Total Angle 欄位完全不修改。
+    // CSV torque 以 N.m 儲存；比對前依目前畫面扭力單位換算。
+    // ================================
+    function isAngleTargetOperation(info) {
+        if (!info) return false;
+
+        if (Number(info.target_type) === 1) return true;
+
+        const typeText = String(info.target_type ?? '').trim().toLowerCase();
+        return typeText === 'angle' || typeText === 'target_angle';
+    }
+
+    function getRowsForCurrentStep(rows, info) {
+        const source = (rows || []).filter(row =>
+            Number.isFinite(Number(row.torque)) && Number.isFinite(Number(row.angle))
+        );
+        if (!source.length) return [];
+
+        const stepId = Number(info?.step_id);
+        if (!Number.isFinite(stepId)) return source;
+
+        const sameStep = source.filter(row => Number(row.step) === stepId);
+        return sameStep.length ? sameStep : source;
+    }
+
+    function findCsvAngleByDisplayedTorque(rows, info) {
+        if (!isAngleTargetOperation(info)) return null;
+
+        const finalTorque = Number(info?.final_fasten_torque);
+        if (!Number.isFinite(finalTorque)) return null;
+
+        const candidates = getRowsForCurrentStep(rows, info);
+        if (!candidates.length) return null;
+
+        const factor = getTorqueFactorFromNm();
+
+        // Final Torque 通常是顯示後的數值，而 CSV torque 可能保留更多小數，
+        // 因此找「數值上最接近 Final Torque」的那一筆，並取同一列 angle。
+        // 若差距完全相同，取較後面的資料點（更接近鎖附結束）。
+        let bestAngle = null;
+        let bestDiff = Infinity;
+        for (const row of candidates) {
+            const displayTorque = convertTorqueFromNm(row.torque, factor);
+            const angle = Number(row.angle);
+            if (!Number.isFinite(displayTorque) || !Number.isFinite(angle)) continue;
+
+            const diff = Math.abs(displayTorque - finalTorque);
+            if (diff <= bestDiff) {
+                bestDiff = diff;
+                bestAngle = angle;
+            }
+        }
+
+        return Number.isFinite(bestAngle) ? bestAngle : null;
+    }
+
+    function formatCsvAngleValue(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return '-';
+
+        if (Math.abs(n - Math.round(n)) < 0.000001) {
+            return String(Math.round(n));
+        }
+        return n.toFixed(3).replace(/\.?0+$/, '');
+    }
+
+    function refreshTorqueCsvAngle() {
+        const badge = document.getElementById('Torque_Csv_Angle');
+        const valueEl = document.getElementById('Torque_Csv_Angle_Value');
+        if (!badge || !valueEl) return;
+
+        if (!isAngleTargetOperation(latestOperationInfo) || !latestCsvRows.length) {
+            badge.style.display = 'none';
+            valueEl.innerText = '-';
+            return;
+        }
+
+        const csvAngle = findCsvAngleByDisplayedTorque(latestCsvRows, latestOperationInfo);
+        if (csvAngle === null) {
+            badge.style.display = 'none';
+            valueEl.innerText = '-';
+            return;
+        }
+
+        valueEl.innerText = formatCsvAngleValue(csvAngle);
+        badge.style.display = 'inline-flex';
+    }
+
     function getEffectiveMode(mode) {
         mode = Number(mode);
         if (mode === 6) return 4;
@@ -375,6 +473,8 @@
             const json = await res.json();
             if (!json || !json.data_info) return;
 
+            latestOperationInfo = json.data_info;
+
             setValue("Job_Name", json.data_info.job_name || "");
             setValue("Seq_Name", json.data_info.sequence_name || "");
             setValue("Screws", json.data_info.total_screw_count || "");
@@ -393,6 +493,9 @@
             if (torqueUnitChanged && lastChartData) {
                 renderChart(chartMode, lastChartData);
             }
+
+            // 只更新 Torque 旁的 CSV Angle；右側 Target_Angle 維持原值。
+            refreshTorqueCsvAngle();
 
             const statusBox = document.getElementById("fasten_status_color");
             if (statusBox && json.data_info.result_status_color_text) {
@@ -554,6 +657,9 @@
 
             const rows = parseCSV(text);
             if (!rows.length) return;
+
+            latestCsvRows = rows;
+            refreshTorqueCsvAngle();
 
             const chartData = buildChartData(rows);
             lastChartData = chartData;
