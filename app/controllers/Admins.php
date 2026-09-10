@@ -211,11 +211,22 @@ class Admins extends Controller
 
     public function ProcessCheck($processName)
     {
-        $pgrepCommand = "pgrep -f  ". escapeshellarg($processName) ." ";
+        $baseName = pathinfo((string)$processName, PATHINFO_FILENAME);
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $baseName)) {
+            return 'false';
+        }
+
+        // 方括號樣式避免把 pgrep / shell 查詢本身誤判成 Agent 程序。
+        $pattern = '[/]' . preg_quote($baseName, '/') . '[.]php([[:space:]]|$)';
+        $pgrepCommand = "pgrep -f -- " . escapeshellarg($pattern);
         $pidList = [];
         exec($pgrepCommand, $pidList);
-        
-        if ( !empty($pidList) && count($pidList) >= 2 ) {
+
+        $pidList = array_values(array_unique(array_filter(array_map('intval', $pidList), static function ($pid) {
+            return $pid > 1 && $pid !== getmypid();
+        })));
+
+        if (!empty($pidList)) {
             // $message = "进程正在运行。\n";
             $result = 'true';
         } else {
@@ -287,27 +298,46 @@ class Admins extends Controller
 
     public function StopService($processName)
     {
-        // $processName = "client2.php"; // 要查找和杀死的进程名称
         $message = '';
+        $baseName = pathinfo((string)$processName, PATHINFO_FILENAME);
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $baseName)) {
+            return "Invalid process name.\n";
+        }
 
-        // 使用 pgrep 命令查找指定进程名称的 PID
-        $pgrepCommand = "pgrep -f " . escapeshellarg($processName) . "";
+        // 方括號樣式避免 pgrep 指令本身被列入結果。
+        $pattern = '[/]' . preg_quote($baseName, '/') . '[.]php([[:space:]]|$)';
+        $pgrepCommand = "pgrep -f -- " . escapeshellarg($pattern);
         $pidList = [];
         exec($pgrepCommand, $pidList);
 
-        // var_dump($pgrepCommand);
-        // var_dump($pidList);
+        $pidList = array_values(array_unique(array_filter(
+            array_map('intval', $pidList),
+            static function ($pid) { return $pid > 1 && $pid !== getmypid(); }
+        )));
 
-        // 如果找到了匹配的 PID，则杀死它们
-        if (!empty($pidList)) {
-            foreach ($pidList as $pid) {
-                // 使用 kill 命令杀死指定 PID 的进程
-                $killCommand = "sudo kill " . escapeshellarg($pid);
-                exec($killCommand);
-                $message .= "Killed process with PID: $pid\n";
-            }
-        } else {
+        if (empty($pidList)) {
             $message .= "No matching processes found.\n";
+            return $message;
+        }
+
+        // 先正常停止，讓 WebSocket close 有機會送出 offline 事件。
+        foreach ($pidList as $pid) {
+            exec("sudo kill -TERM " . escapeshellarg((string)$pid) . " 2>/dev/null");
+        }
+
+        usleep(600000);
+
+        // 若程序仍存在則強制終止，避免繼續更新代理列表的在線時間。
+        foreach ($pidList as $pid) {
+            $checkOutput = [];
+            $stillRunning = 1;
+            exec("sudo kill -0 " . escapeshellarg((string)$pid) . " 2>/dev/null", $checkOutput, $stillRunning);
+            if ($stillRunning === 0) {
+                exec("sudo kill -KILL " . escapeshellarg((string)$pid) . " 2>/dev/null");
+                $message .= "Force killed process with PID: {$pid}\n";
+            } else {
+                $message .= "Stopped process with PID: {$pid}\n";
+            }
         }
 
         return $message;

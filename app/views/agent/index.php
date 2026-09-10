@@ -300,8 +300,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /** ---------- WebSocket upsert ---------- */
     let socket;
-    const server_ip = <?php echo json_encode($data['agent_server_ip']); ?>;
-    const serverUrl = `ws://${server_ip}:9501`;
+    const configuredServerIp = <?php echo json_encode($data['agent_server_ip']); ?>;
+    const agentType = Number(<?php echo json_encode((int)($data['agent_type'] ?? 0)); ?>);
+
+    // Server mode runs the Agent server on this device. Use the host that the
+    // browser actually reached so switching from Ethernet to Wi-Fi does not
+    // keep the page tied to the previously configured/default network IP.
+    const activeServerHost = agentType === 2
+        ? window.location.hostname
+        : String(configuredServerIp || '').trim();
+    const websocketHost = activeServerHost.includes(':') && !activeServerHost.startsWith('[')
+        ? `[${activeServerHost}]`
+        : activeServerHost;
+    const serverUrl = `ws://${websocketHost}:9501`;
+    const CLIENT_OFFLINE_TIMEOUT_MS = 6000;
+    const CLIENT_CLEANUP_INTERVAL_MS = 1000;
 
     function getDeviceTypeName(deviceType) {
         const config = DEVICE_TYPE_CONFIG[Number(deviceType)];
@@ -367,10 +380,34 @@ document.addEventListener('DOMContentLoaded', function () {
         return s;
     }
 
+    function cleanupInactiveClientRows(now = Date.now()) {
+        const staleRows = table2.rows(function(idx, rowData) {
+            const lastReceivedAt = Number(rowData?._agent_last_received_at || 0);
+            return lastReceivedAt > 0
+                && (now - lastReceivedAt) >= CLIENT_OFFLINE_TIMEOUT_MS;
+        });
+
+        if (staleRows.any()) {
+            // Remove from DataTables' internal data as well as the visible DOM.
+            staleRows.remove().draw(false);
+        }
+    }
+
     function upsertRow(payload) {
         console.log(payload);
 
+        if (payload?.agent_event === 'offline') {
+            const offlineIp = String(payload.client_ip || '').trim();
+            if (offlineIp) {
+                table2.rows(function(idx, rowData) {
+                    return String(rowData?.client_ip || '').trim() === offlineIp;
+                }).remove().draw(false);
+            }
+            return;
+        }
+
         const deviceType = Number(payload.device_type);
+        const receivedAt = Date.now();
 
         const rowData = {
             device_type: deviceType,
@@ -388,7 +425,8 @@ document.addEventListener('DOMContentLoaded', function () {
             total_screw_count: ([7, 9].includes(deviceType) ? payload.max_screw_count : payload.total_screw_count) ?? '',
             fasten_status_name: fastenStatusName(payload.fasten_status),
             device_sn: payload.device_sn ?? '',
-            device_id: payload.device_id ?? ''
+            device_id: payload.device_id ?? '',
+            _agent_last_received_at: receivedAt
         };
 
         if (!rowData.client_ip && !rowData.device_sn && !rowData.device_id) return;
@@ -399,8 +437,16 @@ document.addEventListener('DOMContentLoaded', function () {
             (rowData.client_ip + "_" + rowData.device_name)
         );
 
+        // Prefer the stable device identity. When the active interface changes
+        // from Ethernet to Wi-Fi, update the existing row instead of briefly
+        // showing the same controller twice under two different IP addresses.
         let rowApi = table2.row(function(idx, d) {
-            return d.client_ip === rowData.client_ip;
+            const existingKey = (
+                d.device_sn ||
+                d.device_id ||
+                (d.client_ip + "_" + d.device_name)
+            );
+            return existingKey === key;
         });
 
         const isUpdate = rowApi.any();
@@ -419,6 +465,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return existingKey === key;
             });
         }
+
+        // The server controller continues sending its own row every second.
+        // Use every incoming message as an immediate cleanup trigger so a
+        // stopped remote client disappears without waiting for page refresh.
+        cleanupInactiveClientRows(receivedAt);
     }
 
     function handleWebSocketMessage(event) {
@@ -494,6 +545,7 @@ document.addEventListener('DOMContentLoaded', function () {
     $(document).ready(function() {
         connectWebSocket();
         initTooltips();
+        window.setInterval(cleanupInactiveClientRows, CLIENT_CLEANUP_INTERVAL_MS);
     });
 
 })();

@@ -50,7 +50,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     $tableConfigs = array(
                         ['id' => 'res_data_all', 'label' => $text['data_history_success'], 'data' => $data['res_data'], 'display' => 'block'],
                         ['id' => 'res_data_ok', 'label' => $text['data_history_success'], 'data' => $data['res_data_ok'], 'display' => 'none'],
-                        ['id' => 'res_data_nok', 'label' => $text['data_history_fail'], 'data' => $data['res_data_nok'], 'display' => 'none']
+                        ['id' => 'res_data_nok', 'label' => $text['data_history_fail'], 'data' => $data['res_data_nok'], 'display' => 'none'],
+                        ['id' => 'res_data_rev', 'label' => 'REV', 'data' => $data['res_data_rev'], 'display' => 'none']
                     );
 
                     foreach ($tableConfigs as $config){?>

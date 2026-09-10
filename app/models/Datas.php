@@ -55,6 +55,21 @@ class Datas
                 ";
             }
 
+            if ($type == 'REV') {
+                $sql = "
+                    SELECT *
+                    FROM (
+                        SELECT rowid AS rid, *
+                        FROM ntcs_data
+                        WHERE COALESCE(step0_last_angle, 0) > 0
+                          AND COALESCE(step0_last_torque, 0) > 0
+                        ORDER BY rid DESC
+                        LIMIT 100
+                    ) AS recent_data
+                    ORDER BY rid DESC;
+                ";
+            }
+
             $statement = $this->db_data->prepare($sql);
             if ($statement !== false) {
                 $statement->execute();
@@ -233,4 +248,3 @@ class Datas
         }
     }
 }
-

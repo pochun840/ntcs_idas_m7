@@ -152,16 +152,19 @@ class Data extends Controller
                     $res_data     = $this->DataModel->getData('ALL');
                     $res_data_ok  = $this->DataModel->getData('OK');
                     $res_data_nok = $this->DataModel->getData('NOK');
+                    $res_data_rev = $this->DataModel->getData('REV');
                 } else {
                     $res_data     = [];
                     $res_data_ok  = [];
                     $res_data_nok = [];
+                    $res_data_rev = [];
                 }
 
             }else{
                 $res_data     = $this->DataModel->getData('ALL');
                 $res_data_ok  = $this->DataModel->getData('OK');
                 $res_data_nok = $this->DataModel->getData('NOK');
+                $res_data_rev = $this->DataModel->getData('REV');
                 $db_exists = '';
                 $db_path = '';
             }
@@ -199,6 +202,7 @@ class Data extends Controller
                 'res_data'      => $res_data,
                 'res_data_ok'   => $res_data_ok,
                 'res_data_nok'  => $res_data_nok,
+                'res_data_rev'  => $res_data_rev,
                 'unit_arr'      => $unit_arr,
                 'status_arr'    => $status_arr,
                 'db_exists'     => $db_exists,
@@ -1351,4 +1355,3 @@ class Data extends Controller
         exit;
     }
 }
-

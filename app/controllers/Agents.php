@@ -37,6 +37,7 @@ class Agents extends Controller
         $isMobile = $this->isMobileCheck();
         $device_info = $this->SettingModel->GetControllerInfo();
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
+        $agent_type = (int)$this->AdminModel->Get_Das_Config('agent_type');
         $controller_device_info = $this->MiscellaneousModel->get_controller_device_info();
 
 
@@ -49,6 +50,7 @@ class Agents extends Controller
         $data = [
             'isMobile' => $isMobile,
             'agent_server_ip' => $agent_server_ip,
+            'agent_type' => $agent_type,
             'device_info' => $device_info,
             'agent_icon' => 'true',
             'device_name' =>  $device_info['device_name'] 

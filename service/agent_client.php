@@ -29,27 +29,67 @@ if ($agent_type === 2) { // local 模式
 }
 
 define('AGENT_IP', $agent_ip);
+define('AGENT_TYPE_AT_START', $agent_type);
 
 /* ===== 共用參數 ===== */
 const SEND_INTERVAL_SEC = 1;   // 每秒送一次 payload
 const PING_INTERVAL_SEC = 20;  //
 const BACKOFF_MAX       = 15;  // 最大重連回退秒數
 
+/*
+ * 9501 / 9502 are two coroutines in the same process.  Register the process
+ * signal handler only once so stopping Agent terminates both connections.
+ */
+$GLOBALS['agent_stop_requested'] = false;
+if (function_exists('pcntl_async_signals')) {
+    pcntl_async_signals(true);
+    pcntl_signal(SIGINT, static function (): void {
+        $GLOBALS['agent_stop_requested'] = true;
+    });
+    pcntl_signal(SIGTERM, static function (): void {
+        $GLOBALS['agent_stop_requested'] = true;
+    });
+}
+
+function agentStopRequested(): bool
+{
+    return !empty($GLOBALS['agent_stop_requested']);
+}
+
+function agentModeStillMatches(): bool
+{
+    try {
+        $db = idas_sqlite_connect(idas_path('database_root', 'das.db'));
+        $currentType = (int)($db->query(
+            "SELECT config_value FROM config WHERE config_name='agent_type'"
+        )->fetchColumn() ?? -1);
+        $db = null;
+        return $currentType === (int)AGENT_TYPE_AT_START;
+    } catch (Throwable $e) {
+        // A temporary DB read failure must not tear down a healthy connection.
+        return true;
+    }
+}
+
+function agentInterruptibleSleep(float $seconds): void
+{
+    $remaining = max(0.0, $seconds);
+    while ($remaining > 0.0 && !agentStopRequested()) {
+        $slice = min(0.2, $remaining);
+        Coroutine::sleep($slice);
+        $remaining -= $slice;
+    }
+}
+
 /* ===== 連線＋送資料的通用函式 ===== */
 function connectAndStream(string $host, int $port, callable $payloadFn, ?callable $onServerMsg = null, ?callable $onLog = null): void
 {
-    $stop = false;
-    if (function_exists('pcntl_async_signals')) {
-        pcntl_async_signals(true);
-        pcntl_signal(SIGINT,  function() use (&$stop){ $stop = true; });
-        pcntl_signal(SIGTERM, function() use (&$stop){ $stop = true; });
-    }
     $log = $onLog ?? function(string $level, string $msg) use ($port) {
         error_log(sprintf('[%s][%d] %s', strtoupper($level), $port, $msg));
     };
 
     $backoff   = 1;
-    while (!$stop) {
+    while (!agentStopRequested()) {
         $client = new Client($host, $port, false);
         if (method_exists($client, 'set')) {
             $client->set([
@@ -63,7 +103,7 @@ function connectAndStream(string $host, int $port, callable $payloadFn, ?callabl
         if (!$ok) {
             $log('error', sprintf('upgrade failed errCode=%d', (int)$client->errCode));
             $client->close();
-            Coroutine::sleep($backoff);
+            agentInterruptibleSleep($backoff);
             $backoff = min($backoff * 2, BACKOFF_MAX);
             continue;
         }
@@ -72,8 +112,8 @@ function connectAndStream(string $host, int $port, callable $payloadFn, ?callabl
         $backoff = 1;
 
         // reader：避免 server 推訊息時堆積阻塞
-        $reader = Coroutine::create(function() use ($client, $onServerMsg, $log, &$stop) {
-            while (!$stop && $client->connected) {
+        $reader = Coroutine::create(function() use ($client, $onServerMsg, $log) {
+            while (!agentStopRequested() && $client->connected) {
                 $frame = $client->recv(1.0);
                 if ($frame === false) {
                     if ($client->errCode && $client->errCode !== SOCKET_ETIMEDOUT) {
@@ -99,7 +139,14 @@ function connectAndStream(string $host, int $port, callable $payloadFn, ?callabl
 
         // writer：定時送 
         $lastPingAt = microtime(true);
-        while (!$stop && $client->connected) {
+        while (!agentStopRequested() && $client->connected) {
+            // If Client was changed to Server/None without a successful stop,
+            // terminate this old process so it cannot remain on the old server.
+            if (!agentModeStillMatches()) {
+                $GLOBALS['agent_stop_requested'] = true;
+                break;
+            }
+
             // 心跳
             if ((microtime(true) - $lastPingAt) >= PING_INTERVAL_SEC) {
                 $client->push('', WEBSOCKET_OPCODE_PING);
@@ -118,11 +165,11 @@ function connectAndStream(string $host, int $port, callable $payloadFn, ?callabl
                 break;
             }
 
-            Coroutine::sleep(SEND_INTERVAL_SEC);
+            agentInterruptibleSleep(SEND_INTERVAL_SEC);
         }
 
         if ($client->connected) { $client->close(); }
-        Coroutine::sleep($backoff);
+        agentInterruptibleSleep($backoff);
         $backoff = min($backoff * 2, BACKOFF_MAX);
     }
 
@@ -233,18 +280,106 @@ function csvNoHeaderToJson(){
 
 
 
-/* ===== 取得本機 IP（盡量非 127.0.0.1） ===== */
-function getIp(): string {
-    if (PHP_OS_FAMILY === 'Linux') {
-        $Ips = trim(shell_exec("/sbin/ip -o -4 addr list | awk '{print \$4}' | cut -d/ -f1"));
-        $Ip  = explode(PHP_EOL, $Ips);
-        foreach ($Ip as $candidate) {
-            $candidate = trim($candidate);
-            if ($candidate && $candidate !== '127.0.0.1') return strtoupper($candidate);
-        }
-        return '127.0.0.1';
+/* ===== 取得本機實際使用中的 IPv4 ===== */
+function isUsableAgentIpv4(string $candidate): bool
+{
+    if (!filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        return false;
     }
-    return strtoupper(gethostbyname(gethostname()));
+
+    return strpos($candidate, '127.') !== 0
+        && strpos($candidate, '169.254.') !== 0
+        && $candidate !== '0.0.0.0';
+}
+
+function agentIpv4FromRoute(string $routeOutput): string
+{
+    if (preg_match('/\bsrc\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\b/', $routeOutput, $matches)) {
+        $candidate = trim((string)$matches[1]);
+        if (isUsableAgentIpv4($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+function getIp(?callable $commandRunner = null): string
+{
+    if (PHP_OS_FAMILY !== 'Linux') {
+        $candidate = strtoupper((string)gethostbyname(gethostname()));
+        return isUsableAgentIpv4($candidate) ? $candidate : '127.0.0.1';
+    }
+
+    $run = $commandRunner ?? static function (string $command): string {
+        $output = @shell_exec($command);
+        return is_string($output) ? $output : '';
+    };
+
+    $ipBinary = is_executable('/sbin/ip')
+        ? '/sbin/ip'
+        : (is_executable('/usr/sbin/ip') ? '/usr/sbin/ip' : 'ip');
+    $routeOutputs = [];
+    $serverIp = defined('AGENT_IP') ? trim((string)AGENT_IP) : '';
+
+    // The route to the configured Agent server is the most reliable signal:
+    // it automatically follows Wi-Fi/Ethernet route and metric changes.
+    if (filter_var($serverIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+        && strpos($serverIp, '127.') !== 0) {
+        $routeOutputs[] = (string)$run(
+            $ipBinary . ' -o -4 route get ' . escapeshellarg($serverIp) . ' 2>/dev/null'
+        );
+    }
+
+    // Local Agent-server mode connects through 127.0.0.1, so use the active
+    // default route to determine which LAN interface should be advertised.
+    $routeOutputs[] = (string)$run($ipBinary . ' -o -4 route show default 2>/dev/null');
+
+    foreach ($routeOutputs as $routeOutput) {
+        $candidate = agentIpv4FromRoute($routeOutput);
+        if ($candidate !== '') {
+            return strtoupper($candidate);
+        }
+
+        if (preg_match('/\bdev\s+([^\s]+)/', $routeOutput, $matches)) {
+            $interface = trim((string)$matches[1]);
+            if ($interface !== '' && preg_match('/^[A-Za-z0-9_.:@-]+$/', $interface)) {
+                $addressOutput = (string)$run(
+                    $ipBinary . ' -o -4 addr show dev ' . escapeshellarg($interface)
+                    . ' up scope global 2>/dev/null'
+                );
+                if (preg_match('/\binet\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\//', $addressOutput, $addressMatch)) {
+                    $candidate = trim((string)$addressMatch[1]);
+                    if (isUsableAgentIpv4($candidate)) {
+                        return strtoupper($candidate);
+                    }
+                }
+            }
+        }
+    }
+
+    // Last resort for systems without a default route: only consider active,
+    // global-scope addresses and avoid common virtual/container interfaces.
+    $addresses = (string)$run($ipBinary . ' -o -4 addr show up scope global 2>/dev/null');
+    if (preg_match_all(
+        '/^\d+:\s+([^\s]+)\s+inet\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\//m',
+        $addresses,
+        $matches,
+        PREG_SET_ORDER
+    )) {
+        foreach ($matches as $match) {
+            $interface = preg_replace('/@.*$/', '', (string)$match[1]);
+            $candidate = trim((string)$match[2]);
+            if (preg_match('/^(lo|docker\d*|br-|veth|virbr|tun|tap)/i', $interface)) {
+                continue;
+            }
+            if (isUsableAgentIpv4($candidate)) {
+                return strtoupper($candidate);
+            }
+        }
+    }
+
+    return '127.0.0.1';
 }
 
 /* ===== 啟動兩個連線：9501 與 9502 ===== */
@@ -272,5 +407,5 @@ run(function () {
     });
 
     // 主協程留著即可（或做其它事）
-    while (true) { Coroutine::sleep(5); }
+    while (!agentStopRequested()) { agentInterruptibleSleep(0.2); }
 });

@@ -61,9 +61,10 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
 
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
-                        <option value="ALL">ALL</option>
+                        <option value="ALL"><?php echo htmlspecialchars($text['data_filter_all'] ?? 'ALL', ENT_QUOTES, 'UTF-8'); ?></option>
                         <option value="OK">OK</option>
                         <option value="NOK">NG</option>
+                        <option value="REV"><?php echo htmlspecialchars($text['data_filter_rev'] ?? 'REV', ENT_QUOTES, 'UTF-8'); ?></option>
                     </select>
                 </div>
             </div>
@@ -75,7 +76,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     $tableConfigs = array(
                         ['id' => 'res_data_all', 'label' => $text['data_history_success'], 'data' => $data['res_data'], 'display' => 'block'],
                         ['id' => 'res_data_ok', 'label' => $text['data_history_success'], 'data' => $data['res_data_ok'], 'display' => 'none'],
-                        ['id' => 'res_data_nok', 'label' => $text['data_history_fail'], 'data' => $data['res_data_nok'], 'display' => 'none']
+                        ['id' => 'res_data_nok', 'label' => $text['data_history_fail'], 'data' => $data['res_data_nok'], 'display' => 'none'],
+                        ['id' => 'res_data_rev', 'label' => ($text['data_filter_rev'] ?? 'REV'), 'data' => $data['res_data_rev'], 'display' => 'none']
                     );
 
                     foreach ($tableConfigs as $config){?>
@@ -212,10 +214,11 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         const map = {
             'ALL': 'res_data_all',
             'OK': 'res_data_ok',
-            'NOK': 'res_data_nok'
+            'NOK': 'res_data_nok',
+            'REV': 'res_data_rev'
         };
 
-        ['res_data_all', 'res_data_ok', 'res_data_nok'].forEach(id => {
+        ['res_data_all', 'res_data_ok', 'res_data_nok', 'res_data_rev'].forEach(id => {
             document.getElementById(id).style.display = 'none';
         });
 
@@ -475,9 +478,10 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <?php //} ?>
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
-                        <option value="ALL">ALL</option>
+                        <option value="ALL"><?php echo htmlspecialchars($text['data_filter_all'] ?? 'ALL', ENT_QUOTES, 'UTF-8'); ?></option>
                         <option value="OK">OK</option>
                         <option value="NOK">NG</option>
+                        <option value="REV"><?php echo htmlspecialchars($text['data_filter_rev'] ?? 'REV', ENT_QUOTES, 'UTF-8'); ?></option>
                     </select>
                 </div>
             </div>
@@ -489,7 +493,8 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     $tableConfigs = array(
                         ['id' => 'res_data_all', 'label' => $text['data_history_success'], 'data' => $data['res_data'], 'display' => 'block'],
                         ['id' => 'res_data_ok', 'label' => $text['data_history_success'], 'data' => $data['res_data_ok'], 'display' => 'none'],
-                        ['id' => 'res_data_nok', 'label' => $text['data_history_fail'], 'data' => $data['res_data_nok'], 'display' => 'none']
+                        ['id' => 'res_data_nok', 'label' => $text['data_history_fail'], 'data' => $data['res_data_nok'], 'display' => 'none'],
+                        ['id' => 'res_data_rev', 'label' => ($text['data_filter_rev'] ?? 'REV'), 'data' => $data['res_data_rev'], 'display' => 'none']
                     );
 
                     foreach ($tableConfigs as $config){?>
@@ -632,10 +637,11 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
         const map = {
             'ALL': 'res_data_all',
             'OK': 'res_data_ok',
-            'NOK': 'res_data_nok'
+            'NOK': 'res_data_nok',
+            'REV': 'res_data_rev'
         };
 
-        ['res_data_all', 'res_data_ok', 'res_data_nok'].forEach(id => {
+        ['res_data_all', 'res_data_ok', 'res_data_nok', 'res_data_rev'].forEach(id => {
             document.getElementById(id).style.display = 'none';
         });
 

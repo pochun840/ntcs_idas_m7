@@ -10,6 +10,12 @@ $server->set([
     'package_max_length'       => 4 * 1024 * 1024,
 ]);
 
+// Track the device represented by each 9501 connection.  The latest fd for
+// an IP wins, preventing a late close from removing a newly reconnected row.
+$connectionPortByFd = [];
+$clientIpByFd = [];
+$currentFdByClientIp = [];
+
 // 安全檢查已升級為 WS
 $wsReady = function (Server $server, int $fd): bool {
     if (method_exists($server, 'isEstablished')) {
@@ -35,10 +41,11 @@ $broadcastSamePort = function (Server $server, int $fromPort, string $msg) use (
 };
 
 /** open */
-$onOpen = function (Server $server, $request) use ($wsReady, $broadcastSamePort) {
+$onOpen = function (Server $server, $request) use ($wsReady, $broadcastSamePort, &$connectionPortByFd) {
     $fd   = $request->fd;
     $port = (int)($request->server['server_port'] ?? 0);
     $ip   = $request->server['remote_addr'] ?? 'unknown';
+    $connectionPortByFd[$fd] = $port;
 
     if ($wsReady($server, $fd)) {
         $server->push($fd, "Welcome to the server! (fd=$fd, port=$port, ip=$ip)");
@@ -49,7 +56,7 @@ $onOpen = function (Server $server, $request) use ($wsReady, $broadcastSamePort)
 
 /** message */
 
-$onMessage = function (Server $server, $frame) use ($broadcastSamePort) {
+$onMessage = function (Server $server, $frame) use ($broadcastSamePort, &$clientIpByFd, &$currentFdByClientIp) {
     // 找出發話者所在的埠
     $info = $server->connection_info($frame->fd);
     $port = (int)($info['server_port'] ?? 0);
@@ -72,6 +79,20 @@ $onMessage = function (Server $server, $frame) use ($broadcastSamePort) {
         return;
     }
 
+    if ($port === 9501) {
+        $payload = json_decode((string)$frame->data, true);
+        $clientIp = is_array($payload) ? trim((string)($payload['client_ip'] ?? '')) : '';
+        if ($clientIp !== '') {
+            $previousIp = $clientIpByFd[$frame->fd] ?? '';
+            if ($previousIp !== '' && $previousIp !== $clientIp
+                && (($currentFdByClientIp[$previousIp] ?? null) === $frame->fd)) {
+                unset($currentFdByClientIp[$previousIp]);
+            }
+            $clientIpByFd[$frame->fd] = $clientIp;
+            $currentFdByClientIp[$clientIp] = $frame->fd;
+        }
+    }
+
     // 9501：保留 "Client X said: ..."
     $msg = "Client {$frame->fd} said: {$frame->data}";
     $broadcastSamePort($server, $port, $msg);
@@ -79,12 +100,25 @@ $onMessage = function (Server $server, $frame) use ($broadcastSamePort) {
 
 
 /** close */
-$onClose = function (Server $server, $fd) use ($wsReady, $broadcastSamePort) {
-    // 找出關閉者所在的埠
-    $info = $server->connection_info($fd);
-    $port = (int)($info['server_port'] ?? 0);
-    // ✅ 只通知同埠
-    $broadcastSamePort($server, $port, "Client {$fd} disconnected");
+$onClose = function (Server $server, $fd) use (
+    $broadcastSamePort,
+    &$connectionPortByFd,
+    &$clientIpByFd,
+    &$currentFdByClientIp
+) {
+    $port = (int)($connectionPortByFd[$fd] ?? 0);
+    $clientIp = (string)($clientIpByFd[$fd] ?? '');
+
+    unset($connectionPortByFd[$fd], $clientIpByFd[$fd]);
+
+    if ($port === 9501 && $clientIp !== ''
+        && (($currentFdByClientIp[$clientIp] ?? null) === $fd)) {
+        unset($currentFdByClientIp[$clientIp]);
+        $broadcastSamePort($server, 9501, json_encode([
+            'agent_event' => 'offline',
+            'client_ip'   => $clientIp,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
 };
 
 // 綁定到主埠（9501）

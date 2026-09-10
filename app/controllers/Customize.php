@@ -103,6 +103,13 @@ class Customize extends Controller
         if (!array_key_exists('info_tool_status', $row) && array_key_exists('tool_status', $row)) {
             $row['info_tool_status'] = $row['tool_status'];
         }
+        if (!array_key_exists('info_device_type', $row) && array_key_exists('device_type', $row)) {
+            $row['info_device_type'] = $row['device_type'];
+        }
+        if (!array_key_exists('info_fasten_direction', $row) && array_key_exists('fasten_direction', $row)) {
+            // Preserve 0: it is a valid screwdriver direction, not an empty value.
+            $row['info_fasten_direction'] = $row['fasten_direction'];
+        }
 
         $firstValue = static function (array $source, array $keys) {
             foreach ($keys as $key) {
