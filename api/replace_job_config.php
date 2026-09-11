@@ -2,8 +2,19 @@
 
 declare(strict_types=1);
 
+function job_config_sanitize_public_data($value)
+{
+    if (!is_array($value)) return $value;
+    foreach (['controller_database', 'controller_root', 'backup'] as $key) unset($value[$key]);
+    foreach ($value as $key => $item) {
+        if (is_array($item)) $value[$key] = job_config_sanitize_public_data($item);
+    }
+    return $value;
+}
+
 function job_config_response(int $status, array $body): void
 {
+    $body = job_config_sanitize_public_data($body);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
     header('X-Content-Type-Options: nosniff');

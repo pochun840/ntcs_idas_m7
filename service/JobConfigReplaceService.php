@@ -47,12 +47,36 @@ final class JobConfigReplaceService
 
     public static function maxBodyBytes(): int { return self::MAX_BODY_BYTES; }
 
+    /**
+     * Verify the local Controller is safe to receive a JOB/SEQ/STEP write.
+     * This is also used by the LAN probe endpoint before a remote batch write.
+     */
+    public function preflight(): array
+    {
+        $controllerRoot = dirname($this->controllerDatabasePath);
+        if (!is_dir($controllerRoot) || !is_readable($controllerRoot)) {
+            throw new JobConfigApiException(503, 'CONTROLLER_ROOT_NOT_FOUND', 'Controller root was not found or is not readable');
+        }
+        if (!is_file($this->controllerDatabasePath) || !is_readable($this->controllerDatabasePath) || !is_writable($this->controllerDatabasePath)) {
+            throw new JobConfigApiException(503, 'CONTROLLER_DATABASE_NOT_WRITABLE', 'Controller database was not found or is not writable');
+        }
+
+        $this->assertControllerLoggedOut();
+
+        return [
+            'controller_root_exists' => true,
+            'controller_database_exists' => true,
+            'controller_database_readable' => true,
+            'controller_database_writable' => true,
+            'controller_logged_out' => true,
+            'ready' => true,
+        ];
+    }
+
     public function replace(array $payload): array
     {
         $normalized = $this->normalizeNativeAndValidate($payload);
-        if (!is_file($this->controllerDatabasePath) || !is_readable($this->controllerDatabasePath) || !is_writable($this->controllerDatabasePath)) {
-            throw new JobConfigApiException(500, 'CONTROLLER_DATABASE_NOT_WRITABLE', 'Controller database was not found or is not writable');
-        }
+        $this->preflight();
 
         $lockPath = $this->controllerDatabasePath . '.job-config-api.lock';
         $lock = @fopen($lockPath, 'c');
@@ -64,7 +88,10 @@ final class JobConfigReplaceService
         $stage = $this->controllerDatabasePath . '.api-stage.' . getmypid() . '.' . bin2hex(random_bytes(4));
         $backup = null;
         try {
-            $this->assertControllerLoggedOut();
+            // Re-check immediately after the write lock is acquired.  This
+            // catches a Controller login or filesystem change between the
+            // batch preflight and the actual database write.
+            $this->preflight();
             $this->createConsistentSnapshot($this->controllerDatabasePath, $stage);
             $counts = $this->writeStage($stage, $normalized);
 
@@ -77,7 +104,7 @@ final class JobConfigReplaceService
             $mirrorSynced = $this->syncIdasMirror();
 
             $this->rotateBackups(5);
-            return $this->result($normalized, $counts, true, $mirrorSynced, $backup ? basename($backup) : null);
+            return $this->result($normalized, $counts, true, $mirrorSynced);
         } catch (JobConfigApiException $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -392,15 +419,13 @@ final class JobConfigReplaceService
         return 1;
     }
 
-    private function result(array $normalized, array $counts, bool $applied, bool $mirrorSynced, ?string $backup): array
+    private function result(array $normalized, array $counts, bool $applied, bool $mirrorSynced): array
     {
         return [
             'operation' => 'upsert',
             'controller_updated' => $applied,
-            'controller_database' => '/home/kls/NTCS7/KLS_NTCS.Lin',
             'idas_mirror_synced' => $mirrorSynced,
             'counts' => $counts,
-            'backup' => $backup,
             'warnings' => $mirrorSynced ? [] : ['Controller DB was updated, but the iDAS mirror could not be refreshed'],
         ];
     }
