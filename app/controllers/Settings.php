@@ -1315,6 +1315,15 @@ class Settings extends Controller
         $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
+        if ((int)$agent_type === 2 && !empty($network_setting['current_ip'])) {
+            // Server mode is hosted by this device.  Show its current address
+            // instead of a Wi-Fi address left in the saved Agent setting.
+            $currentAgentServerIp = (string)$network_setting['current_ip'];
+            if ($currentAgentServerIp !== (string)$agent_server_ip) {
+                $this->AdminModel->Set_Agent_Ip($currentAgentServerIp);
+            }
+            $agent_server_ip = $currentAgentServerIp;
+        }
         $job_list = $this->SettingModel->get_job_list();
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         $idas_version = $this->SettingModel->get_idas_version();
@@ -1389,6 +1398,17 @@ class Settings extends Controller
         $max_user = $this->AdminModel->Get_Das_Config('max_concurrent_users');
         $agent_server_ip = $this->AdminModel->Get_Das_Config('agent_server_ip');
         $agent_type = $this->AdminModel->Get_Das_Config('agent_type');
+        if ((int)$agent_type === 2) {
+            $currentNetworkIp = $this->getCurrentNetworkIp();
+            if ($currentNetworkIp !== '') {
+                // Server mode is hosted by this device.  The saved value may
+                // still be the address of a Wi-Fi interface already removed.
+                if ($currentNetworkIp !== (string)$agent_server_ip) {
+                    $this->AdminModel->Set_Agent_Ip($currentNetworkIp);
+                }
+                $agent_server_ip = $currentNetworkIp;
+            }
+        }
         $job_list = $this->SettingModel->get_job_list();
         $barcode_mode = $this->MiscellaneousModel->details('barcode_mode');
         $idas_version = $this->SettingModel->get_idas_version();
@@ -8540,6 +8560,13 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
     {
         $candidates = [];
 
+        // A page reached by IPv4 already tells us exactly which local address
+        // is usable from the operator's current wired/Wi-Fi connection.
+        $httpHost = preg_replace('/:\d+$/', '', trim((string)($_SERVER['HTTP_HOST'] ?? '')));
+        if (filter_var($httpHost, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $candidates[] = $httpHost;
+        }
+
         if (!empty($_SERVER['SERVER_ADDR'])) {
             $candidates[] = trim((string)$_SERVER['SERVER_ADDR']);
         }
@@ -8568,10 +8595,15 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
             if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                 continue;
             }
-            if ($fallback === '') {
+            if ($fallback === ''
+                && strpos($ip, '127.') !== 0
+                && strpos($ip, '169.254.') !== 0
+                && $ip !== '192.168.7.7') {
                 $fallback = $ip;
             }
-            if (strpos($ip, '127.') !== 0) {
+            if (strpos($ip, '127.') !== 0
+                && strpos($ip, '169.254.') !== 0
+                && $ip !== '192.168.7.7') {
                 return $ip;
             }
         }

@@ -396,11 +396,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function upsertRow(payload) {
         console.log(payload);
 
-        if (payload?.agent_event === 'offline') {
-            const offlineIp = String(payload.client_ip || '').trim();
-            if (offlineIp) {
+        if (payload?.agent_event === 'offline' || payload?.agent_event === 'ip_changed') {
+            const retiredIp = String(
+                payload.old_client_ip || payload.client_ip || ''
+            ).trim();
+            if (retiredIp) {
                 table2.rows(function(idx, rowData) {
-                    return String(rowData?.client_ip || '').trim() === offlineIp;
+                    return String(rowData?.client_ip || '').trim() === retiredIp;
                 }).remove().draw(false);
             }
             return;
@@ -413,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function () {
             device_type: deviceType,
             device_type_name: getDeviceTypeName(payload.device_type),
             device_name: payload.device_name ?? '',
-            client_ip: payload.client_ip ?? '',
+            client_ip: String(payload.client_ip ?? '').trim(),
             data_time: formatDataTime(payload.data_time),
             job_id: payload.job_id ?? '',
 
@@ -429,7 +431,16 @@ document.addEventListener('DOMContentLoaded', function () {
             _agent_last_received_at: receivedAt
         };
 
-        if (!rowData.client_ip && !rowData.device_sn && !rowData.device_id) return;
+        // Agent rows must always point to a real active LAN address.  Do not
+        // keep loopback/link-local/factory-default addresses on screen during
+        // an Ethernet/Wi-Fi transition.
+        if (!rowData.client_ip
+            || rowData.client_ip === '192.168.7.7'
+            || rowData.client_ip === '0.0.0.0'
+            || rowData.client_ip.startsWith('127.')
+            || rowData.client_ip.startsWith('169.254.')) {
+            return;
+        }
 
         const key = (
             rowData.device_sn ||

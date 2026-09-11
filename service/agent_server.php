@@ -82,14 +82,26 @@ $onMessage = function (Server $server, $frame) use ($broadcastSamePort, &$client
     if ($port === 9501) {
         $payload = json_decode((string)$frame->data, true);
         $clientIp = is_array($payload) ? trim((string)($payload['client_ip'] ?? '')) : '';
+        $previousIp = (string)($clientIpByFd[$frame->fd] ?? '');
+
+        // Local Server mode keeps the same loopback WebSocket connection while
+        // the controller moves between Ethernet and Wi-Fi.  Explicitly retire
+        // the previous advertised IP so the Agent page never keeps a stale row.
+        if ($previousIp !== '' && $previousIp !== $clientIp
+            && (($currentFdByClientIp[$previousIp] ?? null) === $frame->fd)) {
+            unset($currentFdByClientIp[$previousIp]);
+            $broadcastSamePort($server, 9501, json_encode([
+                'agent_event' => ($clientIp === '' ? 'offline' : 'ip_changed'),
+                'client_ip' => ($clientIp === '' ? $previousIp : $clientIp),
+                'old_client_ip' => $previousIp,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
         if ($clientIp !== '') {
-            $previousIp = $clientIpByFd[$frame->fd] ?? '';
-            if ($previousIp !== '' && $previousIp !== $clientIp
-                && (($currentFdByClientIp[$previousIp] ?? null) === $frame->fd)) {
-                unset($currentFdByClientIp[$previousIp]);
-            }
             $clientIpByFd[$frame->fd] = $clientIp;
             $currentFdByClientIp[$clientIp] = $frame->fd;
+        } else {
+            unset($clientIpByFd[$frame->fd]);
         }
     }
 

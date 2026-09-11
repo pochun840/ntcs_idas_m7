@@ -206,7 +206,14 @@ class Admins extends Controller
         $message['server_status'] = $this->ProcessCheck('agent_server.php');//1.檢測server.php
         $message['client_status'] = $this->ProcessCheck('agent_client.php');//2.檢測client.php
 
-        echo json_encode($message);
+        // Settings > Connection uses the same status endpoint to refresh the
+        // current Agent server IP. In Server mode agent_client.php keeps this
+        // DB value synchronized with the active wired/Wi-Fi interface.
+        $message['agent_server_ip'] = (string)($this->AdminModel->Get_Das_Config('agent_server_ip') ?? '');
+        $message['agent_type'] = (int)($this->AdminModel->Get_Das_Config('agent_type') ?? 0);
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($message, JSON_UNESCAPED_UNICODE);
     }
 
     public function ProcessCheck($processName)

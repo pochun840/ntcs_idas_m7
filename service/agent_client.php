@@ -294,6 +294,13 @@ function isUsableAgentIpv4(string $candidate): bool
         && $candidate !== AGENT_FACTORY_DEFAULT_IPV4;
 }
 
+function isValidAgentInterfaceName(string $interface): bool
+{
+    return $interface !== ''
+        && preg_match('/^[A-Za-z0-9_.:@-]+$/', $interface) === 1
+        && preg_match('/^(lo|docker\d*|br-|veth|virbr|tun|tap)/i', $interface) !== 1;
+}
+
 function agentIpv4FromRoute(string $routeOutput): string
 {
     if (preg_match('/\bsrc\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\b/', $routeOutput, $matches)) {
@@ -306,35 +313,288 @@ function agentIpv4FromRoute(string $routeOutput): string
     return '';
 }
 
-function isAgentInterfaceActive(string $interface, callable $run, string $ipBinary): bool
+function agentRouteInterface(string $routeLine): string
 {
-    $linkOutput = trim((string)$run(
-        $ipBinary . ' -o link show dev ' . escapeshellarg($interface) . ' 2>/dev/null'
-    ));
-
-    // Keep compatibility if the platform cannot report link state.
-    if ($linkOutput === '') {
-        return true;
+    if (preg_match('/\bdev\s+([^\s]+)/', $routeLine, $matches)) {
+        $interface = preg_replace('/@.*$/', '', trim((string)$matches[1]));
+        return isValidAgentInterfaceName($interface) ? $interface : '';
     }
 
-    // An administratively enabled Ethernet interface can retain its IP and
-    // route after the cable is removed. NO-CARRIER/state DOWN must not win
-    // over an associated Wi-Fi interface.
-    if (preg_match('/\bNO-CARRIER\b/', $linkOutput)
-        || preg_match('/\bstate\s+DOWN\b/i', $linkOutput)) {
+    return '';
+}
+
+function agentRouteMetric(string $routeLine): int
+{
+    if (preg_match('/\bmetric\s+(\d+)\b/i', $routeLine, $matches)) {
+        return (int)$matches[1];
+    }
+
+    return 0;
+}
+
+/**
+ * Read a tiny sysfs value directly first.  This avoids depending on shell_exec
+ * for carrier/operstate, which is important on controller images that restrict
+ * PHP shell commands.
+ */
+function agentReadSysfs(string $path, ?callable $run = null): string
+{
+    $value = @file_get_contents($path);
+    if (is_string($value)) {
+        return trim($value);
+    }
+
+    if ($run !== null) {
+        return trim((string)$run('cat ' . escapeshellarg($path) . ' 2>/dev/null'));
+    }
+
+    return '';
+}
+
+function agentInterfaceCarrierState(string $interface, callable $run): ?bool
+{
+    if (!isValidAgentInterfaceName($interface)) {
         return false;
     }
 
-    return preg_match('/\bLOWER_UP\b/', $linkOutput) === 1
-        || preg_match('/\bstate\s+UP\b/i', $linkOutput) === 1
-        || preg_match('/\bstate\s+UNKNOWN\b/i', $linkOutput) === 1;
+    $carrier = agentReadSysfs('/sys/class/net/' . $interface . '/carrier', $run);
+    if ($carrier === '1') {
+        return true;
+    }
+    if ($carrier === '0') {
+        return false;
+    }
+
+    return null;
+}
+
+function agentInterfaceOperState(string $interface, callable $run): string
+{
+    if (!isValidAgentInterfaceName($interface)) {
+        return '';
+    }
+
+    return strtolower(agentReadSysfs('/sys/class/net/' . $interface . '/operstate', $run));
+}
+
+function agentInterfaceIsWireless(string $interface, callable $run): bool
+{
+    if (!isValidAgentInterfaceName($interface)) {
+        return false;
+    }
+
+    // sysfs is the most reliable and does not require optional iw tools.
+    if (is_dir('/sys/class/net/' . $interface . '/wireless')
+        || is_link('/sys/class/net/' . $interface . '/phy80211')) {
+        return true;
+    }
+
+    // Fallback for test/minimal systems where sysfs detection is unavailable.
+    $probe = trim((string)$run(
+        '[ -d ' . escapeshellarg('/sys/class/net/' . $interface . '/wireless')
+        . ' ] && echo 1 || true'
+    ));
+    if ($probe === '1') {
+        return true;
+    }
+
+    $iwDev = trim((string)$run(
+        'command -v iw >/dev/null 2>&1 && iw dev ' . escapeshellarg($interface) . ' info 2>/dev/null'
+    ));
+    return $iwDev !== '';
+}
+
+/**
+ * Return true/false when Wi-Fi association can be positively determined,
+ * otherwise null.  Do not treat "interface UP" as Wi-Fi connected.
+ */
+function agentWirelessAssociationState(string $interface, callable $run): ?bool
+{
+    if (!isValidAgentInterfaceName($interface)) {
+        return false;
+    }
+
+    $iwAvailable = trim((string)$run('command -v iw 2>/dev/null')) !== '';
+    if ($iwAvailable) {
+        $iwOutput = trim((string)$run(
+            'iw dev ' . escapeshellarg($interface) . ' link 2>/dev/null'
+        ));
+        if (preg_match('/\bNot connected\b/i', $iwOutput)) {
+            return false;
+        }
+        if (preg_match('/\bConnected to\b/i', $iwOutput)) {
+            return true;
+        }
+    }
+
+    $iwgetidAvailable = trim((string)$run('command -v iwgetid 2>/dev/null')) !== '';
+    if ($iwgetidAvailable) {
+        $ssid = trim((string)$run(
+            'iwgetid ' . escapeshellarg($interface) . ' --raw 2>/dev/null'
+        ));
+        return $ssid !== '';
+    }
+
+    $wpaCliAvailable = trim((string)$run('command -v wpa_cli 2>/dev/null')) !== '';
+    if ($wpaCliAvailable) {
+        $status = (string)$run(
+            'wpa_cli -i ' . escapeshellarg($interface) . ' status 2>/dev/null'
+        );
+        if (preg_match('/^wpa_state=COMPLETED$/mi', $status)) {
+            return true;
+        }
+        if (preg_match('/^wpa_state=(?:DISCONNECTED|INACTIVE|SCANNING|INTERFACE_DISABLED)$/mi', $status)) {
+            return false;
+        }
+    }
+
+    return null;
+}
+
+function isAgentInterfaceActive(string $interface, callable $run, string $ipBinary): bool
+{
+    if (!isValidAgentInterfaceName($interface)) {
+        return false;
+    }
+
+    $carrierState = agentInterfaceCarrierState($interface, $run);
+    if ($carrierState === false) {
+        return false;
+    }
+
+    $operState = agentInterfaceOperState($interface, $run);
+    if (in_array($operState, ['down', 'lowerlayerdown', 'notpresent'], true)) {
+        return false;
+    }
+
+    $linkOutput = trim((string)$run(
+        $ipBinary . ' -o link show dev ' . escapeshellarg($interface) . ' 2>/dev/null'
+    ));
+    if ($linkOutput !== '' && (
+        preg_match('/\bNO-CARRIER\b/', $linkOutput)
+        || preg_match('/\bstate\s+DOWN\b/i', $linkOutput)
+    )) {
+        return false;
+    }
+
+    $isWireless = agentInterfaceIsWireless($interface, $run);
+    if ($isWireless) {
+        $associationState = agentWirelessAssociationState($interface, $run);
+
+        // Wi-Fi is only active when association/carrier is real.  This is the
+        // key fix for a removed Wi-Fi connection that leaves wlan0, its IPv4,
+        // and even a default route behind for a while.
+        if ($associationState === false) {
+            return false;
+        }
+        if ($associationState === true) {
+            return true;
+        }
+
+        // Optional Wi-Fi tools may not exist on the controller image.  In that
+        // case require kernel carrier + a non-dormant operational state. Never
+        // fall back to merely "state UP/UNKNOWN" for wireless interfaces.
+        if ($carrierState === true) {
+            return !in_array($operState, ['dormant', 'down', 'lowerlayerdown', 'notpresent'], true);
+        }
+
+        return false;
+    }
+
+    // Wired interface: carrier is decisive when available.
+    if ($carrierState === true) {
+        return true;
+    }
+
+    // Compatibility fallback for unusual/minimal kernels without carrier.
+    return $linkOutput !== ''
+        && preg_match('/\bLOWER_UP\b/', $linkOutput) === 1
+        && preg_match('/\bstate\s+UP\b/i', $linkOutput) === 1;
+}
+
+function agentInterfaceIpv4(string $interface, callable $run, string $ipBinary): string
+{
+    if (!isValidAgentInterfaceName($interface)) {
+        return '';
+    }
+
+    $addressOutput = (string)$run(
+        $ipBinary . ' -o -4 addr show dev ' . escapeshellarg($interface)
+        . ' scope global 2>/dev/null'
+    );
+
+    if (preg_match_all(
+        '/\binet\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\//',
+        $addressOutput,
+        $matches
+    )) {
+        foreach ($matches[1] as $candidate) {
+            $candidate = trim((string)$candidate);
+            if (isUsableAgentIpv4($candidate)) {
+                return $candidate;
+            }
+        }
+    }
+
+    return '';
+}
+
+function agentSortedDefaultRouteLines(string $routeOutput): array
+{
+    $lines = preg_split('/\r?\n/', trim($routeOutput)) ?: [];
+    $routes = [];
+
+    foreach ($lines as $index => $line) {
+        $line = trim((string)$line);
+        if ($line === '') {
+            continue;
+        }
+        $routes[] = [
+            'line' => $line,
+            'metric' => agentRouteMetric($line),
+            'index' => (int)$index,
+        ];
+    }
+
+    usort($routes, static function (array $a, array $b): int {
+        if ($a['metric'] === $b['metric']) {
+            return $a['index'] <=> $b['index'];
+        }
+        return $a['metric'] <=> $b['metric'];
+    });
+
+    return array_column($routes, 'line');
+}
+
+function agentIpFromRouteLine(string $routeLine, callable $run, string $ipBinary): string
+{
+    $interface = agentRouteInterface($routeLine);
+    if ($interface === '' || !isAgentInterfaceActive($interface, $run, $ipBinary)) {
+        return '';
+    }
+
+    $candidate = agentIpv4FromRoute($routeLine);
+    if ($candidate !== '') {
+        // A stale route can still contain the old Wi-Fi src.  Verify that the
+        // source address is still attached to this *active* interface.
+        $addresses = (string)$run(
+            $ipBinary . ' -o -4 addr show dev ' . escapeshellarg($interface)
+            . ' scope global 2>/dev/null'
+        );
+        if (preg_match('/\binet\s+' . preg_quote($candidate, '/') . '\//', $addresses)) {
+            return strtoupper($candidate);
+        }
+    }
+
+    $candidate = agentInterfaceIpv4($interface, $run, $ipBinary);
+    return $candidate !== '' ? strtoupper($candidate) : '';
 }
 
 function getIp(?callable $commandRunner = null): string
 {
     if (PHP_OS_FAMILY !== 'Linux') {
         $candidate = strtoupper((string)gethostbyname(gethostname()));
-        return isUsableAgentIpv4($candidate) ? $candidate : '127.0.0.1';
+        return isUsableAgentIpv4($candidate) ? $candidate : '';
     }
 
     $run = $commandRunner ?? static function (string $command): string {
@@ -345,86 +605,83 @@ function getIp(?callable $commandRunner = null): string
     $ipBinary = is_executable('/sbin/ip')
         ? '/sbin/ip'
         : (is_executable('/usr/sbin/ip') ? '/usr/sbin/ip' : 'ip');
-    $routeOutputs = [];
     $serverIp = defined('AGENT_IP') ? trim((string)AGENT_IP) : '';
 
-    // The route to the configured Agent server is the most reliable signal:
-    // it automatically follows Wi-Fi/Ethernet route and metric changes.
+    // Client mode: ask the kernel which interface/source would reach the
+    // configured Agent server. The configured server IP is a destination only;
+    // it is never copied into client_ip.
     if (filter_var($serverIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
         && strpos($serverIp, '127.') !== 0) {
-        $routeOutputs[] = (string)$run(
+        $routeToServer = trim((string)$run(
             $ipBinary . ' -o -4 route get ' . escapeshellarg($serverIp) . ' 2>/dev/null'
-        );
-    }
-
-    // Local Agent-server mode connects through 127.0.0.1, so use the active
-    // default route to determine which LAN interface should be advertised.
-    $routeOutputs[] = (string)$run($ipBinary . ' -o -4 route show default 2>/dev/null');
-
-    foreach ($routeOutputs as $routeOutput) {
-        $routeLines = preg_split('/\r?\n/', trim($routeOutput)) ?: [];
-        foreach ($routeLines as $routeLine) {
-            if ($routeLine === '') {
-                continue;
-            }
-
-            $interface = '';
-            if (preg_match('/\bdev\s+([^\s]+)/', $routeLine, $matches)) {
-                $interface = trim((string)$matches[1]);
-            }
-
-            if ($interface !== '') {
-                if (!preg_match('/^[A-Za-z0-9_.:@-]+$/', $interface)
-                    || !isAgentInterfaceActive($interface, $run, $ipBinary)) {
-                    continue;
-                }
-            }
-
-            $candidate = agentIpv4FromRoute($routeLine);
+        ));
+        if ($routeToServer !== '') {
+            $candidate = agentIpFromRouteLine($routeToServer, $run, $ipBinary);
             if ($candidate !== '') {
-                return strtoupper($candidate);
-            }
-
-            if ($interface !== '') {
-                $addressOutput = (string)$run(
-                    $ipBinary . ' -o -4 addr show dev ' . escapeshellarg($interface)
-                    . ' up scope global 2>/dev/null'
-                );
-                if (preg_match('/\binet\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\//', $addressOutput, $addressMatch)) {
-                    $candidate = trim((string)$addressMatch[1]);
-                    if (isUsableAgentIpv4($candidate)) {
-                        return strtoupper($candidate);
-                    }
-                }
+                return $candidate;
             }
         }
     }
 
-    // Last resort for systems without a default route: only consider active,
-    // global-scope addresses and avoid common virtual/container interfaces.
-    $addresses = (string)$run($ipBinary . ' -o -4 addr show up scope global 2>/dev/null');
+    // Server mode connects locally through 127.0.0.1. Choose the active LAN
+    // interface from default routes. Stale routes are harmless because every
+    // route is revalidated against carrier/association before its IP is used.
+    $defaultRoutes = (string)$run($ipBinary . ' -o -4 route show default 2>/dev/null');
+    foreach (agentSortedDefaultRouteLines($defaultRoutes) as $routeLine) {
+        $candidate = agentIpFromRouteLine($routeLine, $run, $ipBinary);
+        if ($candidate !== '') {
+            return $candidate;
+        }
+    }
+
+    // Some controller networks have no default gateway. Inspect all global IPv4
+    // addresses, but accept only interfaces whose physical link is active.
+    $addresses = (string)$run($ipBinary . ' -o -4 addr show scope global 2>/dev/null');
+    $candidates = [];
     if (preg_match_all(
         '/^\d+:\s+([^\s]+)\s+inet\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\//m',
         $addresses,
         $matches,
         PREG_SET_ORDER
     )) {
-        foreach ($matches as $match) {
+        $routeMetrics = [];
+        foreach (agentSortedDefaultRouteLines($defaultRoutes) as $routeLine) {
+            $routeInterface = agentRouteInterface($routeLine);
+            if ($routeInterface !== '' && !isset($routeMetrics[$routeInterface])) {
+                $routeMetrics[$routeInterface] = agentRouteMetric($routeLine);
+            }
+        }
+
+        foreach ($matches as $index => $match) {
             $interface = preg_replace('/@.*$/', '', (string)$match[1]);
             $candidate = trim((string)$match[2]);
-            if (preg_match('/^(lo|docker\d*|br-|veth|virbr|tun|tap)/i', $interface)) {
+            if (!isValidAgentInterfaceName($interface)
+                || !isUsableAgentIpv4($candidate)
+                || !isAgentInterfaceActive($interface, $run, $ipBinary)) {
                 continue;
             }
-            if (!isAgentInterfaceActive($interface, $run, $ipBinary)) {
-                continue;
-            }
-            if (isUsableAgentIpv4($candidate)) {
-                return strtoupper($candidate);
-            }
+
+            $candidates[] = [
+                'ip' => $candidate,
+                'metric' => $routeMetrics[$interface] ?? PHP_INT_MAX,
+                'index' => (int)$index,
+            ];
         }
     }
 
-    return '127.0.0.1';
+    if ($candidates) {
+        usort($candidates, static function (array $a, array $b): int {
+            if ($a['metric'] === $b['metric']) {
+                return $a['index'] <=> $b['index'];
+            }
+            return $a['metric'] <=> $b['metric'];
+        });
+        return strtoupper((string)$candidates[0]['ip']);
+    }
+
+    // No usable physical LAN link is active.  Send an empty client_ip so the
+    // Agent server retires the old row instead of keeping the previous Wi-Fi IP.
+    return '';
 }
 
 /* ===== 啟動兩個連線：9501 與 9502 ===== */

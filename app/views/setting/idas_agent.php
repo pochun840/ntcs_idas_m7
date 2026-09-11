@@ -70,3 +70,57 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    'use strict';
+
+    // In Server mode, agent_server_ip represents this controller's current
+    // network IP. Refresh it without requiring a page reload when LAN/Wi-Fi
+    // changes. Client mode remains user-configurable and is never overwritten.
+    let agentIpRefreshTimer = null;
+    let agentIpRefreshBusy = false;
+
+    function isServerModeSelected() {
+        const selected = document.querySelector('input[name="agent_type"]:checked');
+        return selected && String(selected.value) === '2';
+    }
+
+    function refreshAgentServerIp() {
+        const ipEl = document.getElementById('agent_server_ip');
+        if (!ipEl || !isServerModeSelected() || agentIpRefreshBusy || typeof $ === 'undefined') {
+            return;
+        }
+
+        agentIpRefreshBusy = true;
+        $.ajax({
+            type: 'POST',
+            url: '?url=Admins/AgentTest',
+            dataType: 'json',
+            cache: false,
+            data: {}
+        }).done(function (result) {
+            if (!result || Number(result.agent_type) !== 2) return;
+            const latestIp = String(result.agent_server_ip || '').trim();
+            if (latestIp && ipEl.value.trim() !== latestIp) {
+                ipEl.value = latestIp;
+                ipEl.classList.remove('is-invalid');
+            }
+        }).always(function () {
+            agentIpRefreshBusy = false;
+        });
+    }
+
+    function startAgentIpRefresh() {
+        if (agentIpRefreshTimer !== null) return;
+        refreshAgentServerIp();
+        agentIpRefreshTimer = window.setInterval(refreshAgentServerIp, 2000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startAgentIpRefresh, { once: true });
+    } else {
+        startAgentIpRefresh();
+    }
+})();
+</script>

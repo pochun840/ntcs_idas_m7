@@ -224,16 +224,91 @@ class Tools extends Controller
         }
     }
 
-    public function getIp(){
-        if (PHP_OS_FAMILY == 'Linux'){
-            $Ips = trim(shell_exec("/sbin/ip -o -4 addr list  | awk '{print $4}' | cut -d/ -f1"));
-            $Ip = explode(PHP_EOL, $Ips);
-            return strtoupper($Ip[1] ?? ($Ip[0] ?? ''));
-        } else {
-            $host_addr= gethostname();
-            $ip_addr  = gethostbyname($host_addr);
-            return strtoupper($ip_addr);
+    public function getIp(?callable $commandRunner = null){
+        $isUsableIpv4 = static function ($candidate) {
+            $candidate = trim((string)$candidate);
+            return filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+                && strpos($candidate, '127.') !== 0
+                && strpos($candidate, '169.254.') !== 0
+                && $candidate !== '0.0.0.0'
+                && $candidate !== '192.168.7.7';
+        };
+
+        // When this page is opened through an IPv4 address, the request
+        // already identifies the exact wired/Wi-Fi address currently in use.
+        $requestCandidates = [
+            preg_replace('/:\d+$/', '', trim((string)($_SERVER['HTTP_HOST'] ?? ''))),
+            trim((string)($_SERVER['SERVER_ADDR'] ?? '')),
+        ];
+        foreach ($requestCandidates as $candidate) {
+            if ($isUsableIpv4($candidate)) {
+                return strtoupper($candidate);
+            }
         }
+
+        if (PHP_OS_FAMILY != 'Linux'){
+            $host_addr = gethostname();
+            $ip_addr = gethostbyname($host_addr);
+            return $isUsableIpv4($ip_addr) ? strtoupper($ip_addr) : '';
+        }
+
+        $run = $commandRunner ?? static function ($command) {
+            $output = @shell_exec($command);
+            return is_string($output) ? $output : '';
+        };
+        $ipBinary = is_executable('/sbin/ip')
+            ? '/sbin/ip'
+            : (is_executable('/usr/sbin/ip') ? '/usr/sbin/ip' : 'ip');
+
+        // Prefer the route selected by Linux.  This avoids returning a stale
+        // Wi-Fi address merely because it appears before Ethernet in ip addr.
+        $routes = (string)$run($ipBinary . ' -o -4 route get 1.1.1.1 2>/dev/null');
+        if (trim($routes) === '') {
+            $routes = (string)$run($ipBinary . ' -o -4 route show default 2>/dev/null');
+        }
+        foreach (preg_split('/\r?\n/', trim($routes)) ?: [] as $route) {
+            if (preg_match('/\bsrc\s+([0-9.]+)/', $route, $match)
+                && $isUsableIpv4($match[1])) {
+                return strtoupper($match[1]);
+            }
+
+            if (preg_match('/\bdev\s+([^\s]+)/', $route, $match)) {
+                $interface = preg_replace('/@.*$/', '', trim((string)$match[1]));
+                if (!preg_match('/^[A-Za-z0-9_.:-]+$/', $interface)) {
+                    continue;
+                }
+                $addresses = (string)$run(
+                    $ipBinary . ' -o -4 addr show dev ' . escapeshellarg($interface)
+                    . ' up scope global 2>/dev/null'
+                );
+                if (preg_match('/\binet\s+([0-9.]+)\//', $addresses, $addressMatch)
+                    && $isUsableIpv4($addressMatch[1])) {
+                    return strtoupper($addressMatch[1]);
+                }
+            }
+        }
+
+        // Isolated networks may not have a default route.  Only active,
+        // physical-looking interfaces are considered as a final fallback.
+        $addresses = (string)$run($ipBinary . ' -o -4 addr show up scope global 2>/dev/null');
+        if (preg_match_all(
+            '/^\d+:\s+([^\s]+)\s+inet\s+([0-9.]+)\//m',
+            $addresses,
+            $matches,
+            PREG_SET_ORDER
+        )) {
+            foreach ($matches as $match) {
+                $interface = preg_replace('/@.*$/', '', (string)$match[1]);
+                if (preg_match('/^(lo|docker\d*|br-|veth|virbr|tun|tap)/i', $interface)) {
+                    continue;
+                }
+                if ($isUsableIpv4($match[2])) {
+                    return strtoupper($match[2]);
+                }
+            }
+        }
+
+        return '';
     }
 
     public function get_subnet($ip, $netmask = '255.255.255.0') {
