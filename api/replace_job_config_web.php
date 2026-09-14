@@ -97,6 +97,8 @@ $i18nAll = [
         'result_skipped' => 'Skipped',
         'result_failed' => 'Failed',
         'elapsed_time' => 'Elapsed time',
+        'err_default_target_unavailable' => 'No valid controller IP is configured in iDAS Settings → Connection.',
+        'err_not_same_subnet' => 'Target is not on an active local subnet.',
         'err_target_unreachable' => 'Target is unreachable.',
         'err_controller_in_use' => 'Controller is not logged out.',
         'err_root_missing' => 'NTCS7 directory is missing.',
@@ -262,6 +264,8 @@ $i18nAll = [
         'result_skipped' => '略過',
         'result_failed' => '失敗',
         'elapsed_time' => '花費時間',
+        'err_default_target_unavailable' => 'iDAS「設定 → 連線」尚未設定有效的控制器 IP。',
+        'err_not_same_subnet' => '目標 IP 不在目前有效的本機網段內。',
         'err_target_unreachable' => '目標控制器無法連線。',
         'err_controller_in_use' => '控制器尚未登出。',
         'err_root_missing' => 'NTCS7 目錄不存在。',
@@ -389,6 +393,8 @@ $i18nAll = [
         'result_skipped' => '跳过',
         'result_failed' => '失败',
         'elapsed_time' => '耗时',
+        'err_default_target_unavailable' => 'iDAS“设置 → 连接”尚未设置有效的控制器 IP。',
+        'err_not_same_subnet' => '目标 IP 不在当前有效的本机网段内。',
         'err_target_unreachable' => '目标控制器无法连接。',
         'err_controller_in_use' => '控制器尚未登出。',
         'err_root_missing' => 'NTCS7 目录不存在。',
@@ -542,7 +548,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
       "JOBname": "JOB-1",
       "type": 1,
       "time": "2026-09-11 00:00:00",
-      "act": 0,
+      "act": 1,
       "ok_job": 1,
       "ok_job_stop": 0,
       "output_unified": 0,
@@ -1032,6 +1038,9 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
 
   function errorMessageFromCode(code, fallback) {
     const map = {
+      DEFAULT_TARGET_UNAVAILABLE: T.err_default_target_unavailable,
+      NOT_SAME_SUBNET: T.err_not_same_subnet,
+      REMOTE_NOT_SAME_SUBNET: T.err_not_same_subnet,
       TARGET_UNREACHABLE: T.err_target_unreachable,
       NO_RESPONSE: T.err_target_unreachable,
       CONTROLLER_IN_USE: T.err_controller_in_use,
@@ -1148,7 +1157,11 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
   }
 
   function buildMesRequest(payload, action) {
-    return Object.assign({api_version: apiVersion, action: action || 'write', targets: normalizeTargetInput()}, payload || {});
+    const request = Object.assign({api_version: apiVersion, action: action || 'write'}, payload || {});
+    // A normal MES request uses the controller IP configured in iDAS.
+    // Only an explicit multi-controller deployment needs targets.
+    if (deploymentMode === 'multi') request.targets = normalizeTargetInput();
+    return request;
   }
 
   function updatePreviewSummary(inserted, updated) {

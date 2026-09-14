@@ -152,6 +152,7 @@ final class JobConfigReplaceService
 
         $jobs = [];
         $jobIds = [];
+        $activeJobId = null;
         foreach (array_values($payload['JOB_lst']) as $index => $job) {
             $path = '$.JOB_lst[' . $index . ']';
             if (!is_array($job)) $this->validation('row must be an object', $path);
@@ -163,6 +164,13 @@ final class JobConfigReplaceService
             $row = array_replace($this->jobDefaults($jobId), $job);
             $row['JOBID'] = $jobId;
             $row['JOBname'] = $this->text($row['JOBname'], 1, 64, $path . '.JOBname');
+            $row['act'] = $this->requiredInt($row, 'act', 0, 1, $path);
+            if ($row['act'] === 1) {
+                if ($activeJobId !== null) {
+                    $this->validation('only one JOB may have act=1', $path . '.act');
+                }
+                $activeJobId = $jobId;
+            }
             $jobs[] = $row;
         }
 
@@ -211,7 +219,7 @@ final class JobConfigReplaceService
             $steps[] = $row;
         }
 
-        return ['jobs' => $jobs, 'sequences' => $sequences, 'steps' => $steps];
+        return ['jobs' => $jobs, 'sequences' => $sequences, 'steps' => $steps, 'active_job_id' => $activeJobId];
     }
 
     private function inspectChanges(string $databasePath, array $data): array
@@ -279,6 +287,21 @@ final class JobConfigReplaceService
                 }
             }
         }
+        if ($data['active_job_id'] !== null) {
+            $stmt = $pdo->prepare(
+                'SELECT COUNT(*) FROM "JOB_lst" WHERE "JOBID" <> :active_job_id'
+                . ' AND ("act" IS NULL OR CAST("act" AS INTEGER) <> 0)'
+            );
+            $stmt->bindValue(':active_job_id', $data['active_job_id'], PDO::PARAM_INT);
+            $stmt->execute();
+            if ((int)$stmt->fetchColumn() !== 0) {
+                throw new JobConfigApiException(
+                    500,
+                    JobConfigErrorCodes::VERIFY_FAILED,
+                    'Read-back verification failed: another JOB is still active'
+                );
+            }
+        }
         $check = strtolower(trim((string)$pdo->query('PRAGMA quick_check')->fetchColumn()));
         if ($check !== 'ok') throw new JobConfigApiException(500, JobConfigErrorCodes::VERIFY_FAILED, 'SQLite quick_check failed after write');
     }
@@ -331,6 +354,9 @@ final class JobConfigReplaceService
                 'inserted' => ['jobs' => 0, 'sequences' => 0, 'steps' => 0],
                 'updated' => ['jobs' => 0, 'sequences' => 0, 'steps' => 0],
             ];
+            if ($data['active_job_id'] !== null) {
+                $this->deactivateOtherJobs($pdo, $data['active_job_id']);
+            }
             foreach ($data['jobs'] as $job) {
                 $operation = $this->upsertRow($pdo, 'JOB_lst', $columns['JOB_lst'], $primaryKeys['JOB_lst'], $job);
                 $counts['jobs']++;
@@ -362,6 +388,17 @@ final class JobConfigReplaceService
         }
 
         return $counts;
+    }
+
+    /** Keep JOB_lst.act exclusive when the incoming payload activates a JOB. */
+    private function deactivateOtherJobs(PDO $pdo, int $activeJobId): void
+    {
+        $statement = $pdo->prepare(
+            'UPDATE "JOB_lst" SET "act" = 0 WHERE "JOBID" <> :active_job_id'
+            . ' AND ("act" IS NULL OR CAST("act" AS INTEGER) <> 0)'
+        );
+        $statement->bindValue(':active_job_id', $activeJobId, PDO::PARAM_INT);
+        $statement->execute();
     }
 
     private function upsertRow(PDO $pdo, string $table, array $tableColumns, array $primaryKeys, array $row): string

@@ -17,6 +17,7 @@ final class JobConfigErrorCodes
     public const UNSUPPORTED_API_VERSION = 'UNSUPPORTED_API_VERSION';
     public const INVALID_ACTION = 'INVALID_ACTION';
     public const TARGETS_REQUIRED = 'TARGETS_REQUIRED';
+    public const DEFAULT_TARGET_UNAVAILABLE = 'DEFAULT_TARGET_UNAVAILABLE';
     public const INVALID_TARGETS = 'INVALID_TARGETS';
     public const CONFIG_REQUIRED = 'CONFIG_REQUIRED';
     public const INVALID_REQUEST_KEY = 'INVALID_REQUEST_KEY';
@@ -62,6 +63,7 @@ final class JobConfigErrorCodes
             self::UNSUPPORTED_API_VERSION => 400,
             self::INVALID_ACTION => 400,
             self::TARGETS_REQUIRED => 400,
+            self::DEFAULT_TARGET_UNAVAILABLE => 409,
             self::INVALID_TARGETS => 400,
             self::CONFIG_REQUIRED => 400,
             self::INVALID_REQUEST_KEY => 400,

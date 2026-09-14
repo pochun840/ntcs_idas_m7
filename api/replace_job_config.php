@@ -30,6 +30,31 @@ function job_config_idas_version(): string
     return $version;
 }
 
+/**
+ * Return the controller IP configured under Settings -> Connection.
+ * MES callers may omit targets; the configured agent_server_ip then becomes
+ * the single deployment target. An explicitly supplied targets list always
+ * takes precedence.
+ */
+function job_config_default_target_ip(): ?string
+{
+    if (!defined('IDAS_PATH_DATABASE_ROOT') || !function_exists('idas_sqlite_connect')) return null;
+
+    $database = rtrim((string)IDAS_PATH_DATABASE_ROOT, '/\\') . DIRECTORY_SEPARATOR . 'das.db';
+    if (!is_file($database) || !is_readable($database)) return null;
+
+    try {
+        $pdo = idas_sqlite_connect($database);
+        $statement = $pdo->prepare("SELECT config_value FROM config WHERE config_name = 'agent_server_ip' LIMIT 1");
+        if (!$statement->execute()) return null;
+        $value = trim((string)$statement->fetchColumn());
+        return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false ? $value : null;
+    } catch (Throwable $e) {
+        error_log('[replace_job_config] Unable to read default controller IP: ' . $e->getMessage());
+        return null;
+    }
+}
+
 
 function job_config_max_request_bytes(): int
 {
@@ -301,37 +326,33 @@ try {
      * {
      *   "action": "check|preview|write",   // optional, defaults to write
      *   "request_key": "MES-20260914-0001", // recommended for write idempotency
-     *   "targets": ["192.168.100.150"],
+     *   "targets": ["192.168.100.150"], // optional; defaults to Settings -> Connection IP
      *   "JOB_lst": [...],
      *   "SEQ_lst": [...],
      *   "STEP_lst": [...]
      * }
      *
-     * Single and multi-controller deployment use the exact same schema; only
-     * the number of targets changes.  A legacy raw local JOB/SEQ/STEP body is
-     * still accepted for backward compatibility, but new integrations should
-     * always send targets.
+     * Omit targets for the controller configured in iDAS. Send targets only
+     * when MES needs to explicitly select one or more controllers.
      */
     $action = strtolower(trim((string)($request['action'] ?? 'write')));
     $hasTargets = array_key_exists('targets', $request);
     $hasConfig = array_key_exists('JOB_lst', $request) || array_key_exists('SEQ_lst', $request) || array_key_exists('STEP_lst', $request);
 
-    // Backward compatibility for older local callers. Not part of the new public contract.
-    if (!$hasTargets && $hasConfig && !isset($request['payload'])) {
-        if ($action === 'preview') {
-            $result = $localService->preview($request);
-            job_config_response(200, ['success'=>true, 'data'=>$result]);
+    if (!$hasTargets) {
+        $defaultTarget = job_config_default_target_ip();
+        if ($defaultTarget === null) {
+            job_config_response(409, [
+                'success'=>false,
+                'action'=>$action,
+                'error'=>[
+                    'code'=>JobConfigErrorCodes::DEFAULT_TARGET_UNAVAILABLE,
+                    'message'=>'targets was omitted and no valid controller IP is configured in iDAS Settings -> Connection.',
+                ],
+            ]);
         }
-        if ($action !== 'write') job_config_response(400, ['success'=>false,'error'=>['code'=>JobConfigErrorCodes::INVALID_ACTION,'message'=>'action must be preview or write for legacy local JSON']]);
-        $dedupe = job_config_dedupe_begin($request);
-        if (!empty($dedupe['error'])) job_config_response((int)$dedupe['error']['status'], ['success'=>false,'error'=>['code'=>$dedupe['error']['code'],'message'=>$dedupe['error']['message']]]);
-        if (!empty($dedupe['replay'])) job_config_response((int)$dedupe['replay']['status'], $dedupe['replay']['body']);
-        if (!empty($dedupe['context'])) $GLOBALS['JOB_CONFIG_DEDUPE_CONTEXT'] = $dedupe['context'];
-        $result = $localService->replace($request);
-        job_config_response(200, ['success'=>true, 'data'=>$result]);
+        $request['targets'] = [$defaultTarget];
     }
-
-    if (!$hasTargets) job_config_response(400, ['success'=>false,'error'=>['code'=>JobConfigErrorCodes::TARGETS_REQUIRED,'message'=>'targets is required']]);
     $targets = $remoteService->normalizeTargets($request['targets']);
 
     if ($action === 'check') {
