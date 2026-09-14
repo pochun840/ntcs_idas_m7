@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/service/JobConfigErrorCodes.php';
+
 function remote_probe_sanitize_public_data($value)
 {
     if (!is_array($value)) return $value;
@@ -25,7 +27,7 @@ function remote_probe_response(int $status, array $body): void
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     header('Allow: GET');
-    remote_probe_response(405, ['success' => false, 'error' => ['code' => 'METHOD_NOT_ALLOWED', 'message' => 'GET is required']]);
+    remote_probe_response(405, ['success' => false, 'error' => ['code' => JobConfigErrorCodes::METHOD_NOT_ALLOWED, 'message' => 'GET is required']]);
 }
 
 try {
@@ -45,12 +47,14 @@ try {
     );
     $remoteAddress = (string)($_SERVER['REMOTE_ADDR'] ?? '');
     if (!$networkService->isRemoteAddressOnLocalSubnet($remoteAddress)) {
-        remote_probe_response(403, ['success' => false, 'error' => ['code' => 'REMOTE_NOT_SAME_SUBNET', 'message' => 'Probe requests are only accepted from the same subnet']]);
+        remote_probe_response(403, ['success' => false, 'error' => ['code' => JobConfigErrorCodes::REMOTE_NOT_SAME_SUBNET, 'message' => 'Probe requests are only accepted from the same subnet']]);
     }
 
     $controllerRoot = IDAS_PATH_CONTROLLER_ROOT;
     $controllerDb = $controllerRoot . '/KLS_NTCS.Lin';
     $data = [
+        'product' => 'NTCS7',
+        'api_protocol' => 1,
         'controller_root_exists' => is_dir($controllerRoot) && is_readable($controllerRoot),
         'controller_database_exists' => is_file($controllerDb),
         'controller_database_readable' => is_readable($controllerDb),
@@ -62,10 +66,10 @@ try {
     ];
 
     if (!$data['controller_root_exists']) {
-        $data['code'] = 'CONTROLLER_ROOT_NOT_FOUND';
+        $data['code'] = JobConfigErrorCodes::CONTROLLER_ROOT_NOT_FOUND;
         $data['message'] = 'Controller root was not found or is not readable';
     } elseif (!$data['controller_database_exists'] || !$data['controller_database_readable'] || !$data['controller_database_writable']) {
-        $data['code'] = 'CONTROLLER_DATABASE_NOT_WRITABLE';
+        $data['code'] = JobConfigErrorCodes::CONTROLLER_DATABASE_NOT_WRITABLE;
         $data['message'] = 'KLS_NTCS.Lin was not found or is not writable';
     } else {
         try {
@@ -73,10 +77,10 @@ try {
             $preflight = $service->preflight();
             $data = array_merge($data, $preflight);
             $data['ready'] = true;
-            $data['code'] = 'READY';
+            $data['code'] = JobConfigErrorCodes::READY;
             $data['message'] = 'Ready';
         } catch (JobConfigApiException $e) {
-            $data['controller_logged_out'] = $e->getErrorCode() === 'CONTROLLER_IN_USE' ? false : null;
+            $data['controller_logged_out'] = $e->getErrorCode() === JobConfigErrorCodes::CONTROLLER_IN_USE ? false : null;
             $data['code'] = $e->getErrorCode();
             $data['message'] = $e->getMessage();
         }
@@ -85,5 +89,5 @@ try {
     remote_probe_response(200, ['success' => !empty($data['ready']), 'data' => $data]);
 } catch (Throwable $e) {
     error_log('[remote_controller_probe] ' . $e->getMessage());
-    remote_probe_response(500, ['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Probe failed']]);
+    remote_probe_response(500, ['success' => false, 'error' => ['code' => JobConfigErrorCodes::INTERNAL_ERROR, 'message' => 'Probe failed']]);
 }

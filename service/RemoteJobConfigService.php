@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/JobConfigErrorCodes.php';
+
+
 /**
  * LAN-only helper for checking and writing JOB / SEQ / STEP configuration to
  * multiple NTCS7 controllers.  Browser traffic stays on the local iDAS server;
@@ -12,20 +15,25 @@ final class RemoteJobConfigService
     private const MAX_TARGETS = 253;
     private const CONCURRENCY = 5;
     private const CONNECT_TIMEOUT_SECONDS = 2;
-    private const REQUEST_TIMEOUT_SECONDS = 12;
+    private const PROBE_TIMEOUT_SECONDS = 3;
+    private const PREVIEW_TIMEOUT_SECONDS = 8;
+    private const WRITE_TIMEOUT_SECONDS = 20;
+    private const RETRY_COUNT = 2;
 
     private $idasBaseUrl;
     private $commandRunner;
     private $localPreflight;
     private $localWrite;
+    private $localPreview;
     private $networks;
 
-    public function __construct(string $idasBaseUrl, callable $localPreflight, callable $localWrite, ?callable $commandRunner = null)
+    public function __construct(string $idasBaseUrl, callable $localPreflight, callable $localWrite, ?callable $commandRunner = null, ?callable $localPreview = null)
     {
         $this->idasBaseUrl = '/' . trim($idasBaseUrl, '/');
         if ($this->idasBaseUrl === '/') $this->idasBaseUrl = '/idas';
         $this->localPreflight = $localPreflight;
         $this->localWrite = $localWrite;
+        $this->localPreview = $localPreview;
         $this->commandRunner = $commandRunner ?: static function ($command) {
             $output = @shell_exec($command);
             return is_string($output) ? $output : '';
@@ -90,7 +98,7 @@ final class RemoteJobConfigService
         foreach ($targets as $ip) {
             $match = $this->matchedNetwork($ip, $networks);
             if ($match === null) {
-                $results[$ip] = $this->status($ip, false, false, false, false, 'NOT_SAME_SUBNET', 'Target is not on an active local subnet', null);
+                $results[$ip] = $this->status($ip, false, false, false, false, JobConfigErrorCodes::NOT_SAME_SUBNET, 'Target is not on an active local subnet', null);
                 continue;
             }
             if (!$this->isUsableHostAddress($ip, $match)) {
@@ -101,11 +109,11 @@ final class RemoteJobConfigService
             if ($this->isLocalIp($ip, $networks)) {
                 try {
                     $data = call_user_func($this->localPreflight);
-                    $results[$ip] = $this->status($ip, true, true, true, !empty($data['controller_logged_out']), 'READY', 'Ready', $match, $data);
+                    $results[$ip] = $this->status($ip, true, true, true, !empty($data['controller_logged_out']), JobConfigErrorCodes::READY, 'Ready', $match, $data);
                 } catch (Throwable $e) {
-                    $code = method_exists($e, 'getErrorCode') ? (string)$e->getErrorCode() : 'LOCAL_PREFLIGHT_FAILED';
-                    $rootOk = $code !== 'CONTROLLER_ROOT_NOT_FOUND';
-                    $loggedOut = $code === 'CONTROLLER_IN_USE' ? false : null;
+                    $code = method_exists($e, 'getErrorCode') ? (string)$e->getErrorCode() : JobConfigErrorCodes::LOCAL_PREFLIGHT_FAILED;
+                    $rootOk = $code !== JobConfigErrorCodes::CONTROLLER_ROOT_NOT_FOUND;
+                    $loggedOut = $code === JobConfigErrorCodes::CONTROLLER_IN_USE ? false : null;
                     $results[$ip] = $this->status($ip, true, true, $rootOk, $loggedOut, $code, $e->getMessage(), $match);
                 }
                 continue;
@@ -115,6 +123,7 @@ final class RemoteJobConfigService
                 'method' => 'GET',
                 'url' => $this->remoteUrl($ip, '/api/remote_controller_probe.php?request=' . rawurlencode((string)microtime(true))),
                 'body' => null,
+                'timeout' => self::PROBE_TIMEOUT_SECONDS,
             ];
         }
 
@@ -128,8 +137,82 @@ final class RemoteJobConfigService
         }
 
         $ordered = [];
-        foreach ($targets as $ip) $ordered[] = $results[$ip];
+        foreach ($targets as $ip) {
+            if (!isset($results[$ip])) {
+                $match = $this->matchedNetwork($ip, $networks);
+                $results[$ip] = $this->status(
+                    $ip,
+                    $match !== null,
+                    false,
+                    false,
+                    null,
+                    JobConfigErrorCodes::NO_RESPONSE,
+                    'No check result was returned for target',
+                    $match
+                );
+            }
+            $ordered[] = $results[$ip];
+        }
         return $ordered;
+    }
+
+    public function previewTargets(array $targets, array $payload): array
+    {
+        $targets = $this->normalizeTargets($targets);
+        $checks = $this->checkTargets($targets);
+        $networks = $this->getLocalNetworks();
+        $results = [];
+        $remoteRequests = [];
+
+        foreach ($checks as $check) {
+            $ip = (string)($check['ip'] ?? '');
+            if ($ip === '') continue;
+            if (empty($check['ready'])) {
+                $results[$ip] = ['ip'=>$ip,'success'=>false,'skipped'=>true,'code'=>JobConfigErrorCodes::SKIPPED_NOT_READY,'message'=>(string)($check['message'] ?? 'Target is not ready')];
+                continue;
+            }
+            if ($this->isLocalIp($ip, $networks)) {
+                try {
+                    if (!is_callable($this->localPreview)) throw new RuntimeException('Local preview is unavailable');
+                    $data = call_user_func($this->localPreview, $payload);
+                    $results[$ip] = ['ip'=>$ip,'success'=>true,'skipped'=>false,'code'=>JobConfigErrorCodes::PREVIEW_OK,'message'=>'Preview complete','data'=>$data];
+                } catch (Throwable $e) {
+                    $results[$ip] = ['ip'=>$ip,'success'=>false,'skipped'=>false,'code'=>method_exists($e,'getErrorCode')?(string)$e->getErrorCode():JobConfigErrorCodes::PREVIEW_FAILED,'message'=>$e->getMessage()];
+                }
+                continue;
+            }
+            $remoteRequests[$ip] = [
+                'method' => 'POST',
+                'url' => $this->remoteUrl($ip, '/api/replace_job_config.php?request=' . rawurlencode((string)microtime(true))),
+                'body' => json_encode(array_merge(['api_version'=>1,'action'=>'preview'], $payload), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'timeout' => self::PREVIEW_TIMEOUT_SECONDS,
+            ];
+        }
+
+        if ($remoteRequests !== []) {
+            $responses = $this->requestMany($remoteRequests);
+            foreach ($remoteRequests as $ip => $unused) {
+                $response = $responses[$ip] ?? null;
+                if (!is_array($response) || empty($response['transport_ok'])) {
+                    $results[$ip] = ['ip'=>$ip,'success'=>false,'skipped'=>false,'code'=>JobConfigErrorCodes::TARGET_UNREACHABLE,'message'=>'Target is unreachable'];
+                    continue;
+                }
+                $json = isset($response['json']) && is_array($response['json']) ? $response['json'] : null;
+                if ($json === null || empty($json['success'])) {
+                    $results[$ip] = ['ip'=>$ip,'success'=>false,'skipped'=>false,'code'=>(string)($json['error']['code'] ?? JobConfigErrorCodes::PREVIEW_FAILED),'message'=>(string)($json['error']['message'] ?? 'Preview failed')];
+                    continue;
+                }
+                $results[$ip] = ['ip'=>$ip,'success'=>true,'skipped'=>false,'code'=>JobConfigErrorCodes::PREVIEW_OK,'message'=>'Preview complete','data'=>$this->sanitizePublicData($json['data'] ?? [])];
+            }
+        }
+
+        $ordered=[];$success=0;$skipped=0;$failed=0;
+        foreach ($targets as $ip) {
+            if (!isset($results[$ip])) $results[$ip]=['ip'=>$ip,'success'=>false,'skipped'=>true,'code'=>JobConfigErrorCodes::SKIPPED_NOT_READY,'message'=>'Target is not ready'];
+            $ordered[]=$results[$ip];
+            if (!empty($results[$ip]['success'])) $success++; elseif (!empty($results[$ip]['skipped'])) $skipped++; else $failed++;
+        }
+        return ['success'=>$success===count($targets),'any_success'=>$success>0,'total_count'=>count($targets),'success_count'=>$success,'failed_count'=>$failed,'skipped_count'=>$skipped,'summary'=>['total'=>count($targets),'ready'=>$success,'success'=>$success,'failed'=>$failed,'skipped'=>$skipped],'checks'=>$checks,'results'=>$ordered];
     }
 
     /**
@@ -140,6 +223,7 @@ final class RemoteJobConfigService
      */
     public function writeTargets(array $targets, array $payload): array
     {
+        $batchStartedAt = microtime(true);
         $targets = $this->normalizeTargets($targets);
         $checks = $this->checkTargets($targets);
         $readyTargets = [];
@@ -156,9 +240,10 @@ final class RemoteJobConfigService
                 'ip' => $ip,
                 'success' => false,
                 'skipped' => true,
-                'code' => 'SKIPPED_NOT_READY',
+                'code' => JobConfigErrorCodes::SKIPPED_NOT_READY,
                 'message' => (string)($check['message'] ?? 'Target is not ready'),
-                'preflight_code' => (string)($check['code'] ?? 'TARGET_NOT_READY'),
+                'preflight_code' => (string)($check['code'] ?? JobConfigErrorCodes::TARGET_NOT_READY),
+                'elapsed_ms' => 0,
             ];
         }
 
@@ -178,8 +263,10 @@ final class RemoteJobConfigService
                 'success_count' => 0,
                 'failed_count' => 0,
                 'skipped_count' => count($ordered),
+                'summary' => ['total'=>count($targets),'ready'=>0,'success'=>0,'failed'=>0,'skipped'=>count($ordered)],
                 'checks' => $checks,
                 'results' => $ordered,
+                'elapsed_ms' => max(0, (int)round((microtime(true) - $batchStartedAt) * 1000)),
             ];
         }
 
@@ -188,23 +275,26 @@ final class RemoteJobConfigService
 
         foreach ($readyTargets as $ip) {
             if ($this->isLocalIp($ip, $networks)) {
+                $targetStartedAt = microtime(true);
                 try {
                     $data = call_user_func($this->localWrite, $payload);
                     $results[$ip] = [
                         'ip' => $ip,
                         'success' => true,
                         'skipped' => false,
-                        'code' => 'WRITE_OK',
+                        'code' => JobConfigErrorCodes::WRITE_OK,
                         'message' => 'Write complete',
                         'data' => $data,
+                        'elapsed_ms' => max(0, (int)round((microtime(true) - $targetStartedAt) * 1000)),
                     ];
                 } catch (Throwable $e) {
                     $results[$ip] = [
                         'ip' => $ip,
                         'success' => false,
                         'skipped' => false,
-                        'code' => method_exists($e, 'getErrorCode') ? (string)$e->getErrorCode() : 'LOCAL_WRITE_FAILED',
+                        'code' => method_exists($e, 'getErrorCode') ? (string)$e->getErrorCode() : JobConfigErrorCodes::LOCAL_WRITE_FAILED,
                         'message' => $e->getMessage(),
+                        'elapsed_ms' => max(0, (int)round((microtime(true) - $targetStartedAt) * 1000)),
                     ];
                 }
                 continue;
@@ -212,8 +302,9 @@ final class RemoteJobConfigService
 
             $remoteRequests[$ip] = [
                 'method' => 'POST',
-                'url' => $this->remoteUrl($ip, '/api/add_job_config.php?request=' . rawurlencode((string)microtime(true))),
-                'body' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'url' => $this->remoteUrl($ip, '/api/replace_job_config.php?request=' . rawurlencode((string)microtime(true))),
+                'body' => json_encode(array_merge(['api_version'=>1,'action'=>'write'], $payload), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'timeout' => self::WRITE_TIMEOUT_SECONDS,
             ];
         }
 
@@ -237,8 +328,9 @@ final class RemoteJobConfigService
                     'ip' => $ip,
                     'success' => false,
                     'skipped' => true,
-                    'code' => 'SKIPPED_NOT_READY',
+                    'code' => JobConfigErrorCodes::SKIPPED_NOT_READY,
                     'message' => 'Target is not ready',
+                    'elapsed_ms' => 0,
                 ];
             }
             $ordered[] = $results[$ip];
@@ -265,8 +357,10 @@ final class RemoteJobConfigService
             'success_count' => $successCount,
             'failed_count' => $failedCount,
             'skipped_count' => $skippedCount,
+            'summary' => ['total'=>count($targets),'ready'=>count($readyTargets),'success'=>$successCount,'failed'=>$failedCount,'skipped'=>$skippedCount],
             'checks' => $checks,
             'results' => $ordered,
+            'elapsed_ms' => max(0, (int)round((microtime(true) - $batchStartedAt) * 1000)),
         ];
     }
 
@@ -397,20 +491,23 @@ final class RemoteJobConfigService
     private function probeResponseToStatus(string $ip, $network, $response): array
     {
         if (!is_array($response)) {
-            return $this->status($ip, true, false, false, null, 'NO_RESPONSE', 'No response from target', $network);
+            return $this->status($ip, true, false, false, null, JobConfigErrorCodes::NO_RESPONSE, 'No response from target', $network);
         }
         if (empty($response['transport_ok'])) {
-            return $this->status($ip, true, false, false, null, 'TARGET_UNREACHABLE', (string)($response['error'] ?? 'Target is unreachable'), $network);
+            return $this->status($ip, true, false, false, null, JobConfigErrorCodes::TARGET_UNREACHABLE, (string)($response['error'] ?? 'Target is unreachable'), $network);
         }
         $json = isset($response['json']) && is_array($response['json']) ? $response['json'] : null;
         if ($json === null) {
-            return $this->status($ip, true, true, false, null, 'PROBE_INVALID_RESPONSE', 'Target responded but the NTCS7 probe API is unavailable or invalid', $network, ['http_status' => $response['http_status'] ?? 0]);
+            return $this->status($ip, true, true, false, null, JobConfigErrorCodes::PROBE_INVALID_RESPONSE, 'Target responded but the NTCS7 probe API is unavailable or invalid', $network, ['http_status' => $response['http_status'] ?? 0]);
         }
         $data = isset($json['data']) && is_array($json['data']) ? $json['data'] : [];
+        if (($data['product'] ?? '') !== 'NTCS7' || (int)($data['api_protocol'] ?? 0) < 1) {
+            return $this->status($ip, true, true, false, null, JobConfigErrorCodes::NOT_NTCS7, 'Target is reachable but did not identify as NTCS7', $network);
+        }
         $rootExists = !empty($data['controller_root_exists']);
         $loggedOut = array_key_exists('controller_logged_out', $data) ? $data['controller_logged_out'] : null;
         $ready = !empty($json['success']) && !empty($data['ready']);
-        $code = $ready ? 'READY' : (string)($data['code'] ?? ($json['error']['code'] ?? 'TARGET_NOT_READY'));
+        $code = $ready ? JobConfigErrorCodes::READY : (string)($data['code'] ?? ($json['error']['code'] ?? JobConfigErrorCodes::TARGET_NOT_READY));
         $message = $ready ? 'Ready' : (string)($data['message'] ?? ($json['error']['message'] ?? 'Target is not ready'));
         return $this->status($ip, true, true, $rootExists, $loggedOut, $code, $message, $network, $this->sanitizePublicData($data));
     }
@@ -427,12 +524,15 @@ final class RemoteJobConfigService
 
     private function writeResponseToResult(string $ip, $response): array
     {
+        $elapsedMs = is_array($response) ? (int)($response['elapsed_ms'] ?? 0) : 0;
+        if (is_array($response) && isset($response['json']['elapsed_ms'])) $elapsedMs = (int)$response['json']['elapsed_ms'];
         if (!is_array($response) || empty($response['transport_ok'])) {
             return [
                 'ip' => $ip,
                 'success' => false,
-                'code' => 'TARGET_UNREACHABLE',
+                'code' => JobConfigErrorCodes::TARGET_UNREACHABLE,
                 'message' => is_array($response) ? (string)($response['error'] ?? 'Target is unreachable') : 'No response from target',
+                'elapsed_ms' => $elapsedMs,
             ];
         }
         $json = isset($response['json']) && is_array($response['json']) ? $response['json'] : null;
@@ -440,26 +540,29 @@ final class RemoteJobConfigService
             return [
                 'ip' => $ip,
                 'success' => false,
-                'code' => 'WRITE_INVALID_RESPONSE',
+                'code' => JobConfigErrorCodes::WRITE_INVALID_RESPONSE,
                 'message' => 'Target did not return a valid JSON write response',
                 'http_status' => $response['http_status'] ?? 0,
+                'elapsed_ms' => $elapsedMs,
             ];
         }
         if (!empty($json['success'])) {
             return [
                 'ip' => $ip,
                 'success' => true,
-                'code' => 'WRITE_OK',
+                'code' => JobConfigErrorCodes::WRITE_OK,
                 'message' => 'Write complete',
                 'data' => $this->sanitizePublicData($json['data'] ?? []),
+                'elapsed_ms' => $elapsedMs,
             ];
         }
         return [
             'ip' => $ip,
             'success' => false,
-            'code' => (string)($json['error']['code'] ?? 'REMOTE_WRITE_FAILED'),
+            'code' => (string)($json['error']['code'] ?? JobConfigErrorCodes::REMOTE_WRITE_FAILED),
             'message' => (string)($json['error']['message'] ?? 'Remote write failed'),
             'data' => $this->sanitizePublicData($json),
+            'elapsed_ms' => $elapsedMs,
         ];
     }
 
@@ -473,7 +576,14 @@ final class RemoteJobConfigService
             return $this->requestManyCurl($requests);
         }
         $results = [];
-        foreach ($requests as $key => $request) $results[$key] = $this->requestOneStream($request);
+        foreach ($requests as $key => $request) {
+            $result = $this->requestOneStream($request);
+            for ($retry = 0; $retry < self::RETRY_COUNT && $this->shouldRetryTransport($result); $retry++) {
+                usleep((int)(250000 * ($retry + 1)));
+                $result = $this->requestOneStream($request);
+            }
+            $results[$key] = $result;
+        }
         return $results;
     }
 
@@ -494,7 +604,7 @@ final class RemoteJobConfigService
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_FOLLOWLOCATION => false,
                     CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT_SECONDS,
-                    CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT_SECONDS,
+                    CURLOPT_TIMEOUT => (int)($request['timeout'] ?? self::WRITE_TIMEOUT_SECONDS),
                     CURLOPT_HTTPHEADER => $headers,
                 ];
                 if ($request['method'] === 'POST') {
@@ -517,6 +627,7 @@ final class RemoteJobConfigService
                 $body = curl_multi_getcontent($ch);
                 $error = curl_error($ch);
                 $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $elapsedMs = max(0, (int)round(((float)curl_getinfo($ch, CURLINFO_TOTAL_TIME)) * 1000));
                 $transportOk = $error === '' && $body !== false && $httpStatus > 0;
                 $json = $transportOk ? json_decode((string)$body, true) : null;
                 $results[$key] = [
@@ -525,17 +636,35 @@ final class RemoteJobConfigService
                     'body' => is_string($body) ? $body : '',
                     'json' => is_array($json) ? $json : null,
                     'error' => $error,
+                    'elapsed_ms' => $elapsedMs,
                 ];
                 curl_multi_remove_handle($multi, $ch);
                 curl_close($ch);
             }
             curl_multi_close($multi);
+            foreach ($batchKeys as $key) {
+                if (!$this->shouldRetryTransport($results[$key])) continue;
+                for ($retry = 0; $retry < self::RETRY_COUNT; $retry++) {
+                    usleep((int)(250000 * ($retry + 1)));
+                    $retryResult = $this->requestOneStream($requests[$key]);
+                    if (!$this->shouldRetryTransport($retryResult)) { $results[$key] = $retryResult; break; }
+                    $results[$key] = $retryResult;
+                }
+            }
         }
         return $results;
     }
 
+
+    /** Retry only transport/network failures. HTTP/application errors are final. */
+    private function shouldRetryTransport($result): bool
+    {
+        return !is_array($result) || empty($result['transport_ok']);
+    }
+
     private function requestOneStream(array $request): array
     {
+        $startedAt = microtime(true);
         $headers = "Accept: application/json\r\nConnection: close\r\n";
         if ($request['method'] === 'POST') $headers .= "Content-Type: application/json\r\n";
         $context = stream_context_create([
@@ -543,7 +672,7 @@ final class RemoteJobConfigService
                 'method' => $request['method'],
                 'header' => $headers,
                 'content' => $request['method'] === 'POST' ? (string)$request['body'] : '',
-                'timeout' => self::REQUEST_TIMEOUT_SECONDS,
+                'timeout' => (int)($request['timeout'] ?? self::WRITE_TIMEOUT_SECONDS),
                 'ignore_errors' => true,
                 'follow_location' => 0,
             ],
@@ -561,6 +690,7 @@ final class RemoteJobConfigService
             'body' => is_string($body) ? $body : '',
             'json' => is_array($json) ? $json : null,
             'error' => $transportOk ? '' : 'HTTP connection failed',
+            'elapsed_ms' => max(0, (int)round((microtime(true) - $startedAt) * 1000)),
         ];
     }
 }

@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/JobConfigErrorCodes.php';
+
+
 final class JobConfigApiException extends RuntimeException
 {
     private $httpStatus;
@@ -55,10 +58,10 @@ final class JobConfigReplaceService
     {
         $controllerRoot = dirname($this->controllerDatabasePath);
         if (!is_dir($controllerRoot) || !is_readable($controllerRoot)) {
-            throw new JobConfigApiException(503, 'CONTROLLER_ROOT_NOT_FOUND', 'Controller root was not found or is not readable');
+            throw new JobConfigApiException(503, JobConfigErrorCodes::CONTROLLER_ROOT_NOT_FOUND, 'Controller root was not found or is not readable');
         }
         if (!is_file($this->controllerDatabasePath) || !is_readable($this->controllerDatabasePath) || !is_writable($this->controllerDatabasePath)) {
-            throw new JobConfigApiException(503, 'CONTROLLER_DATABASE_NOT_WRITABLE', 'Controller database was not found or is not writable');
+            throw new JobConfigApiException(503, JobConfigErrorCodes::CONTROLLER_DATABASE_NOT_WRITABLE, 'Controller database was not found or is not writable');
         }
 
         $this->assertControllerLoggedOut();
@@ -73,50 +76,69 @@ final class JobConfigReplaceService
         ];
     }
 
+    public function preview(array $payload): array
+    {
+        $normalized = $this->normalizeNativeAndValidate($payload);
+        $this->preflight();
+        $preview = $this->inspectChanges($this->controllerDatabasePath, $normalized);
+        return [
+            'operation' => 'preview',
+            'verified' => false,
+            'counts' => $preview['counts'],
+            'changes' => $preview['changes'],
+        ];
+    }
+
     public function replace(array $payload): array
     {
         $normalized = $this->normalizeNativeAndValidate($payload);
         $this->preflight();
 
-        $lockPath = $this->controllerDatabasePath . '.job-config-api.lock';
-        $lock = @fopen($lockPath, 'c');
-        if (!$lock || !@flock($lock, LOCK_EX | LOCK_NB)) {
-            if ($lock) @fclose($lock);
-            throw new JobConfigApiException(409, 'WRITE_BUSY', 'Another JOB configuration write is running');
-        }
-
         $stage = $this->controllerDatabasePath . '.api-stage.' . getmypid() . '.' . bin2hex(random_bytes(4));
         $backup = null;
+        $rollbackPerformed = false;
         try {
-            // Re-check immediately after the write lock is acquired.  This
-            // catches a Controller login or filesystem change between the
-            // batch preflight and the actual database write.
+            // Re-check immediately before touching the database.
             $this->preflight();
-            $this->createConsistentSnapshot($this->controllerDatabasePath, $stage);
-            $counts = $this->writeStage($stage, $normalized);
 
+            // Validate the live schema and the SQL upsert using a disposable snapshot first.
+            $this->createConsistentSnapshot($this->controllerDatabasePath, $stage);
+            $this->writeStage($stage, $normalized);
+            $preview = $this->inspectChanges($this->controllerDatabasePath, $normalized);
+
+            // Temporary safety copy used only for rollback. It is deleted after a verified write.
             $backup = $this->makeBackup();
-            // Update the live Controller SQLite file in-place. This preserves the
-            // inode used by the long-running Controller process while the SQL
-            // transaction guarantees all-or-nothing JOB/SEQ/STEP upsert.
-            $this->writeStage($this->controllerDatabasePath, $normalized);
+            $counts = $this->writeStage($this->controllerDatabasePath, $normalized);
+            $this->verifyWrittenData($this->controllerDatabasePath, $normalized);
 
             $mirrorSynced = $this->syncIdasMirror();
-
-            $this->rotateBackups(5);
-            return $this->result($normalized, $counts, true, $mirrorSynced);
+            if ($backup !== null) @unlink($backup);
+            return $this->result($normalized, $counts, true, $mirrorSynced, true, $preview);
         } catch (JobConfigApiException $e) {
+            if ($backup !== null && is_file($backup)) {
+                $rollbackPerformed = $this->restoreBackup($backup);
+                @unlink($backup);
+            }
+            if ($rollbackPerformed) {
+                throw new JobConfigApiException($e->getHttpStatus(), $e->getErrorCode(), $e->getMessage(), array_merge($e->getDetails(), ['rollback_performed' => true]));
+            }
             throw $e;
         } catch (Throwable $e) {
-            throw new JobConfigApiException(500, 'DATABASE_ERROR', 'JOB configuration write failed');
+            if ($backup !== null && is_file($backup)) {
+                $rollbackPerformed = $this->restoreBackup($backup);
+                @unlink($backup);
+            }
+            throw new JobConfigApiException(500, JobConfigErrorCodes::DATABASE_ERROR, 'JOB configuration write failed', ['rollback_performed' => $rollbackPerformed]);
         } finally {
             @unlink($stage);
-            @flock($lock, LOCK_UN);
-            @fclose($lock);
         }
     }
 
-    /** Accept the Controller database's native table/column JSON format. */
+    /**
+     * Basic JSON/schema validation only.  Deliberately does NOT enforce
+     * JOB->SEQ->STEP referential rules, fastening engineering rules, or tool
+     * capability ranges; those checks are outside this version's scope.
+     */
     private function normalizeNativeAndValidate(array $payload): array
     {
         $tables = ['JOB_lst', 'SEQ_lst', 'STEP_lst'];
@@ -126,9 +148,7 @@ final class JobConfigReplaceService
                 $this->validation($table . ' must be a non-empty array', '$.' . $table);
             }
         }
-        if (count($payload['JOB_lst']) > 100) {
-            $this->validation('JOB_lst supports at most 100 JOB rows', '$.JOB_lst');
-        }
+        if (count($payload['JOB_lst']) > 100) $this->validation('JOB_lst supports at most 100 JOB rows', '$.JOB_lst');
 
         $jobs = [];
         $jobIds = [];
@@ -155,7 +175,6 @@ final class JobConfigReplaceService
             $this->rejectUnknownKeys($sequence, $this->sequenceColumns(), $path);
             $jobId = $this->requiredInt($sequence, 'JOBID', 1, 100, $path);
             $seqId = $this->requiredInt($sequence, 'SEQID', 1, 50, $path);
-            if (!isset($jobIds[$jobId])) $this->validation('JOBID does not exist in JOB_lst', $path . '.JOBID');
             $sequenceCountByJob[$jobId] = ($sequenceCountByJob[$jobId] ?? 0) + 1;
             if ($sequenceCountByJob[$jobId] > 50) $this->validation('each JOB supports at most 50 SEQ rows', $path);
             $key = $jobId . ':' . $seqId;
@@ -179,7 +198,6 @@ final class JobConfigReplaceService
             $seqId = $this->requiredInt($step, 'SEQID', 1, 50, $path);
             $stepId = $this->requiredInt($step, 'StepSelect', 1, 5, $path);
             $sequenceKey = $jobId . ':' . $seqId;
-            if (!isset($sequenceKeys[$sequenceKey])) $this->validation('JOBID/SEQID does not exist in SEQ_lst', $path);
             $key = $sequenceKey . ':' . $stepId;
             if (isset($stepKeys[$key])) $this->validation('duplicate JOBID/SEQID/StepSelect', $path);
             $stepKeys[$key] = true;
@@ -190,41 +208,101 @@ final class JobConfigReplaceService
             $row['SEQID'] = $seqId;
             $row['StepSelect'] = $stepId;
             $row['STEPname'] = $this->text($row['STEPname'], 1, 64, $path . '.STEPname');
-            $this->validateStep($row, $path);
             $steps[] = $row;
-        }
-
-        foreach ($sequenceKeys as $key => $unused) {
-            if (($stepCountBySequence[$key] ?? 0) < 1) {
-                $this->validation('every SEQ_lst row needs at least one STEP_lst row', '$.STEP_lst');
-            }
         }
 
         return ['jobs' => $jobs, 'sequences' => $sequences, 'steps' => $steps];
     }
 
-    private function validateStep(array $s, string $path): void
+    private function inspectChanges(string $databasePath, array $data): array
     {
-        foreach (['StepSwitch', 'StepDirection', 'InterruptAlarm', 'OverAngleStop'] as $key) {
-            if (!in_array((int)$s[$key], [0, 1], true)) $this->validation($key . ' must be 0 or 1', $path);
+        $pdo = idas_sqlite_connect($databasePath, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $map = [
+            'jobs' => ['table' => 'JOB_lst', 'keys' => ['JOBID']],
+            'sequences' => ['table' => 'SEQ_lst', 'keys' => ['JOBID', 'SEQID']],
+            'steps' => ['table' => 'STEP_lst', 'keys' => ['JOBID', 'SEQID', 'StepSelect']],
+        ];
+        $counts = ['inserted' => ['jobs'=>0,'sequences'=>0,'steps'=>0], 'updated' => ['jobs'=>0,'sequences'=>0,'steps'=>0]];
+        $changes = ['jobs'=>[], 'sequences'=>[], 'steps'=>[]];
+        foreach ($map as $group => $meta) {
+            $columns = array_column($pdo->query('PRAGMA table_info(' . $meta['table'] . ')')->fetchAll(PDO::FETCH_ASSOC), 'name');
+            if ($columns === []) throw new JobConfigApiException(500, JobConfigErrorCodes::DATABASE_SCHEMA_MISMATCH, 'Missing table: ' . $meta['table']);
+            foreach ($data[$group] as $row) {
+                $where = [];
+                foreach ($meta['keys'] as $key) $where[] = '"' . $key . '" = :' . $key;
+                $stmt = $pdo->prepare('SELECT * FROM "' . $meta['table'] . '" WHERE ' . implode(' AND ', $where) . ' LIMIT 1');
+                foreach ($meta['keys'] as $key) $stmt->bindValue(':' . $key, $row[$key]);
+                $stmt->execute();
+                $old = $stmt->fetch(PDO::FETCH_ASSOC);
+                $ids = [];
+                foreach ($meta['keys'] as $key) $ids[$key] = $row[$key];
+                if (!$old) {
+                    $counts['inserted'][$group]++;
+                    $changes[$group][] = ['operation'=>'inserted','ids'=>$ids,'changed_fields'=>array_values(array_intersect(array_keys($row), $columns))];
+                    continue;
+                }
+                $changed = [];
+                foreach ($row as $name => $value) {
+                    if (!in_array($name, $columns, true)) continue;
+                    if (!$this->valuesEquivalent($old[$name] ?? null, $value)) $changed[] = $name;
+                }
+                $counts['updated'][$group]++;
+                $changes[$group][] = ['operation'=>'updated','ids'=>$ids,'changed_fields'=>$changed];
+            }
         }
-        if (!in_array((int)$s['StepOption'], [0, 1, 2], true)) $this->validation('StepOption must be 0 (Time), 1 (Angle), or 2 (Torque)', $path . '.StepOption');
-        $minimumRpm = (int)$s['StepSelect'] === 1 ? 50 : 100;
-        if ((float)$s['StepRPM'] < $minimumRpm) $this->validation('rpm must be at least ' . $minimumRpm, $path . '.rpm');
-        if ((float)$s['StepLoAngle'] < 0 || (float)$s['StepHiAngle'] > 30600 || (float)$s['StepLoAngle'] >= (float)$s['StepHiAngle']) {
-            $this->validation('angle_lower must be less than angle_upper (0..30600)', $path);
+        return ['counts'=>$counts, 'changes'=>$changes];
+    }
+
+    private function verifyWrittenData(string $databasePath, array $data): void
+    {
+        $pdo = idas_sqlite_connect($databasePath, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $map = [
+            'jobs' => ['table'=>'JOB_lst','keys'=>['JOBID']],
+            'sequences' => ['table'=>'SEQ_lst','keys'=>['JOBID','SEQID']],
+            'steps' => ['table'=>'STEP_lst','keys'=>['JOBID','SEQID','StepSelect']],
+        ];
+        foreach ($map as $group => $meta) {
+            $columns = array_column($pdo->query('PRAGMA table_info(' . $meta['table'] . ')')->fetchAll(PDO::FETCH_ASSOC), 'name');
+            foreach ($data[$group] as $row) {
+                $where = [];
+                foreach ($meta['keys'] as $key) $where[] = '"' . $key . '" = :' . $key;
+                $stmt = $pdo->prepare('SELECT * FROM "' . $meta['table'] . '" WHERE ' . implode(' AND ', $where) . ' LIMIT 1');
+                foreach ($meta['keys'] as $key) $stmt->bindValue(':' . $key, $row[$key]);
+                $stmt->execute();
+                $stored = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$stored) throw new JobConfigApiException(500, JobConfigErrorCodes::VERIFY_FAILED, 'Read-back verification failed: row was not found');
+                foreach ($row as $name => $value) {
+                    if (!in_array($name, $columns, true)) continue;
+                    if (!$this->valuesEquivalent($stored[$name] ?? null, $value)) {
+                        throw new JobConfigApiException(500, JobConfigErrorCodes::VERIFY_FAILED, 'Read-back verification failed', ['field'=>$name]);
+                    }
+                }
+            }
         }
-        if ((float)$s['StepLoTorque'] < 0 || (float)$s['StepLoTorque'] >= (float)$s['StepHiTorque']) {
-            $this->validation('torque_lower must be less than torque_upper', $path);
-        }
-        if ((int)$s['StepOption'] === 1 && !((float)$s['StepLoAngle'] < (float)$s['StepAngle'] && (float)$s['StepAngle'] < (float)$s['StepHiAngle'])) {
-            $this->validation('StepAngle must be between StepLoAngle and StepHiAngle', $path . '.StepAngle');
-        }
-        if ((int)$s['StepOption'] === 2 && !((float)$s['StepLoTorque'] < (float)$s['StepTorque'] && (float)$s['StepTorque'] < (float)$s['StepHiTorque'])) {
-            $this->validation('StepTorque must be between StepLoTorque and StepHiTorque', $path . '.StepTorque');
-        }
-        if ((int)$s['StepOption'] === 0 && (float)$s['StepTime'] <= 0) {
-            $this->validation('StepTime must be greater than 0 in Time mode', $path . '.StepTime');
+        $check = strtolower(trim((string)$pdo->query('PRAGMA quick_check')->fetchColumn()));
+        if ($check !== 'ok') throw new JobConfigApiException(500, JobConfigErrorCodes::VERIFY_FAILED, 'SQLite quick_check failed after write');
+    }
+
+    private function valuesEquivalent($a, $b): bool
+    {
+        if ($a === null || $b === null) return $a === $b;
+        if (is_numeric($a) && is_numeric($b)) return abs((float)$a - (float)$b) < 0.0000001;
+        return (string)$a === (string)$b;
+    }
+
+    private function restoreBackup(string $backup): bool
+    {
+        try {
+            if (!is_file($backup)) return false;
+            @unlink($this->controllerDatabasePath . '-wal');
+            @unlink($this->controllerDatabasePath . '-shm');
+            if (!@copy($backup, $this->controllerDatabasePath)) return false;
+            $pdo = idas_sqlite_connect($this->controllerDatabasePath, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $healthy = strtolower(trim((string)$pdo->query('PRAGMA quick_check')->fetchColumn())) === 'ok';
+            $pdo = null;
+            return $healthy;
+        } catch (Throwable $e) {
+            return false;
         }
     }
 
@@ -240,7 +318,7 @@ final class JobConfigReplaceService
         $columns = [];
         foreach ($tables as $table) {
             $exists = $pdo->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name=" . $pdo->quote($table))->fetchColumn();
-            if (!$exists) throw new JobConfigApiException(500, 'DATABASE_SCHEMA_MISMATCH', 'Missing table: ' . $table);
+            if (!$exists) throw new JobConfigApiException(500, JobConfigErrorCodes::DATABASE_SCHEMA_MISMATCH, 'Missing table: ' . $table);
             $columns[$table] = array_column($pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll(PDO::FETCH_ASSOC), 'name');
         }
 
@@ -278,9 +356,9 @@ final class JobConfigReplaceService
             if ($pdo->inTransaction()) $pdo->rollBack();
             $reason = (string)$e->getMessage();
             if (stripos($reason, 'database is locked') !== false || stripos($reason, 'database is busy') !== false) {
-                throw new JobConfigApiException(409, 'CONTROLLER_DATABASE_BUSY', 'Controller database is busy; retry later');
+                throw new JobConfigApiException(409, JobConfigErrorCodes::CONTROLLER_DATABASE_BUSY, 'Controller database is busy; retry later');
             }
-            throw new JobConfigApiException(400, 'DATABASE_WRITE_REJECTED', 'Database rejected the JOB configuration', ['reason' => $e->getMessage()]);
+            throw new JobConfigApiException(400, JobConfigErrorCodes::DATABASE_WRITE_REJECTED, 'Database rejected the JOB configuration', ['reason' => $e->getMessage()]);
         }
 
         return $counts;
@@ -359,17 +437,11 @@ final class JobConfigReplaceService
         }
         if (!$healthy) {
             @unlink($backup);
-            throw new JobConfigApiException(500, 'BACKUP_FAILED', 'Could not back up the current database');
+            throw new JobConfigApiException(500, JobConfigErrorCodes::BACKUP_FAILED, 'Could not back up the current database');
         }
         return $backup;
     }
 
-    private function rotateBackups(int $keep): void
-    {
-        $files = glob($this->controllerDatabasePath . '.api-backup-*') ?: [];
-        rsort($files, SORT_STRING);
-        foreach (array_slice($files, $keep) as $file) @unlink($file);
-    }
 
     private function syncIdasMirror(): bool
     {
@@ -395,10 +467,10 @@ final class JobConfigReplaceService
         $unitId = $this->activeUnitId();
         $status = $controller->idas_check($unitId);
         if (!is_array($status) || !empty($status['error']) || !array_key_exists('result', $status) || $status['result'] === null) {
-            throw new JobConfigApiException(502, 'CONTROLLER_STATUS_UNAVAILABLE', 'Could not read Controller login status');
+            throw new JobConfigApiException(502, JobConfigErrorCodes::CONTROLLER_STATUS_UNAVAILABLE, 'Could not read Controller login status');
         }
         if ((int)$status['result'] !== 0) {
-            throw new JobConfigApiException(409, 'CONTROLLER_IN_USE', 'Controller must be logged out before writing JOB configuration');
+            throw new JobConfigApiException(409, JobConfigErrorCodes::CONTROLLER_IN_USE, 'Controller must be logged out before writing JOB configuration');
         }
     }
 
@@ -419,13 +491,15 @@ final class JobConfigReplaceService
         return 1;
     }
 
-    private function result(array $normalized, array $counts, bool $applied, bool $mirrorSynced): array
+    private function result(array $normalized, array $counts, bool $applied, bool $mirrorSynced, bool $verified, array $preview): array
     {
         return [
             'operation' => 'upsert',
             'controller_updated' => $applied,
             'idas_mirror_synced' => $mirrorSynced,
+            'verified' => $verified,
             'counts' => $counts,
+            'preview' => ['counts' => $preview['counts']],
             'warnings' => $mirrorSynced ? [] : ['Controller DB was updated, but the iDAS mirror could not be refreshed'],
         ];
     }
@@ -485,6 +559,6 @@ final class JobConfigReplaceService
 
     private function validation(string $message, string $path): void
     {
-        throw new JobConfigApiException(400, 'VALIDATION_ERROR', $message, ['path' => $path]);
+        throw new JobConfigApiException(400, JobConfigErrorCodes::VALIDATION_ERROR, $message, ['path' => $path]);
     }
 }
