@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/service/JobConfigApiConfig.php';
+
 /**
  * Compatibility endpoint.
  *
- * New MES / iDAS / CMD integrations should call /api/replace_job_config.php.
+ * New integrations should call /api/replace_job_config.php.
  * This file only normalizes the legacy {targets, payload} request shape and
  * delegates all validation, preview, write and response handling to the
  * unified API so there is one public write path and one write implementation.
@@ -40,7 +42,7 @@ if ($method === 'POST') {
                         }
                     }
                 }
-                if (!isset($request['api_version'])) $request['api_version'] = 1;
+                if (!isset($request['api_version'])) $request['api_version'] = JobConfigApiConfig::VERSION;
                 $GLOBALS['JOB_CONFIG_REQUEST_OVERRIDE'] = $request;
             }
         }

@@ -20,9 +20,6 @@ final class JobConfigErrorCodes
     public const DEFAULT_TARGET_UNAVAILABLE = 'DEFAULT_TARGET_UNAVAILABLE';
     public const INVALID_TARGETS = 'INVALID_TARGETS';
     public const CONFIG_REQUIRED = 'CONFIG_REQUIRED';
-    public const INVALID_REQUEST_KEY = 'INVALID_REQUEST_KEY';
-    public const REQUEST_KEY_CONFLICT = 'REQUEST_KEY_CONFLICT';
-    public const REQUEST_IN_PROGRESS = 'REQUEST_IN_PROGRESS';
     public const NO_READY_TARGETS = 'NO_READY_TARGETS';
 
     public const NOT_SAME_SUBNET = 'NOT_SAME_SUBNET';
@@ -66,9 +63,6 @@ final class JobConfigErrorCodes
             self::DEFAULT_TARGET_UNAVAILABLE => 409,
             self::INVALID_TARGETS => 400,
             self::CONFIG_REQUIRED => 400,
-            self::INVALID_REQUEST_KEY => 400,
-            self::REQUEST_KEY_CONFLICT => 409,
-            self::REQUEST_IN_PROGRESS => 409,
             self::NO_READY_TARGETS => 409,
             self::REMOTE_NOT_SAME_SUBNET => 403,
             self::CONTROLLER_IN_USE => 409,

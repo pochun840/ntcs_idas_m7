@@ -3,36 +3,14 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/service/JobConfigErrorCodes.php';
-
-// Kept only for backward compatibility with integrations created before the
-// public api_version field was changed to report the installed iDAS version.
-const JOB_CONFIG_LEGACY_API_VERSION = '1';
-const JOB_CONFIG_REQUEST_DEDUP_TTL = 120;
-const JOB_CONFIG_AUTO_DEDUP_TTL = 5;
+require_once dirname(__DIR__) . '/service/JobConfigApiConfig.php';
 
 $GLOBALS['JOB_CONFIG_REQUEST_STARTED_AT'] = microtime(true);
 
 
-function job_config_idas_version(): string
-{
-    static $version = null;
-    if (is_string($version)) return $version;
-
-    $version = 'unknown';
-    $infoFile = dirname(__DIR__) . '/info.json';
-    $raw = @file_get_contents($infoFile);
-    if (!is_string($raw) || trim($raw) === '') return $version;
-
-    $info = json_decode($raw, true);
-    if (!is_array($info)) return $version;
-    $candidate = trim((string)($info['idas_version'] ?? ''));
-    if ($candidate !== '') $version = $candidate;
-    return $version;
-}
-
 /**
  * Return the controller IP configured under Settings -> Connection.
- * MES callers may omit targets; the configured agent_server_ip then becomes
+ * API callers may omit targets; the configured agent_server_ip then becomes
  * the single deployment target. An explicitly supplied targets list always
  * takes precedence.
  */
@@ -59,135 +37,6 @@ function job_config_default_target_ip(): ?string
 function job_config_max_request_bytes(): int
 {
     return JobConfigReplaceService::maxBodyBytes() + 65536;
-}
-
-function job_config_is_list_array(array $value): bool
-{
-    $i = 0;
-    foreach ($value as $key => $_) {
-        if ($key !== $i++) return false;
-    }
-    return true;
-}
-
-function job_config_canonicalize($value)
-{
-    if (!is_array($value)) return $value;
-    if (job_config_is_list_array($value)) {
-        $out = [];
-        foreach ($value as $item) $out[] = job_config_canonicalize($item);
-        return $out;
-    }
-    ksort($value, SORT_STRING);
-    foreach ($value as $key => $item) $value[$key] = job_config_canonicalize($item);
-    return $value;
-}
-
-function job_config_request_hash(array $request): string
-{
-    unset($request['request_key']);
-    return hash('sha256', json_encode(job_config_canonicalize($request), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-}
-
-function job_config_dedupe_dir(): string
-{
-    $dir = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'idas_job_config_dedupe';
-    if (!is_dir($dir)) @mkdir($dir, 0700, true);
-    return $dir;
-}
-
-function job_config_dedupe_cleanup(string $dir): void
-{
-    $cutoff = time() - 86400;
-    foreach ((array)glob($dir . DIRECTORY_SEPARATOR . '*.json') as $file) {
-        $mtime = @filemtime($file);
-        if (is_int($mtime) && $mtime < $cutoff) @unlink($file);
-    }
-}
-
-function job_config_dedupe_path(string $scopeKey): string
-{
-    $dir = job_config_dedupe_dir();
-    job_config_dedupe_cleanup($dir);
-    return $dir . DIRECTORY_SEPARATOR . hash('sha256', $scopeKey) . '.json';
-}
-
-function job_config_dedupe_read(string $path): ?array
-{
-    $raw = @file_get_contents($path);
-    if (!is_string($raw) || $raw === '') return null;
-    $data = json_decode($raw, true);
-    return is_array($data) ? $data : null;
-}
-
-function job_config_dedupe_begin(array $request): array
-{
-    $requestKey = trim((string)($request['request_key'] ?? ''));
-    if ($requestKey !== '' && !preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $requestKey)) {
-        return ['error' => ['status' => 400, 'code' => JobConfigErrorCodes::INVALID_REQUEST_KEY, 'message' => 'request_key may contain only letters, numbers, dot, underscore, colon, and hyphen (max 128 characters).']];
-    }
-
-    $hash = job_config_request_hash($request);
-    $automatic = ($requestKey === '');
-    $scopeKey = $automatic ? ('auto:' . $hash) : ('key:' . $requestKey);
-    $ttl = $automatic ? JOB_CONFIG_AUTO_DEDUP_TTL : JOB_CONFIG_REQUEST_DEDUP_TTL;
-    $path = job_config_dedupe_path($scopeKey);
-    $now = time();
-
-    $existing = job_config_dedupe_read($path);
-    if ($existing && ($now - (int)($existing['created_at'] ?? 0)) <= $ttl) {
-        if (($existing['request_hash'] ?? '') !== $hash) {
-            return ['error' => ['status' => 409, 'code' => JobConfigErrorCodes::REQUEST_KEY_CONFLICT, 'message' => 'The same request_key was already used with different request content.']];
-        }
-        if (($existing['state'] ?? '') === 'complete' && isset($existing['response_body']) && is_array($existing['response_body'])) {
-            return ['replay' => [
-                'status' => (int)($existing['response_status'] ?? 200),
-                'body' => array_merge($existing['response_body'], ['duplicate_replay' => true]),
-            ]];
-        }
-        return ['error' => ['status' => 409, 'code' => JobConfigErrorCodes::REQUEST_IN_PROGRESS, 'message' => 'An identical write request is already being processed.']];
-    }
-    if (is_file($path)) @unlink($path);
-
-    $pending = [
-        'created_at' => $now,
-        'state' => 'pending',
-        'request_hash' => $hash,
-        'request_key' => $requestKey,
-        'automatic' => $automatic,
-    ];
-
-    // Atomic create prevents two simultaneous retries from both entering the write path.
-    $handle = @fopen($path, 'x');
-    if ($handle === false) {
-        $race = job_config_dedupe_read($path);
-        if ($race && ($race['request_hash'] ?? '') === $hash && ($race['state'] ?? '') === 'complete' && isset($race['response_body']) && is_array($race['response_body'])) {
-            return ['replay' => [
-                'status' => (int)($race['response_status'] ?? 200),
-                'body' => array_merge($race['response_body'], ['duplicate_replay' => true]),
-            ]];
-        }
-        return ['error' => ['status' => 409, 'code' => JobConfigErrorCodes::REQUEST_IN_PROGRESS, 'message' => 'An identical write request is already being processed.']];
-    }
-    @flock($handle, LOCK_EX);
-    fwrite($handle, json_encode($pending, JSON_UNESCAPED_SLASHES));
-    fflush($handle);
-    @flock($handle, LOCK_UN);
-    fclose($handle);
-    return ['context' => ['path' => $path, 'pending' => $pending]];
-}
-
-function job_config_dedupe_complete(int $status, array $body): void
-{
-    $context = $GLOBALS['JOB_CONFIG_DEDUPE_CONTEXT'] ?? null;
-    if (!is_array($context) || empty($context['path']) || !isset($context['pending']) || !is_array($context['pending'])) return;
-    $record = $context['pending'];
-    $record['state'] = 'complete';
-    $record['response_status'] = $status;
-    $record['response_body'] = $body;
-    $record['completed_at'] = time();
-    @file_put_contents((string)$context['path'], json_encode($record, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
-    unset($GLOBALS['JOB_CONFIG_DEDUPE_CONTEXT']);
 }
 
 function job_config_sanitize_public_data($value)
@@ -233,7 +82,7 @@ function job_config_public_results(array $results): array
 
 function job_config_response(int $status, array $body): void
 {
-    if (!array_key_exists('api_version', $body)) $body['api_version'] = job_config_idas_version();
+    if (!array_key_exists('api_version', $body)) $body['api_version'] = JobConfigApiConfig::VERSION;
     if (!array_key_exists('elapsed_ms', $body)) {
         $startedAt = isset($GLOBALS['JOB_CONFIG_REQUEST_STARTED_AT']) ? (float)$GLOBALS['JOB_CONFIG_REQUEST_STARTED_AT'] : microtime(true);
         $body['elapsed_ms'] = max(0, (int)round((microtime(true) - $startedAt) * 1000));
@@ -241,10 +90,9 @@ function job_config_response(int $status, array $body): void
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
     header('X-Content-Type-Options: nosniff');
-    header('X-iDAS-API-Version: ' . job_config_idas_version());
+    header('X-iDAS-API-Version: ' . JobConfigApiConfig::VERSION);
     if (class_exists('JobConfigReplaceService')) header('X-iDAS-Max-Request-Bytes: ' . job_config_max_request_bytes());
     $publicBody = job_config_sanitize_public_data($body);
-    job_config_dedupe_complete($status, $publicBody);
     http_response_code($status);
     echo json_encode($publicBody, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -315,17 +163,16 @@ try {
 
     if (isset($request['api_version'])) {
         $requestedVersion = trim((string)$request['api_version']);
-        $acceptedVersions = [job_config_idas_version(), JOB_CONFIG_LEGACY_API_VERSION];
-        if (!in_array($requestedVersion, $acceptedVersions, true)) {
-            job_config_response(400, ['success'=>false,'error'=>['code'=>JobConfigErrorCodes::UNSUPPORTED_API_VERSION,'message'=>'api_version must match the installed iDAS version (' . job_config_idas_version() . ')']]);
+        if ($requestedVersion !== JobConfigApiConfig::VERSION) {
+            job_config_response(400, ['success'=>false,'error'=>['code'=>JobConfigErrorCodes::UNSUPPORTED_API_VERSION,'message'=>'api_version must be ' . JobConfigApiConfig::VERSION]]);
         }
     }
 
     /*
-     * Unified public API (canonical schema for MES / iDAS UI / CMD):
+     * Unified public API (canonical schema for external clients and the iDAS UI):
      * {
+     *   "api_version": "<current API version>",
      *   "action": "check|preview|write",   // optional, defaults to write
-     *   "request_key": "MES-20260914-0001", // recommended for write idempotency
      *   "targets": ["192.168.100.150"], // optional; defaults to Settings -> Connection IP
      *   "JOB_lst": [...],
      *   "SEQ_lst": [...],
@@ -333,7 +180,7 @@ try {
      * }
      *
      * Omit targets for the controller configured in iDAS. Send targets only
-     * when MES needs to explicitly select one or more controllers.
+     * when a client needs to explicitly select one or more controllers.
      */
     $action = strtolower(trim((string)($request['action'] ?? 'write')));
     $hasTargets = array_key_exists('targets', $request);
@@ -399,11 +246,6 @@ try {
         $result = $remoteService->previewTargets($targets, $payload);
         job_config_operation_response(!empty($result['success']) ? 200 : 207, 'preview', !empty($result['success']), $result);
     }
-
-    $dedupe = job_config_dedupe_begin($request);
-    if (!empty($dedupe['error'])) job_config_response((int)$dedupe['error']['status'], ['success'=>false,'action'=>'write','error'=>['code'=>$dedupe['error']['code'],'message'=>$dedupe['error']['message']]]);
-    if (!empty($dedupe['replay'])) job_config_response((int)$dedupe['replay']['status'], $dedupe['replay']['body']);
-    if (!empty($dedupe['context'])) $GLOBALS['JOB_CONFIG_DEDUPE_CONTEXT'] = $dedupe['context'];
 
     $result = $remoteService->writeTargets($targets, $payload);
     if (!empty($result['no_ready_targets'])) {
