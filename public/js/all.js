@@ -311,11 +311,13 @@ function success_response(response, spinnerId = 'spinner', autoClose = false) {
             IdasNotify.alert(responseData.res_type, responseData.res_msg);
             setTimeout(() => {
                 alertify.closeAll();
+                if (window.IdasUnsavedGuard) window.IdasUnsavedGuard.markSaved();
                 history.go(0);
             }, 3000);
         } else {
             IdasNotify.alert(responseData.res_type, responseData.res_msg, function () {
                 alertify.closeAll();
+                if (window.IdasUnsavedGuard) window.IdasUnsavedGuard.markSaved();
                 history.go(0);
             });
         }
@@ -391,6 +393,7 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
       navigated = true;
       try { alertify.closeAll(); } catch (e) {}
       document.querySelector('.main-content')?.classList.remove('overlay-active');
+      if (window.IdasUnsavedGuard) window.IdasUnsavedGuard.markSaved();
       if (redirectUrl) window.location.href = redirectUrl;
       else history.go(0);
     };
@@ -826,11 +829,13 @@ function success_response(response, spinnerId = 'spinner', autoClose = false) {
             IdasNotify.alert(responseData.res_type, responseData.res_msg);
             setTimeout(() => {
                 alertify.closeAll();
+                if (window.IdasUnsavedGuard) window.IdasUnsavedGuard.markSaved();
                 history.go(0);
             }, 3000);
         } else {
             IdasNotify.alert(responseData.res_type, responseData.res_msg, function () {
                 alertify.closeAll();
+                if (window.IdasUnsavedGuard) window.IdasUnsavedGuard.markSaved();
                 history.go(0);
             });
         }
@@ -906,6 +911,7 @@ function success_response_seq(response, spinnerId = 'spinner', redirectUrl = nul
       navigated = true;
       try { alertify.closeAll(); } catch (e) {}
       document.querySelector('.main-content')?.classList.remove('overlay-active');
+      if (window.IdasUnsavedGuard) window.IdasUnsavedGuard.markSaved();
       if (redirectUrl) window.location.href = redirectUrl;
       else history.go(0);
     };

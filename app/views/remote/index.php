@@ -18,7 +18,7 @@
                     <h3><?php echo $text['command']; ?></h3>
                 </td>
                 <td>
-                    <button id="home" class="w3-btn w3-round-large" style="height:50px;padding: 0" onclick="window.location.href='./?url=Dashboards'"> <img src="../public/img/btn_home.png"></button>
+                    <button id="home" class="w3-btn w3-round-large" style="height:50px;padding:0;position:relative;z-index:4" onclick="window.location.href='./?url=Dashboards'"> <img src="../public/img/btn_home.png"></button>
                 </td>
             </tr>
         </table>
@@ -307,7 +307,7 @@
                     <h3><?php echo $text['command']; ?></h3>
                 </td>
                 <td>
-                    <button id="home" class="w3-btn w3-round-large" style="height:50px;padding: 0" onclick="window.location.href='./?url=Dashboards'"> <img src="../public/img/btn_home.png"></button>
+                    <button id="home" class="w3-btn w3-round-large" style="height:50px;padding:0;position:relative;z-index:4" onclick="window.location.href='./?url=Dashboards'"> <img src="../public/img/btn_home.png"></button>
                 </td>
             </tr>
         </table>

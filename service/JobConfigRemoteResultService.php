@@ -58,6 +58,29 @@ final class JobConfigRemoteResultService
         return $value;
     }
 
+    /**
+     * Read operation details from the current flat response or the legacy
+     * top-level data object. A remote endpoint normally returns one result,
+     * but matching by IP keeps the parser safe if that changes later.
+     */
+    public function operationResultData(array $json, ?string $targetIp = null): array
+    {
+        if (isset($json['data']) && is_array($json['data'])) {
+            return $this->sanitizePublicData($json['data']);
+        }
+
+        $fallback = null;
+        foreach (isset($json['results']) && is_array($json['results']) ? $json['results'] : [] as $result) {
+            if (!is_array($result) || !isset($result['data']) || !is_array($result['data'])) continue;
+            if ($fallback === null && !empty($result['success'])) $fallback = $result['data'];
+            if ($targetIp !== null && (string)($result['ip'] ?? '') === $targetIp) {
+                return $this->sanitizePublicData($result['data']);
+            }
+        }
+
+        return $fallback === null ? [] : $this->sanitizePublicData($fallback);
+    }
+
     public function writeResponseToResult(string $ip, $response): array
     {
         $elapsedMs = is_array($response) ? (int)($response['elapsed_ms'] ?? 0) : 0;
@@ -88,7 +111,7 @@ final class JobConfigRemoteResultService
                 'success' => true,
                 'code' => JobConfigErrorCodes::WRITE_OK,
                 'message' => 'Write complete',
-                'data' => $this->sanitizePublicData($json['data'] ?? []),
+                'data' => $this->operationResultData($json, $ip),
                 'elapsed_ms' => $elapsedMs,
             ];
         }

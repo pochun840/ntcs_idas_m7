@@ -112,6 +112,12 @@
     border: 0;
 }
 
+/* Unsaved-changes confirm uses the same compact Alertify presentation as JOB.
+   JOB hides the Alertify title row, so keep that behavior site-wide for this guard. */
+.alertify .idas-confirm-dialog.idas-unsaved-dialog .ajs-header {
+    display: none !important;
+}
+
 .alertify .idas-confirm-dialog .ajs-body {
     padding: 10px 24px 18px;
     color: #414b5c;

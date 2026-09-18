@@ -176,7 +176,7 @@ final class RemoteJobConfigService
                     $results[$ip] = ['ip'=>$ip,'success'=>false,'skipped'=>false,'code'=>(string)($json['error']['code'] ?? JobConfigErrorCodes::PREVIEW_FAILED),'message'=>(string)($json['error']['message'] ?? 'Preview failed')];
                     continue;
                 }
-                $results[$ip] = ['ip'=>$ip,'success'=>true,'skipped'=>false,'code'=>JobConfigErrorCodes::PREVIEW_OK,'message'=>'Preview complete','data'=>$this->resultService->sanitizePublicData($json['data'] ?? [])];
+                $results[$ip] = ['ip'=>$ip,'success'=>true,'skipped'=>false,'code'=>JobConfigErrorCodes::PREVIEW_OK,'message'=>'Preview complete','data'=>$this->resultService->operationResultData($json, $ip)];
             }
         }
 

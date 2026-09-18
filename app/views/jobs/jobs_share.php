@@ -34,10 +34,10 @@
   var modal = document.getElementById('newjob');
   if (modal) {
     document.addEventListener('click', function (e) {
-      if (e.target === modal) modal.style.display = 'none';
+      if (e.target === modal) closebutton('newjob');
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') modal.style.display = 'none';
+      if (e.key === 'Escape') closebutton('newjob');
     });
   }
 
