@@ -287,8 +287,8 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/alertify_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
-    <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
-    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-saving-nowrap1">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify8">
     <?php
         $route = explode('/', trim((string)($_GET['url'] ?? ''), '/'))[0] ?? '';
 
@@ -311,12 +311,13 @@ function include_css() {
 
     <!-- ================== 共用 JS ================== -->
     <script src="<?php echo idas_asset_url('js/all.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
-    <script src="<?php echo idas_asset_url('js/interaction_feedback.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
+    <script src="<?php echo idas_asset_url('js/interaction_feedback.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-save-lock2"></script>
     <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
-    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5"></script>
-    <script src="<?php echo idas_asset_url('js/unsaved_form_guard.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-unsaved-global2"></script>
+    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify8"></script>
+    <script src="<?php echo idas_asset_url('js/idas_connection_status.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-connection2-login-exclude"></script>
+    <script src="<?php echo idas_asset_url('js/unsaved_form_guard.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-unsaved-ux9-login-exclude"></script>
 
 
 
@@ -728,6 +729,9 @@ function pollDeviceId(){
         type:"POST",
         dataType:"json",
         success:function(res){
+            if(res && res.res_type==="OK" && typeof res.online!=="undefined" && window.IdasConnectionStatus){
+                window.IdasConnectionStatus.setControllerOnline(res.online===true || res.online===1 || res.online==="1");
+            }
             if(!res || res.res_type!=="OK") return;
 
             const newId=parseInt(res.device_id);
@@ -739,6 +743,9 @@ function pollDeviceId(){
             }
 
             processDeviceIdentityState(res);
+        },
+        error:function(){
+            if(window.IdasConnectionStatus) window.IdasConnectionStatus.setControllerOnline(false);
         },
         complete:function(){ setTimeout(pollDeviceId,2000); }
     });
@@ -901,8 +908,8 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/alertify_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
-    <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
-    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-saving-nowrap1">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify8">
     <?php
         $route = explode('/', trim((string)($_GET['url'] ?? ''), '/'))[0] ?? '';
 
@@ -925,12 +932,13 @@ function include_css() {
 
     <!-- ================== 共用 JS ================== -->
     <script src="<?php echo idas_asset_url('js/all.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
-    <script src="<?php echo idas_asset_url('js/interaction_feedback.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
+    <script src="<?php echo idas_asset_url('js/interaction_feedback.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-save-lock2"></script>
     <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
-    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5"></script>
-    <script src="<?php echo idas_asset_url('js/unsaved_form_guard.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-unsaved-global2"></script>
+    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify8"></script>
+    <script src="<?php echo idas_asset_url('js/idas_connection_status.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-connection2-login-exclude"></script>
+    <script src="<?php echo idas_asset_url('js/unsaved_form_guard.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-unsaved-ux9-login-exclude"></script>
 
 
 
@@ -1512,9 +1520,13 @@ function pollDeviceId(){
         dataType:"json",
         timeout:15000,
         success:function(res){
+            if(res && res.res_type==="OK" && typeof res.online!=="undefined" && window.IdasConnectionStatus){
+                window.IdasConnectionStatus.setControllerOnline(res.online===true || res.online===1 || res.online==="1");
+            }
             handleDeviceIdentityStatus(res);
         },
         error:function(){
+            if(window.IdasConnectionStatus) window.IdasConnectionStatus.setControllerOnline(false);
             markControllerOfflineByAjaxError();
         },
         complete:function(){

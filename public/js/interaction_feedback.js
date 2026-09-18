@@ -23,6 +23,85 @@
         ].join(' ');
     }
 
+    function currentLanguage() {
+        var value = 'en-us';
+        try {
+            if (typeof window.getCookie === 'function') value = window.getCookie('language') || value;
+            else {
+                var match = document.cookie.match(/(?:^|;\s*)language=([^;]+)/);
+                if (match) value = decodeURIComponent(match[1]);
+            }
+        } catch (ignore) {}
+        value = String(value || 'en-us').toLowerCase().replace('_', '-');
+        if (value === 'zh-cn' || value === 'zh-sg' || value.indexOf('hans') !== -1) return 'zh-cn';
+        if (value === 'zh-tw' || value === 'zh-hk' || value === 'zh-mo' || value.indexOf('hant') !== -1) return 'zh-tw';
+        return 'en-us';
+    }
+
+    function savingText() {
+        var language = currentLanguage();
+        if (language === 'zh-tw') return '儲存中...';
+        if (language === 'zh-cn') return '保存中...';
+        return 'Saving...';
+    }
+
+    function isSaveAction(button) {
+        if (!button) return false;
+        if (button.dataset && button.dataset.idasSaveLock === '0') return false;
+        if (button.dataset && button.dataset.idasSaveLock === '1') return true;
+
+        var descriptor = actionDescriptor(button);
+        var label = String(button.value || button.textContent || '').replace(/\s+/g, ' ').trim();
+        if (/^(save|saving|儲存|储存|保存|套用)$/i.test(label)) return true;
+        if (/\b(save|savejob|save_sequence|save_or_edit_step|controller_save|save_pwd|update_barcode|change_job)\b/i.test(descriptor)) return true;
+        if (/(create|edit)_(input|output)_id/i.test(descriptor)) return true;
+        if (/\bbtnsave\b/i.test(descriptor)) return true;
+        return false;
+    }
+
+    function savePreviewWillHandle(button) {
+        if (!isSaveAction(button)) return false;
+        try {
+            return !!(window.IdasUnsavedGuard
+                && typeof window.IdasUnsavedGuard.isDirty === 'function'
+                && window.IdasUnsavedGuard.isDirty());
+        } catch (ignore) {
+            return false;
+        }
+    }
+
+    function setSavingLabel(button, enabled) {
+        if (!button || !isSaveAction(button)) return;
+        var tag = String(button.tagName || '').toUpperCase();
+
+        if (enabled) {
+            if (button.dataset.idasSavingLabel === '1') return;
+            button.dataset.idasSavingLabel = '1';
+            if (tag === 'INPUT') {
+                button.dataset.idasOriginalSaveValue = button.value || '';
+                button.value = button.getAttribute('data-idas-saving-text') || savingText();
+            } else {
+                button.dataset.idasOriginalSaveHtml = button.innerHTML;
+                button.textContent = button.getAttribute('data-idas-saving-text') || savingText();
+            }
+            return;
+        }
+
+        if (button.dataset.idasSavingLabel !== '1') return;
+        if (tag === 'INPUT') {
+            if (Object.prototype.hasOwnProperty.call(button.dataset, 'idasOriginalSaveValue')) {
+                button.value = button.dataset.idasOriginalSaveValue;
+            }
+            delete button.dataset.idasOriginalSaveValue;
+        } else {
+            if (Object.prototype.hasOwnProperty.call(button.dataset, 'idasOriginalSaveHtml')) {
+                button.innerHTML = button.dataset.idasOriginalSaveHtml;
+            }
+            delete button.dataset.idasOriginalSaveHtml;
+        }
+        delete button.dataset.idasSavingLabel;
+    }
+
     function usesDialogErrorFeedback(button) {
         return !!button && /save|create|add|new|edit|update|copy|delete|remove|新增|儲存|保存|編輯|修改|複製|刪除/i.test(actionDescriptor(button));
     }
@@ -35,14 +114,22 @@
 
     function lockBriefly(button) {
         if (!shouldLock(button)) return true;
-        if (button.dataset.idasClickLocked === '1') return false;
+        if (button.dataset.idasAjaxBusy === '1' || button.dataset.idasClickLocked === '1') return false;
+
+        // When unsaved-change preview owns the first Save click, do not lock the
+        // underlying button yet. The confirmed Save will be locked as soon as
+        // its AJAX/fetch/XHR request starts. This avoids blocking a fast confirm.
+        if (savePreviewWillHandle(button)) return true;
+
         button.dataset.idasClickLocked = '1';
         button.classList.add('idas-click-locked');
         button.setAttribute('aria-disabled', 'true');
+        if (isSaveAction(button)) setSavingLabel(button, true);
         window.setTimeout(function () {
             if (button.dataset.idasAjaxBusy === '1') return;
             delete button.dataset.idasClickLocked;
             button.classList.remove('idas-click-locked');
+            setSavingLabel(button, false);
             if (!button.disabled) button.removeAttribute('aria-disabled');
         }, LOCK_MS);
         return true;
@@ -84,8 +171,12 @@
             scope.classList.toggle('idas-scope-busy', enabled);
             scope.setAttribute('aria-busy', enabled ? 'true' : 'false');
         }
-        if (enabled) button.setAttribute('aria-disabled', 'true');
-        else {
+        if (enabled) {
+            button.dataset.idasClickLocked = '1';
+            button.setAttribute('aria-disabled', 'true');
+            setSavingLabel(button, true);
+        } else {
+            setSavingLabel(button, false);
             delete button.dataset.idasAjaxBusy;
             delete button.dataset.idasClickLocked;
             button.removeAttribute('aria-busy');
@@ -308,6 +399,29 @@
             refreshOptions(document);
         }
     });
+
+    // requestSubmit()/keyboard submits do not always emit a button click. Keep
+    // the submitter fresh so AJAX feedback can still lock the correct Save
+    // button after the change-preview confirmation.
+    document.addEventListener('submit', function (event) {
+        var button = event.submitter || null;
+        if (!button || !shouldLock(button)) return;
+        pendingActionButton = button;
+        pendingActionAt = Date.now();
+
+        // For a classic non-AJAX form submit, show the Saving state only when
+        // no later handler cancelled the submit (for example the diff preview).
+        if (isSaveAction(button)) {
+            window.setTimeout(function () {
+                if (event.defaultPrevented || button.dataset.idasAjaxBusy === '1') return;
+                button.dataset.idasClickLocked = '1';
+                button.classList.add('idas-click-locked', 'idas-action-busy');
+                button.setAttribute('aria-disabled', 'true');
+                button.setAttribute('aria-busy', 'true');
+                setSavingLabel(button, true);
+            }, 0);
+        }
+    }, true);
 
     document.addEventListener('click', function (event) {
         var button = getButton(event.target);

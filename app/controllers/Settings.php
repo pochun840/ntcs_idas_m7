@@ -937,6 +937,59 @@ class Settings extends Controller
             @chmod($dstDb, 0666);
         }
 
+    /**
+     * 覆蓋完成後驗證設定資料。
+     * - 來源 / 目的檔案必須存在且不可為 0 KB
+     * - 靜態設定檔預設檢查檔案大小一致
+     * - SQLite / LIN 設定檔再執行 integrity_check
+     *
+     * ntcs_data.db 可能持續寫入，可由呼叫端將 $requireSameSize 設為 false，
+     * 避免來源在複製完成後又成長造成誤判；目的檔仍會做完整性檢查。
+     */
+    private function verifyConfigurationTarget(
+        string $source,
+        string $target,
+        bool $requireSameSize = true
+    ): array {
+        clearstatcache(true, $source);
+        clearstatcache(true, $target);
+
+        if (!is_file($source) || !is_readable($source)) {
+            throw new Exception('Configuration source is missing or unreadable');
+        }
+        if (!is_file($target) || !is_readable($target)) {
+            throw new Exception('Configuration target is missing or unreadable');
+        }
+
+        $sourceSize = @filesize($source);
+        $targetSize = @filesize($target);
+
+        if ($sourceSize === false || $sourceSize <= 0) {
+            throw new Exception('Configuration source is empty');
+        }
+        if ($targetSize === false || $targetSize <= 0) {
+            throw new Exception('Configuration target is empty');
+        }
+        if ($requireSameSize && $sourceSize !== $targetSize) {
+            throw new Exception(sprintf(
+                'Configuration size verification failed (source=%s, target=%s)',
+                (string)$sourceSize,
+                (string)$targetSize
+            ));
+        }
+
+        $extension = strtolower((string)pathinfo($target, PATHINFO_EXTENSION));
+        if (in_array($extension, ['db', 'lin', 'sqlite', 'sqlite3'], true)) {
+            $this->assertSqliteHealthy($target);
+        }
+
+        return [
+            'source_size' => $sourceSize,
+            'target_size' => $targetSize,
+            'integrity'   => 'ok',
+        ];
+    }
+
     private function safeCopy($src, $dst) {
             return ControllerSyncService::atomicCopy(
                 (string)$src,
@@ -2842,6 +2895,13 @@ class Settings extends Controller
             }
             @chmod($dst3, 0777);
 
+            try {
+                $this->verifyConfigurationTarget($src3, $dst3);
+            } catch (Throwable $e) {
+                $this->logMessage('Configuration verification failed: ' . $e->getMessage());
+                $this->MiscellaneousModel->generateErrorResponse('Error', 'Configuration verification failed');
+            }
+
             // 🔥 這支通常很肥，如非必要先關掉（如果你要加回來就把這行註解拿掉）
             $this->get_db_sync($unitId);
         }
@@ -2873,6 +2933,7 @@ class Settings extends Controller
             }
             @chmod($finalPath1, 0777);
             $this->logMessage("$src1 copied to $finalPath1");
+            $this->verifyConfigurationTarget($src1, $finalPath1);
 
             // 通知控制器有新 LIN
             $this->notifyModbus($modbus, [1, 12593], "LIN");
@@ -2898,6 +2959,7 @@ class Settings extends Controller
             }
             @chmod($finalPath2, 0777);
             $this->logMessage("$src2 copied to $finalPath2");
+            $this->verifyConfigurationTarget($src2, $finalPath2);
 
             // 通知控制器有新 DB
             $this->notifyModbus($modbus, [1, 12593], "DB");
@@ -2997,9 +3059,10 @@ class Settings extends Controller
             $this->replaceSqliteDbFile($src3, $dst3, false);
 
             @chmod($dst3, 0777);
-            $this->logMessage("Updated iDAS device DB copied to Controller: {$src3} -> {$dst3}");
+            $auditExtra['device_verification'] = $this->verifyConfigurationTarget($src3, $dst3);
+            $this->logMessage("Updated iDAS device configuration copied and verified: {$src3} -> {$dst3}");
 
-            // 3. 延續原本的後續 DB 同步流程。
+            // 3. 延續原本的後續資料同步流程。
             $this->get_db_sync($unitId);
 
         } catch (Throwable $e) {
@@ -3052,6 +3115,7 @@ class Settings extends Controller
             }
             @chmod($finalPath1, 0777);
             $this->logMessage("$src1 copied to $finalPath1");
+            $this->verifyConfigurationTarget($src1, $finalPath1);
 
             // 通知控制器有新 LIN
             $this->notifyModbus($modbus, [1, 12593], "LIN");
@@ -3073,6 +3137,7 @@ class Settings extends Controller
             }
             @chmod($finalPath2, 0777);
             $this->logMessage("$src2 copied to $finalPath2");
+            $this->verifyConfigurationTarget($src2, $finalPath2);
 
             // 通知控制器有新 DB
             $this->notifyModbus($modbus, [1, 12593], "DB");
@@ -3127,6 +3192,18 @@ class Settings extends Controller
                 if (file_exists($src)) {
                     if (copy($src, $dst)) {
                         @chmod($dst, 0666);
+
+                        try {
+                            $this->verifyConfigurationTarget(
+                                $src,
+                                $dst,
+                                basename($src) !== 'ntcs_data.db'
+                            );
+                        } catch (Throwable $e) {
+                            $this->logMessage('Configuration verification failed: ' . $e->getMessage());
+                            return $this->MiscellaneousModel->generateErrorResponse('Error', 'Configuration verification failed');
+                        }
+
                         $copiedCount++;
 
                         // Barcode C2D：複製後立即恢復「同一個 JOB 只能一筆 Barcode」。
@@ -3203,10 +3280,30 @@ class Settings extends Controller
                     }
 
                     if ($copiedOk) {
+                        try {
+                            $verification = $this->verifyConfigurationTarget(
+                                $src,
+                                $dst,
+                                basename($src) !== 'ntcs_data.db'
+                            );
+                        } catch (Throwable $verifyException) {
+                            $auditExtra['failed_stage'] = 'verify_configuration';
+                            $auditExtra['failed_src'] = $src;
+                            $auditExtra['failed_dst'] = $dst;
+                            $auditExtra['verification_exception'] = $verifyException->getMessage();
+                            return $this->syncDbAuditResponse(
+                                'Error',
+                                'Configuration verification failed',
+                                'SYNC_C2D',
+                                $auditExtra
+                            );
+                        }
+
                         $copiedCount++;
                         $auditExtra['copied'][] = [
                             'src' => $src,
                             'dst' => $dst,
+                            'verification' => $verification,
                         ];
 
                         // 如果是特定檔案可額外執行後處理
