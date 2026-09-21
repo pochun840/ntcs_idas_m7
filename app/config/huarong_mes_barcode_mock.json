@@ -1,0 +1,74 @@
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "work_order": {
+      "item": "02356NLQ",
+      "SN": "TEST-20260921-001",
+      "process_name": "天成机柜预加工",
+      "station": 1,
+      "screw_inf": [
+        {"screw_item": "26010550", "screw_quantity": 20}
+      ]
+    },
+    "job": {
+      "job_id": 1,
+      "job_name": "JOB01",
+      "job_ok_job": 1,
+      "job_ok_job_stop": 0,
+      "unscrew_force": 80,
+      "unscrew_rpm": 300,
+      "unscrew_dir": 1,
+      "unscrew_count_switch": 1,
+      "unscrew_torque_threshold": 50
+    },
+    "seq": {
+      "seq_id": 1,
+      "seq_name": "SEQ01",
+      "seq_tightening_repeat": 10,
+      "seq_ng_stop": 1,
+      "seq_ok_seq": 1,
+      "seq_ok_seq_stop": 0,
+      "seq_timeout": 10,
+      "seq_unscrew_mode": 1,
+      "seq_unscrew_type": 1,
+      "seq_unscrew_force": 75,
+      "seq_unscrew_rpm": 250,
+      "seq_unscrew_direction": 1,
+      "seq_reverse_count": 1,
+      "seq_unscrew_thres_tor": 450,
+      "seq_ng_reverse": 1,
+      "seq_accumulate_angle": 0,
+      "seq_angle_cal1": 0,
+      "seq_angle_cal2": 0,
+      "seq_angle_cal3": 0,
+      "seq_angle_cal4": 0,
+      "seq_angle_cal5": 0,
+      "seq_unscrew_thres_ang": 1800,
+      "seq_total_angle_hi": 3600,
+      "seq_total_angle_lo": 100
+    },
+    "steps": [
+      {
+        "step_id": 1, "step_id_enable": 1, "step_name": "STEP1", "step_target_option": 1,
+        "step_target_angle": 720, "step_target_torque": 350, "step_delay_time": 5, "step_direction": 0,
+        "step_rpm": 200, "step_offset_sign": 0, "step_offset": 10, "step_hi_torque": 400,
+        "step_lo_torque": 300, "step_over_angle_stop": 1, "step_hi_angle": 800, "step_lo_angle": 650,
+        "step_step_record_angle": 0, "step_step_acce_slope": 0, "step_interrupt_alarm": 1,
+        "step_threshold_enable": 1, "step_threshold_torque": 320, "step_threshold_angle": 700,
+        "step_downshift_enable": 1, "step_downshift_torque": 310, "step_downshift_angle": 680,
+        "step_downshift_speed": 100, "step_k_value": 5, "step_target_time": 3
+      },
+      {
+        "step_id": 2, "step_id_enable": 1, "step_name": "STEP2", "step_target_option": 1,
+        "step_target_angle": 360, "step_target_torque": 360, "step_delay_time": 2, "step_direction": 0,
+        "step_rpm": 150, "step_offset_sign": 0, "step_offset": 0, "step_hi_torque": 410,
+        "step_lo_torque": 320, "step_over_angle_stop": 1, "step_hi_angle": 400, "step_lo_angle": 320,
+        "step_step_record_angle": 0, "step_step_acce_slope": 0, "step_interrupt_alarm": 1,
+        "step_threshold_enable": 1, "step_threshold_torque": 330, "step_threshold_angle": 340,
+        "step_downshift_enable": 1, "step_downshift_torque": 320, "step_downshift_angle": 330,
+        "step_downshift_speed": 80, "step_k_value": 5, "step_target_time": 2
+      }
+    ]
+  }
+}
