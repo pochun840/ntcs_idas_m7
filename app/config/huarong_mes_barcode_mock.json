@@ -25,7 +25,7 @@
     "seq": {
       "seq_id": 1,
       "seq_name": "SEQ01",
-      "seq_tightening_repeat": 10,
+      "seq_tightening_repeat": 2,
       "seq_ng_stop": 1,
       "seq_ok_seq": 1,
       "seq_ok_seq_stop": 0,

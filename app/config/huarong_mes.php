@@ -7,6 +7,7 @@ return [
     // 'base_url' => 'http://192.168.100.200:8080',
     'base_url' => '',
     'barcode_path' => '/api/barcode',
+    'report_path' => '/api/report_tightening_result',
     'connect_timeout' => 3,
     'timeout' => 5,
 
@@ -14,6 +15,7 @@ return [
     // 正式上線前務必改為 false，並設定 base_url。
     'mock_enabled' => true,
     'mock_response_file' => __DIR__ . '/huarong_mes_barcode_mock.json',
+    'report_mock_response_file' => __DIR__ . '/huarong_mes_report_mock.json',
 
     // 華榮配方中的扭力值以 x100 傳送，例如 350 = 3.50。
     // 若正式 MES 定義不同，只需調整此倍率，不需修改 Mapping 程式。

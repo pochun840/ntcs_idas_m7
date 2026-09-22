@@ -6,7 +6,7 @@
 #==================================
 
 require_once('../app/libraries/Database.php');
-require_once('../service/HuarongTighteningReportService.php'); 
+require_once('../service/HuarongTighteningReportService.php');
 
 $db = new Database();
 $db_data = $db->getDb_data();  
@@ -25,7 +25,7 @@ NTCS7 匯出鎖附記錄API
 
 
 補充說明: 
-1.輸出格式為:xml && json && array
+1.輸出格式為:xml && json && array && huarong_mes
 -->
 ';
 
@@ -65,83 +65,72 @@ switch($type){
             echo "</pre>";
         }
     break;
-    # 华荣 MES 接口2报文
-    case 'huarong_mes':
-        header('Content-type: application/json; charset=utf-8');
-
-        if (empty($newsItem)) {
-            http_response_code(404);
-            echo json_encode([
-                'code' => 4001,
-                'msg' => '上報失敗',
-                'data' => [
-                    'SN' => '',
-                    'receive_time' => date('Y-m-d H:i:s'),
-                    'save_status' => 0,
-                    'message' => '沒有可上報的鎖附結果'
-                ]
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            break;
-        }
-
-        // 接口 1 成功後會保存 work_order Context；接口 2 預設自動使用。
-        // 若 POST Body 有提供欄位，則以 POST 值覆蓋 Context，保留既有測試/除錯能力。
-        $context = [];
-        $contextFile = dirname(__DIR__) . '/public/huarong_mes_context.json';
-        if (is_file($contextFile) && is_readable($contextFile)) {
-            $saved = json_decode((string)file_get_contents($contextFile), true);
-            if (is_array($saved)) $context = $saved;
-        }
-
-        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-            $raw = file_get_contents('php://input');
-            if ($raw !== false && trim($raw) !== '') {
-                $decoded = json_decode($raw, true);
-                if (!is_array($decoded)) {
-                    http_response_code(400);
-                    echo json_encode([
-                        'code' => 4003,
-                        'msg' => '報文格式錯誤',
-                        'data' => [
-                            'SN' => '',
-                            'receive_time' => date('Y-m-d H:i:s'),
-                            'save_status' => 0,
-                            'message' => 'JSON 解析失敗'
-                        ]
-                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                    break;
-                }
-                $context = array_replace($context, $decoded);
-            }
-        }
-
-        try {
-            $mapper = new HuarongTighteningReportService();
-            echo json_encode(
-                $mapper->buildPayload($newsItem, $context),
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            );
-        } catch (InvalidArgumentException $e) {
-            $code = strpos($e->getMessage(), 'SN') !== false ? 4002 : 4003;
-            http_response_code(400);
-            echo json_encode([
-                'code' => $code,
-                'msg' => $code === 4002 ? 'SN 不能為空' : '報文格式錯誤',
-                'data' => [
-                    'SN' => '',
-                    'receive_time' => date('Y-m-d H:i:s'),
-                    'save_status' => 0,
-                    'message' => $e->getMessage()
-                ]
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-    break;
-
     # JSON
     case 'json':
         header('Content-type: application/json; charset=utf-8');
         if(!empty($newsItem)){
             echo json_encode($newsItem);
+        }
+    break;
+    # 華榮 MES 接口 2 JSON 預覽（只組資料，不送 MES）
+    case 'huarong_mes':
+        header('Content-type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+
+        try {
+            if (empty($newsItem)) {
+                echo json_encode([
+                    'code' => 4001,
+                    'msg' => '上報失敗',
+                    'data' => [
+                        'save_status' => 0,
+                        'message' => '沒有鎖附結果'
+                    ]
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+            }
+
+            $config = require('../app/config/huarong_mes.php');
+            $contextFile = (string)($config['context_file'] ?? '');
+            if ($contextFile === '' || !is_file($contextFile) || !is_readable($contextFile)) {
+                echo json_encode([
+                    'code' => 4001,
+                    'msg' => '上報失敗',
+                    'data' => [
+                        'save_status' => 0,
+                        'message' => '沒有 READY MES Context，請先完成接口 1'
+                    ]
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+            }
+
+            $context = json_decode((string)file_get_contents($contextFile), true);
+            if (!is_array($context) || ($context['status'] ?? '') !== 'READY') {
+                echo json_encode([
+                    'code' => 4001,
+                    'msg' => '上報失敗',
+                    'data' => [
+                        'save_status' => 0,
+                        'message' => 'MES Context 尚未 READY'
+                    ]
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+            }
+
+            // 與接口 2 共用完全相同的 Mapping Service。
+            // 此 type 僅供預覽，不會 POST /api/report_tightening_result。
+            $mapper = new HuarongTighteningReportService();
+            $payload = $mapper->buildPayload($newsItem, $context);
+            echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $e) {
+            echo json_encode([
+                'code' => 4001,
+                'msg' => '上報失敗',
+                'data' => [
+                    'save_status' => 0,
+                    'message' => $e->getMessage()
+                ]
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
     break;
     default:

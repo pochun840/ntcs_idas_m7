@@ -57,6 +57,7 @@ try {
     //    Mirror sync、寫後驗證與 rollback 全部使用同一套核心邏輯。
     require_once dirname(__DIR__) . '/app/config/config.php';
     require_once dirname(__DIR__) . '/app/libraries/Controller.php';
+    require_once dirname(__DIR__) . '/app/libraries/Database.php';
     require_once dirname(__DIR__) . '/service/JobConfigReplaceService.php';
     require_once dirname(__DIR__) . '/service/JobSwitchService.php';
 
@@ -69,8 +70,16 @@ try {
     $switcher = new JobSwitchService();
     $switchResult = $switcher->switchJob($targetJobId);
 
-    // 5) 寫入 + Job Switch 都成功後才保存 work_order Context。
-    $context = $service->saveContext($data, $mes['payload']);
+    // 5) 寫入 + Job Switch 都成功後才建立 READY Context。
+    //    同時記錄目前 ntcs_data 最新 id，接口 2 只會上報之後新產生的鎖附結果，
+    //    避免把上一個 Barcode / SN 的舊資料送給華榮。
+    $baselineResultId = 0;
+    $dataDb = (new Database())->getDb_data();
+    $stmt = $dataDb->query('SELECT COALESCE(MAX(id), 0) FROM ntcs_data');
+    if ($stmt !== false) {
+        $baselineResultId = (int)$stmt->fetchColumn();
+    }
+    $context = $service->saveContext($data, $mes['payload'], $baselineResultId);
 
     huarong_barcode_response(200, [
         'success' => true,

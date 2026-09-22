@@ -30,12 +30,12 @@ final class JobSwitchService
     public function __construct(array $options = [])
     {
         $controllerRoot = $options['controller_root'] ?? IDAS_PATH_CONTROLLER_ROOT;
-        $databaseRoot = $options['database_root'] ?? IDAS_PATH_DATABASE_ROOT;
-
         $this->controllerDatabasePath =
             $options['controller_database_path'] ?? $controllerRoot . '/KLS_NTCS.Lin';
+        // Modbus Unit ID 與華榮 station_code 使用同一個 Controller device_id 來源。
+        // Controller 真實設備 DB：/home/kls/NTCS7/ntcs_device.db
         $this->deviceDatabasePath =
-            $options['device_database_path'] ?? $databaseRoot . '/ntcs_device_IDAS.db';
+            $options['device_database_path'] ?? $controllerRoot . '/ntcs_device.db';
         $this->controllerFactory =
             $options['controller_factory'] ?? static function () { return new Controller(); };
     }
@@ -133,6 +133,13 @@ final class JobSwitchService
             );
         }
 
+        // DB 切換完成後，通知 Controller 套用實際 JOB / SEQ。
+        // 463 (0x01CF) = 切換工作編號：寫入 MES 傳入的 job_id。
+        // 464 (0x01D0) = 切換工序編號：固定從 SEQ 1 開始。
+        // 4305 / 4306 為 Controller 實際 JOB / SEQ 狀態，用於寫後驗證。
+        $unitId = $this->activeUnitId();
+        $this->applyControllerJobSequence($controller, $unitId, $targetJobId, 1, $finalCurrentJobId);
+
         $elapsedMs = (int)round((microtime(true) - $startedAt) * 1000);
 
         $this->log(
@@ -148,6 +155,61 @@ final class JobSwitchService
             'previous_job_id' => $currentJobId,
             'elapsed_ms' => $elapsedMs,
         ];
+    }
+
+
+    private function applyControllerJobSequence(
+        $controller,
+        int $unitId,
+        int $jobId,
+        int $seqId,
+        int $currentJobId
+    ): void {
+        try {
+            // 分開寫 463 / 464，OP 與 Modbus 都使用同一組 register 定義。
+            if (!$controller->protocol_write_register($unitId, 463, $jobId)) {
+                throw new RuntimeException('Register 463 (Job ID) 寫入失敗');
+            }
+
+            // Controller 一次處理一筆命令，保留短暫處理時間後再切 SEQ。
+            usleep(120000);
+
+            if (!$controller->protocol_write_register($unitId, 464, $seqId)) {
+                throw new RuntimeException('Register 464 (Seq ID) 寫入失敗');
+            }
+
+            // 命令 register 不以 463/464 讀回驗證；改讀實際狀態 4305/4306。
+            if (!$controller->protocol_wait_for_register_values(
+                $unitId,
+                4305,
+                [$jobId, $seqId],
+                5,
+                200000
+            )) {
+                throw new RuntimeException('Controller JOB/SEQ 寫後驗證失敗');
+            }
+
+            $this->log(
+                'MODBUS_SWITCH_OK unit_id=' . $unitId .
+                ' reg463_job_id=' . $jobId .
+                ' reg464_seq_id=' . $seqId .
+                ' verify_4305_4306=OK'
+            );
+        } catch (Throwable $e) {
+            $this->log(
+                'MODBUS_SWITCH_FAILED unit_id=' . $unitId .
+                ' target_job_id=' . $jobId .
+                ' target_seq_id=' . $seqId .
+                ' error=' . $e->getMessage()
+            );
+
+            throw new JobSwitchException(
+                502,
+                3001,
+                'Job DB 已切換，但 Controller JOB/SEQ 指令執行失敗：' . $e->getMessage(),
+                $currentJobId
+            );
+        }
     }
 
     private function jobExists(PDO $pdo, int $jobId): bool
@@ -240,8 +302,12 @@ final class JobSwitchService
 
     private function activeUnitId(): int
     {
-        if (!is_file($this->deviceDatabasePath)) {
-            return 1;
+        // 不再從 iDAS mirror DB (ntcs_device_IDAS.db) 或 control_id/modbus_id 猜值。
+        // Modbus Unit ID 固定使用 Controller /home/kls/NTCS7/ntcs_device.db
+        // 的 ntcs_device_test.device_id，與接口 1 station_code 完全一致。
+        if (!is_file($this->deviceDatabasePath) || !is_readable($this->deviceDatabasePath)) {
+            $this->log('DEVICE_DB_NOT_READABLE path=' . $this->deviceDatabasePath);
+            throw new JobSwitchException(503, 3001, '無法讀取 Controller ntcs_device.db');
         }
 
         try {
@@ -250,34 +316,29 @@ final class JobSwitchService
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
 
-            $columns = array_column(
-                $pdo->query(
-                    'PRAGMA table_info(ntcs_device_test)'
-                )->fetchAll(PDO::FETCH_ASSOC),
-                'name'
+            $stmt = $pdo->query(
+                'SELECT device_id FROM ntcs_device_test ' .
+                'WHERE device_id IS NOT NULL ' .
+                'AND TRIM(CAST(device_id AS TEXT)) <> "" LIMIT 1'
             );
+            $rawUnitId = $stmt->fetchColumn();
 
-            foreach (['device_id', 'control_id', 'modbus_id'] as $column) {
-                if (!in_array($column, $columns, true)) {
-                    continue;
-                }
-
-                $value = (int)$pdo
-                    ->query(
-                        'SELECT "' . $column .
-                        '" FROM ntcs_device_test LIMIT 1'
-                    )
-                    ->fetchColumn();
-
-                if ($value >= 1 && $value <= 255) {
-                    return $value;
-                }
+            if ($rawUnitId === false || !is_numeric($rawUnitId)) {
+                throw new RuntimeException('ntcs_device_test 找不到有效的 device_id');
             }
-        } catch (Throwable $e) {
-            $this->log('DEVICE_ID_READ_FAILED ' . $e->getMessage());
-        }
 
-        return 1;
+            $unitId = (int)$rawUnitId;
+            if ($unitId < 1 || $unitId > 255) {
+                throw new RuntimeException('device_id 超出 Modbus Unit ID 範圍 1~255');
+            }
+
+            return $unitId;
+        } catch (JobSwitchException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            $this->log('DEVICE_ID_READ_FAILED path=' . $this->deviceDatabasePath . ' error=' . $e->getMessage());
+            throw new JobSwitchException(503, 3001, '讀取 Controller device_id 失敗：' . $e->getMessage());
+        }
     }
 
     private function rollbackQuietly(PDO $pdo): void

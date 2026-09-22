@@ -143,7 +143,7 @@ final class HuarongBarcodeService
         return $response['data'];
     }
 
-    public function saveContext(array $data, array $requestPayload): array
+    public function saveContext(array $data, array $requestPayload, int $baselineResultId = 0): array
     {
         $workOrder = $data['work_order'];
         $context = [
@@ -155,6 +155,10 @@ final class HuarongBarcodeService
             'station' => $workOrder['station'] ?? '',
             'screw_inf' => isset($workOrder['screw_inf']) && is_array($workOrder['screw_inf']) ? $workOrder['screw_inf'] : [],
             'received_at' => date('Y-m-d H:i:s'),
+            'status' => 'READY',
+            // 只允許接口 2 上報 Barcode/配方完成之後產生的新鎖附結果。
+            'baseline_result_id' => max(0, $baselineResultId),
+            'last_reported_result_id' => max(0, $baselineResultId),
         ];
 
         $path = (string)($this->config['context_file'] ?? dirname(__DIR__) . '/public/huarong_mes_context.json');
