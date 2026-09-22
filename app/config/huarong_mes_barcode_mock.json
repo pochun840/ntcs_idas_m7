@@ -8,7 +8,7 @@
       "process_name": "天成机柜预加工",
       "station": 1,
       "screw_inf": [
-        {"screw_item": "26010550", "screw_quantity": 20}
+        {"screw_item": "26010550", "screw_quantity": 1}
       ]
     },
     "job": {
@@ -25,7 +25,7 @@
     "seq": {
       "seq_id": 1,
       "seq_name": "SEQ01",
-      "seq_tightening_repeat": 2,
+      "seq_tightening_repeat": 1,
       "seq_ng_stop": 1,
       "seq_ok_seq": 1,
       "seq_ok_seq_stop": 0,
@@ -58,16 +58,6 @@
         "step_threshold_enable": 1, "step_threshold_torque": 320, "step_threshold_angle": 700,
         "step_downshift_enable": 1, "step_downshift_torque": 310, "step_downshift_angle": 680,
         "step_downshift_speed": 100, "step_k_value": 5, "step_target_time": 3
-      },
-      {
-        "step_id": 2, "step_id_enable": 1, "step_name": "STEP2", "step_target_option": 1,
-        "step_target_angle": 360, "step_target_torque": 360, "step_delay_time": 2, "step_direction": 0,
-        "step_rpm": 150, "step_offset_sign": 0, "step_offset": 0, "step_hi_torque": 410,
-        "step_lo_torque": 320, "step_over_angle_stop": 1, "step_hi_angle": 400, "step_lo_angle": 320,
-        "step_step_record_angle": 0, "step_step_acce_slope": 0, "step_interrupt_alarm": 1,
-        "step_threshold_enable": 1, "step_threshold_torque": 330, "step_threshold_angle": 340,
-        "step_downshift_enable": 1, "step_downshift_torque": 320, "step_downshift_angle": 330,
-        "step_downshift_speed": 80, "step_k_value": 5, "step_target_time": 2
       }
     ]
   }
