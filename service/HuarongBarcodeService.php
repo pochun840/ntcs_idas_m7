@@ -152,6 +152,8 @@ final class HuarongBarcodeService
             'item' => (string)($workOrder['item'] ?? ''),
             'SN' => (string)($workOrder['SN'] ?? ''),
             'process_name' => (string)($workOrder['process_name'] ?? ''),
+            // Controller JOB name used by API 2 to match ntcs_data.job_name.
+            'job_name' => trim((string)($data['job']['job_name'] ?? '')),
             'station' => $workOrder['station'] ?? '',
             'screw_inf' => isset($workOrder['screw_inf']) && is_array($workOrder['screw_inf']) ? $workOrder['screw_inf'] : [],
             'received_at' => date('Y-m-d H:i:s'),

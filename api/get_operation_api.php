@@ -35,7 +35,7 @@ $limit =isset($_GET['limit']) ? $_GET['limit'] : null;
 if(!preg_match('/^\d+$/', $limit)) $limit = 100;
 
 # 輸出類型
-$type = $_GET['type'];
+$type = $_GET['type'] ?? 'xml';
 if(empty($type)) $type = 'xml';
 
 
@@ -74,28 +74,17 @@ switch($type){
     break;
     # 華榮 MES 接口 2 JSON 預覽（只組資料，不送 MES）
     case 'huarong_mes':
+        $preview = isset($_GET['preview']) && (string)$_GET['preview'] === '1';
         header('Content-type: application/json; charset=utf-8');
         header('Cache-Control: no-store');
 
         try {
-            if (empty($newsItem)) {
-                echo json_encode([
-                    'code' => 4001,
-                    'msg' => '上報失敗',
-                    'data' => [
-                        'save_status' => 0,
-                        'message' => '沒有鎖附結果'
-                    ]
-                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                break;
-            }
-
             $config = require('../app/config/huarong_mes.php');
             $contextFile = (string)($config['context_file'] ?? '');
             if ($contextFile === '' || !is_file($contextFile) || !is_readable($contextFile)) {
                 echo json_encode([
                     'code' => 4001,
-                    'msg' => '上報失敗',
+                    'msg' => $preview ? '尚未取得工單' : '上報失敗',
                     'data' => [
                         'save_status' => 0,
                         'message' => '沒有 READY MES Context，請先完成接口 1'
@@ -108,7 +97,7 @@ switch($type){
             if (!is_array($context) || ($context['status'] ?? '') !== 'READY') {
                 echo json_encode([
                     'code' => 4001,
-                    'msg' => '上報失敗',
+                    'msg' => $preview ? '尚未取得可預覽工單' : '上報失敗',
                     'data' => [
                         'save_status' => 0,
                         'message' => 'MES Context 尚未 READY'
@@ -120,8 +109,11 @@ switch($type){
             // 與接口 2 共用完全相同的 Mapping Service。
             // 此 type 僅供預覽，不會 POST /api/report_tightening_result。
             $mapper = new HuarongTighteningReportService();
-            $payload = $mapper->buildPayload($newsItem, $context);
-            echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $batchRows = $mapper->fetchProductRows($db_data, $context);
+            $payload = $mapper->buildPayload($batchRows, $context, $preview);
+            // preview=1: return the current payload even before product completion.
+            // Read-only: never POST to MES or advance the reporting cursor.
+            echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         } catch (Throwable $e) {
             echo json_encode([
                 'code' => 4001,
