@@ -308,8 +308,20 @@
     input.dataset.row = String(index);
     input.dataset.key = key;
     if (table === 'SEQ_lst' && ['unscrew_rpm','unscrew_torque_threshold','unscrew_angle_threshold','unscrew_dir'].includes(key)) input.disabled = Number(row.unscrew_mode) !== 0;
+    if (table === 'STEP_lst') {
+      const monitoring = Number(row.StepMoniByWin) === Number(row.StepOption);
+      // Native iDAS allows preparing the window percentages while monitoring
+      // is off; only the corresponding absolute torque/angle limits are locked
+      // when window monitoring is on.
+      if (monitoring && Number(row.StepOption) === 2 && ['StepHiTorque','StepLoTorque'].includes(key)) input.disabled = true;
+      if (monitoring && Number(row.StepOption) === 1 && ['StepHiAngle','StepLoAngle'].includes(key)) input.disabled = true;
+    }
     input.setAttribute('aria-label', titles[table] + ' ' + (index + 1) + ' ' + caption(key, row));
     label.appendChild(input);
+    // Disabled values remain visible; the disabled field style shows their state.
+    if (input.disabled || Array.from(label.querySelectorAll('select')).some(function (control) {return control.disabled;})) {
+      if (Array.from(label.querySelectorAll('input, select')).every(function (control) {return control.disabled;})) label.classList.add('config-field-disabled');
+    }
     return label;
   }
   function render() {
@@ -535,6 +547,17 @@
     });
   }
   function validateNtcsStep(step, tool, ip) {
+    const issue = function (key, message) {
+      return {table:'STEP_lst',index:data.STEP_lst.indexOf(step),key:key,ip:ip,message:message};
+    };
+    if (Number(step.StepMoniByWin) === Number(step.StepOption)) {
+      for (const key of ['StepLimiHi','StepLimiLo']) {
+        const value = step[key];
+        if (value === null || value === '' || !Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 99) {
+          return [issue(key,rangeMessage('STEP_lst',key))];
+        }
+      }
+    }
     // The native STEP editor limits RPM to a 1–4 digit integer inside the tool range.
     // Check it here first so the off-screen editor cannot hide the reason in a dialog.
     const rpm = Number(step.StepRPM);
@@ -544,49 +567,24 @@
       const message = language === 'zh-tw' ? '鎖附轉速須為 ' + limits + ' rpm 範圍內的 1～4 位整數' :
         language === 'zh-cn' ? '锁附转速须为 ' + limits + ' rpm 范围内的 1～4 位整数' :
           'Run down speed must be a 1–4 digit integer between ' + tool.min_rpm + ' and ' + tool.max_rpm + ' rpm';
-      return [{table:'STEP_lst',index:data.STEP_lst.indexOf(step),key:'StepRPM',ip:ip,message:message}];
+      return [issue('StepRPM',message)];
     }
-    const frame = document.getElementById('ntcsStepValidator');
-    const validator = frame && frame.contentWindow && frame.contentWindow.validateImportedNtcsStep;
-    if (typeof validator !== 'function') throw new Error(labels.validator);
-    if (!Object.prototype.hasOwnProperty.call(units,String(step.step_unit))) {
-      return [{table:'STEP_lst',index:data.STEP_lst.indexOf(step),key:'step_unit',ip:ip,message:labels.invalid}];
-    }
+    // STEP's native input_check() also enforces tool torque ranges and can open
+    // blocking dialogs. Keep independent speed/angle checks here so torque
+    // settings remain editable and deployable without torque qualification.
+    if (!Object.prototype.hasOwnProperty.call(units,String(step.step_unit))) return [issue('step_unit',labels.invalid)];
     if (!tool || !tool.ranges || !tool.ranges[String(step.step_unit)]) throw new Error(ip + ': ' + labels.tool);
-    const result = validator(step, tool);
-    if (result && result.valid) return [];
-    const range = tool.ranges[String(step.step_unit)];
-    const derived = [];
-    const describe = function (zhTw,zhCn,en) {return language === 'zh-tw' ? zhTw : language === 'zh-cn' ? zhCn : en;};
-    const add = function (key,message) {derived.push({table:'STEP_lst',index:data.STEP_lst.indexOf(step),key:key,ip:ip,message:message});};
-    const number = function (key) {return Number(step[key]);};
-    if (Number(step.StepOption) === 2) {
-      if (number('StepTorque') < range.min || number('StepTorque') > range.max) {
-        add('StepTorque',describe('目標扭力須介於 '+range.min+'～'+range.max+' '+units[step.step_unit],
-          '目标扭力须介于 '+range.min+'～'+range.max+' '+units[step.step_unit],
-          'Target torque must be between '+range.min+' and '+range.max+' '+units[step.step_unit]));
-      }
-      if (number('StepHiTorque') <= number('StepTorque') || number('StepHiTorque') > range.high) {
-        add('StepHiTorque',describe('扭力上限須大於目標扭力 '+step.StepTorque+'，且不超過工具上限 '+range.high+' '+units[step.step_unit],
-          '扭力上限须大于目标扭力 '+step.StepTorque+'，且不超过工具上限 '+range.high+' '+units[step.step_unit],
-          'High torque must exceed target '+step.StepTorque+' and not exceed tool limit '+range.high+' '+units[step.step_unit]));
-      }
-      if (number('StepLoTorque') >= number('StepTorque') || number('StepLoTorque') >= number('StepHiTorque')) {
-        add('StepLoTorque',describe('扭力下限須小於目標扭力與扭力上限','扭力下限须小于目标扭力与扭力上限','Low torque must be below target and high torque'));
-      }
-    } else if (Number(step.StepOption) === 1 && !(number('StepLoAngle') < number('StepAngle') && number('StepAngle') < number('StepHiAngle'))) {
-      add('StepAngle',describe('目標角度須大於角度下限且小於角度上限','目标角度须大于角度下限且小于角度上限','Target angle must be between the angle limits'));
+    const errors = [];
+    if (Number(step.StepOption) === 1 && Number(step.StepMoniByWin) !== 1 &&
+        !(Number(step.StepLoAngle) < Number(step.StepAngle) && Number(step.StepAngle) < Number(step.StepHiAngle))) {
+      errors.push(issue('StepAngle',labels.angle));
     }
-    const aliases = {step_limit_hi_tor:'StepLimiHi',step_limit_hi_ang:'StepLimiHi',step_limit_lo_tor:'StepLimiLo',step_limit_lo_ang:'StepLimiLo'};
-    const keys = result && Array.isArray(result.errors) && result.errors.length ? result.errors : [null];
-    const nativeErrors = keys.map(function (key) {
-      const mapped = aliases[key] || key;
-      const known = mapped && Object.prototype.hasOwnProperty.call(step,mapped);
-      return {table:'STEP_lst',index:data.STEP_lst.indexOf(step),key:known ? mapped : null,ip:ip,
-        message:result.details && result.details[key] || (known ? labels.invalid : key && key !== 'STEP' ? labels.invalid + ': ' + key : labels.invalid)};
-    });
-    const informative = nativeErrors.filter(function (error) {return error.key && !derived.some(function (item) {return item.key === error.key;});});
-    return derived.concat(informative.length ? informative : derived.length ? [] : nativeErrors);
+    if (Number(step.StepEnableDownShift) !== 0) {
+      const speed = Number(step.StepRPMDownShift);
+      if (!/^\d{1,4}$/.test(String(step.StepRPMDownShift)) || !Number.isInteger(speed) ||
+          speed < Number(tool.min_rpm) || speed > rpm) errors.push(issue('StepRPMDownShift',labels.rpm));
+    }
+    return errors;
   }
   let passingToolCheck = false;
   ['previewButton','sendButton','retryFailedButton'].forEach(function (id) {

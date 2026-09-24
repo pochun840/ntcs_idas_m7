@@ -65,13 +65,15 @@ final class HuarongBarcodeService
             ];
         }
 
-        $baseUrl = rtrim(trim((string)($this->config['base_url'] ?? '')), '/');
-        if ($baseUrl === '') {
-            throw new RuntimeException('華榮 MES Base URL 尚未設定');
+        // 接口 1 的完整位置由 iDAS app/config/config.php 管理。
+        if (!defined('HUARONG_MES_BARCODE_URL')) {
+            require_once dirname(__DIR__) . '/app/config/config.php';
         }
-
-        $path = '/' . ltrim((string)($this->config['barcode_path'] ?? '/api/barcode'), '/');
-        $url = $baseUrl . $path;
+        $url = trim((string)HUARONG_MES_BARCODE_URL);
+        $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL) || !in_array($scheme, ['http', 'https'], true)) {
+            throw new RuntimeException('華榮 MES 條碼 API 完整 URL 尚未設定或格式錯誤（app/config/config.php）');
+        }
         if (!function_exists('curl_init')) {
             throw new RuntimeException('PHP cURL extension 未安裝');
         }

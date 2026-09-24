@@ -27,6 +27,7 @@ $base = preg_replace('#/api/[^/]+$#', '', (string)($_SERVER['SCRIPT_NAME'] ?? '/
 <!doctype html><html lang="en"><head><meta charset="utf-8"><style>body{margin:0}</style>
 <script src="<?php echo htmlspecialchars($base, ENT_QUOTES); ?>/public/js/jquery-3.7.1.min.js"></script>
 <script src="<?php echo htmlspecialchars($base, ENT_QUOTES); ?>/public/js/alertify_min.js"></script>
+<script>window.__NTCS_STEP_VALIDATION_FRAME__ = true;</script>
 <script>window.getCookie = window.getCookie || function (name) { var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };</script>
 </head><body>
 <?php require dirname(__DIR__) . '/app/views/step/add_step.php'; ?>

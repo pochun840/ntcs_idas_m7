@@ -18,6 +18,11 @@
   const switchSeqId = document.getElementById('switchSeqId');
   const switchResults = document.getElementById('switchResults');
   const switchText = { 'zh-tw': {choose:'請選擇', invalid:'請選擇有效的 JOB／SEQ', ok:'切換成功', failed:'切換失敗', summary:'切換工作結果', pending:'切換工作中…'}, 'zh-cn': {choose:'请选择', invalid:'请选择有效的 JOB／SEQ', ok:'切换成功', failed:'切换失败', summary:'切换工作结果', pending:'切换工作中…'}, 'en-us': {choose:'Select', invalid:'Select a valid JOB / SEQ', ok:'Switch succeeded', failed:'Switch failed', summary:'Job switch results', pending:'Switching job…'} }[config.lang] || {choose:'Select', invalid:'Select a valid JOB / SEQ', ok:'Switch succeeded', failed:'Switch failed', summary:'Job switch results', pending:'Switching job…'};
+  const barcodeSwitchText = {
+    'zh-tw': {sent:'396 條碼寫入命令已送出',missing:'此 JOB／SEQ 沒有條碼對應'},
+    'zh-cn': {sent:'396 条码写入命令已发送',missing:'此 JOB／SEQ 没有条码对应'},
+    'en-us': {sent:'Barcode write command sent to 396',missing:'No barcode mapping for this JOB / SEQ'}
+  }[config.lang] || {sent:'Barcode write command sent to 396',missing:'No barcode mapping for this JOB / SEQ'};
   const previewGuardText = {
     'zh-tw': {running:'正在預覽並驗證寫入資料…', blocked:'預覽未通過，已停止寫入', changed:'預覽後表單或目標控制器已變更，請重新寫入以再次預覽', excluded:'預覽未通過的控制器將略過：'},
     'zh-cn': {running:'正在预览并验证写入数据…', blocked:'预览未通过，已停止写入', changed:'预览后表单或目标控制器已变更，请重新写入以再次预览', excluded:'预览未通过的控制器将跳过：'},
@@ -687,7 +692,11 @@
     });
     const result = await response.json();
     if (!Array.isArray(result.results)) throw new Error((result.error && result.error.message) || switchText.failed);
-    const lines = result.results.map(function (item) {return item.ip + ': ' + (item.success ? switchText.ok : switchText.failed + ' — ' + (item.message || ''));});
+    const lines = result.results.map(function (item) {
+      return item.ip + ': ' + (item.success
+        ? switchText.ok + ' — ' + (item.barcode_written === true ? barcodeSwitchText.sent : barcodeSwitchText.missing)
+        : switchText.failed + ' — ' + (item.message || ''));
+    });
     switchResults.dataset.state = result.results.some(function (item) {return !item.success;}) ? 'failed' : 'success';
     switchResults.textContent = switchText.summary + ': ' + lines.join(' | ');
     if (result.results.some(function (item) {return !item.success;})) showUnifiedNotice(T.warning_notice, switchResults.textContent, 'warning');
@@ -859,7 +868,9 @@
       if (responseData && responseData.success) {
         jsonDirty = false;
         if (!switchChoice || !switchResults.textContent) showUnifiedNotice(T.success, T.write_all_success, 'success');
-        showStatus(T.write_all_success + (switchResults.textContent ? ' — ' + switchResults.textContent : ''), switchResults.textContent.includes(switchText.failed) ? 'warning' : 'success');
+        // The deployment status reports the DB write only. The switch card
+        // already displays the per-controller JOB/SEQ and barcode result.
+        showStatus(T.write_all_success, 'success');
       } else if (Number(batchData && batchData.summary && batchData.summary.success || 0) > 0) {
         showUnifiedNotice(T.warning_notice, T.write_partial, 'warning');
         showStatus(T.write_partial, 'warning');

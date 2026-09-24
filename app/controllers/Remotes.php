@@ -18,10 +18,66 @@ class Remotes extends Controller
 
         }
 
+    /** Resolve the local controller Unit ID without probing login register 29002. */
+    private function remoteControllerUnitId(): int
+    {
+        foreach ([
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db'),
+        ] as $dbPath) {
+            if (!is_file($dbPath) || !is_readable($dbPath)) {
+                continue;
+            }
+            try {
+                $db = idas_sqlite_connect($dbPath);
+                $value = $db->query('SELECT device_id FROM ntcs_device_test LIMIT 1')->fetchColumn();
+                if ($value !== false && filter_var($value, FILTER_VALIDATE_INT, [
+                    'options' => ['min_range' => 1, 'max_range' => 255],
+                ]) !== false) {
+                    return (int)$value;
+                }
+            } catch (Throwable $e) {
+                // Try the iDAS copy if the controller DB is temporarily unavailable.
+            }
+        }
+        return 1;
+    }
+
+    /** The NTCS base class has no getControllerTcpPort(); read this controller's wifi setting. */
+    private function remoteControllerTcpPort(): int
+    {
+        foreach ([
+            idas_path('controller_root', 'ntcs_device.db'),
+            idas_path('database_root', 'ntcs_device_IDAS.db'),
+        ] as $dbPath) {
+            if (!is_file($dbPath) || !is_readable($dbPath)) {
+                continue;
+            }
+            try {
+                $db = idas_sqlite_connect($dbPath);
+                $wifi = $db->query('SELECT wifi FROM ntcs_device_test LIMIT 1')->fetchColumn();
+                if (!is_string($wifi)) {
+                    continue;
+                }
+                $parts = explode('_', $wifi);
+                $portText = trim((string)($parts[2] ?? ''));
+                if (ctype_digit($portText)) {
+                    $port = (int)$portText;
+                    if ($port >= 1 && $port <= 65535) {
+                        return $port;
+                    }
+                }
+            } catch (Throwable $e) {
+                // Try the iDAS copy when the controller settings are unavailable.
+            }
+        }
+        return 502;
+    }
+
     public function get_current_job($value=''){
 
             $error_message = '';
-            $device_id = (int)$this->lazyDeviceId(1);
+            $device_id = $this->remoteControllerUnitId();
 
             if ($device_id < 1 || $device_id > 255) {
                 $error_message = 'device_id,';
@@ -178,6 +234,8 @@ class Remotes extends Controller
 
         header('Content-Type: application/json; charset=utf-8');
 
+        $this->denyChangeJobIfOperator();
+
         $error_message = '';
         $input_check = true;
 
@@ -204,7 +262,7 @@ class Remotes extends Controller
             $error_message .= "seq_id,";
         }
 
-        $device_id = (int)$this->lazyDeviceId(1);
+        $device_id = $this->remoteControllerUnitId();
         if ($device_id < 1 || $device_id > 255) {
             $input_check = false;
             $error_message .= 'device_id,';
@@ -326,13 +384,15 @@ class Remotes extends Controller
             $error_message .= "seq_id,";
         }
 
-        $device_id = (int)$this->lazyDeviceId(1);
+        $device_id = $this->remoteControllerUnitId();
         if ($device_id < 1 || $device_id > 255) {
             $input_check = false;
             $error_message .= 'device_id,';
         }
 
         if ($input_check && PHP_OS_FAMILY == 'Linux') {
+            $modbusHost = $this->getProtocolHost();
+            $modbusPort = $this->remoteControllerTcpPort();
             try {
                 $isOp = $this->is_op_protocol_enabled();
 
@@ -375,24 +435,36 @@ class Remotes extends Controller
                     exit();
                 }
 
-                $ok = $this->protocol_write_registers($device_id, 463, [$job_id, $seq_id]);
-                if (!$ok) {
-                    throw new RuntimeException('protocol write failed');
-                }
+                // Use the same write and actual-state verification as the deployment API.
+                // A Modbus write acknowledgement does not mean the controller
+                // accepted the job, especially when its local user is logged out.
+                require_once dirname(__DIR__, 2) . '/service/JobConfigModbusSwitchService.php';
+                $switcher = new JobConfigModbusSwitchService($device_id, $modbusPort);
+                $switchPath = $switcher->switchJob($modbusHost, $job_id, $seq_id);
 
                 echo json_encode([
                     'error' => '',
                     'protocol' => 'MODBUS',
                     'job_id' => $job_id,
                     'seq_id' => $seq_id,
+                    'unit_id' => $device_id,
+                    'modbus_host' => $modbusHost,
+                    'modbus_port' => $modbusPort,
+                    'command_sent' => true,
+                    'verified' => true,
+                    'switch_path' => $switchPath,
                 ], JSON_UNESCAPED_UNICODE);
                 exit();
             } catch (Throwable $e) {
-                $this->logMessage('remote change job fail: ' . $e->getMessage());
+                $this->logMessage('remote change job fail: ' . $e->getMessage() .
+                    ', endpoint=' . $modbusHost . ':' . $modbusPort . ', unit_id=' . $device_id);
                 echo json_encode([
                     'error' => 'protocol fail',
                     'msg' => $e->getMessage(),
                     'protocol' => $this->is_op_protocol_enabled() ? 'OP' : 'MODBUS',
+                    'unit_id' => $device_id,
+                    'modbus_host' => $modbusHost,
+                    'modbus_port' => $modbusPort,
                 ], JSON_UNESCAPED_UNICODE);
                 exit();
             }
@@ -402,4 +474,3 @@ class Remotes extends Controller
         }
     }
 }
-

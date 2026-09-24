@@ -1,7 +1,7 @@
 <?php
 // Production mode：PHP 錯誤不直接顯示於 Web 畫面，但仍完整寫入 Error Log。
-ini_set('display_errors', '0');
-ini_set('display_startup_errors', '0');
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
 ini_set('log_errors', '1');
 error_reporting(E_ALL);
 

@@ -1,0 +1,18 @@
+{
+    "barcode": "TEST-20260921-001",
+    "station_code": "1",
+    "item": "02356NLQ",
+    "SN": "TEST-20260921-001",
+    "process_name": "天成机柜预加工",
+    "station": 1,
+    "screw_inf": [
+        {
+            "screw_item": "26010550",
+            "screw_quantity": 1
+        }
+    ],
+    "received_at": "2026-09-22 15:59:21",
+    "status": "READY",
+    "baseline_result_id": 418,
+    "last_reported_result_id": 418
+}

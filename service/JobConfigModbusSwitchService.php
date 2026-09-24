@@ -19,39 +19,47 @@ final class JobConfigModbusSwitchService
         $this->port = $port;
     }
 
-    public function switchJob(string $ip, int $job, int $seq, ?string $barcode = null): void
+    public function switchJob(string $ip, int $job, int $seq, ?string $barcode = null): string
     {
         $client = new ModbusMaster($ip, 'TCP');
         $client->port = $this->port;
-        $client->timeout_sec = 4;
+        $client->timeout_sec = 10;
         // The barcode can trigger its own JOB selection on the controller.
         // Write it first, then explicitly select the requested JOB and SEQ.
         if ($barcode !== null) $this->writeBarcode($ip, $barcode);
 
-        // Follow the established JobSwitchService sequence: the controller
-        // consumes JOB and SEQ commands separately, with a short interval.
-        $client->writeMultipleRegister($this->unitId, 463, [$job], ['INT']);
-        usleep(120000);
-        $client->writeMultipleRegister($this->unitId, 464, [$seq], ['INT']);
+        // Match Remotes::Change_Job__ntcs: issue JOB and SEQ in one FC16
+        // request, so the controller receives the requested pair together.
+        $client->writeMultipleRegister($this->unitId, 463, [$job, $seq], ['INT', 'INT']);
 
         // The command registers are not state. Check actual JOB/SEQ at 4305/4306.
+        // A controller can acknowledge the pair without applying it while logged out.
+        $actual = $this->waitForJob($client, $job, $seq, 10);
+        if ($actual === null) return 'modbus';
+
+        throw new RuntimeException('Modbus command sent; 4305/4306 returned ' . $actual .
+            ' (expected ' . $job . '/' . $seq . '). The controller did not apply the switch.');
+    }
+
+    /** Return null when the controller really changed jobs; otherwise return the last readback. */
+    private function waitForJob(ModbusMaster $client, int $job, int $seq, int $seconds): ?string
+    {
         $client->timeout_sec = 1;
         $lastValues = null;
         $lastError = null;
-        $deadline = microtime(true) + 6;
-        for ($attempt = 0; $attempt < 20 && microtime(true) < $deadline; $attempt++) {
+        $deadline = microtime(true) + $seconds;
+        for ($attempt = 0; $attempt < 24 && microtime(true) < $deadline; $attempt++) {
             if ($attempt !== 0) usleep(250000);
             try {
                 $values = self::decodeWords($client->readMultipleRegisters($this->unitId, 4305, 2));
-                if (count($values) >= 2 && $values[0] === $job && $values[1] === $seq) return;
+                if (count($values) >= 2 && $values[0] === $job && $values[1] === $seq) return null;
                 $lastValues = $values;
             } catch (Throwable $e) {
                 $lastError = $e->getMessage();
             }
         }
         $actual = $lastValues !== null ? implode('/', $lastValues) : 'unavailable';
-        throw new RuntimeException('Modbus command sent; 4305/4306 returned ' . $actual .
-            ' (expected ' . $job . '/' . $seq . ')' . ($lastError !== null ? '; last read error: ' . $lastError : ''));
+        return $actual . ($lastError !== null ? '; last read error: ' . $lastError : '');
     }
 
     /** Input barcode occupies 50 consecutive Modbus registers starting at 396. */

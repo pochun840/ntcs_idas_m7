@@ -253,34 +253,26 @@ class Dashboards extends Controller
 
     public function change_language(){
 
+        $error_message = '';
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
 
-        $rawLanguage = strtolower(str_replace('_', '-', trim((string)($_POST['language'] ?? ''))));
-        $allowedLanguages = ['en-us', 'zh-tw', 'zh-cn'];
-
-        if (!in_array($rawLanguage, $allowedLanguages, true)) {
-            http_response_code(400);
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode([
-                'language' => $_SESSION['language'] ?? 'en-us',
-                'result' => false,
-                'message' => 'Invalid language',
-            ]);
-            return;
+        if( !empty($_POST['language']) && isset($_POST['language'])  ){
+            $language = $_POST['language'];
+        }else{ 
+            $input_check = false; 
+            $error_message .= "language,";
         }
+        $_SESSION['language'] = $language;
 
-        // Session 與 Cookie 同步，讓 PHP View 與前端 JS 使用相同語系。
-        $_SESSION['language'] = $rawLanguage;
-        $_COOKIE['language'] = $rawLanguage;
-        setcookie('language', $rawLanguage, time() + (365 * 24 * 60 * 60), '/');
-
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode([
-            'language' => $rawLanguage,
+        $response = array(
+            'language' => $language,
             'result' => true,
-        ]);
+        );
+        echo json_encode($response);
+    
+
     }
 
 

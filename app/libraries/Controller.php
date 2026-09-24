@@ -84,48 +84,24 @@ class IControllerBaseController
 
     public function language_auto($value='')
     {
-        // 語系優先順序：language Cookie > Session > Browser language > en-us。
-        //
-        // 使用者切換語系後，前端的 language Cookie 代表目前選擇；
-        // 必須同步回 Session，否則 JOB / SEQ / STEP 等 PHP View 仍可能讀到舊語系。
-        $normalizeLanguage = static function ($raw) {
-            $lang = strtolower(str_replace('_', '-', trim((string)$raw)));
+        // 如果 $_SESSION['language'] 未設定或為空，就從瀏覽器語系帶入。
+        // AJAX / wget / curl 不一定有 HTTP_ACCEPT_LANGUAGE，所以必須有預設值。
+        if (!isset($_SESSION['language']) || $_SESSION['language'] == '') {
+            $acceptLang = strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'en-us');
+            $lang = substr($acceptLang, 0, 5);
 
-            if ($lang === 'zh-cn' || strpos($lang, 'zh-cn') === 0 || strpos($lang, 'zh-hans') === 0) {
-                return 'zh-cn';
+            if (preg_match("/zh-cn/i", $lang)) {
+                $_SESSION['language'] = 'zh-cn';
+            } else if (preg_match("/zh-tw/i", $lang)) {
+                $_SESSION['language'] = 'zh-tw';
+            } else if (preg_match("/en/i", $lang)) {
+                $_SESSION['language'] = 'en-us';
+            } else {
+                $_SESSION['language'] = 'en-us';
             }
-            if ($lang === 'zh-tw' || strpos($lang, 'zh-tw') === 0 || strpos($lang, 'zh-hant') === 0) {
-                return 'zh-tw';
-            }
-            if ($lang === 'en-us' || strpos($lang, 'en') === 0) {
-                return 'en-us';
-            }
-
-            return null;
-        };
-
-        $cookieLanguage = isset($_COOKIE['language'])
-            ? $normalizeLanguage($_COOKIE['language'])
-            : null;
-        $sessionLanguage = isset($_SESSION['language'])
-            ? $normalizeLanguage($_SESSION['language'])
-            : null;
-
-        if ($cookieLanguage !== null) {
-            // Cookie 是目前 UI 選擇，優先同步 Session。
-            $_SESSION['language'] = $cookieLanguage;
-        } elseif ($sessionLanguage !== null) {
-            $_SESSION['language'] = $sessionLanguage;
-        } else {
-            $browserLanguage = $normalizeLanguage($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
-            $_SESSION['language'] = $browserLanguage ?? 'en-us';
         }
 
-        // 保證 Cookie 與 Session 一致；JS Dialog 與 PHP View 才會使用同一個語系。
-        if (!isset($_COOKIE['language']) || $_COOKIE['language'] !== $_SESSION['language']) {
-            setcookie('language', $_SESSION['language'], time() + (365 * 24 * 60 * 60), '/');
-            $_COOKIE['language'] = $_SESSION['language'];
-        }
+        setcookie('language', $_SESSION['language'], time() + (365 * 24 * 60 * 60), '/');
     }
 
 
@@ -2463,48 +2439,24 @@ class NtcsBaseController
 
     public function language_auto($value='')
     {
-        // 語系優先順序：language Cookie > Session > Browser language > en-us。
-        //
-        // 使用者切換語系後，前端的 language Cookie 代表目前選擇；
-        // 必須同步回 Session，否則 JOB / SEQ / STEP 等 PHP View 仍可能讀到舊語系。
-        $normalizeLanguage = static function ($raw) {
-            $lang = strtolower(str_replace('_', '-', trim((string)$raw)));
+        // 如果 $_SESSION['language'] 未設定或為空，就從瀏覽器語系帶入。
+        // AJAX / wget / curl 不一定有 HTTP_ACCEPT_LANGUAGE，所以必須有預設值。
+        if (!isset($_SESSION['language']) || $_SESSION['language'] == '') {
+            $acceptLang = strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'en-us');
+            $lang = substr($acceptLang, 0, 5);
 
-            if ($lang === 'zh-cn' || strpos($lang, 'zh-cn') === 0 || strpos($lang, 'zh-hans') === 0) {
-                return 'zh-cn';
+            if (preg_match("/zh-cn/i", $lang)) {
+                $_SESSION['language'] = 'zh-cn';
+            } else if (preg_match("/zh-tw/i", $lang)) {
+                $_SESSION['language'] = 'zh-tw';
+            } else if (preg_match("/en/i", $lang)) {
+                $_SESSION['language'] = 'en-us';
+            } else {
+                $_SESSION['language'] = 'en-us';
             }
-            if ($lang === 'zh-tw' || strpos($lang, 'zh-tw') === 0 || strpos($lang, 'zh-hant') === 0) {
-                return 'zh-tw';
-            }
-            if ($lang === 'en-us' || strpos($lang, 'en') === 0) {
-                return 'en-us';
-            }
-
-            return null;
-        };
-
-        $cookieLanguage = isset($_COOKIE['language'])
-            ? $normalizeLanguage($_COOKIE['language'])
-            : null;
-        $sessionLanguage = isset($_SESSION['language'])
-            ? $normalizeLanguage($_SESSION['language'])
-            : null;
-
-        if ($cookieLanguage !== null) {
-            // Cookie 是目前 UI 選擇，優先同步 Session。
-            $_SESSION['language'] = $cookieLanguage;
-        } elseif ($sessionLanguage !== null) {
-            $_SESSION['language'] = $sessionLanguage;
-        } else {
-            $browserLanguage = $normalizeLanguage($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
-            $_SESSION['language'] = $browserLanguage ?? 'en-us';
         }
 
-        // 保證 Cookie 與 Session 一致；JS Dialog 與 PHP View 才會使用同一個語系。
-        if (!isset($_COOKIE['language']) || $_COOKIE['language'] !== $_SESSION['language']) {
-            setcookie('language', $_SESSION['language'], time() + (365 * 24 * 60 * 60), '/');
-            $_COOKIE['language'] = $_SESSION['language'];
-        }
+        setcookie('language', $_SESSION['language'], time() + (365 * 24 * 60 * 60), '/');
     }
 
 

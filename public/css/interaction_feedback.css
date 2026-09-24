@@ -263,29 +263,3 @@ tr.idas-row-pressed,
         transition-duration: .01ms !important;
     }
 }
-
-/* Saving label: keep translated text + spinner on one line without changing
-   the normal idle button size.  This is especially important in compact
-   JOB/SEQ/STEP modal footers on 1024x600 displays. */
-button[data-idas-saving-label="1"],
-input[type="button"][data-idas-saving-label="1"],
-input[type="submit"][data-idas-saving-label="1"] {
-    width: auto !important;
-    min-width: 108px !important;
-    max-width: none !important;
-    box-sizing: border-box !important;
-    white-space: nowrap !important;
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-}
-
-button[data-idas-saving-label="1"] {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-button[data-idas-saving-label="1"].idas-action-busy::after {
-    flex: 0 0 15px;
-    margin-left: 7px;
-}

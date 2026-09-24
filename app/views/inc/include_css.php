@@ -25,10 +25,9 @@ function include_asset($part, $fileName) {
     if (!($firstPart === 'Sequences' && $fileName === 'sequences.js')) {
         if ($firstPart === $part) {
             $path = ($extension === 'css') ? 'css' : 'js';
-            $assetVersion = idas_asset_cache_version() . (($fileName === 'data.js') ? '-data-export2' : '');
             $tag = ($extension === 'css')
-                ? "<link rel=\"stylesheet\" href=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . $assetVersion . "\">"
-                : "<script src=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . $assetVersion . "\"></script>";
+                ? "<link rel=\"stylesheet\" href=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . idas_asset_cache_version() . "\">"
+                : "<script src=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . idas_asset_cache_version() . "\"></script>";
             echo $tag . "\n";
         }
     }
@@ -289,7 +288,7 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
-    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4">
     <?php
         $route = explode('/', trim((string)($_GET['url'] ?? ''), '/'))[0] ?? '';
 
@@ -316,8 +315,7 @@ function include_css() {
     <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
-    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5"></script>
-    <script src="<?php echo idas_asset_url('js/unsaved_form_guard.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-unsaved-global2"></script>
+    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4"></script>
 
 
 
@@ -820,10 +818,9 @@ function include_asset($part, $fileName) {
     if (!($firstPart === 'Sequences' && $fileName === 'sequences.js')) {
         if ($firstPart === $part) {
             $path = ($extension === 'css') ? 'css' : 'js';
-            $assetVersion = idas_asset_cache_version() . (($fileName === 'data.js') ? '-data-export2' : '');
             $tag = ($extension === 'css')
-                ? "<link rel=\"stylesheet\" href=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . $assetVersion . "\">"
-                : "<script src=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . $assetVersion . "\"></script>";
+                ? "<link rel=\"stylesheet\" href=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . idas_asset_cache_version() . "\">"
+                : "<script src=\"" . idas_asset_url($path . '/' . $fileName) . '?v=' . idas_asset_cache_version() . "\"></script>";
             echo $tag . "\n";
         }
     }
@@ -904,7 +901,7 @@ function include_css() {
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/default_min.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/footer.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
     <link rel="stylesheet" href="<?php echo idas_asset_url('css/interaction_feedback.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>">
-    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5">
+    <link rel="stylesheet" href="<?php echo idas_asset_url('css/idas_notifications.css'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4">
     <?php
         $route = explode('/', trim((string)($_GET['url'] ?? ''), '/'))[0] ?? '';
 
@@ -931,8 +928,7 @@ function include_css() {
     <script src="<?php echo idas_asset_url('js/echarts_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/jquery_data_Tables.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
     <script src="<?php echo idas_asset_url('js/alertify_min.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>"></script>
-    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify5"></script>
-    <script src="<?php echo idas_asset_url('js/unsaved_form_guard.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-unsaved-global2"></script>
+    <script src="<?php echo idas_asset_url('js/idas_notifications.js'); ?>?v=<?php echo idas_asset_cache_version(); ?>-notify4"></script>
 
 
 

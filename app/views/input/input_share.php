@@ -839,14 +839,8 @@ function bindPreventOutsideCloseNewInput() {
 
     // 捕獲階段攔截外部點擊，確保任何全域 click 不會關掉它
     document.addEventListener('click', function (e) {
-        // Alertify 是系統共用確認視窗；它雖然掛在 Input modal 外層，
-        // 仍必須允許按鈕 click 正常抵達，否則「確定 / 繼續編輯」會失效。
-        if (e.target && e.target.closest && e.target.closest('.alertify, .alertify-notifier')) {
-            return;
-        }
-
         if (modal.style.display === 'block' && !modal.contains(e.target)) {
-            // 只阻止一般 modal 外部點擊，不攔系統確認視窗。
+            // 什麼都不做，只是阻止往下傳
             e.stopPropagation();
         }
     }, true); // ← 用捕獲階段

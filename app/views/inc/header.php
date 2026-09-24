@@ -14,11 +14,8 @@
          all.js and the other platform-conditional JavaScript modules. -->
     <script>
     window.IS_ICONTROLLER = <?php echo (idas_is_icontroller()) ? 'true' : 'false'; ?>;
-    window.IDAS_CURRENT_VIEW = <?php echo json_encode(isset($view) ? (string)$view : '', JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-    window.IDAS_IS_LOGIN_PAGE = /^login(?:\/|$)/i.test(String(window.IDAS_CURRENT_VIEW || ''));
     document.documentElement.classList.toggle('icontroller', window.IS_ICONTROLLER);
     document.documentElement.classList.toggle('ntcs', !window.IS_ICONTROLLER);
-    document.documentElement.classList.toggle('idas-login-page', window.IDAS_IS_LOGIN_PAGE);
     </script>
 
     <script src="<?php echo URLROOT; ?>js/jquery-3.7.1.min.js?v=<?php echo ASSET_VERSION; ?>"></script>

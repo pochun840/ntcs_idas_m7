@@ -5,212 +5,94 @@
  */
 if (window.IS_ICONTROLLER) {
 function exportData() {
-    const radioButtons = document.querySelectorAll('input[name="export-option"]');
-    let expert_val = '';
+    var radioButtons = document.querySelectorAll('input[name="export-option"]');
+    var isChecked = false;
+    var expert_val = '';
 
-    for (let i = 0; i < radioButtons.length; i++) {
+    for (var i = 0; i < radioButtons.length; i++) {
         if (radioButtons[i].checked) {
+            isChecked = true;
             expert_val = radioButtons[i].value;
             break;
         }
     }
 
-    const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||
-                    document.documentElement.getAttribute('lang') || 'zh-tw';
-    const lang = String(rawLang).toLowerCase();
-    const dict = (() => {
-        if (lang === 'zh-cn' || lang.includes('hans') || lang.includes('cn')) {
-            return {
-                title: '导出失败',
-                choose: '请选择导出格式',
-                date: '请选择开始日期与结束日期',
-                range: '开始日期必须早于结束日期',
-                html: '服务器返回了网页内容，未产生 CSV/ZIP 文件。请重新登录后再试。',
-                invalid: '服务器返回的文件格式不正确，已取消下载。',
-                generic: '无法导出历史数据，请稍后再试。'
-            };
-        }
-        if (lang.includes('en')) {
-            return {
-                title: 'Export failed',
-                choose: 'Please select an export format.',
-                date: 'Please select a start date and end date.',
-                range: 'The start date must be earlier than the end date.',
-                html: 'The server returned a web page instead of a CSV/ZIP file. Please sign in again and retry.',
-                invalid: 'The server returned an invalid file format. The download was cancelled.',
-                generic: 'Unable to export historical data. Please try again.'
-            };
-        }
-        return {
-            title: '匯出失敗',
-            choose: '請選擇匯出格式',
-            date: '請選擇開始日期與結束日期',
-            range: '開始日期必須早於結束日期',
-            html: '伺服器回傳了網頁內容，未產生 CSV/ZIP 檔案。請重新登入後再試。',
-            invalid: '伺服器回傳的檔案格式不正確，已取消下載。',
-            generic: '無法匯出歷史資料，請稍後再試。'
-        };
-    })();
-
-    const showError = (message) => {
-        if (window.IdasNotify && typeof IdasNotify.alert === 'function') {
-            try { IdasNotify.alert(dict.title, message); return; } catch (e) {}
-        }
-        window.alert(message);
-    };
-
-    if (expert_val === '') {
-        showError(dict.choose);
+    if (!isChecked) {
+        IdasNotify.alert("請選擇一個選項");
         return;
     }
 
-    const start_date = document.getElementById('start_date')?.value || '';
-    const end_date   = document.getElementById('end_date')?.value || '';
+    var start_date = document.getElementById('start_date').value;
+    var end_date   = document.getElementById('end_date').value;
 
-    if (!start_date || !end_date) {
-        showError(dict.date);
+    if (start_date === '' || end_date === '') {
+        IdasNotify.alert("請選擇開始日期與結束日期");
         return;
     }
 
     if (start_date > end_date) {
-        showError(dict.range);
+        IdasNotify.alert("開始日期必須小於結束日期");
         return;
     }
 
+    // =====================================
+    // ⭐ 取得瀏覽器當前時間（YYYYMMDDHHmmss）
+    // =====================================
     function getBrowserTimestamp() {
         const d = new Date();
         const pad = n => String(n).padStart(2, '0');
-        return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
-               pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-    }
 
-    function readBlobText(blob) {
-        if (!blob) return Promise.resolve('');
-        if (typeof blob.text === 'function') return blob.text();
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result || ''));
-            reader.onerror = () => resolve('');
-            reader.readAsText(blob);
-        });
+        return (
+            d.getFullYear() +
+            pad(d.getMonth() + 1) +
+            pad(d.getDate()) +
+            pad(d.getHours()) +
+            pad(d.getMinutes()) +
+            pad(d.getSeconds())
+        );
     }
-
-    function parseFilename(disposition, fallback) {
-        const cd = String(disposition || '');
-        let m = cd.match(/filename\*=UTF-8''([^;]+)/i);
-        if (m && m[1]) {
-            try { return decodeURIComponent(m[1].trim().replace(/^"|"$/g, '')); } catch (e) {}
-        }
-        m = cd.match(/filename\s*=\s*"([^"]+)"/i) || cd.match(/filename\s*=\s*([^;]+)/i);
-        return (m && m[1]) ? m[1].trim().replace(/^"|"$/g, '') : fallback;
-    }
-
-    const expectedExt = expert_val === '1' ? '.zip' : '.csv';
-    const expectedType = expert_val === '1' ? 'zip' : 'csv';
-    const $btn = document.querySelector('.btn-export');
-    if ($btn) $btn.disabled = true;
 
     $.ajax({
-        url: '?url=Data/exportData',
-        method: 'POST',
+        url: "?url=Data/exportData",
+        method: "POST",
         data: {
             start_date: start_date,
             end_date: end_date,
             expert_val: expert_val,
-            client_ts: getBrowserTimestamp()
+            client_ts: getBrowserTimestamp() // ⭐⭐⭐ 關鍵新增
         },
-        xhrFields: { responseType: 'blob' },
-        headers: {
-            'Accept': expert_val === '1'
-                ? 'application/zip, application/json;q=0.9, text/plain;q=0.8'
-                : 'text/csv, application/json;q=0.9, text/plain;q=0.8'
+        xhrFields: {
+            responseType: 'blob'
         },
-        success: async function(response, status, xhr) {
-            try {
-                const contentType = String(xhr.getResponseHeader('Content-Type') || '').toLowerCase();
-                const disposition = xhr.getResponseHeader('Content-Disposition') || '';
+        success: function(response, status, xhr) {
+            const disposition = xhr.getResponseHeader('Content-Disposition');
+            let filename = 'downloaded_file';
 
-                if (contentType.includes('application/json') ||
-                    contentType.includes('text/html') ||
-                    contentType.includes('text/plain')) {
-                    const text = await readBlobText(response);
-                    if (contentType.includes('text/html') || /^\s*<!doctype html|^\s*<html/i.test(text)) {
-                        showError(dict.html);
-                        return;
-                    }
-                    try {
-                        const json = JSON.parse(text || '{}');
-                        showError(json.res_msg || json.error || json.message || dict.generic);
-                    } catch (e) {
-                        showError(text.trim() || dict.generic);
-                    }
-                    return;
+            if (disposition && disposition.indexOf('filename=') !== -1) {
+                const matches = disposition.match(/filename="?([^"]+)"?/);
+                if (matches && matches.length > 1) {
+                    filename = matches[1];
                 }
-
-                const filename = parseFilename(disposition, 'data_' + getBrowserTimestamp() + expectedExt);
-                const lowerName = filename.toLowerCase();
-                const validType = expectedType === 'zip'
-                    ? (contentType.includes('application/zip') || contentType.includes('application/octet-stream'))
-                    : (contentType.includes('text/csv') || contentType.includes('application/csv') || contentType.includes('application/octet-stream'));
-                const validName = lowerName.endsWith(expectedExt);
-                const hasAttachment = /attachment/i.test(disposition);
-
-                if (!validType || !validName || !hasAttachment) {
-                    const preview = await readBlobText(response);
-                    if (/^\s*<!doctype html|^\s*<html/i.test(preview)) {
-                        showError(dict.html);
-                    } else {
-                        showError(dict.invalid);
-                    }
-                    return;
-                }
-
-                const blob = response instanceof Blob ? response : new Blob([response], { type: contentType });
-                const objectUrl = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.style.display = 'none';
-                link.href = objectUrl;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-            } catch (err) {
-                console.error('exportData download error:', err);
-                showError(dict.generic);
-            } finally {
-                if ($btn) $btn.disabled = false;
             }
+
+            const contentType = xhr.getResponseHeader('Content-Type');
+            const blob = new Blob([response], { type: contentType });
+
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         },
-        error: async function(xhr) {
-            try {
-                let message = dict.generic;
-                const response = xhr.response;
-                if (response instanceof Blob) {
-                    const text = await readBlobText(response);
-                    if (/^\s*<!doctype html|^\s*<html/i.test(text)) {
-                        message = dict.html;
-                    } else {
-                        try {
-                            const json = JSON.parse(text || '{}');
-                            message = json.res_msg || json.error || json.message || message;
-                        } catch (e) {
-                            if (text.trim()) message = text.trim();
-                        }
-                    }
-                } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
-                    const text = xhr.responseText.trim();
-                    message = /^\s*<!doctype html|^\s*<html/i.test(text) ? dict.html : text;
-                }
-                showError(message);
-            } catch (e) {
-                showError(dict.generic);
-            } finally {
-                if ($btn) $btn.disabled = false;
-            }
+        error: function(xhr, status, error) {
+            console.error("AJAX 請求失敗:", status, error);
+            IdasNotify.alert("發生錯誤，無法導出資料");
         }
     });
 }
+
+
 
 
 function downloadCSVZip() {
@@ -492,212 +374,94 @@ function downloadCSVZip() {
 }
 } else {
 function exportData() {
-    const radioButtons = document.querySelectorAll('input[name="export-option"]');
-    let expert_val = '';
+    var radioButtons = document.querySelectorAll('input[name="export-option"]');
+    var isChecked = false;
+    var expert_val = '';
 
-    for (let i = 0; i < radioButtons.length; i++) {
+    for (var i = 0; i < radioButtons.length; i++) {
         if (radioButtons[i].checked) {
+            isChecked = true;
             expert_val = radioButtons[i].value;
             break;
         }
     }
 
-    const rawLang = (typeof getCookie === 'function' && getCookie('language')) ||
-                    document.documentElement.getAttribute('lang') || 'zh-tw';
-    const lang = String(rawLang).toLowerCase();
-    const dict = (() => {
-        if (lang === 'zh-cn' || lang.includes('hans') || lang.includes('cn')) {
-            return {
-                title: '导出失败',
-                choose: '请选择导出格式',
-                date: '请选择开始日期与结束日期',
-                range: '开始日期必须早于结束日期',
-                html: '服务器返回了网页内容，未产生 CSV/ZIP 文件。请重新登录后再试。',
-                invalid: '服务器返回的文件格式不正确，已取消下载。',
-                generic: '无法导出历史数据，请稍后再试。'
-            };
-        }
-        if (lang.includes('en')) {
-            return {
-                title: 'Export failed',
-                choose: 'Please select an export format.',
-                date: 'Please select a start date and end date.',
-                range: 'The start date must be earlier than the end date.',
-                html: 'The server returned a web page instead of a CSV/ZIP file. Please sign in again and retry.',
-                invalid: 'The server returned an invalid file format. The download was cancelled.',
-                generic: 'Unable to export historical data. Please try again.'
-            };
-        }
-        return {
-            title: '匯出失敗',
-            choose: '請選擇匯出格式',
-            date: '請選擇開始日期與結束日期',
-            range: '開始日期必須早於結束日期',
-            html: '伺服器回傳了網頁內容，未產生 CSV/ZIP 檔案。請重新登入後再試。',
-            invalid: '伺服器回傳的檔案格式不正確，已取消下載。',
-            generic: '無法匯出歷史資料，請稍後再試。'
-        };
-    })();
-
-    const showError = (message) => {
-        if (window.IdasNotify && typeof IdasNotify.alert === 'function') {
-            try { IdasNotify.alert(dict.title, message); return; } catch (e) {}
-        }
-        window.alert(message);
-    };
-
-    if (expert_val === '') {
-        showError(dict.choose);
+    if (!isChecked) {
+        IdasNotify.alert("請選擇一個選項");
         return;
     }
 
-    const start_date = document.getElementById('start_date')?.value || '';
-    const end_date   = document.getElementById('end_date')?.value || '';
+    var start_date = document.getElementById('start_date').value;
+    var end_date   = document.getElementById('end_date').value;
 
-    if (!start_date || !end_date) {
-        showError(dict.date);
+    if (start_date === '' || end_date === '') {
+        IdasNotify.alert("請選擇開始日期與結束日期");
         return;
     }
 
     if (start_date > end_date) {
-        showError(dict.range);
+        IdasNotify.alert("開始日期必須小於結束日期");
         return;
     }
 
+    // =====================================
+    // ⭐ 取得瀏覽器當前時間（YYYYMMDDHHmmss）
+    // =====================================
     function getBrowserTimestamp() {
         const d = new Date();
         const pad = n => String(n).padStart(2, '0');
-        return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
-               pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-    }
 
-    function readBlobText(blob) {
-        if (!blob) return Promise.resolve('');
-        if (typeof blob.text === 'function') return blob.text();
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result || ''));
-            reader.onerror = () => resolve('');
-            reader.readAsText(blob);
-        });
+        return (
+            d.getFullYear() +
+            pad(d.getMonth() + 1) +
+            pad(d.getDate()) +
+            pad(d.getHours()) +
+            pad(d.getMinutes()) +
+            pad(d.getSeconds())
+        );
     }
-
-    function parseFilename(disposition, fallback) {
-        const cd = String(disposition || '');
-        let m = cd.match(/filename\*=UTF-8''([^;]+)/i);
-        if (m && m[1]) {
-            try { return decodeURIComponent(m[1].trim().replace(/^"|"$/g, '')); } catch (e) {}
-        }
-        m = cd.match(/filename\s*=\s*"([^"]+)"/i) || cd.match(/filename\s*=\s*([^;]+)/i);
-        return (m && m[1]) ? m[1].trim().replace(/^"|"$/g, '') : fallback;
-    }
-
-    const expectedExt = expert_val === '1' ? '.zip' : '.csv';
-    const expectedType = expert_val === '1' ? 'zip' : 'csv';
-    const $btn = document.querySelector('.btn-export');
-    if ($btn) $btn.disabled = true;
 
     $.ajax({
-        url: '?url=Data/exportData',
-        method: 'POST',
+        url: "?url=Data/exportData",
+        method: "POST",
         data: {
             start_date: start_date,
             end_date: end_date,
             expert_val: expert_val,
-            client_ts: getBrowserTimestamp()
+            client_ts: getBrowserTimestamp() // ⭐⭐⭐ 關鍵新增
         },
-        xhrFields: { responseType: 'blob' },
-        headers: {
-            'Accept': expert_val === '1'
-                ? 'application/zip, application/json;q=0.9, text/plain;q=0.8'
-                : 'text/csv, application/json;q=0.9, text/plain;q=0.8'
+        xhrFields: {
+            responseType: 'blob'
         },
-        success: async function(response, status, xhr) {
-            try {
-                const contentType = String(xhr.getResponseHeader('Content-Type') || '').toLowerCase();
-                const disposition = xhr.getResponseHeader('Content-Disposition') || '';
+        success: function(response, status, xhr) {
+            const disposition = xhr.getResponseHeader('Content-Disposition');
+            let filename = 'downloaded_file';
 
-                if (contentType.includes('application/json') ||
-                    contentType.includes('text/html') ||
-                    contentType.includes('text/plain')) {
-                    const text = await readBlobText(response);
-                    if (contentType.includes('text/html') || /^\s*<!doctype html|^\s*<html/i.test(text)) {
-                        showError(dict.html);
-                        return;
-                    }
-                    try {
-                        const json = JSON.parse(text || '{}');
-                        showError(json.res_msg || json.error || json.message || dict.generic);
-                    } catch (e) {
-                        showError(text.trim() || dict.generic);
-                    }
-                    return;
+            if (disposition && disposition.indexOf('filename=') !== -1) {
+                const matches = disposition.match(/filename="?([^"]+)"?/);
+                if (matches && matches.length > 1) {
+                    filename = matches[1];
                 }
-
-                const filename = parseFilename(disposition, 'data_' + getBrowserTimestamp() + expectedExt);
-                const lowerName = filename.toLowerCase();
-                const validType = expectedType === 'zip'
-                    ? (contentType.includes('application/zip') || contentType.includes('application/octet-stream'))
-                    : (contentType.includes('text/csv') || contentType.includes('application/csv') || contentType.includes('application/octet-stream'));
-                const validName = lowerName.endsWith(expectedExt);
-                const hasAttachment = /attachment/i.test(disposition);
-
-                if (!validType || !validName || !hasAttachment) {
-                    const preview = await readBlobText(response);
-                    if (/^\s*<!doctype html|^\s*<html/i.test(preview)) {
-                        showError(dict.html);
-                    } else {
-                        showError(dict.invalid);
-                    }
-                    return;
-                }
-
-                const blob = response instanceof Blob ? response : new Blob([response], { type: contentType });
-                const objectUrl = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.style.display = 'none';
-                link.href = objectUrl;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-            } catch (err) {
-                console.error('exportData download error:', err);
-                showError(dict.generic);
-            } finally {
-                if ($btn) $btn.disabled = false;
             }
+
+            const contentType = xhr.getResponseHeader('Content-Type');
+            const blob = new Blob([response], { type: contentType });
+
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         },
-        error: async function(xhr) {
-            try {
-                let message = dict.generic;
-                const response = xhr.response;
-                if (response instanceof Blob) {
-                    const text = await readBlobText(response);
-                    if (/^\s*<!doctype html|^\s*<html/i.test(text)) {
-                        message = dict.html;
-                    } else {
-                        try {
-                            const json = JSON.parse(text || '{}');
-                            message = json.res_msg || json.error || json.message || message;
-                        } catch (e) {
-                            if (text.trim()) message = text.trim();
-                        }
-                    }
-                } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
-                    const text = xhr.responseText.trim();
-                    message = /^\s*<!doctype html|^\s*<html/i.test(text) ? dict.html : text;
-                }
-                showError(message);
-            } catch (e) {
-                showError(dict.generic);
-            } finally {
-                if ($btn) $btn.disabled = false;
-            }
+        error: function(xhr, status, error) {
+            console.error("AJAX 請求失敗:", status, error);
+            IdasNotify.alert("發生錯誤，無法導出資料");
         }
     });
 }
+
+
 
 
 function downloadCSVZip() {

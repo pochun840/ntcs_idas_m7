@@ -555,34 +555,10 @@ class Data extends Controller
 
     public function exportData(...$args)
     {
-        try {
-            if (idas_is_icontroller()) {
-                return $this->exportData__icontroller(...$args);
-            }
-            return $this->exportData__ntcs(...$args);
-        } catch (\Throwable $e) {
-            error_log('[Data/exportData] ' . $e->getMessage());
-            return $this->exportJsonError('匯出資料失敗，請稍後再試。', 500);
+        if (idas_is_icontroller()) {
+            return $this->exportData__icontroller(...$args);
         }
-    }
-
-    private function exportJsonError(string $message, int $status = 400): void
-    {
-        while (ob_get_level()) {
-            @ob_end_clean();
-        }
-        if (!headers_sent()) {
-            http_response_code($status);
-            header('Content-Type: application/json; charset=utf-8');
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-            header('X-Content-Type-Options: nosniff');
-        }
-        echo json_encode([
-            'success' => false,
-            'error'   => $message,
-            'res_msg' => $message
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
+        return $this->exportData__ntcs(...$args);
     }
 
     private function exportData__icontroller(){
@@ -599,7 +575,8 @@ class Data extends Controller
         * Input check
         * ===================================================== */
         if (empty($_POST['start_date']) || empty($_POST['end_date'])) {
-            $this->exportJsonError('輸入參數不正確', 400);
+            echo json_encode(["error" => "輸入參數不正確"]);
+            exit;
         }
 
         $start_date = $_POST['start_date'] . ':00';
@@ -611,7 +588,8 @@ class Data extends Controller
         * ===================================================== */
         $dataset = $this->DataModel->get_range_data($start_date, $end_date);
         if (empty($dataset)) {
-            $this->exportJsonError('無法找到符合條件的資料', 404);
+            echo json_encode(["error" => "無法找到符合條件的資料"]);
+            exit;
         }
 
         $dataset = array_slice($dataset, 0, 10000);
@@ -627,11 +605,7 @@ class Data extends Controller
         * ===================================================== */
         $controller_info = $this->SettingModel->GetControllerInfo();
         $device_sn_safe  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
-        $client_ts = preg_replace('/[^0-9]/', '', (string)($_POST['client_ts'] ?? ''));
-        $timestamp = (strlen($client_ts) === 14) ? $client_ts : trim((string)@shell_exec('date +%Y%m%d%H%M%S'));
-        if (!preg_match('/^\d{14}$/', $timestamp)) {
-            $timestamp = date('YmdHis');
-        }
+        $timestamp = trim(shell_exec('date +%Y%m%d%H%M%S'));
 
         $csv_filename = "data_{$device_sn_safe}_{$timestamp}.csv";
         $zip_filename = "data_{$device_sn_safe}_{$timestamp}.zip";
@@ -658,9 +632,7 @@ class Data extends Controller
         if ($expert_val === '0') {
 
             header('Content-Type: text/csv; charset=utf-8');
-            header('Content-Disposition: attachment; filename="' . $csv_filename . '"');
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-            header('X-Content-Type-Options: nosniff');
+            header("Content-Disposition: attachment; filename={$csv_filename}");
 
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
@@ -701,32 +673,28 @@ class Data extends Controller
             $csv_content = stream_get_contents($fh);
             fclose($fh);
 
-            if (!class_exists('ZipArchive')) {
-                $this->exportJsonError('伺服器未安裝 ZipArchive 擴充，無法建立 ZIP', 500);
-            }
-
             $zip = new ZipArchive();
             $tmp = tempnam(sys_get_temp_dir(), 'ntcs_') . '.zip';
 
             if ($zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                $this->exportJsonError('無法建立 ZIP', 500);
+                echo json_encode(["error" => "無法建立 ZIP"]);
+                exit;
             }
 
             $zip->addFromString($csv_filename, $csv_content);
             $zip->close();
 
             header('Content-Type: application/zip');
-            header('Content-Disposition: attachment; filename="' . $zip_filename . '"');
+            header("Content-Disposition: attachment; filename={$zip_filename}");
             header('Content-Length: ' . filesize($tmp));
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-            header('X-Content-Type-Options: nosniff');
 
             readfile($tmp);
             @unlink($tmp);
             exit;
         }
 
-        $this->exportJsonError('未知的匯出格式', 400);
+        echo json_encode(["error" => "未知的匯出格式"]);
+        exit;
     }
 
     private function exportData__ntcs(){
@@ -746,7 +714,8 @@ class Data extends Controller
         * Input check
         * ===================================================== */
         if (empty($_POST['start_date']) || empty($_POST['end_date'])) {
-            $this->exportJsonError('輸入參數不正確', 400);
+            echo json_encode(["error" => "輸入參數不正確"]);
+            exit;
         }
 
         $start_date = $_POST['start_date'] . ':00';
@@ -758,7 +727,8 @@ class Data extends Controller
         * ===================================================== */
         $dataset = $this->DataModel->get_range_data($start_date, $end_date);
         if (empty($dataset)) {
-            $this->exportJsonError('無法找到符合條件的資料', 404);
+            echo json_encode(["error" => "無法找到符合條件的資料"]);
+            exit;
         }
 
         $dataset = array_slice($dataset, 0, 10000);
@@ -774,11 +744,7 @@ class Data extends Controller
         * ===================================================== */
         $controller_info = $this->SettingModel->GetControllerInfo();
         $device_sn_safe  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $controller_info['device_sn'] ?? 'UNKNOWN');
-        $client_ts = preg_replace('/[^0-9]/', '', (string)($_POST['client_ts'] ?? ''));
-        $timestamp = (strlen($client_ts) === 14) ? $client_ts : trim((string)@shell_exec('date +%Y%m%d%H%M%S'));
-        if (!preg_match('/^\d{14}$/', $timestamp)) {
-            $timestamp = date('YmdHis');
-        }
+        $timestamp = trim(shell_exec('date +%Y%m%d%H%M%S'));
 
         $csv_filename = "data_{$device_sn_safe}_{$timestamp}.csv";
         $zip_filename = "data_{$device_sn_safe}_{$timestamp}.zip";
@@ -805,9 +771,7 @@ class Data extends Controller
         if ($expert_val === '0') {
 
             header('Content-Type: text/csv; charset=utf-8');
-            header('Content-Disposition: attachment; filename="' . $csv_filename . '"');
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-            header('X-Content-Type-Options: nosniff');
+            header("Content-Disposition: attachment; filename={$csv_filename}");
 
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
@@ -848,32 +812,28 @@ class Data extends Controller
             $csv_content = stream_get_contents($fh);
             fclose($fh);
 
-            if (!class_exists('ZipArchive')) {
-                $this->exportJsonError('伺服器未安裝 ZipArchive 擴充，無法建立 ZIP', 500);
-            }
-
             $zip = new ZipArchive();
             $tmp = tempnam(sys_get_temp_dir(), 'ntcs_') . '.zip';
 
             if ($zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                $this->exportJsonError('無法建立 ZIP', 500);
+                echo json_encode(["error" => "無法建立 ZIP"]);
+                exit;
             }
 
             $zip->addFromString($csv_filename, $csv_content);
             $zip->close();
 
             header('Content-Type: application/zip');
-            header('Content-Disposition: attachment; filename="' . $zip_filename . '"');
+            header("Content-Disposition: attachment; filename={$zip_filename}");
             header('Content-Length: ' . filesize($tmp));
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-            header('X-Content-Type-Options: nosniff');
 
             readfile($tmp);
             @unlink($tmp);
             exit;
         }
 
-        $this->exportJsonError('未知的匯出格式', 400);
+        echo json_encode(["error" => "未知的匯出格式"]);
+        exit;
     }
 
     public function AuditLog(){

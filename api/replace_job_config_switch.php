@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/service/JobConfigControllerSettingsService.php
 require_once dirname(__DIR__) . '/service/JobConfigHttpClient.php';
 require_once dirname(__DIR__) . '/app/config/paths.php';
 
+/** Look up the barcode for the selected switch-job JOB/SEQ pair. */
 function mappedSwitchBarcode(int $job, int $seq): ?string
 {
     $path = idas_path('database_root', 'das.db');
@@ -15,7 +16,8 @@ function mappedSwitchBarcode(int $job, int $seq): ?string
     $db = idas_sqlite_connect($path);
     $table = $db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='barcode_step_mapping'")->fetchColumn();
     if (!$table) return null;
-    $query = $db->prepare('SELECT raw_barcode FROM barcode_step_mapping WHERE job_id=:job AND seq_id=:seq AND barcode_mode=3 ORDER BY updated_at DESC, id DESC LIMIT 1');
+    // Write the effective barcode shown in the mapping table, not the full scan.
+    $query = $db->prepare('SELECT barcode FROM barcode_step_mapping WHERE job_id=:job AND seq_id=:seq ORDER BY updated_at DESC, id DESC LIMIT 1');
     $query->execute([':job' => $job, ':seq' => $seq]);
     $barcode = $query->fetchColumn();
     if ($barcode === false) return null;
@@ -88,9 +90,12 @@ try {
             $settings = $json['data'];
             if ((int)($settings['modbus_type'] ?? 0) === 2) throw new RuntimeException('This controller uses OP protocol, not Modbus TCP');
             $switcher = new JobConfigModbusSwitchService((int)($settings['unit_id'] ?? 0), (int)($settings['port'] ?? 0));
-            $switcher->switchJob($ip, (int)$job, (int)$seq, $barcode);
+            $host = $network->isLocalIp($ip, $networks) ? '127.0.0.1' : $ip;
+            $switchPath = $switcher->switchJob($host, (int)$job, (int)$seq, $barcode);
+            $switchLabel = $switchPath === 'controller-api' ? 'Controller call-job API' : 'Modbus';
             $results[$ip] = ['ip' => $ip, 'success' => true, 'barcode_written' => $barcode !== null,
-                'message' => $barcode !== null ? 'Modbus JOB/SEQ verified; barcode written at 396' : 'Modbus JOB/SEQ verified; no switch barcode mapped'];
+                'switch_path' => $switchPath,
+                'message' => $barcode !== null ? $switchLabel . ' JOB/SEQ verified; barcode write command sent to 396' : $switchLabel . ' JOB/SEQ verified; no barcode mapped for this JOB/SEQ'];
         } catch (Throwable $e) {
             $results[$ip] = ['ip' => $ip, 'success' => false, 'message' => $e->getMessage()];
         }
