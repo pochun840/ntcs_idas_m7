@@ -6,17 +6,32 @@ final class JobSwitchException extends RuntimeException
 {
     private $httpStatus;
     private $apiCode;
+    private $currentJobId;
 
-    public function __construct(int $httpStatus, int $apiCode, string $message)
+    public function __construct(int $httpStatus, int $apiCode, string $message, int $currentJobId = 0)
     {
         parent::__construct($message);
         $this->httpStatus = $httpStatus;
         $this->apiCode = $apiCode;
+        $this->currentJobId = $currentJobId;
     }
 
     public function getHttpStatus(): int { return $this->httpStatus; }
     public function getApiCode(): int { return $this->apiCode; }
-    public function getCurrentJobId(): int { return 0; }
+    public function getCurrentJobId(): int { return $this->currentJobId; }
+}
+
+final class JobSwitchReadbackException extends RuntimeException
+{
+    private $currentJobId;
+
+    public function __construct(string $message, int $currentJobId)
+    {
+        parent::__construct($message);
+        $this->currentJobId = $currentJobId;
+    }
+
+    public function getCurrentJobId(): int { return $this->currentJobId; }
 }
 
 /**
@@ -52,8 +67,8 @@ final class JobSwitchControllerBridge extends Controller
             }
         }
         $observed = $actual === null ? 'read failed: ' . $readError : $actual[0] . '/' . $actual[1];
-        throw new RuntimeException('Controller JOB/SEQ remained ' . $observed .
-            ' (expected ' . $jobId . '/' . ($seqId === null ? '*' : $seqId) . ')');
+        throw new JobSwitchReadbackException('Controller JOB/SEQ remained ' . $observed .
+            ' (expected ' . $jobId . '/' . ($seqId === null ? '*' : $seqId) . ')', $actual[0] ?? 0);
     }
 
     public function switchControllerJob(int $jobId, int $seqId = 1): array
@@ -105,20 +120,9 @@ final class JobSwitchControllerBridge extends Controller
             ];
         }
 
-        // NTCS/Modbus: send the two controller commands separately.
-        // 463 = Change Job ID, 464 = Change Seq ID.
-        // Give the controller 500 ms to apply the JOB before sending SEQ.
-        $jobOk = $this->protocol_write_register($deviceId, 463, $jobId);
-        if (!$jobOk) {
-            throw new RuntimeException('MODBUS write job_id failed');
-        }
-
-        usleep(500000);
-
-        $seqOk = $this->protocol_write_register($deviceId, 464, $seqId);
-        if (!$seqOk) {
-            throw new RuntimeException('MODBUS write seq_id failed');
-        }
+        // Match the confirmed ICDT request: one FC16, address 463, two words.
+        $ok = $this->protocol_write_registers($deviceId, 463, [$jobId, $seqId]);
+        if (!$ok) throw new RuntimeException('MODBUS write JOB/SEQ pair failed');
         $actual = $this->waitForJobSeq($deviceId, $jobId, $seqId);
 
         return [
@@ -127,10 +131,7 @@ final class JobSwitchControllerBridge extends Controller
             'job_id' => $jobId,
             'seq_id' => $seqId,
             'current_job_id' => $actual[0],
-            'commands' => [
-                'WRITE_463_' . $jobId,
-                'WRITE_464_' . $seqId,
-            ],
+            'command' => 'FC16_463_' . $jobId . '_' . $seqId,
         ];
     }
 }
@@ -205,7 +206,8 @@ final class JobSwitchService
             throw new JobSwitchException(
                 502,
                 3001,
-                'Controller JOB/SEQ 切換失敗：' . $e->getMessage()
+                'Controller JOB/SEQ 切換失敗：' . $e->getMessage(),
+                $e instanceof JobSwitchReadbackException ? $e->getCurrentJobId() : 0
             );
         }
 
