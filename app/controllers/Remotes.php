@@ -435,9 +435,7 @@ class Remotes extends Controller
                     exit();
                 }
 
-                // Use the same write and actual-state verification as the deployment API.
-                // A Modbus write acknowledgement does not mean the controller
-                // accepted the job, especially when its local user is logged out.
+                // An FC16 acknowledgement only confirms receipt, not a JOB change.
                 require_once dirname(__DIR__, 2) . '/service/JobConfigModbusSwitchService.php';
                 $switcher = new JobConfigModbusSwitchService($device_id, $modbusPort);
                 $switchPath = $switcher->switchJob($modbusHost, $job_id, $seq_id);

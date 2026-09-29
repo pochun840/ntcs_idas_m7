@@ -9,7 +9,8 @@ function job_switch_response(
     int $switchStatus,
     int $targetJobId,
     int $currentJobId,
-    string $message
+    string $message,
+    int $targetSeqId = 1
 ): void {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -22,6 +23,7 @@ function job_switch_response(
         'data' => [
             'switch_status' => $switchStatus,
             'target_job_id' => $targetJobId,
+            'target_seq_id' => $targetSeqId,
             'current_job_id' => $currentJobId,
             'execute_time' => date('Y-m-d H:i:s'),
             'message' => $message,
@@ -98,8 +100,18 @@ try {
         );
     }
 
+    $rawSeqId = array_key_exists('seq_id', $body) ? $body['seq_id'] : 1;
+    if (is_bool($rawSeqId) || is_array($rawSeqId) || is_object($rawSeqId) ||
+        filter_var($rawSeqId, FILTER_VALIDATE_INT) === false) {
+        job_switch_response(400, 3003, '參數無效', 0, $jobId, 0, 'seq_id 必須為整數');
+    }
+    $seqId = (int)$rawSeqId;
+    if ($seqId < 0 || $seqId > 50) {
+        job_switch_response(400, 3003, '參數無效', 0, $jobId, 0, 'seq_id 超出有效範圍', $seqId);
+    }
+
     $service = new JobSwitchService();
-    $result = $service->switchJob($jobId);
+    $result = $service->switchJob($jobId, $seqId);
 
     job_switch_response(
         200,
@@ -107,8 +119,9 @@ try {
         'success',
         1,
         $jobId,
-        (int)$result['current_job_id'],
-        '工作切換完成'
+        (int)($result['current_job_id'] ?? 0),
+        '工作切換完成',
+        $seqId
     );
 
 } catch (JobSwitchException $e) {
@@ -131,7 +144,8 @@ try {
         0,
         isset($jobId) ? $jobId : 0,
         $e->getCurrentJobId(),
-        $e->getMessage()
+        $e->getMessage(),
+        $seqId ?? 1
     );
 
 } catch (Throwable $e) {

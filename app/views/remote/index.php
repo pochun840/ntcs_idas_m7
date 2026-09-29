@@ -174,6 +174,7 @@
         const opts = (argument && typeof argument === 'object') ? argument : {};
         const silent = opts.silent === true;
         const done = (typeof opts.done === 'function') ? opts.done : null;
+        let actual = null;
 
         $.ajax({
             url: '?url=Remotes/get_current_job', // 指向服務器端檢查更新的 PHP 腳本
@@ -197,10 +198,11 @@
                 document.getElementById("current_job_id").value = response.result.jod_id;
                 document.getElementById("current_seq_id").value = response.result.seq_id;
                 document.getElementById("current_step_id").value = response.result.step_id;
+                actual = response.result;
             },
             complete: function() {
                 if (!silent) $('#overlay').addClass('hidden');
-                if (done) done();
+                if (done) done(actual);
             },
             error: function(xhr, status, error) {
                 if (!silent) {
@@ -243,23 +245,23 @@
                     return;
                 }
                 
-                // 隱藏 SwitchJob 區塊
-                document.getElementById("SwitchJob").style.display = "none";
-
-                // 先顯示送出的值；背景再讀一次控制器目前 JOB，避免 OP 寫入失敗時畫面誤判成功。
-                // 背景讀取不顯示 overlay，避免切換工作後轉圈圈出現兩次。
-                document.getElementById("current_job_id").value = job_id;
-                document.getElementById("current_seq_id").value = seq_id;
-
-                if (typeof get_job === 'function') {
-                    setTimeout(function(){ get_job({ silent: true }); }, 1000);
-                }
+                // Only the controller's readback may update the displayed JOB.
+                setTimeout(function() {
+                    get_job({ silent: true, done: function(actual) {
+                        if (actual && Number(actual.jod_id) === Number(job_id) && Number(actual.seq_id) === Number(seq_id)) {
+                            document.getElementById("SwitchJob").style.display = "none";
+                        } else {
+                            IdasNotify.alert('Change Job Failed', actual
+                                ? 'Controller still reports ' + actual.jod_id + '/' + actual.seq_id + ' (expected ' + job_id + '/' + seq_id + ')'
+                                : 'Unable to verify controller JOB/SEQ');
+                        }
+                    }});
+                }, 1000);
             },
             complete: function(XHR, TS) {
                 $('#overlay').addClass('hidden');
                 remoteChangeJobBusy = false;
                 XHR = null;
-                console.log("执行一次"); 
             },
             error: function(xhr, status, error) {
                 console.log("fail", status, error, xhr.responseText);
@@ -480,6 +482,7 @@
         const opts = (argument && typeof argument === 'object') ? argument : {};
         const silent = opts.silent === true;
         const done = (typeof opts.done === 'function') ? opts.done : null;
+        let actual = null;
 
         $.ajax({
             url: '?url=Remotes/get_current_job', // 指向服務器端檢查更新的 PHP 腳本
@@ -503,10 +506,11 @@
                 document.getElementById("current_job_id").value = response.result.jod_id;
                 document.getElementById("current_seq_id").value = response.result.seq_id;
                 document.getElementById("current_step_id").value = response.result.step_id;
+                actual = response.result;
             },
             complete: function() {
                 if (!silent) $('#overlay').addClass('hidden');
-                if (done) done();
+                if (done) done(actual);
             },
             error: function(xhr, status, error) {
                 if (!silent) {
@@ -550,23 +554,23 @@
                     return;
                 }
                 
-                // 隱藏 SwitchJob 區塊
-                document.getElementById("SwitchJob").style.display = "none";
-
-                // 先顯示送出的值；背景再讀一次控制器目前 JOB，避免 OP 寫入失敗時畫面誤判成功。
-                // 背景讀取不顯示 overlay，避免切換工作後轉圈圈出現兩次。
-                document.getElementById("current_job_id").value = job_id;
-                document.getElementById("current_seq_id").value = seq_id;
-
-                if (typeof get_job === 'function') {
-                    setTimeout(function(){ get_job({ silent: true }); }, 1000);
-                }
+                // Only the controller's readback may update the displayed JOB.
+                setTimeout(function() {
+                    get_job({ silent: true, done: function(actual) {
+                        if (actual && Number(actual.jod_id) === Number(job_id) && Number(actual.seq_id) === Number(seq_id)) {
+                            document.getElementById("SwitchJob").style.display = "none";
+                        } else {
+                            IdasNotify.alert('Change Job Failed', actual
+                                ? 'Controller still reports ' + actual.jod_id + '/' + actual.seq_id + ' (expected ' + job_id + '/' + seq_id + ')'
+                                : 'Unable to verify controller JOB/SEQ');
+                        }
+                    }});
+                }, 1000);
             },
             complete: function(XHR, TS) {
                 $('#overlay').addClass('hidden');
                 remoteChangeJobBusy = false;
                 XHR = null;
-                console.log("执行一次"); 
             },
             error: function(xhr, status, error) {
                 console.log("fail", status, error, xhr.responseText);

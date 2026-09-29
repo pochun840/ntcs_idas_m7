@@ -27,6 +27,35 @@ final class JobSwitchException extends RuntimeException
  */
 final class JobSwitchControllerBridge extends Controller
 {
+    private function currentJobSeq(int $deviceId): array
+    {
+        $values = $this->protocol_read_registers($deviceId, 4305, 2);
+        if (count($values) < 2) {
+            throw new RuntimeException('Controller JOB/SEQ read-back incomplete');
+        }
+        return [(int)$values[0], (int)$values[1]];
+    }
+
+    private function waitForJobSeq(int $deviceId, int $jobId, ?int $seqId): array
+    {
+        $actual = null;
+        $readError = '';
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            if ($attempt > 0) usleep(200000);
+            try {
+                $actual = $this->currentJobSeq($deviceId);
+                if ($actual[0] === $jobId && ($seqId === null || $actual[1] === $seqId)) {
+                    return $actual;
+                }
+            } catch (Throwable $e) {
+                $readError = $e->getMessage();
+            }
+        }
+        $observed = $actual === null ? 'read failed: ' . $readError : $actual[0] . '/' . $actual[1];
+        throw new RuntimeException('Controller JOB/SEQ remained ' . $observed .
+            ' (expected ' . $jobId . '/' . ($seqId === null ? '*' : $seqId) . ')');
+    }
+
     public function switchControllerJob(int $jobId, int $seqId = 1): array
     {
         if ($jobId <= 0) {
@@ -54,18 +83,21 @@ final class JobSwitchControllerBridge extends Controller
                 throw new RuntimeException('OP write job_id failed');
             }
 
-            usleep(120000);
+            // Give the controller 500 ms to apply the JOB before sending SEQ.
+            usleep(500000);
 
             $seqOk = $this->op_write(464, $seqId);
             if (!$seqOk) {
                 throw new RuntimeException('OP write seq_id failed');
             }
+            $actual = $this->waitForJobSeq($deviceId, $jobId, $seqId);
 
             return [
                 'protocol' => 'OP',
                 'device_id' => $deviceId,
                 'job_id' => $jobId,
                 'seq_id' => $seqId,
+                'current_job_id' => $actual[0],
                 'op_commands' => [
                     'IDAS_WRITE_463_' . $jobId,
                     'IDAS_WRITE_464_' . $seqId,
@@ -75,25 +107,26 @@ final class JobSwitchControllerBridge extends Controller
 
         // NTCS/Modbus: send the two controller commands separately.
         // 463 = Change Job ID, 464 = Change Seq ID.
-        // Keep a short interval so the Controller can consume the JOB command
-        // before the fixed SEQ=1 command arrives.
+        // Give the controller 500 ms to apply the JOB before sending SEQ.
         $jobOk = $this->protocol_write_register($deviceId, 463, $jobId);
         if (!$jobOk) {
             throw new RuntimeException('MODBUS write job_id failed');
         }
 
-        usleep(120000);
+        usleep(500000);
 
         $seqOk = $this->protocol_write_register($deviceId, 464, $seqId);
         if (!$seqOk) {
             throw new RuntimeException('MODBUS write seq_id failed');
         }
+        $actual = $this->waitForJobSeq($deviceId, $jobId, $seqId);
 
         return [
             'protocol' => 'MODBUS',
             'device_id' => $deviceId,
             'job_id' => $jobId,
             'seq_id' => $seqId,
+            'current_job_id' => $actual[0],
             'commands' => [
                 'WRITE_463_' . $jobId,
                 'WRITE_464_' . $seqId,
@@ -118,14 +151,16 @@ final class JobSwitchService
         };
     }
 
-    public function switchJob(int $targetJobId): array
+    public function switchJob(int $targetJobId, int $seqId = 1): array
     {
         $startedAt = microtime(true);
-        $seqId = 1;
 
         // Controller register 463 supports the job numbers defined by NTCS.
         if ($targetJobId <= 0) {
             throw new JobSwitchException(400, 3003, 'job_id 無效');
+        }
+        if ($seqId < 0 || $seqId > 50) {
+            throw new JobSwitchException(400, 3003, 'seq_id 無效');
         }
 
         // Only READ the JOB table to prevent switching to a recipe that does not exist.
@@ -188,6 +223,7 @@ final class JobSwitchService
             'switch_status' => 1,
             'job_id' => $targetJobId,
             'seq_id' => $seqId,
+            'current_job_id' => $switch['current_job_id'],
             'protocol' => $switch['protocol'] ?? null,
             'device_id' => $switch['device_id'] ?? null,
             'elapsed_ms' => $elapsedMs,

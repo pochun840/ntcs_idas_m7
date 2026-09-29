@@ -90,8 +90,9 @@ try {
             $settings = $json['data'];
             if ((int)($settings['modbus_type'] ?? 0) === 2) throw new RuntimeException('This controller uses OP protocol, not Modbus TCP');
             $switcher = new JobConfigModbusSwitchService((int)($settings['unit_id'] ?? 0), (int)($settings['port'] ?? 0));
-            $host = $network->isLocalIp($ip, $networks) ? '127.0.0.1' : $ip;
-            $switchPath = $switcher->switchJob($host, (int)$job, (int)$seq, $barcode);
+            // Use the selected controller address even when it belongs to this host.
+            // A loopback Modbus connection does not follow the same path as a LAN client.
+            $switchPath = $switcher->switchJob($ip, (int)$job, (int)$seq, $barcode);
             $switchLabel = $switchPath === 'controller-api' ? 'Controller call-job API' : 'Modbus';
             $results[$ip] = ['ip' => $ip, 'success' => true, 'barcode_written' => $barcode !== null,
                 'switch_path' => $switchPath,
