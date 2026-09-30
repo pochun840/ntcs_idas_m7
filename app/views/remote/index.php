@@ -1,3 +1,138 @@
+<?php
+$remoteSwitchLanguage = strtolower((string)($_SESSION['language'] ?? 'zh-tw'));
+$remoteSwitchUiTexts = [
+    'zh-tw' => [
+        'invalid' => '請選擇有效的 JOB 與 SEQ。',
+        'same' => '目前已是 JOB {job}／SEQ {seq}，不需要重複切換。',
+        'switching' => '切換中…',
+        'success' => 'JOB {job}／SEQ {seq} 切換成功。',
+        'failedTitle' => '工作切換失敗',
+        'controllerFailed' => '控制器未接受切換命令，請確認連線後重試。',
+        'busy' => '設備正在執行另一個切換工作，請稍後再試。',
+        'parameter' => 'JOB／SEQ 參數錯誤，請重新選擇。',
+        'network' => '無法連線至 iDAS，請確認網路後重試。',
+        'verify' => '命令已送出，但無法確認控制器目前的 JOB／SEQ。',
+    ],
+    'zh-cn' => [
+        'invalid' => '请选择有效的 JOB 与 SEQ。',
+        'same' => '目前已是 JOB {job}／SEQ {seq}，不需要重复切换。',
+        'switching' => '切换中…',
+        'success' => 'JOB {job}／SEQ {seq} 切换成功。',
+        'failedTitle' => '工作切换失败',
+        'controllerFailed' => '控制器未接受切换命令，请确认连接后重试。',
+        'busy' => '设备正在执行另一个切换工作，请稍后再试。',
+        'parameter' => 'JOB／SEQ 参数错误，请重新选择。',
+        'network' => '无法连接至 iDAS，请确认网络后重试。',
+        'verify' => '命令已发送，但无法确认控制器目前的 JOB／SEQ。',
+    ],
+    'en-us' => [
+        'invalid' => 'Select a valid JOB and SEQ.',
+        'same' => 'JOB {job} / SEQ {seq} is already active.',
+        'switching' => 'Switching…',
+        'success' => 'JOB {job} / SEQ {seq} switched successfully.',
+        'failedTitle' => 'Job Switch Failed',
+        'controllerFailed' => 'The controller did not accept the switch command. Check the connection and try again.',
+        'busy' => 'Another job switch is in progress. Try again shortly.',
+        'parameter' => 'The JOB / SEQ selection is invalid. Select it again.',
+        'network' => 'Unable to connect to iDAS. Check the network and try again.',
+        'verify' => 'The command was sent, but the current controller JOB / SEQ could not be verified.',
+    ],
+];
+$remoteSwitchUiText = $remoteSwitchUiTexts[$remoteSwitchLanguage] ?? $remoteSwitchUiTexts['zh-tw'];
+?>
+<script>
+window.remoteSwitchUiText = <?php echo json_encode($remoteSwitchUiText, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.remoteChangeJobExecute = function (options) {
+    options = options || {};
+    if (options.operator === true || window.remoteChangeJobBusy) return false;
+
+    var text = window.remoteSwitchUiText || {};
+    var jobSelect = document.getElementById('switch_job_id');
+    var seqSelect = document.getElementById('switch_seq_id');
+    var saveButton = document.getElementById('remote_change_job_save_btn');
+    var jobId = Number(jobSelect ? jobSelect.value : NaN);
+    var seqId = Number(seqSelect ? seqSelect.value : NaN);
+
+    function format(message) {
+        return String(message || '')
+            .replace('{job}', String(jobId))
+            .replace('{seq}', String(seqId));
+    }
+    function notifyError(message) {
+        if (window.IdasNotify) IdasNotify.alert(text.failedTitle, message);
+        else window.alert(message);
+    }
+    function finish() {
+        $('#overlay').addClass('hidden');
+        window.remoteChangeJobBusy = false;
+        if (saveButton) {
+            saveButton.disabled = false;
+            if (saveButton.dataset.originalText) saveButton.textContent = saveButton.dataset.originalText;
+        }
+    }
+
+    if (!Number.isInteger(jobId) || jobId < 1 ||
+        !Number.isInteger(seqId) || seqId < 1) {
+        notifyError(text.invalid);
+        return false;
+    }
+
+    var currentJob = Number(document.getElementById('current_job_id')?.value);
+    var currentSeq = Number(document.getElementById('current_seq_id')?.value);
+    if (currentJob === jobId && currentSeq === seqId) {
+        if (window.IdasNotify) IdasNotify.message(format(text.same));
+        else window.alert(format(text.same));
+        document.getElementById('SwitchJob').style.display = 'none';
+        return false;
+    }
+
+    window.remoteChangeJobBusy = true;
+    if (saveButton) {
+        saveButton.dataset.originalText = saveButton.textContent.trim();
+        saveButton.disabled = true;
+        saveButton.textContent = text.switching;
+    }
+
+    $.ajax({
+        url: '../api/job_switch.php',
+        method: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        data: JSON.stringify({ job_id: jobId, seq_id: seqId }),
+        beforeSend: function () { $('#overlay').removeClass('hidden'); },
+        success: function (response) {
+            if (!response || response.code !== 0 || !response.data || response.data.switch_status !== 1) {
+                var code = Number(response && response.code);
+                notifyError(code === 3002 ? text.busy : (code === 3003 ? text.parameter : text.controllerFailed));
+                finish();
+                return;
+            }
+
+            window.setTimeout(function () {
+                get_job({ silent: true, done: function (actual) {
+                    if (actual && Number(actual.jod_id) === jobId && Number(actual.seq_id) === seqId) {
+                        document.getElementById('SwitchJob').style.display = 'none';
+                        if (window.IdasNotify) IdasNotify.success(format(text.success));
+                    } else {
+                        notifyError(text.verify);
+                    }
+                    finish();
+                }});
+            }, 1000);
+        },
+        error: function (xhr, status, error) {
+            console.log('change job failed', status, error, xhr.responseText);
+            var result = xhr.responseJSON;
+            var code = Number(result && result.code);
+            notifyError(code === 3002 ? text.busy : (code === 3003 ? text.parameter :
+                (xhr.status === 0 ? text.network : text.controllerFailed)));
+            finish();
+        },
+        complete: function () { $('#overlay').addClass('hidden'); }
+    });
+    return false;
+};
+</script>
 <?php if (idas_is_icontroller()): ?>
 <?php 
     if($_SESSION['language'] == 'en-us'){
@@ -94,7 +229,7 @@
                     <input type="text" id="view_id" value="" style="display: none;" disabled>
                 </div>
                 <div class="w3-center modal-footer justify-content-center" style="padding: 0;background-color: #616161;color: white;">
-                    <button type="button" class="btn btn-primary" onclick="change_job()"><?php echo $text['save'];?></button>
+                    <button type="button" id="remote_change_job_save_btn" class="btn btn-primary" onclick="change_job()"><?php echo $text['save'];?></button>
                 </div>
             </div>
         </div>
@@ -216,64 +351,7 @@
     }
 
     function change_job(argument) {
-
-        if (remoteChangeJobBusy) return;
-
-        let job_id = document.getElementById("switch_job_id").value;
-        let seq_id = document.getElementById("switch_seq_id").value;
-
-        remoteChangeJobBusy = true;
-
-        $.ajax({
-            url: '../api/job_switch.php',
-            method: 'POST',
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            data: JSON.stringify({ job_id: Number(job_id), seq_id: Number(seq_id) }),
-            beforeSend: function() {
-                $('#overlay').removeClass('hidden');
-            },
-            success: function(response) {
-                console.log(response);
-
-                if (!response || response.code !== 0 || !response.data || response.data.switch_status !== 1) {
-                    const msg = (response && response.data && response.data.message) ||
-                        (response && response.msg) || '切換工作失敗';
-                    if (window.alertify) {
-                        IdasNotify.alert('Change Job Failed', msg);
-                    } else {
-                        IdasNotify.alert(msg);
-                    }
-                    return;
-                }
-                
-                // Only the controller's readback may update the displayed JOB.
-                setTimeout(function() {
-                    get_job({ silent: true, done: function(actual) {
-                        if (actual && Number(actual.jod_id) === Number(job_id) && Number(actual.seq_id) === Number(seq_id)) {
-                            document.getElementById("SwitchJob").style.display = "none";
-                        } else {
-                            IdasNotify.alert('Change Job Failed', actual
-                                ? 'Controller still reports ' + actual.jod_id + '/' + actual.seq_id + ' (expected ' + job_id + '/' + seq_id + ')'
-                                : 'Unable to verify controller JOB/SEQ');
-                        }
-                    }});
-                }, 1000);
-            },
-            complete: function(XHR, TS) {
-                $('#overlay').addClass('hidden');
-                remoteChangeJobBusy = false;
-                XHR = null;
-            },
-            error: function(xhr, status, error) {
-                console.log("fail", status, error, xhr.responseText);
-                const result = xhr.responseJSON;
-                const message = (result && result.data && result.data.message) ||
-                    (result && result.msg) || error || status || 'request failed';
-                IdasNotify.alert('Change Job Failed', message);
-            }
-        });
-        
+        return window.remoteChangeJobExecute({ operator: false });
     }
 
 </script>
@@ -531,65 +609,7 @@
     }
 
     function change_job(argument) {
-
-        if (remoteIsOperatorLaw3()) return false;
-        if (remoteChangeJobBusy) return;
-
-        let job_id = document.getElementById("switch_job_id").value;
-        let seq_id = document.getElementById("switch_seq_id").value;
-
-        remoteChangeJobBusy = true;
-
-        $.ajax({
-            url: '../api/job_switch.php',
-            method: 'POST',
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            data: JSON.stringify({ job_id: Number(job_id), seq_id: Number(seq_id) }),
-            beforeSend: function() {
-                $('#overlay').removeClass('hidden');
-            },
-            success: function(response) {
-                console.log(response);
-
-                if (!response || response.code !== 0 || !response.data || response.data.switch_status !== 1) {
-                    const msg = (response && response.data && response.data.message) ||
-                        (response && response.msg) || '切換工作失敗';
-                    if (window.alertify) {
-                        IdasNotify.alert('Change Job Failed', msg);
-                    } else {
-                        IdasNotify.alert(msg);
-                    }
-                    return;
-                }
-                
-                // Only the controller's readback may update the displayed JOB.
-                setTimeout(function() {
-                    get_job({ silent: true, done: function(actual) {
-                        if (actual && Number(actual.jod_id) === Number(job_id) && Number(actual.seq_id) === Number(seq_id)) {
-                            document.getElementById("SwitchJob").style.display = "none";
-                        } else {
-                            IdasNotify.alert('Change Job Failed', actual
-                                ? 'Controller still reports ' + actual.jod_id + '/' + actual.seq_id + ' (expected ' + job_id + '/' + seq_id + ')'
-                                : 'Unable to verify controller JOB/SEQ');
-                        }
-                    }});
-                }, 1000);
-            },
-            complete: function(XHR, TS) {
-                $('#overlay').addClass('hidden');
-                remoteChangeJobBusy = false;
-                XHR = null;
-            },
-            error: function(xhr, status, error) {
-                console.log("fail", status, error, xhr.responseText);
-                const result = xhr.responseJSON;
-                const message = (result && result.data && result.data.message) ||
-                    (result && result.msg) || error || status || 'request failed';
-                IdasNotify.alert('Change Job Failed', message);
-            }
-        });
-        
+        return window.remoteChangeJobExecute({ operator: remoteIsOperatorLaw3() });
     }
 
 </script>
