@@ -148,7 +148,8 @@ try {
         isset($jobId) ? $jobId : 0,
         $e->getCurrentJobId(),
         $e->getMessage(),
-        $seqId ?? 1
+        $seqId ?? 1,
+        $e->getWriteAttempts()
     );
 
 } catch (Throwable $e) {

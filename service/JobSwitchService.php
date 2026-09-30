@@ -7,18 +7,40 @@ final class JobSwitchException extends RuntimeException
     private $httpStatus;
     private $apiCode;
     private $currentJobId;
+    private $writeAttempts;
 
-    public function __construct(int $httpStatus, int $apiCode, string $message, int $currentJobId = 0)
+    public function __construct(
+        int $httpStatus,
+        int $apiCode,
+        string $message,
+        int $currentJobId = 0,
+        int $writeAttempts = 0
+    )
     {
         parent::__construct($message);
         $this->httpStatus = $httpStatus;
         $this->apiCode = $apiCode;
         $this->currentJobId = $currentJobId;
+        $this->writeAttempts = $writeAttempts;
     }
 
     public function getHttpStatus(): int { return $this->httpStatus; }
     public function getApiCode(): int { return $this->apiCode; }
     public function getCurrentJobId(): int { return $this->currentJobId; }
+    public function getWriteAttempts(): int { return $this->writeAttempts; }
+}
+
+final class JobSwitchWriteException extends RuntimeException
+{
+    private $writeAttempts;
+
+    public function __construct(string $message, int $writeAttempts)
+    {
+        parent::__construct($message);
+        $this->writeAttempts = $writeAttempts;
+    }
+
+    public function getWriteAttempts(): int { return $this->writeAttempts; }
 }
 
 final class JobSwitchReadbackException extends RuntimeException
@@ -32,6 +54,44 @@ final class JobSwitchReadbackException extends RuntimeException
     }
 
     public function getCurrentJobId(): int { return $this->currentJobId; }
+}
+
+/**
+ * Execute one idempotent JOB/SEQ command with at most one retry.
+ * Kept independent from Controller I/O so the retry behavior is executable
+ * in PHP CLI tests without requiring physical Modbus hardware.
+ */
+final class JobSwitchRetryExecutor
+{
+    public function execute(callable $write, callable $verify): array
+    {
+        $lastReadbackError = null;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            if (!$write($attempt)) {
+                if ($attempt === 2) {
+                    throw new JobSwitchWriteException(
+                        'MODBUS write JOB/SEQ pair failed after retry',
+                        $attempt
+                    );
+                }
+                continue;
+            }
+
+            try {
+                return [
+                    'actual' => $verify($attempt),
+                    'write_attempts' => $attempt,
+                ];
+            } catch (JobSwitchReadbackException $e) {
+                $lastReadbackError = $e;
+                if ($attempt === 2) throw $e;
+            }
+        }
+
+        if ($lastReadbackError !== null) throw $lastReadbackError;
+        throw new RuntimeException('Controller JOB/SEQ verification unavailable');
+    }
 }
 
 /**
@@ -162,36 +222,20 @@ final class JobSwitchControllerBridge extends Controller
         // Some controller states accept the first TCP request but do not apply
         // the command. Reads performed during the first verification wake the
         // communication path, so retry the exact same idempotent pair once.
-        $actual = null;
-        $lastReadbackError = null;
-        $writeAttempts = 0;
-        for ($attempt = 1; $attempt <= 2; $attempt++) {
-            $writeAttempts = $attempt;
-            $ok = $this->protocol_write_registers($deviceId, 463, [$jobId, $seqId]);
-            if (!$ok) {
-                if ($attempt === 2) {
-                    throw new RuntimeException('MODBUS write JOB/SEQ pair failed after retry');
-                }
-                continue;
-            }
-
-            try {
-                $actual = $this->waitForJobSeq(
+        $retry = (new JobSwitchRetryExecutor())->execute(
+            function () use ($deviceId, $jobId, $seqId): bool {
+                return $this->protocol_write_registers($deviceId, 463, [$jobId, $seqId]);
+            },
+            function (int $attempt) use ($deviceId, $jobId, $seqId): array {
+                return $this->waitForJobSeq(
                     $deviceId,
                     $jobId,
                     $seqId,
                     $attempt === 1 ? 2.2 : 4.5
                 );
-                break;
-            } catch (JobSwitchReadbackException $e) {
-                $lastReadbackError = $e;
-                if ($attempt === 2) throw $e;
             }
-        }
-        if ($actual === null) {
-            if ($lastReadbackError !== null) throw $lastReadbackError;
-            throw new RuntimeException('Controller JOB/SEQ verification unavailable');
-        }
+        );
+        $actual = $retry['actual'];
 
         return [
             'protocol' => 'MODBUS',
@@ -199,7 +243,7 @@ final class JobSwitchControllerBridge extends Controller
             'job_id' => $jobId,
             'seq_id' => $seqId,
             'current_job_id' => $actual[0],
-            'write_attempts' => $writeAttempts,
+            'write_attempts' => $retry['write_attempts'],
             'command' => 'FC16_463_' . $jobId . '_' . $seqId,
         ];
     }
@@ -209,6 +253,8 @@ final class JobSwitchService
 {
     private $controllerDatabasePath;
     private $controllerFactory;
+    private $lockPath;
+    private $lockTimeoutSeconds;
 
     /** Diagnostics only: never mutate the controller's recipe database here. */
     private function activeRecipeState(PDO $pdo, int $jobId, int $seqId): string
@@ -230,6 +276,54 @@ final class JobSwitchService
         }
     }
 
+    /**
+     * The Controller rejects the first Modbus selection of a recipe whose
+     * imported JOB/SEQ rows are still disabled (act=0). Enable only the exact
+     * target rows; never clear or otherwise change any other recipe state.
+     */
+    private function ensureTargetEnabled(PDO $pdo, int $jobId, int $seqId): bool
+    {
+        $job = $pdo->prepare('SELECT act FROM JOB_lst WHERE JOBID = :job LIMIT 1');
+        $job->execute([':job' => $jobId]);
+        $jobAct = $job->fetchColumn();
+        if ($jobAct === false) {
+            throw new JobSwitchException(404, 3001, '目標 Job 不存在');
+        }
+
+        $sequence = $pdo->prepare(
+            'SELECT act FROM SEQ_lst WHERE JOBID = :job AND SEQID = :seq LIMIT 1'
+        );
+        $sequence->execute([':job' => $jobId, ':seq' => $seqId]);
+        $sequenceAct = $sequence->fetchColumn();
+        if ($sequenceAct === false) {
+            throw new JobSwitchException(404, 3001, '目標 Sequence 不存在');
+        }
+
+        if ((int)$jobAct === 1 && (int)$sequenceAct === 1) return false;
+
+        try {
+            $pdo->beginTransaction();
+            if ((int)$jobAct !== 1) {
+                $stmt = $pdo->prepare(
+                    'UPDATE JOB_lst SET act = 1 WHERE JOBID = :job AND act <> 1'
+                );
+                $stmt->execute([':job' => $jobId]);
+            }
+            if ((int)$sequenceAct !== 1) {
+                $stmt = $pdo->prepare(
+                    'UPDATE SEQ_lst SET act = 1 WHERE JOBID = :job AND SEQID = :seq AND act <> 1'
+                );
+                $stmt->execute([':job' => $jobId, ':seq' => $seqId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw new JobSwitchException(500, 3001, '啟用目標 JOB/SEQ 失敗：' . $e->getMessage());
+        }
+
+        return true;
+    }
+
     public function __construct(array $options = [])
     {
         $controllerRoot = $options['controller_root'] ?? IDAS_PATH_CONTROLLER_ROOT;
@@ -239,6 +333,9 @@ final class JobSwitchService
         $this->controllerFactory = $options['controller_factory'] ?? static function () {
             return new JobSwitchControllerBridge();
         };
+        $this->lockPath = (string)($options['lock_path'] ??
+            rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'idas_job_switch.lock');
+        $this->lockTimeoutSeconds = max(0.0, (float)($options['lock_timeout_seconds'] ?? 1.5));
     }
 
     public function switchJob(int $targetJobId, int $seqId = 1): array
@@ -253,6 +350,37 @@ final class JobSwitchService
             throw new JobSwitchException(400, 3003, 'seq_id 無效');
         }
 
+        $lock = $this->acquireSwitchLock();
+        try {
+            return $this->switchJobLocked($targetJobId, $seqId, $startedAt);
+        } finally {
+            @flock($lock, LOCK_UN);
+            @fclose($lock);
+        }
+    }
+
+    /** @return resource */
+    private function acquireSwitchLock()
+    {
+        $handle = @fopen($this->lockPath, 'c');
+        if ($handle === false) {
+            throw new JobSwitchException(500, 3001, '無法建立切換工作互斥鎖');
+        }
+
+        $deadline = microtime(true) + $this->lockTimeoutSeconds;
+        do {
+            if (@flock($handle, LOCK_EX | LOCK_NB)) return $handle;
+            if (microtime(true) >= $deadline) break;
+            usleep(50000);
+        } while (true);
+
+        @fclose($handle);
+        throw new JobSwitchException(409, 3002, '設備忙碌，另一個切換工作正在執行');
+    }
+
+    private function switchJobLocked(int $targetJobId, int $seqId, float $startedAt): array
+    {
+
         // Only READ the JOB table to prevent switching to a recipe that does not exist.
         // Never modify JOB_lst.act here.
         if (!is_file($this->controllerDatabasePath) || !is_readable($this->controllerDatabasePath)) {
@@ -265,12 +393,13 @@ final class JobSwitchService
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
 
-            $stmt = $pdo->prepare('SELECT 1 FROM JOB_lst WHERE JOBID = :job_id LIMIT 1');
-            $stmt->execute([':job_id' => $targetJobId]);
-            if (!$stmt->fetchColumn()) {
-                throw new JobSwitchException(404, 3001, '目標 Job 不存在');
-            }
             $beforeState = $this->activeRecipeState($pdo, $targetJobId, $seqId);
+            $targetEnabled = $this->ensureTargetEnabled($pdo, $targetJobId, $seqId);
+            if ($targetEnabled) {
+                // Give the Controller's recipe watcher a short opportunity to
+                // observe the enable state before the Modbus command arrives.
+                usleep(300000);
+            }
         } catch (JobSwitchException $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -293,13 +422,15 @@ final class JobSwitchService
                 ' seq_id=' . $seqId .
                 ' db_before=[' . ($beforeState ?? 'unavailable') . ']' .
                 ' db_after=[' . $this->activeRecipeState($pdo, $targetJobId, $seqId) . ']' .
+                ' target_enabled=' . (!empty($targetEnabled) ? '1' : '0') .
                 ' error=' . $e->getMessage()
             );
             throw new JobSwitchException(
                 502,
                 3001,
                 'Controller JOB/SEQ 切換失敗：' . $e->getMessage(),
-                $e instanceof JobSwitchReadbackException ? $e->getCurrentJobId() : 0
+                $e instanceof JobSwitchReadbackException ? $e->getCurrentJobId() : 0,
+                $e instanceof JobSwitchWriteException ? $e->getWriteAttempts() : 0
             );
         }
 
@@ -310,6 +441,7 @@ final class JobSwitchService
             ' seq_id=' . $seqId .
             ' db_before=[' . ($beforeState ?? 'unavailable') . ']' .
             ' db_after=[' . $this->activeRecipeState($pdo, $targetJobId, $seqId) . ']' .
+            ' target_enabled=' . (!empty($targetEnabled) ? '1' : '0') .
             ' protocol=' . ($switch['protocol'] ?? 'UNKNOWN') .
             ' device_id=' . ($switch['device_id'] ?? 0) .
             ' write_attempts=' . ($switch['write_attempts'] ?? 1) .
@@ -324,6 +456,7 @@ final class JobSwitchService
             'protocol' => $switch['protocol'] ?? null,
             'device_id' => $switch['device_id'] ?? null,
             'write_attempts' => (int)($switch['write_attempts'] ?? 1),
+            'target_enabled' => !empty($targetEnabled),
             'elapsed_ms' => $elapsedMs,
         ];
     }

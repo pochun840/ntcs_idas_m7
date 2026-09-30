@@ -189,10 +189,14 @@ final class JobConfigReplaceService
             $row = array_replace($this->jobDefaults($jobId), $job);
             $row['JOBID'] = $jobId;
             $row['JOBname'] = $this->text($row['JOBname'], 1, 64, $path . '.JOBname');
-            $row['act'] = $this->requiredInt($row, 'act', 0, 1, $path);
-            // act remains accepted for legacy payloads and UI switch selection.
-            // Import never changes the controller's current JOB selection.
+            $this->requiredInt($row, 'act', 0, 1, $path);
+            // Existing JOBs keep their current act value because selecting a
+            // running JOB belongs to the shared Modbus switch service.  A new
+            // JOB must, however, start enabled; inserting it with act=0 makes
+            // the Controller reject its first Modbus switch until an operator
+            // selects the JOB on the physical HMI.
             unset($row['act']);
+            $row['_insert_act'] = 1;
             $jobs[] = $row;
         }
 
@@ -214,6 +218,12 @@ final class JobConfigReplaceService
             $row['JOBID'] = $jobId;
             $row['SEQID'] = $seqId;
             $row['SEQname'] = $this->text($row['SEQname'], 1, 64, $path . '.SEQname');
+            $this->requiredInt($row, 'act', 0, 1, $path);
+            // A newly imported sequence must be enabled before the Controller
+            // will accept its first Modbus selection. Existing sequences keep
+            // their current act state and are selected by the switch service.
+            unset($row['act']);
+            $row['_insert_act'] = 1;
             $sequences[] = $row;
         }
 
@@ -455,9 +465,13 @@ final class JobConfigReplaceService
             return 'updated';
         }
 
-        // Newly imported JOBs are inactive; existing JOBs keep their act value.
-        if ($table === 'JOB_lst' && in_array('act', $tableColumns, true)) {
-            $values['act'] = 0;
+        // Existing JOBs reach this point only through UPDATE and therefore keep
+        // their act value. New JOB/SEQ rows start enabled so the recipe is
+        // immediately available to the Controller/Modbus switch path without
+        // a one-time manual HMI selection.
+        if (($table === 'JOB_lst' || $table === 'SEQ_lst') &&
+            in_array('act', $tableColumns, true)) {
+            $values['act'] = isset($row['_insert_act']) ? (int)$row['_insert_act'] : 0;
             $quoted[] = '"act"';
             $placeholders[] = ':act';
         }
@@ -558,8 +572,9 @@ final class JobConfigReplaceService
         return [
             'operation' => 'upsert',
             'controller_updated' => $applied,
-            'job_activation' => 'modbus_only',
+            'job_activation' => 'new_job_and_sequence_enabled_then_modbus',
             'existing_job_act_preserved' => true,
+            'existing_sequence_act_preserved' => true,
             'idas_mirror_synced' => $mirrorSynced,
             'verified' => $verified,
             'counts' => $counts,

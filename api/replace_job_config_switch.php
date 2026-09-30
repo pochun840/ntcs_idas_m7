@@ -137,7 +137,7 @@ try {
                 if ((int)($settings['modbus_type'] ?? 0) === 2) {
                     throw new RuntimeException('Barcode register 396 requires Modbus TCP');
                 }
-                $switcher = new JobConfigModbusSwitchService((int)($settings['unit_id'] ?? 0), (int)($settings['port'] ?? 0));
+                $switcher = new JobConfigBarcodeModbusService((int)($settings['unit_id'] ?? 0), (int)($settings['port'] ?? 0));
                 $switcher->writeBarcode($ip, $barcode);
             }
             $switchApi = callSwitchApi(
