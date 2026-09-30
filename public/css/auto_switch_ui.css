@@ -1,0 +1,32 @@
+/* Scoped presentation only: the existing JOB/SEQ controls and switching flow are retained. */
+.auto-switch-card .section-head {background:linear-gradient(110deg,#f7faff,#f2f6fc);padding:18px 20px}
+.auto-switch-card .section-title {font-size:16px;line-height:1.5;color:#21365a}
+.auto-switch-card .section-hint {line-height:1.7;margin-top:5px}
+.auto-switch-card .section-body {padding:20px}
+.auto-switch-controls {display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) minmax(210px,.9fr);gap:18px;align-items:end}
+.auto-switch-field label {display:block;margin:0 0 8px;font-size:12px;font-weight:700;color:#53627a}
+.auto-switch-field select {display:block;width:100%;height:44px;padding:0 38px 0 13px;border:1px solid #ccd7e6;border-radius:9px;background:#fff;color:#253650;font:inherit;font-size:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s;appearance:none}
+.auto-switch-field select:hover {border-color:#8da9cd}
+.auto-switch-field select:focus-visible {outline:2px solid #397dcc;outline-offset:2px}
+.auto-switch-field select:disabled {cursor:default;background-color:#f3f5f8;color:#7b8798}
+.auto-switch-target {min-height:70px;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:13px 16px;background:#edf4ff;border:1px solid #d9e7fa;border-radius:10px}
+.auto-switch-target span {font-size:12px;color:#657895}
+.auto-switch-target strong {font-size:16px;color:#245187;line-height:1.4;overflow-wrap:anywhere}
+.auto-switch-card .auto-switch-raw {display:none!important}
+.auto-switch-results {margin-top:22px;padding-top:17px;border-top:1px solid #e6edf5}
+.auto-switch-result-title {font-size:12px;font-weight:700;color:#53627a;margin-bottom:11px}
+.auto-switch-empty {font-size:13px;line-height:1.7;color:#7b8799;padding:2px 0}
+.auto-switch-executed {font-size:12px;color:#62748c;margin:0 0 10px}
+.auto-switch-result-row {display:flex;align-items:flex-start;gap:12px;margin-top:9px;padding:14px 16px;border:1px solid #dce5ef;border-radius:10px;background:#f6f8fc;color:#4c6078}
+.auto-switch-result-row.is-success {background:#f0faf5;border-color:#cce9d9;color:#237449}
+.auto-switch-result-row.is-failed {background:#fff5f4;border-color:#f1d4d0;color:#aa3d35}
+.auto-switch-result-row.is-pending {background:#f0f6ff;border-color:#d4e4fb;color:#2b64a7}
+.auto-switch-status-icon {display:flex;flex:none;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#e4ecf6;font-size:15px;font-weight:700;line-height:1}
+.is-success .auto-switch-status-icon {background:#d9f0e3}.is-failed .auto-switch-status-icon {background:#f8dedb}.is-pending .auto-switch-status-icon {background:#dceaff}
+.auto-switch-result-content {min-width:0;display:flex;flex-direction:column;gap:5px;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.auto-switch-device {font-size:14px;letter-spacing:.2px}
+@media(max-width:760px) {.auto-switch-controls {grid-template-columns:1fr 1fr;gap:14px}.auto-switch-target {grid-column:1/-1;min-height:62px}.auto-switch-card .section-body,.auto-switch-card .section-head {padding:16px}}
+@media(max-width:420px) {.auto-switch-controls {grid-template-columns:1fr}.auto-switch-target {grid-column:auto}.auto-switch-result-row {padding:12px}}
+
+.auto-switch-field {position:relative}
+.auto-switch-field::after {content:"";position:absolute;right:15px;bottom:19px;width:7px;height:7px;border-right:2px solid #5b6d87;border-bottom:2px solid #5b6d87;transform:rotate(45deg);pointer-events:none}
