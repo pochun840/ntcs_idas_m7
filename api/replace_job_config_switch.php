@@ -140,9 +140,14 @@ try {
                 $switcher = new JobConfigModbusSwitchService((int)($settings['unit_id'] ?? 0), (int)($settings['port'] ?? 0));
                 $switcher->writeBarcode($ip, $barcode);
             }
-            callSwitchApi('http://' . $ip . $base . '/api/job_switch.php', (int)$job, (int)$seq);
+            $switchApi = callSwitchApi(
+                'http://' . $ip . $base . '/api/job_switch.php',
+                (int)$job,
+                (int)$seq
+            );
             $results[$ip] = ['ip' => $ip, 'success' => true, 'barcode_written' => $barcode !== null,
                 'switch_path' => 'job_switch.php',
+                'write_attempts' => (int)($switchApi['data']['write_attempts'] ?? 1),
                 'message' => $barcode !== null ? 'JOB/SEQ verified by job_switch.php; barcode write command sent to 396' : 'JOB/SEQ verified by job_switch.php; no barcode mapped for this JOB/SEQ'];
         } catch (Throwable $e) {
             $results[$ip] = ['ip' => $ip, 'success' => false, 'message' => $e->getMessage()];

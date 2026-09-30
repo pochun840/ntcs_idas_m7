@@ -53,11 +53,19 @@ final class JobSwitchControllerBridge extends Controller
         return [(int)$values[0], (int)$values[1]];
     }
 
-    private function waitForJobSeq(int $deviceId, int $jobId, ?int $seqId): array
+    private function waitForJobSeq(
+        int $deviceId,
+        int $jobId,
+        ?int $seqId,
+        float $timeoutSeconds = 5.0
+    ): array
     {
         $actual = null;
         $readError = '';
-        $pollDeadline = min(microtime(true) + 5.0, $this->protocolDeadline);
+        $pollDeadline = min(
+            microtime(true) + max(0.8, $timeoutSeconds),
+            $this->protocolDeadline
+        );
         // Preserve the proven processing gap, with all reads inside one budget.
         $this->switchProcessingGap(800000);
         for ($attempt = 0; $attempt < 11 && microtime(true) < $pollDeadline; $attempt++) {
@@ -151,9 +159,39 @@ final class JobSwitchControllerBridge extends Controller
         }
 
         // Match the confirmed ICDT request: one FC16, address 463, two words.
-        $ok = $this->protocol_write_registers($deviceId, 463, [$jobId, $seqId]);
-        if (!$ok) throw new RuntimeException('MODBUS write JOB/SEQ pair failed');
-        $actual = $this->waitForJobSeq($deviceId, $jobId, $seqId);
+        // Some controller states accept the first TCP request but do not apply
+        // the command. Reads performed during the first verification wake the
+        // communication path, so retry the exact same idempotent pair once.
+        $actual = null;
+        $lastReadbackError = null;
+        $writeAttempts = 0;
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $writeAttempts = $attempt;
+            $ok = $this->protocol_write_registers($deviceId, 463, [$jobId, $seqId]);
+            if (!$ok) {
+                if ($attempt === 2) {
+                    throw new RuntimeException('MODBUS write JOB/SEQ pair failed after retry');
+                }
+                continue;
+            }
+
+            try {
+                $actual = $this->waitForJobSeq(
+                    $deviceId,
+                    $jobId,
+                    $seqId,
+                    $attempt === 1 ? 2.2 : 4.5
+                );
+                break;
+            } catch (JobSwitchReadbackException $e) {
+                $lastReadbackError = $e;
+                if ($attempt === 2) throw $e;
+            }
+        }
+        if ($actual === null) {
+            if ($lastReadbackError !== null) throw $lastReadbackError;
+            throw new RuntimeException('Controller JOB/SEQ verification unavailable');
+        }
 
         return [
             'protocol' => 'MODBUS',
@@ -161,6 +199,7 @@ final class JobSwitchControllerBridge extends Controller
             'job_id' => $jobId,
             'seq_id' => $seqId,
             'current_job_id' => $actual[0],
+            'write_attempts' => $writeAttempts,
             'command' => 'FC16_463_' . $jobId . '_' . $seqId,
         ];
     }
@@ -273,6 +312,7 @@ final class JobSwitchService
             ' db_after=[' . $this->activeRecipeState($pdo, $targetJobId, $seqId) . ']' .
             ' protocol=' . ($switch['protocol'] ?? 'UNKNOWN') .
             ' device_id=' . ($switch['device_id'] ?? 0) .
+            ' write_attempts=' . ($switch['write_attempts'] ?? 1) .
             ' elapsed_ms=' . $elapsedMs
         );
 
@@ -283,6 +323,7 @@ final class JobSwitchService
             'current_job_id' => $switch['current_job_id'],
             'protocol' => $switch['protocol'] ?? null,
             'device_id' => $switch['device_id'] ?? null,
+            'write_attempts' => (int)($switch['write_attempts'] ?? 1),
             'elapsed_ms' => $elapsedMs,
         ];
     }

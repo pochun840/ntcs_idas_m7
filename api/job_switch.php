@@ -10,7 +10,8 @@ function job_switch_response(
     int $targetJobId,
     int $currentJobId,
     string $message,
-    int $targetSeqId = 1
+    int $targetSeqId = 1,
+    int $writeAttempts = 0
 ): void {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -25,6 +26,7 @@ function job_switch_response(
             'target_job_id' => $targetJobId,
             'target_seq_id' => $targetSeqId,
             'current_job_id' => $currentJobId,
+            'write_attempts' => $writeAttempts,
             'execute_time' => date('Y-m-d H:i:s'),
             'message' => $message,
         ],
@@ -121,7 +123,8 @@ try {
         $jobId,
         (int)($result['current_job_id'] ?? 0),
         '工作切換完成',
-        $seqId
+        $seqId,
+        (int)($result['write_attempts'] ?? 1)
     );
 
 } catch (JobSwitchException $e) {
