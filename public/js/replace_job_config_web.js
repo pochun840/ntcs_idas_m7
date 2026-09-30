@@ -2,6 +2,10 @@
   'use strict';
   const config = window.IDAS_JOB_CONFIG_UI || {};
   const T = config.translations || {};
+  const switchText = config.switchText || {};
+  const switchJob = document.getElementById('autoSwitchJob');
+  const switchSeq = document.getElementById('autoSwitchSeq');
+  const switchResult = document.getElementById('autoSwitchResult');
   const body = document.getElementById('jsonBody');
   const defaultJsonText = body.value;
   const JSON_DRAFT_STORAGE_KEY = 'idas.replace_job_config.last_json.v1';
@@ -218,6 +222,7 @@
   function setBusy(value) {
     busy = !!value;
     [send, previewButton, retryFailedButton, checkTargetsButton, checkTargetsButtonMulti, formatButton, restoreSampleButton, downloadSampleButton, copyApiButton, exportResultJsonButton, exportResultCsvButton].forEach(function (el) { if (el) el.disabled = busy; });
+    switchJob.disabled = switchSeq.disabled = busy;
     file.disabled = busy;
     targetIps.disabled = busy;
     singleTargetIp.disabled = busy;
@@ -636,9 +641,68 @@
     statusElement.className = 'status' + (type ? ' ' + type : '');
   }
 
+  function refreshSwitchChoices(payload, keepJob, keepSeq) {
+    const oldJob = keepJob === false ? '' : switchJob.value;
+    const oldSeq = keepSeq === false ? '' : switchSeq.value;
+    const jobs = (payload.JOB_lst || []).filter(function (j) { return j && Number.isInteger(Number(j.JOBID)) && Number(j.JOBID) >= 1 && Number(j.JOBID) <= 100; });
+    switchJob.replaceChildren(new Option(switchText.choose, ''));
+    jobs.forEach(function (j) { switchJob.add(new Option('JOB ' + j.JOBID + ' · ' + (j.JOBname || ''), String(Number(j.JOBID)))); });
+    const preferredJob = jobs.find(function (j) { return Number(j.act) === 1; }) || jobs[0];
+    switchJob.value = jobs.some(function (j) { return String(Number(j.JOBID)) === oldJob; }) ? oldJob : (preferredJob ? String(Number(preferredJob.JOBID)) : '');
+    const seqs = (payload.SEQ_lst || []).filter(function (q) { return q && switchJob.value !== '' && Number(q.JOBID) === Number(switchJob.value) && Number.isInteger(Number(q.SEQID)) && Number(q.SEQID) >= 0 && Number(q.SEQID) <= 50; });
+    switchSeq.replaceChildren(new Option(switchText.choose, ''));
+    seqs.forEach(function (q) { switchSeq.add(new Option('SEQ ' + q.SEQID + ' · ' + (q.SEQname || ''), String(Number(q.SEQID)))); });
+    const preferredSeq = seqs.find(function (q) { return Number(q.act) === 1; }) || seqs[0];
+    switchSeq.value = oldJob === switchJob.value && seqs.some(function (q) { return String(Number(q.SEQID)) === oldSeq; }) ? oldSeq : (preferredSeq ? String(Number(preferredSeq.SEQID)) : '');
+  }
+
+  function selectedSwitchPair(payload) {
+    const job = Number(switchJob.value), seq = Number(switchSeq.value);
+    if (!switchJob.value || !switchSeq.value || !Number.isInteger(job) || !Number.isInteger(seq) ||
+        !(payload.JOB_lst || []).some(function (j) { return j && Number(j.JOBID) === job; }) ||
+        !(payload.SEQ_lst || []).some(function (q) { return q && Number(q.JOBID) === job && Number(q.SEQID) === seq; })) {
+      throw new Error(switchText.invalid);
+    }
+    return {job_id: job, seq_id: seq};
+  }
+
+  async function switchWrittenControllers(results, pair) {
+    const targets = Array.from(new Set(results.filter(function (r) { return r && r.success === true && !r.skipped && r.ip; }).map(function (r) { return r.ip; })));
+    const switched = [];
+    switchResult.textContent = targets.length ? switchText.pending : '';
+    // One bounded request per device; never resend a switch after a timeout.
+    for (const ip of targets) {
+      const abort = new AbortController();
+      const timer = setTimeout(function () { abort.abort(); }, 25000);
+      let item;
+      try {
+        const response = await fetch(config.switchEndpoint, {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, cache: 'no-store',
+          body: JSON.stringify({targets: [ip], job_id: pair.job_id, seq_id: pair.seq_id}), signal: abort.signal
+        });
+        const data = await response.json();
+        const found = Array.isArray(data.results) ? data.results.find(function (r) { return r && r.ip === ip; }) : null;
+        if (!response.ok || !found) throw new Error((data.error && data.error.message) || T.response_invalid);
+        item = {ip: ip, success: found.success === true, message: found.message || ''};
+      } catch (error) {
+        item = {ip: ip, success: false, message: error.name === 'AbortError' ? T.connection_failed : error.message};
+      } finally { clearTimeout(timer); }
+      switched.push(item);
+      switchResult.textContent = 'JOB ' + pair.job_id + ' / SEQ ' + pair.seq_id + '\n' + switched.map(function (r) {
+        return r.ip + ': ' + (r.success ? switchText.ok : switchText.failed) + (r.success ? '' : ' · ' + r.message);
+      }).join('\n');
+    }
+    return switched;
+  }
+
+  switchJob.addEventListener('change', function () {
+    try { refreshSwitchChoices(JSON.parse(body.value), true, false); } catch (error) { switchSeq.replaceChildren(); }
+  });
+
   function updateCounts() {
     try {
       const data = JSON.parse(body.value);
+      refreshSwitchChoices(data);
       document.getElementById('jobCount').textContent = String(Array.isArray(data.JOB_lst) ? data.JOB_lst.length : 0);
       document.getElementById('seqCount').textContent = String(Array.isArray(data.SEQ_lst) ? data.SEQ_lst.length : 0);
       document.getElementById('stepCount').textContent = String(Array.isArray(data.STEP_lst) ? data.STEP_lst.length : 0);
@@ -668,6 +732,7 @@
     message += '\n' + T.confirm_ready + ': ' + readyCount;
     message += '\n' + T.confirm_skipped + ': ' + skippedCount;
     message += '\nJOB: ' + counts.jobs + ' / SEQ: ' + counts.sequences + ' / STEP: ' + counts.steps;
+    message += '\n' + switchText.title + ': JOB ' + switchJob.value + ' / SEQ ' + switchSeq.value;
     if (precheck && !precheck.allReady) message += '\n\n' + T.partial_ready;
     if (window.alertify && typeof window.alertify.confirm === 'function') {
       return new Promise(function (resolve) {
@@ -702,6 +767,8 @@
     responseCard.style.display = 'none';
     showStatus(isRetry ? T.retrying_failed : T.write_precheck, '');
     try {
+      const switchPair = selectedSwitchPair(payload);
+      switchResult.textContent = '';
       let effectivePrecheck = null;
       if (isRetry) {
         const checked = await callRemoteApi({api_version:apiVersion, action:'check', targets:targets});
@@ -727,6 +794,11 @@
       renderTargetChecks(batchData.checks || [], batchData.results || [], batchData.elapsed_ms);
       showBatchSummary(batchData, 'write');
       updateRetryTargets(batchData);
+      const switchResults = await switchWrittenControllers(batchData.results || [], switchPair);
+      responseData.auto_switch = {job_id: switchPair.job_id, seq_id: switchPair.seq_id, results: switchResults};
+      if (lastExportResult) lastExportResult.auto_switch = responseData.auto_switch;
+      showApiDetails(responseData);
+      const switchFailed = switchResults.some(function (r) { return !r.success; });
 
       // Refresh controller availability after deployment. This does not rewrite anything.
       try {
@@ -738,10 +810,13 @@
         // Keep the deployment result intact if the post-write status refresh fails.
       }
 
-      if (responseData && responseData.success) {
+      if (switchFailed) {
+        showUnifiedNotice(T.warning_notice, switchText.failed, 'warning');
+        showStatus(switchText.failed, 'warning');
+      } else if (responseData && responseData.success) {
         jsonDirty = false;
-        showUnifiedNotice(T.success, T.write_all_success, 'success');
-        showStatus(T.write_all_success, 'success');
+        showUnifiedNotice(T.success, switchText.ok, 'success');
+        showStatus(switchText.ok, 'success');
       } else if (Number(batchData && batchData.summary && batchData.summary.success || 0) > 0) {
         showUnifiedNotice(T.warning_notice, T.write_partial, 'warning');
         showStatus(T.write_partial, 'warning');

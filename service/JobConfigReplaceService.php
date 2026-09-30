@@ -97,6 +97,7 @@ final class JobConfigReplaceService
         $stage = $this->controllerDatabasePath . '.api-stage.' . getmypid() . '.' . bin2hex(random_bytes(4));
         $backup = null;
         $rollbackPerformed = false;
+        $lock = $this->acquireWriteLock();
         try {
             // Re-check immediately before touching the database.
             $this->preflight();
@@ -117,21 +118,46 @@ final class JobConfigReplaceService
         } catch (JobConfigApiException $e) {
             if ($backup !== null && is_file($backup)) {
                 $rollbackPerformed = $this->restoreBackup($backup);
-                @unlink($backup);
+                if ($rollbackPerformed) @unlink($backup);
+                else error_log('[job-config] ROLLBACK_FAILED backup retained: ' . $backup);
             }
-            if ($rollbackPerformed) {
-                throw new JobConfigApiException($e->getHttpStatus(), $e->getErrorCode(), $e->getMessage(), array_merge($e->getDetails(), ['rollback_performed' => true]));
+            if ($backup !== null) {
+                throw new JobConfigApiException($e->getHttpStatus(), $e->getErrorCode(), $e->getMessage(), array_merge($e->getDetails(), [
+                    'rollback_performed' => $rollbackPerformed,
+                    'rollback_failed' => !$rollbackPerformed,
+                ]));
             }
             throw $e;
         } catch (Throwable $e) {
             if ($backup !== null && is_file($backup)) {
                 $rollbackPerformed = $this->restoreBackup($backup);
-                @unlink($backup);
+                if ($rollbackPerformed) @unlink($backup);
+                else error_log('[job-config] ROLLBACK_FAILED backup retained: ' . $backup);
             }
-            throw new JobConfigApiException(500, JobConfigErrorCodes::DATABASE_ERROR, 'JOB configuration write failed', ['rollback_performed' => $rollbackPerformed]);
+            throw new JobConfigApiException(500, JobConfigErrorCodes::DATABASE_ERROR, 'JOB configuration write failed', [
+                'rollback_performed' => $rollbackPerformed,
+                'rollback_failed' => $backup !== null && !$rollbackPerformed,
+            ]);
         } finally {
             @unlink($stage);
+            @flock($lock, LOCK_UN);
+            @fclose($lock);
         }
+    }
+
+    /** Same target lock as ControllerSyncService; never unlink this lock file. */
+    private function acquireWriteLock()
+    {
+        $path = realpath($this->controllerDatabasePath) ?: $this->controllerDatabasePath;
+        $lock = @fopen($path . '.sync.lock', 'c');
+        if ($lock === false) {
+            throw new JobConfigApiException(503, JobConfigErrorCodes::DATABASE_ERROR, 'Cannot open Controller database write lock');
+        }
+        if (!@flock($lock, LOCK_EX | LOCK_NB)) {
+            @fclose($lock);
+            throw new JobConfigApiException(409, JobConfigErrorCodes::CONTROLLER_DATABASE_BUSY, 'Controller database write or synchronization is in progress; retry later');
+        }
+        return $lock;
     }
 
     /**
@@ -152,7 +178,6 @@ final class JobConfigReplaceService
 
         $jobs = [];
         $jobIds = [];
-        $activeJobId = null;
         foreach (array_values($payload['JOB_lst']) as $index => $job) {
             $path = '$.JOB_lst[' . $index . ']';
             if (!is_array($job)) $this->validation('row must be an object', $path);
@@ -165,12 +190,9 @@ final class JobConfigReplaceService
             $row['JOBID'] = $jobId;
             $row['JOBname'] = $this->text($row['JOBname'], 1, 64, $path . '.JOBname');
             $row['act'] = $this->requiredInt($row, 'act', 0, 1, $path);
-            if ($row['act'] === 1) {
-                if ($activeJobId !== null) {
-                    $this->validation('only one JOB may have act=1', $path . '.act');
-                }
-                $activeJobId = $jobId;
-            }
+            // act remains accepted for legacy payloads and UI switch selection.
+            // Import never changes the controller's current JOB selection.
+            unset($row['act']);
             $jobs[] = $row;
         }
 
@@ -219,7 +241,7 @@ final class JobConfigReplaceService
             $steps[] = $row;
         }
 
-        return ['jobs' => $jobs, 'sequences' => $sequences, 'steps' => $steps, 'active_job_id' => $activeJobId];
+        return ['jobs' => $jobs, 'sequences' => $sequences, 'steps' => $steps];
     }
 
     private function inspectChanges(string $databasePath, array $data): array
@@ -287,21 +309,6 @@ final class JobConfigReplaceService
                 }
             }
         }
-        if ($data['active_job_id'] !== null) {
-            $stmt = $pdo->prepare(
-                'SELECT COUNT(*) FROM "JOB_lst" WHERE "JOBID" <> :active_job_id'
-                . ' AND ("act" IS NULL OR CAST("act" AS INTEGER) <> 0)'
-            );
-            $stmt->bindValue(':active_job_id', $data['active_job_id'], PDO::PARAM_INT);
-            $stmt->execute();
-            if ((int)$stmt->fetchColumn() !== 0) {
-                throw new JobConfigApiException(
-                    500,
-                    JobConfigErrorCodes::VERIFY_FAILED,
-                    'Read-back verification failed: another JOB is still active'
-                );
-            }
-        }
         $check = strtolower(trim((string)$pdo->query('PRAGMA quick_check')->fetchColumn()));
         if ($check !== 'ok') throw new JobConfigApiException(500, JobConfigErrorCodes::VERIFY_FAILED, 'SQLite quick_check failed after write');
     }
@@ -315,17 +322,43 @@ final class JobConfigReplaceService
 
     private function restoreBackup(string $backup): bool
     {
+        $pdo = null;
         try {
             if (!is_file($backup)) return false;
-            @unlink($this->controllerDatabasePath . '-wal');
-            @unlink($this->controllerDatabasePath . '-shm');
-            if (!@copy($backup, $this->controllerDatabasePath)) return false;
+            // Restore only recipe tables through SQLite itself. Never delete live
+            // WAL/SHM files or overwrite a database that the controller has open.
             $pdo = idas_sqlite_connect($this->controllerDatabasePath, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $healthy = strtolower(trim((string)$pdo->query('PRAGMA quick_check')->fetchColumn())) === 'ok';
-            $pdo = null;
-            return $healthy;
+            $pdo->exec('ATTACH DATABASE ' . $pdo->quote($backup) . ' AS recipe_backup');
+            $pdo->beginTransaction();
+            foreach (['STEP_lst', 'SEQ_lst', 'JOB_lst'] as $table) {
+                $pdo->exec('DELETE FROM main."' . $table . '"');
+            }
+            foreach (['JOB_lst', 'SEQ_lst', 'STEP_lst'] as $table) {
+                $columns = array_column($pdo->query('PRAGMA main.table_info("' . $table . '")')->fetchAll(PDO::FETCH_ASSOC), 'name');
+                if (!$columns) throw new RuntimeException('Recipe restore schema unavailable: ' . $table);
+                $names = array_map(static function ($name) { return '"' . str_replace('"', '""', $name) . '"'; }, $columns);
+                $list = implode(',', $names);
+                $pdo->exec('INSERT INTO main."' . $table . '" (' . $list . ') SELECT ' . $list . ' FROM recipe_backup."' . $table . '"');
+            }
+            // Triggers may alter inserted values; integrity alone cannot prove
+            // that the recipe contents were actually restored.
+            foreach (['JOB_lst', 'SEQ_lst', 'STEP_lst'] as $table) {
+                $different = $pdo->query('SELECT EXISTS(SELECT * FROM main."' . $table . '" EXCEPT SELECT * FROM recipe_backup."' . $table . '") OR EXISTS(SELECT * FROM recipe_backup."' . $table . '" EXCEPT SELECT * FROM main."' . $table . '")')->fetchColumn();
+                if ((int)$different !== 0) throw new RuntimeException('Recipe restore read-back mismatch: ' . $table);
+            }
+            if (strtolower(trim((string)$pdo->query('PRAGMA main.quick_check')->fetchColumn())) !== 'ok') {
+                throw new RuntimeException('Recipe restore integrity check failed');
+            }
+            $pdo->commit();
+            return true;
         } catch (Throwable $e) {
+            if ($pdo !== null && $pdo->inTransaction()) {
+                try { $pdo->rollBack(); } catch (Throwable $ignored) {}
+            }
+            error_log('[job-config] Recipe restore failed: ' . $e->getMessage());
             return false;
+        } finally {
+            $pdo = null;
         }
     }
 
@@ -354,9 +387,6 @@ final class JobConfigReplaceService
                 'inserted' => ['jobs' => 0, 'sequences' => 0, 'steps' => 0],
                 'updated' => ['jobs' => 0, 'sequences' => 0, 'steps' => 0],
             ];
-            if ($data['active_job_id'] !== null) {
-                $this->deactivateOtherJobs($pdo, $data['active_job_id']);
-            }
             foreach ($data['jobs'] as $job) {
                 $operation = $this->upsertRow($pdo, 'JOB_lst', $columns['JOB_lst'], $primaryKeys['JOB_lst'], $job);
                 $counts['jobs']++;
@@ -388,17 +418,6 @@ final class JobConfigReplaceService
         }
 
         return $counts;
-    }
-
-    /** Keep JOB_lst.act exclusive when the incoming payload activates a JOB. */
-    private function deactivateOtherJobs(PDO $pdo, int $activeJobId): void
-    {
-        $statement = $pdo->prepare(
-            'UPDATE "JOB_lst" SET "act" = 0 WHERE "JOBID" <> :active_job_id'
-            . ' AND ("act" IS NULL OR CAST("act" AS INTEGER) <> 0)'
-        );
-        $statement->bindValue(':active_job_id', $activeJobId, PDO::PARAM_INT);
-        $statement->execute();
     }
 
     private function upsertRow(PDO $pdo, string $table, array $tableColumns, array $primaryKeys, array $row): string
@@ -436,6 +455,13 @@ final class JobConfigReplaceService
             return 'updated';
         }
 
+        // Newly imported JOBs are inactive; existing JOBs keep their act value.
+        if ($table === 'JOB_lst' && in_array('act', $tableColumns, true)) {
+            $values['act'] = 0;
+            $quoted[] = '"act"';
+            $placeholders[] = ':act';
+        }
+
         $stmt = $pdo->prepare('INSERT INTO "' . $table . '" (' . implode(',', $quoted) . ') VALUES (' . implode(',', $placeholders) . ')');
         foreach ($values as $name => $value) $stmt->bindValue(':' . $name, $value);
         $stmt->execute();
@@ -451,10 +477,9 @@ final class JobConfigReplaceService
             $pdo = null;
         } catch (Throwable $e) {
             @unlink($target);
-            $pdo = idas_sqlite_connect($source, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            try { $pdo->exec('PRAGMA wal_checkpoint(FULL)'); } catch (Throwable $ignored) {}
-            $pdo = null;
-            if (!@copy($source, $target)) throw new RuntimeException('Snapshot copy failed');
+            // A failed or busy checkpoint must never fall back to a raw file
+            // copy: it can silently omit committed WAL pages from the backup.
+            throw new RuntimeException('Consistent SQLite snapshot failed', 0, $e);
         }
         if (!is_file($target)) throw new RuntimeException('Snapshot was not created');
     }
@@ -533,6 +558,8 @@ final class JobConfigReplaceService
         return [
             'operation' => 'upsert',
             'controller_updated' => $applied,
+            'job_activation' => 'modbus_only',
+            'existing_job_act_preserved' => true,
             'idas_mirror_synced' => $mirrorSynced,
             'verified' => $verified,
             'counts' => $counts,

@@ -35,13 +35,15 @@ final class JobSwitchReadbackException extends RuntimeException
 }
 
 /**
- * Bridge that deliberately uses the same inherited Controller helpers as
- * app/controllers/Remotes.php::Change_Job__ntcs().
+ * Shared Controller bridge for api/job_switch.php and Remotes::Change_Job.
+ * Both use the same protocol settings, switch commands and readback checks.
  *
  * Important: this class does NOT update JOB_lst.act.
  */
 final class JobSwitchControllerBridge extends Controller
 {
+    private const COMMUNICATION_BUDGET_SECONDS = 8.0;
+
     private function currentJobSeq(int $deviceId): array
     {
         $values = $this->protocol_read_registers($deviceId, 4305, 2);
@@ -55,9 +57,18 @@ final class JobSwitchControllerBridge extends Controller
     {
         $actual = null;
         $readError = '';
-        for ($attempt = 0; $attempt < 20; $attempt++) {
-            if ($attempt > 0) usleep(200000);
+        $pollDeadline = min(microtime(true) + 5.0, $this->protocolDeadline);
+        // Preserve the proven processing gap, with all reads inside one budget.
+        $this->switchProcessingGap(800000);
+        for ($attempt = 0; $attempt < 11 && microtime(true) < $pollDeadline; $attempt++) {
+            if ($attempt > 0) {
+                $remaining = $pollDeadline - microtime(true);
+                if ($remaining <= 0) break;
+                usleep((int)(min(0.4, $remaining) * 1000000));
+                if (microtime(true) >= $pollDeadline) break;
+            }
             try {
+                $this->setProtocolDeadline($pollDeadline);
                 $actual = $this->currentJobSeq($deviceId);
                 if ($actual[0] === $jobId && ($seqId === null || $actual[1] === $seqId)) {
                     return $actual;
@@ -71,7 +82,26 @@ final class JobSwitchControllerBridge extends Controller
             ' (expected ' . $jobId . '/' . ($seqId === null ? '*' : $seqId) . ')', $actual[0] ?? 0);
     }
 
+    private function switchProcessingGap(int $microseconds): void
+    {
+        if ($this->protocolRemainingSeconds() < $microseconds / 1000000) {
+            throw new RuntimeException('Controller switch communication deadline exceeded');
+        }
+        usleep($microseconds);
+    }
+
     public function switchControllerJob(int $jobId, int $seqId = 1): array
+    {
+        $this->setProtocolDeadline(microtime(true) + self::COMMUNICATION_BUDGET_SECONDS);
+        try {
+            return $this->performControllerSwitch($jobId, $seqId);
+        } finally {
+            // Other operations on this instance keep their existing timeouts.
+            $this->setProtocolDeadline(null);
+        }
+    }
+
+    private function performControllerSwitch(int $jobId, int $seqId): array
     {
         if ($jobId <= 0) {
             throw new RuntimeException('job_id invalid');
@@ -99,7 +129,7 @@ final class JobSwitchControllerBridge extends Controller
             }
 
             // Give the controller 500 ms to apply the JOB before sending SEQ.
-            usleep(500000);
+            $this->switchProcessingGap(500000);
 
             $seqOk = $this->op_write(464, $seqId);
             if (!$seqOk) {
@@ -141,6 +171,26 @@ final class JobSwitchService
     private $controllerDatabasePath;
     private $controllerFactory;
 
+    /** Diagnostics only: never mutate the controller's recipe database here. */
+    private function activeRecipeState(PDO $pdo, int $jobId, int $seqId): string
+    {
+        try {
+            $activeJobs = $pdo->query('SELECT JOBID FROM JOB_lst WHERE act = 1 ORDER BY JOBID')
+                ->fetchAll(PDO::FETCH_COLUMN);
+            $stmt = $pdo->prepare('SELECT act FROM JOB_lst WHERE JOBID = :job LIMIT 1');
+            $stmt->execute([':job' => $jobId]);
+            $jobAct = $stmt->fetchColumn();
+            $stmt = $pdo->prepare('SELECT act FROM SEQ_lst WHERE JOBID = :job AND SEQID = :seq LIMIT 1');
+            $stmt->execute([':job' => $jobId, ':seq' => $seqId]);
+            $seqAct = $stmt->fetchColumn();
+            return 'active_jobs=' . implode(',', array_map('intval', $activeJobs)) .
+                ' target_job_act=' . ($jobAct === false ? 'missing' : (int)$jobAct) .
+                ' target_seq_act=' . ($seqAct === false ? 'missing' : (int)$seqAct);
+        } catch (Throwable $e) {
+            return 'act_read_failed=' . $e->getMessage();
+        }
+    }
+
     public function __construct(array $options = [])
     {
         $controllerRoot = $options['controller_root'] ?? IDAS_PATH_CONTROLLER_ROOT;
@@ -181,6 +231,7 @@ final class JobSwitchService
             if (!$stmt->fetchColumn()) {
                 throw new JobSwitchException(404, 3001, '目標 Job 不存在');
             }
+            $beforeState = $this->activeRecipeState($pdo, $targetJobId, $seqId);
         } catch (JobSwitchException $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -201,6 +252,8 @@ final class JobSwitchService
             $this->log(
                 'CONTROLLER_SWITCH_FAILED target_job_id=' . $targetJobId .
                 ' seq_id=' . $seqId .
+                ' db_before=[' . ($beforeState ?? 'unavailable') . ']' .
+                ' db_after=[' . $this->activeRecipeState($pdo, $targetJobId, $seqId) . ']' .
                 ' error=' . $e->getMessage()
             );
             throw new JobSwitchException(
@@ -216,6 +269,8 @@ final class JobSwitchService
         $this->log(
             'SUCCESS target_job_id=' . $targetJobId .
             ' seq_id=' . $seqId .
+            ' db_before=[' . ($beforeState ?? 'unavailable') . ']' .
+            ' db_after=[' . $this->activeRecipeState($pdo, $targetJobId, $seqId) . ']' .
             ' protocol=' . ($switch['protocol'] ?? 'UNKNOWN') .
             ' device_id=' . ($switch['device_id'] ?? 0) .
             ' elapsed_ms=' . $elapsedMs

@@ -8,6 +8,48 @@ require_once dirname(__DIR__) . '/service/JobConfigControllerSettingsService.php
 require_once dirname(__DIR__) . '/service/JobConfigHttpClient.php';
 require_once dirname(__DIR__) . '/app/config/paths.php';
 
+/** Switch once through the target controller's existing job_switch.php API. */
+function callSwitchApi(string $url, int $job, int $seq): array
+{
+    $body = json_encode(['job_id' => $job, 'seq_id' => $seq]);
+    if ($body === false) throw new RuntimeException('Cannot encode switch request');
+    if (function_exists('curl_init')) {
+        $handle = curl_init($url);
+        if ($handle === false) throw new RuntimeException('Cannot create switch request');
+        curl_setopt_array($handle, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json'],
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 15, CURLOPT_FOLLOWLOCATION => false,
+        ]);
+        $response = curl_exec($handle);
+        $status = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
+        $error = curl_error($handle);
+        curl_close($handle);
+    } else {
+        $response = @file_get_contents($url, false, stream_context_create(['http' => [
+            'method' => 'POST', 'content' => $body, 'timeout' => 15,
+            'ignore_errors' => true, 'follow_location' => 0,
+            'header' => "Content-Type: application/json\r\nAccept: application/json\r\nConnection: close\r\n",
+        ]]));
+        $status = 0;
+        $error = 'Connection failed';
+        if (isset($http_response_header[0]) && preg_match('/^HTTP\/\S+\s+(\d{3})/', $http_response_header[0], $match)) {
+            $status = (int)$match[1];
+        }
+    }
+    $result = is_string($response) ? json_decode($response, true) : null;
+    if (!is_array($result) || $status !== 200 || (int)($result['code'] ?? -1) !== 0 ||
+        (int)($result['data']['switch_status'] ?? 0) !== 1 ||
+        (int)($result['data']['current_job_id'] ?? 0) !== $job ||
+        (int)($result['data']['target_seq_id'] ?? -1) !== $seq) {
+        $message = is_array($result) ? ($result['data']['message'] ?? $result['msg'] ?? '') : '';
+        throw new RuntimeException('job_switch.php failed (HTTP ' . $status . '): ' .
+            (is_string($message) && $message !== '' ? $message : $error));
+    }
+    return $result;
+}
+
 /** Look up the barcode for the selected switch-job JOB/SEQ pair. */
 function mappedSwitchBarcode(int $job, int $seq): ?string
 {
@@ -64,17 +106,19 @@ try {
     $base = preg_replace('#/api/[^/]+$#', '', $scriptName);
     if (!is_string($base) || $base === '' || $base === $scriptName) $base = '/idas';
     $settingsRequests = [];
-    foreach ($targets as $ip) {
-        $subnet = $network->matchedNetwork($ip, $networks);
-        if ($subnet !== null && $network->isUsableHostAddress($ip, $subnet)) {
-            $settingsRequests[$ip] = [
-                'method' => 'GET',
-                'url' => 'http://' . $ip . $base . '/api/controller_modbus_settings.php',
-                'timeout' => 5,
-            ];
+    if ($barcode !== null) {
+        foreach ($targets as $ip) {
+            $subnet = $network->matchedNetwork($ip, $networks);
+            if ($subnet !== null && $network->isUsableHostAddress($ip, $subnet)) {
+                $settingsRequests[$ip] = [
+                    'method' => 'GET',
+                    'url' => 'http://' . $ip . $base . '/api/controller_modbus_settings.php',
+                    'timeout' => 5,
+                ];
+            }
         }
     }
-    $settingsResponses = (new JobConfigHttpClient())->requestMany($settingsRequests);
+    $settingsResponses = $settingsRequests ? (new JobConfigHttpClient())->requestMany($settingsRequests) : [];
     foreach ($targets as $ip) {
         $subnet = $network->matchedNetwork($ip, $networks);
         if ($subnet === null || !$network->isUsableHostAddress($ip, $subnet)) {
@@ -82,21 +126,24 @@ try {
             continue;
         }
         try {
-            $response = $settingsResponses[$ip] ?? null;
-            $json = is_array($response) ? ($response['json'] ?? null) : null;
-            if (!is_array($response) || empty($response['transport_ok']) || (int)$response['http_status'] !== 200 || !is_array($json) || empty($json['success']) || !is_array($json['data'] ?? null)) {
-                throw new RuntimeException('Unable to read this controller Modbus settings');
+            if ($barcode !== null) {
+                $response = $settingsResponses[$ip] ?? null;
+                $json = is_array($response) ? ($response['json'] ?? null) : null;
+                if (!is_array($response) || empty($response['transport_ok']) || (int)$response['http_status'] !== 200 ||
+                    !is_array($json) || empty($json['success']) || !is_array($json['data'] ?? null)) {
+                    throw new RuntimeException('Unable to read this controller Modbus settings');
+                }
+                $settings = $json['data'];
+                if ((int)($settings['modbus_type'] ?? 0) === 2) {
+                    throw new RuntimeException('Barcode register 396 requires Modbus TCP');
+                }
+                $switcher = new JobConfigModbusSwitchService((int)($settings['unit_id'] ?? 0), (int)($settings['port'] ?? 0));
+                $switcher->writeBarcode($ip, $barcode);
             }
-            $settings = $json['data'];
-            if ((int)($settings['modbus_type'] ?? 0) === 2) throw new RuntimeException('This controller uses OP protocol, not Modbus TCP');
-            $switcher = new JobConfigModbusSwitchService((int)($settings['unit_id'] ?? 0), (int)($settings['port'] ?? 0));
-            // Use the selected controller address even when it belongs to this host.
-            // A loopback Modbus connection does not follow the same path as a LAN client.
-            $switchPath = $switcher->switchJob($ip, (int)$job, (int)$seq, $barcode);
-            $switchLabel = $switchPath === 'controller-api' ? 'Controller call-job API' : 'Modbus';
+            callSwitchApi('http://' . $ip . $base . '/api/job_switch.php', (int)$job, (int)$seq);
             $results[$ip] = ['ip' => $ip, 'success' => true, 'barcode_written' => $barcode !== null,
-                'switch_path' => $switchPath,
-                'message' => $barcode !== null ? $switchLabel . ' JOB/SEQ verified; barcode write command sent to 396' : $switchLabel . ' JOB/SEQ verified; no barcode mapped for this JOB/SEQ'];
+                'switch_path' => 'job_switch.php',
+                'message' => $barcode !== null ? 'JOB/SEQ verified by job_switch.php; barcode write command sent to 396' : 'JOB/SEQ verified by job_switch.php; no barcode mapped for this JOB/SEQ'];
         } catch (Throwable $e) {
             $results[$ip] = ['ip' => $ip, 'success' => false, 'message' => $e->getMessage()];
         }

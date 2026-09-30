@@ -32,6 +32,11 @@ $lang = in_array($langRaw, ['en-us', 'zh-tw', 'zh-cn'], true) ? $langRaw : 'en-u
 
 $i18nAll = require __DIR__ . '/replace_job_config_i18n.php';
 $t = $i18nAll[$lang];
+$switchText = [
+ 'zh-tw' => ['title'=>'DB 寫入成功後自動切換工作', 'hint'=>'僅切換寫入成功的設備；請確認目標 JOB／SEQ。', 'pending'=>'DB 已寫入，正在切換工作…', 'ok'=>'DB 已寫入，工作切換成功', 'failed'=>'DB 已寫入，工作切換失敗', 'invalid'=>'請選擇 JSON 中有效的 JOB／SEQ', 'choose'=>'請選擇'],
+ 'zh-cn' => ['title'=>'DB 写入成功后自动切换工作', 'hint'=>'仅切换写入成功的设备；请确认目标 JOB／SEQ。', 'pending'=>'DB 已写入，正在切换工作…', 'ok'=>'DB 已写入，工作切换成功', 'failed'=>'DB 已写入，工作切换失败', 'invalid'=>'请选择 JSON 中有效的 JOB／SEQ', 'choose'=>'请选择'],
+ 'en-us' => ['title'=>'Automatically switch jobs after DB write', 'hint'=>'Only successfully written controllers will switch. Confirm the target JOB / SEQ.', 'pending'=>'DB written; switching job…', 'ok'=>'DB written; job switch verified', 'failed'=>'DB written; job switch failed', 'invalid'=>'Select a valid JOB / SEQ from the JSON', 'choose'=>'Select'],
+][$lang];
 function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!doctype html>
@@ -362,6 +367,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
     }
   ]
 }</textarea></div></div><div class="api-tools"><button id="restoreSampleButton" class="btn btn-neutral" type="button">↺ <?php echo h($t['restore_sample']); ?></button><button id="downloadSampleButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['download_sample']); ?></button><button id="copyApiButton" class="btn btn-neutral" type="button">⧉ <?php echo h($t['copy_api_request']); ?></button></div></div></section>
+    <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($switchText['title']); ?></div><div class="section-hint"><?php echo h($switchText['hint']); ?></div></div></div><div class="section-body"><label for="autoSwitchJob">JOB </label><select id="autoSwitchJob" aria-label="JOB"></select> <label for="autoSwitchSeq">SEQ </label><select id="autoSwitchSeq" aria-label="SEQ"></select><p id="autoSwitchResult" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere"></p></div></section>
     <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_deployment']); ?></div><div class="section-hint"><?php echo h($t['deployment_hint']); ?></div></div></div><div class="section-body"><div class="deployment-grid"><div class="deployment-copy"><?php echo h($t['partial_ready']); ?><br><span id="status" class="status"><?php echo h($t['ready']); ?></span></div><div class="action-buttons"><button id="previewButton" class="btn btn-secondary" type="button">≋ <?php echo h($t['preview']); ?></button><button id="retryFailedButton" class="btn btn-secondary" type="button" style="display:none">↻ <?php echo h($t['retry_failed']); ?></button><button id="sendButton" class="btn btn-primary" type="button">✓ <?php echo h($t['write_db']); ?></button></div></div><div id="previewSummary" class="preview-summary"><div class="preview-summary-title"><?php echo h($t['preview_summary']); ?></div><div class="preview-summary-grid"><div class="preview-summary-item"><strong>JOB</strong><span id="previewJobs">--</span></div><div class="preview-summary-item"><strong>SEQ</strong><span id="previewSeqs">--</span></div><div class="preview-summary-item"><strong>STEP</strong><span id="previewSteps">--</span></div></div></div></div></section>
     <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_result']); ?></div><div class="section-hint"><?php echo h($t['result_hint']); ?></div></div></div><div id="overallResult" class="overall-result" aria-live="polite"></div><div id="resultPlaceholder" class="result-placeholder"><?php echo h($t['result_hint']); ?></div><div id="resultMetrics" class="result-metrics" aria-live="polite"><div class="result-metric success"><span class="result-metric-label"><?php echo h($t['result_success']); ?></span><strong id="resultSuccessValue" class="result-metric-value">0</strong></div><div class="result-metric skipped"><span class="result-metric-label"><?php echo h($t['result_skipped']); ?></span><strong id="resultSkippedValue" class="result-metric-value">0</strong></div><div class="result-metric failed"><span class="result-metric-label"><?php echo h($t['result_failed']); ?></span><strong id="resultFailedValue" class="result-metric-value">0</strong></div></div><div id="batchSummary" class="batch-summary" aria-live="polite"></div><div id="resultExportTools" class="api-tools" style="display:none;padding:0 16px 14px"><button id="exportResultJsonButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['export_json']); ?></button><button id="exportResultCsvButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['export_csv']); ?></button></div></section>
     <details id="responseCard" class="response-card" aria-live="polite"><summary class="response-title"><?php echo h($t['api_details']); ?></summary><pre id="response"></pre></details>
@@ -375,6 +381,8 @@ window.IDAS_JOB_CONFIG_UI = <?php echo json_encode([
   'translations' => $t,
   'apiEndpoint' => $idasBaseUrl . '/api/replace_job_config.php',
   'apiVersion' => $idasApiVersion,
+  'switchEndpoint' => $idasBaseUrl . '/api/replace_job_config_switch.php',
+  'switchText' => $switchText,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 </script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_web.js?v=<?php echo h($assetVersion); ?>"></script>

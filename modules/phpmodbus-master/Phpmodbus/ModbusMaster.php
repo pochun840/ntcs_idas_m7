@@ -36,13 +36,15 @@ require_once dirname(__FILE__) . '/PhpType.php';
  *
  */
 class ModbusMaster {
-  private $sock;
+  private $sock = null;
   public $host = "192.168.1.1";
   public $port = "502";  
   public $client = "";
   public $client_port = "502";
   public $status;
   public $timeout_sec = 5; // Timeout 5 sec
+  // Optional absolute deadline. Existing callers retain their legacy transport.
+  public $deadline = null;
   public $endianness = 0; // Endianness codding (little endian == 0, big endian == 1) 
   public $socket_protocol = "UDP"; // Socket protocol (TCP, UDP)
   
@@ -57,6 +59,27 @@ class ModbusMaster {
   function __construct($host, $protocol){
     $this->socket_protocol = $protocol;
     $this->host = $host;
+  }
+
+  function __destruct(){
+    if ($this->sock !== null) {
+      try { @socket_close($this->sock); } catch (Throwable $ignored) {}
+      $this->sock = null;
+    }
+  }
+
+  private function waitBeforeDeadline($write){
+    $remaining = $this->deadline - microtime(true);
+    if ($remaining <= 0) throw new Exception('Modbus communication deadline exceeded');
+    $seconds = (int)floor($remaining);
+    $microseconds = (int)(($remaining - $seconds) * 1000000);
+    $read = $write ? null : [$this->sock];
+    $writes = $write ? [$this->sock] : null;
+    $except = [$this->sock];
+    $ready = @socket_select($read, $writes, $except, $seconds, $microseconds);
+    if ($ready === false) throw new Exception('Modbus socket select failed');
+    if ($ready === 0) throw new Exception('Modbus communication deadline exceeded');
+    if (!empty($except)) throw new Exception('Modbus socket error');
   }
 
   /**
@@ -96,6 +119,23 @@ class ModbusMaster {
             $this->status .= "Bound\n";
         }
     }
+    // Bounded nonblocking connection for callers that explicitly set a deadline.
+    if ($this->deadline !== null) {
+      if ($this->deadline <= microtime(true)) throw new Exception('Modbus communication deadline exceeded');
+      if (!socket_set_nonblock($this->sock)) throw new Exception('Cannot set Modbus socket nonblocking');
+      $result = @socket_connect($this->sock, $this->host, $this->port);
+      if ($result === false) {
+        $error = socket_last_error($this->sock);
+        if (!in_array($error, [SOCKET_EINPROGRESS, SOCKET_EALREADY, SOCKET_EWOULDBLOCK, SOCKET_EAGAIN], true)) {
+          throw new Exception('Modbus connect failed: ' . socket_strerror($error));
+        }
+        $this->waitBeforeDeadline(true);
+        $error = socket_get_option($this->sock, SOL_SOCKET, SO_ERROR);
+        if ($error === false || $error !== 0) throw new Exception('Modbus connect failed');
+      }
+      $this->status .= "Connected\n";
+      return true;
+    }
     // Connect the socket
     $result = @socket_connect($this->sock, $this->host, $this->port);
     if ($result === false) {
@@ -114,6 +154,7 @@ class ModbusMaster {
    */
   private function disconnect(){    
     socket_close($this->sock);
+    $this->sock = null;
     $this->status .= "Disconnected\n";
   }
 
@@ -125,6 +166,22 @@ class ModbusMaster {
    * @param string $packet
    */
   private function send($packet){
+    if ($this->deadline !== null) {
+      $offset = 0;
+      while ($offset < strlen($packet)) {
+        $this->waitBeforeDeadline(true);
+        $written = @socket_write($this->sock, substr($packet, $offset));
+        if ($written === false) {
+          $error = socket_last_error($this->sock);
+          if (in_array($error, [SOCKET_EWOULDBLOCK, SOCKET_EAGAIN], true)) continue;
+          throw new Exception('Modbus socket write failed');
+        }
+        if ($written === 0) throw new Exception('Modbus connection closed during write');
+        $offset += $written;
+      }
+      $this->status .= "Send\n";
+      return;
+    }
     socket_write($this->sock, $packet, strlen($packet));  
     $this->status .= "Send\n";
   }
@@ -137,6 +194,7 @@ class ModbusMaster {
    * @return bool
    */
   private function rec() {
+      if ($this->deadline !== null) return $this->receiveBeforeDeadline();
       socket_set_nonblock($this->sock);
       $rec = "";
       $lastAccess = time();
@@ -177,6 +235,29 @@ class ModbusMaster {
       }
 
       return $rec;
+  }
+
+  private function receiveBeforeDeadline() {
+    $response = '';
+    while (true) {
+      $this->waitBeforeDeadline(false);
+      $buffer = '';
+      $bytes = @socket_recv($this->sock, $buffer, 2048, 0);
+      if ($bytes === false) {
+        $error = socket_last_error($this->sock);
+        if (in_array($error, [SOCKET_EWOULDBLOCK, SOCKET_EAGAIN], true)) continue;
+        throw new Exception('Modbus socket receive failed');
+      }
+      if ($bytes === 0) throw new Exception('Modbus connection closed before complete response');
+      $response .= $buffer;
+      if ($this->socket_protocol !== 'TCP') return $response;
+      // TCP can split the MBAP header and body over several reads.
+      if (strlen($response) >= 6) {
+        $length = unpack('nlength', substr($response, 4, 2))['length'];
+        if ($length < 2) throw new Exception('Invalid Modbus response length');
+        if (strlen($response) >= 6 + $length) return substr($response, 0, 6 + $length);
+      }
+    }
   }
 
   

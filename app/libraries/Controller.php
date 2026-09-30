@@ -24,9 +24,34 @@ trait LazyDeviceIdResolver
     }
 }
 
+/** Opt-in deadline used by job switching; normal controller calls are unchanged. */
+trait ControllerProtocolDeadline
+{
+    protected $protocolDeadline = null;
+
+    public function setProtocolDeadline(?float $deadline): void
+    {
+        $this->protocolDeadline = $deadline;
+    }
+
+    protected function protocolRemainingSeconds(): float
+    {
+        if ($this->protocolDeadline === null) return INF;
+        $remaining = $this->protocolDeadline - microtime(true);
+        if ($remaining <= 0) throw new RuntimeException('Controller communication deadline exceeded');
+        return $remaining;
+    }
+
+    protected function protocolTimeoutSeconds(float $seconds): float
+    {
+        return min($seconds, $this->protocolRemainingSeconds());
+    }
+}
+
 class IControllerBaseController
 {
     use LazyDeviceIdResolver;
+    use ControllerProtocolDeadline;
     // OP protocol runtime cache: avoid reading SQLite / retrying fallback endpoints on every command.
     protected static $opProtocolCandidatesCache = null;
     protected static $opLastEndpoint = null;
@@ -659,7 +684,7 @@ class IControllerBaseController
 
     protected function setOpStreamTimeout($client, float $seconds): void
     {
-        $seconds = max(0.05, $seconds);
+        $seconds = $this->protocolTimeoutSeconds(max(0.05, $seconds));
         $sec = (int)floor($seconds);
         $usec = (int)(($seconds - $sec) * 1000000);
         @stream_set_timeout($client, $sec, $usec);
@@ -669,6 +694,7 @@ class IControllerBaseController
     {
         $response = '';
         while (!feof($client) && strlen($response) < $maxBytes) {
+            if ($this->protocolDeadline !== null) $this->setOpStreamTimeout($client, 1.0);
             $chunk = fread($client, 1024);
             if ($chunk === false || $chunk === '') {
                 break;
@@ -689,7 +715,7 @@ class IControllerBaseController
             "tcp://{$host}:{$port}",
             $errno,
             $errstr,
-            max(0.05, $connectTimeout),
+            $this->protocolTimeoutSeconds(max(0.05, $connectTimeout)),
             STREAM_CLIENT_CONNECT
         );
     }
@@ -705,6 +731,7 @@ class IControllerBaseController
         $zeroWrites = 0;
 
         while ($offset < $length) {
+            if ($this->protocolDeadline !== null) $this->setOpStreamTimeout($client, 1.0);
             $written = @fwrite($client, substr($payload, $offset));
             if ($written === false) {
                 return false;
@@ -930,6 +957,7 @@ class IControllerBaseController
                 for ($i = 0; $i < $quantity; $i++) {
                     $address = $startAddress + $i;
                     $command = "IDAS_READ_{$address}\n";
+                    if ($this->protocolDeadline !== null) $this->setOpStreamTimeout($client, $readTimeout);
                     $written = fwrite($client, $command);
                     if ($written === false || $written <= 0) {
                         $ok = false;
@@ -1104,6 +1132,7 @@ class IControllerBaseController
             $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
             $modbus->port = $this->getControllerTcpPort(502);
             $modbus->timeout_sec = 10;
+            $modbus->deadline = $this->protocolDeadline;
             $raw = $modbus->readMultipleRegisters($unitId, $address, 1);
             $words = $this->normalizeModbusResponseToRegisters($raw);
             return $words[0] ?? null;
@@ -1144,6 +1173,7 @@ class IControllerBaseController
         $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
         $modbus->port = $this->getControllerTcpPort(502);
         $modbus->timeout_sec = 10;
+        $modbus->deadline = $this->protocolDeadline;
         $raw = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
         return $this->normalizeModbusResponseToRegisters($raw);
     }
@@ -1161,6 +1191,7 @@ class IControllerBaseController
             $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
             $modbus->port = $this->getControllerTcpPort(502);
             $modbus->timeout_sec = 10;
+            $modbus->deadline = $this->protocolDeadline;
             $modbus->writeMultipleRegister($unitId, $address, [(int)$value], ['INT']);
             return true;
         } catch (Throwable $e) {
@@ -1190,6 +1221,7 @@ class IControllerBaseController
             $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
             $modbus->port = $this->getControllerTcpPort(502);
             $modbus->timeout_sec = 10;
+            $modbus->deadline = $this->protocolDeadline;
             $types = array_fill(0, count($values), 'INT');
             $modbus->writeMultipleRegister($unitId, $startAddress, array_values($values), $types);
             return true;
@@ -2373,6 +2405,7 @@ class IControllerBaseController
 class NtcsBaseController
 {
     use LazyDeviceIdResolver;
+    use ControllerProtocolDeadline;
     // OP protocol runtime cache: avoid reading SQLite / retrying fallback endpoints on every command.
     protected static $opProtocolCandidatesCache = null;
     protected static $opLastEndpoint = null;
@@ -2956,7 +2989,7 @@ class NtcsBaseController
 
     protected function setOpStreamTimeout($client, float $seconds): void
     {
-        $seconds = max(0.05, $seconds);
+        $seconds = $this->protocolTimeoutSeconds(max(0.05, $seconds));
         $sec = (int)floor($seconds);
         $usec = (int)(($seconds - $sec) * 1000000);
         @stream_set_timeout($client, $sec, $usec);
@@ -2966,6 +2999,7 @@ class NtcsBaseController
     {
         $response = '';
         while (!feof($client) && strlen($response) < $maxBytes) {
+            if ($this->protocolDeadline !== null) $this->setOpStreamTimeout($client, 1.0);
             $chunk = fread($client, 1024);
             if ($chunk === false || $chunk === '') {
                 break;
@@ -2986,7 +3020,7 @@ class NtcsBaseController
             "tcp://{$host}:{$port}",
             $errno,
             $errstr,
-            max(0.05, $connectTimeout),
+            $this->protocolTimeoutSeconds(max(0.05, $connectTimeout)),
             STREAM_CLIENT_CONNECT
         );
     }
@@ -3001,6 +3035,7 @@ class NtcsBaseController
         $offset = 0;
 
         while ($offset < $length) {
+            if ($this->protocolDeadline !== null) $this->setOpStreamTimeout($client, 1.0);
             $written = @fwrite($client, substr($payload, $offset));
             if ($written === false || $written <= 0) {
                 return false;
@@ -3390,6 +3425,7 @@ class NtcsBaseController
             $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
             $modbus->port = 502;
             $modbus->timeout_sec = 10;
+            $modbus->deadline = $this->protocolDeadline;
             $raw = $modbus->readMultipleRegisters($unitId, $address, 1);
             $words = $this->normalizeModbusResponseToRegisters($raw);
             return $words[0] ?? null;
@@ -3430,6 +3466,7 @@ class NtcsBaseController
         $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
         $modbus->port = 502;
         $modbus->timeout_sec = 10;
+        $modbus->deadline = $this->protocolDeadline;
         $raw = $modbus->readMultipleRegisters($unitId, $startAddress, $quantity);
         return $this->normalizeModbusResponseToRegisters($raw);
     }
@@ -3447,6 +3484,7 @@ class NtcsBaseController
             $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
             $modbus->port = 502;
             $modbus->timeout_sec = 10;
+            $modbus->deadline = $this->protocolDeadline;
             $modbus->writeMultipleRegister($unitId, $address, [(int)$value], ['INT']);
             return true;
         } catch (Throwable $e) {
@@ -3486,6 +3524,7 @@ class NtcsBaseController
             $modbus = new ModbusMaster($this->getProtocolHost(), 'TCP');
             $modbus->port = 502;
             $modbus->timeout_sec = 10;
+            $modbus->deadline = $this->protocolDeadline;
             $types = array_fill(0, count($values), 'INT');
             $modbus->writeMultipleRegister($unitId, $startAddress, array_values($values), $types);
             return true;

@@ -225,18 +225,20 @@
         remoteChangeJobBusy = true;
 
         $.ajax({
-            url: '?url=Remotes/change_job', // 指向服務器端檢查更新的 PHP 腳本
-            method: 'GET',
+            url: '../api/job_switch.php',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
             dataType: 'json',
-            data :{ 'job_id' : job_id, 'seq_id' : seq_id },
+            data: JSON.stringify({ job_id: Number(job_id), seq_id: Number(seq_id) }),
             beforeSend: function() {
                 $('#overlay').removeClass('hidden');
             },
             success: function(response) {
                 console.log(response);
 
-                if (response && response.error) {
-                    const msg = response.msg || response.error || 'protocol fail';
+                if (!response || response.code !== 0 || !response.data || response.data.switch_status !== 1) {
+                    const msg = (response && response.data && response.data.message) ||
+                        (response && response.msg) || '切換工作失敗';
                     if (window.alertify) {
                         IdasNotify.alert('Change Job Failed', msg);
                     } else {
@@ -265,9 +267,10 @@
             },
             error: function(xhr, status, error) {
                 console.log("fail", status, error, xhr.responseText);
-                if (window.alertify) {
-                    IdasNotify.alert('Change Job Failed', error || status || 'request failed');
-                }
+                const result = xhr.responseJSON;
+                const message = (result && result.data && result.data.message) ||
+                    (result && result.msg) || error || status || 'request failed';
+                IdasNotify.alert('Change Job Failed', message);
             }
         });
         
@@ -278,9 +281,13 @@
 <?php if($_SESSION['privilege'] != 'admin'){ ?>
 <script>
   $(document).ready(function () {
-    disableAllButtonsAndInputs();
-    document.getElementById("home").disabled = false; 
-    document.getElementById("data_select").disabled = false; 
+    if (typeof window.disableAllButtonsAndInputs === 'function') {
+      window.disableAllButtonsAndInputs();
+    }
+    const homeButton = document.getElementById("home");
+    const dataButton = document.getElementById("data_select");
+    if (homeButton) homeButton.disabled = false;
+    if (dataButton) dataButton.disabled = false;
   });
 </script>
 <?php } ?>
@@ -534,18 +541,20 @@
         remoteChangeJobBusy = true;
 
         $.ajax({
-            url: '?url=Remotes/change_job', // 指向服務器端檢查更新的 PHP 腳本
-            method: 'GET',
+            url: '../api/job_switch.php',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
             dataType: 'json',
-            data :{ 'job_id' : job_id, 'seq_id' : seq_id },
+            data: JSON.stringify({ job_id: Number(job_id), seq_id: Number(seq_id) }),
             beforeSend: function() {
                 $('#overlay').removeClass('hidden');
             },
             success: function(response) {
                 console.log(response);
 
-                if (response && response.error) {
-                    const msg = response.msg || response.error || 'protocol fail';
+                if (!response || response.code !== 0 || !response.data || response.data.switch_status !== 1) {
+                    const msg = (response && response.data && response.data.message) ||
+                        (response && response.msg) || '切換工作失敗';
                     if (window.alertify) {
                         IdasNotify.alert('Change Job Failed', msg);
                     } else {
@@ -574,9 +583,10 @@
             },
             error: function(xhr, status, error) {
                 console.log("fail", status, error, xhr.responseText);
-                if (window.alertify) {
-                    IdasNotify.alert('Change Job Failed', error || status || 'request failed');
-                }
+                const result = xhr.responseJSON;
+                const message = (result && result.data && result.data.message) ||
+                    (result && result.msg) || error || status || 'request failed';
+                IdasNotify.alert('Change Job Failed', message);
             }
         });
         
@@ -587,9 +597,13 @@
 <?php if($_SESSION['privilege'] != 'admin'){ ?>
 <script>
   $(document).ready(function () {
-    disableAllButtonsAndInputs();
-    document.getElementById("home").disabled = false; 
-    document.getElementById("data_select").disabled = false; 
+    if (typeof window.disableAllButtonsAndInputs === 'function') {
+      window.disableAllButtonsAndInputs();
+    }
+    const homeButton = document.getElementById("home");
+    const dataButton = document.getElementById("data_select");
+    if (homeButton) homeButton.disabled = false;
+    if (dataButton) dataButton.disabled = false;
   });
 </script>
 <?php } ?>

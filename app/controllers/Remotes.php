@@ -222,253 +222,30 @@ class Remotes extends Controller
         exit;
     }
 
+    /** Legacy command route: share the exact service used by api/job_switch.php. */
     public function Change_Job(...$args)
     {
-        if (idas_is_icontroller()) {
-            return $this->Change_Job__icontroller(...$args);
-        }
-        return $this->Change_Job__ntcs(...$args);
-    }
-
-    private function Change_Job__icontroller($value=''){
-
         header('Content-Type: application/json; charset=utf-8');
-
         $this->denyChangeJobIfOperator();
-
-        $error_message = '';
-        $input_check = true;
-
-        if (isset($_GET['job_id']) && $_GET['job_id'] !== '') {
-            $job_id = (int)$_GET['job_id'];
-            if ($job_id <= 0) {
-                $input_check = false;
-                $error_message .= "job_id,";
-            }
-        } else {
-            $input_check = false;
-            $error_message .= "job_id,";
-        }
-
-        // seq_id 允許 0，避免控制器目前回傳 Seq 0 時被 empty() 判斷成未填。
-        if (isset($_GET['seq_id']) && $_GET['seq_id'] !== '') {
-            $seq_id = (int)$_GET['seq_id'];
-            if ($seq_id < 0) {
-                $input_check = false;
-                $error_message .= "seq_id,";
-            }
-        } else {
-            $input_check = false;
-            $error_message .= "seq_id,";
-        }
-
-        $device_id = $this->remoteControllerUnitId();
-        if ($device_id < 1 || $device_id > 255) {
-            $input_check = false;
-            $error_message .= 'device_id,';
-        }
-
-        if ($input_check && PHP_OS_FAMILY == 'Linux') {
-            try {
-                $isOp = $this->is_op_protocol_enabled();
-
-                if ($isOp) {
-                    /*
-                     * OP 協議一次只能送一筆，但位址仍要保留 Modbus Register 對應關係：
-                     *   463 = Change Job ID
-                     *   464 = Change Seq ID
-                     *
-                     * 前一版改成 463 / 463 會造成 Controller 端無法正確切換工序。
-                     * 正確做法是「一筆一筆送」，不是「兩筆都送同一個位址」。
-                     */
-                    $opCommands = [];
-
-                    $opCommands[] = 'IDAS_WRITE_463_' . $job_id;
-                    $jobOk = $this->op_write(463, $job_id);
-                    if (!$jobOk) {
-                        throw new RuntimeException('OP write job_id failed');
-                    }
-
-                    // OP Controller 一次處理一筆命令，兩筆命令中間保留短暫處理時間。
-                    usleep(120000);
-
-                    $opCommands[] = 'IDAS_WRITE_464_' . $seq_id;
-                    $seqOk = $this->op_write(464, $seq_id);
-                    if (!$seqOk) {
-                        throw new RuntimeException('OP write seq_id failed');
-                    }
-
-                    // OP WRITE 本身沒有 ACK；改讀 Controller 真實狀態 4305/4306 驗證切換結果。
-                    // 最多等待約 1 秒，避免 TCP 有送出、Controller 卻沒有真正套用時誤報成功。
-                    $verified = $this->protocol_wait_for_register_values(
-                        $device_id,
-                        4305,
-                        [$job_id, $seq_id],
-                        5,
-                        200000
-                    );
-                    if (!$verified) {
-                        throw new RuntimeException('OP write sent but controller JOB/SEQ read-back verification failed');
-                    }
-
-                    echo json_encode([
-                        'error' => '',
-                        'protocol' => 'OP',
-                        'job_id' => $job_id,
-                        'seq_id' => $seq_id,
-                        'op_commands' => $opCommands,
-                        'op_change_job_register_pair' => true,
-                        'verified' => true,
-                        'verify_register_start' => 4305,
-                    ], JSON_UNESCAPED_UNICODE);
-                    exit();
-                }
-
-                $ok = $this->protocol_write_registers($device_id, 463, [$job_id, $seq_id]);
-                if (!$ok) {
-                    throw new RuntimeException('protocol write failed');
-                }
-
-                echo json_encode([
-                    'error' => '',
-                    'protocol' => 'MODBUS',
-                    'job_id' => $job_id,
-                    'seq_id' => $seq_id,
-                ], JSON_UNESCAPED_UNICODE);
-                exit();
-            } catch (Throwable $e) {
-                $this->logMessage('remote change job fail: ' . $e->getMessage());
-                echo json_encode([
-                    'error' => 'protocol fail',
-                    'msg' => $e->getMessage(),
-                    'protocol' => $this->is_op_protocol_enabled() ? 'OP' : 'MODBUS',
-                ], JSON_UNESCAPED_UNICODE);
-                exit();
-            }
-        } else {
-            echo json_encode(['error' => $error_message], JSON_UNESCAPED_UNICODE);
+        require_once dirname(__DIR__, 2) . '/service/JobSwitchService.php';
+        $job = filter_var($_GET['job_id'] ?? null, FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 1, 'max_range' => 100]]);
+        $seq = filter_var($_GET['seq_id'] ?? null, FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 0, 'max_range' => 50]]);
+        if ($job === false || $seq === false) {
+            echo json_encode(['error' => 'job_id,seq_id,', 'msg' => 'Invalid JOB / SEQ'], JSON_UNESCAPED_UNICODE);
             exit();
         }
-    }
-
-    private function Change_Job__ntcs($value=''){
-
-        header('Content-Type: application/json; charset=utf-8');
-
-        // Operator 權限不可切換 Controller 目前工作（後端防繞過）。
-        $this->denyChangeJobIfOperator();
-
-        $error_message = '';
-        $input_check = true;
-
-        if (isset($_GET['job_id']) && $_GET['job_id'] !== '') {
-            $job_id = (int)$_GET['job_id'];
-            if ($job_id <= 0) {
-                $input_check = false;
-                $error_message .= "job_id,";
-            }
-        } else {
-            $input_check = false;
-            $error_message .= "job_id,";
+        try {
+            $result = (new JobSwitchService())->switchJob((int)$job, (int)$seq);
+            echo json_encode(array_merge($result, [
+                'error' => '', 'command_sent' => true, 'verified' => true,
+                'switch_path' => 'JobSwitchService',
+            ]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $e) {
+            $this->logMessage('remote change job fail: ' . $e->getMessage());
+            echo json_encode(['error' => 'protocol fail', 'msg' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
-
-        // seq_id 允許 0，避免控制器目前回傳 Seq 0 時被 empty() 判斷成未填。
-        if (isset($_GET['seq_id']) && $_GET['seq_id'] !== '') {
-            $seq_id = (int)$_GET['seq_id'];
-            if ($seq_id < 0) {
-                $input_check = false;
-                $error_message .= "seq_id,";
-            }
-        } else {
-            $input_check = false;
-            $error_message .= "seq_id,";
-        }
-
-        $device_id = $this->remoteControllerUnitId();
-        if ($device_id < 1 || $device_id > 255) {
-            $input_check = false;
-            $error_message .= 'device_id,';
-        }
-
-        if ($input_check && PHP_OS_FAMILY == 'Linux') {
-            $modbusHost = $this->getProtocolHost();
-            $modbusPort = $this->remoteControllerTcpPort();
-            try {
-                $isOp = $this->is_op_protocol_enabled();
-
-                if ($isOp) {
-                    /*
-                     * OP 協議一次只能送一筆，但位址仍要保留 Modbus Register 對應關係：
-                     *   463 = Change Job ID
-                     *   464 = Change Seq ID
-                     *
-                     * 前一版改成 463 / 463 會造成 Controller 端無法正確切換工序。
-                     * 正確做法是「一筆一筆送」，不是「兩筆都送同一個位址」。
-                     */
-                    $opCommands = [];
-
-                    $opCommands[] = 'IDAS_WRITE_463_' . $job_id;
-                    $jobOk = $this->op_write(463, $job_id);
-                    if (!$jobOk) {
-                        throw new RuntimeException('OP write job_id failed');
-                    }
-
-                    // OP Controller 一次處理一筆命令，兩筆命令中間保留短暫處理時間。
-                    usleep(120000);
-
-                    $opCommands[] = 'IDAS_WRITE_464_' . $seq_id;
-                    $seqOk = $this->op_write(464, $seq_id);
-                    if (!$seqOk) {
-                        throw new RuntimeException('OP write seq_id failed');
-                    }
-
-                    // 不在後端強制判定讀回失敗，避免 Controller 切換需要較長時間時誤報。
-                    // 前端會延遲後呼叫 get_current_job() 讀取實際狀態。
-                    echo json_encode([
-                        'error' => '',
-                        'protocol' => 'OP',
-                        'job_id' => $job_id,
-                        'seq_id' => $seq_id,
-                        'op_commands' => $opCommands,
-                        'op_change_job_register_pair' => true,
-                    ], JSON_UNESCAPED_UNICODE);
-                    exit();
-                }
-
-                // An FC16 acknowledgement only confirms receipt, not a JOB change.
-                require_once dirname(__DIR__, 2) . '/service/JobConfigModbusSwitchService.php';
-                $switcher = new JobConfigModbusSwitchService($device_id, $modbusPort);
-                $switchPath = $switcher->switchJob($modbusHost, $job_id, $seq_id);
-
-                echo json_encode([
-                    'error' => '',
-                    'protocol' => 'MODBUS',
-                    'job_id' => $job_id,
-                    'seq_id' => $seq_id,
-                    'unit_id' => $device_id,
-                    'modbus_host' => $modbusHost,
-                    'modbus_port' => $modbusPort,
-                    'command_sent' => true,
-                    'verified' => true,
-                    'switch_path' => $switchPath,
-                ], JSON_UNESCAPED_UNICODE);
-                exit();
-            } catch (Throwable $e) {
-                $this->logMessage('remote change job fail: ' . $e->getMessage() .
-                    ', endpoint=' . $modbusHost . ':' . $modbusPort . ', unit_id=' . $device_id);
-                echo json_encode([
-                    'error' => 'protocol fail',
-                    'msg' => $e->getMessage(),
-                    'protocol' => $this->is_op_protocol_enabled() ? 'OP' : 'MODBUS',
-                    'unit_id' => $device_id,
-                    'modbus_host' => $modbusHost,
-                    'modbus_port' => $modbusPort,
-                ], JSON_UNESCAPED_UNICODE);
-                exit();
-            }
-        } else {
-            echo json_encode(['error' => $error_message], JSON_UNESCAPED_UNICODE);
-            exit();
-        }
+        exit();
     }
 }
