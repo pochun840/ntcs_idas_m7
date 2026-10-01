@@ -2,75 +2,36 @@
 $remoteSwitchLanguage = strtolower((string)($_SESSION['language'] ?? 'zh-tw'));
 $remoteSwitchUiTexts = [
     'zh-tw' => [
-        'close' => '關閉',
-        'notice' => '工作操作',
-        'reading' => '正在讀取控制器…',
-        'sending' => '正在送出切換命令並等待確認…',
-        'checking' => '正在重新讀取 JOB／SEQ…',
-        'seconds' => '已等待 {seconds} 秒',
-        'readSuccess' => '已讀取 JOB {job}／SEQ {seq}。',
-        'readFailed' => '讀取失敗，請確認連線後重新讀取。',
-        'stale' => '尚未更新：以下數值為上次讀取結果。',
-        'readAgain' => '重新讀取',
-        'retry' => '重試切換',
-        'fixed' => '固定顯示',
-        'readTitle' => '讀取工作失敗',
         'invalid' => '請選擇有效的 JOB 與 SEQ。',
         'same' => '目前已是 JOB {job}／SEQ {seq}，不需要重複切換。',
         'switching' => '切換中…',
         'success' => 'JOB {job}／SEQ {seq} 切換成功。',
         'failedTitle' => '工作切換失敗',
-        'controllerFailed' => '無法確認切換成功，請先重新讀取目前工作，再決定是否重試。',
+        'controllerFailed' => '控制器未接受切換命令，請確認連線後重試。',
         'busy' => '設備正在執行另一個切換工作，請稍後再試。',
         'parameter' => 'JOB／SEQ 參數錯誤，請重新選擇。',
         'network' => '無法連線至 iDAS，請確認網路後重試。',
         'verify' => '命令已送出，但無法確認控制器目前的 JOB／SEQ。',
     ],
     'zh-cn' => [
-        'close' => '关闭',
-        'notice' => '工作操作',
-        'reading' => '正在读取控制器…',
-        'sending' => '正在发送切换命令并等待确认…',
-        'checking' => '正在重新读取 JOB／SEQ…',
-        'seconds' => '已等待 {seconds} 秒',
-        'readSuccess' => '已读取 JOB {job}／SEQ {seq}。',
-        'readFailed' => '读取失败，请确认连接后重新读取。',
-        'stale' => '尚未更新：以下数值为上次读取结果。',
-        'readAgain' => '重新读取',
-        'retry' => '重试切换',
-        'fixed' => '固定显示',
-        'readTitle' => '读取工作失败',
         'invalid' => '请选择有效的 JOB 与 SEQ。',
         'same' => '目前已是 JOB {job}／SEQ {seq}，不需要重复切换。',
         'switching' => '切换中…',
         'success' => 'JOB {job}／SEQ {seq} 切换成功。',
         'failedTitle' => '工作切换失败',
-        'controllerFailed' => '无法确认切换成功，请先重新读取目前工作，再决定是否重试。',
+        'controllerFailed' => '控制器未接受切换命令，请确认连接后重试。',
         'busy' => '设备正在执行另一个切换工作，请稍后再试。',
         'parameter' => 'JOB／SEQ 参数错误，请重新选择。',
         'network' => '无法连接至 iDAS，请确认网络后重试。',
         'verify' => '命令已发送，但无法确认控制器目前的 JOB／SEQ。',
     ],
     'en-us' => [
-        'close' => 'Close',
-        'notice' => 'Job operation',
-        'reading' => 'Reading the controller…',
-        'sending' => 'Sending the switch command and waiting for verification…',
-        'checking' => 'Reading JOB / SEQ again…',
-        'seconds' => 'Waiting {seconds}s',
-        'readSuccess' => 'Read JOB {job} / SEQ {seq}.',
-        'readFailed' => 'Unable to read the controller. Check the connection and read again.',
-        'stale' => 'Not updated: values below are from the previous read.',
-        'readAgain' => 'Read again',
-        'retry' => 'Retry switch',
-        'fixed' => 'Fixed display',
-        'readTitle' => 'Job Read Failed',
         'invalid' => 'Select a valid JOB and SEQ.',
         'same' => 'JOB {job} / SEQ {seq} is already active.',
         'switching' => 'Switching…',
         'success' => 'JOB {job} / SEQ {seq} switched successfully.',
         'failedTitle' => 'Job Switch Failed',
-        'controllerFailed' => 'Unable to confirm the switch. Read the current job before retrying.',
+        'controllerFailed' => 'The controller did not accept the switch command. Check the connection and try again.',
         'busy' => 'Another job switch is in progress. Try again shortly.',
         'parameter' => 'The JOB / SEQ selection is invalid. Select it again.',
         'network' => 'Unable to connect to iDAS. Check the network and try again.',
@@ -81,163 +42,9 @@ $remoteSwitchUiText = $remoteSwitchUiTexts[$remoteSwitchLanguage] ?? $remoteSwit
 ?>
 <script>
 window.remoteSwitchUiText = <?php echo json_encode($remoteSwitchUiText, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-
-window.remoteJobUi = {
-    busy: false, stale: true, timer: null, saved: [],
-    panel: function () {
-        var panel = document.getElementById('remote_job_status');
-        if (!panel) {
-            var popup = document.createElement('div');
-            popup.id = 'remote_job_popup';
-            popup.style.cssText = 'position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px;box-sizing:border-box;';
-            panel = document.createElement('div');
-            panel.id = 'remote_job_status';
-            panel.tabIndex = -1;
-            panel.setAttribute('role', 'dialog');
-            panel.setAttribute('aria-modal', 'true');
-            panel.setAttribute('aria-label', remoteSwitchUiText.notice);
-            panel.className = 'idas-notification-card is-info';
-            panel.style.cssText = 'max-width:430px;max-height:85vh;overflow:auto;';
-            popup.appendChild(panel);
-            document.body.appendChild(popup);
-        }
-        var popup = document.getElementById('remote_job_popup');
-        if (popup.style.display === 'none') this.returnFocus = document.activeElement;
-        popup.style.display = 'flex';
-        return panel;
-    },
-    close: function () {
-        if (this.busy) return;
-        clearTimeout(this.autoCloseTimer); this.autoCloseTimer = null;
-        var popup = document.getElementById('remote_job_popup');
-        if (popup) popup.style.display = 'none';
-        if (this.returnFocus && this.returnFocus.isConnected && !this.returnFocus.disabled) this.returnFocus.focus();
-    },
-    show: function (message, failed, retry) {
-        clearTimeout(this.autoCloseTimer); this.autoCloseTimer = null;
-        var panel = this.panel();
-        panel.replaceChildren();
-        panel.className = 'idas-notification-card ' + (failed ? 'is-error' : (this.busy ? 'is-info' : 'is-success'));
-        var icon = document.createElement('div');
-        icon.className = 'idas-notification-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = failed ? '<svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><path d="M10.3 4.4 3.2 17a2 2 0 0 0 1.8 3h14a2 2 0 0 0 1.8-3L13.7 4.4a2 2 0 0 0-3.4 0Z"/></svg>' : (this.busy ? '<svg viewBox="0 0 24 24"><path d="M12 11v6m0-10h.01"/><circle cx="12" cy="12" r="9"/></svg>' : '<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>');
-        panel.appendChild(icon);
-        var line = document.createElement('div');
-        line.setAttribute('role', 'status');
-        line.setAttribute('aria-live', 'polite');
-        line.className = 'idas-notification-title';
-        line.textContent = message;
-        panel.appendChild(line);
-        if (failed) {
-            var hint = document.createElement('div');
-            hint.className = 'idas-notification-message';
-            hint.textContent = remoteSwitchUiText.stale;
-            panel.appendChild(hint);
-            var read = document.createElement('button');
-            read.className = 'btn btn-default';
-            read.type = 'button'; read.textContent = remoteSwitchUiText.readAgain;
-            read.onclick = function () { get_job(); };
-            read.style.margin = '8px 8px 0 0'; panel.appendChild(read);
-            if (retry) {
-                var button = document.createElement('button');
-                button.className = 'btn btn-default';
-                button.type = 'button'; button.textContent = remoteSwitchUiText.retry;
-                button.onclick = function () { change_job(); };
-                panel.appendChild(button);
-            }
-        }
-        panel.focus();
-        if (!this.busy) {
-            var self = this;
-            this.autoCloseTimer = setTimeout(function () { self.close(); }, failed ? 6000 : 3000);
-        }
-    },
-    start: function (message) {
-        clearTimeout(this.autoCloseTimer); this.autoCloseTimer = null;
-        this.busy = true; this.started = Date.now(); this.stage = message;
-        this.saved = Array.from(document.querySelectorAll('button[onclick*="get_job"],button[onclick*="switch_job"],#remote_change_job_save_btn,#switch_job_id,#switch_seq_id,#remote_job_status button')).map(function (node) {
-            var previous = node.disabled; node.disabled = true; return [node, previous];
-        });
-        var self = this;
-        this.tick();
-        this.timer = setInterval(function () { self.tick(); }, 1000);
-    },
-    tick: function () {
-        var seconds = Math.floor((Date.now() - this.started) / 1000);
-        this.show(this.stage + ' · ' + remoteSwitchUiText.seconds.replace('{seconds}', seconds), false);
-    },
-    stop: function () {
-        clearInterval(this.timer); this.timer = null; this.busy = false;
-        this.saved.forEach(function (item) { item[0].disabled = item[1]; });
-        this.saved = [];
-    },
-    markStale: function () {
-        this.stale = true;
-        ['current_job_id', 'current_seq_id'].forEach(function (id) {
-            var node = document.getElementById(id);
-            if (node) { node.style.color = '#94652b'; node.title = remoteSwitchUiText.stale; }
-        });
-    },
-    markFresh: function () {
-        this.stale = false;
-        ['current_job_id', 'current_seq_id'].forEach(function (id) {
-            var node = document.getElementById(id);
-            if (node) { node.style.color = ''; node.title = ''; }
-        });
-    }
-};
-window.remoteReadJob = function (argument) {
-    var opts = argument && typeof argument === 'object' ? argument : {};
-    var internal = opts.silent === true && window.remoteChangeJobBusy === true;
-    if (remoteJobUi.busy && !internal) return false;
-    var actual = null;
-    if (!internal) remoteJobUi.start(remoteSwitchUiText.reading);
-    $.ajax({
-        url: '?url=Remotes/get_current_job', method: 'GET', dataType: 'json',
-        cache: false, timeout: 15000,
-        success: function (response) {
-            var data = response && !response.error && response.result;
-            if (!data || !Number.isInteger(Number(data.jod_id)) || Number(data.jod_id) < 1 ||
-                !Number.isInteger(Number(data.seq_id)) || Number(data.seq_id) < 1) return;
-            document.getElementById('current_job_id').value = data.jod_id;
-            document.getElementById('current_seq_id').value = data.seq_id;
-            document.getElementById('current_step_id').value = 1;
-            actual = data;
-            remoteJobUi.markFresh();
-        },
-        error: function (xhr, status, error) { console.log('get_job failed', status, error, xhr.responseText); },
-        complete: function () {
-            if (!internal) {
-                remoteJobUi.stop();
-                if (actual) remoteJobUi.show(remoteSwitchUiText.readSuccess.replace('{job}', actual.jod_id).replace('{seq}', actual.seq_id), false);
-                else { remoteJobUi.markStale(); remoteJobUi.show(remoteSwitchUiText.readFailed, true); }
-            }
-            if (typeof opts.done === 'function') opts.done(actual);
-        }
-    });
-    return false;
-};
-document.addEventListener('keydown', function (event) {
-    var popup = document.getElementById('remote_job_popup');
-    if (!popup || popup.style.display === 'none') return;
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); remoteJobUi.close(); }
-    if (event.key === 'Tab') {
-        var panel = document.getElementById('remote_job_status');
-        var buttons = Array.from(panel.querySelectorAll('button:not(:disabled)'));
-        if (!buttons.length) { event.preventDefault(); panel.focus(); return; }
-        var first = buttons[0], last = buttons[buttons.length - 1];
-        if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
-            event.preventDefault(); last.focus();
-        } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
-            event.preventDefault(); first.focus();
-        }
-    }
-}, true);
-
 window.remoteChangeJobExecute = function (options) {
     options = options || {};
-    if (options.operator === true || window.remoteChangeJobBusy || remoteJobUi.busy) return false;
+    if (options.operator === true || window.remoteChangeJobBusy) return false;
 
     var text = window.remoteSwitchUiText || {};
     var jobSelect = document.getElementById('switch_job_id');
@@ -252,11 +59,11 @@ window.remoteChangeJobExecute = function (options) {
             .replace('{seq}', String(seqId));
     }
     function notifyError(message) {
-        remoteJobUi.markStale();
-        remoteJobUi.show(message, true, true);
+        if (window.IdasNotify) IdasNotify.alert(text.failedTitle, message);
+        else window.alert(message);
     }
     function finish() {
-        remoteJobUi.stop();
+        $('#overlay').addClass('hidden');
         window.remoteChangeJobBusy = false;
         if (saveButton) {
             saveButton.disabled = false;
@@ -272,13 +79,13 @@ window.remoteChangeJobExecute = function (options) {
 
     var currentJob = Number(document.getElementById('current_job_id')?.value);
     var currentSeq = Number(document.getElementById('current_seq_id')?.value);
-    if (!remoteJobUi.stale && currentJob === jobId && currentSeq === seqId) {
-        remoteJobUi.show(format(text.same), false);
+    if (currentJob === jobId && currentSeq === seqId) {
+        if (window.IdasNotify) IdasNotify.message(format(text.same));
+        else window.alert(format(text.same));
         document.getElementById('SwitchJob').style.display = 'none';
         return false;
     }
 
-    remoteJobUi.start(text.sending);
     window.remoteChangeJobBusy = true;
     if (saveButton) {
         saveButton.dataset.originalText = saveButton.textContent.trim();
@@ -292,37 +99,36 @@ window.remoteChangeJobExecute = function (options) {
         contentType: 'application/json; charset=utf-8',
         dataType: 'json',
         data: JSON.stringify({ job_id: jobId, seq_id: seqId }),
-        timeout: 20000,
+        beforeSend: function () { $('#overlay').removeClass('hidden'); },
         success: function (response) {
             if (!response || response.code !== 0 || !response.data || response.data.switch_status !== 1) {
                 var code = Number(response && response.code);
-                finish();
                 notifyError(code === 3002 ? text.busy : (code === 3003 ? text.parameter : text.controllerFailed));
+                finish();
                 return;
             }
 
-            remoteJobUi.stage = text.checking;
-            remoteJobUi.tick();
             window.setTimeout(function () {
                 get_job({ silent: true, done: function (actual) {
-                    finish();
                     if (actual && Number(actual.jod_id) === jobId && Number(actual.seq_id) === seqId) {
                         document.getElementById('SwitchJob').style.display = 'none';
-                        remoteJobUi.show(format(text.success), false);
+                        if (window.IdasNotify) IdasNotify.success(format(text.success));
                     } else {
                         notifyError(text.verify);
                     }
+                    finish();
                 }});
             }, 1000);
         },
         error: function (xhr, status, error) {
             console.log('change job failed', status, error, xhr.responseText);
-            finish();
             var result = xhr.responseJSON;
             var code = Number(result && result.code);
             notifyError(code === 3002 ? text.busy : (code === 3003 ? text.parameter :
                 (xhr.status === 0 ? text.network : text.controllerFailed)));
-        }
+            finish();
+        },
+        complete: function () { $('#overlay').addClass('hidden'); }
     });
     return false;
 };
@@ -500,7 +306,49 @@ window.remoteChangeJobExecute = function (options) {
     var remoteChangeJobBusy = false;
 
     function get_job(argument) {
-        return window.remoteReadJob(argument);
+        const opts = (argument && typeof argument === 'object') ? argument : {};
+        const silent = opts.silent === true;
+        const done = (typeof opts.done === 'function') ? opts.done : null;
+        let actual = null;
+
+        $.ajax({
+            url: '?url=Remotes/get_current_job', // 指向服務器端檢查更新的 PHP 腳本
+            method: 'GET',
+            dataType: "json",
+            beforeSend: function() {
+                if (!silent) $('#overlay').removeClass('hidden');
+            },
+            success: function(response) {
+                if (!silent) $('#overlay').addClass('hidden');
+                // 處理服務器返回的響應
+                console.log(response);
+
+                if (!response || response.error || !response.result) {
+                    if (!silent && window.alertify) {
+                        IdasNotify.alert('Get Job Failed', response?.msg || response?.error || 'protocol fail');
+                    }
+                    return;
+                }
+
+                document.getElementById("current_job_id").value = response.result.jod_id;
+                document.getElementById("current_seq_id").value = response.result.seq_id;
+                // Display-only default; keep the controller STEP in response.result unchanged.
+                document.getElementById("current_step_id").value = 1;
+                actual = response.result;
+            },
+            complete: function() {
+                if (!silent) $('#overlay').addClass('hidden');
+                if (done) done(actual);
+            },
+            error: function(xhr, status, error) {
+                if (!silent) {
+                    $('#overlay').addClass('hidden');
+                    history.go(0);
+                } else {
+                    console.log("silent get_job failed", status, error, xhr.responseText);
+                }
+            }
+        });
     }
 
     function change_job(argument) {
@@ -717,7 +565,49 @@ window.remoteChangeJobExecute = function (options) {
     var remoteChangeJobBusy = false;
 
     function get_job(argument) {
-        return window.remoteReadJob(argument);
+        const opts = (argument && typeof argument === 'object') ? argument : {};
+        const silent = opts.silent === true;
+        const done = (typeof opts.done === 'function') ? opts.done : null;
+        let actual = null;
+
+        $.ajax({
+            url: '?url=Remotes/get_current_job', // 指向服務器端檢查更新的 PHP 腳本
+            method: 'GET',
+            dataType: "json",
+            beforeSend: function() {
+                if (!silent) $('#overlay').removeClass('hidden');
+            },
+            success: function(response) {
+                if (!silent) $('#overlay').addClass('hidden');
+                // 處理服務器返回的響應
+                console.log(response);
+
+                if (!response || response.error || !response.result) {
+                    if (!silent && window.alertify) {
+                        IdasNotify.alert('Get Job Failed', response?.msg || response?.error || 'protocol fail');
+                    }
+                    return;
+                }
+
+                document.getElementById("current_job_id").value = response.result.jod_id;
+                document.getElementById("current_seq_id").value = response.result.seq_id;
+                // Display-only default; keep the controller STEP in response.result unchanged.
+                document.getElementById("current_step_id").value = 1;
+                actual = response.result;
+            },
+            complete: function() {
+                if (!silent) $('#overlay').addClass('hidden');
+                if (done) done(actual);
+            },
+            error: function(xhr, status, error) {
+                if (!silent) {
+                    $('#overlay').addClass('hidden');
+                    history.go(0);
+                } else {
+                    console.log("silent get_job failed", status, error, xhr.responseText);
+                }
+            }
+        });
     }
 
     function change_job(argument) {
