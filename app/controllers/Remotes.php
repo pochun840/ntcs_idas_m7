@@ -14,8 +14,6 @@ class Remotes extends Controller
             $this->MiscellaneousModel = $this->model('Miscellaneous');
             $this->ToolModel = $this->model('Tool');
 
-            #該死的需求 去撈控制器的資料庫 同步找出modbus id 
-
         }
 
     /** Resolve the local controller Unit ID without probing login register 29002. */
