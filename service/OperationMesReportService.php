@@ -30,7 +30,7 @@ final class OperationMesReportService
         $context=['SN'=>$work['SN'] ?? '', 'item'=>$work['item'] ?? '', 'process_name'=>$work['process_name'] ?? '',
             'station'=>$work['station'] ?? '', 'screw_inf'=>$work['screw_inf'] ?? [],
             'job_name'=>$data['job']['job_name'] ?? '', 'baseline_result_id'=>$baseline];
-        foreach (['SN','item','process_name','station','job_name'] as $field) {
+        foreach (['SN','item','process_name','station'] as $field) {
             if (trim((string)$context[$field]) === '') throw new RuntimeException('MES 工單缺少 '.$field);
         }
         $json=json_encode($context,JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
@@ -53,12 +53,7 @@ final class OperationMesReportService
                 $stmt=$this->state->prepare('SELECT * FROM mes_work_order_context WHERE baseline_id < ? ORDER BY baseline_id DESC,id DESC LIMIT 1');$stmt->execute([$id]);$ctx=$stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$ctx) throw new RuntimeException('沒有對應 MES 工單；請先成功執行條碼接口，再產生新的鎖附紀錄');
                 $context=json_decode($ctx['context_json'],true,512,JSON_THROW_ON_ERROR);
-                if (trim((string)$record['job_name'])!==trim((string)$context['job_name'])) throw new RuntimeException('鎖附紀錄 JOB 與 MES 工單不一致');
                 $stmt=$this->data->prepare('SELECT * FROM ntcs_data WHERE id > ? AND id <= ? ORDER BY id ASC');$stmt->execute([(int)$ctx['baseline_id'],$id]);$rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($rows as $row) {
-                    if (trim((string)$row['job_name'])!==trim((string)$context['job_name'])) throw new RuntimeException('工單紀錄包含不同 JOB，無法上報');
-                    if (trim((string)($row['barcode'] ?? ''))!=='' && trim((string)$row['barcode'])!==trim((string)$context['SN'])) throw new RuntimeException('工單紀錄包含不同 SN，無法上報');
-                }
                 // Report completed products only; earlier IDs remain retryable.
                 $mapper=new HuarongTighteningReportService();
                 $payload=$mapper->buildPayload($rows,$context);

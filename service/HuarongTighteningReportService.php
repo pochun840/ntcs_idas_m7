@@ -7,27 +7,14 @@ final class HuarongTighteningReportService
 {
     public function fetchProductRows(PDO $db, array $context): array
     {
-        // Compare the controller's recipe name, not the MES process_name.
-        // API 1 saves job_name from data.job.job_name after a successful Job Switch.
-        $jobName = trim((string)($context['job_name'] ?? ''));
-        if ($jobName === '') {
-            throw new InvalidArgumentException('MES Context 缺少 job_name，請重新執行接口 1 掃碼以建立新版 Context');
-        }
+        // Associate results with the MES context by record ID only.
         $afterId = max((int)($context['baseline_result_id'] ?? 0), (int)($context['last_reported_result_id'] ?? 0));
-        $stmt = $db->prepare('SELECT * FROM ntcs_data WHERE id > :after_id AND job_name = :job_name ORDER BY id ASC');
+        $stmt = $db->prepare('SELECT * FROM ntcs_data WHERE id > :after_id ORDER BY id ASC');
         $stmt->bindValue(':after_id', $afterId, PDO::PARAM_INT);
-        $stmt->bindValue(':job_name', $jobName, PDO::PARAM_STR);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $sn = trim((string)($context['SN'] ?? ''));
         $batch = [];
         foreach ($rows as $row) {
-            // Barcode can be blank in controller result rows; a different nonblank
-            // barcode must never be included in this product's report.
-            $barcode = trim((string)($row['barcode'] ?? ''));
-            if ($barcode !== '' && $barcode !== $sn) {
-                break;
-            }
             $batch[] = $row;
             if ((int)($row['fasten_status'] ?? -1) === 6) { // OK-JOB
                 break;
