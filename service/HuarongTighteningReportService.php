@@ -71,7 +71,7 @@ final class HuarongTighteningReportService
                 'Sp' => $torque,
                 'Rv' => $this->number($row['rpm'] ?? 0),
                 'Ep' => $this->number($row['final_fasten_angle'] ?? 0),
-                'Rl' => $torque,
+                'Rl' => $this->peakTorque($row),
                 'RlD' => $this->number($row['lo_torque'] ?? 0),
                 'RlU' => $this->number($row['hi_torque'] ?? 0),
                 'ii' => 0,
@@ -111,10 +111,18 @@ final class HuarongTighteningReportService
             'process_name' => (string)$context['process_name'],
             'station' => is_numeric($context['station']) ? (int)$context['station'] : $context['station'],
             'complete_staus' => $this->isProductComplete($rows) ? 1 : 0,
-            'personal_num' => '',
+            'personal_num' => (string)($last['user_id'] ?? ''),
             'screw_inf' => $screwInfo,
             'runParam_inf' => $runParams,
         ];
+    }
+
+    private function peakTorque(array $row)
+    {
+        foreach (['peak_fasten_torque','peak_torque'] as $key) {
+            if (isset($row[$key]) && is_numeric($row[$key])) return $this->number($row[$key]);
+        }
+        throw new InvalidArgumentException('Rl 峰值扭力來源尚未設定，請確認控制器欄位；不可將最終扭力當成峰值');
     }
 
     private function mapResultCode(array $row): ?int

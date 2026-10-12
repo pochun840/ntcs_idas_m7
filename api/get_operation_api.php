@@ -5,10 +5,9 @@
 #   get_operation_api.php
 #==================================
 
-require_once('../app/libraries/Database.php'); 
+require_once dirname(__DIR__) . '/app/config/paths.php';
 
-$db = new Database();
-$db_data = $db->getDb_data();  
+$db_data = null;  
 
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: OPTIONS, GET, POST");
@@ -19,8 +18,9 @@ $ps_text = '
 <!--
 NTCS7 匯出鎖附記錄API
 
-介接位址：/api/get_operation_api.php&type=xml
-　　　　　/api/get_operation_api.php&limit=100&type=xml
+介接位址：/api/get_operation_api.php?type=xml
+　　　　　/api/get_operation_api.php?limit=100&type=xml
+　　　　　/api/get_operation_api.php?type=json&id=466
 
 
 補充說明: 
@@ -29,28 +29,52 @@ NTCS7 匯出鎖附記錄API
 ';
 
 
-# 筆數
-$limit =isset($_GET['limit']) ? $_GET['limit'] : null;
-if(!preg_match('/^\d+$/', $limit)) $limit = 100;
-
-# 輸出類型
-$type = $_GET['type'];
-if(empty($type)) $type = 'xml';
-
-
-$sql = "SELECT * FROM `ntcs_data` ";
-$sql.= "WHERE 1 ";
-$sql .= "ORDER BY id DESC LIMIT ".$limit." ";
-
-
-$statement = $db_data->prepare($sql); 
-$statement->execute(); 
-
-$results = $statement->fetchAll(PDO::FETCH_ASSOC); 
-if(!empty($results)){
-    $newsItem = $results;
+// Optional record ID; invalid IDs must never fall back to latest records.
+$id = null;
+if (array_key_exists('id', $_GET)) {
+    $rawId = $_GET['id'];
+    $id = is_string($rawId) && preg_match('/^[1-9][0-9]*$/D', $rawId)
+        ? filter_var($rawId, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]) : false;
+    if ($id === false) {
+        http_response_code(400);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok'=>false,'message'=>'id must be a positive integer']);
+        exit;
+    }
 }
 
+$rawLimit = $_GET['limit'] ?? '100';
+$limit = is_string($rawLimit) ? filter_var($rawLimit, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]) : false;
+if ($limit === false) $limit = 100;
+$type = is_string($_GET['type'] ?? null) ? $_GET['type'] : 'xml';
+if ($type === '') $type = 'xml';
+
+try {
+    $databasePath = PHP_OS_FAMILY === 'Linux'
+        ? idas_path('controller_root', 'ntcs_data.db')
+        : dirname(__DIR__) . '/ntcs_data.db';
+    if (!is_file($databasePath)) throw new RuntimeException('Operation database file not found: ' . $databasePath);
+    if (!is_readable($databasePath)) throw new RuntimeException('Operation database file not readable: ' . $databasePath);
+    $db_data = new PDO('sqlite:' . $databasePath);
+    $db_data->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db_data->exec('PRAGMA busy_timeout=5000');
+    $db_data->exec('PRAGMA query_only=ON');
+    if ($id !== null) {
+        $statement = $db_data->prepare('SELECT * FROM ntcs_data WHERE id = :id LIMIT 1');
+        $statement->bindValue(':id', $id, PDO::PARAM_INT);
+    } else {
+        $statement = $db_data->prepare('SELECT * FROM ntcs_data ORDER BY id DESC LIMIT :limit');
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+    }
+    $statement->execute();
+    $newsItem = $statement->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    error_log('[get_operation_api] ' . $e->getMessage());
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok'=>false,'message'=>'Unable to read operation records']);
+    exit;
+}
 
 # 輸出結果
 switch($type){
@@ -67,9 +91,7 @@ switch($type){
     # JSON
     case 'json':
         header('Content-type: application/json; charset=utf-8');
-        if(!empty($newsItem)){
-            echo json_encode($newsItem);
-        }
+        echo json_encode($newsItem, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     break;
     default:
     # XML

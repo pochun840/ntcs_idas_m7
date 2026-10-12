@@ -30,11 +30,12 @@ final class HuarongTighteningSenderService
             return ['http_code' => 200, 'response' => $response];
         }
 
-        $baseUrl = rtrim(trim((string)($this->config['base_url'] ?? '')), '/');
-        if ($baseUrl === '') throw new RuntimeException('華榮 MES Base URL 尚未設定');
+        require_once __DIR__ . '/MesApiSettingsService.php';
+        $settings = (new MesApiSettingsService())->read();
+        $url = MesApiSettingsService::validate($settings['mes_tightening_api_url']);
+        if ($url === '') throw new RuntimeException('MES tightening API URL is not configured');
         if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension 未安裝');
 
-        $url = $baseUrl . '/' . ltrim((string)($this->config['report_path'] ?? '/api/report_tightening_result'), '/');
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) throw new RuntimeException('接口 2 JSON 建立失敗');
 
@@ -44,6 +45,10 @@ final class HuarongTighteningSenderService
             CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json'],
             CURLOPT_POSTFIELDS => $json,
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_CONNECTTIMEOUT => (int)($this->config['connect_timeout'] ?? 3),
             CURLOPT_TIMEOUT => (int)($this->config['timeout'] ?? 5),
         ]);

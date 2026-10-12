@@ -63,6 +63,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
   </header>
 
   <main class="content">
+    <?php require __DIR__ . "/mes_api_settings_panel.php"; ?>
     <section class="section-card">
       <div class="section-head"><div><div class="section-title"><?php echo h($t['section_targets']); ?></div><div class="section-hint"><?php echo h($t['target_hint']); ?></div></div><span id="networkBadge" class="network-badge"><?php echo h($t['local_network']); ?>: --</span></div>
       <div class="section-body">

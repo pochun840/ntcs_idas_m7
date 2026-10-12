@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-// Temporary scan test: receive and display the barcode only.
-// MES, controller configuration and job switching are paused.
+// Receive barcode and retrieve its recipe from the configured MES endpoint.
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -48,13 +47,34 @@ $loggedBarcode = json_encode($barcode, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_S
 if ($loggedBarcode === false) {
     barcodeReceiveResponse(400, ['success' => false, 'message' => 'barcode 必須為 UTF-8 字串']);
 }
+try {
+    require_once dirname(__DIR__) . '/service/BarcodeReceiveStateService.php';
+    $received = (new BarcodeReceiveStateService())->save($barcode);
+} catch (Throwable $e) {
+    error_log('[idas_barcode_state] ' . $e->getMessage());
+    barcodeReceiveResponse(503, ['success'=>false, 'message'=>'無法保存接收條碼']);
+}
 error_log('[idas_barcode_received] barcode=' . $loggedBarcode);
 
-barcodeReceiveResponse(200, [
-    'success' => true,
-    'status' => 'received_only',
-    'message' => '已收到條碼；MES 與控制器寫入暫停',
-    'barcode' => $barcode,
-    'mes_called' => false,
-    'controller_updated' => false,
-]);
+try {
+    require_once dirname(__DIR__) . '/service/MesBarcodeSenderService.php';
+    require_once dirname(__DIR__) . '/service/OperationMesReportService.php';
+    $reportService = new OperationMesReportService();
+    $baseline = $reportService->baseline();
+    $mes = (new MesBarcodeSenderService())->send($barcode);
+    $reportService->saveContext($mes['response'],$baseline);
+    (new BarcodeReceiveStateService())->delivery($received['receipt_id'],'sent','');
+    barcodeReceiveResponse(200, [
+        'success'=>true, 'status'=>'recipe_received', 'message'=>'條碼已上傳，已取得 MES 配方',
+        'barcode'=>$barcode, 'received_at'=>$received['received_at'], 'receipt_id'=>$received['receipt_id'],
+        'mes_called'=>true, 'mes_http_status'=>$mes['http_status'], 'mes_response'=>$mes['response'],
+        'controller_updated'=>false,
+    ]);
+} catch (Throwable $e) {
+    error_log('[idas_barcode_mes] ' . $e->getMessage());
+    try {(new BarcodeReceiveStateService())->delivery($received['receipt_id'],'failed',$e->getMessage());}
+    catch (Throwable $stateError) {error_log('[idas_barcode_state] '.$stateError->getMessage());}
+    barcodeReceiveResponse(502, ['success'=>false,'status'=>'mes_failed', 'message'=>$e->getMessage(),
+        'barcode'=>$barcode,'received_at'=>$received['received_at'],'receipt_id'=>$received['receipt_id'],
+        'controller_updated'=>false]);
+}
