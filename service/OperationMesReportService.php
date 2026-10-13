@@ -5,6 +5,11 @@ require_once __DIR__ . '/HuarongTighteningReportService.php';
 require_once __DIR__ . '/HuarongTighteningSenderService.php';
 final class OperationMesReportService
 {
+    // Configure actual MES values when they are not present in ntcs_data.
+    private const DIRECT_REPORT_DEFAULTS = [
+        'item' => '', 'process_name' => '', 'station' => '',
+        'screw_inf' => [], // [['screw_item' => 'actual part number', 'screw_quantity' => 1]]
+    ];
     private $state;
     private $data;
     public function __construct()
@@ -50,13 +55,26 @@ final class OperationMesReportService
             if (!$payloadJson) {
                 $stmt=$this->data->prepare('SELECT * FROM ntcs_data WHERE id=?');$stmt->execute([$id]);$record=$stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$record) throw new RuntimeException('指定鎖附紀錄尚不存在：'.$id);
-                $stmt=$this->state->prepare('SELECT * FROM mes_work_order_context WHERE baseline_id < ? ORDER BY baseline_id DESC,id DESC LIMIT 1');$stmt->execute([$id]);$ctx=$stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$ctx) throw new RuntimeException('沒有對應 MES 工單；請先成功執行條碼接口，再產生新的鎖附紀錄');
-                $context=json_decode($ctx['context_json'],true,512,JSON_THROW_ON_ERROR);
-                $stmt=$this->data->prepare('SELECT * FROM ntcs_data WHERE id > ? AND id <= ? ORDER BY id ASC');$stmt->execute([(int)$ctx['baseline_id'],$id]);$rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
-                // Report completed products only; earlier IDs remain retryable.
+                // Report only the requested record; never reuse an unrelated work order.
+                $context = self::DIRECT_REPORT_DEFAULTS;
+                foreach (['item', 'process_name', 'station'] as $field) {
+                    if (isset($record[$field]) && trim((string)$record[$field]) !== '') $context[$field] = $record[$field];
+                }
+                if (isset($record['screw_inf'])) {
+                    $screws = is_array($record['screw_inf']) ? $record['screw_inf'] : json_decode((string)$record['screw_inf'], true);
+                    if (!is_array($screws)) throw new RuntimeException('紀錄 screw_inf 不是有效 JSON 陣列');
+                    $context['screw_inf'] = $screws;
+                }
+                $context['SN'] = trim((string)($record['barcode'] ?? ''));
+                if ($context['SN'] === '') throw new RuntimeException('指定紀錄 barcode 為空，無法作為 MES SN：'.$id);
+                foreach (['item', 'process_name', 'station'] as $field) {
+                    if (trim((string)$context[$field]) === '') throw new RuntimeException('直接 ID 上報缺少 '.$field.'；請在 OperationMesReportService.php 的 DIRECT_REPORT_DEFAULTS 設定實際 MES 值');
+                }
+                if (empty($context['screw_inf'])) throw new RuntimeException('直接 ID 上報缺少 screw_inf；請在 DIRECT_REPORT_DEFAULTS 設定實際 screw_item 與 screw_quantity');
                 $mapper=new HuarongTighteningReportService();
-                $payload=$mapper->buildPayload($rows,$context);
+                // Allow a single action; complete_staus still reflects actual OK-JOB status.
+                $payload=$mapper->buildPayload([$record],$context,true);
+                if (empty($payload['runParam_inf'])) throw new RuntimeException('指定紀錄沒有可上報的有效鎖附結果：'.$id);
                 $payloadJson=json_encode($payload,JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
                 $this->mark($id,'pending',$payloadJson,'');
             }
