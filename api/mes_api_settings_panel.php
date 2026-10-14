@@ -8,12 +8,29 @@ $mesText = [
 <section class="section-card">
 <div class="section-head"><div><div class="section-title"><?php echo h($mesText[0]); ?></div><div class="section-hint"><?php echo h($mesText[1]); ?></div></div></div>
 <form id="mesApiSettingsForm" class="section-body">
+<div class="toolbar" style="justify-content:flex-start;margin-bottom:16px" role="group" aria-label="<?php echo h($lang==='en-us'?'Edit mode':($lang==='zh-cn'?'编辑模式':'編輯模式')); ?>">
+<button type="button" id="mesFormMode" class="btn btn-primary" aria-pressed="true"><?php echo h($lang==='en-us'?'Form':($lang==='zh-cn'?'表单':'表單')); ?></button>
+<button type="button" id="mesJsonMode" class="btn btn-secondary" aria-pressed="false">JSON</button></div>
+<div id="mesJsonModePanel" hidden><div id="mesEditorShell" class="editor-shell">
+<div class="editor-toolbar"><strong>MES API JSON</strong><div class="toolbar">
+<input id="mesJsonFile" type="file" accept="application/json,.json"><label for="mesJsonFile" class="btn btn-secondary" role="button">↥ <?php echo h($t['choose_file']); ?></label><span id="mesJsonFileName" class="file-name"><?php echo h($t['no_file']); ?></span>
+<button id="mesJsonFormat" class="btn btn-secondary" type="button">{ } <?php echo h($t['format_json']); ?></button><button id="mesJsonToggle" class="btn btn-secondary" type="button" aria-expanded="true">▴ <?php echo h($t['collapse_json']); ?></button></div></div>
+<div class="editor-body"><textarea id="mesJsonBody" aria-label="MES API JSON" spellcheck="false" disabled></textarea></div></div>
+<div class="toolbar" style="justify-content:flex-end;margin:12px 0 16px">
+<button id="mesJsonReset" type="button" class="btn btn-secondary">↺ <?php echo h($lang==='en-us'?'Restore sample JSON':($lang==='zh-cn'?'恢复范例 JSON':'恢復範例 JSON')); ?></button>
+<button id="mesJsonDownload" type="button" class="btn btn-secondary">↓ <?php echo h($lang==='en-us'?'Download sample JSON':($lang==='zh-cn'?'下载范例 JSON':'下載範例 JSON')); ?></button>
+<button id="mesJsonCopy" type="button" class="btn btn-secondary">▣ <?php echo h($lang==='en-us'?'Copy API Request':($lang==='zh-cn'?'复制 API Request':'複製 API Request')); ?></button></div>
+<div class="toolbar" style="justify-content:flex-start;margin-bottom:16px">
+<?php foreach (['mes_barcode_api_url','mes_tightening_api_url'] as $index => $key): ?>
+<button type="button" class="btn btn-secondary mes-test" data-key="<?php echo h($key); ?>"><?php echo h($mesText[$index+2]); ?> · <?php echo h($lang==='en-us'?'Test connection':($lang==='zh-cn'?'测试连接':'測試連線')); ?></button>
+<?php endforeach; ?></div></div>
+<div id="mesFormModePanel">
 <?php foreach (['mes_barcode_api_url','mes_tightening_api_url'] as $index => $key): ?>
 <div style="margin-bottom:16px"><label for="<?php echo h($key); ?>" style="display:block;margin-bottom:8px;font-weight:600"><?php echo h($mesText[$index+2]); ?></label>
-<input type="url" id="<?php echo h($key); ?>" maxlength="2048" placeholder="<?php echo $index === 0 ? 'https://mes.example.com/api/barcode' : 'https://mes.example.com/api/report_tightening_result'; ?>" style="box-sizing:border-box;width:100%;padding:12px;border:1px solid #c8d5ea;border-radius:8px;font-size:16px" autocomplete="off" spellcheck="false" disabled>
-<button type="button" class="btn btn-secondary mes-test" data-key="<?php echo h($key); ?>" style="margin-top:8px"><?php echo h($lang === 'en-us' ? 'Test connection' : ($lang === 'zh-cn' ? '测试连接' : '測試連線')); ?></button>
+<input type="url" id="<?php echo h($key); ?>" maxlength="2048" placeholder="<?php echo $index===0?'https://mes.example.com/api/barcode':'https://mes.example.com/api/report_tightening_result'; ?>" style="box-sizing:border-box;width:100%;padding:12px;border:1px solid #c8d5ea;border-radius:8px;font-size:16px" autocomplete="off" spellcheck="false" disabled>
+<button type="button" class="btn btn-secondary mes-test" data-key="<?php echo h($key); ?>" style="margin-top:8px"><?php echo h($lang==='en-us'?'Test connection':($lang==='zh-cn'?'测试连接':'測試連線')); ?></button>
 <span id="<?php echo h($key); ?>_test" role="status" aria-live="polite" style="display:block;margin-top:8px;overflow-wrap:anywhere"></span></div>
-<?php endforeach; ?>
+<?php endforeach; ?></div>
 <button type="submit" class="btn btn-primary" id="mesApiSettingsSave" disabled><?php echo h($mesText[4]); ?></button>
 <span id="mesApiSettingsStatus" role="status" aria-live="polite" style="display:inline-block;margin:10px;overflow-wrap:anywhere"></span>
 </form>
@@ -31,6 +48,7 @@ const testText={
 }[<?php echo json_encode($lang); ?>];
 document.querySelectorAll('.mes-test').forEach(b=>b.addEventListener('click',async()=>{
 const field=document.getElementById(b.dataset.key), output=document.getElementById(b.dataset.key+'_test');
+if(!syncMesJson())return;
 if(!field.value.trim()){output.textContent=testText[11];return;}
 b.disabled=true;output.style.color='#456080';output.textContent=testText[0];
 try{
@@ -47,11 +65,29 @@ if(window.IdasNotify){const type=data.reachable && code>=200 && code<300?'succes
 const keys=['mes_barcode_api_url','mes_tightening_api_url'];
 const form=document.getElementById('mesApiSettingsForm'), button=document.getElementById('mesApiSettingsSave'), status=document.getElementById('mesApiSettingsStatus');
 function showSettingsMessage(type,message){status.textContent='';if(window.IdasNotify)window.IdasNotify[type](message);else if(window.alertify)window.alertify.alert(message);else status.textContent=message;}
+const editor=document.getElementById('mesJsonBody');
+let mesMode='form';
+function formToJson(){editor.value=JSON.stringify(Object.fromEntries(keys.map(k=>[k,document.getElementById(k).value])),null,2);}
+function setMesMode(mode){if(mode===mesMode)return;if(mesMode==='json'&&!syncMesJson())return;if(mode==='json')formToJson();mesMode=mode;document.getElementById('mesFormModePanel').hidden=mode!=='form';document.getElementById('mesJsonModePanel').hidden=mode!=='json';keys.forEach(k=>document.getElementById(k).disabled=mode==='json'||editor.disabled);for(const [id,value] of [['mesFormMode','form'],['mesJsonMode','json']]){const b=document.getElementById(id),active=mode===value;b.classList.toggle('btn-primary',active);b.classList.toggle('btn-secondary',!active);b.setAttribute('aria-pressed',String(active));}}
+document.getElementById('mesFormMode').onclick=()=>setMesMode('form');
+document.getElementById('mesJsonMode').onclick=()=>setMesMode('json');
+keys.forEach(k=>document.getElementById(k).addEventListener('input',()=>{if(mesMode==='form')formToJson();}));
+const sample={mes_barcode_api_url:'',mes_tightening_api_url:''};
+function syncMesJson(){
+if(mesMode==='form'){formToJson();return true;}
+try{const value=JSON.parse(editor.value);if(!value||Array.isArray(value)||typeof value!=='object'||Object.keys(value).some(k=>!keys.includes(k))||keys.some(k=>typeof value[k]!=='string'))throw new Error();keys.forEach(k=>document.getElementById(k).value=value[k]);return true;}
+catch(e){showSettingsMessage('error',<?php echo json_encode($lang==='en-us'?'Invalid MES API JSON: provide both URL fields as strings':($lang==='zh-cn'?'MES API JSON 格式错误，请提供两个网址字符串字段':'MES API JSON 格式錯誤，請提供兩個網址字串欄位')); ?>);editor.focus();return false;}}
+document.getElementById('mesJsonFormat').onclick=()=>{if(syncMesJson())editor.value=JSON.stringify(Object.fromEntries(keys.map(k=>[k,document.getElementById(k).value])),null,2);};
+document.getElementById('mesJsonToggle').onclick=function(){const collapsed=document.getElementById('mesEditorShell').classList.toggle('collapsed');this.setAttribute('aria-expanded',String(!collapsed));this.textContent=(collapsed?'▾ ':'▴ ')+(collapsed?<?php echo json_encode($t['expand_json']); ?>:<?php echo json_encode($t['collapse_json']); ?>);};
+document.getElementById('mesJsonReset').onclick=()=>{editor.value=JSON.stringify(sample,null,2);};
+document.getElementById('mesJsonDownload').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(sample,null,2)+'\n'],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='mes_api_settings.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+document.getElementById('mesJsonFile').onchange=async function(){const f=this.files[0];if(!f)return;try{if(f.size>65536)throw new Error();const old=editor.value;editor.value=await f.text();if(!syncMesJson()){editor.value=old;return;}editor.value=JSON.stringify(JSON.parse(editor.value),null,2);document.getElementById('mesJsonFileName').textContent=f.name;}catch(e){showSettingsMessage('error',text[7]);}finally{this.value='';}};
+document.getElementById('mesJsonCopy').onclick=async()=>{if(!syncMesJson())return;const payload=JSON.stringify(JSON.parse(editor.value));const quote=v=>"'"+v.replace(/'/g,"'\\''")+"'";const command="wget -qO- --content-on-error --header='Content-Type: application/json' --post-data="+quote(payload)+' '+quote(new URL(endpoint,location.href).href);try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(command);else{const a=document.createElement('textarea');a.value=command;document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();if(!ok)throw new Error();}showSettingsMessage('success',<?php echo json_encode($lang==='en-us'?'API Request copied':($lang==='zh-cn'?'已复制 API Request':'已複製 API Request')); ?>);}catch(e){showSettingsMessage('error',text[7]);}};
 async function request(options){const response=await fetch(endpoint,options); const body=await response.json(); if(!response.ok || body.success !== true) throw new Error(text[7]); return body.data;}
-request().then(data=>{ keys.forEach(key=>{document.getElementById(key).value=data[key] || '';document.getElementById(key).disabled=false;});button.disabled=false; }).catch(()=>{showSettingsMessage('error',text[7]);});
+request().then(data=>{ keys.forEach(key=>{document.getElementById(key).value=data[key] || '';document.getElementById(key).disabled=mesMode==='json';});editor.value=JSON.stringify(data,null,2);editor.disabled=false;button.disabled=false; }).catch(()=>{showSettingsMessage('error',text[7]);});
 form.addEventListener('submit',async event=>{
-event.preventDefault();const data={};
-for(const key of keys){const value=document.getElementById(key).value.trim(); if(value){try{const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.hash) throw new Error();}catch(e){showSettingsMessage('warning',text[6]);document.getElementById(key).focus();return;}} data[key]=value;}
+event.preventDefault();if(!syncMesJson())return;const data={};
+for(const key of keys){const value=document.getElementById(key).value.trim(); if(value){try{const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.hash) throw new Error();}catch(e){showSettingsMessage('warning',text[6]);editor.focus();return;}} data[key]=value;}
 button.disabled=true;button.textContent=text[8];status.textContent='';
 try{await request({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});showSettingsMessage('success',text[5]);}catch(e){showSettingsMessage('error',text[7]);}finally{button.disabled=false;button.textContent=text[4];}
 });

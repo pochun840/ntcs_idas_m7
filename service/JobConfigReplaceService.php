@@ -540,7 +540,19 @@ final class JobConfigReplaceService
     private function assertControllerLoggedOut(): void
     {
         $controller = call_user_func($this->controllerFactory);
-        $unitId = $this->activeUnitId();
+        // Use the same identity detection/synchronization as the iDAS pages.
+        // API calls must not trust an old mirror ID or a browser cookie.
+        if (method_exists($controller, 'ntcs_device_db_sysnc')) {
+            $resolved = $controller->ntcs_device_db_sysnc(true);
+            if ($resolved === null || (int)$resolved < 1 || (int)$resolved > 255) {
+                throw new JobConfigApiException(502, JobConfigErrorCodes::CONTROLLER_STATUS_UNAVAILABLE, 'Could not resolve current Controller Device ID');
+            }
+            $unitId = (int)$resolved;
+        } else {
+            // Preserve support for injected controller adapters.
+            $unitId = $this->activeUnitId();
+        }
+        // idas_check selects OP / MODBUS using the live controller settings.
         $status = $controller->idas_check($unitId);
         if (!is_array($status) || !empty($status['error']) || !array_key_exists('result', $status) || $status['result'] === null) {
             throw new JobConfigApiException(502, JobConfigErrorCodes::CONTROLLER_STATUS_UNAVAILABLE, 'Could not read Controller login status');

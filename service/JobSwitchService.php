@@ -182,7 +182,8 @@ final class JobSwitchControllerBridge extends Controller
         }
 
         // Exactly the same source used by Remotes.php.
-        $deviceId = (int)$this->lazyDeviceId(1);
+        // Refresh identity after controller DEVICE ID / protocol changes.
+        $deviceId = (int)$this->ntcs_device_db_sysnc(true);
         if ($deviceId < 1 || $deviceId > 255) {
             throw new RuntimeException('device_id invalid');
         }
