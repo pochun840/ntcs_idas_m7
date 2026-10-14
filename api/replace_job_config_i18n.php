@@ -2,6 +2,22 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/config/paths.php';
+
+// Display the product token from the controller version file (e.g. "NTCS7 0").
+$controllerProductLabel = '—';
+$controllerVersionPath = idas_path('controller_root', 'version');
+if (is_file($controllerVersionPath) && is_readable($controllerVersionPath)) {
+    $controllerVersionText = @file_get_contents($controllerVersionPath, false, null, 0, 256);
+    if (is_string($controllerVersionText)) {
+        $controllerVersionText = preg_replace('/^\xEF\xBB\xBF/', '', $controllerVersionText);
+        $controllerVersionParts = preg_split('/\s+/', trim($controllerVersionText), 2);
+        if (isset($controllerVersionParts[0]) && $controllerVersionParts[0] !== '') {
+            $controllerProductLabel = $controllerVersionParts[0];
+        }
+    }
+}
+
 return [
     'en-us' => [
         'html_lang' => 'en',
@@ -133,7 +149,7 @@ return [
         'col_ip' => 'IP',
         'col_subnet' => 'Subnet',
         'col_connection' => 'Connection',
-        'col_root' => 'NTCS7',
+        'col_root' => $controllerProductLabel,
         'col_controller' => 'Controller',
         'col_result' => 'Result',
         'col_elapsed' => 'Elapsed',
@@ -282,7 +298,7 @@ return [
         'col_ip' => 'IP',
         'col_subnet' => '網段',
         'col_connection' => '連線',
-        'col_root' => 'NTCS7',
+        'col_root' => $controllerProductLabel,
         'col_controller' => '控制器',
         'col_result' => '結果',
         'col_elapsed' => '花費時間',
@@ -431,7 +447,7 @@ return [
         'col_ip' => 'IP',
         'col_subnet' => '网段',
         'col_connection' => '连接',
-        'col_root' => 'NTCS7',
+        'col_root' => $controllerProductLabel,
         'col_controller' => '控制器',
         'col_result' => '结果',
         'col_elapsed' => '耗时',

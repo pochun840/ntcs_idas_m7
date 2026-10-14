@@ -48,33 +48,7 @@ if ($loggedBarcode === false) {
     barcodeReceiveResponse(400, ['success' => false, 'message' => 'barcode 必須為 UTF-8 字串']);
 }
 try {
-    require_once dirname(__DIR__) . '/service/BarcodeReceiveStateService.php';
-    $received = (new BarcodeReceiveStateService())->save($barcode);
-} catch (Throwable $e) {
-    error_log('[idas_barcode_state] ' . $e->getMessage());
-    barcodeReceiveResponse(503, ['success'=>false, 'message'=>'無法保存接收條碼']);
-}
-error_log('[idas_barcode_received] barcode=' . $loggedBarcode);
-
-try {
-    require_once dirname(__DIR__) . '/service/MesBarcodeSenderService.php';
-    require_once dirname(__DIR__) . '/service/OperationMesReportService.php';
-    $reportService = new OperationMesReportService();
-    $baseline = $reportService->baseline();
-    $mes = (new MesBarcodeSenderService())->send($barcode);
-    $reportService->saveContext($mes['response'],$baseline);
-    (new BarcodeReceiveStateService())->delivery($received['receipt_id'],'sent','');
-    barcodeReceiveResponse(200, [
-        'success'=>true, 'status'=>'recipe_received', 'message'=>'條碼已上傳，已取得 MES 配方',
-        'barcode'=>$barcode, 'received_at'=>$received['received_at'], 'receipt_id'=>$received['receipt_id'],
-        'mes_called'=>true, 'mes_http_status'=>$mes['http_status'], 'mes_response'=>$mes['response'],
-        'controller_updated'=>false,
-    ]);
-} catch (Throwable $e) {
-    error_log('[idas_barcode_mes] ' . $e->getMessage());
-    try {(new BarcodeReceiveStateService())->delivery($received['receipt_id'],'failed',$e->getMessage());}
-    catch (Throwable $stateError) {error_log('[idas_barcode_state] '.$stateError->getMessage());}
-    barcodeReceiveResponse(502, ['success'=>false,'status'=>'mes_failed', 'message'=>$e->getMessage(),
-        'barcode'=>$barcode,'received_at'=>$received['received_at'],'receipt_id'=>$received['receipt_id'],
-        'controller_updated'=>false]);
-}
+    require_once dirname(__DIR__) . '/service/BarcodeRecipeFlowService.php';
+    [$http,$result]=(new BarcodeRecipeFlowService())->receive($barcode,'POST');
+    barcodeReceiveResponse($http,$result);
+} catch(Throwable $e) {error_log('[idas_barcode_state] '.$e->getMessage());barcodeReceiveResponse(503,['success'=>false,'message'=>'無法處理接收條碼']);}

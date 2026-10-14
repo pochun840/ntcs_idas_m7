@@ -16,7 +16,7 @@ final class BarcodeReceiveStateService
     private function ensureDeliveryColumns(): void
     {
         $columns=$this->db->query('PRAGMA table_info(idas_barcode_received)')->fetchAll(PDO::FETCH_COLUMN,1);
-        foreach (['mes_status'=>"TEXT NOT NULL DEFAULT 'received'",'mes_message'=>"TEXT NOT NULL DEFAULT ''"] as $column=>$definition) {
+        foreach (['source'=>"TEXT NOT NULL DEFAULT 'POST'",'mes_status'=>"TEXT NOT NULL DEFAULT 'received'",'mes_message'=>"TEXT NOT NULL DEFAULT ''"] as $column=>$definition) {
             if (!in_array($column,$columns,true)) {
                 try {$this->db->exec('ALTER TABLE idas_barcode_received ADD COLUMN '.$column.' '.$definition);}
                 catch (PDOException $e) {
@@ -32,25 +32,25 @@ final class BarcodeReceiveStateService
         $stmt=$this->db->prepare('UPDATE idas_barcode_received SET mes_status=?,mes_message=? WHERE id=1 AND receipt_id=?');
         $stmt->execute([$status,$message,$receiptId]);
     }
-    public function save(string $barcode): array
+    public function save(string $barcode,string $source='POST'): array
     {
         $this->ensureDeliveryColumns();
         $record = ['barcode'=>$barcode, 'received_at'=>date('c'), 'receipt_id'=>bin2hex(random_bytes(16)), 'success'=>true];
-        $stmt=$this->db->prepare("INSERT OR REPLACE INTO idas_barcode_received (id,barcode,received_at,receipt_id,mes_status,mes_message) VALUES (1,?,?,?,'sending','')");
-        $stmt->execute([$barcode,$record['received_at'],$record['receipt_id']]);
+        $stmt=$this->db->prepare("INSERT OR REPLACE INTO idas_barcode_received (id,barcode,received_at,receipt_id,source,mes_status,mes_message) VALUES (1,?,?,?,?,'sending','')");
+        $stmt->execute([$barcode,$record['received_at'],$record['receipt_id'],$source]);
         return $record;
     }
     public function latest(): ?array
     {
         $this->ensureDeliveryColumns();
-        $row=$this->db->query('SELECT barcode,received_at,receipt_id,mes_status,mes_message FROM idas_barcode_received WHERE id=1')->fetch(PDO::FETCH_ASSOC);
+        $row=$this->db->query('SELECT barcode,received_at,receipt_id,source,mes_status,mes_message FROM idas_barcode_received WHERE id=1')->fetch(PDO::FETCH_ASSOC);
         if (!$row) return null;
         // Recover a receipt left pending when a request terminates unexpectedly.
         $receivedAt=strtotime($row['received_at']);
         if ($row['mes_status'] === 'sending' && $receivedAt !== false && time()-$receivedAt >= 15) {
             $stmt=$this->db->prepare("UPDATE idas_barcode_received SET mes_status='failed',mes_message=? WHERE id=1 AND receipt_id=? AND mes_status='sending'");
             $stmt->execute(['MES 傳送逾時或未完成（超過 15 秒）',$row['receipt_id']]);
-            $row=$this->db->query('SELECT barcode,received_at,receipt_id,mes_status,mes_message FROM idas_barcode_received WHERE id=1')->fetch(PDO::FETCH_ASSOC);
+            $row=$this->db->query('SELECT barcode,received_at,receipt_id,source,mes_status,mes_message FROM idas_barcode_received WHERE id=1')->fetch(PDO::FETCH_ASSOC);
             if (!$row) return null;
         }
         $row['success']=true;

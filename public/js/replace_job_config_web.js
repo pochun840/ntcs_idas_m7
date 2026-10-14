@@ -1025,4 +1025,37 @@
       showUnifiedNotice(T.warning_notice, T.draft_invalid_recovered, 'warning');
     }
   }
+
+  const resetButton=document.getElementById('backDefaultButton');
+  const resetLabels=document.documentElement.lang.toLowerCase().startsWith('en')?['Restore defaults','This removes JOB / SEQ / STEP and I/O settings. Continue?','Reset completed','Reset failed']:document.documentElement.lang.toLowerCase().includes('cn')?['恢复默认','将清除 JOB／SEQ／STEP 与 I/O 设置。确定执行？','恢复默认完成','恢复默认失败']:['恢復預設','將清除 JOB／SEQ／STEP 與 I/O 設定。確定執行？','恢復預設完成','恢復預設失敗'];
+  if(resetButton) resetButton.addEventListener('click',async()=>{
+    if(busy)return;
+    let targets;try{targets=parseTargets();if(!targets.length)throw new Error(T.same_subnet_only);}catch(e){showUnifiedNotice(resetLabels[0],e.message,'error');return;}
+    if(!window.alertify||typeof window.alertify.confirm!=='function')return;
+    setBusy(true);resetButton.disabled=true;
+    try{
+      const confirmed=await new Promise(resolve=>{const dialog=window.alertify.confirm(resetLabels[0],resetLabels[1]+'<br>'+targets.map(ip=>String(ip).replace(/[&<>"']/g,'')).join('<br>'),()=>resolve(true),()=>resolve(false));dialog.set('labels',{ok:T.confirm_ok,cancel:T.cancel});});
+      if(!confirmed)return;
+      const lines=[];let failed=false;
+      for(const ip of targets){
+        try{const response=await fetch(apiEndpoint.replace('replace_job_config.php','replace_job_config_reset.php'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targets:[ip],confirmed:true})});const data=await response.json();if(!response.ok||data.success!==true)throw new Error(data.error&&data.error.message||resetLabels[3]);lines.push(ip+': '+resetLabels[2]);}
+        catch(e){failed=true;lines.push(ip+': '+resetLabels[3]+' · '+e.message);}
+      }
+      clearRenderedTargetChecks();showUnifiedNotice(resetLabels[0],lines.join('\n'),failed?'error':'success');
+    }finally{setBusy(false);resetButton.disabled=false;}
+  });
+
+  const deviceButtons=[document.getElementById('disableDeviceButton'),document.getElementById('enableDeviceButton')];
+  const deviceText=document.documentElement.lang.toLowerCase().startsWith('en')?['Disable','Enable','Apply this operation to the following controllers?','Completed','Failed']:document.documentElement.lang.toLowerCase().includes('cn')?['停用','启用','确定对以下控制器执行此操作？','完成','失败']:['停用','啟用','確定對以下控制器執行此操作？','完成','失敗'];
+  deviceButtons.forEach((button,index)=>{if(!button)return;button.addEventListener('click',async()=>{
+    if(busy)return;const targets=parseTargets();if(!targets.length){showUnifiedNotice(deviceText[index],T.same_subnet_only,'error');return;}
+    if(!window.alertify||typeof window.alertify.confirm!=='function')return;
+    setBusy(true);deviceButtons.forEach(b=>{if(b)b.disabled=true;});
+    try{
+      const confirmed=await new Promise(resolve=>{const dialog=window.alertify.confirm(deviceText[index],deviceText[2]+'<br>'+targets.map(ip=>String(ip).replace(/[&<>"']/g,'')).join('<br>'),()=>resolve(true),()=>resolve(false));dialog.set('labels',{ok:T.confirm_ok,cancel:T.cancel});});
+      if(!confirmed)return;const lines=[];let failed=false;
+      for(const ip of targets){try{const response=await fetch(apiEndpoint.replace('replace_job_config.php','replace_job_config_device.php'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targets:[ip],action:index===0?'disable':'enable',confirmed:true})});const data=await response.json();if(!response.ok||data.success!==true)throw new Error(data.error&&data.error.message||deviceText[4]);lines.push(ip+': '+deviceText[index]+deviceText[3]);}catch(e){failed=true;lines.push(ip+': '+deviceText[4]+' · '+String(e.message).replace(/(?:禁用|停用)[電电]批/g,deviceText[0]).replace(/(?:啟用|启用)[電电]批/g,deviceText[1]));}}
+      showUnifiedNotice(deviceText[index],lines.join('\n'),failed?'error':'success');
+    }finally{setBusy(false);deviceButtons.forEach(b=>{if(b)b.disabled=false;});}
+  });});
 }());
