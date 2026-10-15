@@ -54,7 +54,7 @@ final class OperationMesReportService
                     $savedPayload=json_decode($payload,true);
                     if (is_array($savedPayload)) $row=['barcode'=>$savedPayload['SN'] ?? '', 'job_name'=>$savedPayload['process_name'] ?? ''];
                 }
-                (new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($row['barcode'] ?? ''),'',(string)($row['job_name'] ?? ''),$status);
+                (new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($row['barcode'] ?? ''),'',(string)($row['job_name'] ?? ''),$status,$message);
             } catch(Throwable $e){error_log('[mes_upload_log] '.$e->getMessage());}
         }
     }
@@ -75,13 +75,13 @@ final class OperationMesReportService
             ]],
         ];
         if (!$previewOnly && !MesTestMode::enabled() && $context['SN'] === '') throw new RuntimeException('指定紀錄 barcode 為空，無法作為 MES SN：'.$id);
-        if ($context['process_name'] === '') throw new RuntimeException('指定紀錄 job_name 為空，無法作為 MES process_name：'.$id);
+        if (!$previewOnly && $context['process_name'] === '') throw new RuntimeException('指定紀錄 job_name 為空，無法作為 MES process_name：'.$id);
         $mapper=new HuarongTighteningReportService();
         // Allow a single action; complete_staus still reflects actual OK-JOB status.
         // Use final torque for MES Rl as requested.
         $record['peak_fasten_torque'] = $record['final_fasten_torque'] ?? null;
-        $payload=$mapper->buildPayload([$record],$context,true,$previewOnly || MesTestMode::enabled());
-        if (empty($payload['runParam_inf'])) throw new RuntimeException('指定紀錄沒有可上報的有效鎖附結果：'.$id);
+        $payload=$mapper->buildPayload([$record],$context,true,$previewOnly || MesTestMode::enabled(),$previewOnly);
+        if (!$previewOnly && empty($payload['runParam_inf'])) throw new RuntimeException('指定紀錄沒有可上報的有效鎖附結果：'.$id);
         return $payload;
     }
     public function upload(int $id): array
@@ -99,7 +99,7 @@ final class OperationMesReportService
                 (new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($this->record['barcode'] ?? ''),'',(string)($this->record['job_name'] ?? ''),'test_skipped');
                 return ['ok'=>true,'status'=>'test_skipped','id'=>$id,'test_mode'=>true,'mes_uploaded'=>false,'mes_called'=>false,'payload'=>$payload];
             } catch(Throwable $e) {
-                try {(new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($this->record['barcode'] ?? ''),'',(string)($this->record['job_name'] ?? ''),'test_failed');}
+                try {(new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($this->record['barcode'] ?? ''),'',(string)($this->record['job_name'] ?? ''),'test_failed',$e->getMessage());}
                 catch(Throwable $logError){error_log('[mes_upload_log] '.$logError->getMessage());}
                 throw $e;
             }

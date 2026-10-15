@@ -7,9 +7,7 @@ $mesText = [
 ?>
 <section class="section-card mes-settings-card">
 <div class="section-head"><div><div class="section-title"><?php echo h($mesText[0]); ?></div><div class="section-hint"><?php echo h($mesText[1]); ?></div></div></div>
-<?php require_once dirname(__DIR__).'/service/MesTestMode.php'; if (MesTestMode::enabled()): ?>
-<p style="margin:16px 22px 0;padding:12px 14px;border:1px solid #ead6aa;border-radius:8px;background:#fff8e8;color:#835b18;font-size:13px"><?php echo h($lang==='en-us'?'Device test mode: both MES APIs are skipped for all controller requests. Set test_mode=0 in the page URL to restore production mode.':($lang==='zh-tw'?'本機測試模式：控制器所有請求皆略過兩個 MES 接口。請在頁面網址加入 test_mode=0 恢復正式模式。':'本机测试模式：控制器所有请求均略过两个 MES 接口。请在页面地址加入 test_mode=0 恢复正式模式。')); ?></p>
-<?php endif; ?>
+
 <form id="mesApiSettingsForm" class="section-body">
 <div class="toolbar" style="justify-content:flex-start;margin-bottom:16px" role="group" aria-label="<?php echo h($lang==='en-us'?'Edit mode':($lang==='zh-cn'?'编辑模式':'編輯模式')); ?>">
 <button type="button" id="mesFormMode" class="btn btn-primary" aria-pressed="true"><?php echo h($lang==='en-us'?'Form':($lang==='zh-cn'?'表单':'表單')); ?></button>

@@ -10,5 +10,12 @@ if ($id===false) {http_response_code(400);echo json_encode(['success'=>false,'me
 if (session_status()===PHP_SESSION_ACTIVE) session_write_close();
 try {
     $payload=(new OperationMesReportService())->preview($id, true);
-    echo json_encode(['success'=>true,'id'=>$id,'test_mode'=>MesTestMode::enabled(),'payload'=>$payload],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    $missing=[];
+    foreach (['item','SN','process_name','station'] as $field) {
+        if (!isset($payload[$field]) || trim((string)$payload[$field])==='') $missing[]=$field;
+    }
+    foreach (['screw_inf','runParam_inf'] as $field) {
+        if (empty($payload[$field]) || !is_array($payload[$field])) $missing[]=$field;
+    }
+    echo json_encode(['success'=>true,'id'=>$id,'test_mode'=>MesTestMode::enabled(),'missing_fields'=>$missing,'payload'=>$payload],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 } catch(Throwable $e){error_log('[operation_mes_preview] '.$e->getMessage());http_response_code(503);echo json_encode(['success'=>false,'id'=>$id,'message'=>$e->getMessage()],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);}

@@ -28,7 +28,7 @@ final class HuarongTighteningReportService
         return $rows !== [] && (int)($rows[count($rows) - 1]['fasten_status'] ?? -1) === 6;
     }
 
-    public function buildPayload(array $rows, array $context, bool $allowIncomplete = false, bool $allowEmptySn = false): array
+    public function buildPayload(array $rows, array $context, bool $allowIncomplete = false, bool $allowEmptySn = false, bool $allowMissingContext = false): array
     {
         if ($rows === [] && !$allowIncomplete) {
             throw new InvalidArgumentException('沒有可上報的鎖附結果');
@@ -41,7 +41,7 @@ final class HuarongTighteningReportService
             throw new InvalidArgumentException('SN 不能為空');
         }
         foreach (['item', 'process_name', 'station'] as $field) {
-            if (!isset($context[$field]) || trim((string)$context[$field]) === '') {
+            if (!$allowMissingContext && (!isset($context[$field]) || trim((string)$context[$field]) === '')) {
                 throw new InvalidArgumentException('MES Context 缺少 ' . $field);
             }
         }

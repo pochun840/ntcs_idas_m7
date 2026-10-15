@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__).'/service/MesUploadLogService.php';
+require_once dirname(__DIR__).'/service/MesTestMode.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {header('Allow: GET');http_response_code(405);echo json_encode(['success'=>false]);exit;}
@@ -15,7 +16,7 @@ function uploadLogInteger(string $key,int $default,int $minimum): int
 try {
     $pages=[];$anchors=[];
     foreach (['barcode','tightening'] as $kind){$pages[$kind]=uploadLogInteger($kind.'_page',1,1);$anchors[$kind]=uploadLogInteger($kind.'_anchor',0,0);}
-    $logs=new MesUploadLogService();$result=['success'=>true,'pagination'=>[]];
+    $logs=new MesUploadLogService();$result=['success'=>true,'test_mode'=>MesTestMode::enabled(),'pagination'=>[]];
     foreach (['barcode','tightening'] as $kind){
         $page=$logs->page($kind,$pages[$kind],$anchors[$kind]);$result[$kind]=$page['rows'];unset($page['rows']);$result['pagination'][$kind]=$page;
     }

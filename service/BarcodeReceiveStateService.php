@@ -33,12 +33,12 @@ final class BarcodeReceiveStateService
         $stmt=$this->db->prepare('UPDATE idas_barcode_received SET mes_status=?,mes_message=? WHERE id=1 AND receipt_id=?');
         $stmt->execute([$status,$message,$receiptId]);
         $stmt->closeCursor();
-        if (in_array($status,['sent','failed'],true)) {
+        if (in_array($status,['sent','failed','test_skipped'],true)) {
             $query=$this->db->prepare('SELECT barcode,source FROM idas_barcode_received WHERE receipt_id=?');
             $query->execute([$receiptId]);$row=$query->fetch(PDO::FETCH_ASSOC);
             $query->closeCursor();
             if ($row) {
-                try {(new MesUploadLogService($this->db))->append('barcode',$receiptId,(string)$row['barcode'],(string)$row['source'],'',$status);}
+                try {(new MesUploadLogService($this->db))->append('barcode',$receiptId,(string)$row['barcode'],(string)$row['source'],'',$status,$message);}
                 catch(Throwable $e){error_log('[mes_upload_log] '.$e->getMessage());}
             }
         }

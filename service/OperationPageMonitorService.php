@@ -11,9 +11,32 @@ final class OperationPageMonitorService
     public function tick(): array {
         $lock=fopen(idas_path('database_root','.mes_operation_watcher.lock'),'c');
         if (!$lock) throw new RuntimeException('Cannot open operation monitor lock');
-        if (!flock($lock,LOCK_EX|LOCK_NB)) {fclose($lock);return ['success'=>true,'busy'=>true];}
-        try {return $this->lockedTick();}
+        if (!flock($lock,LOCK_EX|LOCK_NB)) {fclose($lock);return ['success'=>true,'busy'=>true,'monitor'=>$this->snapshot(false)];}
+        try {
+            $result=$this->lockedTick();$result['monitor']=$this->snapshot(true);return $result;
+        }
         finally {flock($lock,LOCK_UN);fclose($lock);}
+    }
+    private function snapshot(bool $recordCheck): ?array {
+        $path=idas_path('database_root','mes_operation_watcher.db');
+        if (!is_file($path)) return null;
+        $db=$this->open($path);
+        $tables=$db->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('queue','progress')")->fetchAll(PDO::FETCH_COLUMN);
+        if (count($tables)!==2) return null;
+        $db->exec('CREATE TABLE IF NOT EXISTS monitor_health (id INTEGER PRIMARY KEY CHECK(id=1),checked_at TEXT NOT NULL)');
+        if ($recordCheck) {
+            $stmt=$db->prepare('INSERT OR REPLACE INTO monitor_health(id,checked_at) VALUES(1,?)');$stmt->execute([date('c')]);$stmt->closeCursor();
+        }
+        $checked=$db->query('SELECT checked_at FROM monitor_health WHERE id=1')->fetchColumn();
+        $cursor=(int)$db->query('SELECT last_id FROM progress WHERE id=1')->fetchColumn();
+        $pending=(int)$db->query("SELECT COUNT(*) FROM queue WHERE status IN ('pending','sending')")->fetchColumn();
+        $uncertain=(int)$db->query("SELECT COUNT(*) FROM queue WHERE status='uncertain'")->fetchColumn();
+        $stmt=$db->query("SELECT record_id,status,message FROM queue WHERE status IN ('done','failed') ORDER BY updated_at DESC,record_id DESC LIMIT 1");$last=$stmt->fetch(PDO::FETCH_ASSOC);$stmt->closeCursor();
+        $source=$this->open(idas_path('controller_root','ntcs_data.db'));$source->exec('PRAGMA query_only=ON');
+        $stmt=$source->prepare('SELECT COUNT(*) FROM ntcs_data WHERE id>?');$stmt->execute([$cursor]);$unscanned=(int)$stmt->fetchColumn();$stmt->closeCursor();
+        $stmt=$db->prepare('SELECT COUNT(*) FROM queue WHERE record_id>?');$stmt->execute([$cursor]);$queuedAhead=(int)$stmt->fetchColumn();$stmt->closeCursor();
+        return ['checked_at'=>$checked ?: null,'last_processed_id'=>$last?(int)$last['record_id']:null,
+            'pending_count'=>$pending+max(0,$unscanned-$queuedAhead),'uncertain_count'=>$uncertain,'last_result'=>$last ?: null];
     }
     private function lockedTick(): array {
         $path=idas_path('controller_root','ntcs_data.db');
@@ -55,7 +78,7 @@ final class OperationPageMonitorService
         // Same per-ID lock as notify_new_operation, including the history check.
         $idLock=fopen(idas_path('database_root','.mes_operation_upload_'.$id.'.lock'),'c');
         if (!$idLock) throw new RuntimeException('Cannot open operation upload lock');
-        if (!flock($idLock,LOCK_EX|LOCK_NB)) {fclose($idLock);return ['success'=>true,'busy'=>true];}
+        if (!flock($idLock,LOCK_EX|LOCK_NB)) {fclose($idLock);return ['success'=>true,'busy'=>true,'monitor'=>$this->snapshot(false)];}
         try {
             $stmt=$das->prepare("SELECT id FROM mes_upload_log WHERE kind='tightening' AND reference=? LIMIT 1");$stmt->execute([(string)$id]);$already=$stmt->fetchColumn()!==false;$stmt->closeCursor();
             $status='done';$message='existing_history';

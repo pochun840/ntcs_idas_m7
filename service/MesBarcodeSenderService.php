@@ -8,6 +8,8 @@ final class MesBarcodeSenderService
 
     public function send(string $barcode): array
     {
+        require_once __DIR__.'/MesTestMode.php';
+        if (MesTestMode::enabled()) throw new RuntimeException('測試模式：禁止呼叫 MES 條碼 API');
         $settings=(new MesApiSettingsService())->read();
         $url=MesApiSettingsService::validate($settings['mes_barcode_api_url']);
         if ($url === '') throw new RuntimeException('請先設定條碼上傳 API 網址');

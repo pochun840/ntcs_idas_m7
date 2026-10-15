@@ -13,5 +13,6 @@ if (session_status()===PHP_SESSION_ACTIVE) session_write_close();
 require_once dirname(__DIR__).'/service/OperationPageMonitorService.php';
 try {
     $result=(new OperationPageMonitorService())->tick();
+    $result['test_mode']=MesTestMode::enabled();
     echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
 } catch(Throwable $e) {error_log('[idas_operation_page_monitor] '.$e->getMessage());http_response_code(503);echo json_encode(['success'=>false,'message'=>$e->getMessage()],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);}
