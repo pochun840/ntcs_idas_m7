@@ -3,20 +3,18 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/config/paths.php';
 require_once __DIR__ . '/HuarongTighteningReportService.php';
 require_once __DIR__ . '/HuarongTighteningSenderService.php';
+require_once __DIR__.'/MesUploadLogService.php';
+require_once __DIR__.'/MesTestMode.php';
+require_once __DIR__.'/OperationRecordApiClient.php';
 final class OperationMesReportService
 {
-    // Configure actual MES values when they are not present in ntcs_data.
-    private const DIRECT_REPORT_DEFAULTS = [
-        'item' => '', 'process_name' => '', 'station' => '',
-        'screw_inf' => [], // [['screw_item' => 'actual part number', 'screw_quantity' => 1]]
-    ];
     private $state;
-    private $data;
-    public function __construct()
+    private $recordApi;
+    private $record = [];
+    public function __construct(?OperationRecordApiClient $recordApi=null)
     {
         $this->state=$this->open(idas_path('database_root','das.db'));
-        $this->data=$this->open(idas_path('controller_root','ntcs_data.db'));
-        $this->data->exec('PRAGMA query_only=ON');
+        $this->recordApi=$recordApi ?? new OperationRecordApiClient();
         $this->state->exec('CREATE TABLE IF NOT EXISTS mes_work_order_context (id INTEGER PRIMARY KEY AUTOINCREMENT, baseline_id INTEGER NOT NULL, context_json TEXT NOT NULL)');
         $this->state->exec("CREATE TABLE IF NOT EXISTS mes_operation_upload (record_id INTEGER PRIMARY KEY, status TEXT NOT NULL, payload_json TEXT, message TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL)");
     }
@@ -27,7 +25,10 @@ final class OperationMesReportService
     }
     public function baseline(): int
     {
-        return (int)$this->data->query('SELECT COALESCE(MAX(id),0) FROM ntcs_data')->fetchColumn();
+        // Barcode receipt baseline only; upload records come from the HTTP API.
+        $data=$this->open(idas_path('controller_root','ntcs_data.db'));
+        $data->exec('PRAGMA query_only=ON');
+        return (int)$data->query('SELECT COALESCE(MAX(id),0) FROM ntcs_data')->fetchColumn();
     }
     public function saveContext(array $mes,int $baseline): void
     {
@@ -45,40 +46,77 @@ final class OperationMesReportService
     {
         $stmt=$this->state->prepare('INSERT OR REPLACE INTO mes_operation_upload(record_id,status,payload_json,message,updated_at) VALUES(?,?,?,?,?)');
         $stmt->execute([$id,$status,$payload,$message,date('c')]);
+        $stmt->closeCursor();
+        if (in_array($status,['sent','failed'],true)) {
+            try {
+                $row=$this->record;
+                if (!$row && $payload) {
+                    $savedPayload=json_decode($payload,true);
+                    if (is_array($savedPayload)) $row=['barcode'=>$savedPayload['SN'] ?? '', 'job_name'=>$savedPayload['process_name'] ?? ''];
+                }
+                (new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($row['barcode'] ?? ''),'',(string)($row['job_name'] ?? ''),$status);
+            } catch(Throwable $e){error_log('[mes_upload_log] '.$e->getMessage());}
+        }
+    }
+    public function preview(int $id, bool $previewOnly = false): array
+    {
+        if ($id<1) throw new InvalidArgumentException('id must be a positive integer');
+        $record=$this->recordApi->fetch($id);
+        $this->record=$record;
+        // Map MES fields directly from the requested tightening record.
+        $context = [
+            'item' => (string)$id,
+            'process_name' => trim((string)($record['job_name'] ?? '')),
+            'station' => 1,
+            'SN' => trim((string)($record['barcode'] ?? '')),
+            'screw_inf' => [[
+                'screw_item' => (string)$id,
+                'screw_quantity' => (int)($record['total_screw_count'] ?? 0),
+            ]],
+        ];
+        if (!$previewOnly && !MesTestMode::enabled() && $context['SN'] === '') throw new RuntimeException('指定紀錄 barcode 為空，無法作為 MES SN：'.$id);
+        if ($context['process_name'] === '') throw new RuntimeException('指定紀錄 job_name 為空，無法作為 MES process_name：'.$id);
+        $mapper=new HuarongTighteningReportService();
+        // Allow a single action; complete_staus still reflects actual OK-JOB status.
+        // Use final torque for MES Rl as requested.
+        $record['peak_fasten_torque'] = $record['final_fasten_torque'] ?? null;
+        $payload=$mapper->buildPayload([$record],$context,true,$previewOnly || MesTestMode::enabled());
+        if (empty($payload['runParam_inf'])) throw new RuntimeException('指定紀錄沒有可上報的有效鎖附結果：'.$id);
+        return $payload;
     }
     public function upload(int $id): array
     {
+        if ($id<1) throw new InvalidArgumentException('id must be a positive integer');
+        $this->record=[];
+        if (MesTestMode::enabled()) {
+            // notify_new_operation holds the per-ID lock across this check and append.
+            new MesUploadLogService($this->state);
+            $stmt=$this->state->prepare("SELECT id FROM mes_upload_log WHERE kind='tightening' AND reference=? AND status='test_skipped' LIMIT 1");
+            $stmt->execute([(string)$id]);$tested=$stmt->fetchColumn()!==false;$stmt->closeCursor();
+            if ($tested) return ['ok'=>true,'status'=>'duplicate_test','id'=>$id,'test_mode'=>true,'mes_uploaded'=>false,'mes_called'=>false];
+            try {
+                $payload=$this->preview($id);
+                (new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($this->record['barcode'] ?? ''),'',(string)($this->record['job_name'] ?? ''),'test_skipped');
+                return ['ok'=>true,'status'=>'test_skipped','id'=>$id,'test_mode'=>true,'mes_uploaded'=>false,'mes_called'=>false,'payload'=>$payload];
+            } catch(Throwable $e) {
+                try {(new MesUploadLogService($this->state))->append('tightening',(string)$id,(string)($this->record['barcode'] ?? ''),'',(string)($this->record['job_name'] ?? ''),'test_failed');}
+                catch(Throwable $logError){error_log('[mes_upload_log] '.$logError->getMessage());}
+                throw $e;
+            }
+        }
+
         $stmt=$this->state->prepare('SELECT * FROM mes_operation_upload WHERE record_id=?');$stmt->execute([$id]);$saved=$stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
         if ($saved && $saved['status']==='sent') return ['ok'=>true,'status'=>'duplicate','id'=>$id,'mes_uploaded'=>true];
         $payloadJson=$saved['payload_json'] ?? null;
         try {
             if (!$payloadJson) {
-                $stmt=$this->data->prepare('SELECT * FROM ntcs_data WHERE id=?');$stmt->execute([$id]);$record=$stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$record) throw new RuntimeException('指定鎖附紀錄尚不存在：'.$id);
-                // Report only the requested record; never reuse an unrelated work order.
-                $context = self::DIRECT_REPORT_DEFAULTS;
-                foreach (['item', 'process_name', 'station'] as $field) {
-                    if (isset($record[$field]) && trim((string)$record[$field]) !== '') $context[$field] = $record[$field];
-                }
-                if (isset($record['screw_inf'])) {
-                    $screws = is_array($record['screw_inf']) ? $record['screw_inf'] : json_decode((string)$record['screw_inf'], true);
-                    if (!is_array($screws)) throw new RuntimeException('紀錄 screw_inf 不是有效 JSON 陣列');
-                    $context['screw_inf'] = $screws;
-                }
-                $context['SN'] = trim((string)($record['barcode'] ?? ''));
-                if ($context['SN'] === '') throw new RuntimeException('指定紀錄 barcode 為空，無法作為 MES SN：'.$id);
-                foreach (['item', 'process_name', 'station'] as $field) {
-                    if (trim((string)$context[$field]) === '') throw new RuntimeException('直接 ID 上報缺少 '.$field.'；請在 OperationMesReportService.php 的 DIRECT_REPORT_DEFAULTS 設定實際 MES 值');
-                }
-                if (empty($context['screw_inf'])) throw new RuntimeException('直接 ID 上報缺少 screw_inf；請在 DIRECT_REPORT_DEFAULTS 設定實際 screw_item 與 screw_quantity');
-                $mapper=new HuarongTighteningReportService();
-                // Allow a single action; complete_staus still reflects actual OK-JOB status.
-                $payload=$mapper->buildPayload([$record],$context,true);
-                if (empty($payload['runParam_inf'])) throw new RuntimeException('指定紀錄沒有可上報的有效鎖附結果：'.$id);
+                $payload=$this->preview($id);
                 $payloadJson=json_encode($payload,JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
                 $this->mark($id,'pending',$payloadJson,'');
             }
             $payload=json_decode($payloadJson,true,512,JSON_THROW_ON_ERROR);
+            if (trim((string)($payload['SN'] ?? ''))==='') throw new RuntimeException('正式上傳 SN 不能為空');
             $config=require dirname(__DIR__) . '/app/config/huarong_mes.php';
             $config['mock_enabled']=false;$config['timeout']=10;
             $result=(new HuarongTighteningSenderService($config))->send($payload);$response=$result['response'];

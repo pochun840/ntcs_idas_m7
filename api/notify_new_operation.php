@@ -10,6 +10,8 @@ if ($token!==false && $token!=='' && !hash_equals($token,(string)($_SERVER['HTTP
 $input=$method==='GET'?$_GET:json_decode((string)file_get_contents('php://input'),true);
 $id=is_array($input)?filter_var($input['id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]):false;
 if ($id===false) operationNotifyReply(400,['ok'=>false,'message'=>'id must be a positive integer']);
+// Release any caller session before making the nested local API request.
+if (session_status()===PHP_SESSION_ACTIVE) session_write_close();
 try {
     $lock=fopen(idas_path('database_root','.mes_operation_upload_'.$id.'.lock'),'c');
     if (!$lock || !flock($lock,LOCK_EX | LOCK_NB)) operationNotifyReply(409,['ok'=>false,'id'=>$id,'message'=>'同一 ID 正在上報，請稍後重試']);

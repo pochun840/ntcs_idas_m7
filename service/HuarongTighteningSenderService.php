@@ -14,6 +14,8 @@ final class HuarongTighteningSenderService
 
     public function send(array $payload): array
     {
+        require_once __DIR__.'/MesTestMode.php';
+        if (MesTestMode::enabled()) throw new RuntimeException('測試模式：禁止呼叫 MES 鎖附上傳 API');
         if (!empty($this->config['mock_enabled'])) {
             $file = (string)($this->config['report_mock_response_file'] ?? '');
             if ($file === '' || !is_file($file) || !is_readable($file)) {

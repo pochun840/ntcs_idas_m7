@@ -3,6 +3,14 @@
   const config = window.IDAS_JOB_CONFIG_UI || {};
   const T = config.translations || {};
   const switchText = config.switchText || {};
+  const deploymentLabels = {
+    'en-us':['DB write','JOB / SEQ switch','Pending','Not attempted','Details','Switch complete','Switch failed','Preview','Succeeded','Failed','Skipped'],
+    'zh-tw':['DB 寫入','JOB／SEQ 切換','處理中','未執行','詳細內容','切換成功','切換失敗','預覽','成功','失敗','略過'],
+    'zh-cn':['DB 写入','JOB／SEQ 切换','处理中','未执行','详细内容','切换成功','切换失败','预览','成功','失败','略过']
+  }[config.language || 'zh-cn'];
+  let lastDeploymentData = null;
+  let lastNoticeKey = '', lastNoticeAt = 0;
+
   const switchJob = document.getElementById('autoSwitchJob');
   const switchSeq = document.getElementById('autoSwitchSeq');
   const switchResult = document.getElementById('autoSwitchResult');
@@ -427,8 +435,42 @@
     }
   }
 
+  function renderDeploymentDetails(data, mode) {
+    const container=document.getElementById('deploymentDetails');
+    if(!container)return;
+    container.replaceChildren();
+    const results=Array.isArray(data && data.results)?data.results:[];
+    container.hidden=!results.length;
+    const switches=Array.isArray(data && data.auto_switch && data.auto_switch.results)?data.auto_switch.results:[];
+    const byIp=new Map(switches.map(function(item){return [item.ip,item];}));
+    if(mode!=='preview' && switches.length){
+      const summary=document.createElement('p');summary.className='deployment-switch-summary';
+      summary.textContent=deploymentLabels[1]+' · '+deploymentLabels[8]+': '+switches.filter(function(item){return item.success;}).length+' · '+deploymentLabels[9]+': '+switches.filter(function(item){return !item.success;}).length;
+      container.appendChild(summary);
+    }
+    results.forEach(function(result){
+      if(!result)return;
+      const card=document.createElement('article');card.className='deployment-device-card';
+      const heading=document.createElement('strong');heading.className='deployment-device-ip';heading.textContent=result.ip || '--';card.appendChild(heading);
+      const states=document.createElement('div');states.className='deployment-device-states';
+      function stage(label,value,state){const line=document.createElement('div'),name=document.createElement('span');name.className='deployment-stage-name';name.textContent=label;line.appendChild(name);line.appendChild(stateHtml(value,state));states.appendChild(line);}
+      stage(mode==='preview'?deploymentLabels[7]:deploymentLabels[0],result.skipped?deploymentLabels[10]:result.success?deploymentLabels[8]:deploymentLabels[9],result.skipped?'warn':result.success?'ok':'bad');
+      const switched=byIp.get(result.ip);
+      if(mode!=='preview')stage(deploymentLabels[1],switched?(switched.success?deploymentLabels[5]:deploymentLabels[6]):result.success&&!result.skipped?deploymentLabels[2]:deploymentLabels[3],switched?(switched.success?'ok':'bad'):'warn');
+      card.appendChild(states);
+      const message=errorMessageFromCode(result.code,result.message);
+      if(!result.success && message){const reason=document.createElement('p');reason.className='deployment-device-error';reason.textContent=message;card.appendChild(reason);}
+      if(switched && !switched.success && switched.message){const reason=document.createElement('p');reason.className='deployment-device-error';reason.textContent=switched.message;card.appendChild(reason);}
+      const details=document.createElement('details'),summary=document.createElement('summary'),content=document.createElement('pre');
+      summary.textContent=deploymentLabels[4];content.textContent=JSON.stringify(sanitizeApiResponse({write:result,switch:switched || null}),null,2);
+      details.appendChild(summary);details.appendChild(content);card.appendChild(details);container.appendChild(card);
+    });
+  }
+
   function showBatchSummary(data, mode) {
     lastExportResult = data || null;
+    lastDeploymentData = data || null;
+    renderDeploymentDetails(data, mode);
     if (resultExportTools) resultExportTools.style.display = lastExportResult ? 'flex' : 'none';
     if (!data || typeof data !== 'object') { batchSummary.style.display = 'none'; return; }
     const results = Array.isArray(data.results) ? data.results : [];
@@ -523,12 +565,14 @@
 
   function exportResultCsv(data) {
     const results = Array.isArray(data && data.results) ? data.results : (data && data.data && Array.isArray(data.data.results) ? data.data.results : []);
-    const lines = [['IP','Status','Code','Message','Elapsed ms']];
+    const switchRows=Array.isArray(data && data.auto_switch && data.auto_switch.results)?data.auto_switch.results:[];
+    const switchMap=new Map(switchRows.map(function(item){return [item.ip,item];}));
+    const lines = [['IP','Status','Code','Message','Elapsed ms','Switch status','Switch message']];
     results.forEach(function (item) {
       let status = 'failed';
       if (item && (item.success === true || item.written === true)) status = 'success';
       else if (item && (item.skipped === true || item.ready === false)) status = 'skipped';
-      lines.push([item.ip || '', status, item.code || item.error_code || '', item.message || '', Number((item && item.elapsed_ms) || (data && data.elapsed_ms) || 0)]);
+      lines.push([item.ip || '', status, item.code || item.error_code || '', item.message || '', Number((item && item.elapsed_ms) || (data && data.elapsed_ms) || 0),switchMap.has(item.ip)?(switchMap.get(item.ip).success?'success':'failed'):'not_attempted',switchMap.has(item.ip)?switchMap.get(item.ip).message||'':'']);
     });
     const csv = '\ufeff' + lines.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
     downloadBlob('job_config_result_' + Date.now() + '.csv', csv, 'text/csv;charset=utf-8');
@@ -688,6 +732,7 @@
         item = {ip: ip, success: false, message: error.name === 'AbortError' ? T.connection_failed : error.message};
       } finally { clearTimeout(timer); }
       switched.push(item);
+      if(lastDeploymentData){lastDeploymentData.auto_switch={job_id:pair.job_id,seq_id:pair.seq_id,results:switched.slice()};renderDeploymentDetails(lastDeploymentData,'write');}
       switchResult.textContent = 'JOB ' + pair.job_id + ' / SEQ ' + pair.seq_id + '\n' + switched.map(function (r) {
         return r.ip + ': ' + (r.success ? switchText.ok : switchText.failed) + (r.success ? '' : ' · ' + r.message);
       }).join('\n');
@@ -714,6 +759,9 @@
   }
 
   function showUnifiedNotice(title, message, type) {
+    const noticeKey=String(type)+'|'+String(title)+'|'+String(message);
+    if(noticeKey===lastNoticeKey && Date.now()-lastNoticeAt<2000)return true;
+    lastNoticeKey=noticeKey;lastNoticeAt=Date.now();
     if (window.IdasNotify && typeof window.IdasNotify.show === 'function') {
       window.IdasNotify.show({title: title, message: message, type: type || 'info'});
       return true;
@@ -811,6 +859,8 @@
       }
 
       if (switchFailed) {
+        overallResult.className='overall-result warning';
+        overallResult.textContent=T.overall_status+': '+switchText.failed;
         showUnifiedNotice(T.warning_notice, switchText.failed, 'warning');
         showStatus(switchText.failed, 'warning');
       } else if (responseData && responseData.success) {

@@ -5,6 +5,22 @@ header('X-Content-Type-Options: nosniff');
 header("Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'");
 
 require_once dirname(__DIR__) . '/service/JobConfigApiConfig.php';
+require_once dirname(__DIR__) . '/service/MesTestMode.php';
+try {
+    if (isset($_GET['test_mode'])) {
+        if (!is_string($_GET['test_mode']) || !in_array($_GET['test_mode'],['0','1'],true)) {
+            http_response_code(400);exit('test_mode must be 0 or 1');
+        }
+        MesTestMode::setEnabled($_GET['test_mode']==='1');
+        // Consume the switch parameter so refresh/other page actions cannot reapply stale mode.
+        $clean=$_GET;unset($clean['test_mode']);
+        $path=parse_url((string)($_SERVER['REQUEST_URI'] ?? '/idas/api/replace_job_config.php'),PHP_URL_PATH);
+        if (!is_string($path) || !preg_match('#^/[A-Za-z0-9_./-]+$#D',$path)) $path='/idas/api/replace_job_config.php';
+        $query=http_build_query($clean);
+        header('Location: '.$path.($query!==''?'?'.$query:''),true,303);exit;
+    }
+} catch(Throwable $e){error_log('[mes_test_mode] '.$e->getMessage());http_response_code(503);exit('Unable to save MES mode');}
+
 
 $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '/idas/api/replace_job_config_web.php'));
 $idasBaseUrl = preg_replace('#/api/[^/]+$#', '', $scriptName);
@@ -21,14 +37,18 @@ $assetVersion = (string)($assetMtime > 0 ? $assetMtime : time());
 // Web API protocol version. This is independent of the installed iDAS version.
 $idasApiVersion = JobConfigApiConfig::VERSION;
 
-// Follow the same language convention as the rest of iDAS: cookie first, unknown -> en-us.
+// Page-specific language preference; first visit defaults to Simplified Chinese.
 $langRaw = strtolower(str_replace('_', '-', trim((string)(
-    $_COOKIE['language'] ?? $_COOKIE['languages'] ?? $_COOKIE['lang'] ?? 'en-us'
+    (is_string($_GET['lang'] ?? null) ? $_GET['lang'] : null) ?? $_COOKIE['idas_job_config_language'] ?? 'zh-cn'
 ))));
 if ($langRaw === 'zh' || $langRaw === 'zh-hant') $langRaw = 'zh-tw';
 if ($langRaw === 'zh-hans') $langRaw = 'zh-cn';
 if ($langRaw === 'en') $langRaw = 'en-us';
-$lang = in_array($langRaw, ['en-us', 'zh-tw', 'zh-cn'], true) ? $langRaw : 'en-us';
+$lang = in_array($langRaw, ['en-us', 'zh-tw', 'zh-cn'], true) ? $langRaw : 'zh-cn';
+if (isset($_GET['lang']) && is_string($_GET['lang'])) {
+    setcookie('idas_job_config_language',$lang,['expires'=>time()+31536000,'path'=>$idasBaseUrl.'/','secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off','httponly'=>true,'samesite'=>'Lax']);
+}
+
 
 $i18nAll = require __DIR__ . '/replace_job_config_i18n.php';
 $t = $i18nAll[$lang];
@@ -49,6 +69,8 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
   <link rel="stylesheet" href="<?php echo h($idasBaseUrl); ?>/public/css/default_min.css?v=<?php echo h($assetVersion); ?>">
   <link rel="stylesheet" href="<?php echo h($idasBaseUrl); ?>/public/css/idas_notifications.css?v=<?php echo h($assetVersion); ?>">
   <link rel="stylesheet" href="<?php echo h($idasBaseUrl); ?>/public/css/replace_job_config_web.css?v=<?php echo h($assetVersion); ?>">
+  <link rel="stylesheet" href="<?php echo h($idasBaseUrl); ?>/public/css/replace_job_config_polish.css?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/css/replace_job_config_polish.css'); ?>">
+
 </head>
 <body>
 <div class="page">
@@ -58,13 +80,21 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
         <h1><?php echo h($t['title']); ?></h1>
         <p class="subtitle"><?php echo h($t['subtitle']); ?></p>
       </div>
-      <span class="tag"><?php echo h($t['api_tool']); ?></span>
+      <div class="page-language-control">
+        <label for="jobConfigLanguage"><?php echo h($lang==='en-us'?'Language':($lang==='zh-tw'?'語言':'语言')); ?></label>
+        <select id="jobConfigLanguage" class="page-language-select">
+          <?php foreach (['en-us'=>'English','zh-tw'=>'繁體中文','zh-cn'=>'简体中文'] as $code=>$name): ?>
+          <option value="<?php echo h($code); ?>"<?php echo $lang===$code?' selected':''; ?>><?php echo h($name); ?></option>
+          <?php endforeach; ?>
+        </select>
+        <span class="tag"><?php echo h($t['api_tool']); ?></span>
+      </div>
     </div>
   </header>
 
   <main class="content">
     <?php require __DIR__ . "/mes_api_settings_panel.php"; ?>
-    <section class="section-card">
+    <section class="section-card controller-settings-card">
       <div class="section-head"><div><div class="section-title"><?php echo h($t['section_targets']); ?></div><div class="section-hint"><?php echo h($t['target_hint']); ?></div></div><span id="networkBadge" class="network-badge"><?php echo h($t['local_network']); ?>: --</span></div>
       <div class="section-body">
         <div class="mode-block">
@@ -86,8 +116,8 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
         <span id="targetCount" style="display:none"><?php echo h($t['target_count']); ?> 0</span>
       </div>
     </section>
-    <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_controllers']); ?></div><div class="section-hint"><?php echo h($t['controllers_empty']); ?></div></div></div><div id="targetTableEmpty" class="controllers-empty"><?php echo h($t['controllers_empty']); ?></div><div id="targetTableWrap" class="target-table-wrap"><table class="target-table"><thead><tr><th><?php echo h($t['col_ip']); ?></th><th><?php echo h($t['col_subnet']); ?></th><th><?php echo h($t['col_connection']); ?></th><th><?php echo h($t['col_root']); ?></th><th><?php echo h($t['col_controller']); ?></th><th><?php echo h($t['col_result']); ?></th><th><?php echo h($t['col_elapsed']); ?></th></tr></thead><tbody id="targetTableBody"></tbody></table></div></section>
-    <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_configuration']); ?></div><div class="section-hint"><?php echo h($t['json_hint']); ?></div></div></div><div class="section-body config-layout"><div class="config-summary" aria-label="<?php echo h($t['config_summary']); ?>"><div class="config-stat"><span class="label"><?php echo h($t['job_count']); ?></span><span id="jobCount" class="value">0</span></div><div class="config-stat"><span class="label"><?php echo h($t['seq_count']); ?></span><span id="seqCount" class="value">0</span></div><div class="config-stat"><span class="label"><?php echo h($t['step_count']); ?></span><span id="stepCount" class="value">0</span></div></div><div id="editorShell" class="editor-shell"><div class="editor-toolbar"><strong><?php echo h($t['json_title']); ?></strong><div class="toolbar"><input id="jsonFile" type="file" accept="application/json,.json"><label for="jsonFile" class="btn btn-secondary" role="button">↥ <?php echo h($t['choose_file']); ?></label><span id="fileName" class="file-name"><?php echo h($t['no_file']); ?></span><button id="formatButton" class="btn btn-secondary" type="button">{ } <?php echo h($t['format_json']); ?></button><button id="editorToggleButton" class="btn btn-secondary" type="button" aria-expanded="true">▴ <?php echo h($t['collapse_json']); ?></button></div></div><div id="editorBody" class="editor-body"><textarea id="jsonBody" aria-label="<?php echo h($t['json_title']); ?>" spellcheck="false">{
+    <section class="section-card controller-status-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_controllers']); ?></div><div class="section-hint"><?php echo h($t['controllers_empty']); ?></div></div></div><div id="targetTableEmpty" class="controllers-empty"><?php echo h($t['controllers_empty']); ?></div><div id="targetTableWrap" class="target-table-wrap"><table class="target-table"><thead><tr><th><?php echo h($t['col_ip']); ?></th><th><?php echo h($t['col_subnet']); ?></th><th><?php echo h($t['col_connection']); ?></th><th><?php echo h($t['col_root']); ?></th><th><?php echo h($t['col_controller']); ?></th><th><?php echo h($t['col_result']); ?></th><th><?php echo h($t['col_elapsed']); ?></th></tr></thead><tbody id="targetTableBody"></tbody></table></div></section>
+    <section class="section-card recipe-json-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_configuration']); ?></div><div class="section-hint"><?php echo h($t['json_hint']); ?></div></div></div><div class="section-body config-layout"><div class="config-summary" aria-label="<?php echo h($t['config_summary']); ?>"><div class="config-stat"><span class="label"><?php echo h($t['job_count']); ?></span><span id="jobCount" class="value">0</span></div><div class="config-stat"><span class="label"><?php echo h($t['seq_count']); ?></span><span id="seqCount" class="value">0</span></div><div class="config-stat"><span class="label"><?php echo h($t['step_count']); ?></span><span id="stepCount" class="value">0</span></div></div><div id="editorShell" class="editor-shell"><div class="editor-toolbar"><strong><?php echo h($t['json_title']); ?></strong><div class="toolbar"><input id="jsonFile" type="file" accept="application/json,.json"><label for="jsonFile" class="btn btn-secondary" role="button">↥ <?php echo h($t['choose_file']); ?></label><span id="fileName" class="file-name"><?php echo h($t['no_file']); ?></span><button id="formatButton" class="btn btn-secondary" type="button">{ } <?php echo h($t['format_json']); ?></button><button id="editorToggleButton" class="btn btn-secondary" type="button" aria-expanded="true">▴ <?php echo h($t['collapse_json']); ?></button></div></div><div id="editorBody" class="editor-body"><textarea id="jsonBody" aria-label="<?php echo h($t['json_title']); ?>" spellcheck="false">{
   "JOB_lst": [
     {
       "JOBID": 1,
@@ -367,25 +397,38 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
       "step_unit": 1
     }
   ]
-}</textarea></div></div><div class="api-tools"><button id="restoreSampleButton" class="btn btn-neutral" type="button">↺ <?php echo h($t['restore_sample']); ?></button><button id="downloadSampleButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['download_sample']); ?></button><button id="copyApiButton" class="btn btn-neutral" type="button">⧉ <?php echo h($t['copy_api_request']); ?></button></div></div></section>
-    <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($switchText['title']); ?></div><div class="section-hint"><?php echo h($switchText['hint']); ?></div></div></div><div class="section-body"><label for="autoSwitchJob">JOB </label><select id="autoSwitchJob" aria-label="JOB"></select> <label for="autoSwitchSeq">SEQ </label><select id="autoSwitchSeq" aria-label="SEQ"></select><p id="autoSwitchResult" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere"></p></div></section>
-    <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_deployment']); ?></div><div class="section-hint"><?php echo h($t['deployment_hint']); ?></div></div></div><div class="section-body"><div class="deployment-grid"><div class="deployment-copy"><?php echo h($t['partial_ready']); ?><br><span id="status" class="status"><?php echo h($t['ready']); ?></span></div><div class="action-buttons"><button id="disableDeviceButton" class="btn btn-secondary" type="button">🔒 <?php echo h($lang==='en-us'?'Disable':($lang==='zh-cn'?'停用':'停用')); ?></button><button id="enableDeviceButton" class="btn btn-secondary" type="button">🔓 <?php echo h($lang==='en-us'?'Enable':($lang==='zh-cn'?'启用':'啟用')); ?></button><button id="backDefaultButton" class="btn btn-secondary" type="button"><?php echo h($lang==='en-us'?'Restore defaults':($lang==='zh-cn'?'恢复默认':'恢復預設')); ?></button><button id="previewButton" class="btn btn-secondary" type="button">≋ <?php echo h($t['preview']); ?></button><button id="retryFailedButton" class="btn btn-secondary" type="button" style="display:none">↻ <?php echo h($t['retry_failed']); ?></button><button id="sendButton" class="btn btn-primary" type="button">✓ <?php echo h($t['write_db']); ?></button></div></div><div id="previewSummary" class="preview-summary"><div class="preview-summary-title"><?php echo h($t['preview_summary']); ?></div><div class="preview-summary-grid"><div class="preview-summary-item"><strong>JOB</strong><span id="previewJobs">--</span></div><div class="preview-summary-item"><strong>SEQ</strong><span id="previewSeqs">--</span></div><div class="preview-summary-item"><strong>STEP</strong><span id="previewSteps">--</span></div></div></div></div></section>
-    <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_result']); ?></div><div class="section-hint"><?php echo h($t['result_hint']); ?></div></div></div><div id="overallResult" class="overall-result" aria-live="polite"></div><div id="resultPlaceholder" class="result-placeholder"><?php echo h($t['result_hint']); ?></div><div id="resultMetrics" class="result-metrics" aria-live="polite"><div class="result-metric success"><span class="result-metric-label"><?php echo h($t['result_success']); ?></span><strong id="resultSuccessValue" class="result-metric-value">0</strong></div><div class="result-metric skipped"><span class="result-metric-label"><?php echo h($t['result_skipped']); ?></span><strong id="resultSkippedValue" class="result-metric-value">0</strong></div><div class="result-metric failed"><span class="result-metric-label"><?php echo h($t['result_failed']); ?></span><strong id="resultFailedValue" class="result-metric-value">0</strong></div></div><div id="batchSummary" class="batch-summary" aria-live="polite"></div><div id="resultExportTools" class="api-tools" style="display:none;padding:0 16px 14px"><button id="exportResultJsonButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['export_json']); ?></button><button id="exportResultCsvButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['export_csv']); ?></button></div></section>
+}</textarea></div></div><p id="recipeJsonError" class="recipe-json-error" role="status" aria-live="polite" hidden></p><div class="api-tools"><button id="restoreSampleButton" class="btn btn-neutral" type="button">↺ <?php echo h($t['restore_sample']); ?></button><button id="downloadSampleButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['download_sample']); ?></button><button id="copyApiButton" class="btn btn-neutral" type="button">⧉ <?php echo h($t['copy_api_request']); ?></button></div></div></section>
+    <section class="section-card job-switch-card"><div class="section-head"><div><div class="section-title"><?php echo h($switchText['title']); ?></div><div class="section-hint"><?php echo h($switchText['hint']); ?></div></div></div><div class="section-body"><div class="job-switch-fields"><div class="job-switch-field"><label for="autoSwitchJob">JOB</label><select id="autoSwitchJob" aria-label="JOB"></select></div><div class="job-switch-field"><label for="autoSwitchSeq">SEQ</label><select id="autoSwitchSeq" aria-label="SEQ"></select></div></div><p class="job-switch-help"><?php echo h($lang==='en-us'?'Select the target JOB / SEQ before writing. After a successful write, iDAS switches automatically and verifies the result.':($lang==='zh-cn'?'写入前选择目标 JOB／SEQ。写入成功后，iDAS 自动切换并确认结果。':'寫入前選擇目標 JOB／SEQ。寫入成功後，iDAS 自動切換並確認結果。')); ?></p><p id="autoSwitchResult" role="status" aria-live="polite"></p></div></section>
+    <section class="section-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_deployment']); ?></div><div class="section-hint"><?php echo h($t['deployment_hint']); ?></div></div></div><div class="section-body"><div class="deployment-grid"><div class="deployment-copy"><?php echo h($t['partial_ready']); ?><br><span id="status" class="status"><?php echo h($t['ready']); ?></span></div><div class="action-buttons polished-actions"><button id="disableDeviceButton" class="btn btn-secondary" type="button">🔒 <?php echo h($lang==='en-us'?'Disable':($lang==='zh-cn'?'停用':'停用')); ?></button><button id="enableDeviceButton" class="btn btn-secondary" type="button">🔓 <?php echo h($lang==='en-us'?'Enable':($lang==='zh-cn'?'启用':'啟用')); ?></button><button id="backDefaultButton" class="btn btn-secondary" type="button"><?php echo h($lang==='en-us'?'Restore defaults':($lang==='zh-cn'?'恢复默认':'恢復預設')); ?></button><button id="previewButton" class="btn btn-secondary" type="button">≋ <?php echo h($t['preview']); ?></button><button id="retryFailedButton" class="btn btn-secondary" type="button" style="display:none">↻ <?php echo h($t['retry_failed']); ?></button><button id="sendButton" class="btn btn-primary" type="button">✓ <?php echo h($t['write_db']); ?></button></div></div><div id="previewSummary" class="preview-summary"><div class="preview-summary-title"><?php echo h($t['preview_summary']); ?></div><div class="preview-summary-grid"><div class="preview-summary-item"><strong>JOB</strong><span id="previewJobs">--</span></div><div class="preview-summary-item"><strong>SEQ</strong><span id="previewSeqs">--</span></div><div class="preview-summary-item"><strong>STEP</strong><span id="previewSteps">--</span></div></div></div></div></section>
+    <section class="section-card deployment-results-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_result']); ?></div><div class="section-hint"><?php echo h($t['result_hint']); ?></div></div></div><div id="overallResult" class="overall-result" aria-live="polite"></div><div id="resultPlaceholder" class="result-placeholder"><?php echo h($t['result_hint']); ?></div><div id="resultMetrics" class="result-metrics" aria-live="polite"><div class="result-metric success"><span class="result-metric-label"><?php echo h($t['result_success']); ?></span><strong id="resultSuccessValue" class="result-metric-value">0</strong></div><div class="result-metric skipped"><span class="result-metric-label"><?php echo h($t['result_skipped']); ?></span><strong id="resultSkippedValue" class="result-metric-value">0</strong></div><div class="result-metric failed"><span class="result-metric-label"><?php echo h($t['result_failed']); ?></span><strong id="resultFailedValue" class="result-metric-value">0</strong></div></div><div id="batchSummary" class="batch-summary" aria-live="polite"></div><div id="deploymentDetails" class="deployment-details" aria-live="polite" hidden></div><div id="resultExportTools" class="api-tools" style="display:none;padding:0 16px 14px"><button id="exportResultJsonButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['export_json']); ?></button><button id="exportResultCsvButton" class="btn btn-neutral" type="button">↓ <?php echo h($t['export_csv']); ?></button></div></section>
     <details id="responseCard" class="response-card" aria-live="polite"><summary class="response-title"><?php echo h($t['api_details']); ?></summary><pre id="response"></pre></details>
+    <p id="operationMonitorStatus" role="status" aria-live="polite" style="padding:12px 16px;border:1px solid #cbd8e3;border-radius:10px;background:#f5f9fc;overflow-wrap:anywhere"></p>
+    <?php if (isset($_GET['show_logs']) && $_GET['show_logs'] === '1') require __DIR__.'/mes_upload_logs_panel.php'; ?>
   </main>
 </div>
 
+<script src="<?php echo h($idasBaseUrl); ?>/public/js/jquery-3.7.1.min.js?v=<?php echo h($assetVersion); ?>"></script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/alertify_min.js?v=<?php echo h($assetVersion); ?>"></script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/idas_notifications.js?v=<?php echo h($assetVersion); ?>"></script>
 <script>
+document.getElementById('jobConfigLanguage').addEventListener('change',function(){
+    const target=new URL(window.location.href);
+    target.searchParams.set('lang',this.value);
+    window.location.assign(target.href);
+});
 window.IDAS_JOB_CONFIG_UI = <?php echo json_encode([
+  'language' => $lang,
   'translations' => $t,
   'apiEndpoint' => $idasBaseUrl . '/api/replace_job_config.php',
   'apiVersion' => $idasApiVersion,
+  'operationMonitorEndpoint' => $idasBaseUrl . '/api/operation_mes_poll.php',
   'switchEndpoint' => $idasBaseUrl . '/api/replace_job_config_switch.php',
   'switchText' => $switchText,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 </script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_web.js?v=<?php echo h($assetVersion); ?>"></script>
+<script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_identity.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_identity.js'); ?>"></script>
+<script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_json_ui.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_json_ui.js'); ?>"></script>
+<script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_operation_monitor.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_operation_monitor.js'); ?>"></script>
 </body>
 </html>

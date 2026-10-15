@@ -28,7 +28,7 @@ final class HuarongTighteningReportService
         return $rows !== [] && (int)($rows[count($rows) - 1]['fasten_status'] ?? -1) === 6;
     }
 
-    public function buildPayload(array $rows, array $context, bool $allowIncomplete = false): array
+    public function buildPayload(array $rows, array $context, bool $allowIncomplete = false, bool $allowEmptySn = false): array
     {
         if ($rows === [] && !$allowIncomplete) {
             throw new InvalidArgumentException('沒有可上報的鎖附結果');
@@ -37,7 +37,7 @@ final class HuarongTighteningReportService
             throw new InvalidArgumentException('產品尚未完成（等待 fasten_status=6）');
         }
         $sn = trim((string)($context['SN'] ?? ''));
-        if ($sn === '') {
+        if ($sn === '' && !$allowEmptySn) {
             throw new InvalidArgumentException('SN 不能為空');
         }
         foreach (['item', 'process_name', 'station'] as $field) {

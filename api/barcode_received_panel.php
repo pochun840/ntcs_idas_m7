@@ -5,13 +5,12 @@ $barcodeText=[
 'en-us'=>['Received barcode','Refreshes POST and Modbus barcodes every 2 seconds. Modbus takes priority.','Waiting for a barcode','Received at','Barcode received successfully','Unable to read status. Retrying automatically.','Barcodes are sent to the configured MES API. Recipes are not yet written to the controller.'],
 ][$lang];
 ?>
-<div style="border-top:1px solid #d9e3f1">
-<div class="section-head"><div><div class="section-title"><?php echo h($barcodeText[0]); ?></div><div class="section-hint"><?php echo h($barcodeText[1]); ?></div></div></div>
+<div class="barcode-card">
+<div class="section-head"><div><div class="section-title"><?php echo h($barcodeText[0]); ?></div></div></div>
 <div class="section-body">
-<div id="receivedBarcodeValue" style="font-size:26px;font-weight:700;overflow-wrap:anywhere;padding:16px;background:#f5f8fc;border:1px solid #d9e3f1;border-radius:8px;white-space:pre-wrap">—</div>
-<p><span id="receivedBarcodeTimeLabel"><?php echo h($barcodeText[3]); ?></span>: <span id="receivedBarcodeTime">—</span></p>
-<p id="receivedBarcodeSources" class="section-hint" style="overflow-wrap:anywhere;white-space:pre-wrap"></p>
-<p id="receivedBarcodeMes" role="status" aria-live="polite"></p>
+<div id="receivedBarcodeValue" class="barcode-value">—</div>
+<p class="barcode-time"><span id="receivedBarcodeTimeLabel"><?php echo h($barcodeText[3]); ?></span>: <span id="receivedBarcodeTime">—</span></p>
+<p class="barcode-delivery" id="receivedBarcodeMes" role="status" aria-live="polite"></p>
 <p id="receivedBarcodeStatus" role="status" aria-live="polite"><?php echo h($barcodeText[2]); ?></p>
 <p class="section-hint"><?php echo h($barcodeText[6]); ?></p>
 </div></div>
@@ -24,7 +23,6 @@ const deliveryText=<?php echo json_encode([
 'zh-cn'=>['发送中…','发送成功，已取得 MES 配方','发送失败','已接收，暂无发送结果'],
 'en-us'=>['Sending…','Sent successfully; MES recipe received','Sending failed','Received; no delivery result available'],
 ][$lang],JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-const sourceLine=document.getElementById('receivedBarcodeSources');
 const sourceText=<?php echo json_encode($lang==='en-us'?['Source','Modbus unavailable; showing POST','Read at']:($lang==='zh-cn'?['来源','Modbus 读取失败，显示 POST','读取时间']:['來源','Modbus 讀取失敗，顯示 POST','讀取時間'])); ?>;
 const delivery=document.getElementById('receivedBarcodeMes');
 let lastDelivery=null;
@@ -51,13 +49,12 @@ try{const response=await fetch(endpoint,{cache:'no-store',signal:controller.sign
 const sources=body.sources||{},mb=sources.modbus||{},post=sources.post;
 if(mb.success&&mb.barcode!==lastFallbackBarcode&&!fallbackActive)lastFallbackBarcode=null;
 if(body.fallback_needed&&mb.success&&mb.barcode)requestModbusFallback(mb.barcode);
-sourceLine.textContent=sourceText[0]+': '+(body.data&&body.data.source||'POST')+'\nPOST: '+(post?post.barcode:'—')+'\nMODBUS: '+(mb.success?(mb.barcode||'—'):(mb.message||'—'));
 if(body.data){document.getElementById('receivedBarcodeTimeLabel').textContent=body.data.source==='MODBUS'?sourceText[2]:text[3];value.textContent=body.data.barcode||'—';const date=new Date(body.data.received_at);time.textContent=isNaN(date.getTime())?body.data.received_at:date.toLocaleString(document.documentElement.lang);status.textContent=body.data.source==='POST'&&mb.success===false?sourceText[1]:'';
 const receipt=body.data.receipt_id || body.data.received_at;
 if(initialized && receipt!==lastReceipt && window.IdasNotify)window.IdasNotify.success(text[4]);
 const state=body.data.mes_status || 'received';
 const message=state==='sending'?deliveryText[0]:state==='sent'?deliveryText[1]:state==='failed'?deliveryText[2]+(body.data.mes_message?'：'+body.data.mes_message:''):deliveryText[3];
-delivery.textContent=body.data.source==='MODBUS'&&!body.data.mes_status?'':message;delivery.style.color=state==='sent'?'#18794e':state==='failed'?'#b42318':'#456080';
+delivery.textContent=body.data.source==='MODBUS'&&!body.data.mes_status?'':message;delivery.dataset.state=state;
 const deliveryId=receipt+':'+state;
 if(initialized && deliveryId!==lastDelivery && ['sent','failed'].includes(state) && window.IdasNotify)window.IdasNotify[state==='sent'?'success':'error'](escapeMessage(message));
 lastDelivery=deliveryId;lastReceipt=receipt;}

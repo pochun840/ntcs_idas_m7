@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/config/paths.php';
+require_once __DIR__.'/MesUploadLogService.php';
 final class BarcodeReceiveStateService
 {
     private $db;
@@ -31,6 +32,16 @@ final class BarcodeReceiveStateService
         $this->ensureDeliveryColumns();
         $stmt=$this->db->prepare('UPDATE idas_barcode_received SET mes_status=?,mes_message=? WHERE id=1 AND receipt_id=?');
         $stmt->execute([$status,$message,$receiptId]);
+        $stmt->closeCursor();
+        if (in_array($status,['sent','failed'],true)) {
+            $query=$this->db->prepare('SELECT barcode,source FROM idas_barcode_received WHERE receipt_id=?');
+            $query->execute([$receiptId]);$row=$query->fetch(PDO::FETCH_ASSOC);
+            $query->closeCursor();
+            if ($row) {
+                try {(new MesUploadLogService($this->db))->append('barcode',$receiptId,(string)$row['barcode'],(string)$row['source'],'',$status);}
+                catch(Throwable $e){error_log('[mes_upload_log] '.$e->getMessage());}
+            }
+        }
     }
     public function save(string $barcode,string $source='POST'): array
     {
