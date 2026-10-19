@@ -829,6 +829,18 @@ class Logins extends Controller
 
     public function index(...$args)
     {
+        // The login page also polls controller health after reboot/session expiry.
+        // Permit only these read-only status actions; sync/write actions still require login.
+        $requestUrl = $args[0] ?? [];
+        if (is_array($requestUrl)
+            && ($requestUrl[0] ?? '') === 'Check'
+            && in_array($requestUrl[1] ?? '', [
+                'ajax_check_device_change_fast',
+                'ajax_check_device_id',
+            ], true)) {
+            return true;
+        }
+
         if (idas_is_icontroller()) {
             return $this->index__icontroller(...$args);
         }

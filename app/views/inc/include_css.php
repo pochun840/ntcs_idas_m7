@@ -1290,6 +1290,17 @@ function syncDeviceIdentityAndReload(){
 }
 
 function showReloadPopup(id, needSync, changeType){
+    // Sync requires authentication. Keep recovery pending without blocking login.
+    if (needSync && document.getElementById('loginForm')) {
+        const lang = (document.documentElement.lang || getCookieSafe('language') || 'en-us').toLowerCase();
+        const message = lang === 'zh-tw'
+            ? '控制器已重新上線，請先登入以完成設定同步。'
+            : lang === 'zh-cn'
+                ? '控制器已重新上线，请先登录以完成设置同步。'
+                : 'Controller is online. Please log in to complete settings synchronization.';
+        setRebootBannerMessage(message);
+        return;
+    }
     if(deviceReloadDialogShown) return;
     deviceReloadDialogShown=true;
 
@@ -1375,7 +1386,13 @@ function handleDeviceIdentityStatus(res){
     }
 
     const snapshotChange=compareIdentityBaseline(baseline,observedIdentity);
-    if(snapshotChange.changed){
+    // The server compares live controller/iDAS DBs and persistent reboot state.
+    // A stale browser baseline must never override an explicit server verdict.
+    if (typeof res.changed === 'boolean') {
+        if (!res.changed && res.db_consistent === true) {
+            setIdentityBaseline(res);
+        }
+    } else if(snapshotChange.changed){
         res=Object.assign({},res,snapshotChange,{changed:true});
     }
 
