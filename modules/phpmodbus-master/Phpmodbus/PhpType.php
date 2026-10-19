@@ -1,249 +1,150 @@
-<?php
-/**
- * Phpmodbus Copyright (c) 2004, 2010 Jan Krakora, WAGO Kontakttechnik GmbH & Co. KG (http://www.wago.com)
- *
- * This source file is subject to the "PhpModbus license" that is bundled
- * with this package in the file license.txt.
- *
- * @author Jan Krakora
- * @copyright Copyright (c) 2004, 2010 Jan Krakora, WAGO Kontakttechnik GmbH & Co. KG (http://www.wago.com)
- * @license PhpModbus license
- * @category Phpmodbus
- * @package Phpmodbus
- * @version $id$
- *
- */
-
-/**
- * PhpType
- *
- * The class includes set of methods that convert the received Modbus data
- * (array of bytes) to the PHP data type, i.e. signed int, unsigned int and float.
- *
- * @author Jan Krakora
- * @copyright  Copyright (c) 2004, 2010 Jan Krakora, WAGO Kontakttechnik GmbH & Co. KG (http://www.wago.com)
- * @package Phpmodbus
- *
- */
-class PhpType {
-
-    /**
-     * bytes2float
-     *
-     * The function converts array of 4 bytes to float. The return value
-     * depends on order of the input bytes (endianning).
-     *
-     * @param array $values
-     * @param bool $endianness
-     * @return float
-     */
-    public static function bytes2float($values, $endianness = 0) {
-        $data = array();
-        $real = 0;
-
-        // Set the array to correct form
-        $data = self::checkData($values);
-        // Combine bytes
-        $real = self::combineBytes($data, $endianness);
-        // Convert the real value to float
-        return (float) self::real2float($real);
-    }
-
-    /**
-     * bytes2signedInt
-     *
-     * The function converts array of 2 or 4 bytes to signed integer.
-     * The return value depends on order of the input bytes (endianning).
-     *
-     * @param array $values
-     * @param bool $endianness
-     * @return int
-     */
-    public static function bytes2signedInt($values, $endianness = 0) {
-        $data = array();
-        $int = 0;
-        // Set the array to correct form
-        $data = self::checkData($values);
-        // Combine bytes
-        $int = self::combineBytes($data, $endianness);
-        // In the case of signed 2 byte value convert it to 4 byte one
-        if ((count($values) == 2) && ((0x8000 & $int) > 0)) {
-            $int = 0xFFFF8000 | $int;
-        }
-        // Convert the value
-        return (int) self::dword2signedInt($int);
-    }
-
-    /**
-     * bytes2unsignedInt
-     *
-     * The function converts array of 2 or 4 bytes to unsigned integer.
-     * The return value depends on order of the input bytes (endianning).
-     *
-     * @param array $values
-     * @param bool $endianness
-     * @return int|float
-     */
-    public static function bytes2unsignedInt($values, $endianness = 0) {
-        $data = array();
-        $int = 0;
-        // Set the array to correct form
-        $data = self::checkData($values);
-        // Combine bytes
-        $int = self::combineBytes($data, $endianness);
-        // Convert the value
-        return self::dword2unsignedInt($int);
-    }
-
-    /**
-     * bytes2string
-     *
-     * The function converts an values array to the string. The function detects
-     * the end of the string by 0x00 character as defined by string standards.
-     *
-     * @param array $values
-     * @param bool $endianness
-     * @return string
-     */
-    public static function bytes2string($values, $endianness = 0) {
-        // Prepare string variable
-        $str = "";
-        // Parse the received data word array
-        for($i=0;$i<count($values);$i+=2) {
-            if ($endianness) {
-                if($values[$i] != 0)
-                    $str .= chr($values[$i]);
-                else
-                    break;
-                if($values[$i+1] != 0)
-                    $str .= chr($values[$i+1]);
-                else
-                    break;
-            }
-            else {
-                if($values[$i+1] != 0)
-                    $str .= chr($values[$i+1]);
-                else
-                    break;
-                if($values[$i] != 0)
-                    $str .= chr($values[$i]);
-                else
-                    break;
-            }
-        }
-        // return string
-        return $str;
-    }
-
-    /**
-     * real2float
-     *
-     * This function converts a value in IEC-1131 REAL single precision form to float.
-     *
-     * For more see [{@link http://en.wikipedia.org/wiki/Single_precision Single precision on Wiki}] or
-     * [{@link http://de.php.net/manual/en/function.base-convert.php PHP base_convert function commentary}, Todd Stokes @ Georgia Tech 21-Nov-2007] or
-     * [{@link http://www.php.net/manual/en/function.pack.php PHP pack/unpack functionality}]
-     *
-     * @param value value in IEC REAL data type to be converted
-     * @return float float value
-     */
-    private static function real2float($value) {
-        // get unsigned long
-        $ulong = pack("L", $value);
-        // set float
-        $float = unpack("f", $ulong);
-        
-        return $float[1];
-    }
-
-    /**
-     * dword2signedInt
-     *
-     * Switch double word to signed integer
-     *
-     * @param int $value
-     * @return int
-     */
-    private static function dword2signedInt($value) {
-        if ((0x80000000 & $value) != 0) {
-            return -(0x7FFFFFFF & ~$value)-1;
-        } else {
-            return (0x7FFFFFFF & $value);
-        }
-    }
-
-    /**
-     * dword2signedInt
-     *
-     * Switch double word to unsigned integer
-     *
-     * @param int $value
-     * @return int|float
-     */
-    private static function dword2unsignedInt($value) {
-        if ((0x80000000 & $value) != 0) {
-            return ((float) (0x7FFFFFFF & $value)) + 2147483648;
-        } else {
-            return (int) (0x7FFFFFFF & $value);
-        }
-    }
-
-    /**
-     * checkData
-     *
-     * Check if the data variable is array, and check if the values are numeric
-     *
-     * @param int $data
-     * @return int
-     */
-    private static function checkData($data) {
-        // Check the data
-        if (!is_array($data) ||
-                count($data)<2 ||
-                count($data)>4 ||
-                count($data)==3) {
-            throw new Exception('The input data should be an array of 2 or 4 bytes.');
-        }
-        // Fill the rest of array by zeroes
-        if (count($data) == 2) {
-            $data[2] = 0;
-            $data[3] = 0;
-        }
-        // Check the values to be number
-        if (!is_numeric($data[0]) ||
-                !is_numeric($data[1]) ||
-                !is_numeric($data[2]) ||
-                !is_numeric($data[3])) {
-            throw new Exception('Data are not numeric or the array keys are not indexed by 0,1,2 and 3');
-        }
-
-        return $data;
-    }
-
-    /**
-     * combineBytes
-     *
-     * Combine bytes together
-     *
-     * @param int $data
-     * @param bool $endianness
-     * @return int
-     */
-    private static function combineBytes($data, $endianness) {
-        $value = 0;
-        // Combine bytes
-        if ($endianness == 0)
-            $value = (($data[3] & 0xFF)<<16) |
-                    (($data[2] & 0xFF)<<24) |
-                    (($data[1] & 0xFF)) |
-                    (($data[0] & 0xFF)<<8);
-        else
-            $value = (($data[3] & 0xFF)<<24) |
-                    (($data[2] & 0xFF)<<16) |
-                    (($data[1] & 0xFF)<<8) |
-                    (($data[0] & 0xFF));
-
-        return $value;
-    }
-}
+<?php //ICB0 74:0 81:1921                                                     ?><?php //002cd
+if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
 ?>
+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
+qB6wfgNcLfa==
+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

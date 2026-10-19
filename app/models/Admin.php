@@ -1,240 +1,177 @@
-<?php
-
-class Admin{
-    private $db;//condb control box
-    private $db_data;//devdb tool
-    private $dbh;
-    private $db_iDas;//iDas db
-    private $db_iDas_login;
-
-    // 在建構子將 Database 物件實例化
-    public function __construct()
-    {
-        $this->db = new Database;
-        $this->db = $this->db->getDb();
-
-        $this->db_data = new Database;
-        $this->db_data = $this->db_data->getDb_data();
-
-        $this->dbh = new Database;
-
-        $this->db_iDas = new Database;
-        $this->db_iDas = $this->db_iDas->getDb_das();
-
-        $this->db_iDas_login = new Database;
-        $this->db_iDas_login = $this->db_iDas_login->getDb_das_login();
-
-    }
-
-    public function GetActiveSession(){
-
-        $sql ="SELECT * FROM active_sessions ";
-        $statement = $this->db_iDas_login ->prepare($sql);
-        $statement->execute();
-        $results = $statement->fetchAll();
-        return $results;
-    }
-    
-
-    public function Get_Das_Config($config_name){
-        
-        $stmt = $this->db_iDas_login->prepare("SELECT config_value FROM config WHERE config_name = :name");
-        $stmt->execute([':name' => trim($config_name)]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row['config_value'] ?? null;
-    }
-
-
-    public function DeleteSession($sessionsToDelete){
-
-        foreach ($sessionsToDelete as $sessionId) {
-            // 执行删除操作
-            $stmt = $this->db_iDas_login->prepare("DELETE FROM active_sessions WHERE id = :sessionId");
-            $stmt->bindValue(':sessionId', $sessionId);
-            $stmt->execute();
-        }
-    }
-
-    public function Edit_Guest_Password($new_password)
-    {
-        $sql = "UPDATE `users` SET password = ? WHERE id = 1 AND username = 'guest'";
-        $statement = $this->db_iDas_login->prepare($sql);
-        $results = $statement->execute([$new_password]);
-
-        return $results;
-    }
-
-    public function Edit_Max_Link($max_user)
-    {
-        $sql = "UPDATE `config` SET config_value = :max_user WHERE config_name = 'max_concurrent_users' ";
-        $statement = $this->db_iDas_login->prepare($sql);
-        $statement->bindValue(':max_user', $max_user);
-        $results = $statement->execute();
-
-        return $results;
-    }
-
-    public function Set_Agent_Ip($ip)
-    {
-        $sql = "UPDATE `config` SET config_value = :ip WHERE config_name = 'agent_server_ip' ";
-        $statement = $this->db_iDas_login->prepare($sql);
-        $statement->bindValue(':ip', $ip);
-        $results = $statement->execute();
-
-        return $results;
-    }
-
-    public function Set_Das_Config($config_name,$value)
-    {
-        //check config_name exist 
-        $sql = "SELECT COUNT(*) as count FROM  `config` WHERE config_name = :config_name ";
-        $statement = $this->db_iDas_login->prepare($sql);
-        $statement->bindValue(':config_name', $config_name);
-        $results = $statement->execute();
-        $results = $statement->fetch();
-
-        if($results['count'] > 0){//表示config已存在，用update
-            $sql = "UPDATE `config` SET config_value = :value WHERE config_name = :config_name ";
-            $statement = $this->db_iDas_login->prepare($sql);
-            $statement->bindValue(':config_name', $config_name);
-            $statement->bindValue(':value', $value);
-            $results = $statement->execute();
-        }else{//表示config不存在，用insert
-            $sql = "INSERT INTO `config` (config_name, config_value) VALUES (:config_name, :value) ";
-            $statement = $this->db_iDas_login->prepare($sql);
-            $statement->bindValue(':config_name', $config_name);
-            $statement->bindValue(':value', $value);
-            $results = $statement->execute();
-        }
-
-        return $results;
-    }
-
-    public function Edit_Csv_Path($file_path)
-    {
-        $sql = "UPDATE `config` SET config_value = :max_user WHERE config_name = 'max_concurrent_users' ";
-        $statement = $this->db_iDas_login->prepare($sql);
-        $statement->bindValue(':max_user', $max_user);
-        $results = $statement->execute();
-
-        return $results;
-    }
-
-    public function Change_Screw_Local($tool_type)
-    {   
-        //先清空
-        /*$del_sql = 'DELETE FROM `tool_info`';
-        $statement = $this->db_dev->prepare($del_sql);
-        $del_result = $statement->execute();
-
-        //再新增
-        $sql = " INSERT INTO `tool_info` ('tool_type','tool_sn','tool_tmdswversion','tool_tmdhwversion','tool_maintain_counts','tool_maintain_cycles','tool_total_counts','tool_maxtorque','tool_mintorque','tool_maxrpm','tool_minrpm','tool_calibration','tool_tmdtemp','tool_leverthreshold','tool_pushthreshold','tool_trigger','tool_led','tool_motor_voltage','SID1','SID2','SID3','SID4','SID5','SID6','SID7','SID8','SID9','SID10','SID11','SID12','SID13','SID14','SID15','SID16','SID17','SID18','SID19','SID20','SID21','SID22','SID23','SID24','SID25','SID26') VALUES (:tool_type_name,:tool_sn,'1.09','0.01','2095','1000000','2095',:tool_max_torque,:tool_min_torque,:tool_max_rpm,:tool_min_rpm,'1.839','80.0','50','50','2','1','40','0.0','80.0','30000.0','2114','0','100.0','2048.0','2','980','2000','35.0','45.0','3.0','18.37','2','1','1000','2000','10000.0','2048.0','200','0','2000','200','1','0') ";
-        $statement = $this->db_dev->prepare($sql);
-
-        //default value
-        $tool_type_name = 'SGT-CS';
-        $tool_sn = 'PTS';
-        $tool_max_torque = '3.0';
-        $tool_min_torque = '0.2';
-        $tool_max_rpm = 980;
-        $tool_min_rpm = 60;
-
-        switch ($tool_type) {
-            case 'SGT-CS301':
-                $tool_type_name = 'SGT-CS301';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '1.0';
-                $tool_min_torque = '0.1';
-                $tool_max_rpm = 980;
-                $tool_min_rpm = 60;
-                break;
-            case 'SGT-CS302F':
-                $tool_type_name = 'SGT-CS302F';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '2.4';
-                $tool_min_torque = '0.3';
-                $tool_max_rpm = 2000;
-                $tool_min_rpm = 140;
-                break;
-            case 'SGT-CS303':
-                $tool_type_name = 'SGT-CS303';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '3.0';
-                $tool_min_torque = '0.375';
-                $tool_max_rpm = 980;
-                $tool_min_rpm = 60;
-                break;
-            case 'SGT-CS503':
-                $tool_type_name = 'SGT-CS503';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '3.0';
-                $tool_min_torque = '0.375';
-                $tool_max_rpm = 1600;
-                $tool_min_rpm = 60;
-                break;
-            case 'SGT-CS505':
-                $tool_type_name = 'SGT-CS505';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '5.0';
-                $tool_min_torque = '0.625';
-                $tool_max_rpm = 1100;
-                $tool_min_rpm = 60;
-                break;
-            case 'SGT-CS507':
-                $tool_type_name = 'SGT-CS507';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '7.0';
-                $tool_min_torque = '0.875';
-                $tool_max_rpm = 660;
-                $tool_min_rpm = 60;
-                break;
-            case 'SGT-CS712':
-                $tool_type_name = 'SGT-CS712';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '12.0';
-                $tool_min_torque = '1.5';
-                $tool_max_rpm = 800;
-                $tool_min_rpm = 40;
-                break;
-            case 'SGT-CS718':
-                $tool_type_name = 'SGT-CS718';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '18';
-                $tool_min_torque = '2.25';
-                $tool_max_rpm = 550;
-                $tool_min_rpm = 30;
-                break;
-            case 'SGT-CS725':
-                $tool_type_name = 'SGT-CS725';
-                $tool_sn = 'PTS';
-                $tool_max_torque = '25.0';
-                $tool_min_torque = '3.125';
-                $tool_max_rpm = 350;
-                $tool_min_rpm = 20;
-                break;
-            
-            default:
-                return false;
-                break;
-        }
-
-        $statement->bindValue(':tool_type_name', $tool_type_name);
-        $statement->bindValue(':tool_sn', $tool_sn);
-        $statement->bindValue(':tool_max_torque', $tool_max_torque);
-        $statement->bindValue(':tool_min_torque', $tool_min_torque);
-        $statement->bindValue(':tool_max_rpm', $tool_max_rpm);
-        $statement->bindValue(':tool_min_rpm', $tool_min_rpm);
-
-        $result = $statement->execute();
-
-        if($result){
-            return true;
-        }else{
-            return false;
-        }*/
-
-    }
-
-
-}
+<?php //ICB0 74:0 81:1d1e                                                     ?><?php //002cd
+if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
+?>
+HR+cPpuauVlCeDdyYUvqs2JkPaXcyJ0hmAVAGPMuair1RH5aSwjs+wxHjBTj3gDNRaoomPjqTC0K
+MMuHeD58580+Wnw/we0+i1EsnqjAcw8W8BMEy4B6lKphf4OGoQ2a7cAk09KnTPT7skaLjyyLM1ja
+YXpOLg46hrDyeGFJG0yWBJVcq2v7rWrq+pDpF+OIpaiYwmGfxR1BWpxuYiuctwN9lLijksiHfAuV
+QenTeI63COFSZJAUQmi7aQt7cB4zCxrOqjEimsQEFGkblS9w0AvGSVc8kB1dyx6friQ04aTbGXoN
+dzPNs6HUpUkvwyDk0R6ouh7ZXNir95DOVjWopjJrif44ihGebXIw+OScUBZ3EcOOUUWoMVJxdqAe
+Tki3N2RHhawe159RJpAjf1Pd4O7V2LEA0aGj0FyQkUYGPAb8qNFX79yI2XoSCYHCeq8iMAfUGLLZ
+GA/iAB1CKtcnu2paWUSUnq8ZhReHtBQcK/PRJ+eke0M3/unEfmE9ExTmXuUYX2vznVzttTZhd6ZT
+WCw4XFs3HA5C2RbV2oKtiQcBRpiBc/uYf4oppybdeyixY1W4cAMSNwQ5taXEF/Oa9PSVLoQFFiZu
+HmwKesxW+OWBfmfHwqUfrQVNjiI3jfju2sJtsHxYCFU3iKB//Bkn2w0Bs6bMqjF9GZPxN8rDkuqb
+mmAHwWA2YqWiRjQg8ZQsCmK690YC148uM8ljptR5d6Ji/m3IUO8eFyJwGQDj/+zk08wSoKewOgyq
+n1nhYXPWlxxOHjiOWxZKtTa51RtTEMOYqfZpSHvLxP/fvhl2Z9FLu6RZQ5J5f9QAX/sOAdrfwiWI
+un2/6AxcD6doxgiWjAZZ3tw7AEZ/EtDZwCX3bAv1MrYcjSvyuqwi6MRfv3QPWHx1aymW5hUO3v6f
+Ke2oC9to6NsY26nHaEDp6RHiV8L85lE2TDOc/9OdN3N5u719oE0OJxEm3p0Oun/hih0tdYkmQ/UH
+E24hn9L+FmwD2C0l/nBOSPt1sO8Ehv/uIl2GtLPGQQZxqJ/eilc1vGTjR1z1HBsKFQnX1LUnnBnM
+RKUWtBy4iC09VCC/SbVHkiiut6PY51mjwfMWYEqsi/pEP/v4VSmZIu9oe8vaVWXVLlAC3TtIi6QZ
+HwLh+arsIQQ4yzKSO6uEZ+IOqZLFEpRTSR/2gAbd6HOLs2PhY4rLFY6L6j90mHcKttHLtVC+TIpt
+mGH2bnAFeunk64fdiZBgvfyqbIHoVYyprImgYueTNU2ABrkrcB02xceBIMwyBK0iasQ/wFGAtvOP
+Ye1PsdHOTjgGL+UUQF7sdB6g5znfi2RNC50h4IvvyokZAKudbc4U+fQR9C7uN7W285QJDGNaVdS2
+bX1PkwQpezN5zfT9u4JI4CURSvzv/fEMMWtMR8KjYNSPkSCqhhy4bX35y/3kFHgGleDl/3wyaIhL
++uVjkp4FMcFpxo5OGUG14tq48SjmS1xfSRbv7hI+vU9U0580mLfIorUVOf25KTnOpBM3N72QKY4D
+UFhAUH40P7LgpsmI0rdVX3itg+j45k8Jki4/tC4MbV8BHNTZea2/rLuKS1lRXNwZJjBtzc5yRy3X
+HM8G4cTNrBQ9cLjDgwzTTwoc66E+4JsyUyx0xU6TfUlDJdZCcPQ56we+7TsQogVN2z9LJoyh/dZN
+gXaSskQUTYq4I16wd6//Pk8glLi8QtrZYbsRReRp/EWPBtP5WPShxCDwZ6dN0y1mp7rVMD1NwMZA
+qza1xeIdoJYOlYI+jhAxPJH5G0KpQIvVAGnLQO3ypCm85nTPAE0i8j2S2nZ5Jb4dhPecRhrVOB2U
+MoGMxsUAlohOscoL2MGmvZrhqxwRWwZ85xMurJckwwCvz1KfuqHr0emhdgIzfzAXlklxid6HrFzn
+EHMCvwBTE31jJXzrMBmItI7G6Ds9HgD7s2SKeOAgxEhcjmZtK8ml1f0tSMNNp3tmkUvyk6+rLvtc
+BODW1OEAt9d26gTbMTiPA2lHEz7YDYAs6MVCbV7RS5MjK65I6E3U86CJHgPhblww+rzVn5aZDrCc
+rQITZRYZED3ecPtnbpCBgRNV0hkyczTnkqD8tlM6SxYMsSVnmZub18qARBXhOCwd1veuDYDBmLVj
+s7cX4em19DvMyDFl/rbovmDp28Af3tC2liA88bogxRg/KPIbjM0Q9O//rL4HbXRvMgmsp31eVLii
+uVzqBn6C0bg8LqoB42K+8iNRpvbFKGAb3dmU0v7sGRyJyPck2/jAXcrzM5pOFgxVvxXpaWl5iOqJ
+qv4Bcn26CAXfrabsl6eDNINPCM3c176gDSdAD93mJkwmlsY+WEcLnfmPxMOVucnSXHJSSJ0YPtFO
+LSlVK4dvKndMx5+bQBsYWiO80xDmoeY34/imtyMUAYIF8SHwqOKjjJjgEOd0EY+sw2EnhBtCkBaD
+KeJYfWrGnClrwmcdLC2LW4ZYosek6ZuKa474Ip9Bi65gH5KscAa8/sdCCtZIPW1dv2NO6e1XY9Jw
+MKHklnFJWIWE60NDm93ZVhdh+V4ZoHC3GUX7W/aDJFqzQiIVuUtCo3eDuFPEVExotY4Es8A2mHr5
+22doQp7IbE+8YP/A5XEp5j53rm2BD8RpabfxJkAsk2bmv1E6iPczUA1RcGprXNg9Uzo2qk9BLbSZ
+8mYWfqUN4iVNcdYGZpSZ1d4tTbFgJIMLjQJVkyXO1FlnwReI7Ig3l/Ha39GDpXoGSW7WDa0NaGx2
+WztjifSNmFfPhUEXRwO6ItkdnHFGeMf4ld4RU4fTwYjpkPL0IaDVd1LIXtEDCrcJ1j1D74kiW6Jf
+8a6rT+i5pGTnifXDiNeD+T1wRRDjQvgJPtWaT8wsD5DxlYi309KpA5kT66aZ1z4X1iF0Z6k4VlFX
+mlYEEOgyjmQz8jntVD9GHAEIt/aWIH8dI4hlr2gjQq0xRnNI6rACa5bLN0AX7vN5Y6oiPJ8q4P7h
+cU2MB9TunlfsoIF/aanb3ALQuSNY5LcgZmbGuiG5SveVSV4RchSHUVyc3EJjQ/g1jn4UtOKEqG/d
+t6Tq31k7OEo3tqyrp1AkxOifsnLv6aIAFqUhoC2k/ZGBZVvV9R7ujP9IX5r8WTWtPd+22pv3k5TX
+YlNySaL/y1BXx75A13IyQGPSPGPYzlRqOQJsWjnAWO5GJgU0Tk58wP+/U7Rbgw2b2MTE2HM2n0pe
+mfbrTw2EUZtI15kCL4fEleYU4owZtsFA5FBbNzxx/7d1QtyqoeKeFhEsEg44OMEf7fhIIoq0L1C4
+eFGSaJ/CKZPE4TsRajiGOCVbUZt8yk8h101jVOl9O0Dym1drXdx6164HBsUVnWoWcAPSG9vPyDex
+KMwv8/wQnV4gqjfluMohGZiziNCqx0cKI31Lt4HMBGxBVXPSXagdmDwJc7EazANCpHPrRh8XMIV8
+UX5Noq6sVl0NNwsOtAydGVceWVeeJRLu6Ut3pVFIqNA6WH+wbnk6PPdA7uyuR0rImEFI4l/or6Z6
+meJ+by6swzcpqDfRiFA5E8YqbVEUFP4pz9Y95LkQbGkm5nKdZZitph4eR+oW5FGZXDTBRh9/kfH8
+FdO30LfodUGAhh+l3Q/Teul9hkpXDgCZggfbpKg5WfZIMqk1a3SZu3v6cvmzyOaRGYBduKct5d+K
+PfadI6ZfhpIxG5CwhJvhVFopuyuQDzq4kWRRU8e7owdMfLVTbpvuCxo0TaCr9SYGR6aurqTQyK4n
+WHs2hyHVqjZjH+JryRhgtYiXgraCVqmTZghzjE/PvNty1Xy6QSvKzmiBdrSe+5ffOk3XpoZNm+ZQ
+7xMlSZQs+Z1bkjdbISH3WnMq2mGr57j97j2+i48vCRxr6fxSsHZt+PvSW0qpGZS3vw6mJiXUW18J
+bbxr1IYWMGrzLiP+PLi0Fd2dDe/sdhSIthMuK6od4lMtMrISUyPVRPBh/LJsA/E8LOtnwlJzN7Om
+Xd2JvoZyKdoD/KGh6Ua9/KWzJK/0eDGjl7MqEYAn+4ftGN1k0j4di18ggi+DLh7eYKmaNG+krVeb
+7S0sSq7iGTMdQ6fuBhw9rBl1Yx1wfmOOsQWH6vOg4UVKWJRVFy8Tl6G0gdHxVe1SW4VxyOLldzaM
+nJqv9CCR/h9NAFycPhTlgLOkYCOYeiG67stfyQ1sePVMyTc7J9aQZWcLMui+tLr94XUWEg7SzSUY
+EoISHQ7+u/jE0yeqLEIcpDxf15SCbeH0c88IWAozz/L5/aeQ8+UeqpSLLURAd4QvqMPox/IWLD2o
+ZeVMw8gs1cm0KQnanR7WWIjPEk3HKkO7Fbp+RvRRwKAaK6pgoaEDRPszirWJE7i5m1gBgNhtZqDW
+4Hfiv4XGlN5GEHaPvM40WQSFsJWCMBdENVt9AdkFzquZJtOODBI0406OO/glzMzkETLTTOfdhkXb
+Uu35VqljKHEAwk43ednzAf8JbPffMuz+sLSiyVvm6LkpOIDSYN17/p/3m7MZl19HDjKw3FwrnVfy
+Mm0EhhLIAkSTTpVYUY8VkIU9v9Me45eCPK2vnUSKpDcILwB7cfpRudlC/uxiuut4V1clQtsFm8bl
+T1xIP1Jh5Y691unoX3kUj+YLd/9PHdpxYiy8OUuuGtEoROYNHo0IdvxpmBxSi/4/L7gBNfTVHsQ4
+qK1VagWB/iGka4s+FtdYz35abHvk1m495exo1v9C9bqdLItWhljfuMPG0qv932HxWYbPnJ1MkChO
+GAC1MSmL3/j1e73rv6CUSqjVMPaEv2E5ZyW7eFs24OryrMt1EqQKo9A44cqmpjYKJKY3O/ilWEiF
+zvleC/yeAYmCztOe1hcpq+c128x7hy7K5THf2jfZWfeJohSXr0qKCpgqZsEmJvykk/HSfvRkU8Z3
+YvMDSp8ktHt2+5VjrbqS3sC9V8TrWtiI20I41Ma+ulpiVjto69LZO5tzUiLk0S2h2RYJQRf3qijH
+lA1j/PZSZDsJFhciw0d5JGdVJ5bVTlltEgBNPwul6vijtPzRNv/amt0Od5M3mHspTt0M1H4UASK7
+mjFU/m1ZMlVPG/WXnN/Bd7mFnHvsc3yeJS4QswwboGHfXCFxErYL/AUDYaHIt97CnO0dj/xAerrY
+TXPa6u4tgAvVlbpNjYWFqUhvx0JAB1Mx7J3ZmT9g+42W5gIrDuaDb8O0HQyd4/bHC2ZJvfu15BG8
+OtK/eXvtTZ+WQUO0vzPajbbJj/0fwss0fmUB3OMqHz020edn6TrvbrT7qjuBf7qgHyHM+pBbAfhy
+Gu6cmJL84hGRc4JFjUFMYKimND/oJtIsSPoD6S7x+0aM7Qf7cNZ2SITY8Ew+4TCvKBLEGDGDBMty
+eV1QSnLYUgL8rdvSCi7yvgp65JVobXuYzntCco8lrGqH+n3zlhjhO6+P7bNyTTqEKFNp62ed66Xh
+uSKaY75OEfLX5NUqmJekS8Y9QmDGIuc2VR+AgnAhjNrJ762bJdTGMXP6dowODYEBVd7q/gf4nhXb
+k88MeHbQnTUiq6QJZ385IPUycMCQWr2OVubC7ZbNvzCQVkopMUARse7FGHnk5E1eTsbAcGcMOFcS
+VGDLP71w3F8xybLzO8B+09IK9QpkCekbeplvsOjgFsdswFpHtkdhu08KmA1+WmikHshuSgv2RrZw
+JxyVIx0FyWzpWBmOQHI2s21xz3dXrOQx57itIp9DpjOWFkPhkcQVclOFU+OR0hVlMTAgKgkdI/zG
+JccxUjFklh9WwFeFDmDHvwhu3rsOGUaQml/tcmY/t9m1e4Izy5/OIb9FzFYaV43MwofE5jgSXdEn
+1ZfXD0/tNRZb2n1n4B9B6We5m8Fa7j//wvNLe/uiPJHR06t0HXqqKfNnrlo1sYucOoJbi6SeVFtA
+3RI4sceX5cEw3c79fNaSg12w2wYXFa+Yy3cVqV4dSYWetxmxW8UkDA1vhPzKC0d5ad5S1J2cfq2O
+Iewo7UC6jKPhSBTWDFEAtTJNOmcUhPIukK/DpUvHL9r7HqXTY0GIxTZR8kazXW4b0+g2R8R0thzf
+vYpRp1F47+mkNOtVkIQcoeddSBBtf7MBcagZ748xtBCATDCtnJUgglDT4HI33gdHpHtd56Yje5iR
+pTbUxeq99VWOQeiAPft+vEuT8cZdaOsQ9zdmAcQNbFLDAmUypA8GMkQVTpCFAeb8ytkOplD6n3ZN
+/ilsPOvTPtNjUFr+2xQeHhWj3Q2DR5O9HgVYjYSIdzc25F/MW6N4mvgan+AF6O71WKJ/j8j/CuvP
+XAaeNdYy+w1B7B3p8usZwrnz6lDkcpC44yk96oETFhVlSpeoy8S0pHCKDt+QVN1MzAEKBlOlv62B
+Pwk/fLG2COMwJTYaDKSA1R2hDtuq6SsgGjuFJGg87lMtac0bL+QhGl61lumzM+uU26TJgi6FpoAe
+8Gfnk+nFVy6yEnRR8tEaLq6R2w//pWsuJO0EC366ngmAtvDYg7YVb2/oba2N3I43N6GQE1saIqqQ
+Jgen5RJQeTWCkImF5Hi+htvhMp/ydRKnyWyXTtp+7XspVWxwD+6ggKPH8k91L28U0DkAB774rBzl
+04r3zeK+5wnSCSVJC+DEa1WUuhmvNzty217r8scYdgONAWu8nRAKSyXZSZTI0PJMvGY3c8jCqhoU
+bkG0YpXAjgQwWQ9sZn3FIhOkiQUCDRtQ=
+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
+tpvVXxMYBztcsM+Xb0Gg5W==
