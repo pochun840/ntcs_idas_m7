@@ -1,91 +1,44 @@
-<?php //ICB0 74:0 81:102f                                                     ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-CCsSb0jlhWCz3ujKZnqv2/ZzvgSlUKvc=
-HR+cPuaMR+01/mHJoDoZ+iEl57BEW9lZsclqIPMugBCmMfn0DtdfNsE6tJ4TNCRjQCLSPcHpfqgo
-HoAxa+Bxhz/dxltvUGviDVt6qPXholvbKekivULmL1fgh/LloL9ZmFzlQpanzpKBPrmK7Thk/cwV
-zrT9s/5FQcwrNIEgA0zjvxYUKmVSVo0gQ9DAcoLQb8gYqh8a04r+U3feZoQFT1R5AygVepc4JXwv
-c+sAAupCKSDlhlbtvmsSqaETLYcAeaKYz6+trXNQtgteHQ7Iuegvof089LPl8SlF+RCtorhx4JiO
-/u8UHha6VDxyL6dVz28YDS025/amVGqsEUkingFi9y0bYA5KY740ErCChlfji9i+vMLtNXdNPXAC
-8CgfonxATKZXXl3GMBBPiD+U6WOLMTLcjYUEZhNIHdA2H98bEyp/xvwLXkTDJGMg9VrvW8ztsrbo
-DECTPFoac85FY0jmtyii7FpP94B+4Fq7jJy/BhpOJRr1HyBDEiq9XJQ/lv1LEeOSUuqqcLV8vHkv
-gD3chN0WiHZ/ZT5BLAx+RMbQnUfX04AFNdkMKNyUhwk1O7GQb+8ORTfdRaOlCNTkYTPTB6ZbgSfd
-wyH6oF5aqhqtGkToLoE5er0dR1FG4tevJLaKGKFwq49c96nFwkNzEWF/qSte6VJVr6gE4E5akWcm
-WyZlRDAD3DJ+9WTziWjK1zLeJriGhyjGyHsQAZwrTbD73VZVjt4uiwlyNmRdbJc0o7N1XF5/dXNn
-2Lx5K6KKq04nIgGc2zHmdVFFg/yd5oRaMH1e8QBXWotSpoJLnzP8dQGayxmT384lRyF5qYkaLhNY
-IfnjBbaOhqIcgl4pes/yy0SZLxlzvNlyd/tuY89oU/dWnu6X+ZSFUEkGE+xed7sfvEVlOh10yQHw
-g288bfY7xRreX9w+Xu/AvwblRiCMWPJGB2gLLK5j/EbRAvCMHUalWQTupz7e1MdFWmVIZlRHEfnZ
-SU3kqOt333KIAicmPlzAii790XfCtD6NhJSYG+memJb5U/Oo67xb1h+Fyhlj6CeqHdlhMq19/OF6
-i06EaRqq5V72P+yQWUr1FMQUreJtfpXbaiCoQxAgFlygRYYluTDZ4E/lM0ty8QQDQJ2tyQdMy+uk
-wAUFkWVYfJPR61n5ZrTCP0foeqmR6R2bG/1kGbkKZdjkzoeeV7EMp0hh+P8wttmAmV9MjUynfXdn
-w9D3To055QXPnZrPU889wWIrvj9TkL6TD3YvAL6T1bDZ4AYSbSH3wWuNeYdVDpCTlZuQw8ldaVQj
-+udtIPwyHYpiS2eSy2/8chtHN9A6LaPB76BKTcpG0+B7zTXjUhu0wIqznz9oDQIFOj+TBzPF0dky
-ZNtJOnoWWBnjitsJ7YT6DBFkws5uuhuOO0ePYl11asoYaTtNBUGSSqhAGAdX9dfHT9OedYfAw4zY
-BqSCnvzAJPBe1gvnIU3df1EAhH4iqJffnjvIzxBghwB9vmEWm4QJeQZVVQ1KRU2+T27DydTSTeTl
-U9So2wLsAYrdtVwgwNqDi1uQdFBx/40/7OLTqVSCorzn0OkpT6YuauO459I3crp3xcJwyb+vYoIG
-GyNoupODj8t6OdMWJ+gTJmGtJs5Uw1Lpv3IHIZKuOLhOKsZTxX0eLsv7fTdI8/VfptJVOIYRamDN
-Qc8a/LKq0naYKXMIgQJ6XJZ/0GVF5ZcYQVkRaQwvcNl3OMK2bSqGCk0jVjcx0fDEZHWh5lN4YeIb
-WAb1pdXw84Yv773enwv/7ERJ/jESarUNJBtd4c54WU1hNYiKOsm5xbCvhFc1xdOkwKASl9HqXHUn
-fDnXqz+Njc86ltMle3CuO2tWUYUxe4fmzsf7oHDnE33thf49b6Yrvb0DFhd5TtJzkVYHI0+LO1ce
-Q8UUY20ZzwEs+x0Op6SrEt7go3YChuU6sdzQah7lc3A5OmLm6UTmlOs0IzYnCeOHEoVqGnjn9MOj
-dZA+lU/lCJyQh4SFDxJB5axM1ODmIvbIStvxeL6pNDbRUEbta7wDsM8LbpA0IcRa3w/PLpP3uBl2
-jIKxdhQV145NQYLpieeX+rxBJyOkSyaCUlf1wFhTncutHtHXIwnjbgUVmhBt0a6Cyt/ykcOFR3jp
-HPWp19hO9ArigBLv5kCc/ThBc4ahrWBUCa2q5Sr6EPp0prYAxpyZk/Qc+HXe6W4VQvuSMztSNYNO
-xiXRNrENG88fP4gA7SQZSl+Va7jq6YiGudtjzCNzIfdgRT98PezTHXJkf6ARuAzDjhoTnUhDnAMI
-W+pLeYVH8i9oBsdTORqqM5Rj8LDRkqkEW/JWUXtIAEn9Omr/12THLJkEvZDA1VmxNZytqg+YLp/4
-bfH6lSCU0IH0Iy55Xc+FmY+WCy35MVT4/vtiiSBo7APxW2uzSPVeGy8g/yFaIw3MxNw5v0CQohbS
-+KSLCFnG4RtYoQ+xpTUbwGF3nKj8VDYHXJcArjpAh0VlsEw6WsJYxpcDcXC1R3zX0yAOQUYITmea
-VADeX8iGRDRhPtAyDUqxfsCK6tWhAwWs4kpryaoWjq7v5NQMQPN/Wx7UftLbCtHIpCfE+xiKQf4A
-z2LM85E3KaQ4p/jzuy6Cb8yYj0QERA5LUERatA2t87LuyGWH/pbImAYhdbjYh7wNFGMJFtqKOF3h
-XZ3kvCkAHGCSHtW60YMgRAR/xnz5cwvji14ijroBc4Z6MQ7ZdGYfgdH+JQaOlpQxOgGvRXRXtVSQ
-WkCG4kMx3N4hr+ijf/JykjD17UMbdylVoPbOwmQ2uvKIKtZibZEh/NeSRt6lEaEv3eBoIjCik/TT
-s1QfShlkFufZi0RuAuiNWi9PvRQJdgxFw6TbgmixgX8auahDiIJ6+wcizwBO1r6sttw/0oC6+8Fk
-jolwcT2YuaQb24qtGMU3+epMdBJ+d239P2297HnobFJbi7xqkW3KxursTYZUh2EbFw90nlfD7TIA
-fV5wM10s0fiN60Ftaqe0TxoCUtzgsMOPly89xzQcnferZZ8E3+YaVhcUPYC6YM1pZBf7bgbG7JkO
-N9W/04CXTAOHcp07s2DSykIfgn35iqsygKOl963qIQ8WqB/0SI9QFqkwePqxfPF5Wf5tLOv1BcZ/
-1XNxu23ZHA/jrnsCacwp7Pk/d4E2oTeflu0I6Pbjp9dBLZ3zgUnjypJWG6Xp0TOCTm2SReoxx5Hs
-huSEpnZaoPbs0JcaparfOW==
+<?php
+
+declare(strict_types=1);
+
+require_once dirname(__DIR__) . '/modules/phpmodbus-master/Phpmodbus/ModbusMaster.php';
+
+/**
+ * Barcode-only Modbus writer for register 396.
+ * JOB/SEQ switching is intentionally owned only by JobSwitchService.
+ * The legacy filename is retained so deployments can replace one file safely.
+ */
+final class JobConfigBarcodeModbusService
+{
+    private $unitId;
+    private $port;
+
+    public function __construct(int $unitId = 1, int $port = 502)
+    {
+        if ($unitId < 1 || $unitId > 255 || $port < 1 || $port > 65535) {
+            throw new InvalidArgumentException('Invalid Modbus unit ID or TCP port');
+        }
+        $this->unitId = $unitId;
+        $this->port = $port;
+    }
+
+    /** Input barcode occupies 50 consecutive Modbus registers starting at 396. */
+    public function writeBarcode(string $ip, string $barcode): void
+    {
+        if ($barcode === '' || strlen($barcode) > 50 || !preg_match('/^[\x20-\x7E]+$/D', $barcode)) {
+            throw new InvalidArgumentException('Mapped barcode must contain 1–50 printable ASCII bytes');
+        }
+        // The controller exposes a 50-register ASCII field. Each character
+        // occupies one register; clear every unused register to avoid stale
+        // characters left by a previously scanned longer barcode.
+        $words = [];
+        for ($i = 0, $length = strlen($barcode); $i < 50; $i++) {
+            $words[] = $i < $length ? ord($barcode[$i]) : 0;
+        }
+        $client = new ModbusMaster($ip, 'TCP');
+        $client->port = $this->port;
+        $client->timeout_sec = 4;
+        $client->writeMultipleRegister($this->unitId, 396, $words, array_fill(0, 50, 'INT'));
+    }
+}

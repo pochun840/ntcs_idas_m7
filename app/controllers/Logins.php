@@ -110,6 +110,14 @@ function idas_sync_login_user_table_from_controller(): array
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $db->exec('PRAGMA busy_timeout = 5000');
 
+        // Preserve staged account edits until an explicit upload succeeds.
+        $hasAccountState = $db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='idas_account_sync_state'")->fetchColumn();
+        if ($hasAccountState && (int)$db->query("SELECT pending FROM idas_account_sync_state WHERE id=1")->fetchColumn() === 1) {
+            $result['message'] = 'local_account_changes_pending_upload';
+            return $lastResult = $result;
+        }
+
+
         // Attach Controller DB read-only using URI mode.
         $sourceUri = 'file:' . $sourcePath . '?mode=ro';
         $db->exec("ATTACH DATABASE " . $db->quote($sourceUri) . " AS controller");
@@ -479,6 +487,7 @@ class Logins extends Controller
             && $url[0] === 'Settings'
             && in_array($url[1], [
                 'account_user_list',
+                'account_user_sync_status',
                 'account_user_create',
                 'account_user_update',
                 'account_user_delete'
@@ -829,18 +838,6 @@ class Logins extends Controller
 
     public function index(...$args)
     {
-        // The login page also polls controller health after reboot/session expiry.
-        // Permit only these read-only status actions; sync/write actions still require login.
-        $requestUrl = $args[0] ?? [];
-        if (is_array($requestUrl)
-            && ($requestUrl[0] ?? '') === 'Check'
-            && in_array($requestUrl[1] ?? '', [
-                'ajax_check_device_change_fast',
-                'ajax_check_device_id',
-            ], true)) {
-            return true;
-        }
-
         if (idas_is_icontroller()) {
             return $this->index__icontroller(...$args);
         }

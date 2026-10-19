@@ -1,88 +1,27 @@
-<?php //ICB0 74:0 81:e4d                                                      ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-uEbIBgfyohb2=
-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
+<?php
+
+/** Central SQLite connection policy shared by NTCS and iController. */
+final class SqliteConnectionFactory
+{
+    private const BUSY_TIMEOUT_MS = 5000;
+
+    public static function connect(string $path, array $options = []): PDO
+    {
+        $defaults = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ];
+
+        $pdo = new PDO('sqlite:' . $path, null, null, $options + $defaults);
+        $pdo->exec('PRAGMA busy_timeout = ' . self::BUSY_TIMEOUT_MS);
+        $pdo->exec('PRAGMA encoding = "UTF-8"');
+        return $pdo;
+    }
+}
+
+if (!function_exists('idas_sqlite_connect')) {
+    function idas_sqlite_connect(string $path, array $options = []): PDO
+    {
+        return SqliteConnectionFactory::connect($path, $options);
+    }
+}

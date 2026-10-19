@@ -1,64 +1,82 @@
-<?php //ICB0 74:0 81:bb4                                                      ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-gMZIxeq=
+<?php
+
+declare(strict_types=1);
+
+final class JobConfigErrorCodes
+{
+    public const READY = 'READY';
+    public const WRITE_OK = 'WRITE_OK';
+    public const PREVIEW_OK = 'PREVIEW_OK';
+    public const SKIPPED_NOT_READY = 'SKIPPED_NOT_READY';
+
+    public const METHOD_NOT_ALLOWED = 'METHOD_NOT_ALLOWED';
+    public const UNSUPPORTED_MEDIA_TYPE = 'UNSUPPORTED_MEDIA_TYPE';
+    public const PAYLOAD_TOO_LARGE = 'PAYLOAD_TOO_LARGE';
+    public const EMPTY_BODY = 'EMPTY_BODY';
+    public const INVALID_JSON = 'INVALID_JSON';
+    public const UNSUPPORTED_API_VERSION = 'UNSUPPORTED_API_VERSION';
+    public const INVALID_ACTION = 'INVALID_ACTION';
+    public const TARGETS_REQUIRED = 'TARGETS_REQUIRED';
+    public const DEFAULT_TARGET_UNAVAILABLE = 'DEFAULT_TARGET_UNAVAILABLE';
+    public const INVALID_TARGETS = 'INVALID_TARGETS';
+    public const CONFIG_REQUIRED = 'CONFIG_REQUIRED';
+    public const NO_READY_TARGETS = 'NO_READY_TARGETS';
+
+    public const NOT_SAME_SUBNET = 'NOT_SAME_SUBNET';
+    public const REMOTE_NOT_SAME_SUBNET = 'REMOTE_NOT_SAME_SUBNET';
+    public const TARGET_UNREACHABLE = 'TARGET_UNREACHABLE';
+    public const NO_RESPONSE = 'NO_RESPONSE';
+    public const NOT_NTCS7 = 'NOT_NTCS7';
+    public const TARGET_NOT_READY = 'TARGET_NOT_READY';
+    public const PROBE_INVALID_RESPONSE = 'PROBE_INVALID_RESPONSE';
+    public const PREVIEW_FAILED = 'PREVIEW_FAILED';
+    public const WRITE_INVALID_RESPONSE = 'WRITE_INVALID_RESPONSE';
+    public const REMOTE_WRITE_FAILED = 'REMOTE_WRITE_FAILED';
+    public const LOCAL_PREFLIGHT_FAILED = 'LOCAL_PREFLIGHT_FAILED';
+    public const LOCAL_WRITE_FAILED = 'LOCAL_WRITE_FAILED';
+
+    public const CONTROLLER_ROOT_NOT_FOUND = 'CONTROLLER_ROOT_NOT_FOUND';
+    public const CONTROLLER_DATABASE_NOT_WRITABLE = 'CONTROLLER_DATABASE_NOT_WRITABLE';
+    public const CONTROLLER_STATUS_UNAVAILABLE = 'CONTROLLER_STATUS_UNAVAILABLE';
+    public const CONTROLLER_IN_USE = 'CONTROLLER_IN_USE';
+    public const CONTROLLER_DATABASE_BUSY = 'CONTROLLER_DATABASE_BUSY';
+    public const DATABASE_SCHEMA_MISMATCH = 'DATABASE_SCHEMA_MISMATCH';
+    public const DATABASE_WRITE_REJECTED = 'DATABASE_WRITE_REJECTED';
+    public const DATABASE_ERROR = 'DATABASE_ERROR';
+    public const BACKUP_FAILED = 'BACKUP_FAILED';
+    public const VERIFY_FAILED = 'VERIFY_FAILED';
+    public const VALIDATION_ERROR = 'VALIDATION_ERROR';
+    public const INTERNAL_ERROR = 'INTERNAL_ERROR';
+
+    /** @return array<string,int> */
+    public static function httpStatusMap(): array
+    {
+        return [
+            self::METHOD_NOT_ALLOWED => 405,
+            self::UNSUPPORTED_MEDIA_TYPE => 415,
+            self::PAYLOAD_TOO_LARGE => 413,
+            self::EMPTY_BODY => 400,
+            self::INVALID_JSON => 400,
+            self::UNSUPPORTED_API_VERSION => 400,
+            self::INVALID_ACTION => 400,
+            self::TARGETS_REQUIRED => 400,
+            self::DEFAULT_TARGET_UNAVAILABLE => 409,
+            self::INVALID_TARGETS => 400,
+            self::CONFIG_REQUIRED => 400,
+            self::NO_READY_TARGETS => 409,
+            self::REMOTE_NOT_SAME_SUBNET => 403,
+            self::CONTROLLER_IN_USE => 409,
+            self::CONTROLLER_DATABASE_BUSY => 409,
+            self::CONTROLLER_ROOT_NOT_FOUND => 503,
+            self::CONTROLLER_DATABASE_NOT_WRITABLE => 503,
+            self::CONTROLLER_STATUS_UNAVAILABLE => 502,
+            self::DATABASE_SCHEMA_MISMATCH => 500,
+            self::DATABASE_WRITE_REJECTED => 400,
+            self::DATABASE_ERROR => 500,
+            self::BACKUP_FAILED => 500,
+            self::VERIFY_FAILED => 500,
+            self::VALIDATION_ERROR => 400,
+            self::INTERNAL_ERROR => 500,
+        ];
+    }
+}

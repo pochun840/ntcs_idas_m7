@@ -1,144 +1,102 @@
-<?php //ICB0 74:0 81:1876                                                     ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
+<?php
+
+require_once dirname(__DIR__) . '/app/config/paths.php';
+
+/**
+ * Shared database storage policy for NTCS and iController.
+ */
+class DiskSpaceService
+{
+    public const WARNING_MB = 100;
+    public const BLOCKING_MB = 50;
+    public const WARNING_BYTES = self::WARNING_MB * 1048576;
+    public const BLOCKING_BYTES = self::BLOCKING_MB * 1048576;
+
+    public static function databaseFreeBytes(): int
+    {
+        if (PHP_OS_FAMILY !== 'Linux') {
+            return 1024 * 1024 * 1024 * 1024;
+        }
+
+        $bytes = @disk_free_space(IDAS_PATH_DATABASE_ROOT);
+        return $bytes === false ? 0 : max(0, (int)$bytes);
+    }
+
+    public static function status(int $requiredBytes = 0): array
+    {
+        $freeBytes = self::databaseFreeBytes();
+        $requiredBytes = max(self::BLOCKING_BYTES, $requiredBytes);
+
+        return [
+            'free_bytes' => $freeBytes,
+            'free_mb' => round($freeBytes / 1048576, 1),
+            'warning' => $freeBytes < self::WARNING_BYTES,
+            'blocked' => $freeBytes < $requiredBytes,
+            'warning_mb' => self::WARNING_MB,
+            'blocking_mb' => self::BLOCKING_MB,
+            'required_bytes' => $requiredBytes,
+            'required_mb' => round($requiredBytes / 1048576, 1),
+        ];
+    }
+
+    /** Calculate conservative update working space from ZIP metadata. */
+    public static function updatePackSpaceRequirement(string $zipPath, int $uploadBytes = 0): array
+    {
+        $uncompressed = 0;
+        $zip = new ZipArchive();
+
+        if ($zip->open($zipPath) !== true) {
+            return ['ok' => false, 'uncompressed_bytes' => 0, 'required_bytes' => 0];
+        }
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $stat = $zip->statIndex($index);
+            if (is_array($stat)) {
+                $uncompressed += max(0, (int)($stat['size'] ?? 0));
+            }
+        }
+        $zip->close();
+
+        // Upload + extracted tree + staged deployment + 20 MB operating reserve.
+        $required = max(
+            self::BLOCKING_BYTES,
+            max(0, $uploadBytes) + ($uncompressed * 2) + (20 * 1048576)
+        );
+
+        return [
+            'ok' => true,
+            'uncompressed_bytes' => $uncompressed,
+            'required_bytes' => $required,
+        ];
+    }
+
+    /** Prepare storage before an update without deleting production DBs. */
+    public static function prepareForUpdate(bool $updateLockOwned = true): array
+    {
+        require_once __DIR__ . '/DatabaseBackupService.php';
+
+        $before = self::databaseFreeBytes();
+        $cleanup = $before < self::WARNING_BYTES
+            ? DatabaseBackupService::safeCleanup($before < self::BLOCKING_BYTES, $updateLockOwned)
+            : [
+                'free_bytes_before' => $before,
+                'free_bytes' => $before,
+                'actions' => [],
+                'busy' => false,
+            ];
+
+        $after = (int)($cleanup['free_bytes'] ?? $before);
+
+        return [
+            'ok' => $after >= self::BLOCKING_BYTES,
+            'warning' => $after < self::WARNING_BYTES,
+            'free_bytes_before' => (int)($cleanup['free_bytes_before'] ?? $before),
+            'free_bytes' => $after,
+            'free_mb' => round($after / 1048576, 1),
+            'warning_mb' => self::WARNING_MB,
+            'blocking_mb' => self::BLOCKING_MB,
+            'cleanup_actions' => $cleanup['actions'] ?? [],
+            'cleanup_busy' => !empty($cleanup['busy']),
+        ];
+    }
+}

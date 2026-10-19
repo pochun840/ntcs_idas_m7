@@ -1,108 +1,34 @@
-<?php //ICB0 74:0 81:129b                                                     ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-6/OPwcZ21h4xh6Nk4t8XdyNSK1CXlBRKTtsQ=
-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
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__).'/app/config/paths.php';
+/** Host-wide MES test mode, stored in das.db; controller URLs stay unchanged. */
+final class MesTestMode
+{
+    private static function open(): PDO
+    {
+        $path=idas_path('database_root','das.db');
+        if (!is_file($path)) throw new RuntimeException('das.db not found');
+        $db=new PDO('sqlite:'.$path);
+        $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+        $db->exec('PRAGMA busy_timeout=5000');
+        return $db;
+    }
+    public static function enabled(): bool
+    {
+        $db=self::open();
+        $stmt=$db->prepare("SELECT config_value FROM config WHERE config_name='mes_test_mode' ORDER BY id DESC LIMIT 1");
+        $stmt->execute();$value=$stmt->fetchColumn();$stmt->closeCursor();
+        return (string)$value==='1';
+    }
+    public static function setEnabled(bool $enabled): void
+    {
+        $db=self::open();$db->exec('BEGIN IMMEDIATE');
+        try {
+            $stmt=$db->prepare("SELECT id FROM config WHERE config_name='mes_test_mode' LIMIT 1");
+            $stmt->execute();$exists=$stmt->fetchColumn();$stmt->closeCursor();
+            if ($exists===false) $stmt=$db->prepare("INSERT INTO config(config_name,config_value) VALUES('mes_test_mode',?)");
+            else $stmt=$db->prepare("UPDATE config SET config_value=? WHERE config_name='mes_test_mode'");
+            $stmt->execute([$enabled?'1':'0']);$stmt->closeCursor();$db->exec('COMMIT');
+        } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    }
+}

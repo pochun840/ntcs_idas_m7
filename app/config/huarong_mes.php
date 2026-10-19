@@ -1,69 +1,26 @@
-<?php //ICB0 74:0 81:ce8                                                      ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-94rVxwAnnMpw3ZAc1wRyvx36s7Cuo0MmoaliJG===
-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
-Qb6Hr/k+GEqBEG==
+<?php
+
+declare(strict_types=1);
+
+return [
+    // 華榮提供正式 MES Server 後，只需填入此值，例如：
+    // 'base_url' => 'http://192.168.100.200:8080',
+    'base_url' => '',
+    'barcode_path' => '/api/barcode',
+    'report_path' => '/api/report_tightening_result',
+    'connect_timeout' => 3,
+    'timeout' => 5,
+
+    // 測試模式：true 時不連華榮 MES，直接使用本機 Mock Response。
+    // 正式上線前務必改為 false，並設定 base_url。
+    'mock_enabled' => true,
+    'mock_response_file' => __DIR__ . '/huarong_mes_barcode_mock.json',
+    'report_mock_response_file' => __DIR__ . '/huarong_mes_report_mock.json',
+
+    // 華榮配方中的扭力值以 x100 傳送，例如 350 = 3.50。
+    // 若正式 MES 定義不同，只需調整此倍率，不需修改 Mapping 程式。
+    'torque_scale' => 100,
+
+    // 接口 1 成功後保存工單 Context，接口 2 自動讀取。
+    'context_file' => dirname(__DIR__, 2) . '/public/huarong_mes_context.json',
+];

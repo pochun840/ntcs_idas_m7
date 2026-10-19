@@ -1,149 +1,134 @@
-<?php //ICB0 74:0 81:18d0                                                     ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-gIXw9wy==
-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
-6VC=
+<?php
+
+class Core
+{
+    // 預設 Controller 為 Dashboards
+    protected $currentController = 'Dashboards';
+    // 預設方法為 index
+    protected $currentMethod = 'index';
+    // 預設參數為空
+    protected $params = [];
+
+    public function __construct()
+    {
+
+        //加入登入驗證
+        $loginFile = idas_platform_app_file('controllers/Logins.php');
+        require_once $loginFile;
+        $login_class = new Logins();  
+
+        // 呼叫 getUrl() 取得 $url 陣列
+        $url = $this->getUrl();        
+
+        $valid_result = $login_class->index($url);//將url傳入
+
+        //condition 1 url = 
+        if($url[0] == 'Logins' && $valid_result){ //登入後的預設路徑
+            $url[0] = 'Dashboards';
+        }
+
+        //isapi
+        $isAPI = false;
+        if( isset($url[1])){
+            if($url[0] == 'Dashboards' && $url[1] == 'get_last_data'){
+                $isAPI = true;
+            }
+        }
+
+        //行動裝置判斷
+        $isMobile = $this->isMobileCheck();
+        if ($isMobile && !$isAPI ) {
+            //如果是手機，登入後直接導向operation畫面
+            // $url[0] = 'Dashboards';
+            // $url[1] = 'operation';
+        }
+
+        // 將 $url[0] 視為 Controller 的名稱
+        // 檢查 $url[0] 是否有對應的 Controller ，即是否存在 $url[0].php 的檔案
+        if(!empty($url[0]))
+            $this->currentController = $url[0];
+        // 引入 Controller
+        $file = idas_platform_app_file('controllers/' . $this->currentController . '.php');
+        //判斷url帶入的controller是否存在
+        if (file_exists($file)) {
+            require_once $file;
+        } else {
+            $this->currentController = 'Dashboards';
+            $file = idas_platform_app_file('controllers/Dashboards.php');
+            require_once $file;
+        }
+
+        
+        // 實例化 Controller
+        $className = $this->currentController;
+
+        $this->currentController = new $className();
+
+        // $url[1] 視為 Controller 中的方法
+        // 所以先要檢查是否有值，若有，檢查該值是否有對應的方法
+        if (isset($url[1])) {
+            if (method_exists($this->currentController, $url[1])) {
+                $this->currentMethod = $url[1];
+            } else {
+                http_response_code(404);
+                require_once __DIR__ . '/../views/errors/404.php';
+                exit;
+            }
+        }
+        // $url 陣列中的第三個值開始，視為帶入方法中的參數
+        // 用 $params 陣列儲存所有剩下的值
+            $temp_array = array();
+            if(isset($url[2])){
+                for ($i=2; $i < count($url); $i++) { 
+                   array_push($temp_array,$url[$i]);
+                }
+            }else{
+                $temp_array = array("");//給一組空值，避免因參數跳error
+            }
+            $this->params = $temp_array;
+
+        // 最後透過呼叫 callback 來執行方法
+        call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
+    }
+
+    public function getUrl()
+    {
+        // 從 public?url= 後開始，將 $url 按 / 切分，轉換成陣列並回傳
+        // 例如： 使用者輸入 127.0.0.1/public?url=posts/show/1
+        // 則回傳 $url 的值為 ['posts', 'show', 1]
+        // 它將在 __construct() 中依序被解析成 Controller, 方法, 參數
+        $content ="null";
+        if(isset($_GET['url'] )) {
+            $content = explode('/',$_GET['url']);
+            return $content;
+        }
+
+    }
+
+    public function isMobileCheck($value='')
+    {
+        //Detect special conditions devices
+        $iPod = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
+        $iPhone = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
+        $iPad = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
+        if(stripos($_SERVER['HTTP_USER_AGENT'],"Android") && stripos($_SERVER['HTTP_USER_AGENT'],"mobile")){
+            $Android = true;
+        }else if(stripos($_SERVER['HTTP_USER_AGENT'],"Android")){
+            $Android = false;
+            $AndroidTablet = true;
+        }else{
+            $Android = false;
+            $AndroidTablet = false;
+        }
+        $webOS = stripos($_SERVER['HTTP_USER_AGENT'],"webOS");
+        $BlackBerry = stripos($_SERVER['HTTP_USER_AGENT'],"BlackBerry");
+        $RimTablet= stripos($_SERVER['HTTP_USER_AGENT'],"RIM Tablet");
+        //do something with this information
+        if( $iPod || $iPhone || $iPad || $Android || $AndroidTablet || $webOS || $BlackBerry || $RimTablet){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+}

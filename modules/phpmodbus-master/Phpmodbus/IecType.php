@@ -1,85 +1,133 @@
-<?php //ICB0 74:0 81:f27                                                      ?><?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
+<?php
+/**
+ * Phpmodbus Copyright (c) 2004, 2010 Jan Krakora, WAGO Kontakttechnik GmbH & Co. KG (http://www.wago.com)
+ *
+ * This source file is subject to the "PhpModbus license" that is bundled
+ * with this package in the file license.txt.
+ *
+ * @author Jan Krakora
+ * @copyright Copyright (c) 2004, 2010 Jan Krakora, WAGO Kontakttechnik GmbH & Co. KG (http://www.wago.com)
+ * @license PhpModbus license
+ * @category Phpmodbus
+ * @package Phpmodbus
+ * @version $id$
+ */
+
+/**
+ * IecType
+ *
+ * The class includes set of IEC-1131 data type functions that converts a PHP
+ * data types to a IEC data type.
+ *
+ * @author Jan Krakora
+ * @copyright  Copyright (c) 2004, 2010 Jan Krakora, WAGO Kontakttechnik GmbH & Co. KG (http://www.wago.com)
+ * @package Phpmodbus
+ */
+class IecType {
+
+    /**
+     * iecBYTE
+     *
+     * Converts a value to IEC-1131 BYTE data type
+     *
+     * @param value value from 0 to 255
+     * @return value IEC BYTE data type
+     *
+     */
+    public static function iecBYTE($value) {
+        return chr($value & 0xFF);
+    }
+
+    /**
+     * iecINT
+     *
+     * Converts a value to IEC-1131 INT data type
+     *
+     * @param value value to be converted
+     * @return value IEC-1131 INT data type
+     *
+     */
+    public static function iecINT($value) {
+        return self::iecBYTE(($value >> 8) & 0x00FF) .
+                self::iecBYTE(($value & 0x00FF));
+    }
+
+    /**
+     * iecDINT
+     *
+     * Converts a value to IEC-1131 DINT data type
+     *
+     * @param value value to be converted
+     * @param value endianness defines endian codding (little endian == 0, big endian == 1)
+     * @return value IEC-1131 INT data type
+     *
+     */
+    public static function iecDINT($value, $endianness = 0) {
+        // result with right endianness
+        return self::endianness($value, $endianness);
+    }
+
+    /**
+     * iecREAL
+     *
+     * Converts a value to IEC-1131 REAL data type. The function uses function  @use float2iecReal.
+     *
+     * @param value value to be converted
+     * @param value endianness defines endian codding (little endian == 0, big endian == 1)
+     * @return value IEC-1131 REAL data type
+     */
+    public static function iecREAL($value, $endianness = 0) {
+        // iecREAL representation
+        $real = self::float2iecReal($value);
+        // result with right endianness
+        return self::endianness($real, $endianness);
+    }
+
+    /**
+     * float2iecReal
+     *
+     * This function converts float value to IEC-1131 REAL single precision form.
+     *
+     * For more see [{@link http://en.wikipedia.org/wiki/Single_precision Single precision on Wiki}] or
+     * [{@link http://de.php.net/manual/en/function.base-convert.php PHP base_convert function commentary}, Todd Stokes @ Georgia Tech 21-Nov-2007] or
+     * [{@link http://www.php.net/manual/en/function.pack.php PHP pack/unpack functionality}]
+     *
+     * @param float value to be converted
+     * @return value IEC REAL data type
+     */
+    private static function float2iecReal($value) {
+        // get float binary string
+        $float = pack("f", $value);
+        // set 32-bit unsigned integer of the float
+        $w = unpack("L", $float);
+        return $w[1];
+    }
+
+    /**
+     * endianness
+     *
+     * Make endianess as required.
+     * For more see http://en.wikipedia.org/wiki/Endianness
+     *
+     * @param int $value
+     * @param bool $endianness
+     * @return int
+     */
+    private static function endianness($value, $endianness = 0) {
+        if ($endianness == 0)
+            return
+                    self::iecBYTE(($value >> 8) & 0x000000FF) .
+                    self::iecBYTE(($value & 0x000000FF)) .
+                    self::iecBYTE(($value >> 24) & 0x000000FF) .
+                    self::iecBYTE(($value >> 16) & 0x000000FF);
+        else
+            return
+                    self::iecBYTE(($value >> 24) & 0x000000FF) .
+                    self::iecBYTE(($value >> 16) & 0x000000FF) .
+                    self::iecBYTE(($value >> 8) & 0x000000FF) .
+                    self::iecBYTE(($value & 0x000000FF));
+    }
+
+}
+
 ?>
-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
-UU/A/UwHDIrxkLEjQnuFhG==
