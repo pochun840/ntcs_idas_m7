@@ -37,8 +37,30 @@ window.createIdasMesPreview=function(config){
    const names={SN:t[1]+' (SN)',process_name:t[2]+' (process_name)'};
    const missing=(Array.isArray(data.missing_fields)?data.missing_fields:[]).map(name=>names[name]||String(name));
    render(data.payload,missing,'huarong_operation_'+String(id).replace(/[^0-9]/g,'')+'.json');
+   if(data.mock===true){
+    const notes={'zh-tw':'測試模式：工單資料來自條碼模擬測試；runParam_inf 使用截至完成 ID 的整個產品鎖附紀錄，不會送往 MES。','zh-cn':'测试模式：工单信息来自条码模拟测试；runParam_inf 使用截至完成 ID 的整个产品锁附记录，不会发送至 MES。','en-us':'Test mode: work order data comes from the barcode sample. runParam_inf contains all product records through the terminal ID. Nothing is sent to MES.'};
+    warning.textContent=(notes[lang]||notes['zh-cn'])+(missing.length?' '+t[6]+missing.join('、'):'');
+    warning.style.cssText='padding:12px 20px;margin:0;background:#fff4df;color:#865819';
+   }
   }catch(error){if(current===revision){body.textContent=t[16]+'：'+(error.name==='AbortError'?'timeout':error.message);disable(true);}}
   finally{clearTimeout(deadline);if(current===revision)abort=null;}
+ }
+ function showProduct(row){
+  reset(t[17]);field(t[14],row.id);field(t[0],row.reference);field(t[1],row.barcode);field(t[2],row.job_name);
+  const test=row.source==='TEST_PRODUCT';mode(test);
+  let payload=null;try{payload=JSON.parse(row.request_json||'null');}catch(_){}
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)){body.textContent=t[16];disable(true);return;}
+  render(payload,[],'product_'+String(row.reference).replace(/[^0-9]/g,'')+'.json');
+  const notes={'zh-tw':'此為該產品整包上傳時保存的報文快照；包含重鎖紀錄。測試模式不送 MES。','zh-cn':'这是该产品整包上传时保存的报文快照，包含重锁记录。测试模式不发送 MES。','en-us':'Saved product report snapshot, including retry attempts. Test mode does not send data to MES.'};
+  warning.textContent=notes[lang]||notes['zh-cn'];
+ }
+ function showMockOperation(row){
+  reset(t[17]);field(t[14],row.id);field(t[1],row.barcode);field(t[2],row.job_name);mode(true);
+  let payload=null;try{payload=JSON.parse(row.request_json||'null');}catch(_){}
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)){body.textContent=t[16];disable(true);return;}
+  render(payload,[],'mock_tightening_'+String(row.id).replace(/[^0-9]/g,'')+'.json');
+  const notes={'zh-tw':'模擬鎖附上傳：工單來自同次條碼假資料；runParam_inf 為模擬值，未操作控制器、未傳送 MES。','zh-cn':'模拟拧紧上传：工单来自同次条码模拟数据；runParam_inf 为模拟值，未操作控制器、未发送 MES。','en-us':'Sample tightening report: work order data comes from the same barcode sample. All measurements are simulated. No controller action or MES request was made.'};
+  warning.textContent=notes[lang]||notes['zh-cn'];warning.style.cssText='padding:12px 20px;margin:0;background:#fff4df;color:#865819';
  }
  function showBarcode(row){
   reset(t[18]);const banner=get('mesModeBanner'),test=banner&&banner.dataset.testMode==='1';
@@ -112,6 +134,6 @@ window.createIdasMesPreview=function(config){
  download.addEventListener('click',()=>{
   if(!json)return;const blob=new Blob([json+'\n'],{type:mime+';charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;dialog.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);feedback.textContent=t[11];
  });
- return {showOperation,showBarcode,showBarcodeResponse,close};
+ return {showProduct,showOperation,showMockOperation,showBarcode,showBarcodeResponse,close};
 };
 })();

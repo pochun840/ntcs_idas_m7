@@ -40,7 +40,9 @@ final class HuarongTighteningReportService
         if ($sn === '' && !$allowEmptySn) {
             throw new InvalidArgumentException('SN 不能為空');
         }
-        foreach (['item', 'process_name', 'station'] as $field) {
+        $context['work_order_no']=trim((string)($context['work_order_no'] ?? ''));
+        if ($context['work_order_no']==='') $context['work_order_no']=trim((string)($context['work_order']['work_order_no'] ?? ''));
+        foreach (['work_order_no', 'item', 'process_name', 'station'] as $field) {
             if (!$allowMissingContext && (!isset($context[$field]) || trim((string)$context[$field]) === '')) {
                 throw new InvalidArgumentException('MES Context 缺少 ' . $field);
             }
@@ -58,7 +60,8 @@ final class HuarongTighteningReportService
                 'Sp' => $torque,
                 'Rv' => $this->number($row['rpm'] ?? 0),
                 'Ep' => $this->number($row['final_fasten_angle'] ?? 0),
-                'Rl' => $this->peakTorque($row),
+                // HuaRong integration agreement: Rl equals Sp.
+                'Rl' => $torque,
                 'RlD' => $this->number($row['lo_torque'] ?? 0),
                 'RlU' => $this->number($row['hi_torque'] ?? 0),
                 'ii' => 0,
@@ -93,6 +96,7 @@ final class HuarongTighteningReportService
         }
         return [
             'message_class' => 'post_screw_inf',
+            'work_order_no' => $context['work_order_no'],
             'item' => (string)$context['item'],
             'SN' => $sn,
             'process_name' => (string)$context['process_name'],
@@ -102,14 +106,6 @@ final class HuarongTighteningReportService
             'screw_inf' => $screwInfo,
             'runParam_inf' => $runParams,
         ];
-    }
-
-    private function peakTorque(array $row)
-    {
-        foreach (['peak_fasten_torque','peak_torque'] as $key) {
-            if (isset($row[$key]) && is_numeric($row[$key])) return $this->number($row[$key]);
-        }
-        throw new InvalidArgumentException('Rl 峰值扭力來源尚未設定，請確認控制器欄位；不可將最終扭力當成峰值');
     }
 
     private function mapResultCode(array $row): ?int

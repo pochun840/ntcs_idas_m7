@@ -9,13 +9,15 @@ $id=is_string($_GET['id'] ?? null)?filter_var($_GET['id'],FILTER_VALIDATE_INT,['
 if ($id===false) {http_response_code(400);echo json_encode(['success'=>false,'message'=>'id must be a positive integer']);exit;}
 if (session_status()===PHP_SESSION_ACTIVE) session_write_close();
 try {
-    $payload=(new OperationMesReportService())->preview($id, true);
+    $service=new OperationMesReportService();
+    $payload=$service->preview($id, true);
+    $testMode=$service->previewUsesMock();
     $missing=[];
-    foreach (['item','SN','process_name','station'] as $field) {
+    foreach (['work_order_no','item','SN','process_name','station'] as $field) {
         if (!isset($payload[$field]) || trim((string)$payload[$field])==='') $missing[]=$field;
     }
     foreach (['screw_inf','runParam_inf'] as $field) {
         if (empty($payload[$field]) || !is_array($payload[$field])) $missing[]=$field;
     }
-    echo json_encode(['success'=>true,'id'=>$id,'test_mode'=>MesTestMode::enabled(),'missing_fields'=>$missing,'payload'=>$payload],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    echo json_encode(['success'=>true,'id'=>$id,'test_mode'=>$testMode,'mock'=>$testMode,'work_order_source'=>$testMode?'mock':'barcode','result_source'=>'controller','missing_fields'=>$missing,'payload'=>$payload],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 } catch(Throwable $e){error_log('[operation_mes_preview] '.$e->getMessage());http_response_code(503);echo json_encode(['success'=>false,'id'=>$id,'message'=>$e->getMessage()],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);}

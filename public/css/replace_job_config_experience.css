@@ -1,0 +1,115 @@
+/* Existing controls and IDs remain the source of truth for all operations. */
+:root{--ux-banner-height:48px;--ux-scroll-offset:132px;--ux-dock-height:112px}
+body.idas-experience{background:#f2f5f9;color:#20324a;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","PingFang TC",sans-serif;line-height:1.55}
+.idas-experience .page{width:min(1280px,calc(100% - 48px));margin:24px auto 0;padding-bottom:var(--ux-dock-height)}
+.idas-experience .hero{padding:24px 28px;background:linear-gradient(120deg,#162b49,#244b73);border:1px solid #294e74;border-radius:18px;box-shadow:0 12px 32px #17304d10}
+.idas-experience .hero h1{font-size:24px;font-weight:700;letter-spacing:.2px;line-height:1.45}
+.idas-experience .hero .subtitle{font-size:13px;color:#cedced;margin-top:5px}
+.idas-experience .page-language-select{border:1px solid #ffffff55;border-radius:9px;min-height:42px}
+.ux-overview{position:relative;z-index:1;display:grid;grid-template-columns:.8fr 1fr 1.2fr;gap:20px;margin-top:22px;padding-top:19px;border-top:1px solid #ffffff26}
+.ux-overview-cell{min-width:0;display:grid;gap:6px}
+.ux-overview-label{font-size:12px;color:#bdd0e5}
+.ux-overview-cell strong{font-size:15px;line-height:1.5;font-weight:600;color:#fff;overflow-wrap:anywhere}
+.ux-overview-cell strong[data-mode]{justify-self:start;padding:3px 10px;border:1px solid #ffffff26;border-radius:6px;font-size:13px}
+.ux-overview-cell strong[data-mode="test"]{color:#ffe0a1;background:#83600f40}
+.ux-overview-cell strong[data-mode="live"]{color:#bcf1dc;background:#0e6c533b}
+.idas-experience .content{gap:20px;padding-top:18px;min-width:0}
+.ux-section-nav{display:flex;align-items:center;gap:5px;padding:8px;background:#fffffff5;border:1px solid #dfe6ef;border-radius:12px;position:sticky;top:calc(var(--ux-banner-height) + 8px);z-index:35;box-shadow:0 4px 16px #1e395b0a;overflow-x:auto;scrollbar-width:thin}
+.ux-section-link{display:flex;align-items:center;justify-content:center;flex:1 0 auto;gap:8px;padding:10px 12px;text-decoration:none;color:#536680;border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap}
+.ux-step-number{font-size:11px;color:#8495ab;letter-spacing:.5px}
+.ux-section-link:hover{background:#f2f6fb;color:#245b9b}
+.ux-section-link[aria-current]{background:#eaf2fc;color:#175baf}
+.ux-section-link[aria-current] .ux-step-number{color:#2773c5}
+.idas-experience .section-card{border-color:#dfe6ee;border-radius:15px;box-shadow:0 3px 14px #1c365406}
+.idas-experience .section-head{padding:21px 24px!important;background:#fff!important;align-items:center}
+.idas-experience .section-title{font-size:17px!important;color:#203955;line-height:1.5}
+.idas-experience .section-title[data-step]::before{content:attr(data-step);display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-right:10px;border-radius:8px;background:#edf3fa;color:#3972a9;font:600 12px/1 "Segoe UI",sans-serif;vertical-align:middle}
+.idas-experience .section-body{padding:22px 24px}
+.idas-experience .section-hint{font-size:13px;line-height:1.65;color:#66788e}
+.ux-context-help{margin:0!important;padding:11px 24px;background:#f8fafd;border-bottom:1px solid #e9eef5;color:#61748e;font-size:12px;line-height:1.7}
+.ux-section{scroll-margin-top:var(--ux-scroll-offset)}
+.ux-section:focus{outline:none}
+.ux-section:focus-visible{outline:3px solid #7daee8;outline-offset:4px}
+.idas-experience .btn{min-height:42px;font-weight:600;letter-spacing:.1px;border-radius:9px;transition:background .16s,border-color .16s,box-shadow .16s,transform .12s}
+.idas-experience .btn-primary{background:#246abd;border-color:#246abd;box-shadow:0 3px 7px #246abd14}
+.idas-experience .btn-primary:hover:not(:disabled){background:#1b58a1;border-color:#1b58a1;box-shadow:0 4px 12px #246abd24}
+.idas-experience .btn-secondary{color:#3b526f;border-color:#d4deea;background:#fff}
+.idas-experience .btn-secondary:hover:not(:disabled){background:#f0f5fb;border-color:#a9c1dd}
+.idas-experience .btn:disabled{cursor:not-allowed;opacity:.48;transform:none}
+.idas-experience :is(button,a,input,textarea,select,summary):focus-visible{outline:3px solid #83b4ed;outline-offset:3px}
+.idas-experience :is(input[type="text"],input[type="url"],select){min-height:46px;border-color:#cedbea;border-radius:9px}
+.idas-experience input:disabled{background:#eef2f6;color:#697a8f}
+.idas-experience .mes-endpoint-row{background:#f9fbfd;border-color:#e3eaf2;padding:17px 18px;border-radius:11px}
+.idas-experience .mes-endpoint-label{color:#3d5470;font-size:13px}
+.idas-experience .mes-url-input{font:14px/1.6 Consolas,"SFMono-Regular",monospace}
+.idas-experience #mesSettingsLockHint:not(:empty){padding:10px 12px;border:1px solid #e1e9f3;border-radius:8px;background:#f7faff}
+.idas-experience .mes-save-row{gap:10px;padding-top:18px;margin-top:18px}
+.idas-experience #barcodeRecipeTest .target-row{grid-template-columns:minmax(160px,1fr) auto auto;gap:12px}
+.idas-experience #barcodeTestStatus:not(:empty){padding:12px 15px;border:1px solid #dce7f4;border-radius:9px;background:#f3f8ff;color:#33577e;white-space:pre-wrap;font-size:13px}
+.idas-experience #barcodeTestResults details{border:1px solid #e0e8f2;border-radius:9px;overflow:hidden}
+.idas-experience #barcodeTestResults summary{padding:12px 15px;background:#f8fafd;font-size:13px;font-weight:600;color:#3d5d81;cursor:pointer}
+.idas-experience #barcodeTestResults pre{border-radius:0!important;margin:0;background:#fff!important;color:#25415f;font-size:13px}
+.idas-experience .barcode-card{background:#f7fafd}
+.idas-experience .barcode-value{font-size:28px!important;border-radius:11px;box-shadow:0 2px 8px #23568c05}
+.idas-experience .mini-stat,.idas-experience .config-stat{background:#f7fafd;border-color:#e2eaf3;border-radius:10px}
+.idas-experience .mini-stat-label,.idas-experience .config-stat .label{color:#688099;font-size:12px;text-transform:none;letter-spacing:0}
+.idas-experience .config-stat .value{font-size:26px;color:#245c96}
+.idas-experience #editorShell{border-radius:11px;border-color:#d7e2ee}
+.idas-experience #jsonBody{height:380px!important;min-height:240px!important;font-size:14px!important;line-height:1.7!important;background:#fcfdff!important}
+.idas-experience .editor-toolbar{background:#f3f7fc!important}
+.idas-experience .job-switch-fields{max-width:none}
+.idas-experience .job-switch-field{background:#f8fafd;border-color:#e0e8f2}
+.idas-experience .ux-action-section .deployment-grid{grid-template-columns:1fr;gap:18px}
+.idas-experience .ux-action-section .polished-actions{justify-content:flex-start;gap:10px}
+.idas-experience .ux-action-section #previewButton{margin-left:auto;background:#edf4fd;color:#225c9e;border-color:#d0e1f6}
+.idas-experience .ux-action-section #sendButton{min-width:150px}
+.ux-action-dock{position:fixed;z-index:80;bottom:14px;left:50%;transform:translateX(-50%);width:min(1280px,calc(100% - 32px));display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 20px;background:#fffffffa;border:1px solid #ccdbea;border-radius:13px;box-shadow:0 8px 36px #183b6122}
+.ux-dock-copy{display:grid;gap:4px;min-width:0}
+.ux-dock-copy>strong{font-size:12px;font-weight:600;color:#536a86;line-height:1.55}
+.ux-dock-status{font-size:12px;color:#6a7f99;white-space:pre-wrap;overflow-wrap:anywhere;max-height:3.2em;overflow:auto}
+.ux-dock-status[data-state="error"]{color:#b33a32}
+.ux-dock-status[data-state="success"]{color:#217549}
+.ux-dock-controls{display:flex;gap:10px;flex-shrink:0}
+.ux-action-dock .btn{min-height:46px;padding:10px 22px;font-size:14px}
+.ux-action-dock.is-working #uxWriteController::before{content:"";height:13px;width:13px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:ux-spin .8s linear infinite}
+.ux-back-top{justify-self:end;color:#536f90;text-decoration:none;padding:8px 4px;font-size:13px}
+.ux-back-top:hover{text-decoration:underline}
+.idas-experience .upload-history-table{font-size:13px;min-width:900px}
+.idas-experience .upload-history-table th{font-size:12px;color:#61758d;background:#f5f8fc;padding:14px 18px}
+.idas-experience .upload-history-table td{padding:15px 18px;line-height:1.65}
+.idas-experience .upload-history-table td:last-child{min-width:260px}
+.idas-experience .upload-history-table .btn{min-height:36px;font-size:12px;padding:7px 11px}
+.idas-experience .upload-status{border-radius:6px;padding:5px 9px;font-size:12px}
+.idas-experience .upload-status.is-test{background:#fff4dc;color:#8a611d}
+.idas-experience .upload-pagination{padding:16px 20px;background:#fcfdff}
+.idas-experience .overall-result{font-size:14px;border-radius:9px;padding:14px 16px}
+.idas-experience .response-title{background:#edf3fa;color:#365575;padding:15px 20px}
+.idas-experience #response{background:#f9fbfe;color:#2e4765;font-size:13px;line-height:1.75}
+.idas-experience #mesPayloadPreviewDialog{width:min(980px,calc(100% - 32px))!important;border-radius:16px!important;border-color:#d3deec!important;box-shadow:0 24px 80px #16365540!important}
+.idas-experience #mesPayloadPreviewDialog::backdrop{background:#152d4d60}
+.idas-experience #mesPayloadPreviewDialog>div:first-child{background:#f5f8fc!important;padding:18px 22px!important}
+.idas-experience #mesPayloadPreviewBody{font-size:14px!important;line-height:1.75!important;padding:20px 24px!important;max-height:48vh!important}
+@keyframes ux-spin{to{transform:rotate(360deg)}}
+@media(min-width:1500px){.idas-experience .page{width:min(1360px,calc(100% - 80px))}.ux-action-dock{width:min(1360px,calc(100% - 64px))}}
+@media(max-width:1000px){.idas-experience .page{width:calc(100% - 28px);margin-top:16px}.idas-experience .hero{padding:20px 22px}.ux-section-link{padding:10px 9px;font-size:12px}.ux-step-number{display:none}.ux-action-dock{padding:12px 16px}.ux-dock-copy>strong{max-width:440px}.ux-action-dock .btn{padding:10px 17px}}
+@media(max-width:760px){.idas-experience .page{width:100%;margin:0}.idas-experience .hero{border-radius:0;padding:22px 18px}.idas-experience .hero-top{align-items:flex-start}.idas-experience .hero h1{font-size:20px}.idas-experience .hero .subtitle{font-size:12px}.idas-experience .page-language-control{flex-direction:column;align-items:flex-end;gap:5px}.idas-experience .page-language-select{min-width:116px;max-width:140px}.ux-overview{gap:12px;margin-top:18px}.ux-overview-cell strong{font-size:12px}.ux-overview-label{font-size:11px}.idas-experience .content{padding:12px;gap:16px}.ux-section-nav{margin:0 -2px;padding:6px;gap:2px;top:var(--ux-banner-height);border-radius:9px}.ux-section-link{flex:0 0 auto;padding:10px 12px}.idas-experience .section-head,.idas-experience .section-body{padding:18px!important}.ux-context-help{padding:10px 18px}.idas-experience #barcodeRecipeTest .target-row{grid-template-columns:1fr 1fr}.idas-experience #barcodeRecipeTest .target-field{grid-column:1/-1}.idas-experience #barcodeRecipeTest .target-row>.btn{width:100%;white-space:normal;min-height:46px}.ux-action-dock{width:calc(100% - 20px);bottom:10px;padding:12px;gap:10px;align-items:stretch;flex-direction:column}.ux-dock-copy>strong{max-width:none;font-size:11px}.ux-dock-status{max-height:1.7em;font-size:11px}.ux-dock-controls{width:100%}.ux-dock-controls .btn{flex:1;min-width:0;font-size:13px;white-space:normal;padding:10px 8px}.idas-experience .ux-action-section #previewButton{margin-left:0}.idas-experience .ux-action-section .polished-actions>.btn{flex:1 1 130px}.idas-experience .upload-history-table td:last-child{min-width:230px}.idas-experience #jsonBody{height:330px!important;font-size:13px!important}.idas-experience #mesPayloadPreviewBody{font-size:13px!important;padding:18px!important}.idas-experience #mesPayloadPreviewDialog{width:calc(100% - 20px)!important}.idas-experience .barcode-value{font-size:24px!important}}
+@media(max-width:420px){.ux-overview{grid-template-columns:1fr 1fr}.ux-overview-cell:last-child{grid-column:1/-1}.idas-experience .hero-top{gap:10px}.idas-experience .hero h1{font-size:18px}.idas-experience .page-language-select{min-width:106px;padding-left:8px;font-size:13px}.idas-experience .section-title{font-size:16px!important}.idas-experience .section-title[data-step]::before{width:26px;height:26px;margin-right:8px}.idas-experience #barcodeRecipeTest .target-row{grid-template-columns:1fr}.idas-experience .config-stat .value{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.idas-experience *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+@media print{.ux-section-nav,.ux-action-dock,.ux-back-top{display:none!important}.idas-experience .page{width:100%;padding-bottom:0}}
+
+/* Recipe feedback, field errors and the existing confirmation dialog. */
+.idas-experience .config-summary{scroll-margin-top:var(--ux-scroll-offset,160px)}
+.idas-experience .ux-recipe-loaded{animation:ux-recipe-feedback 2.4s ease-out}
+@keyframes ux-recipe-feedback{0%,35%{background:#e1f3e9;box-shadow:0 0 0 3px #78bb98}100%{box-shadow:0 0 0 0 transparent}}
+.idas-experience .ux-input-error{border-color:#c93636!important;box-shadow:0 0 0 3px #c936361a!important}
+.idas-experience .ux-field-error{color:#a52323;font-size:14px;line-height:1.6;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.idas-experience .ux-field-error[hidden]{display:none}
+.idas-experience .ux-write-confirm{line-height:1.9;max-height:55vh;overflow:auto;overflow-wrap:anywhere;padding:8px 2px}
+@media(prefers-reduced-motion:reduce){.idas-experience .ux-recipe-loaded{animation:none;background:#e1f3e9;outline:3px solid #78bb98}}
+
+.idas-experience .ux-write-dialog{box-sizing:border-box;width:min(560px,calc(100vw - 28px));max-height:calc(100dvh - 32px);padding:0;border:1px solid #d8e3ef;border-radius:18px;background:#fff;color:#263c58;box-shadow:0 20px 60px #162a4438;overflow:auto}
+.idas-experience .ux-write-dialog::backdrop{background:rgba(16,28,45,.48)}
+.idas-experience .ux-write-dialog h2{font-size:19px;margin:0;padding:22px 24px 12px;text-align:center}
+.idas-experience .ux-write-dialog .ux-write-confirm{white-space:pre-wrap;padding:4px 24px 22px;max-height:55vh;line-height:1.8}
+.idas-experience .ux-confirm-actions{display:flex;justify-content:flex-end;gap:12px;padding:16px 24px;background:#f7f9fc;border-top:1px solid #e1e8f1}
+.idas-experience .ux-confirm-actions button{min-width:104px}

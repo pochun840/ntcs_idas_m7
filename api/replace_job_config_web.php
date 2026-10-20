@@ -71,6 +71,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
   <link rel="stylesheet" href="<?php echo h($idasBaseUrl); ?>/public/css/replace_job_config_web.css?v=<?php echo h($assetVersion); ?>">
   <link rel="stylesheet" href="<?php echo h($idasBaseUrl); ?>/public/css/replace_job_config_polish.css?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/css/replace_job_config_polish.css'); ?>">
 
+  <link rel="stylesheet" href="<?php echo h($idasBaseUrl); ?>/public/css/replace_job_config_experience.css?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/css/replace_job_config_experience.css'); ?>">
 </head>
 <body>
 <?php require __DIR__.'/mes_mode_banner.php'; ?>
@@ -433,5 +434,6 @@ window.IDAS_JOB_CONFIG_UI = <?php echo json_encode([
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_json_ui.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_json_ui.js'); ?>"></script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_operation_monitor.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_operation_monitor.js'); ?>"></script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/barcode_recipe_test.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/barcode_recipe_test.js'); ?>"></script>
+<script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_experience.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_experience.js'); ?>"></script>
 </body>
 </html>

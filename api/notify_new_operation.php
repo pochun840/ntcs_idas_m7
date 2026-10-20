@@ -19,5 +19,5 @@ try {
     flock($lock,LOCK_UN);fclose($lock);operationNotifyReply(200,$result);
 } catch (Throwable $e) {
     error_log('[idas_operation_notify] '.$e->getMessage());
-    operationNotifyReply(503,['ok'=>false,'id'=>$id,'mes_uploaded'=>false,'message'=>$e->getMessage()]);
+    operationNotifyReply($e->getCode()===409?409:503,['ok'=>false,'id'=>$id,'mes_uploaded'=>false,'message'=>$e->getMessage()]);
 }

@@ -1,0 +1,6 @@
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Internal rewrites preserve the HTTP method and JSON request body.
+RewriteRule ^device/disable/?$ disable.php [L]
+RewriteRule ^device/enable/?$ enable.php [L]
+</IfModule>

@@ -104,7 +104,9 @@
   }
 
   function refreshJsonTimeFromComputer() {
-    const data = applyComputerTime(JSON.parse(body.value));
+    let data;
+    try { data = applyComputerTime(JSON.parse(body.value)); }
+    catch (error) { locateInputError(body, T.json_invalid + error.message); throw error; }
     body.value = JSON.stringify(data, null, 2);
     saveJsonDraftNow();
     updateCounts();
@@ -159,7 +161,9 @@
     try { window.localStorage.removeItem(JSON_DRAFT_STORAGE_KEY); } catch (error) {}
     body.value = defaultJsonText;
     try {
-      const data = applyComputerTime(JSON.parse(body.value));
+      let data;
+    try { data = applyComputerTime(JSON.parse(body.value)); }
+    catch (error) { locateInputError(body, T.json_invalid + error.message); throw error; }
       body.value = JSON.stringify(data, null, 2);
     } catch (error) {}
     jsonDirty = true;
@@ -758,7 +762,39 @@
     }
   }
 
+  function locateInputError(field, message) {
+    if (!field) return;
+    if (field === body) {
+      const toggle = document.getElementById('editorToggleButton');
+      if (toggle && toggle.getAttribute('aria-expanded') === 'false') toggle.click();
+    }
+    field.classList.add('ux-input-error');
+    field.setAttribute('aria-invalid', 'true');
+    let hint = document.getElementById('ux-error-' + field.id);
+    if (!hint) {
+      hint = document.createElement('p'); hint.id = 'ux-error-' + field.id;
+      hint.className = 'ux-field-error'; hint.setAttribute('role', 'status');
+      field.insertAdjacentElement('afterend', hint);
+      const previous = field.getAttribute('aria-describedby') || '';
+      field.setAttribute('aria-describedby', (previous + ' ' + hint.id).trim());
+      field.addEventListener('input', function () {
+        field.classList.remove('ux-input-error'); field.removeAttribute('aria-invalid'); hint.hidden = true;
+      });
+      field.addEventListener('change', function () {
+        field.classList.remove('ux-input-error'); field.removeAttribute('aria-invalid'); hint.hidden = true;
+      });
+    }
+    hint.textContent = message; hint.hidden = false;
+    field.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center'});
+    field.focus({preventScroll: true});
+  }
+
   function showUnifiedNotice(title, message, type) {
+    if (type === 'error') {
+      if (String(message).indexOf(T.json_invalid) === 0) locateInputError(body, message);
+      else if (message === T.target_required) locateInputError(deploymentMode === 'multi' ? targetIps : singleTargetIp, message);
+      else if (message === switchText.invalid) locateInputError(!switchJob.value ? switchJob : switchSeq, message);
+    }
     const noticeKey=String(type)+'|'+String(title)+'|'+String(message);
     if(noticeKey===lastNoticeKey && Date.now()-lastNoticeAt<2000)return true;
     lastNoticeKey=noticeKey;lastNoticeAt=Date.now();
@@ -776,23 +812,38 @@
     const readyCount = precheck ? Number(precheck.readyCount || 0) : targetList.length;
     const skippedCount = Math.max(0, targetList.length - readyCount);
     let message = T.confirm_message;
+    message += '\n\nIP: ' + targetList.join(', ');
     message += '\n\n' + T.target_count + ': ' + targetList.length;
     message += '\n' + T.confirm_ready + ': ' + readyCount;
     message += '\n' + T.confirm_skipped + ': ' + skippedCount;
     message += '\nJOB: ' + counts.jobs + ' / SEQ: ' + counts.sequences + ' / STEP: ' + counts.steps;
     message += '\n' + switchText.title + ': JOB ' + switchJob.value + ' / SEQ ' + switchSeq.value;
     if (precheck && !precheck.allReady) message += '\n\n' + T.partial_ready;
-    if (window.alertify && typeof window.alertify.confirm === 'function') {
-      return new Promise(function (resolve) {
-        const dialog = window.alertify.confirm(T.confirm_title, message,
-          function () { resolve(true); },
-          function () { resolve(false); }
-        );
-        dialog.set('labels', {ok: T.confirm_ok, cancel: T.cancel});
-      });
-    }
-    showUnifiedNotice(T.error, T.common_notice_failed, 'error');
-    return Promise.resolve(false);
+    return new Promise(function (resolve) {
+      // A page-owned dialog avoids shared Alertify lifecycle state.
+      const modal = document.createElement('dialog');
+      modal.className = 'ux-write-dialog';
+      modal.setAttribute('aria-labelledby', 'ux-write-dialog-title');
+      const title = document.createElement('h2'); title.id = 'ux-write-dialog-title'; title.textContent = T.confirm_title;
+      const summary = document.createElement('div'); summary.className = 'ux-write-confirm'; summary.textContent = message;
+      const actions = document.createElement('div'); actions.className = 'ux-confirm-actions';
+      const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn btn-secondary'; cancel.textContent = T.cancel;
+      const accept = document.createElement('button'); accept.type = 'button'; accept.className = 'btn btn-primary'; accept.textContent = T.confirm_ok;
+      actions.append(cancel, accept); modal.append(title, summary, actions); document.body.append(modal);
+      let settled = false;
+      const finish = function (confirmed) {
+        if (settled) return; settled = true;
+        if (modal.open) modal.close();
+        modal.remove();
+        resolve(confirmed === true);
+      };
+      cancel.addEventListener('click', function () { finish(false); });
+      accept.addEventListener('click', function () { finish(true); });
+      modal.addEventListener('cancel', function (event) { event.preventDefault(); finish(false); });
+      modal.addEventListener('close', function () { finish(false); });
+      try { modal.showModal(); cancel.focus(); }
+      catch (error) { finish(false); showUnifiedNotice(T.error, T.common_notice_failed, 'error'); }
+    });
   }
 
   function updateRetryTargets(batchData) {
@@ -833,7 +884,11 @@
         showStatus(T.no_ready, 'error');
         return;
       }
-      if (!(await confirmWrite(effectivePrecheck, targets, payload))) return;
+      if (!(await confirmWrite(effectivePrecheck, targets, payload))) {
+        const cancelled = {'zh-tw':'已取消寫入，未變更控制器。','zh-cn':'已取消写入，未更改控制器。','en-us':'Write cancelled. No controller changes were made.'};
+        showStatus(cancelled[config.language] || cancelled['zh-cn'], '');
+        return;
+      }
 
       const result = await callRemoteApi(Object.assign({api_version:apiVersion, action:'write', targets:targets}, payload));
       const responseData = result.data;

@@ -15,13 +15,17 @@ const metrics=element('div','',box);metrics.style.cssText='display:flex;flex-wra
 const fields={};for(const [key,label] of [['checked',t[3]],['id',t[4]],['pending',t[5]],['uncertain',t[7]]]){const cell=element('span',label+'：',metrics);fields[key]=element('strong','—',cell);}
 const detail=element('div','',box);detail.style.cssText='margin-top:10px;white-space:normal';
 element('small',t[8],box).style.cssText='display:block;margin-top:8px;color:#657184';
+const batchNotice=element('div','',box);batchNotice.style.cssText='margin-top:8px;color:#865819';
 let timer=null,active=false,stopped=false,repeatSoon=false;
 function showResult(r){
  if(!r)return;
- const message=r.status==='failed'?t[9]+'：'+r.message:r.message==='test_skipped'||r.message==='duplicate_test'?t[10]:r.message==='existing_history'||r.message==='duplicate'?t[12]:t[11];
+ const collecting={'zh-tw':'產品紀錄累積中，尚未上傳 MES','zh-cn':'产品记录累积中，尚未上传 MES','en-us':'Accumulating product records; not uploaded to MES'};
+ const message=r.status==='pending'?t[13]:r.message==='accumulating'?(collecting[config.language]||collecting['zh-cn']):r.status==='failed'?t[9]+'：'+r.message:r.message==='test_skipped'||r.message==='test_product_saved'||r.message==='duplicate_test'?t[10]:r.message==='existing_history'||r.message==='duplicate_product'||r.message==='duplicate'?t[12]:t[11];
  detail.textContent='ID '+(r.id||r.record_id)+' · '+message;detail.style.color=r.status==='failed'?'#a12622':'#275c41';
 }
 function update(data){
+ const needsCount={'zh-tw':'產品計數尚待實機核對；真實鎖附紀錄暫不封包上傳，假資料測試仍可使用。','zh-cn':'产品计数尚待实机核对；真实锁附记录暂不封包上传，模拟数据测试仍可使用。','en-us':'Product counter verification is pending. Real tightening records will not be sealed or uploaded yet. Sample testing remains available.'};
+ batchNotice.textContent=data.product_counter_verified===false?(needsCount[config.language]||needsCount['zh-cn']):'';
  if(typeof data.test_mode==='boolean')window.dispatchEvent(new CustomEvent('idas-mes-mode',{detail:{test_mode:data.test_mode}}));
  status.textContent=data.busy?t[13]:t[1];status.style.color=data.busy?'#7a5c18':'#275c41';
  const m=data.monitor;

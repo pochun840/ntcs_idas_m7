@@ -1,6 +1,6 @@
 <?php
 $barcodeTestText = [
- 'zh-tw'=>['mockSend'=>'使用假資料測試','mockOk'=>'假資料轉換成功，假工單已另外保存；可載入下方 JSON，尚未寫入控制器。',
+ 'zh-tw'=>['mockSend'=>'使用假資料測試','mockOk'=>'已產生條碼及模擬鎖附上傳紀錄，可至鎖附上傳紀錄查看華榮格式；未送 MES、未寫入控制器。',
   'title'=>'條碼配方測試','hint'=>'先儲存上方 MES API 設定，再送出條碼。此操作會保存工單，不會寫入控制器。',
   'barcode'=>'測試條碼','send'=>'送出條碼／取得配方','load'=>'載入下方配方 JSON','pending'=>'正在取得 MES 配方…',
   'empty'=>'請輸入條碼','ok'=>'已取得配方並保存工單，可載入下方 JSON 預覽。',
@@ -11,7 +11,7 @@ $barcodeTestText = [
   'confirm'=>'要以這次取得的配方取代下方 JSON 嗎？此操作不會寫入控制器。','loaded'=>'已載入配方，請確認目標控制器 IP，再使用既有預覽／寫入功能。',
   'mode'=>'測試模式可用「假資料測試」驗證轉換，不會呼叫 MES；真實對接請切換正式模式並使用 MES 測試環境。','missing'=>'回應未包含有效的 job_config，請確認已覆蓋後端異動檔案。'
  ],
- 'zh-cn'=>['mockSend'=>'使用模拟数据测试','mockOk'=>'模拟数据转换成功，模拟工单已单独保存；可载入下方 JSON，尚未写入控制器。',
+ 'zh-cn'=>['mockSend'=>'使用模拟数据测试','mockOk'=>'已生成条码及模拟拧紧上传记录，可到锁附上传记录查看华荣格式；未发送 MES、未写入控制器。',
   'title'=>'条码配方测试','hint'=>'先保存上方 MES API 设置，再提交条码。此操作会保存工单，不会写入控制器。',
   'barcode'=>'测试条码','send'=>'提交条码／获取配方','load'=>'载入下方配方 JSON','pending'=>'正在获取 MES 配方…',
   'empty'=>'请输入条码','ok'=>'已获取配方并保存工单，可载入下方 JSON 预览。',
@@ -22,7 +22,7 @@ $barcodeTestText = [
   'confirm'=>'要以本次获取的配方替换下方 JSON 吗？此操作不会写入控制器。','loaded'=>'已载入配方，请确认目标控制器 IP，再使用现有预览／写入功能。',
   'mode'=>'测试模式可用「模拟数据测试」验证转换，不会调用 MES；真实对接请切换正式模式并使用 MES 测试环境。','missing'=>'回应未包含有效的 job_config，请确认已覆盖后端变更文件。'
  ],
- 'en-us'=>['mockSend'=>'Test with sample data','mockOk'=>'Sample recipe converted and saved separately. Load it into the editor; no controller write has occurred.',
+ 'en-us'=>['mockSend'=>'Test with sample data','mockOk'=>'Barcode and sample tightening upload logs created. View the HuaRong JSON in tightening history. Nothing was sent to MES or written to a controller.',
   'title'=>'Barcode recipe test','hint'=>'Save the MES API settings above before submitting. This saves the work order without writing to the controller.',
   'barcode'=>'Test barcode','send'=>'Submit barcode / get recipe','load'=>'Load recipe into JSON editor','pending'=>'Retrieving MES recipe…',
   'empty'=>'Enter a barcode.','ok'=>'Recipe received and work order saved. Load the recipe into the editor to preview it.',

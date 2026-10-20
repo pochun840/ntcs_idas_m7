@@ -55,6 +55,11 @@
       if (!validRecipe(body.job_config)) { status.textContent = t.missing; return; }
       recipe = body.job_config; load.disabled = false;
       status.textContent = body.mock ? t.mockOk : (body.work_order_context ? t.ok : t.unknown);
+      const preview = document.getElementById('barcodeTest_recipe');
+      if (preview) {
+        const detail = preview.closest('details'); if (detail) detail.open = true;
+        preview.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center'});
+      }
     } catch (_) { status.textContent = t.network; }
     finally { clearTimeout(timer); busy = false; send.disabled = false; mock.disabled = false; input.disabled = false; }
   });
@@ -78,8 +83,15 @@
       editor.dispatchEvent(new Event('input', {bubbles: true}));
       const toggle = document.getElementById('editorToggleButton');
       if (toggle && toggle.getAttribute('aria-expanded') === 'false') toggle.click();
-      editor.scrollIntoView({behavior: 'smooth', block: 'center'});
-      editor.focus({preventScroll: true});
+      const card = editor.closest('.recipe-json-card');
+      const summary = card && card.querySelector('.config-summary');
+      const destination = summary || card || editor;
+      destination.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'});
+      destination.setAttribute('tabindex', '-1'); destination.focus({preventScroll: true});
+      destination.classList.remove('ux-recipe-loaded');
+      void destination.offsetWidth;
+      destination.classList.add('ux-recipe-loaded');
+      setTimeout(() => destination.classList.remove('ux-recipe-loaded'), 2400);
       status.textContent = t.loaded;
     } finally { load.disabled = busy || !recipe; }
   });

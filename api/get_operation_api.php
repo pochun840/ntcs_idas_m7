@@ -43,6 +43,16 @@ if (array_key_exists('id', $_GET)) {
     }
 }
 
+// Product aggregation reads a bounded ascending interval; legacy queries stay unchanged.
+$after=null;$through=null;
+if (isset($_GET['after_id']) || isset($_GET['through_id'])) {
+    $after=is_string($_GET['after_id'] ?? null)?filter_var($_GET['after_id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]):false;
+    $through=is_string($_GET['through_id'] ?? null)?filter_var($_GET['through_id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]):false;
+    if ($id!==null || $after===false || $through===false || $through<=$after) {
+        http_response_code(400);header('Content-Type: application/json; charset=utf-8');echo json_encode(['ok'=>false,'message'=>'Invalid operation interval']);exit;
+    }
+}
+
 $rawLimit = $_GET['limit'] ?? '100';
 $limit = is_string($rawLimit) ? filter_var($rawLimit, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]) : false;
 if ($limit === false) $limit = 100;
@@ -59,7 +69,10 @@ try {
     $db_data->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db_data->exec('PRAGMA busy_timeout=5000');
     $db_data->exec('PRAGMA query_only=ON');
-    if ($id !== null) {
+    if ($after!==null) {
+        $statement=$db_data->prepare('SELECT * FROM ntcs_data WHERE id>:after AND id<=:through ORDER BY id ASC LIMIT 500');
+        $statement->bindValue(':after',$after,PDO::PARAM_INT);$statement->bindValue(':through',$through,PDO::PARAM_INT);
+    } elseif ($id !== null) {
         $statement = $db_data->prepare('SELECT * FROM ntcs_data WHERE id = :id LIMIT 1');
         $statement->bindValue(':id', $id, PDO::PARAM_INT);
     } else {

@@ -85,7 +85,7 @@ final class OperationPageMonitorService
             if (!$already) {
                 $stmt=$state->prepare("UPDATE queue SET status='sending',updated_at=? WHERE record_id=?");$stmt->execute([date('c'),$id]);$stmt->closeCursor();
                 try {$result=(new OperationMesReportService())->upload($id);$message=(string)($result['status'] ?? 'ok');}
-                catch(Throwable $e) {$status='failed';$message=$e->getMessage();error_log('[idas_operation_page_monitor] id='.$id.' '.$message);}
+                catch(Throwable $e) {$status=$e->getCode()===409?'pending':'failed';$message=$e->getMessage();error_log('[idas_operation_page_monitor] id='.$id.' '.$message);}
             }
             $stmt=$state->prepare('UPDATE queue SET status=?,attempts=?,message=?,updated_at=? WHERE record_id=?');
             $stmt->execute([$status,$attempts,$message,date('c'),$id]);$stmt->closeCursor();
