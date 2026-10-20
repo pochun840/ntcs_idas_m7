@@ -137,8 +137,8 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
     <section class="section-card recipe-json-card"><div class="section-head"><div><div class="section-title"><?php echo h($t['section_configuration']); ?></div><div class="section-hint"><?php echo h($t['json_hint']); ?></div></div></div><div class="section-body config-layout"><div class="config-summary" aria-label="<?php echo h($t['config_summary']); ?>"><div class="config-stat"><span class="label"><?php echo h($t['job_count']); ?></span><span id="jobCount" class="value">0</span></div><div class="config-stat"><span class="label"><?php echo h($t['seq_count']); ?></span><span id="seqCount" class="value">0</span></div><div class="config-stat"><span class="label"><?php echo h($t['step_count']); ?></span><span id="stepCount" class="value">0</span></div></div><div id="editorShell" class="editor-shell"><div class="editor-toolbar"><strong><?php echo h($t['json_title']); ?></strong><div class="toolbar"><input id="jsonFile" type="file" accept="application/json,.json"><label for="jsonFile" class="btn btn-secondary" role="button">↥ <?php echo h($t['choose_file']); ?></label><span id="fileName" class="file-name"><?php echo h($t['no_file']); ?></span><button id="formatButton" class="btn btn-secondary" type="button">{ } <?php echo h($t['format_json']); ?></button><button id="editorToggleButton" class="btn btn-secondary" type="button" aria-expanded="true">▴ <?php echo h($t['collapse_json']); ?></button></div></div><div id="editorBody" class="editor-body"><textarea id="jsonBody" aria-label="<?php echo h($t['json_title']); ?>" spellcheck="false">{
   "JOB_lst": [
     {
-      "JOBID": 1,
-      "JOBname": "JOB-1",
+      "JOBID": 10,
+      "JOBname": "MOCK-JOB10",
       "type": 1,
       "time": "2026-09-11 00:00:00",
       "act": 1,
@@ -151,7 +151,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
   ],
   "SEQ_lst": [
     {
-      "JOBID": 1,
+      "JOBID": 10,
       "SEQID": 1,
       "SEQname": "SEQ-1",
       "type": 0,
@@ -194,7 +194,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
   ],
   "STEP_lst": [
     {
-      "JOBID": 1,
+      "JOBID": 10,
       "SEQID": 1,
       "StepSelect": 1,
       "STEPname": "STEP-1",
@@ -238,7 +238,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
       "step_unit": 1
     },
     {
-      "JOBID": 1,
+      "JOBID": 10,
       "SEQID": 1,
       "StepSelect": 2,
       "STEPname": "STEP-2",
@@ -282,7 +282,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
       "step_unit": 1
     },
     {
-      "JOBID": 1,
+      "JOBID": 10,
       "SEQID": 1,
       "StepSelect": 3,
       "STEPname": "STEP-3",
@@ -326,7 +326,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
       "step_unit": 1
     },
     {
-      "JOBID": 1,
+      "JOBID": 10,
       "SEQID": 1,
       "StepSelect": 4,
       "STEPname": "STEP-4",
@@ -370,7 +370,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
       "step_unit": 1
     },
     {
-      "JOBID": 1,
+      "JOBID": 10,
       "SEQID": 1,
       "StepSelect": 5,
       "STEPname": "STEP-5",

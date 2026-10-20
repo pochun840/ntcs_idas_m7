@@ -16,7 +16,10 @@
   const switchResult = document.getElementById('autoSwitchResult');
   const body = document.getElementById('jsonBody');
   const defaultJsonText = body.value;
-  const JSON_DRAFT_STORAGE_KEY = 'idas.replace_job_config.last_json.v1';
+  // Separate the updated five-step sample from legacy browser drafts.
+  // Keep the v1 key intact so previously edited configurations remain recoverable.
+  const JSON_DRAFT_STORAGE_KEY = 'idas.replace_job_config.last_json.v2';
+  let draftSourceNotice = null, loadCurrentSampleButton = null;
   const JSON_DRAFT_MAX_CHARS = 2 * 1024 * 1024;
   let jsonInputTimer = null;
   const file = document.getElementById('jsonFile');
@@ -166,6 +169,8 @@
     catch (error) { locateInputError(body, T.json_invalid + error.message); throw error; }
       body.value = JSON.stringify(data, null, 2);
     } catch (error) {}
+    saveJsonDraftNow();
+    if (draftSourceNotice) draftSourceNotice.remove();
     jsonDirty = true;
     updateCounts();
     showUnifiedNotice(T.success, T.restore_sample_done, 'success');
@@ -233,7 +238,7 @@
 
   function setBusy(value) {
     busy = !!value;
-    [send, previewButton, retryFailedButton, checkTargetsButton, checkTargetsButtonMulti, formatButton, restoreSampleButton, downloadSampleButton, copyApiButton, exportResultJsonButton, exportResultCsvButton].forEach(function (el) { if (el) el.disabled = busy; });
+    [loadCurrentSampleButton, send, previewButton, retryFailedButton, checkTargetsButton, checkTargetsButtonMulti, formatButton, restoreSampleButton, downloadSampleButton, copyApiButton, exportResultJsonButton, exportResultCsvButton].forEach(function (el) { if (el) el.disabled = busy; });
     switchJob.disabled = switchSeq.disabled = busy;
     file.disabled = busy;
     targetIps.disabled = busy;
@@ -948,7 +953,7 @@
   downloadSampleButton.addEventListener('click', function () {
     if (busy) return;
     try {
-      const payload = refreshJsonTimeFromComputer();
+      const payload = applyComputerTime(JSON.parse(defaultJsonText));
       const request = buildApiRequest(payload, 'write');
       const blob = new Blob([JSON.stringify(request, null, 2)], {type: 'application/json;charset=utf-8'});
       const url = URL.createObjectURL(blob);
@@ -1119,6 +1124,22 @@
 
   const draftRestoreState = restoreSavedJsonDraft();
   if (draftRestoreState === 'restored') {
+    const sourceText = {
+      'zh-tw':['目前顯示瀏覽器保留的草稿；不會自動套用新版範例。新版範例：JOB 10／1 SEQ／5 STEP，Thread_Calcu = 31。','載入新版 5 STEP 範例'],
+      'zh-cn':['当前显示浏览器保留的草稿；不会自动应用新版示例。新版示例：JOB 10／1 SEQ／5 STEP，Thread_Calcu = 31。','载入新版 5 STEP 示例'],
+      'en-us':['Showing your saved browser draft. The updated sample is not applied automatically. New sample: JOB 10 / 1 SEQ / 5 STEP, Thread_Calcu = 31.','Load updated 5 STEP sample']
+    }[config.language] || ['Showing your saved browser draft. New sample: JOB 10 / 1 SEQ / 5 STEP, Thread_Calcu = 31.','Load updated 5 STEP sample'];
+    draftSourceNotice = document.createElement('div');
+    draftSourceNotice.id = 'jsonDraftSourceNotice';
+    draftSourceNotice.style.cssText = 'padding:12px 16px;margin:0 0 16px;border:1px solid #e8c87b;border-radius:8px;background:#fff8e7;color:#704e13;display:flex;align-items:center;flex-wrap:wrap;gap:12px';
+    const message = document.createElement('span'); message.textContent = sourceText[0];
+    loadCurrentSampleButton = document.createElement('button');
+    loadCurrentSampleButton.type = 'button';loadCurrentSampleButton.className = 'btn btn-secondary';
+    loadCurrentSampleButton.textContent = sourceText[1];
+    loadCurrentSampleButton.addEventListener('click', function () {if (!busy) restoreBuiltInSample();});
+    draftSourceNotice.append(message, loadCurrentSampleButton);
+    const summary = document.querySelector('.config-summary');
+    if (summary) summary.before(draftSourceNotice);
     updateCounts();
   } else {
     try {
