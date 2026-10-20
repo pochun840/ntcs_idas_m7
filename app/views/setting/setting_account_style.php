@@ -526,33 +526,4 @@
     background: #dddddd;
     color: #000000;
 }
-
-/* PC account layout; touch/mobile layout remains unchanged. */
-#accountPcSelection { display:none; }
-@media (min-width:769px) and (hover:hover) and (pointer:fine) {
- #AccountDisplay.setting-account-page { min-height:0; padding-bottom:16px; }
- #AccountDisplay #style-accounttable { height:auto; min-height:0; max-height:max(120px,calc(100vh - 340px)); }
- #AccountDisplay .account-footer { position:static; width:96%; margin:0 auto; padding:14px 0; background:white; }
- #AccountDisplay .account-footer .buttonbox { flex-wrap:wrap; gap:12px; }
- #AccountDisplay .account-footer .buttonbox input { height:44px; font-family:inherit; font-size:18px; }
- #AccountDisplay #accountPcSelection { display:block; text-align:left; margin:0 0 10px; color:#245783; font-size:16px; font-weight:600; }
- #AccountDisplay #account_user_table tbody tr.account-user-row { cursor:pointer; }
- #AccountDisplay #account_user_table tbody tr.selected td { background:#dcecff!important; color:#173d66; font-weight:700; }
- #AccountDisplay #account_user_table tbody tr.selected td:first-child { box-shadow:inset 5px 0 #2878ba; }
- #AccountDisplay .account-footer input:disabled { opacity:.4; cursor:not-allowed; }
- #AccountDisplay #account_upload_controller_btn { background:#28689d; border-color:#28689d; }
- #AccountDisplay #accountSyncStatusText { border-radius:12px; padding:3px 10px; background:#edf1f5; }
- #AccountDisplay #accountSyncStatusText[data-state="success"] { color:#17643a; background:#e5f4eb; }
- #AccountDisplay #accountSyncStatusText[data-state="pending"], #AccountDisplay #accountSyncStatusText[data-state="syncing"] { color:#875600; background:#fff2d6; }
- #AccountDisplay #accountSyncStatusText[data-state="failed"] { color:#a22b2b; background:#fde9e9; }
- #AccountDisplay .account-qrcode-btn { font-family:inherit; font-size:15px; min-width:132px!important; }
-}
-@media (min-width:769px) and (hover:hover) and (pointer:fine) {
- #AccountDisplay #account_user_table tbody tr.account-saved-highlight td {
-    background:#e3f5e8!important; color:#195c35; transition:background-color .25s;
- }
- #AccountDisplay #account_user_table tbody tr.account-saved-highlight td:first-child {
-    box-shadow:inset 5px 0 #2c9754;
- }
-}
 </style>

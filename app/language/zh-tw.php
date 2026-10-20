@@ -1230,38 +1230,3 @@ $text['audit_loading'] = '載入中...';
 
 $text['account_text'] = '帳號';
 }
-
-// Account API messages: keep placeholders for formatted responses.
-$text['account_only_admin'] = '只有 admin 可以使用帳號設定。';
-$text['account_cannot_be_empty_suffix'] = '不可空白。';
-$text['account_only_allows_suffix'] = '只允許 A-Z、a-z、0-9。';
-$text['account_username_rule_suffix'] = '必須為 6～8 個英數字元。';
-$text['account_password_rule_suffix'] = '必須為 4 碼數字。';
-$text['account_table_not_found'] = '找不到 user 資料表。';
-$text['account_upload_controller_linux_only'] = '僅支援在 Linux 同步到控制器。';
-$text['account_upload_controller_source_missing'] = '找不到 iDAS 資料庫：{path}';
-$text['account_upload_controller_target_missing'] = '找不到控制器資料庫：{path}';
-$text['account_upload_controller_target_not_writable'] = '控制器資料庫或資料夾無法寫入：{path}';
-$text['account_upload_controller_empty'] = '帳號資料為空，已取消同步。';
-$text['account_upload_controller_backup_failed'] = '備份控制器資料庫失敗：{path}';
-$text['account_upload_controller_success'] = '同步到控制器成功，共 {rows} 筆。';
-$text['account_upload_controller_failed'] = '同步到控制器失敗：{error}';
-$text['account_cannot_open_csv'] = '無法開啟上傳的 CSV 檔案。';
-$text['account_csv_invalid'] = 'CSV 格式錯誤，表頭必須包含 User Name 與 Password。';
-$text['account_username'] = '使用者名稱';
-$text['account_password'] = '密碼';
-$text['account_csv_validation_failed'] = 'CSV 驗證失敗，未匯入任何資料。';
-$text['account_import_result'] = '匯入成功：新增 {inserted} 筆、更新 {updated} 筆、略過 {skipped} 筆。';
-$text['account_import_account_failed'] = '匯入帳號失敗：{error}';
-$text['account_protected_create_action'] = '此帳號受保護，無法新增。';
-$text['account_confirm_diff'] = '兩次輸入的密碼不一致。';
-$text['account_username_exists'] = '帳號已存在。';
-$text['account_new_success'] = '新增帳號成功。';
-$text['account_old_username'] = '原使用者名稱';
-$text['account_protected_save_action'] = '此帳號受保護，無法儲存。';
-$text['account_protected_rename_blocked'] = '內建帳號名稱不可變更。';
-$text['account_not_found'] = '找不到帳號。';
-$text['account_edit_success'] = '編輯帳號成功。';
-$text['account_protected_action'] = '此帳號受保護，無法刪除。';
-$text['account_last_delete_error'] = '不可刪除最後一個帳號。';
-$text['account_delete_account_success'] = '刪除帳號成功。';

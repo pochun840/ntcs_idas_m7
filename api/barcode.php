@@ -41,6 +41,10 @@ if (!is_string($value) || trim($value) === '') {
     barcodeReceiveResponse(400, ['success' => false, 'message' => 'barcode 必須為非空字串']);
 }
 $barcode = trim($value);
+if (array_key_exists('mock_recipe', $body) && !is_bool($body['mock_recipe'])) {
+    barcodeReceiveResponse(400, ['success'=>false,'message'=>'mock_recipe must be a boolean']);
+}
+$mockRecipe = $body['mock_recipe'] ?? false;
 
 // json_encode escapes control characters before they reach the Apache log.
 $loggedBarcode = json_encode($barcode, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -49,6 +53,6 @@ if ($loggedBarcode === false) {
 }
 try {
     require_once dirname(__DIR__) . '/service/BarcodeRecipeFlowService.php';
-    [$http,$result]=(new BarcodeRecipeFlowService())->receive($barcode,'POST');
+    [$http,$result]=(new BarcodeRecipeFlowService())->receive($barcode,'POST',null,$mockRecipe);
     barcodeReceiveResponse($http,$result);
 } catch(Throwable $e) {error_log('[idas_barcode_state] '.$e->getMessage());barcodeReceiveResponse(503,['success'=>false,'message'=>'無法處理接收條碼']);}

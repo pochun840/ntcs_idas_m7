@@ -472,9 +472,9 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                 <button id="data_bnt2" name="Export_Data_Display" class="button<?php echo $download_restricted_class; ?>" onclick="<?php echo htmlspecialchars($export_data_onclick, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo htmlspecialchars($download_restricted_title, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $download_restricted_attr; ?>><?php echo $text['data_export'];?></button>
                 <button id="data_bnt3" name="Export_Data_download" class="button<?php echo $download_restricted_class; ?>" onclick="<?php echo htmlspecialchars($download_chart_onclick, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo htmlspecialchars($download_restricted_title, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $download_restricted_attr; ?>><?php echo $text['download_chart'];?></button>
                 <button id="data_bnt4" name="Customize" class="button hide-mobile<?php echo $download_restricted_class; ?>" onclick="<?php echo htmlspecialchars($customize_onclick, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo htmlspecialchars($download_restricted_title, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $download_restricted_attr; ?>><?php echo $text['customize'];?></button>
-                <button id="data_bnt5" name="Torque_line_chart" class="button hide-mobile"   onclick="OpenButton('Torque_line_chart')"><?php echo $text['tor_line_chart'];?></button>
+                <!--<button id="data_bnt5" name="Torque_line_chart" class="button hide-mobile"   onclick="OpenButton('Torque_line_chart')"><?php echo $text['tor_line_chart'];?></button>-->
                 <?php //if ($is_admin_login) { ?>
-                    <button id="data_bnt7" name="Operation_Audit_Log_Display" class="button operation-audit-top-button" onclick="window.location.href='?url=Data/AuditLog'"><?php echo htmlspecialchars($text['audit_button'] ?? 'operation_audit_log', ENT_QUOTES, 'UTF-8'); ?></button>
+                    <!--<button id="data_bnt7" name="Operation_Audit_Log_Display" class="button operation-audit-top-button" onclick="window.location.href='?url=Data/AuditLog'"><?php echo htmlspecialchars($text['audit_button'] ?? 'operation_audit_log', ENT_QUOTES, 'UTF-8'); ?></button>-->
                 <?php //} ?>
                 <div style="position:absolute;z-index: 9;right: 1px;top: 10px;">
                     <select id="data_select" class="form-select" onchange="DataMode(this)">
@@ -514,8 +514,6 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                                             <th><?php echo $text['column_count']; ?></th>
                                             <th><?php echo $text['column_total']; ?></th>
                                             <th><?php echo $text['system_barcode']; ?></th>
-                                            <th><?php echo $text['user_id']; ?></th>
-                                            <th><?php echo $text['job_cycle_time']; ?></th>
                                             <th><?php echo $text['column_status']; ?></th>
                                         </tr>
                                     </thead>
@@ -700,12 +698,6 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
       });
     }
 
-    function escapeDataCell(value) {
-        return String(value == null ? '' : value).replace(/[&<>"']/g, function(char) {
-            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char];
-        });
-    }
-
     function updateTable(mode, records, unit_arr, status_arr,color_arr) {
         const tbodyId = `res_data_${mode.toLowerCase()}_tbody`;
         const tbody = document.getElementById(tbodyId);
@@ -726,8 +718,6 @@ function renderTableRows($records, $unit_arr, $status_arr, $text) {
                     <td>${row.last_screw_count}</td>
                     <td>${row.total_screw_count}</td>
                     <td>${row.barcode}</td>
-                    <td>${escapeDataCell(row.user_id)}</td>
-                    <td>${escapeDataCell(row.job_cycle_time)}</td>
                     <td class="${row.row_color}">${status_arr[status]}</td>
                 </tr>`;
             tbody.insertAdjacentHTML('beforeend', html);

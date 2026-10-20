@@ -30,10 +30,10 @@ final class OperationMesReportService
         $data->exec('PRAGMA query_only=ON');
         return (int)$data->query('SELECT COALESCE(MAX(id),0) FROM ntcs_data')->fetchColumn();
     }
-    public function saveContext(array $mes,int $baseline): void
+    public function saveContext(array $mes,int $baseline): array
     {
         $data=$mes['data'];$work=$data['work_order'];
-        $context=['SN'=>$work['SN'] ?? '', 'item'=>$work['item'] ?? '', 'process_name'=>$work['process_name'] ?? '',
+        $context=['work_order'=>$work, 'work_order_no'=>$work['work_order_no'] ?? '', 'SN'=>$work['SN'] ?? '', 'item'=>$work['item'] ?? '', 'process_name'=>$work['process_name'] ?? '',
             'station'=>$work['station'] ?? '', 'screw_inf'=>$work['screw_inf'] ?? [],
             'job_name'=>$data['job']['job_name'] ?? '', 'baseline_result_id'=>$baseline];
         foreach (['SN','item','process_name','station'] as $field) {
@@ -41,6 +41,7 @@ final class OperationMesReportService
         }
         $json=json_encode($context,JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $stmt=$this->state->prepare('INSERT INTO mes_work_order_context(baseline_id,context_json) VALUES(?,?)');$stmt->execute([$baseline,$json]);
+        return $context;
     }
     private function mark(int $id,string $status,?string $payload,string $message): void
     {
@@ -63,19 +64,7 @@ final class OperationMesReportService
         if ($id<1) throw new InvalidArgumentException('id must be a positive integer');
         $record=$this->recordApi->fetch($id);
         $this->record=$record;
-        // Map MES fields directly from the requested tightening record.
-        $context = [
-            'item' => (string)$id,
-            'process_name' => trim((string)($record['job_name'] ?? '')),
-            'station' => 1,
-            'SN' => trim((string)($record['barcode'] ?? '')),
-            'screw_inf' => [[
-                'screw_item' => (string)$id,
-                'screw_quantity' => (int)($record['total_screw_count'] ?? 0),
-            ]],
-        ];
-        if (!$previewOnly && !MesTestMode::enabled() && $context['SN'] === '') throw new RuntimeException('指定紀錄 barcode 為空，無法作為 MES SN：'.$id);
-        if (!$previewOnly && $context['process_name'] === '') throw new RuntimeException('指定紀錄 job_name 為空，無法作為 MES process_name：'.$id);
+        $context = $this->contextForRecord($id, $record);
         $mapper=new HuarongTighteningReportService();
         // Allow a single action; complete_staus still reflects actual OK-JOB status.
         // Use final torque for MES Rl as requested.
@@ -84,6 +73,26 @@ final class OperationMesReportService
         if (!$previewOnly && empty($payload['runParam_inf'])) throw new RuntimeException('指定紀錄沒有可上報的有效鎖附結果：'.$id);
         return $payload;
     }
+    /** Bind a result to its receipt interval, never to a later scanned order. */
+    private function contextForRecord(int $id, array $record): array
+    {
+        $stmt=$this->state->prepare('SELECT context_json FROM mes_work_order_context WHERE baseline_id < ? ORDER BY baseline_id DESC, id DESC LIMIT 1');
+        $stmt->execute([$id]);$json=$stmt->fetchColumn();$stmt->closeCursor();
+        if ($json===false) throw new RuntimeException('沒有對應 MES 工單；請先成功執行條碼接口，再產生新的鎖附紀錄');
+        $context=json_decode((string)$json,true,512,JSON_THROW_ON_ERROR);
+        if (!is_array($context)) throw new RuntimeException('MES 工單資料格式錯誤');
+        $barcode=trim((string)($record['barcode'] ?? ''));
+        if ($barcode==='' || $barcode!==trim((string)($context['SN'] ?? ''))) {
+            throw new RuntimeException('鎖附紀錄條碼與對應 MES 工單 SN 不一致：'.$id);
+        }
+        $jobName=trim((string)($record['job_name'] ?? ''));
+        $expectedJob=trim((string)($context['job_name'] ?? ''));
+        if ($expectedJob!=='' && $jobName!==$expectedJob) {
+            throw new RuntimeException('鎖附紀錄工作與對應 MES 配方不一致：'.$id);
+        }
+        return $context;
+    }
+
     public function upload(int $id): array
     {
         if ($id<1) throw new InvalidArgumentException('id must be a positive integer');
@@ -108,7 +117,8 @@ final class OperationMesReportService
         $stmt=$this->state->prepare('SELECT * FROM mes_operation_upload WHERE record_id=?');$stmt->execute([$id]);$saved=$stmt->fetch(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         if ($saved && $saved['status']==='sent') return ['ok'=>true,'status'=>'duplicate','id'=>$id,'mes_uploaded'=>true];
-        $payloadJson=$saved['payload_json'] ?? null;
+        // Rebuild unsent payloads so pre-upgrade ID-based placeholders cannot be retried.
+        $payloadJson=null;
         try {
             if (!$payloadJson) {
                 $payload=$this->preview($id);

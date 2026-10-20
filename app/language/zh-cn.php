@@ -1254,38 +1254,3 @@ $text['audit_loading'] = '载入中...';
 
 $text['account_text'] = '账号';
 }
-
-// Account API messages: keep placeholders for formatted responses.
-$text['account_only_admin'] = '只有 admin 可以使用账号设置。';
-$text['account_cannot_be_empty_suffix'] = '不能为空。';
-$text['account_only_allows_suffix'] = '只允许 A-Z、a-z、0-9。';
-$text['account_username_rule_suffix'] = '必须为 6～8 个英数字符。';
-$text['account_password_rule_suffix'] = '必须为 4 位数字。';
-$text['account_table_not_found'] = '找不到 user 数据表。';
-$text['account_upload_controller_linux_only'] = '仅支持在 Linux 同步到控制器。';
-$text['account_upload_controller_source_missing'] = '找不到 iDAS 数据库：{path}';
-$text['account_upload_controller_target_missing'] = '找不到控制器数据库：{path}';
-$text['account_upload_controller_target_not_writable'] = '控制器数据库或文件夹无法写入：{path}';
-$text['account_upload_controller_empty'] = '账号数据为空，已取消同步。';
-$text['account_upload_controller_backup_failed'] = '备份控制器数据库失败：{path}';
-$text['account_upload_controller_success'] = '同步到控制器成功，共 {rows} 条。';
-$text['account_upload_controller_failed'] = '同步到控制器失败：{error}';
-$text['account_cannot_open_csv'] = '无法打开上传的 CSV 文件。';
-$text['account_csv_invalid'] = 'CSV 格式错误，表头必须包含 User Name 与 Password。';
-$text['account_username'] = '用户名';
-$text['account_password'] = '密码';
-$text['account_csv_validation_failed'] = 'CSV 验证失败，未导入任何数据。';
-$text['account_import_result'] = '导入成功：新增 {inserted} 条、更新 {updated} 条、跳过 {skipped} 条。';
-$text['account_import_account_failed'] = '导入账号失败：{error}';
-$text['account_protected_create_action'] = '此账号受保护，无法新增。';
-$text['account_confirm_diff'] = '两次输入的密码不一致。';
-$text['account_username_exists'] = '账号已存在。';
-$text['account_new_success'] = '新增账号成功。';
-$text['account_old_username'] = '原用户名';
-$text['account_protected_save_action'] = '此账号受保护，无法保存。';
-$text['account_protected_rename_blocked'] = '内置账号名称不可更改。';
-$text['account_not_found'] = '找不到账号。';
-$text['account_edit_success'] = '编辑账号成功。';
-$text['account_protected_action'] = '此账号受保护，无法删除。';
-$text['account_last_delete_error'] = '不可删除最后一个账号。';
-$text['account_delete_account_success'] = '删除账号成功。';

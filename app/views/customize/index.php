@@ -2334,18 +2334,6 @@ function forbidMsg(digit){
         'active'=> true,
         'restricted' => false,
       ],
-      [
-        'label' => $dataTabsText['tor_line_chart'] ?? '扭力折線圖',
-        'url' => './?url=Data/drawLineChart',
-        'active' => false,
-        'restricted' => false,
-      ],
-      [
-        'label' => $dataTabsText['audit_button'] ?? '操作紀錄',
-        'url' => './?url=Data/AuditLog',
-        'active' => false,
-        'restricted' => false,
-      ],
     ];
   ?>
 

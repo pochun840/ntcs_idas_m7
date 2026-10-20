@@ -3,7 +3,7 @@
 require_once dirname(__DIR__) . '/app/config/paths.php';
 final class MesApiSettingsService
 {
-    public const KEYS = ['mes_barcode_api_url', 'mes_tightening_api_url'];
+    public const KEYS = ['mes_station', 'mes_barcode_api_url', 'mes_tightening_api_url'];
     private $db;
     public function __construct()
     {
@@ -25,20 +25,35 @@ final class MesApiSettingsService
         }
         return $url;
     }
+    public static function validateStation($station, bool $required = true): string
+    {
+        if (!is_string($station) && !is_int($station)) throw new InvalidArgumentException('station must be a string');
+        $station=trim((string)$station);
+        if (($required && $station==='') || strlen($station)>64 || preg_match('/[\x00-\x1F\x7F]/',$station)) {
+            throw new InvalidArgumentException('Enter a station of 1 to 64 bytes');
+        }
+        return $station;
+    }
     public function read(): array
     {
         $result = array_fill_keys(self::KEYS, '');
         $stmt = $this->db->prepare('SELECT config_value FROM config WHERE config_name = ? ORDER BY id DESC LIMIT 1');
         foreach (self::KEYS as $key) {
             $stmt->execute([$key]);
-            $result[$key] = (string)($stmt->fetchColumn() ?: '');
+            $value=$stmt->fetchColumn();
+            $result[$key] = $value===false ? '' : (string)$value;
         }
         return $result;
     }
     public function save(array $values): array
     {
         $clean = [];
+        $existing=$this->read();
         foreach (self::KEYS as $key) {
+            if ($key==='mes_station') {
+                $clean[$key]=array_key_exists($key,$values)?self::validateStation($values[$key]):$existing[$key];
+                continue;
+            }
             if (!isset($values[$key]) || !is_string($values[$key])) throw new InvalidArgumentException('Both API fields are required');
             $clean[$key] = self::validate($values[$key]);
         }

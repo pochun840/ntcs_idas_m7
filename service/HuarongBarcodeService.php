@@ -6,7 +6,7 @@ declare(strict_types=1);
  * 華榮 MES 接口 1：Barcode -> MES -> 配方轉換。
  *
  * 本 Service 負責：
- * 1. 以控制器 device_id 作為 station_code。
+ * 1. 從 MES API 設定讀取 station 站號。
  * 2. POST /api/barcode 並解析 MES JSON Response。
  * 3. 保存 work_order Context，供接口 2 上報鎖附結果使用。
  * 4. 將 MES job/seq/steps 轉為既有 JobConfigReplaceService 可接受的格式。
@@ -31,11 +31,9 @@ final class HuarongBarcodeService
             throw new InvalidArgumentException('barcode 不能為空');
         }
 
-        return [
-            'barcode' => $barcode,
-            // 華榮欄位名稱維持 station_code，值使用控制器 device_id。
-            'station_code' => $this->getDeviceId(),
-        ];
+        require_once __DIR__.'/MesApiSettingsService.php';
+        $settings=(new MesApiSettingsService())->read();
+        return ['barcode'=>$barcode,'station'=>MesApiSettingsService::validateStation($settings['mes_station'])];
     }
 
     public function send(string $barcode): array
@@ -178,12 +176,18 @@ final class HuarongBarcodeService
     /** 將華榮 Response 配方轉成既有單台 Job Config API schema。 */
     public function mapJobConfig(array $data): array
     {
+        foreach (['job', 'seq', 'steps'] as $key) {
+            if (empty($data[$key]) || !is_array($data[$key])) throw new RuntimeException('MES 配方缺少有效 ' . $key);
+        }
         $job = $data['job'];
-        $seq = $data['seq'];
+        // Legacy single-sequence object remains supported.
+        $sequences = isset($data['seq']['seq_id']) ? [$data['seq']] : array_values($data['seq']);
+        if ($sequences === [] || count($sequences) > 50) {
+            throw new RuntimeException('MES seq 必須包含 1～50 個工序');
+        }
         $steps = $data['steps'];
 
         $jobId = $this->intRequired($job, 'job_id', 1, 100);
-        $seqId = $this->intRequired($seq, 'seq_id', 1, 50);
         $torqueScale = (float)($this->config['torque_scale'] ?? 100);
         if ($torqueScale <= 0) $torqueScale = 100;
 
@@ -194,40 +198,64 @@ final class HuarongBarcodeService
             'ok_job_stop' => $this->intValue($job, 'job_ok_job_stop', 0),
         ];
 
-        $threadCalcu = 0;
-        $weights = [1 => 16, 2 => 8, 3 => 4, 4 => 2, 5 => 1];
-        foreach ($weights as $index => $weight) {
-            if ($this->intValue($seq, 'seq_angle_cal' . $index, 0) !== 0) $threadCalcu += $weight;
+        $seqRows = [];
+        $seqIds = [];
+        foreach ($sequences as $seq) {
+            if (!is_array($seq)) throw new RuntimeException('MES seq 工序必須為物件');
+            $seqId = $this->intRequired($seq, 'seq_id', 1, 50);
+            if (isset($seqIds[$seqId])) throw new RuntimeException('MES seq_id 重複：' . $seqId);
+            $seqIds[$seqId] = true;
+            $threadCalcu = 0;
+            $weights = [1 => 16, 2 => 8, 3 => 4, 4 => 2, 5 => 1];
+            foreach ($weights as $index => $weight) {
+                if ($this->intValue($seq, 'seq_angle_cal' . $index, 0) !== 0) $threadCalcu += $weight;
+            }
+
+            $seqRow = [
+                'JOBID' => $jobId,
+                'SEQID' => $seqId,
+                'SEQname' => $this->stringRequired($seq, 'seq_name'),
+                'seq_repeat' => $this->intValue($seq, 'seq_tightening_repeat', 1),
+                'ng_stop' => $this->intValue($seq, 'seq_ng_stop', 0),
+                'ok_seq' => $this->intValue($seq, 'seq_ok_seq', 1),
+                'ok_stop' => $this->intValue($seq, 'seq_ok_seq_stop', 0),
+                'timeout' => $this->intValue($seq, 'seq_timeout', 20),
+                'unscrew_mode' => $this->intValue($seq, 'seq_unscrew_mode', 1),
+                'unscrew_force' => $this->intValue($seq, 'seq_unscrew_force', 50),
+                'unscrew_rpm' => $this->intValue($seq, 'seq_unscrew_rpm', 300),
+                'unscrew_dir' => $this->intValue($seq, 'seq_unscrew_direction', 0),
+                'unscrew_count_switch' => $this->intValue($seq, 'seq_reverse_count', 0),
+                'unscrew_torque_threshold' => $this->torque($seq['seq_unscrew_thres_tor'] ?? 0, $torqueScale),
+                'ng_unscrew' => $this->intValue($seq, 'seq_ng_reverse', 0),
+                'accu_angle' => $this->intValue($seq, 'seq_accumulate_angle', 0),
+                'Thread_Calcu' => $threadCalcu,
+                'unscrew_angle_threshold' => $this->intValue($seq, 'seq_unscrew_thres_ang', 0),
+                'total_angle_limit' => $this->intValue($seq, 'seq_total_angle_hi', 0),
+                'total_angle_lower' => $this->intValue($seq, 'seq_total_angle_lo', 0),
+            ];
+
+            $seqRows[] = $seqRow;
         }
 
-        $seqRow = [
-            'JOBID' => $jobId,
-            'SEQID' => $seqId,
-            'SEQname' => $this->stringRequired($seq, 'seq_name'),
-            'seq_repeat' => $this->intValue($seq, 'seq_tightening_repeat', 1),
-            'ng_stop' => $this->intValue($seq, 'seq_ng_stop', 0),
-            'ok_seq' => $this->intValue($seq, 'seq_ok_seq', 1),
-            'ok_stop' => $this->intValue($seq, 'seq_ok_seq_stop', 0),
-            'timeout' => $this->intValue($seq, 'seq_timeout', 20),
-            'unscrew_mode' => $this->intValue($seq, 'seq_unscrew_mode', 1),
-            'unscrew_force' => $this->intValue($seq, 'seq_unscrew_force', 50),
-            'unscrew_rpm' => $this->intValue($seq, 'seq_unscrew_rpm', 300),
-            'unscrew_dir' => $this->intValue($seq, 'seq_unscrew_direction', 0),
-            'unscrew_count_switch' => $this->intValue($seq, 'seq_reverse_count', 0),
-            'unscrew_torque_threshold' => $this->torque($seq['seq_unscrew_thres_tor'] ?? 0, $torqueScale),
-            'ng_unscrew' => $this->intValue($seq, 'seq_ng_reverse', 0),
-            'accu_angle' => $this->intValue($seq, 'seq_accumulate_angle', 0),
-            'Thread_Calcu' => $threadCalcu,
-            'unscrew_angle_threshold' => $this->intValue($seq, 'seq_unscrew_thres_ang', 0),
-            'total_angle_limit' => $this->intValue($seq, 'seq_total_angle_hi', 0),
-            'total_angle_lower' => $this->intValue($seq, 'seq_total_angle_lo', 0),
-        ];
-
+        $stepKeys = [];
+        $stepCounts = [];
         $stepRows = [];
         foreach (array_values($steps) as $index => $step) {
             if (!is_array($step)) throw new RuntimeException('MES steps[' . $index . '] 格式錯誤');
+            if (!array_key_exists('seq_id', $step)) {
+                if (count($seqRows) !== 1) throw new RuntimeException('MES steps[' . $index . '] 缺少 seq_id，多工序不可推測歸屬');
+                $seqId = $seqRows[0]['SEQID'];
+            } else {
+                $seqId = $this->intRequired($step, 'seq_id', 1, 50);
+            }
+            if (!isset($seqIds[$seqId])) throw new RuntimeException('MES step 引用了不存在的 seq_id：' . $seqId);
             $stepId = $this->intRequired($step, 'step_id', 1, 5);
+            $stepKey = $seqId . ':' . $stepId;
+            if (isset($stepKeys[$stepKey])) throw new RuntimeException('MES 同工序 step_id 重複：' . $stepKey);
+            $stepKeys[$stepKey] = true;
+            $stepCounts[$seqId] = ($stepCounts[$seqId] ?? 0) + 1;
             $option = $this->intValue($step, 'step_target_option', 2); // 0=Time, 1=Angle, 2=Torque
+            if ($option < 0 || $option > 2) throw new RuntimeException('MES step_target_option 必須為 0、1 或 2');
             $thresholdEnabled = $this->intValue($step, 'step_threshold_enable', 0) !== 0;
             $downshiftEnabled = $this->intValue($step, 'step_downshift_enable', 0) !== 0;
 
@@ -248,7 +276,7 @@ final class HuarongBarcodeService
                 'JOBID' => $jobId,
                 'SEQID' => $seqId,
                 'StepSelect' => $stepId,
-                'STEPname' => trim((string)($step['step_name'] ?? ('STEP-' . $stepId))),
+                'STEPname' => $this->stringRequired(['step_name' => $step['step_name'] ?? ('STEP-' . $stepId)], 'step_name'),
                 'StepSwitch' => $this->intValue($step, 'step_id_enable', 1),
                 'StepRPM' => $this->intValue($step, 'step_rpm', 0),
                 'StepOption' => $option,
@@ -278,7 +306,10 @@ final class HuarongBarcodeService
             ];
         }
 
-        return ['JOB_lst' => [$jobRow], 'SEQ_lst' => [$seqRow], 'STEP_lst' => $stepRows];
+        foreach ($seqIds as $seqId => $_) {
+            if (empty($stepCounts[$seqId])) throw new RuntimeException('MES 工序沒有 step：' . $seqId);
+        }
+        return ['JOB_lst' => [$jobRow], 'SEQ_lst' => $seqRows, 'STEP_lst' => $stepRows];
     }
 
     private function getDeviceId(): string
@@ -312,20 +343,25 @@ final class HuarongBarcodeService
 
     private function intValue(array $row, string $key, int $default): int
     {
-        if (!array_key_exists($key, $row) || !is_numeric($row[$key])) return $default;
+        if (!array_key_exists($key, $row)) return $default;
+        if (filter_var($row[$key], FILTER_VALIDATE_INT) === false) {
+            throw new RuntimeException('MES 配方欄位 ' . $key . ' 必須為整數');
+        }
         return (int)$row[$key];
     }
 
     private function stringRequired(array $row, string $key): string
     {
         $value = trim((string)($row[$key] ?? ''));
-        if ($value === '') throw new RuntimeException('MES 配方欄位 ' . $key . ' 不能為空');
+        $length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+        if ($length < 1 || $length > 64) throw new RuntimeException('MES 配方欄位 ' . $key . ' 長度必須為 1～64');
         return $value;
     }
 
     private function number($value): float
     {
-        return is_numeric($value) ? (float)$value : 0.0;
+        if (!is_numeric($value) || !is_finite((float)$value)) throw new RuntimeException('MES 配方數值無效');
+        return (float)$value;
     }
 
     private function torque($value, float $scale): float

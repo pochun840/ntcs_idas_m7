@@ -25,13 +25,27 @@ final class MesUploadLogService
                 if (!in_array('message',$columns,true)) throw $e;
             }
         }
+        if (!in_array('request_json',$columns,true)) {
+            try {$this->db->exec('ALTER TABLE mes_upload_log ADD COLUMN request_json TEXT');}
+            catch(PDOException $e) {
+                $columns=$this->db->query('PRAGMA table_info(mes_upload_log)')->fetchAll(PDO::FETCH_COLUMN,1);
+                if (!in_array('request_json',$columns,true)) throw $e;
+            }
+        }
+        if (!in_array('response_json',$columns,true)) {
+            try {$this->db->exec('ALTER TABLE mes_upload_log ADD COLUMN response_json TEXT');}
+            catch(PDOException $e) {
+                $columns=$this->db->query('PRAGMA table_info(mes_upload_log)')->fetchAll(PDO::FETCH_COLUMN,1);
+                if (!in_array('response_json',$columns,true)) throw $e;
+            }
+        }
         $this->db->exec('CREATE INDEX IF NOT EXISTS mes_upload_log_reference_id ON mes_upload_log(kind,reference,id)');
 
     }
-    public function append(string $kind,string $reference,string $barcode,string $source,string $jobName,string $status,string $message = ''): void
+    public function append(string $kind,string $reference,string $barcode,string $source,string $jobName,string $status,string $message = '',?array $requestPayload=null,?array $responseDetails=null): void
     {
-        $stmt=$this->db->prepare('INSERT INTO mes_upload_log(kind,reference,barcode,source,job_name,status,created_at,message) VALUES(?,?,?,?,?,?,?,?)');
-        $stmt->execute([$kind,$reference,$barcode,$source,$jobName,$status,date('c'),$message]);
+        $stmt=$this->db->prepare('INSERT INTO mes_upload_log(kind,reference,barcode,source,job_name,status,created_at,message,request_json,response_json) VALUES(?,?,?,?,?,?,?,?,?,?)');
+        $stmt->execute([$kind,$reference,$barcode,$source,$jobName,$status,date('c'),$message,$requestPayload===null?null:json_encode($requestPayload,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),$responseDetails===null?null:json_encode($responseDetails,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)]);
         $stmt->closeCursor();
     }
     public function page(string $kind,int $page,int $anchor=0): array
@@ -45,7 +59,7 @@ final class MesUploadLogService
             $stmt=$this->db->prepare('SELECT COUNT(*) FROM mes_upload_log WHERE kind=? AND id<=?');
             $stmt->execute([$kind,$anchor]);$total=(int)$stmt->fetchColumn();
             $pages=max(1,(int)ceil($total/10));$page=max(1,min($page,$pages));
-            $stmt=$this->db->prepare('SELECT id,reference,barcode,source,job_name,status,created_at,message FROM mes_upload_log WHERE kind=:kind AND id<=:anchor ORDER BY id DESC LIMIT 10 OFFSET :offset');
+            $stmt=$this->db->prepare('SELECT id,reference,barcode,source,job_name,status,created_at,message,request_json,response_json FROM mes_upload_log WHERE kind=:kind AND id<=:anchor ORDER BY id DESC LIMIT 10 OFFSET :offset');
             $stmt->bindValue(':kind',$kind,PDO::PARAM_STR);
             $stmt->bindValue(':anchor',$anchor,PDO::PARAM_INT);
             $stmt->bindValue(':offset',($page-1)*10,PDO::PARAM_INT);
@@ -75,7 +89,7 @@ final class MesUploadLogService
     }
     public function recent(string $kind): array
     {
-        $stmt=$this->db->prepare('SELECT id,reference,barcode,source,job_name,status,created_at,message FROM mes_upload_log WHERE kind=? ORDER BY id DESC LIMIT 50');
+        $stmt=$this->db->prepare('SELECT id,reference,barcode,source,job_name,status,created_at,message,request_json,response_json FROM mes_upload_log WHERE kind=? ORDER BY id DESC LIMIT 50');
         $stmt->execute([$kind]);return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

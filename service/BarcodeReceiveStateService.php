@@ -27,7 +27,7 @@ final class BarcodeReceiveStateService
             }
         }
     }
-    public function delivery(string $receiptId,string $status,string $message): void
+    public function delivery(string $receiptId,string $status,string $message,?array $requestPayload=null,?array $responseDetails=null): void
     {
         $this->ensureDeliveryColumns();
         $stmt=$this->db->prepare('UPDATE idas_barcode_received SET mes_status=?,mes_message=? WHERE id=1 AND receipt_id=?');
@@ -38,7 +38,7 @@ final class BarcodeReceiveStateService
             $query->execute([$receiptId]);$row=$query->fetch(PDO::FETCH_ASSOC);
             $query->closeCursor();
             if ($row) {
-                try {(new MesUploadLogService($this->db))->append('barcode',$receiptId,(string)$row['barcode'],(string)$row['source'],'',$status,$message);}
+                try {(new MesUploadLogService($this->db))->append('barcode',$receiptId,(string)$row['barcode'],(string)$row['source'],'',$status,$message,$requestPayload,$responseDetails);}
                 catch(Throwable $e){error_log('[mes_upload_log] '.$e->getMessage());}
             }
         }

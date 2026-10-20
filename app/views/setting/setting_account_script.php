@@ -270,7 +270,7 @@ if (!function_exists('settingAccountScriptTextArray')) {
         $out = [];
 
         foreach ($fallbacks as $key => $default) {
-            $out[$key] = $default;
+            $out[$key] = (isset($text[$key]) && (string)$text[$key] !== '') ? $text[$key] : $default;
         }
 
         return $out;
@@ -814,7 +814,7 @@ function settingAccountPost(path, data) {
     });
 }
 
-function loadSettingAccountUsers(restoreUsername) {
+function loadSettingAccountUsers() {
     var tbody = document.getElementById('accountUserTbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="2">' + saT('account_loading', 'Loading...') + '</td></tr>';
 
@@ -827,18 +827,8 @@ function loadSettingAccountUsers(restoreUsername) {
             return;
         }
 
-        accountAcceptServerSync(json);
         settingAccountAllRecords = json.records || [];
-        var restoreOnPc = accountPcEnabled() && typeof restoreUsername === 'string' && restoreUsername !== '';
-        if (restoreOnPc) {
-            // A previous search may hide a newly created or renamed account.
-            var search = document.getElementById('accountSearchInput');
-            if (search && search.value && restoreUsername.toLowerCase().indexOf(search.value.trim().toLowerCase()) === -1) {
-                search.value = '';
-            }
-        }
         renderSettingAccountUsers(settingAccountAllRecords);
-        if (restoreOnPc) accountPcRestoreSavedRow(restoreUsername);
     }).catch(function(err) {
         if (tbody) tbody.innerHTML = '<tr><td colspan="2">' + saT('account_load_failed', 'Load failed') + '</td></tr>';
         settingAccountAlert(err.message || saT('account_load_failed_full', 'Load account failed.'));
@@ -865,68 +855,6 @@ function settingAccountProtectedBadge(username) {
     return '';
 }
 
-var accountPcSavedRowTimer = null;
-function accountPcRestoreSavedRow(username) {
-    if (!accountPcEnabled()) return;
-    var rows = document.querySelectorAll('#accountUserTbody .account-user-row');
-    var match = null;
-    rows.forEach(function(row) {
-        row.classList.remove('account-saved-highlight');
-        if (row.getAttribute('data-name') === username) match = row;
-    });
-    if (accountPcSavedRowTimer !== null) window.clearTimeout(accountPcSavedRowTimer);
-    if (!match) return;
-    selectSettingAccountUser(match);
-    match.classList.add('account-saved-highlight');
-    // Scroll only the account list; avoid moving the whole Settings page.
-    var scroller = document.getElementById('style-accounttable');
-    if (scroller) {
-        var rowRect = match.getBoundingClientRect();
-        var boxRect = scroller.getBoundingClientRect();
-        var head = document.querySelector('#account_user_table thead');
-        var topInset = head ? head.getBoundingClientRect().height : 0;
-        if (rowRect.top < boxRect.top + topInset) scroller.scrollTop += rowRect.top - boxRect.top - topInset;
-        else if (rowRect.bottom > boxRect.bottom) scroller.scrollTop += rowRect.bottom - boxRect.bottom;
-    }
-    accountPcSavedRowTimer = window.setTimeout(function() {
-        match.classList.remove('account-saved-highlight');
-        accountPcSavedRowTimer = null;
-    }, 2500);
-}
-
-var accountServerSyncState = null;
-function accountAcceptServerSync(json) {
-    if (json && json.success && json.sync && typeof json.sync.status === 'string') accountServerSyncState = json.sync;
-}
-var accountPcSyncInProgress = false;
-function accountPcEnabled() {
-    return window.matchMedia('(min-width: 769px) and (hover: hover) and (pointer: fine)').matches;
-}
-function accountPcText(key) {
-    var lang = settingAccountClientLang();
-    var dict = {
-        'en-us': {download:'Download QR Code', none:'No account selected', selected:'Selected: ', never:'No sync recorded', pending:'Changes pending sync', syncing:'Syncing…', success:'Sync successful', failed:'Sync failed', history:'Last successful sync', loading:'Checking sync status…', unknown:'Sync status unavailable'},
-        'zh-tw': {download:'下載 QR Code', none:'尚未選取帳號', selected:'已選取：', never:'尚無同步紀錄', pending:'有變更待同步', syncing:'同步中…', success:'同步成功', failed:'同步失敗', history:'上次成功同步', loading:'讀取同步狀態中…', unknown:'無法取得同步狀態'},
-        'zh-cn': {download:'下载 QR Code', none:'尚未选取账号', selected:'已选取：', never:'尚无同步记录', pending:'有变更待同步', syncing:'同步中…', success:'同步成功', failed:'同步失败', history:'上次成功同步', loading:'读取同步状态中…', unknown:'无法取得同步状态'}
-    };
-    return (dict[lang] || dict['en-us'])[key];
-}
-function accountPcRefreshSelection() {
-    if (!accountPcEnabled()) return;
-    var selected = document.querySelector('#accountUserTbody .account-user-row.selected');
-    var name = selected ? selected.getAttribute('data-name') : '';
-    var hint = document.getElementById('accountPcSelection');
-    if (hint) hint.textContent = name ? accountPcText('selected') + name : accountPcText('none');
-    ['account_edit_btn','account_delete_btn'].forEach(function(id) {
-        var btn = document.getElementById(id);
-        if (btn) btn.disabled = !!settingAccountBusy || !name || settingAccountIsProtectedUser(name);
-    });
-}
-function accountPcMarkPending() {
-    // Server response / next list read supplies persistent status.
-    accountServerSyncState = null;
-}
-
 function updateSettingAccountSummary(count) {
     var countEl = document.getElementById('accountUserCountText');
     var syncEl = document.getElementById('accountLastSyncText');
@@ -936,25 +864,14 @@ function updateSettingAccountSummary(count) {
         countEl.innerText = saT('account_total_accounts', 'Accounts') + ': ' + (count || 0);
     }
 
-    var syncStatus = accountServerSyncState ? accountServerSyncState.status : 'loading';
-    var syncRows = accountServerSyncState ? accountServerSyncState.rows : '';
     var lastSync = '';
-    if (accountServerSyncState && accountServerSyncState.last_success_at) {
-        var date = new Date(accountServerSyncState.last_success_at);
-        lastSync = isNaN(date.getTime()) ? '' : date.toLocaleString(settingAccountClientLang() === 'en-us' ? 'en-US' : settingAccountClientLang() === 'zh-cn' ? 'zh-CN' : 'zh-TW', {hour12:false});
-    }
-
-    if (accountPcEnabled()) {
-        var state = accountPcSyncInProgress ? 'syncing' : (syncStatus || 'never');
-        if (syncEl) syncEl.textContent = accountPcText('history') + ': ' + (lastSync || accountPcText('never'));
-        if (statusEl) {
-            statusEl.textContent = saT('account_sync_status','Sync status') + ': ' + accountPcText(state);
-            statusEl.setAttribute('data-state',state);
-            statusEl.setAttribute('role','status');
-        }
-        accountPcRefreshSelection();
-        return;
-    }
+    var syncStatus = '';
+    var syncRows = '';
+    try {
+        lastSync = localStorage.getItem('accountLastSyncToController') || '';
+        syncStatus = localStorage.getItem('accountLastSyncStatus') || '';
+        syncRows = localStorage.getItem('accountLastSyncRows') || '';
+    } catch (e) {}
 
     if (syncEl) {
         syncEl.innerText = saT('account_last_sync_time', 'Last sync') + ': ' + (lastSync || saT('account_never_synced', '-'));
@@ -1007,7 +924,6 @@ function setSettingAccountBusy(isBusy) {
             btn.classList.remove('account-action-busy');
         }
     });
-    accountPcRefreshSelection();
 }
 
 function downloadSettingAccountTemplate() {
@@ -1072,7 +988,6 @@ function selectSettingAccountUser(row) {
     selectedAccountUser = row.getAttribute('data-name') || '';
     selectedAccountPassword = row.getAttribute('data-passwd') || settingAccountFindPasswordByUsername(selectedAccountUser);
     selectedAccountLaw = settingAccountNormalizeLaw(row.getAttribute('data-law') || settingAccountFindLawByUsername(selectedAccountUser));
-    accountPcRefreshSelection();
 }
 
 
@@ -1083,20 +998,36 @@ function exportSettingAccounts() {
 
 function uploadSettingAccountsToController() {
     if (settingAccountBusy) return;
-    accountPcSyncInProgress = true;
     setSettingAccountBusy(true);
-    updateSettingAccountSummary(document.querySelectorAll('#accountUserTbody .account-user-row').length);
+
     settingAccountPost('account_user_upload_controller', {}).then(function(json) {
-        accountAcceptServerSync(json);
-        settingAccountAlert(json.res_msg || saT(json.success ? 'account_upload_success' : 'account_upload_failed', ''));
-        loadSettingAccountUsers();
+        settingAccountAlert(json.res_msg || (json.success ? saT('account_upload_success', 'Upload success.') : saT('account_upload_failed', 'Upload failed.')));
+
+        try {
+            var now = new Date();
+            var ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+            localStorage.setItem('accountLastSyncToController', ts);
+            localStorage.setItem('accountLastSyncStatus', json.success ? 'success' : 'failed');
+            localStorage.setItem('accountLastSyncRows', json.success ? String(json.rows || json.count || '') : '');
+        } catch (e) {}
+
+        if (json.success) {
+            loadSettingAccountUsers();
+        } else {
+            updateSettingAccountSummary((document.querySelectorAll('#AccountDisplay .account-user-row') || []).length);
+        }
     }).catch(function(err) {
-        accountServerSyncState = {status:'unknown', last_success_at:accountServerSyncState && accountServerSyncState.last_success_at};
-        settingAccountAlert(err.message || saT('account_upload_failed','Upload failed.'));
+        try {
+            var now = new Date();
+            var ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+            localStorage.setItem('accountLastSyncToController', ts);
+            localStorage.setItem('accountLastSyncStatus', 'failed');
+            localStorage.setItem('accountLastSyncRows', '');
+        } catch (e) {}
+        updateSettingAccountSummary((document.querySelectorAll('#AccountDisplay .account-user-row') || []).length);
+        settingAccountAlert(err.message || saT('account_upload_failed', 'Upload failed.'));
     }).finally(function() {
-        accountPcSyncInProgress = false;
         setSettingAccountBusy(false);
-        updateSettingAccountSummary(document.querySelectorAll('#accountUserTbody .account-user-row').length);
     });
 }
 
@@ -1547,7 +1478,7 @@ function settingAccountAction(mode) {
                     username: selectedAccountUser
                 }).then(function(json) {
                     settingAccountAlert(json.res_msg || (json.success ? saT('account_delete_success', 'Delete success.') : saT('account_delete_failed', 'Delete failed.')));
-                    if (json.success) { accountPcMarkPending(); loadSettingAccountUsers(); }
+                    if (json.success) loadSettingAccountUsers();
                 }).catch(function(err) {
                     settingAccountAlert(err.message || saT('account_delete_failed', 'Delete failed.'));
                 });
@@ -1716,9 +1647,8 @@ function saveSettingAccount() {
     settingAccountPost(path, payload).then(function(json) {
         settingAccountAlert(json.res_msg || (json.success ? saT('account_save_success', 'Save success.') : saT('account_save_failed', 'Save failed.')));
         if (json.success) {
-            accountPcMarkPending();
             closeSettingAccountModal();
-            loadSettingAccountUsers(username);
+            loadSettingAccountUsers();
         }
     }).catch(function(err) {
         settingAccountAlert(err.message || saT('account_save_failed', 'Save failed.'));
@@ -2392,7 +2322,7 @@ function downloadSettingAccountQrCode(username, password, event) {
             return;
         }
 
-        var btnText = accountPcText('download');
+        var btnText = accountQrPatchText('account_qrcode_download', 'Download');
 
         tbody.innerHTML = records.map(function(row, index) {
             var name = accountQrPatchEscape(row.name || '');
@@ -2523,19 +2453,19 @@ function downloadSettingAccountQrCode(username, password, event) {
             'en-us': {
                 account_no:'No', account_user_name:'User Name', account_new_title:'New Account', account_edit_title:'Edit Account',
                 account_username:'Username', account_password:'Password', account_confirm_password:'Confirm Password',
-                account_import:'Import', account_export:'Export', account_upload:'Sync to Controller', account_csv_template:'CSV Template', account_qrcode:'QRCode', account_qrcode_download:'Download QR Code', account_search_placeholder:'Search account...', account_sync_status:'Sync status', account_last_sync_time:'Last sync', account_total_accounts:'Accounts',
+                account_import:'Import', account_export:'Export', account_upload:'Sync to Controller', account_csv_template:'CSV Template', account_qrcode:'QRCode', account_qrcode_download:'Download', account_search_placeholder:'Search account...', account_sync_status:'Sync status', account_last_sync_time:'Last sync', account_total_accounts:'Accounts',
                 account_show_password:'Show password', account_hide_password:'Hide password', save:'Save', close:'Close', New:'New', Edit:'Edit', Delete:'Delete'
             },
             'zh-tw': {
                 account_no:'編號', account_user_name:'使用者名稱', account_new_title:'新增帳號', account_edit_title:'編輯帳號',
                 account_username:'使用者名稱', account_password:'密碼', account_confirm_password:'確認密碼',
-                account_import:'匯入', account_export:'匯出', account_upload:'同步到控制器', account_csv_template:'CSV 範本', account_qrcode:'QRCode', account_qrcode_download:'下載 QR Code', account_search_placeholder:'搜尋帳號...', account_sync_status:'同步狀態', account_last_sync_time:'最後同步時間', account_total_accounts:'帳號數',
+                account_import:'匯入', account_export:'匯出', account_upload:'同步到控制器', account_csv_template:'CSV 範本', account_qrcode:'QRCode', account_qrcode_download:'下載', account_search_placeholder:'搜尋帳號...', account_sync_status:'同步狀態', account_last_sync_time:'最後同步時間', account_total_accounts:'帳號數',
                 account_show_password:'顯示密碼', account_hide_password:'隱藏密碼', save:'儲存', close:'關閉', New:'新增', Edit:'編輯', Delete:'刪除'
             },
             'zh-cn': {
                 account_no:'编号', account_user_name:'使用者名称', account_new_title:'新增账号', account_edit_title:'编辑账号',
                 account_username:'使用者名称', account_password:'密码', account_confirm_password:'确认密码',
-                account_import:'导入', account_export:'导出', account_upload:'同步到控制器', account_csv_template:'CSV 范本', account_qrcode:'QRCode', account_qrcode_download:'下载 QR Code', account_search_placeholder:'搜寻账号...', account_sync_status:'同步状态', account_last_sync_time:'最后同步时间', account_total_accounts:'账号数',
+                account_import:'导入', account_export:'导出', account_upload:'同步到控制器', account_csv_template:'CSV 范本', account_qrcode:'QRCode', account_qrcode_download:'下载', account_search_placeholder:'搜寻账号...', account_sync_status:'同步状态', account_last_sync_time:'最后同步时间', account_total_accounts:'账号数',
                 account_show_password:'显示密码', account_hide_password:'隐藏密码', save:'储存', close:'关闭', New:'新增', Edit:'编辑', Delete:'删除'
             }
         };
@@ -2678,7 +2608,18 @@ function downloadSettingAccountQrCode(username, password, event) {
         return lang;
     }
     function saV7DownloadText(){
-        return accountPcText('download');
+        var lang = saV7Lang();
+        if (typeof saT === 'function') {
+            var t = saT('account_qrcode_download', '');
+            if (t && t !== 'account_qrcode_download') return t;
+        }
+        if (typeof settingAccountI18nText === 'function') {
+            var t2 = settingAccountI18nText('account_qrcode_download');
+            if (t2 && t2 !== 'account_qrcode_download') return t2;
+        }
+        if (lang === 'zh-tw') return '下載';
+        if (lang === 'zh-cn') return '下载';
+        return 'Download';
     }
     function applyQrDownloadBtnI18nV7(){
         var txt = saV7DownloadText();
@@ -3450,39 +3391,5 @@ document.addEventListener('DOMContentLoaded', function() { applySettingAccountCo
         window.setTimeout(installV13, 100);
         window.setTimeout(installV13, 500);
     });
-})();
-
-(function(){
-    function initAccountPc() {
-        if (!accountPcEnabled()) return;
-        var tbody = document.getElementById('accountUserTbody');
-        if (!tbody || tbody.dataset.pcObserved) return;
-        tbody.dataset.pcObserved = '1';
-        new MutationObserver(accountPcRefreshSelection).observe(tbody,{childList:true});
-        accountPcRefreshSelection();
-    }
-    document.addEventListener('DOMContentLoaded',initAccountPc);
-    window.addEventListener('load',initAccountPc);
-})();
-
-(function(){
-    var inFlight = false;
-    function refreshAccountServerStatus() {
-        var page = document.getElementById('AccountDisplay');
-        if (!accountPcEnabled() || !page || page.offsetParent === null || document.hidden || settingAccountBusy || inFlight) return;
-        inFlight = true;
-        settingAccountPost('account_user_sync_status', {}).then(function(json) {
-            if (!json.success) throw new Error('status unavailable');
-            accountAcceptServerSync(json);
-        }).catch(function() {
-            accountServerSyncState = {status:'unknown', last_success_at:accountServerSyncState && accountServerSyncState.last_success_at};
-        }).finally(function() {
-            inFlight = false;
-            updateSettingAccountSummary(document.querySelectorAll('#accountUserTbody .account-user-row').length);
-        });
-    }
-    window.setInterval(refreshAccountServerStatus, 10000);
-    window.addEventListener('focus', refreshAccountServerStatus);
-    document.addEventListener('visibilitychange', refreshAccountServerStatus);
 })();
 </script>

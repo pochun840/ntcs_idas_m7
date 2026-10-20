@@ -131,12 +131,6 @@ function renderLineChartTableRows($records) {
                 'url'   => '?url=Data/drawLineChart',
                 'restricted' => false,
             ],
-            [
-                'key' => 'Operation_Audit_Log',
-                'label' => $drawlineTabText('audit_button', '操作紀錄'),
-                'url' => '?url=Data/AuditLog',
-                'restricted' => false,
-            ],
         ];
     ?>
 

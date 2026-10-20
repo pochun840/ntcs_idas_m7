@@ -13,7 +13,7 @@ window.createIdasMesPreview=function(config){
  const copy=get('mesPayloadPreviewCopy'),download=get('mesPayloadPreviewDownload');
  copy.textContent=t[12];download.textContent=t[13];get('mesPayloadPreviewNote').textContent=t[8];get('mesPayloadPreviewClose').textContent=t[19];
  dialog.setAttribute('aria-labelledby','mesPayloadPreviewTitle');
- let abort=null,revision=0,json='',filename='huarong_payload.json';
+ let abort=null,revision=0,json='',filename='huarong_payload.json',mime='application/json';
  function disable(value){copy.disabled=value;download.disabled=value;}
  function close(){revision++;if(abort)abort.abort();abort=null;disable(true);json='';if(dialog.open)dialog.close();}
  get('mesPayloadPreviewClose').addEventListener('click',close);
@@ -22,7 +22,7 @@ window.createIdasMesPreview=function(config){
  function mode(test){field(t[3],t[test?4:5]);}
  function reset(title){revision++;if(abort)abort.abort();abort=null;json='';summary.replaceChildren();warning.textContent='';feedback.textContent='';body.textContent=t[15];disable(true);get('mesPayloadPreviewTitle').textContent=title;if(!dialog.open)dialog.showModal();return revision;}
  function render(payload,missing,file){
-  json=JSON.stringify(payload,null,2);filename=file;body.textContent=json;
+  mime='application/json';json=JSON.stringify(payload,null,2);filename=file;body.textContent=json;
   warning.textContent=missing.length?t[6]+missing.join('、'):t[7];warning.style.cssText='padding:12px 20px;margin:0;border-top:1px solid #e0e7f0;background:'+(missing.length?'#fff4df;color:#865819':'#eff8f2;color:#275c41');disable(false);
  }
  function modeEvent(test){if(typeof test==='boolean')window.dispatchEvent(new CustomEvent('idas-mes-mode',{detail:{test_mode:test}}));}
@@ -43,7 +43,61 @@ window.createIdasMesPreview=function(config){
  function showBarcode(row){
   reset(t[18]);const banner=get('mesModeBanner'),test=banner&&banner.dataset.testMode==='1';
   field(t[14],row.id);field(t[1],row.barcode);mode(test);
-  render({barcode:row.barcode||''},String(row.barcode||'').trim()?[]:[t[1]+' (barcode)'],'barcode_upload_'+String(row.id).replace(/[^0-9]/g,'')+'.json');
+  let payload=null;
+  try { if(row.request_json) payload=JSON.parse(row.request_json); } catch (_) {}
+  const historic=!payload || typeof payload!=='object' || Array.isArray(payload) || !Object.prototype.hasOwnProperty.call(payload,'station');
+  if(historic)payload={barcode:row.barcode||'',station:null};
+  const missing=[];
+  if(!String(payload.barcode||'').trim())missing.push(t[1]+' (barcode)');
+  if(payload.station===null||payload.station===undefined||String(payload.station).trim()==='')missing.push('station');
+  render(payload,missing,'barcode_upload_'+String(row.id).replace(/[^0-9]/g,'')+'.json');
+  if(historic){
+   const notes={'zh-tw':'此歷史紀錄未保存當次站號，station 顯示 null。請重新測試產生新紀錄；不以目前站號回填歷史資料。','zh-cn':'此历史记录未保存当次站号，station 显示 null。请重新测试生成新记录；不以当前站号回填历史数据。','en-us':'The station was not saved for this historical record, so station is null. Run a new test to create a new record. Current settings are not used to backfill history.'};
+   warning.textContent=notes[lang]||notes['zh-cn'];
+  }
+ }
+ // Format JSON tokens without converting numeric values or rewriting strings.
+ function formatResponseJson(raw){
+  JSON.parse(raw);
+  const tokens=raw.match(/"(?:\\.|[^"\\])*"|[{}\[\],:]|[^\s{}\[\],:]+/g)||[];
+  let output='',depth=0;
+  const newline=()=>{output+='\n'+'  '.repeat(depth);};
+  tokens.forEach((token,index)=>{
+   if(token==='{'||token==='['){output+=token;depth++;if(tokens[index+1]!=='}'&&tokens[index+1]!==']')newline();}
+   else if(token==='}'||token===']'){depth--;if(tokens[index-1]!=='{'&&tokens[index-1]!=='[')newline();output+=token;}
+   else if(token===','){output+=token;newline();}
+   else if(token===':')output+=': ';
+   else output+=token;
+  });
+  return output;
+ }
+ function showBarcodeResponse(row){
+  const texts={
+   'zh-tw':['條碼回傳格式','此歷史紀錄未保存回傳內容。','測試模式未呼叫 MES，無回傳資料。','假資料回應；未呼叫 MES。','MES 原始回應','未取得 MES 回應，請查看錯誤原因。','尚未呼叫 MES，無回傳資料。','MES 回傳空內容。','MES 回傳非 JSON，以下保留原始文字。'],
+   'zh-cn':['条码回传格式','此历史记录未保存回传内容。','测试模式未调用 MES，无回传数据。','模拟回应；未调用 MES。','MES 原始回应','未取得 MES 回应，请查看错误原因。','尚未调用 MES，无回传数据。','MES 回传空内容。','MES 回传非 JSON，以下保留原始文本。'],
+   'en-us':['Barcode response','No response was saved for this historical record.','MES was not called in test mode. No response is available.','Sample response. MES was not called.','Original MES response','No MES response received. See the error details.','MES was not called. No response is available.','MES returned an empty body.','MES returned non-JSON content. Original text is shown below.']
+  };
+  const labels=texts[lang]||texts['zh-cn'];
+  reset(labels[0]);field(t[14],row.id);field(t[1],row.barcode);
+  let details=null;
+  try {if(row.response_json)details=JSON.parse(row.response_json);} catch (_) {}
+  if(!details||typeof details!=='object'||Array.isArray(details)){
+   body.textContent=labels[1];warning.textContent=labels[1];return;
+  }
+  mode(details.kind==='mock'||details.kind==='test_skipped');
+  if(details.http_status)field('HTTP',details.http_status);
+  const hasBody=typeof details.raw_body==='string'&&details.raw_body!=='';
+  const note=details.kind==='test_skipped'?labels[2]:details.kind==='mock'?labels[3]:details.kind==='not_called'?labels[6]:details.kind==='transport_error'?labels[5]:hasBody?labels[4]:labels[7];
+  warning.style.cssText='padding:12px 20px;margin:0;background:#fff4df;color:#865819';
+  warning.textContent=note;
+  if(!hasBody){body.textContent=note+(row.message?'\n'+row.message:'');return;}
+  json=details.raw_body;
+  let isJson=true;try{json=formatResponseJson(json);}catch(_){isJson=false;}
+  body.textContent=json;
+  mime=isJson?'application/json':'text/plain';
+  filename='barcode_response_'+String(row.id).replace(/[^0-9]/g,'')+(isJson?'.json':'.txt');
+  if(!isJson)warning.textContent=note+' '+labels[8];
+  disable(false);
  }
  async function copyJson(){
   if(!json)return;const value=json,current=revision;let success=false;
@@ -56,8 +110,8 @@ window.createIdasMesPreview=function(config){
  }
  copy.addEventListener('click',copyJson);
  download.addEventListener('click',()=>{
-  if(!json)return;const blob=new Blob([json+'\n'],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;dialog.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);feedback.textContent=t[11];
+  if(!json)return;const blob=new Blob([json+'\n'],{type:mime+';charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;dialog.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);feedback.textContent=t[11];
  });
- return {showOperation,showBarcode,close};
+ return {showOperation,showBarcode,showBarcodeResponse,close};
 };
 })();

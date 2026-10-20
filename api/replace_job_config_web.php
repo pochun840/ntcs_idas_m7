@@ -95,6 +95,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
 
   <main class="content">
     <?php require __DIR__ . "/mes_api_settings_panel.php"; ?>
+    <?php require __DIR__ . "/barcode_recipe_test_panel.php"; ?>
     <section class="section-card controller-settings-card">
       <div class="section-head"><div><div class="section-title"><?php echo h($t['section_targets']); ?></div><div class="section-hint"><?php echo h($t['target_hint']); ?></div></div><span id="networkBadge" class="network-badge"><?php echo h($t['local_network']); ?>: --</span></div>
       <div class="section-body">
@@ -431,5 +432,6 @@ window.IDAS_JOB_CONFIG_UI = <?php echo json_encode([
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_identity.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_identity.js'); ?>"></script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_json_ui.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_json_ui.js'); ?>"></script>
 <script src="<?php echo h($idasBaseUrl); ?>/public/js/replace_job_config_operation_monitor.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/replace_job_config_operation_monitor.js'); ?>"></script>
+<script src="<?php echo h($idasBaseUrl); ?>/public/js/barcode_recipe_test.js?v=<?php echo (int)@filemtime(dirname(__DIR__).'/public/js/barcode_recipe_test.js'); ?>"></script>
 </body>
 </html>

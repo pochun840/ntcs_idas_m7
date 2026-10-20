@@ -199,7 +199,6 @@ if (!function_exists('settingAccountLabelText')) {
                 </div>
 
                 <div class="footer account-footer">
-                    <div id="accountPcSelection" aria-live="polite"></div>
                     <div class="buttonbox">
                         <input id="account_new_btn" type="button" value="<?php echo settingAccountViewText('New', 'New'); ?>" onclick="settingAccountAction('new')">
                         <input id="account_edit_btn" type="button" value="<?php echo settingAccountViewText('Edit', 'Edit'); ?>" onclick="settingAccountAction('edit')">

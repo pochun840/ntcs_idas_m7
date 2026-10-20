@@ -1264,38 +1264,3 @@ $text['audit_no_data'] = 'No Data';
 
 $text['audit_loading'] = 'Loading...';
 }
-
-// Account API messages: keep placeholders for formatted responses.
-$text['account_only_admin'] = 'Only admin can use Account setting.';
-$text['account_cannot_be_empty_suffix'] = 'cannot be empty.';
-$text['account_only_allows_suffix'] = 'only allows A-Z, a-z, 0-9.';
-$text['account_username_rule_suffix'] = 'must be 6 to 8 characters and only allows A-Z, a-z, 0-9.';
-$text['account_password_rule_suffix'] = 'must be exactly 4 digits, 0-9.';
-$text['account_table_not_found'] = 'table user not found.';
-$text['account_upload_controller_linux_only'] = 'Sync to controller is only supported on Linux.';
-$text['account_upload_controller_source_missing'] = 'Source iDAS DB not found: {path}';
-$text['account_upload_controller_target_missing'] = 'Target controller DB not found: {path}';
-$text['account_upload_controller_target_not_writable'] = 'Target controller DB or folder is not writable: {path}';
-$text['account_upload_controller_empty'] = 'Source user table has no data. Sync aborted.';
-$text['account_upload_controller_backup_failed'] = 'Backup target DB failed: {path}';
-$text['account_upload_controller_success'] = 'Upload user list to controller success. Rows: {rows}.';
-$text['account_upload_controller_failed'] = 'Upload user list to controller failed: {error}';
-$text['account_cannot_open_csv'] = 'Cannot open uploaded CSV file.';
-$text['account_csv_invalid'] = 'CSV format invalid. Header must include User Name and Password.';
-$text['account_username'] = 'Username';
-$text['account_password'] = 'Password';
-$text['account_csv_validation_failed'] = 'CSV validation failed. No data was imported.';
-$text['account_import_result'] = 'Import success. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.';
-$text['account_import_account_failed'] = 'Import account failed: {error}';
-$text['account_protected_create_action'] = 'This account is protected and cannot be created.';
-$text['account_confirm_diff'] = 'Confirm password is different.';
-$text['account_username_exists'] = 'Username already exists.';
-$text['account_new_success'] = 'New Account success.';
-$text['account_old_username'] = 'Old username';
-$text['account_protected_save_action'] = 'This account is protected and cannot be saved.';
-$text['account_protected_rename_blocked'] = 'This built-in account name cannot be changed.';
-$text['account_not_found'] = 'Account not found.';
-$text['account_edit_success'] = 'Edit Account success.';
-$text['account_protected_action'] = 'This account is protected and cannot be deleted.';
-$text['account_last_delete_error'] = 'Cannot delete the last account.';
-$text['account_delete_account_success'] = 'Delete Account success.';

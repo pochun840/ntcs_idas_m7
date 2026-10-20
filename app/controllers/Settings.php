@@ -7153,7 +7153,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         if ($accountText === null) {
             $accountText = [];
             try {
-                $file = dirname(__DIR__) . '/language/' . $this->accountUserLocale() . '.php';
+                $file = $this->MiscellaneousModel->lang_load();
                 if (!empty($file) && is_file($file)) {
                     $text = [];
                     include $file;
@@ -7367,42 +7367,6 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         $this->accountUserEnsureDefaultGuest($db);
     }
 
-    private function accountUserSyncMetadata(PDO $db, ?array $updates = null): array
-    {
-        $db->exec('CREATE TABLE IF NOT EXISTS idas_account_sync_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        if ($updates !== null) {
-            $stmt = $db->prepare('INSERT OR REPLACE INTO idas_account_sync_metadata (key,value) VALUES (:key,:value)');
-            foreach ($updates as $key => $value) $stmt->execute([':key' => $key, ':value' => (string)$value]);
-        }
-        $meta = $db->query('SELECT key,value FROM idas_account_sync_metadata')->fetchAll(PDO::FETCH_KEY_PAIR);
-        $hasState = $db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='idas_account_sync_state'")->fetchColumn();
-        $pending = $hasState && (int)$db->query('SELECT pending FROM idas_account_sync_state WHERE id=1')->fetchColumn() === 1;
-        $status = $meta['status'] ?? ($pending ? 'pending' : 'never');
-        if ($pending && $status !== 'failed') $status = 'pending';
-        return ['status' => $status, 'pending' => (bool)$pending,
-            'last_success_at' => $meta['last_success_at'] ?? null,
-            'rows' => isset($meta['rows']) ? (int)$meta['rows'] : null];
-    }
-
-    public function account_user_sync_status(): void
-    {
-        try {
-            $this->accountUserRequireAdmin();
-            $db = $this->accountUserDb();
-            $this->accountUserJson(true, 'OK', ['sync' => $this->accountUserSyncMetadata($db)]);
-        } catch (Throwable $e) {
-            $this->accountUserJson(false, $e->getMessage());
-        }
-    }
-
-    private function accountUserSetPendingSync(PDO $db, bool $pending): void
-    {
-        $db->exec('CREATE TABLE IF NOT EXISTS idas_account_sync_state (id INTEGER PRIMARY KEY, pending INTEGER NOT NULL DEFAULT 0)');
-        $stmt = $db->prepare('INSERT OR REPLACE INTO idas_account_sync_state (id,pending) VALUES (1,:pending)');
-        $stmt->execute([':pending' => $pending ? 1 : 0]);
-        if ($pending) $this->accountUserSyncMetadata($db, ['status' => 'pending']);
-    }
-
     public function account_user_upload_controller(): void
     {
         $targetDb = null;
@@ -7486,13 +7450,10 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
             $this->accountUserEnsureDefaultProtectedAccounts($targetDb);
 
             $targetDb->commit();
-            $this->accountUserSetPendingSync($sourceDb, false);
-            $syncState = $this->accountUserSyncMetadata($sourceDb, ['status' => 'success', 'last_success_at' => gmdate('Y-m-d\TH:i:s\Z'), 'rows' => count($rows)]);
             @chmod($targetPath, 0666);
             @exec('sync');
 
             $this->accountUserJson(true, $this->accountUserFormatText('account_upload_controller_success', 'Upload user list to controller success. Rows: {rows}.', ['rows' => count($rows)]), [
-                'sync'        => $syncState,
                 'rows'        => count($rows),
                 'source_path' => $sourcePath,
                 'target_path' => $targetPath,
@@ -7503,10 +7464,6 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
                 $targetDb->rollBack();
             }
 
-            try {
-                if (!isset($sourceDb)) $sourceDb = $this->accountUserDb();
-                $this->accountUserSyncMetadata($sourceDb, ['status' => 'failed']);
-            } catch (Throwable $ignored) {}
             $this->accountUserJson(false, $this->accountUserFormatText('account_upload_controller_failed', 'Upload user list to controller failed: {error}', ['error' => $e->getMessage()]));
         }
     }
@@ -7528,7 +7485,6 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
             $this->accountUserJson(true, 'OK', [
                 'records' => $rows,
                 'count'   => count($rows),
-                'sync'    => $this->accountUserSyncMetadata($db),
             ]);
         } catch (Throwable $e) {
             $this->accountUserJson(false, $e->getMessage());
@@ -7674,7 +7630,6 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
-            $this->accountUserSetPendingSync($db, true);
 
             $header = fgetcsv($fp);
             if (!$header || count($header) < 2) {
@@ -7838,7 +7793,6 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
-            $this->accountUserSetPendingSync($db, true);
 
             $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
             $stmt->execute([':name' => $name]);
@@ -7907,7 +7861,6 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
-            $this->accountUserSetPendingSync($db, true);
 
             $stmt = $db->prepare("SELECT COUNT(*) FROM `user` WHERE name = :name");
             $stmt->execute([':name' => $oldName]);
@@ -7968,7 +7921,6 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
-            $this->accountUserSetPendingSync($db, true);
 
             $count = (int)$db->query("SELECT COUNT(*) FROM `user`")->fetchColumn();
             if ($count <= 1) {

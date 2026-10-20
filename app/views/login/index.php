@@ -235,7 +235,7 @@ if (!headers_sent()) {
         </div>
         <input id="qr_payload" type="hidden" name="qr_payload" value="">
         <button type="submit" id="manualLoginBtn"><?php echo $text['login_text']; ?></button>
-        <button type="button" id="qrLoginOpenBtn" class="qr-login-btn" onclick="openQrLoginModal()">QR Code Login</button>
+        <!--<button type="button" id="qrLoginOpenBtn" class="qr-login-btn" onclick="openQrLoginModal()">QR Code Login</button>-->
         <div id="loginPageError" class="login-page-error" style="display:none;"></div>
     </form>
 
