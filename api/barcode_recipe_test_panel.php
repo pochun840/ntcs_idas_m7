@@ -35,7 +35,7 @@ $barcodeTestText = [
  ]
 ][$lang];
 ?>
-<section id="barcodeRecipeTest" class="section-card">
+<section id="barcodeRecipeTest" class="section-card"<?php echo isset($modeEnabled)&&!$modeEnabled?' hidden':''; ?>>
  <div class="section-head"><div><div class="section-title"><?php echo h($barcodeTestText['title']); ?></div><div class="section-hint"><?php echo h($barcodeTestText['hint']); ?></div></div></div>
  <div class="section-body">
   <form id="barcodeTestForm" class="target-row">

@@ -82,6 +82,19 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
         <h1><?php echo h($t['title']); ?></h1>
         <p class="subtitle"><?php echo h($t['subtitle']); ?></p>
       </div>
+      <?php $viewText=[
+        'zh-tw'=>['查看 Log','隱藏','顯示','MES 模式','正式模式','測試模式'],
+        'zh-cn'=>['查看 Log','隐藏','显示','MES 模式','正式模式','测试模式'],
+        'en-us'=>['Upload logs','Hide','Show','MES mode','Production mode','Test mode'],
+      ][$lang]; ?>
+      <div class="ux-page-controls">
+        <div class="page-language-control">
+          <label for="jobConfigLogs"><?php echo h($viewText[0]); ?></label>
+          <select id="jobConfigLogs" class="page-language-select">
+            <option value="0"<?php echo (($_GET['show_logs'] ?? '')!=='1')?' selected':''; ?>><?php echo h($viewText[1]); ?></option>
+            <option value="1"<?php echo (($_GET['show_logs'] ?? '')==='1')?' selected':''; ?>><?php echo h($viewText[2]); ?></option>
+          </select>
+        </div>
       <div class="page-language-control">
         <label for="jobConfigLanguage"><?php echo h($lang==='en-us'?'Language':($lang==='zh-tw'?'語言':'语言')); ?></label>
         <select id="jobConfigLanguage" class="page-language-select">
@@ -90,6 +103,7 @@ function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
           <?php endforeach; ?>
         </select>
         <span class="tag"><?php echo h($t['api_tool']); ?></span>
+      </div>
       </div>
     </div>
   </header>

@@ -23,6 +23,7 @@ positionBanner();
 window.addEventListener('idas-mes-mode',event=>{
  if(!event.detail||typeof event.detail.test_mode!=='boolean')return;
  const test=event.detail.test_mode,banner=document.getElementById('mesModeBanner');
+ if(banner.dataset.testMode===(test?'1':'0'))return;
  banner.dataset.testMode=test?'1':'0';banner.style.background=test?'#fff4d9':'#eaf5ef';banner.style.color=test?'#795213':'#24583f';banner.style.borderColor=test?'#e6c274':'#9ec7b6';
  document.getElementById('mesModeBannerTitle').textContent=text[test?0:1];
  document.getElementById('mesModeBannerDetail').textContent=text[test?2:3];

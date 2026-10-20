@@ -23,7 +23,8 @@
   const heading=section.querySelector('.section-title');
   if(heading)heading.setAttribute('data-step',String(index+1).padStart(2,'0'));
   const link=make('a','ux-section-link');link.href='#'+section.id;
-  link.append(make('span','ux-step-number',String(index+1).padStart(2,'0')),make('span','',text.sections[index]));nav.append(link);links.push({link,section});
+  const number=make('span','ux-step-number',String(index+1).padStart(2,'0'));
+  link.append(number,make('span','',text.sections[index]));nav.append(link);links.push({link,section,number,heading});
   link.addEventListener('click',event=>{event.preventDefault();section.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});section.setAttribute('tabindex','-1');section.focus({preventScroll:true});});
   const head=section.querySelector('.section-head');
   if(head){const hint=make('p','ux-context-help',help[index]);head.insertAdjacentElement('afterend',hint);}
@@ -45,10 +46,31 @@
  if(actionSection)actionSection.classList.add('ux-action-section');
  const top=make('a','ux-back-top',text.top);top.href='#';top.addEventListener('click',event=>{event.preventDefault();window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});if(hero){hero.setAttribute('tabindex','-1');hero.focus({preventScroll:true});}});content.append(top);
  const banner=get('mesModeBanner'),status=get('status');
- let scheduled=false,disposed=false;
+ let scheduled=false,disposed=false,lastTestMode=null;
+ const logsSelect=get('jobConfigLogs');
+ function navigateSetting(key,value,select){
+  const target=new URL(window.location.href);target.searchParams.delete('test_mode');target.searchParams.set(key,value);
+  // Keep the current selection if the existing unsaved-changes prompt cancels navigation.
+  select.value=new URL(window.location.href).searchParams.get('show_logs')==='1'?'1':'0';
+  window.location.assign(target.toString());
+ }
+ logsSelect?.addEventListener('change',()=>navigateSetting('show_logs',logsSelect.value,logsSelect));
+ function applyMode(test){
+  if(lastTestMode===test)return;lastTestMode=test;
+  const barcode=get('barcodeRecipeTest');if(barcode)barcode.hidden=!test;
+  let step=0;
+  for(const item of links){
+   const hidden=item.section===barcode&&!test;item.link.hidden=hidden;
+   if(hidden){item.link.removeAttribute('aria-current');continue;}
+   const value=String(++step).padStart(2,'0');item.number.textContent=value;
+   if(item.heading)item.heading.setAttribute('data-step',value);
+  }
+  requestAnimationFrame(()=>{sizes();updateNav();});
+ }
+
  function sync(){
   scheduled=false;if(disposed)return;
-  const test=!!banner&&banner.dataset.testMode==='1';
+  const test=!!banner&&banner.dataset.testMode==='1';applyMode(test);
   cells[0].textContent=test?text.test:text.live;cells[0].dataset.mode=test?'test':'live';
   const multi=get('modeMulti')&&get('modeMulti').checked;
   const value=multi?(get('targetIps')?.value||''):(get('singleTargetIp')?.value||'');
@@ -57,6 +79,7 @@
   cells[1].title=targets.join(', ');
   cells[2].textContent=['jobCount','seqCount','stepCount'].map((id,index)=>(get(id)?.textContent||'0')+' '+['JOB','SEQ','STEP'][index]).join(' / ');
   const busy=!!(sourceWrite?.disabled&&get('modeSingle')?.disabled);
+  if(logsSelect)logsSelect.disabled=busy;
   preview.disabled=!sourcePreview||sourcePreview.disabled;write.disabled=!sourceWrite||sourceWrite.disabled;
   write.textContent=busy?text.busy:text.write;bar.classList.toggle('is-working',busy);bar.setAttribute('aria-busy',String(busy));
   dockTitle.textContent=test?text.testHint:text.normalHint;
@@ -73,7 +96,8 @@
  function updateNav(){
   navFrame=false;
   const offset=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ux-scroll-offset'))||140;
-  let active=links[0];for(const item of links){if(item.section.getBoundingClientRect().top<=offset+35)active=item;}
+  const visible=links.filter(item=>!item.link.hidden);
+  let active=visible[0];for(const item of visible){if(item.section.getBoundingClientRect().top<=offset+35)active=item;}
   for(const item of links){if(item===active)item.link.setAttribute('aria-current','location');else item.link.removeAttribute('aria-current');}
  }
  const onScroll=()=>{if(!navFrame){navFrame=true;requestAnimationFrame(updateNav);}};

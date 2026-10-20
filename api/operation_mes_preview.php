@@ -10,7 +10,8 @@ if ($id===false) {http_response_code(400);echo json_encode(['success'=>false,'me
 if (session_status()===PHP_SESSION_ACTIVE) session_write_close();
 try {
     $service=new OperationMesReportService();
-    $payload=$service->preview($id, true);
+    $details=$service->previewDetails($id);
+    $payload=$details['payload'];
     $testMode=$service->previewUsesMock();
     $missing=[];
     foreach (['work_order_no','item','SN','process_name','station'] as $field) {
@@ -19,5 +20,5 @@ try {
     foreach (['screw_inf','runParam_inf'] as $field) {
         if (empty($payload[$field]) || !is_array($payload[$field])) $missing[]=$field;
     }
-    echo json_encode(['success'=>true,'id'=>$id,'test_mode'=>$testMode,'mock'=>$testMode,'work_order_source'=>$testMode?'mock':'barcode','result_source'=>'controller','missing_fields'=>$missing,'payload'=>$payload],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    echo json_encode(['success'=>true,'id'=>$id,'test_mode'=>$testMode,'mock'=>$testMode,'work_order_source'=>empty($payload['work_order_no'])?'unavailable':($testMode?'mock':'barcode'),'result_source'=>'controller','missing_fields'=>$missing,'payload'=>$payload,'preview_scope'=>$details['preview_scope'],'uploadable'=>$details['uploadable'],'source_record'=>$details['source_record'],'preview_reason'=>$details['preview_reason']],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 } catch(Throwable $e){error_log('[operation_mes_preview] '.$e->getMessage());http_response_code(503);echo json_encode(['success'=>false,'id'=>$id,'message'=>$e->getMessage()],JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);}

@@ -47,28 +47,7 @@ final class HuarongTighteningReportService
                 throw new InvalidArgumentException('MES Context 缺少 ' . $field);
             }
         }
-        $runParams = [];
-        foreach ($rows as $row) {
-            $ic = $this->mapResultCode($row);
-            if ($ic === null) {
-                // status 3 without tightening data and other undocumented statuses
-                // are not tightening actions; don't invent MES result codes.
-                continue;
-            }
-            $torque = $this->number($row['final_fasten_torque'] ?? 0);
-            $runParams[] = [
-                'Sp' => $torque,
-                'Rv' => $this->number($row['rpm'] ?? 0),
-                'Ep' => $this->number($row['final_fasten_angle'] ?? 0),
-                // HuaRong integration agreement: Rl equals Sp.
-                'Rl' => $torque,
-                'RlD' => $this->number($row['lo_torque'] ?? 0),
-                'RlU' => $this->number($row['hi_torque'] ?? 0),
-                'ii' => 0,
-                'ic' => $ic,
-                'ie' => 1,
-            ];
-        }
+        $runParams = $this->mapRunParameters($rows);
         if ($runParams === [] && !$allowIncomplete) {
             throw new InvalidArgumentException('沒有可上報的有效鎖附紀錄');
         }
@@ -106,6 +85,47 @@ final class HuarongTighteningReportService
             'screw_inf' => $screwInfo,
             'runParam_inf' => $runParams,
         ];
+    }
+
+    /** Preview and upload share exactly the same measurement mapping. */
+    public function mapRunParameters(array $rows): array
+    {
+        $runParams = [];
+        foreach ($rows as $row) {
+            $ic = $this->mapResultCode($row);
+            if ($ic === null) {
+                // status 3 without tightening data and other undocumented statuses
+                // are not tightening actions; don't invent MES result codes.
+                continue;
+            }
+            $torque = $this->number($row['final_fasten_torque'] ?? 0);
+            $runParams[] = [
+                'Sp' => $torque,
+                'Rv' => $this->number($row['rpm'] ?? 0),
+                'Ep' => $this->number($row['final_fasten_angle'] ?? 0),
+                // HuaRong integration agreement: Rl equals Sp.
+                'Rl' => $torque,
+                'RlD' => $this->number($row['lo_torque'] ?? 0),
+                'RlU' => $this->number($row['hi_torque'] ?? 0),
+                'ii' => 0,
+                'ic' => $ic,
+                'ie' => 1,
+            ];
+        }
+        return $runParams;
+    }
+    /** Read-only incomplete preview: never invent a missing MES order or installed count. */
+    public function buildReadOnlyPreview(array $rows,?array $context=null): array
+    {
+        $context=$context ?? [];$last=$rows?end($rows):[];$screws=[];
+        foreach (($context['screw_inf'] ?? []) as $screw) {
+            $screws[]=['screw_item'=>$screw['screw_item'] ?? null,'screw_quantity'=>$screw['screw_quantity'] ?? null,'screw_installed'=>null];
+        }
+        return ['message_class'=>'post_screw_inf','work_order_no'=>$context['work_order_no'] ?? null,
+            'item'=>$context['item'] ?? null,'SN'=>$context['SN'] ?? (($last['barcode'] ?? '')!==''?$last['barcode']:null),
+            'process_name'=>$context['process_name'] ?? null,'station'=>$context['station'] ?? null,
+            'complete_staus'=>null,'personal_num'=>$last['user_id'] ?? null,'screw_inf'=>$screws,
+            'runParam_inf'=>$this->mapRunParameters($rows)];
     }
 
     private function mapResultCode(array $row): ?int

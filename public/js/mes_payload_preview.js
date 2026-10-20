@@ -13,6 +13,7 @@ window.createIdasMesPreview=function(config){
  const copy=get('mesPayloadPreviewCopy'),download=get('mesPayloadPreviewDownload');
  copy.textContent=t[12];download.textContent=t[13];get('mesPayloadPreviewNote').textContent=t[8];get('mesPayloadPreviewClose').textContent=t[19];
  dialog.setAttribute('aria-labelledby','mesPayloadPreviewTitle');
+ let rawDetails=null,rawPre=null;
  let abort=null,revision=0,json='',filename='huarong_payload.json',mime='application/json';
  function disable(value){copy.disabled=value;download.disabled=value;}
  function close(){revision++;if(abort)abort.abort();abort=null;disable(true);json='';if(dialog.open)dialog.close();}
@@ -20,10 +21,21 @@ window.createIdasMesPreview=function(config){
  dialog.addEventListener('cancel',close);
  function field(label,value){const cell=document.createElement('div'),name=document.createElement('small'),content=document.createElement('strong');name.textContent=label;name.style.cssText='display:block;color:#66758a;font-weight:400;margin-bottom:5px';content.textContent=value===null||value===undefined||value===''?'—':String(value);content.style.cssText='display:block;overflow-wrap:anywhere';cell.append(name,content);summary.append(cell);}
  function mode(test){field(t[3],t[test?4:5]);}
- function reset(title){revision++;if(abort)abort.abort();abort=null;json='';summary.replaceChildren();warning.textContent='';feedback.textContent='';body.textContent=t[15];disable(true);get('mesPayloadPreviewTitle').textContent=title;if(!dialog.open)dialog.showModal();return revision;}
+ function reset(title){if(rawDetails){rawDetails.hidden=true;rawPre.textContent='';}revision++;if(abort)abort.abort();abort=null;json='';summary.replaceChildren();warning.textContent='';feedback.textContent='';body.textContent=t[15];disable(true);get('mesPayloadPreviewTitle').textContent=title;if(!dialog.open)dialog.showModal();return revision;}
  function render(payload,missing,file){
   mime='application/json';json=JSON.stringify(payload,null,2);filename=file;body.textContent=json;
   warning.textContent=missing.length?t[6]+missing.join('、'):t[7];warning.style.cssText='padding:12px 20px;margin:0;border-top:1px solid #e0e7f0;background:'+(missing.length?'#fff4df;color:#865819':'#eff8f2;color:#275c41');disable(false);
+ }
+ function showSource(record){
+  if(!record||typeof record!=='object')return;
+  if(!rawDetails){
+   rawDetails=document.createElement('details');const heading=document.createElement('summary');
+   const names={'zh-tw':'控制器原始鎖附紀錄','zh-cn':'控制器原始锁附记录','en-us':'Original controller record'};
+   heading.textContent=names[lang]||names['zh-cn'];heading.style.cssText='padding:12px 20px;cursor:pointer;font-weight:600';
+   rawPre=document.createElement('pre');rawPre.style.cssText='margin:0;padding:16px 20px;max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f7fb;font:13px/1.6 monospace';
+   rawDetails.append(heading,rawPre);body.insertAdjacentElement('afterend',rawDetails);
+  }
+  rawPre.textContent=JSON.stringify(record,null,2);rawDetails.hidden=false;rawDetails.open=true;
  }
  function modeEvent(test){if(typeof test==='boolean')window.dispatchEvent(new CustomEvent('idas-mes-mode',{detail:{test_mode:test}}));}
  async function showOperation(id){
@@ -33,11 +45,16 @@ window.createIdasMesPreview=function(config){
    const response=await fetch(target,{cache:'no-store',signal:controller.signal}),data=await response.json();
    if(current!==revision)return;
    if(!response.ok||data.success!==true||!data.payload||typeof data.payload!=='object')throw new Error(data.message||t[16]);
-   field(t[0],data.id);field(t[1],data.payload.SN);field(t[2],data.payload.process_name);mode(data.test_mode===true);modeEvent(data.test_mode);
+   field(t[0],data.id);field(t[1],data.payload.SN);field(t[2],data.payload.process_name||(data.source_record&&data.source_record.job_name));mode(data.test_mode===true);modeEvent(data.test_mode);
    const names={SN:t[1]+' (SN)',process_name:t[2]+' (process_name)'};
    const missing=(Array.isArray(data.missing_fields)?data.missing_fields:[]).map(name=>names[name]||String(name));
    render(data.payload,missing,'huarong_operation_'+String(id).replace(/[^0-9]/g,'')+'.json');
-   if(data.mock===true){
+   if(data.preview_scope && data.preview_scope!=='product'){
+    const notes={'zh-tw':'僅供查看：產品尚未完成或缺少有效工單起點。以下保留實際鎖附資料；未知欄位顯示 null，不能作為可上傳的完整報文。','zh-cn':'仅供查看：产品尚未完成或缺少有效工单起点。保留实际锁附数据；未知字段显示 null，不能作为可上传的完整报文。','en-us':'Read-only preview: the product is incomplete or has no verified work order boundary. Actual controller data is retained; unknown fields are null. This is not an upload-ready report.'};
+    warning.textContent=(notes[lang]||notes['zh-cn'])+(missing.length?' '+t[6]+missing.join('、'):'');
+    warning.style.cssText='padding:12px 20px;margin:0;background:#fff4df;color:#865819';
+    showSource(data.source_record);
+   }else if(data.mock===true){
     const notes={'zh-tw':'測試模式：工單資料來自條碼模擬測試；runParam_inf 使用截至完成 ID 的整個產品鎖附紀錄，不會送往 MES。','zh-cn':'测试模式：工单信息来自条码模拟测试；runParam_inf 使用截至完成 ID 的整个产品锁附记录，不会发送至 MES。','en-us':'Test mode: work order data comes from the barcode sample. runParam_inf contains all product records through the terminal ID. Nothing is sent to MES.'};
     warning.textContent=(notes[lang]||notes['zh-cn'])+(missing.length?' '+t[6]+missing.join('、'):'');
     warning.style.cssText='padding:12px 20px;margin:0;background:#fff4df;color:#865819';

@@ -12,6 +12,7 @@ final class OperationMesReportService
     private $recordApi;
     private bool $lastPreviewMock=false;
     private $policy;
+    private $previewRecord=null;
     public function previewUsesMock(): bool { return $this->lastPreviewMock; }
     public function __construct(?OperationRecordApiClient $recordApi=null,?array $policy=null) {
         $this->state=$this->open(idas_path('database_root','das.db'));
@@ -76,7 +77,7 @@ final class OperationMesReportService
         $saved=$this->state->prepare('SELECT * FROM mes_product_batch_v2 WHERE mode=? AND start_after<? AND terminal_id>=? AND payload_json IS NOT NULL ORDER BY id DESC LIMIT 1');
         $saved->execute([$mode,$id,$id]);$snapshot=$saved->fetch(PDO::FETCH_ASSOC);$saved->closeCursor();
         if ($snapshot) return ['batch'=>$snapshot,'complete'=>true,'payload'=>json_decode($snapshot['payload_json'],true,512,JSON_THROW_ON_ERROR)];
-        $record=$this->recordApi->fetch($id);$binding=$this->context($id,$record,$test);$mode=$test?'test':'production';
+        $record=$this->recordApi->fetch($id);$this->previewRecord=$record;$binding=$this->context($id,$record,$test);$mode=$test?'test':'production';
         $batch=$this->findBatch($mode,$binding['key'],$id);
         if ($batch && $batch['payload_json']!==null && $id<=(int)$batch['terminal_id']) return ['batch'=>$batch,'complete'=>true,'payload'=>json_decode($batch['payload_json'],true,512,JSON_THROW_ON_ERROR)];
         if ($batch && $batch['terminal_id']!==null && $id>(int)$batch['terminal_id']) {
@@ -111,7 +112,7 @@ final class OperationMesReportService
             $status=$result['complete']?'pending':'accumulating';
             $batch=$this->storeBatch($batch,$mode,$binding['key'],$after,$cursor,$rows,$payload,$status,'',$result['terminal_id']);
         }
-        $result['batch']=$batch;$result['context']=$binding['context'];return $result;
+        $result['batch']=$batch;$result['context']=$binding['context'];$result['rows']=$rows;return $result;
     }
     private function storeBatch(?array $batch,string $mode,string $key,int $after,int $last,array $rows,?array $payload,string $status,string $message,?int $terminal): array {
         $q=$this->state->prepare('INSERT OR REPLACE INTO mes_product_batch_v2(id,mode,context_key,start_after,last_id,terminal_id,rows_json,payload_json,status,message,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
@@ -126,6 +127,27 @@ final class OperationMesReportService
             $result=$this->collect($id,$this->lastPreviewMock,false);
             if (!$result['complete']) throw new RuntimeException('產品尚在累積，尚未到最後一顆；不產生上傳報文');
             return $result['payload'];
+        } finally {flock($lock,LOCK_UN);fclose($lock);}
+    }
+    /** Viewing incomplete/historical records must not be blocked by upload prerequisites. */
+    public function previewDetails(int $id): array {
+        if ($id<1) throw new InvalidArgumentException('id must be a positive integer');
+        $lock=$this->lock();$this->previewRecord=null;
+        try {
+            $this->lastPreviewMock=MesTestMode::enabled();$context=null;$reason='';$scope='product_partial';
+            try {
+                $result=$this->collect($id,$this->lastPreviewMock,false);
+                if ($result['complete']) return ['payload'=>$result['payload'],'preview_scope'=>'product','uploadable'=>true,'source_record'=>null,'preview_reason'=>''];
+                $rows=$result['rows'] ?? [];$context=$result['context'] ?? null;
+                if (!$rows) {$scope='record_only';$rows=[$this->previewRecord];}
+                $reason='product_not_complete';
+            } catch(Throwable $e) {
+                if ($this->previewRecord===null) throw $e;
+                $scope='record_only';$rows=[$this->previewRecord];$reason=$e->getMessage();
+                try {$bound=$this->context($id,$this->previewRecord,$this->lastPreviewMock);$context=$bound['context'];}catch(Throwable $ignored){}
+            }
+            return ['payload'=>(new HuarongTighteningReportService())->buildReadOnlyPreview($rows,$context),
+                'preview_scope'=>$scope,'uploadable'=>false,'source_record'=>$this->previewRecord,'preview_reason'=>$reason];
         } finally {flock($lock,LOCK_UN);fclose($lock);}
     }
     private function lock() {
