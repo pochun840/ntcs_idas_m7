@@ -31,7 +31,7 @@ final class MesBarcodeSenderService
             CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2]);
         $this->responseDetails=['kind'=>'transport_error','http_status'=>null,'raw_body'=>null];
-        $raw=curl_exec($ch);$error=curl_error($ch);$errno=curl_errno($ch);$http=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+        $raw=curl_exec($ch);$error=curl_error($ch);$errno=curl_errno($ch);$http=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);if (PHP_VERSION_ID < 80000) { curl_close($ch); }
         $this->responseDetails=['kind'=>$raw===false?'transport_error':'mes','http_status'=>$http>0?$http:null,'raw_body'=>$raw===false?null:(string)$raw];
         if ($raw === false && $errno === CURLE_OPERATION_TIMEDOUT) throw new RuntimeException('MES 回應逾時（等待上限 '.self::RESPONSE_TIMEOUT_SECONDS.' 秒）');
         if ($raw === false) throw new RuntimeException('MES 連線失敗：'.$error);

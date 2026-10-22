@@ -235,7 +235,7 @@ function csvNoHeaderToJson(){
     $rows = [];
     $isFirst = true;
 
-    while (($cols = fgetcsv($fp)) !== false) {
+    while (($cols = fgetcsv($fp, 0, ',', '"', '\\')) !== false) {
         // 去除第一格可能的 UTF-8 BOM
         if ($isFirst && isset($cols[0])) {
             $cols[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cols[0]);

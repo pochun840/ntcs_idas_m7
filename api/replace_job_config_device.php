@@ -19,7 +19,7 @@ function callDeviceControlApi(string $url, string $action): array
         $response = curl_exec($handle);
         $status = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
         $error = curl_error($handle);
-        curl_close($handle);
+        if (PHP_VERSION_ID < 80000) { curl_close($handle); }
     } else {
         $response = @file_get_contents($url, false, stream_context_create(['http' => [
             'method' => 'POST', 'content' => $body, 'timeout' => 60,

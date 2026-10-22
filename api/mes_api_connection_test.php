@@ -20,7 +20,7 @@ try {
     $errno = curl_errno($ch);
     $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $elapsed = (int)round(curl_getinfo($ch, CURLINFO_TOTAL_TIME)*1000);
-    curl_close($ch);
+    if (PHP_VERSION_ID < 80000) { curl_close($ch); }
     echo json_encode(['success'=>true,'reachable'=>$result !== false && $http > 0,
         'http_status'=>$http,'elapsed_ms'=>$elapsed,'curl_errno'=>$errno,
         'reason'=>$errno === 28 ? 'timeout' : ($errno === 6 ? 'dns' : ($errno === 7 ? 'connection' : ($errno !== 0 ? 'transport' : 'http')))]);

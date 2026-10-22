@@ -84,7 +84,7 @@ final class JobConfigHttpClient
                     'elapsed_ms' => $elapsedMs,
                 ];
                 curl_multi_remove_handle($multi, $handle);
-                curl_close($handle);
+                if (PHP_VERSION_ID < 80000) { curl_close($handle); }
             }
             curl_multi_close($multi);
 

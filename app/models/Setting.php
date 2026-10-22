@@ -1797,7 +1797,7 @@ class Setting
         $header = null;
         $lineNo = 0;
 
-        while (($cols = fgetcsv($fp)) !== false) {
+        while (($cols = fgetcsv($fp, 0, ',', '"', '\\')) !== false) {
             $lineNo++;
 
             // 空白列略過

@@ -26,7 +26,7 @@ final class OperationRecordApiClient
         curl_setopt_array($ch,[CURLOPT_HTTPGET=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>3,CURLOPT_TIMEOUT=>10,
             CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_HTTPHEADER=>['Accept: application/json'],CURLOPT_PROXY=>'']);
-        $body=curl_exec($ch);$error=curl_error($ch);$http=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+        $body=curl_exec($ch);$error=curl_error($ch);$http=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);if (PHP_VERSION_ID < 80000) { curl_close($ch); }
         if ($body===false) throw new RuntimeException('讀取鎖附紀錄 API 失敗：'.$error);
         if ($http<200 || $http>=300) throw new RuntimeException('鎖附紀錄 API HTTP 狀態異常：'.$http);
         try {$rows=json_decode((string)$body,true,512,JSON_THROW_ON_ERROR);}

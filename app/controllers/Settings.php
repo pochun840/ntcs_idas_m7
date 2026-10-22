@@ -7581,7 +7581,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
 
             $fp = fopen('php://output', 'w');
             // CSV hides internal law column. law is managed internally and defaults to 1 on import.
-            fputcsv($fp, ['No', 'User Name', 'Password']);
+            fputcsv($fp, ['No', 'User Name', 'Password'], ',', '"', '\\');
 
             $no = 1;
             foreach ($rows as $row) {
@@ -7589,7 +7589,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
                     $no++,
                     $row['name'] ?? '',
                     $this->accountUserExcelText((string)($row['passwd'] ?? '')),
-                ]);
+                ], ',', '"', '\\');
             }
 
             fclose($fp);
@@ -7631,7 +7631,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
             $db = $this->accountUserDb();
             $this->accountUserAssertTable($db);
 
-            $header = fgetcsv($fp);
+            $header = fgetcsv($fp, 0, ',', '"', '\\');
             if (!$header || count($header) < 2) {
                 fclose($fp);
                 throw new Exception($this->accountUserText('account_csv_invalid', 'CSV format invalid. Header must include User Name and Password.'));
@@ -7662,7 +7662,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
             $rowsToImport = [];
 
             // First pass: validate the whole CSV before touching DB.
-            while (($row = fgetcsv($fp)) !== false) {
+            while (($row = fgetcsv($fp, 0, ',', '"', '\\')) !== false) {
                 $lineNo++;
 
                 // Skip blank lines.
@@ -8193,7 +8193,7 @@ Please confirm that the Controller DB and iDAS DB versions are compatible, or us
         }
 
         $lineNo = 0;
-        while (($cols = fgetcsv($fp)) !== false) {
+        while (($cols = fgetcsv($fp, 0, ',', '"', '\\')) !== false) {
             $lineNo++;
 
             // 跳過空行或欄位不足的資料

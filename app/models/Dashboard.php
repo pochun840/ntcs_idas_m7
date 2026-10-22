@@ -107,7 +107,7 @@ class Dashboard{
         if (!$fp) return [];
 
         // 讀 header
-        $header = fgetcsv($fp);
+        $header = fgetcsv($fp, 0, ',', '"', '\\');
 
         $x      = [];
         $torque = [];
@@ -116,7 +116,7 @@ class Dashboard{
         $step   = [];
 
         $i = 0;
-        while (($r = fgetcsv($fp)) !== false) {
+        while (($r = fgetcsv($fp, 0, ',', '"', '\\')) !== false) {
 
             $t = isset($r[0]) ? floatval($r[0]) : $i;
             $tor = isset($r[1]) ? floatval($r[1]) : 0;

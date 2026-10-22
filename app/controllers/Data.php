@@ -638,14 +638,14 @@ class Data extends Controller
             fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
 
             // header row
-            fputcsv($out, $csv_headers_temp);
+            fputcsv($out, $csv_headers_temp, ',', '"', '\\');
 
             foreach ($dataset as $row) {
                 $ordered = DataExportService::orderedRow(
                     $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
                     function ($unitKey) { return $this->unitText($unitKey); }
                 );
-                fputcsv($out, $ordered);
+                fputcsv($out, $ordered, ',', '"', '\\');
             }
 
             fclose($out);
@@ -659,14 +659,14 @@ class Data extends Controller
 
             $fh = fopen('php://temp', 'w+');
             fwrite($fh, "\xEF\xBB\xBF");
-            fputcsv($fh, $csv_headers_temp);
+            fputcsv($fh, $csv_headers_temp, ',', '"', '\\');
 
             foreach ($dataset as $row) {
                 $ordered = DataExportService::orderedRow(
                     $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
                     function ($unitKey) { return $this->unitText($unitKey); }
                 );
-                fputcsv($fh, $ordered);
+                fputcsv($fh, $ordered, ',', '"', '\\');
             }
 
             rewind($fh);
@@ -777,14 +777,14 @@ class Data extends Controller
             fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
 
             // header row
-            fputcsv($out, $csv_headers_temp);
+            fputcsv($out, $csv_headers_temp, ',', '"', '\\');
 
             foreach ($dataset as $row) {
                 $ordered = DataExportService::orderedRow(
                     $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
                     function ($unitKey) { return $this->unitText($unitKey); }
                 );
-                fputcsv($out, $ordered);
+                fputcsv($out, $ordered, ',', '"', '\\');
             }
 
             fclose($out);
@@ -798,14 +798,14 @@ class Data extends Controller
 
             $fh = fopen('php://temp', 'w+');
             fwrite($fh, "\xEF\xBB\xBF");
-            fputcsv($fh, $csv_headers_temp);
+            fputcsv($fh, $csv_headers_temp, ',', '"', '\\');
 
             foreach ($dataset as $row) {
                 $ordered = DataExportService::orderedRow(
                     $row, $csv_headers, is_array($unitMap) ? $unitMap : [], $status_arr,
                     function ($unitKey) { return $this->unitText($unitKey); }
                 );
-                fputcsv($fh, $ordered);
+                fputcsv($fh, $ordered, ',', '"', '\\');
             }
 
             rewind($fh);
@@ -1275,14 +1275,14 @@ class Data extends Controller
         fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
 
         $csv_headers = array_keys($dataset[0]);
-        fputcsv($out, $csv_headers);
+        fputcsv($out, $csv_headers, ',', '"', '\\');
 
         foreach ($dataset as $row) {
             $ordered = [];
             foreach ($csv_headers as $key) {
                 $ordered[] = $row[$key] ?? '';
             }
-            fputcsv($out, $ordered);
+            fputcsv($out, $ordered, ',', '"', '\\');
         }
 
         fclose($out);

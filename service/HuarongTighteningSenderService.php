@@ -57,7 +57,7 @@ final class HuarongTighteningSenderService
         $body = curl_exec($ch);
         $error = curl_error($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        if (PHP_VERSION_ID < 80000) { curl_close($ch); }
 
         if ($body === false) throw new RuntimeException('MES 連線失敗：' . $error);
         if ($httpCode < 200 || $httpCode >= 300) throw new RuntimeException('MES HTTP 狀態異常：' . $httpCode);
